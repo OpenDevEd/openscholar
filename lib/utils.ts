@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-export const fields = ["title", "abstract", "fulltext", "title_and_abstract", "display_name"] as const;
+export const fields = ["title_and_abstract", "title", "abstract", "fulltext", "display_name"] as const;
 
 export type SearchField = (typeof fields)[number];
 

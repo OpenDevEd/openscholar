@@ -52,7 +52,7 @@ function PageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
   const [currentSearchField, setCurrentSearchField] = useState<SearchField>(fields[0]);
-
+  const [resultsSearchField, setResultsSearchField] = useState<SearchField>(fields[0]);
   const [searchHistory, setSearchHistory] = useState<SearchResult[]>(() => {
     // Initialize from localStorage if available
     if (typeof window !== "undefined") {
@@ -90,6 +90,7 @@ function PageContent() {
       setCurrentPage(1);
       const results = await getSearchResults(query, searchField);
       setResults(results.results);
+      setResultsSearchField(searchField);
       setIsDialogOpen(true);
     } finally {
       setIsLoadingResults(false);
@@ -132,12 +133,31 @@ function PageContent() {
     }
   };
 
-  const handleDownloadAll = async (format: 'json' | 'csv') => {
-    const filename = `${currentQuery.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_all.${format}`;
+  const getEssentialInfo = (item: any) => ({
+    title: item.title,
+    authors: item.authorships?.map((a: { author: { display_name: string } }) => a.author.display_name).join(', ') || '',
+    year: item.publication_year,
+    abstract: item.abstract || ''
+  });
+
+  const handleDownloadEssentialItem = async (item: any, format: 'json' | 'csv') => {
+    const essentialInfo = getEssentialInfo(item);
+    const filename = `${item.title.slice(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}_essential.${format}`;
     if (format === 'json') {
-      downloadAsFile(JSON.stringify(results, null, 2), filename, 'json');
+      downloadAsFile(JSON.stringify(essentialInfo, null, 2), filename, 'json');
     } else {
-      const csv = await jsonToCSV(results);
+      const csv = await jsonToCSV(essentialInfo);
+      downloadAsFile(csv, filename, 'csv');
+    }
+  };
+
+  const handleDownloadAll = async (format: 'json' | 'csv', onlyEssential: boolean = false) => {
+    const filename = `${currentQuery.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${onlyEssential ? 'essential_' : ''}all.${format}`;
+    const dataToDownload = onlyEssential ? results.map(getEssentialInfo) : results;
+    if (format === 'json') {
+      downloadAsFile(JSON.stringify(dataToDownload, null, 2), filename, 'json');
+    } else {
+      const csv = await jsonToCSV(dataToDownload);
       downloadAsFile(csv, filename, 'csv');
     }
   };
@@ -190,15 +210,52 @@ function PageContent() {
           <div suppressHydrationWarning className="w-full mt-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Results</h2>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={clearHistory}
-                className="flex items-center gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                Clear All
-              </Button>
+              <div className="flex gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download Table
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => {
+                      const data = searchHistory.map(item => ({
+                        search_query: item.query,
+                        count: item.count,
+                        field: item.field,
+                      }));
+                      const totalRow = { search_query: 'Total', count: totalCount, field: "" };
+                      data.push(totalRow as any);
+                      downloadAsFile(JSON.stringify(data, null, 2), 'search_history.json', 'json');
+                    }}>
+                      Download as JSON
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => {
+                      const data = searchHistory.map(item => ({
+                        search_query: item.query,
+                        count: item.count,
+                        field: item.field,
+                      }));
+                      const totalRow = { search_query: 'Total', count: totalCount, field: "" };
+                      data.push(totalRow as any);
+                      const csv = await jsonToCSV(data);
+                      downloadAsFile(csv, 'search_history.csv', 'csv');
+                    }}>
+                      Download as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={clearHistory}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear All
+                </Button>
+              </div>
             </div>
             <table className="w-full border-collapse">
               <thead>
@@ -262,7 +319,11 @@ function PageContent() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-[90%] md:max-w-4xl lg:max-w-6xl w-full overflow-hidden">
           <DialogHeader className="flex flex-row justify-between items-center pr-12">
-            <DialogTitle className="break-words mr-4">Search Results for "{currentQuery}"</DialogTitle>
+            <DialogTitle className="break-words mr-4">
+              Search Results for "{currentQuery}" in {resultsSearchField.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+              ).join(' ')}
+            </DialogTitle>
             {results.length > 0 && (
               <div className="flex-shrink-0">
                 <DropdownMenu>
@@ -278,6 +339,12 @@ function PageContent() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleDownloadAll('csv')}>
                       Download as CSV
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadAll('json', true)}>
+                      Download Essential Info as JSON
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadAll('csv', true)}>
+                      Download Essential Info as CSV
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -311,11 +378,20 @@ function PageContent() {
                               </h3>
                             </a>
                             <div className="text-sm text-muted-foreground mt-2">
+                              {result.authorships && (
+                                <div className="mb-1">
+                                  {result.authorships
+                                    .map((author: { author: { display_name: string } }) => author.author.display_name)
+                                    .join(', ')}
+                                </div>
+                              )}
                               <span className="font-medium">Year: {result.publication_year}</span>
                             </div>
                             {result.abstract && (
                               <p className="mt-3 text-sm text-muted-foreground break-words hyphens-auto overflow-wrap-anywhere">
-                                {result.abstract}
+                                {result.abstract.length > 500 
+                                  ? `${result.abstract.slice(0, 500)}...` 
+                                  : result.abstract}
                               </p>
                             )}
                           </div>
@@ -331,6 +407,12 @@ function PageContent() {
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadItem(result, 'csv')}>
                                 Download as CSV
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadEssentialItem(result, 'json')}>
+                                Download Essential Info as JSON
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadEssentialItem(result, 'csv')}>
+                                Download Essential Info as CSV
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
