@@ -4,16 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2 } from "lucide-react";
 import { startSearch } from "./actions/openalex";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type SearchResult = {
   query: string;
   count: number;
 };
 
+const STORAGE_KEY = 'search-history';
+
 export default function PageContent() {
-  const [searchHistory, setSearchHistory] = useState<SearchResult[]>([]);
+  const [searchHistory, setSearchHistory] = useState<SearchResult[]>(() => {
+    // Initialize from localStorage if available
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Update localStorage whenever searchHistory changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(searchHistory));
+  }, [searchHistory]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,6 +37,8 @@ export default function PageContent() {
       const count = await startSearch(formData);
       const query = formData.get('query') as string;
       setSearchHistory(prev => [...prev, { query, count }]);
+      // Clear the form input after successful search
+      (e.target as HTMLFormElement).reset();
     } finally {
       setIsLoading(false);
     }
@@ -34,6 +50,7 @@ export default function PageContent() {
 
   const clearHistory = () => {
     setSearchHistory([]);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const formatNumber = (num: number) => {
