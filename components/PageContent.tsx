@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2 } from "lucide-react";
-import { startSearch } from "./actions/openalex";
+import { startSearch } from "@/app/actions/openalex";
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 
