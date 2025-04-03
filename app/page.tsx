@@ -1,6 +1,6 @@
 import dynamic from 'next/dynamic';
-import PageContentWrapper from './PageContentWrapper';
+import PageContent from './PageContent';
 
 export default function Home() {
-  return <PageContentWrapper />;
+  return <PageContent />;
 }
