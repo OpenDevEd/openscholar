@@ -1,4 +1,3 @@
-import dynamic from 'next/dynamic';
 import PageContent from './PageContent';
 
 export default function Home() {
