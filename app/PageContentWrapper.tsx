@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const PageContent = dynamic(() => import('./PageContent'), { ssr: false });
+const PageContent = dynamic(() => import('@/app/PageContent'), { ssr: false });
 
 export default function PageContentWrapper() {
     return <PageContent />;
