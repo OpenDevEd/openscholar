@@ -261,6 +261,16 @@ function PageContent() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Notify Zotero when results are rendered/rerendered
+  useEffect(() => {
+    if (paginatedResults.length > 0) {
+      document.dispatchEvent(new Event('ZoteroItemUpdated', {
+        bubbles: true,
+        cancelable: true
+      }));
+    }
+  }, [paginatedResults]);
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     resultsContainerRef.current?.scrollTo(0, 0);
@@ -961,6 +971,11 @@ function PageContent() {
                       className="border rounded-lg hover:bg-accent/50 transition-colors group"
                     >
                       <div className="p-4 overflow-hidden">
+                        {/* COINS metadata span */}
+                        <span 
+                          className="Z3988" 
+                          title={`ctx_ver=Z39.88-2004&rft_val_fmt=info:ofi/fmt:kev:mtx:journal&rft.genre=article&rft.atitle=${encodeURIComponent(result.title || '')}&rft.jtitle=${encodeURIComponent(result.primary_location?.source?.display_name || '')}&rft.date=${result.publication_year || ''}&rft.volume=${encodeURIComponent(result.biblio?.volume || '')}&rft.issue=${encodeURIComponent(result.biblio?.issue || '')}&rft.spage=${encodeURIComponent(result.biblio?.first_page || '')}&rft.epage=${encodeURIComponent(result.biblio?.last_page || '')}&rft_id=info:doi/${encodeURIComponent(result.doi?.replace('https://doi.org/', '') || '')}&rft.au=${result.authorships?.map((auth: any) => encodeURIComponent(auth.author?.display_name || '')).join('&rft.au=') || ''}`}
+                        ></span>
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
