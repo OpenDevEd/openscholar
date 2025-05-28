@@ -10,18 +10,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Search, Loader2, X, Trash2, ExternalLink, Download, CalendarIcon, Copy, Star, Filter, SortAsc, FileText, Hash, Calendar as CalendarDays, Users } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, Loader2, X, Trash2, ExternalLink, Download, CalendarIcon, Copy, Star, Filter, SortAsc, FileText, Hash, Calendar as CalendarDays, Users, Quote, TrendingUp, Award, BookOpen, Globe, Lock, Unlock, BarChart3, Target, Layers, Building, Leaf } from "lucide-react";
 import { startSearch, getSearchResults } from "@/app/actions/openalex";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveModal } from "@/components/ui/responsive-modal";
 import {
   Pagination,
   PaginationContent,
@@ -97,6 +100,8 @@ function PageContent() {
     }
     return {};
   });
+  const [expandedAbstracts, setExpandedAbstracts] = useState<Record<string, boolean>>({});
+  const [resultsFilter, setResultsFilter] = useState<string>("");
 
   // Update localStorage whenever searchHistory changes
   useEffect(() => {
@@ -177,6 +182,13 @@ function PageContent() {
     }
   };
 
+  const toggleAbstract = (paperId: string) => {
+    setExpandedAbstracts(prev => ({
+      ...prev,
+      [paperId]: !prev[paperId]
+    }));
+  };
+
   const handleCopyQuery = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
@@ -198,8 +210,25 @@ function PageContent() {
 
   const totalCount = searchHistory.reduce((sum, item) => sum + item.count, 0);
 
-  const totalPages = Math.ceil(results.length / ITEMS_PER_PAGE);
-  const paginatedResults = results.slice(
+  const filteredResults = results.filter(result => {
+    if (!resultsFilter.trim()) return true;
+    
+    const searchTerm = resultsFilter.toLowerCase();
+    return (
+      result.title?.toLowerCase().includes(searchTerm) ||
+      result.abstract?.toLowerCase().includes(searchTerm) ||
+      result.authorships?.some((authorship: any) => 
+        authorship.author?.display_name?.toLowerCase().includes(searchTerm)
+      ) ||
+      result.primary_topic?.display_name?.toLowerCase().includes(searchTerm) ||
+      result.primary_topic?.subfield?.display_name?.toLowerCase().includes(searchTerm) ||
+      result.primary_topic?.field?.display_name?.toLowerCase().includes(searchTerm) ||
+      result.primary_topic?.domain?.display_name?.toLowerCase().includes(searchTerm)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
+  const paginatedResults = filteredResults.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -207,6 +236,11 @@ function PageContent() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     resultsContainerRef.current?.scrollTo(0, 0);
+  };
+
+  const handleFilterChange = (value: string) => {
+    setResultsFilter(value);
+    setCurrentPage(1); // Reset to first page when filtering
   };
 
   const createSearchMetadata = (query: string, searchField: SearchField, dateRange?: DateRange) => {
@@ -499,58 +533,57 @@ function PageContent() {
               </div>
             </CardHeader>
             <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse min-w-[600px]">
-                                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2 w-1/3">
-                        <div className="flex items-center gap-2">
-                          <Search className="h-4 w-4" />
-                          Search Query
-                        </div>
-                      </th>
-                      <th className="text-right p-2 w-1/8">
-                        <div className="flex items-center justify-end gap-2">
-                          <Hash className="h-4 w-4" />
-                          Count
-                        </div>
-                      </th>
-                      <th className="text-right p-2 w-1/8">
-                        <div className="flex items-center justify-end gap-2">
-                          <Filter className="h-4 w-4" />
-                          Field
-                        </div>
-                      </th>
-                      <th className="text-right p-2 w-1/8">
-                        <div className="flex items-center justify-end gap-2">
-                          <CalendarDays className="h-4 w-4" />
-                          Date Range
-                        </div>
-                      </th>
-                      <th className="text-right p-2 w-1/8">
-                        <div className="flex items-center justify-end gap-2">
-                          <SortAsc className="h-4 w-4" />
-                          Sort
-                        </div>
-                      </th>
-                      <th className="w-24 p-2"></th>
-                    </tr>
-                  </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/3">
+                      <div className="flex items-center gap-2">
+                        <Search className="h-4 w-4" />
+                        Search Query
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right w-1/8">
+                      <div className="flex items-center justify-end gap-2">
+                        <Hash className="h-4 w-4" />
+                        Count
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right w-1/8">
+                      <div className="flex items-center justify-end gap-2">
+                        <Filter className="h-4 w-4" />
+                        Field
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right w-1/8">
+                      <div className="flex items-center justify-end gap-2">
+                        <CalendarDays className="h-4 w-4" />
+                        Date Range
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right w-1/8">
+                      <div className="flex items-center justify-end gap-2">
+                        <SortAsc className="h-4 w-4" />
+                        Sort
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-24"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {searchHistory.map((result, index) => (
-                    <tr key={index} className="border-b">
-                      <td className="p-2 max-w-0">
+                    <TableRow key={index}>
+                      <TableCell className="max-w-0">
                         <div className="truncate" title={result.query}>
                           {result.query}
                         </div>
-                      </td>
-                      <td className="text-right p-2 whitespace-nowrap">
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
                         {formatNumber(result.count)}
-                      </td>
-                      <td className="p-2 text-right whitespace-nowrap">
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
                         {result.field}
-                      </td>
-                      <td className="p-2 text-right text-sm whitespace-nowrap">
+                      </TableCell>
+                      <TableCell className="text-right text-sm whitespace-nowrap">
                         {result.dateRange?.from ? (
                           result.dateRange.to ? (
                             <>
@@ -562,11 +595,11 @@ function PageContent() {
                         ) : (
                           "All dates"
                         )}
-                      </td>
-                      <td className="p-2 text-right text-sm whitespace-nowrap">
+                      </TableCell>
+                      <TableCell className="text-right text-sm whitespace-nowrap">
                         {result.sortBy ? sortOptions.find(opt => opt.value === result.sortBy)?.label || result.sortBy : "Relevance"}
-                      </td>
-                      <td className="p-2 text-right">
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
@@ -603,61 +636,84 @@ function PageContent() {
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                  <tr className="font-bold">
-                    <td className="p-2">Total</td>
-                    <td className="text-right p-2">{formatNumber(totalCount)}</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                  <TableRow className="font-bold">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">{formatNumber(totalCount)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-[90%] md:max-w-4xl lg:max-w-6xl w-full overflow-hidden">
-          <DialogHeader className="flex flex-row justify-between items-center pr-12">
-            <DialogTitle className="break-words mr-4">
-              Search Results for "{currentQuery}" in {resultsSearchField.split('_').map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-              ).join(' ')}
-            </DialogTitle>
-            {results.length > 0 && (
-              <div className="flex-shrink-0">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Download className="h-4 w-4 mr-2" />
-                      Download All
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleDownloadAll('json')}>
-                      Download as JSON
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDownloadAll('csv')}>
-                      Download as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDownloadAll('json', true)}>
-                      Download Essential Info as JSON
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDownloadAll('csv', true)}>
-                      Download Essential Info as CSV
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+      <ResponsiveModal 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen}
+        title={`Search Results for "${currentQuery}" in ${resultsSearchField.split('_').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ')}`}
+        searchQuery={currentQuery}
+        searchField={resultsSearchField}
+        resultCount={results.length}
+        dateRange={resultsDateRange?.from ? (
+          resultsDateRange.to ? (
+            `${format(resultsDateRange.from, "MMM dd, yyyy")} - ${format(resultsDateRange.to, "MMM dd, yyyy")}`
+          ) : (
+            `From ${format(resultsDateRange.from, "MMM dd, yyyy")}`
+          )
+        ) : undefined}
+        sortBy={sortOptions.find(opt => opt.value === sortBy)?.label || "Relevance"}
+        headerActions={results.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Download All
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleDownloadAll('json')}>
+                Download as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownloadAll('csv')}>
+                Download as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownloadAll('json', true)}>
+                Download Essential Info as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownloadAll('csv', true)}>
+                Download Essential Info as CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined}
+      >
+        <div className="flex flex-col md:h-auto h-full">
+          <div className="flex-shrink-0 mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search within results..."
+                value={resultsFilter}
+                onChange={(e) => handleFilterChange(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {resultsFilter && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                Showing {filteredResults.length} of {results.length} results
               </div>
             )}
-          </DialogHeader>
-          <div className="overflow-y-auto max-h-[60vh]" ref={resultsContainerRef}>
+          </div>
+          <div className="flex-1 overflow-y-auto md:max-h-[60vh]" ref={resultsContainerRef}>
             <div className="space-y-4">
               {isLoadingResults ? (
                 <div className="flex justify-center items-center py-8">
@@ -670,7 +726,7 @@ function PageContent() {
                       key={index}
                       className="border rounded-lg hover:bg-accent/50 transition-colors group"
                     >
-                                              <div className="p-4 overflow-hidden">
+                      <div className="p-4 overflow-hidden">
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
@@ -705,26 +761,178 @@ function PageContent() {
                                 {result.title}
                               </h3>
                             </a>
-                            <div className="text-sm text-muted-foreground mt-2">
+                            
+                            {/* Authors and Year */}
+                            <div className="text-sm text-muted-foreground mt-2 space-y-1">
                               {result.authorships && (
-                                <div className="mb-1 flex items-center gap-2">
-                                  <Users className="h-4 w-4" />
-                                  {result.authorships
+                                <div className="flex items-center gap-2">
+                                  <Users className="h-4 w-4 flex-shrink-0" />
+                                  <span>{result.authorships
                                     .map((author: { author: { display_name: string } }) => author.author.display_name)
-                                    .join(', ')}
+                                    .join(', ')}</span>
                                 </div>
                               )}
                               <div className="flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4" />
+                                <CalendarDays className="h-4 w-4 flex-shrink-0" />
                                 <span className="font-medium">Year: {result.publication_year}</span>
                               </div>
                             </div>
+
+                            {/* Citation Metrics */}
+                            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Quote className="h-3 w-3" />
+                                <span className="font-medium">Cites:</span>
+                                <span>{result.referenced_works_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <TrendingUp className="h-3 w-3" />
+                                <span className="font-medium">Cited by:</span>
+                                <span>{result.cited_by_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <BookOpen className="h-3 w-3" />
+                                <span className="font-medium">Related:</span>
+                                <span>{result.related_works_count || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <BarChart3 className="h-3 w-3" />
+                                <span className="font-medium">FWCI:</span>
+                                <span>{result.fwci ? result.fwci.toFixed(2) : 'N/A'}</span>
+                              </div>
+                            </div>
+
+                            {/* Percentiles */}
+                            {(result.cited_by_percentile_year || result.cited_by_percentile_year) && (
+                              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                {result.cited_by_percentile_year && (
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Award className="h-3 w-3" />
+                                    <span className="font-medium">Citation Percentile (Year):</span>
+                                    <span>{result.cited_by_percentile_year.min}-{result.cited_by_percentile_year.max}%</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Academic Classification */}
+                            <div className="mt-3 space-y-2">
+                              {result.primary_topic && (
+                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <Target className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium">Topic:</span>
+                                    <span className="ml-1">{result.primary_topic.display_name}</span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {result.primary_topic?.subfield && (
+                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <Layers className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium">Subfield:</span>
+                                    <span className="ml-1">{result.primary_topic.subfield.display_name}</span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {result.primary_topic?.field && (
+                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium">Field:</span>
+                                    <span className="ml-1">{result.primary_topic.field.display_name}</span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {result.primary_topic?.domain && (
+                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <Building className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium">Domain:</span>
+                                    <span className="ml-1">{result.primary_topic.domain.display_name}</span>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {result.sustainable_development_goals && result.sustainable_development_goals.length > 0 && (
+                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                  <Leaf className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium">SDGs:</span>
+                                    <div className="ml-1 flex flex-wrap gap-1 mt-1">
+                                      {result.sustainable_development_goals.map((sdg: { id: string; display_name: string; score: number }, index: number) => (
+                                        <span 
+                                          key={sdg.id}
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
+                                          title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || 'N/A'})`}
+                                        >
+                                          {sdg.display_name}
+                                          {sdg.score && (
+                                            <span className="text-green-600 font-medium">
+                                              {sdg.score.toFixed(2)}
+                                            </span>
+                                          )}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Open Access Status */}
+                            {result.open_access && (
+                              <div className="mt-3 flex items-center gap-2 text-xs">
+                                {result.open_access.is_oa ? (
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <Unlock className="h-3 w-3" />
+                                    <span className="font-medium">Open Access</span>
+                                    {result.open_access.oa_type && (
+                                      <span className="text-muted-foreground">({result.open_access.oa_type})</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Lock className="h-3 w-3" />
+                                    <span className="font-medium">Closed Access</span>
+                                  </div>
+                                )}
+                                {result.open_access.oa_url && (
+                                  <a 
+                                    href={result.open_access.oa_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-blue-600 hover:underline"
+                                  >
+                                    <Globe className="h-3 w-3" />
+                                    <span>View PDF</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
                             {result.abstract && (
-                              <p className="mt-3 text-sm text-muted-foreground break-words hyphens-auto overflow-wrap-anywhere">
-                                {result.abstract.length > 500 
-                                  ? `${result.abstract.slice(0, 500)}...` 
-                                  : result.abstract}
-                              </p>
+                              <div className="mt-3">
+                                <p className="text-sm text-muted-foreground break-words hyphens-auto overflow-wrap-anywhere">
+                                  {expandedAbstracts[result.id] 
+                                    ? result.abstract
+                                    : result.abstract.length > 500 
+                                      ? `${result.abstract.slice(0, 500)}...` 
+                                      : result.abstract
+                                  }
+                                </p>
+                                {result.abstract.length > 500 && (
+                                  <button
+                                    onClick={() => toggleAbstract(result.id)}
+                                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                  >
+                                    {expandedAbstracts[result.id] ? 'Show Less' : 'Show More'}
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </div>
                           <DropdownMenu>
@@ -752,17 +960,17 @@ function PageContent() {
                       </div>
                     </div>
                   ))}
-                  {results.length === 0 && (
+                  {paginatedResults.length === 0 && (
                     <p className="text-center text-muted-foreground py-4">
-                      No results found
+                      {resultsFilter ? 'No results match your search' : 'No results found'}
                     </p>
                   )}
                 </>
               )}
             </div>
           </div>
-          {results.length > 0 && (
-            <div>
+          {filteredResults.length > 0 && (
+            <div className="flex-shrink-0 pt-4 md:pt-4 border-t md:border-t-0">
               <Pagination>
                 <PaginationContent className="flex-wrap justify-center">
                   <PaginationItem>
@@ -801,8 +1009,8 @@ function PageContent() {
               </Pagination>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </ResponsiveModal>
     </main>
   );
 }
