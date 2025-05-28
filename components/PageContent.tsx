@@ -1027,7 +1027,7 @@ function PageContent() {
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <BookOpen className="h-3 w-3" />
                                 <span className="font-medium">Related:</span>
-                                <span>{result.related_works_count || 0}</span>
+                                <span>{result.related_works?.length || 0}</span>
                               </div>
                               <div className="flex items-center gap-1 text-muted-foreground">
                                 <BarChart3 className="h-3 w-3" />
