@@ -127,7 +127,7 @@ export function ResponsiveModal({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className={cn(
         "h-[95vh] flex flex-col",
-        "data-[vaul-drawer-direction=bottom]:max-h-[95vh] data-[vaul-drawer-direction=bottom]:mt-[5vh]"
+        "data-[vaul-drawer-direction=bottom]:max-h-[95dvh] data-[vaul-drawer-direction=bottom]:mt-[5dvh]"
       )}>
         <DrawerHeader className="flex-shrink-0 p-4 pb-2">
           <DrawerTitle className="sr-only">{title}</DrawerTitle>
