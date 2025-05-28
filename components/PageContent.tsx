@@ -48,12 +48,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 type SearchResult = {
   query: string;
   count: number;
   field: SearchField;
   dateRange?: DateRange;
+  yearRange?: [number, number];
+  filterType?: "date" | "year";
   sortBy?: string;
 };
 
@@ -78,11 +87,15 @@ function PageContent() {
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const resultsContainerRef = useRef<HTMLDivElement>(null);
-  const [currentSearchField, setCurrentSearchField] = useState<SearchField>(fields[0]);
-  const [resultsSearchField, setResultsSearchField] = useState<SearchField>(fields[0]);
+  const [currentSearchField, setCurrentSearchField] = useState<SearchField>(fields[0].value);
+  const [resultsSearchField, setResultsSearchField] = useState<SearchField>(fields[0].value);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [resultsDateRange, setResultsDateRange] = useState<DateRange | undefined>();
   const [sortBy, setSortBy] = useState<string>("relevance_score:desc");
+  const [filterType, setFilterType] = useState<"date" | "year">("date");
+  const [yearRange, setYearRange] = useState<[number, number]>([2020, new Date().getFullYear()]);
+  const [resultsYearRange, setResultsYearRange] = useState<[number, number] | undefined>();
+  const [isFilterActive, setIsFilterActive] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchResult[]>(() => {
     // Initialize from localStorage if available
     if (typeof window !== "undefined") {
@@ -126,8 +139,20 @@ function PageContent() {
       const normalizedFormData = new FormData();
       normalizedFormData.set("query", normalizedQuery);
       
-      const count = await startSearch(normalizedFormData, currentSearchField, dateRange, sortBy);
-      setSearchHistory((prev) => [...prev, { query: normalizedQuery, count, field: currentSearchField, dateRange, sortBy }]);
+      // Determine which range to use based on filter type
+      const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
+      const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
+      
+      const count = await startSearch(normalizedFormData, currentSearchField, effectiveDateRange, sortBy, effectiveYearRange);
+      setSearchHistory((prev) => [...prev, { 
+        query: normalizedQuery, 
+        count, 
+        field: currentSearchField, 
+        dateRange: effectiveDateRange,
+        yearRange: effectiveYearRange,
+        filterType,
+        sortBy 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -143,15 +168,16 @@ function PageContent() {
     }
   };
 
-  const handleSearchResults = async (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string) => {
+  const handleSearchResults = async (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], filterType?: "date" | "year") => {
     try {
       setIsLoadingResults(true);
       setCurrentQuery(query);
       setCurrentPage(1);
-      const results = await getSearchResults(query, searchField, dateRange, sortBy);
+      const results = await getSearchResults(query, searchField, dateRange, sortBy, yearRange);
       setResults(results.results);
       setResultsSearchField(searchField);
       setResultsDateRange(dateRange);
+      setResultsYearRange(yearRange);
       setIsDialogOpen(true);
     } finally {
       setIsLoadingResults(false);
@@ -243,7 +269,7 @@ function PageContent() {
     setCurrentPage(1); // Reset to first page when filtering
   };
 
-  const createSearchMetadata = (query: string, searchField: SearchField, dateRange?: DateRange) => {
+  const createSearchMetadata = (query: string, searchField: SearchField, dateRange?: DateRange, yearRange?: [number, number]) => {
     const searchParams: any = {
       search: query,
       searchField: searchField,
@@ -264,6 +290,10 @@ function PageContent() {
         const toDate = dateRange.to.toISOString().split('T')[0];
         searchParams.filter.to_publication_date = toDate;
       }
+    } else if (yearRange) {
+      searchParams.filter = {};
+      searchParams.filter.from_publication_date = `${yearRange[0]}-01-01`;
+      searchParams.filter.to_publication_date = `${yearRange[1]}-12-31`;
     }
 
     return {
@@ -273,6 +303,10 @@ function PageContent() {
         date_range: dateRange ? {
           from: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : null,
           to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : null
+        } : null,
+        year_range: yearRange ? {
+          from: yearRange[0],
+          to: yearRange[1]
         } : null,
         timestamp: new Date().toISOString(),
         sdk_version: "1.1.6",
@@ -284,7 +318,7 @@ function PageContent() {
   const handleDownloadItem = async (item: any, format: 'json' | 'csv') => {
     const filename = `${item.title.slice(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${format}`;
     if (format === 'json') {
-      const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange);
+      const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange, resultsYearRange);
       const itemWithRating = {
         ...item,
         rating: ratings[item.id] !== undefined ? ratings[item.id] : null
@@ -317,7 +351,7 @@ function PageContent() {
     const essentialInfo = getEssentialInfo(item);
     const filename = `${item.title.slice(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase()}_essential.${format}`;
     if (format === 'json') {
-      const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange);
+      const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange, resultsYearRange);
       const dataWithMetadata = {
         ...metadata,
         res: essentialInfo
@@ -338,7 +372,7 @@ function PageContent() {
           rating: ratings[item.id] !== undefined ? ratings[item.id] : null
         }));
     if (format === 'json') {
-      const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange);
+      const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange, resultsYearRange);
       const dataWithMetadata = {
         ...metadata,
         res: dataToDownload
@@ -348,6 +382,37 @@ function PageContent() {
       const csv = await jsonToCSV(dataToDownload);
       downloadAsFile(csv, filename, 'csv');
     }
+  };
+
+  // Year range helper functions
+  const currentYear = new Date().getFullYear();
+  const getYearRangePresets = () => [
+    { label: "This Year", range: [currentYear, currentYear] as [number, number] },
+    { label: "Last Year", range: [currentYear - 1, currentYear - 1] as [number, number] },
+    { label: "Last 5 Years", range: [currentYear - 5, currentYear] as [number, number] },
+    { label: "Last 10 Years", range: [currentYear - 10, currentYear] as [number, number] },
+    { label: "Last 15 Years", range: [currentYear - 15, currentYear] as [number, number] },
+    { label: "Last 20 Years", range: [currentYear - 20, currentYear] as [number, number] },
+  ];
+
+  const handleYearRangeChange = (values: number[]) => {
+    setYearRange([values[0], values[1]]);
+    setIsFilterActive(true);
+  };
+
+  const applyYearPreset = (preset: [number, number]) => {
+    setYearRange(preset);
+    setIsFilterActive(true);
+  };
+
+  const clearYearRange = () => {
+    setYearRange([2000, currentYear]);
+    setIsFilterActive(false);
+  };
+
+  const clearDateRange = () => {
+    setDateRange(undefined);
+    setIsFilterActive(false);
   };
 
   return (
@@ -398,8 +463,8 @@ function PageContent() {
               </SelectTrigger>
               <SelectContent>
                 {fields.map((field) => (
-                  <SelectItem key={field} value={field}>
-                    {field.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  <SelectItem key={field.value} value={field.value}>
+                    {field.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -425,46 +490,142 @@ function PageContent() {
             </Select>
             
             <div className="flex w-full sm:w-auto items-center space-x-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "flex-1 sm:w-[280px] h-10 justify-start text-left font-normal",
-                      !dateRange && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
-                        </>
+              <Select
+                value={filterType}
+                onValueChange={(value) => setFilterType(value as "date" | "year")}
+              >
+                <SelectTrigger className="h-10">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Date Range</SelectItem>
+                  <SelectItem value="year">Year Range</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {filterType === "date" ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 sm:w-[280px] h-10 justify-start text-left font-normal",
+                        !dateRange && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {isFilterActive ? (
+                        dateRange?.from ? (
+                          dateRange.to ? (
+                            <>
+                              {format(dateRange.from, "MMM dd, yyyy")} - {format(dateRange.to, "MMM dd, yyyy")}
+                            </>
+                          ) : (
+                            `From ${format(dateRange.from, "MMM dd, yyyy")}`
+                          )
+                        ) : (
+                          <span>Pick a date range</span>
+                        )
                       ) : (
-                        `From ${format(dateRange.from, "MMM dd, yyyy")}`
-                      )
-                    ) : (
-                      <span>Filter by publication date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange?.from}
+                      selected={dateRange}
+                      onSelect={(range) => {
+                        setDateRange(range);
+                        setIsFilterActive(!!range?.from);
+                      }}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 sm:w-[280px] h-10 justify-start text-left font-normal",
+                        !isFilterActive && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      <span>{isFilterActive ? `${yearRange[0]} - ${yearRange[1]}` : "Pick a year range"}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4" align="start">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">Year Range: {yearRange[0]} - {yearRange[1]}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearYearRange}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Reset
+                        </Button>
+                      </div>
+                      
+                      <div className="px-2">
+                        <Slider
+                          value={yearRange}
+                          onValueChange={handleYearRangeChange}
+                          min={1900}
+                          max={currentYear}
+                          step={1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>1900</span>
+                          <span>{currentYear}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="text-xs font-medium text-muted-foreground">Quick presets:</div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {getYearRangePresets().map((preset) => (
+                            <Button
+                              key={preset.label}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => applyYearPreset(preset.range)}
+                              className="h-7 px-2 text-xs"
+                            >
+                              {preset.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
               
-              {dateRange && (
+              {isFilterActive && (
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setDateRange(undefined)}
+                  onClick={() => {
+                    if (filterType === "date") {
+                      clearDateRange();
+                    } else {
+                      clearYearRange();
+                    }
+                  }}
                   className="h-10 px-3 flex-shrink-0"
                 >
                   <X className="h-4 w-4" />
@@ -557,7 +718,7 @@ function PageContent() {
                     <TableHead className="text-right w-1/8">
                       <div className="flex items-center justify-end gap-2">
                         <CalendarDays className="h-4 w-4" />
-                        Date Range
+                        Date/Year Range
                       </div>
                     </TableHead>
                     <TableHead className="text-right w-1/8">
@@ -584,7 +745,9 @@ function PageContent() {
                         {result.field}
                       </TableCell>
                       <TableCell className="text-right text-sm whitespace-nowrap">
-                        {result.dateRange?.from ? (
+                        {result.filterType === "year" && result.yearRange ? (
+                          `${result.yearRange[0]} - ${result.yearRange[1]}`
+                        ) : result.dateRange?.from ? (
                           result.dateRange.to ? (
                             <>
                               {format(result.dateRange.from, "MMM dd, yyyy")} - {format(result.dateRange.to, "MMM dd, yyyy")}
@@ -615,7 +778,7 @@ function PageContent() {
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-primary"
                             onClick={() => {
-                              handleSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy)
+                              handleSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType)
                             }}
                             disabled={isLoadingResults}
                             title="View search results"
@@ -657,18 +820,16 @@ function PageContent() {
       <ResponsiveModal 
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen}
-        title={`Search Results for "${currentQuery}" in ${resultsSearchField.split('_').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ')}`}
+        title={`Search Results for "${currentQuery}" in ${fields.find(f => f.value === resultsSearchField)?.label || resultsSearchField}`}
         searchQuery={currentQuery}
-        searchField={resultsSearchField}
+        searchField={fields.find(f => f.value === resultsSearchField)?.label || resultsSearchField}
         resultCount={results.length}
-        dateRange={resultsDateRange?.from ? (
-          resultsDateRange.to ? (
-            `${format(resultsDateRange.from, "MMM dd, yyyy")} - ${format(resultsDateRange.to, "MMM dd, yyyy")}`
-          ) : (
-            `From ${format(resultsDateRange.from, "MMM dd, yyyy")}`
-          )
+        dateRange={resultsDateRange?.from && resultsDateRange?.to ? (
+          `${format(resultsDateRange.from, "MMM dd, yyyy")} - ${format(resultsDateRange.to, "MMM dd, yyyy")}`
+        ) : resultsDateRange?.from ? (
+          `From ${format(resultsDateRange.from, "MMM dd, yyyy")}`
+        ) : resultsYearRange ? (
+          `${resultsYearRange[0]} - ${resultsYearRange[1]}`
         ) : undefined}
         sortBy={sortOptions.find(opt => opt.value === sortBy)?.label || "Relevance"}
         headerActions={results.length > 0 ? (

@@ -81,9 +81,7 @@ export function ResponsiveModal({
         {searchField && (
           <span className="inline-flex items-center gap-1 rounded-full border-transparent bg-secondary text-secondary-foreground px-2.5 py-0.5 text-xs font-semibold">
             <Filter className="h-3 w-3" />
-            {searchField.split('_').map(word => 
-              word.charAt(0).toUpperCase() + word.slice(1)
-            ).join(' ')}
+            {searchField}
           </span>
         )}
         

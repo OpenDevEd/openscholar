@@ -1,9 +1,15 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-export const fields = ["title_and_abstract", "title", "abstract", "fulltext", "display_name"] as const;
+export const fields = [
+  { value: "title_and_abstract", label: "Title, abstract" },
+  { value: "title", label: "Title" },
+  { value: "abstract", label: "Abstract" },
+  { value: "fulltext", label: "Fulltext" },
+  { value: "display_name", label: "Display name" }
+] as const;
 
-export type SearchField = (typeof fields)[number];
+export type SearchField = (typeof fields)[number]["value"];
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
