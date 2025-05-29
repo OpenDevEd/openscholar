@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Loader2, X, Trash2, ExternalLink, Download, CalendarIcon, Copy, Star, Filter, SortAsc, FileText, Hash, Calendar as CalendarDays, Users, Quote, TrendingUp, Award, BookOpen, Globe, Lock, Unlock, BarChart3, Target, Layers, Building, Leaf } from "lucide-react";
+import { Search, Loader2, X, Trash2, ExternalLink, Download, CalendarIcon, Copy, Star, Filter, SortAsc, FileText, Hash, Calendar as CalendarDays, Users, Quote, TrendingUp, Award, BookOpen, Globe, Lock, Unlock, BarChart3, Target, Layers, Building, Leaf, Eye } from "lucide-react";
 import { startSearch, getSearchResults } from "@/app/actions/openalex";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -55,6 +55,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { FocusMode } from "@/components/ui/focus-mode";
 
 type SearchResult = {
   query: string;
@@ -117,6 +118,8 @@ function PageContent() {
   });
   const [expandedAbstracts, setExpandedAbstracts] = useState<Record<string, boolean>>({});
   const [resultsFilter, setResultsFilter] = useState<string>("");
+  const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
+  const [focusModeStartIndex, setFocusModeStartIndex] = useState(0);
 
   // Update localStorage whenever searchHistory changes
   useEffect(() => {
@@ -431,6 +434,20 @@ function PageContent() {
   const clearDateRange = () => {
     setDateRange(undefined);
     setIsFilterActive(false);
+  };
+
+  const openFocusMode = (startIndex: number = 0) => {
+    setFocusModeStartIndex(startIndex);
+    // Close drawer on mobile, keep dialog open on desktop
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+    if (!isDesktop) {
+      setIsDialogOpen(false);
+    }
+    setIsFocusModeOpen(true);
+  };
+
+  const closeFocusMode = () => {
+    setIsFocusModeOpen(false);
   };
 
   return (
@@ -916,28 +933,38 @@ function PageContent() {
         ) : undefined}
         sortBy={sortOptions.find(opt => opt.value === sortBy)?.label || "Relevance"}
         headerActions={results.length > 0 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Download All
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleDownloadAll('json')}>
-                Download as JSON
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownloadAll('csv')}>
-                Download as CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownloadAll('json', true)}>
-                Download Essential Info as JSON
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownloadAll('csv', true)}>
-                Download Essential Info as CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openFocusMode(0)}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Focus Mode
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download All
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownloadAll('json')}>
+                  Download as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownloadAll('csv')}>
+                  Download as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownloadAll('json', true)}>
+                  Download Essential Info as JSON
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownloadAll('csv', true)}>
+                  Download Essential Info as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         ) : undefined}
       >
         <div className="flex flex-col md:h-auto h-full">
@@ -978,7 +1005,8 @@ function PageContent() {
                         ></span>
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
+                            {/* Rating */}
+                            <div className="flex items-center gap-3 mb-3">
                               <Select
                                 value={ratings[result.id]?.toString() || "no-rating"}
                                 onValueChange={(value) => handleRatingChange(result.id, value)}
@@ -1000,6 +1028,8 @@ function PageContent() {
                                 </SelectContent>
                               </Select>
                             </div>
+
+                            {/* Title with Year */}
                             <a
                               href={result.id}
                               target="_blank"
@@ -1007,162 +1037,11 @@ function PageContent() {
                               className="group-hover:underline"
                             >
                               <h3 className="font-medium text-lg break-all hyphens-auto">
-                                {result.title}
+                                {result.title} ({result.publication_year})
                               </h3>
                             </a>
                             
-                            {/* Authors and Year */}
-                            <div className="text-sm text-muted-foreground mt-2 space-y-1">
-                              {result.authorships && (
-                                <div className="flex items-center gap-2">
-                                  <Users className="h-4 w-4 flex-shrink-0" />
-                                  <span>{result.authorships
-                                    .map((author: { author: { display_name: string } }) => author.author.display_name)
-                                    .join(', ')}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4 flex-shrink-0" />
-                                <span className="font-medium">Year: {result.publication_year}</span>
-                              </div>
-                            </div>
-
-                            {/* Citation Metrics */}
-                            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Quote className="h-3 w-3" />
-                                <span className="font-medium">Cites:</span>
-                                <span>{result.referenced_works_count || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <TrendingUp className="h-3 w-3" />
-                                <span className="font-medium">Cited by:</span>
-                                <span>{result.cited_by_count || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <BookOpen className="h-3 w-3" />
-                                <span className="font-medium">Related:</span>
-                                <span>{result.related_works?.length || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <BarChart3 className="h-3 w-3" />
-                                <span className="font-medium">FWCI:</span>
-                                <span>{result.fwci ? result.fwci.toFixed(2) : 'N/A'}</span>
-                              </div>
-                            </div>
-
-                            {/* Percentiles */}
-                            {(result.cited_by_percentile_year || result.cited_by_percentile_year) && (
-                              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                {result.cited_by_percentile_year && (
-                                  <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Award className="h-3 w-3" />
-                                    <span className="font-medium">Citation Percentile (Year):</span>
-                                    <span>{result.cited_by_percentile_year.min}-{result.cited_by_percentile_year.max}%</span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Academic Classification */}
-                            <div className="mt-3 space-y-2">
-                              {result.primary_topic && (
-                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <Target className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-medium">Topic:</span>
-                                    <span className="ml-1">{result.primary_topic.display_name}</span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {result.primary_topic?.subfield && (
-                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <Layers className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-medium">Subfield:</span>
-                                    <span className="ml-1">{result.primary_topic.subfield.display_name}</span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {result.primary_topic?.field && (
-                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-medium">Field:</span>
-                                    <span className="ml-1">{result.primary_topic.field.display_name}</span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {result.primary_topic?.domain && (
-                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <Building className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-medium">Domain:</span>
-                                    <span className="ml-1">{result.primary_topic.domain.display_name}</span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {result.sustainable_development_goals && result.sustainable_development_goals.length > 0 && (
-                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                  <Leaf className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <span className="font-medium">SDGs:</span>
-                                    <div className="ml-1 flex flex-wrap gap-1 mt-1">
-                                      {result.sustainable_development_goals.map((sdg: { id: string; display_name: string; score: number }, index: number) => (
-                                        <span 
-                                          key={sdg.id}
-                                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
-                                          title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || 'N/A'})`}
-                                        >
-                                          {sdg.display_name}
-                                          {sdg.score && (
-                                            <span className="text-green-600 font-medium">
-                                              {sdg.score.toFixed(2)}
-                                            </span>
-                                          )}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Open Access Status */}
-                            {result.open_access && (
-                              <div className="mt-3 flex items-center gap-2 text-xs">
-                                {result.open_access.is_oa ? (
-                                  <div className="flex items-center gap-1 text-green-600">
-                                    <Unlock className="h-3 w-3" />
-                                    <span className="font-medium">Open Access</span>
-                                    {result.open_access.oa_type && (
-                                      <span className="text-muted-foreground">({result.open_access.oa_type})</span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Lock className="h-3 w-3" />
-                                    <span className="font-medium">Closed Access</span>
-                                  </div>
-                                )}
-                                {result.open_access.oa_url && (
-                                  <a 
-                                    href={result.open_access.oa_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-blue-600 hover:underline"
-                                  >
-                                    <Globe className="h-3 w-3" />
-                                    <span>View PDF</span>
-                                  </a>
-                                )}
-                              </div>
-                            )}
-
+                            {/* Abstract */}
                             {result.abstract && (
                               <div className="mt-3">
                                 <p className="text-sm text-muted-foreground break-words hyphens-auto overflow-wrap-anywhere">
@@ -1173,13 +1052,164 @@ function PageContent() {
                                       : result.abstract
                                   }
                                 </p>
-                                {result.abstract.length > 500 && (
-                                  <button
-                                    onClick={() => toggleAbstract(result.id)}
-                                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                                  >
-                                    {expandedAbstracts[result.id] ? 'Show Less' : 'Show More'}
-                                  </button>
+                              </div>
+                            )}
+
+                            {/* Show More/Less Button - Always Visible */}
+                            <button
+                              onClick={() => toggleAbstract(result.id)}
+                              className="mt-3 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            >
+                              {expandedAbstracts[result.id] ? 'Show Less' : 'Show More'}
+                            </button>
+
+                            {/* Expanded Metadata - Only shown when expanded */}
+                            {expandedAbstracts[result.id] && (
+                              <div className="mt-4 space-y-3 border-t pt-4">
+                                {/* Authors */}
+                                {result.authorships && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Users className="h-4 w-4 flex-shrink-0" />
+                                    <span>{result.authorships
+                                      .map((author: { author: { display_name: string } }) => author.author.display_name)
+                                      .join(', ')}</span>
+                                  </div>
+                                )}
+
+                                {/* Citation Metrics */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Quote className="h-3 w-3" />
+                                    <span className="font-medium">Cites:</span>
+                                    <span>{result.referenced_works_count || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <TrendingUp className="h-3 w-3" />
+                                    <span className="font-medium">Cited by:</span>
+                                    <span>{result.cited_by_count || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <BookOpen className="h-3 w-3" />
+                                    <span className="font-medium">Related:</span>
+                                    <span>{result.related_works?.length || 0}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <BarChart3 className="h-3 w-3" />
+                                    <span className="font-medium">FWCI:</span>
+                                    <span>{result.fwci ? result.fwci.toFixed(2) : 'N/A'}</span>
+                                  </div>
+                                </div>
+
+                                {/* Percentiles */}
+                                {(result.cited_by_percentile_year || result.cited_by_percentile_year) && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                    {result.cited_by_percentile_year && (
+                                      <div className="flex items-center gap-1 text-muted-foreground">
+                                        <Award className="h-3 w-3" />
+                                        <span className="font-medium">Citation Percentile (Year):</span>
+                                        <span>{result.cited_by_percentile_year.min}-{result.cited_by_percentile_year.max}%</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Academic Classification */}
+                                <div className="space-y-2">
+                                  {result.primary_topic && (
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <Target className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <span className="font-medium">Topic:</span>
+                                        <span className="ml-1">{result.primary_topic.display_name}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {result.primary_topic?.subfield && (
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <Layers className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <span className="font-medium">Subfield:</span>
+                                        <span className="ml-1">{result.primary_topic.subfield.display_name}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {result.primary_topic?.field && (
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <span className="font-medium">Field:</span>
+                                        <span className="ml-1">{result.primary_topic.field.display_name}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {result.primary_topic?.domain && (
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <Building className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <span className="font-medium">Domain:</span>
+                                        <span className="ml-1">{result.primary_topic.domain.display_name}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {result.sustainable_development_goals && result.sustainable_development_goals.length > 0 && (
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                      <Leaf className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                      <div>
+                                        <span className="font-medium">SDGs:</span>
+                                        <div className="ml-1 flex flex-wrap gap-1 mt-1">
+                                          {result.sustainable_development_goals.map((sdg: { id: string; display_name: string; score: number }, index: number) => (
+                                            <span 
+                                              key={sdg.id}
+                                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
+                                              title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || 'N/A'})`}
+                                            >
+                                              {sdg.display_name}
+                                              {sdg.score && (
+                                                <span className="text-green-600 font-medium">
+                                                  {sdg.score.toFixed(2)}
+                                                </span>
+                                              )}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Open Access Status */}
+                                {result.open_access && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    {result.open_access.is_oa ? (
+                                      <div className="flex items-center gap-1 text-green-600">
+                                        <Unlock className="h-3 w-3" />
+                                        <span className="font-medium">Open Access</span>
+                                        {result.open_access.oa_type && (
+                                          <span className="text-muted-foreground">({result.open_access.oa_type})</span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1 text-muted-foreground">
+                                        <Lock className="h-3 w-3" />
+                                        <span className="font-medium">Closed Access</span>
+                                      </div>
+                                    )}
+                                    {result.open_access.oa_url && (
+                                      <a 
+                                        href={result.open_access.oa_url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 text-blue-600 hover:underline"
+                                      >
+                                        <Globe className="h-3 w-3" />
+                                        <span>View PDF</span>
+                                      </a>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -1191,6 +1221,13 @@ function PageContent() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                const fullResultIndex = results.findIndex(r => r.id === result.id);
+                                openFocusMode(fullResultIndex >= 0 ? fullResultIndex : 0);
+                              }}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Open in Focus Mode
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleDownloadItem(result, 'json')}>
                                 Download as JSON
                               </DropdownMenuItem>
@@ -1260,6 +1297,16 @@ function PageContent() {
           )}
         </div>
       </ResponsiveModal>
+
+      <FocusMode
+        isOpen={isFocusModeOpen}
+        onClose={closeFocusMode}
+        papers={results}
+        ratings={ratings}
+        onRatingChange={handleRatingChange}
+        onDownloadItem={handleDownloadItem}
+        onDownloadEssentialItem={handleDownloadEssentialItem}
+      />
     </main>
   );
 }
