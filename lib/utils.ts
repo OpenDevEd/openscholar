@@ -1,5 +1,8 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { Work } from "openalex-sdk/dist/src/types/work";
+import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 export const fields = [
   { value: "title_and_abstract", label: "Title, abstract" },
@@ -74,3 +77,190 @@ export function downloadAsFile(content: string, filename: string, type: 'json' |
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Helper function to get rating with null fallback
+ */
+export function getRatingOrNull(ratings: Record<string, number>, itemId: string): number | null {
+  return ratings[itemId] !== undefined ? ratings[itemId] : null;
+}
+
+/**
+ * Helper function to generate clean filenames
+ */
+export function generateFilename(title: string, suffix: string = '', extension: 'json' | 'csv'): string {
+  const cleanTitle = title.slice(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const suffixPart = suffix ? `_${suffix}` : '';
+  return `${cleanTitle}${suffixPart}.${extension}`;
+}
+
+/**
+ * Helper function to handle download with metadata
+ */
+export async function downloadWithMetadata(
+  data: any,
+  filename: string,
+  format: 'json' | 'csv',
+  metadata?: any
+) {
+  if (format === 'json') {
+    const dataWithMetadata = metadata ? { ...metadata, res: data } : data;
+    downloadAsFile(JSON.stringify(dataWithMetadata, null, 2), filename, 'json');
+  } else {
+    const csv = await jsonToCSV(data);
+    downloadAsFile(csv, filename, 'csv');
+  }
+}
+
+/**
+ * Converts OpenAlex Work data to COINS (COinS - ContextObjects in Spans) format
+ * following the Z39.88 standard for bibliographic metadata embedding
+ * 
+ * @param work - OpenAlex Work object
+ * @returns COINS-formatted string for use in title attribute of span elements
+ */
+export function workToCoins(work: Work): string {
+  const params: Record<string, string> = {}
+
+  // Basic OpenURL context information
+  params['ctx_ver'] = 'Z39.88-2004'
+  params['rft_val_fmt'] = 'info:ofi/fmt:kev:mtx:journal'
+  params['rft.genre'] = 'article'
+
+  // Title
+  if (work.title) {
+    params['rft.atitle'] = work.title
+  }
+
+  // Journal/Source information
+  if (work.primary_location?.source?.display_name) {
+    params['rft.jtitle'] = work.primary_location.source.display_name
+  }
+
+  // Publication date/year
+  if (work.publication_year) {
+    params['rft.date'] = work.publication_year.toString()
+  }
+  if (work.publication_date) {
+    params['rft.date'] = work.publication_date
+  }
+
+  // Volume, Issue, Pages from biblio
+  if (work.biblio?.volume) {
+    params['rft.volume'] = work.biblio.volume
+  }
+  if (work.biblio?.issue) {
+    params['rft.issue'] = work.biblio.issue
+  }
+  if (work.biblio?.first_page) {
+    params['rft.spage'] = work.biblio.first_page
+  }
+  if (work.biblio?.last_page) {
+    params['rft.epage'] = work.biblio.last_page
+  }
+
+  // Collect all identifiers
+  const identifiers: string[] = []
+  
+  // DOI
+  if (work.doi) {
+    const cleanDoi = work.doi.replace('https://doi.org/', '')
+    identifiers.push(`info:doi/${cleanDoi}`)
+  }
+
+  // OpenAlex ID as alternative identifier
+  if (work.id) {
+    identifiers.push(work.id)
+  }
+
+  // PMID if available
+  if (work.ids?.pmid) {
+    identifiers.push(`info:pmid/${work.ids.pmid.replace('https://pubmed.ncbi.nlm.nih.gov/', '')}`)
+  }
+
+  // PDF URL from open access data - this is crucial for Zotero PDF detection
+  if (work.open_access?.oa_url) {
+    identifiers.push(work.open_access.oa_url)
+  }
+
+  // Add the primary identifier (prefer DOI, then OpenAlex ID)
+  if (identifiers.length > 0) {
+    params['rft_id'] = identifiers[0]
+  }
+
+  // Authors
+  if (work.authorships && work.authorships.length > 0) {
+    work.authorships.forEach((authorship, index) => {
+      if (authorship.author?.display_name) {
+        if (index === 0) {
+          params['rft.aulast'] = authorship.author.display_name.split(' ').pop() || ''
+          params['rft.aufirst'] = authorship.author.display_name.split(' ').slice(0, -1).join(' ')
+        }
+        params[`rft.au`] = authorship.author.display_name
+      }
+    })
+  }
+
+  // ISSN
+  if (work.primary_location?.source?.issn) {
+    const issns = Array.isArray(work.primary_location.source.issn) 
+      ? work.primary_location.source.issn 
+      : [work.primary_location.source.issn]
+    if (issns.length > 0) {
+      params['rft.issn'] = issns[0]
+    }
+  }
+
+  // Language
+  if (work.language) {
+    params['rft.language'] = work.language
+  }
+
+  // Abstract (not standard COINS but useful)
+  if (work.abstract) {
+    params['rft.description'] = work.abstract
+  }
+
+  // Keywords/Topics
+  if (work.keywords && work.keywords.length > 0) {
+    params['rft.subject'] = work.keywords.map(k => k.keyword || '').filter(Boolean).join('; ')
+  }
+
+  // Convert params to URL-encoded string
+  const coinsString = Object.entries(params)
+    .filter(([key, value]) => value && value.trim() !== '')
+    .map(([key, value]) => {
+      // Handle multiple authors - they should appear as multiple rft.au parameters
+      if (key === 'rft.au' && work.authorships && work.authorships.length > 1) {
+        return work.authorships
+          .filter(auth => auth.author?.display_name)
+          .map(auth => `rft.au=${encodeURIComponent(auth.author!.display_name!)}`)
+          .join('&')
+      }
+      // Handle multiple identifiers - they should appear as multiple rft_id parameters
+      if (key === 'rft_id' && identifiers.length > 1) {
+        return identifiers
+          .map(id => `rft_id=${encodeURIComponent(id)}`)
+          .join('&')
+      }
+      return `${key}=${encodeURIComponent(value)}`
+    })
+    .join('&')
+
+  return coinsString
+}
+
+export const formatDateRange = (dateRange?: DateRange, yearRange?: [number, number]): string | undefined => {
+  if (dateRange?.from && dateRange?.to) {
+    return `${format(dateRange.from, "MMM dd, yyyy")} - ${format(dateRange.to, "MMM dd, yyyy")}`;
+  } else if (dateRange?.from) {
+    return `From ${format(dateRange.from, "MMM dd, yyyy")}`;
+  } else if (yearRange) {
+    return `${yearRange[0]} - ${yearRange[1]}`;
+  }
+  return undefined;
+};
+
+export const getFieldLabel = (searchField: SearchField): string => {
+  return fields.find(f => f.value === searchField)?.label || searchField;
+};

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Sheet,
@@ -25,17 +27,20 @@ import {
   Unlock, 
   Lock, 
   Globe,
-  Download,
-  ExternalLink
+  ExternalLink,
+  Settings,
+  RotateCcw
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { workToCoins } from '@/lib/utils';
+import { useRatingsStore, useFocusModeSettingsStore } from '@/lib/store';
+import { DownloadMenu } from "../download-menu";
+import { useTheme } from 'next-themes';
 
 interface FocusModeProps {
   isOpen: boolean;
   onClose: () => void;
   papers: any[];
-  ratings: Record<string, number>;
-  onRatingChange: (paperId: string, rating: string) => void;
   onDownloadItem: (item: any, format: 'json' | 'csv') => void;
   onDownloadEssentialItem: (item: any, format: 'json' | 'csv') => void;
 }
@@ -44,17 +49,63 @@ export function FocusMode({
   isOpen,
   onClose,
   papers,
-  ratings,
-  onRatingChange,
   onDownloadItem,
   onDownloadEssentialItem
 }: FocusModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+  const { ratings, setRating } = useRatingsStore();
+  const settings = useFocusModeSettingsStore();
+  const { theme, setTheme } = useTheme();
 
   const currentPaper = papers[currentIndex];
 
+  // Helper functions for styling based on settings
+  const getFontSizeClass = () => {
+    switch (settings.fontSize) {
+      case 'sm': return 'text-sm';
+      case 'base': return 'text-base';
+      case 'lg': return 'text-lg';
+      case 'xl': return 'text-xl';
+      default: return 'text-base';
+    }
+  };
+
+  const getLineHeightClass = () => {
+    switch (settings.lineHeight) {
+      case 'tight': return 'leading-tight';
+      case 'normal': return 'leading-normal';
+      case 'relaxed': return 'leading-relaxed';
+      default: return 'leading-normal';
+    }
+  };
+
+  const getMaxWidthClass = () => {
+    switch (settings.maxContentWidth) {
+      case 'narrow': return 'max-w-2xl';
+      case 'medium': return 'max-w-4xl';
+      case 'wide': return 'max-w-6xl';
+      case 'full': return 'max-w-none';
+      default: return 'max-w-4xl';
+    }
+  };
+
+  const getContainerClasses = () => {
+    const baseClasses = "flex-1 overflow-hidden";
+    return baseClasses;
+  };
+
+  const getContentClasses = () => {
+    const baseClasses = "h-full flex flex-col mx-auto";
+    const widthClass = getMaxWidthClass();
+    const paddingClass = settings.compactMode ? "p-3" : "p-6";
+    const compactClass = settings.compactMode ? "space-y-1" : "space-y-2";
+    return `${baseClasses} ${widthClass} ${paddingClass} ${compactClass}`;
+  };
+
   useEffect(() => {
     setCurrentIndex(0);
+    setShowSettings(false);
   }, [isOpen]);
 
   // Notify Zotero when current paper changes
@@ -114,11 +165,11 @@ export function FocusMode({
         case 'x':
         case 'X':
           e.preventDefault();
-          onRatingChange(currentPaper.id, "no-rating");
+          handleRatingChange(currentPaper.id, "no-rating");
           break;
         case '0':
           e.preventDefault();
-          onRatingChange(currentPaper.id, "0");
+          handleRatingChange(currentPaper.id, "0");
           break;
         case '1':
         case '2':
@@ -126,7 +177,12 @@ export function FocusMode({
         case '4':
         case '5':
           e.preventDefault();
-          onRatingChange(currentPaper.id, e.key);
+          handleRatingChange(currentPaper.id, e.key);
+          break;
+        case 's':
+        case 'S':
+          e.preventDefault();
+          setShowSettings(!showSettings);
           break;
       }
     };
@@ -147,11 +203,194 @@ export function FocusMode({
     setCurrentIndex(index);
   };
 
+  const handleRatingChange = (paperId: string, rating: string) => {
+    if (rating === "no-rating") {
+      setRating(paperId, null);
+    } else {
+      setRating(paperId, parseInt(rating));
+    }
+  };
+
+  // Reusable Paper Content Component
+  const PaperContent = ({ 
+    paper, 
+    isPreview = false 
+  }: { 
+    paper: any; 
+    isPreview?: boolean 
+  }) => {
+    return (
+      <div className={getContentClasses()}>
+        {/* COINS metadata span - only for main content */}
+        {!isPreview && (
+          <span 
+            className="Z3988" 
+            title={workToCoins(paper)}
+            style={{ display: 'none' }}
+          ></span>
+        )}
+
+        {/* Title & Year - Compact */}
+        <div className={settings.compactMode ? "mb-1" : "mb-2"}>
+          <h1 className={`font-bold leading-tight mb-1 ${getFontSizeClass()}`}>
+            {isPreview ? "The Impact of Machine Learning on Scientific Research Discovery (2024)" : `${paper.title} (${paper.publication_year})`}
+          </h1>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {isPreview ? (
+              <span className="flex-1 truncate">
+                Smith, J., Johnson, A., Williams, R. +3 more
+              </span>
+            ) : (
+              paper.authorships && (
+                <span className="flex-1 truncate">
+                  {paper.authorships
+                    .slice(0, 3)
+                    .map((author: { author: { display_name: string } }) => author.author.display_name)
+                    .join(', ')}
+                  {paper.authorships.length > 3 && ` +${paper.authorships.length - 3} more`}
+                </span>
+              )
+            )}
+          </div>
+        </div>
+
+        {/* Inline Metadata - Single Line Approach */}
+        {settings.showMetadata && (
+          <div className={settings.compactMode ? "mb-1 text-xs" : "mb-2 text-xs"}>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="flex items-center gap-1">
+                <span className="text-muted-foreground">Refs:</span>
+                <span className="font-medium">{isPreview ? "127" : (paper.referenced_works_count || 0)}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-muted-foreground">Cited:</span>
+                <span className="font-medium">{isPreview ? "89" : (paper.cited_by_count || 0)}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-muted-foreground">FWCI:</span>
+                <span className="font-medium">{isPreview ? "2.34" : (paper.fwci ? paper.fwci.toFixed(2) : 'N/A')}</span>
+              </span>
+              {(isPreview || paper.cited_by_percentile_year) && (
+                <span className="flex items-center gap-1">
+                  <Award className="h-3 w-3 text-muted-foreground" />
+                  <span className="font-medium">
+                    {isPreview ? "85-95%" : `${paper.cited_by_percentile_year.min}-${paper.cited_by_percentile_year.max}%`}
+                  </span>
+                </span>
+              )}
+              {(isPreview || paper.primary_topic) && (
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Topic:</span>
+                  <span className="font-medium">
+                    {isPreview ? "Machine Learning Applications" : paper.primary_topic.display_name}
+                  </span>
+                </span>
+              )}
+              {!isPreview && paper.primary_topic?.field && (
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Field:</span>
+                  <span className="font-medium">{paper.primary_topic.field.display_name}</span>
+                </span>
+              )}
+              {!isPreview && paper.primary_topic?.subfield && (
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Subfield:</span>
+                  <span className="font-medium">{paper.primary_topic.subfield.display_name}</span>
+                </span>
+              )}
+              {!isPreview && paper.primary_topic?.domain && (
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Domain:</span>
+                  <span className="font-medium">{paper.primary_topic.domain.display_name}</span>
+                </span>
+              )}
+              {!isPreview && paper.open_access && (
+                <span className="flex items-center gap-1">
+                  {paper.open_access.is_oa ? (
+                    <>
+                      <Unlock className="h-3 w-3 text-green-600" />
+                      <span className="text-green-600 font-medium">Open</span>
+                      {paper.open_access.oa_url && (
+                        <>
+                          <a 
+                            href={paper.open_access.oa_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            <Globe className="h-3 w-3" />
+                          </a>
+                          <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">A</span>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground font-medium">Closed</span>
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Topic & SDGs - Compact Row */}
+        {settings.showMetadata && !isPreview && (
+          <div className={settings.compactMode ? "mb-1 text-xs space-y-1" : "mb-2 text-xs space-y-1"}>
+            {paper.sustainable_development_goals && paper.sustainable_development_goals.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-muted-foreground">SDGs:</span>
+                {paper.sustainable_development_goals.slice(0, 2).map((sdg: { id: string; display_name: string; score: number }) => (
+                  <span 
+                    key={sdg.id}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
+                    title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || 'N/A'})`}
+                  >
+                    {sdg.display_name}
+                    {sdg.score && (
+                      <span className="text-green-600 font-medium">
+                        {sdg.score.toFixed(2)}
+                      </span>
+                    )}
+                  </span>
+                ))}
+                {paper.sustainable_development_goals.length > 2 && (
+                  <span className="text-muted-foreground">
+                    +{paper.sustainable_development_goals.length - 2} more
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Abstract - Takes Remaining Space */}
+        {(paper.abstract || isPreview) && (
+          <div className="flex-1 min-h-0 border-t pt-2">
+            <div className="text-sm font-medium text-muted-foreground mb-1">Abstract</div>
+            <div 
+              className={`overflow-y-auto h-full pr-2 !outline-none ${getFontSizeClass()} ${getLineHeightClass()}`} 
+              data-abstract-scroll 
+              tabIndex={0}
+            >
+              {isPreview 
+                ? "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows."
+                : paper.abstract
+              }
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!currentPaper) return null;
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-none p-0 overflow-hidden">
+      <SheetContent side="right" className="w-full sm:max-w-none p-0 overflow-hidden !outline-none">
         <div className="flex flex-col h-full">
           {/* Compact Header */}
           <SheetHeader className="flex-shrink-0 p-3 border-b">
@@ -167,7 +406,7 @@ export function FocusMode({
                 <div className="flex items-center gap-0.5 mr-8 md:mr-0">
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => onRatingChange(currentPaper.id, "no-rating")}
+                      onClick={() => handleRatingChange(currentPaper.id, "no-rating")}
                       className="hover:scale-110 transition-transform relative"
                     >
                       <Star 
@@ -185,7 +424,7 @@ export function FocusMode({
                   </div>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => onRatingChange(currentPaper.id, "0")}
+                      onClick={() => handleRatingChange(currentPaper.id, "0")}
                       className="hover:scale-110 transition-transform"
                     >
                       <Star 
@@ -205,10 +444,10 @@ export function FocusMode({
                           const currentRating = ratings[currentPaper.id];
                           if (currentRating === star) {
                             // Remove rating if clicking the same star
-                            onRatingChange(currentPaper.id, "no-rating");
+                            handleRatingChange(currentPaper.id, "no-rating");
                           } else {
                             // Set new rating
-                            onRatingChange(currentPaper.id, star.toString());
+                            handleRatingChange(currentPaper.id, star.toString());
                           }
                         }}
                         className="hover:scale-110 transition-transform"
@@ -230,7 +469,17 @@ export function FocusMode({
               {/* Second row: Navigation and actions */}
               <div className="flex items-center justify-center md:justify-end gap-1 md:mr-8">
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" onClick={goToPrevious} disabled={papers.length <= 1}>
+                  <Button 
+                    variant={showSettings ? "outline-primary" : "outline"}
+                    onClick={() => setShowSettings(!showSettings)}
+                  >
+                    <Settings className="h-3 w-3" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">S</span>
+                </div>
+                <div className="w-px h-4 bg-border mx-1"></div>
+                <div className="flex items-center gap-1">
+                  <Button  variant="outline" size="sm" onClick={goToPrevious} disabled={papers.length <= 1}>
                     <ChevronLeft className="h-3 w-3" />
                   </Button>
                   <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">←</span>
@@ -249,27 +498,13 @@ export function FocusMode({
                   <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">O</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" data-download-trigger>
-                        <Download className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onDownloadItem(currentPaper, 'json')}>
-                        Download as JSON
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onDownloadItem(currentPaper, 'csv')}>
-                        Download as CSV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onDownloadEssentialItem(currentPaper, 'json')}>
-                        Download Essential Info as JSON
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onDownloadEssentialItem(currentPaper, 'csv')}>
-                        Download Essential Info as CSV
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <DownloadMenu
+                    variant="icon"
+                    onDownloadJSON={() => onDownloadItem(currentPaper, 'json')}
+                    onDownloadCSV={() => onDownloadItem(currentPaper, 'csv')}
+                    onDownloadEssentialJSON={() => onDownloadEssentialItem(currentPaper, 'json')}
+                    onDownloadEssentialCSV={() => onDownloadEssentialItem(currentPaper, 'csv')}
+                  />
                   <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">D</span>
                 </div>
               </div>
@@ -277,148 +512,168 @@ export function FocusMode({
           </SheetHeader>
 
           {/* Main Content - No Scroll */}
-          <div className="flex-1 p-3 overflow-hidden">
-            <div className="h-full flex flex-col pt-2">
-              {/* COINS metadata span */}
-              <span 
-                className="Z3988" 
-                title={`ctx_ver=Z39.88-2004&rft_val_fmt=info:ofi/fmt:kev:mtx:journal&rft.genre=article&rft.atitle=${encodeURIComponent(currentPaper.title || '')}&rft.jtitle=${encodeURIComponent(currentPaper.primary_location?.source?.display_name || '')}&rft.date=${currentPaper.publication_year || ''}&rft.volume=${encodeURIComponent(currentPaper.biblio?.volume || '')}&rft.issue=${encodeURIComponent(currentPaper.biblio?.issue || '')}&rft.spage=${encodeURIComponent(currentPaper.biblio?.first_page || '')}&rft.epage=${encodeURIComponent(currentPaper.biblio?.last_page || '')}&rft_id=info:doi/${encodeURIComponent(currentPaper.doi?.replace('https://doi.org/', '') || '')}&rft.au=${currentPaper.authorships?.map((auth: any) => encodeURIComponent(auth.author?.display_name || '')).join('&rft.au=') || ''}`}
-              ></span>
-
-              {/* Title & Year - Compact */}
-              <div className="mb-2">
-                <h1 className="text-lg font-bold leading-tight mb-1">
-                  {currentPaper.title} ({currentPaper.publication_year})
-                </h1>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {currentPaper.authorships && (
-                    <span className="flex-1 truncate">
-                      {currentPaper.authorships
-                        .slice(0, 3)
-                        .map((author: { author: { display_name: string } }) => author.author.display_name)
-                        .join(', ')}
-                      {currentPaper.authorships.length > 3 && ` +${currentPaper.authorships.length - 3} more`}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Inline Metadata - Single Line Approach */}
-              <div className="mb-2 text-xs">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="flex items-center gap-1">
-                    <span className="text-muted-foreground">Refs:</span>
-                    <span className="font-medium">{currentPaper.referenced_works_count || 0}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-muted-foreground">Cited:</span>
-                    <span className="font-medium">{currentPaper.cited_by_count || 0}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="text-muted-foreground">FWCI:</span>
-                    <span className="font-medium">{currentPaper.fwci ? currentPaper.fwci.toFixed(2) : 'N/A'}</span>
-                  </span>
-                  {currentPaper.cited_by_percentile_year && (
-                    <span className="flex items-center gap-1">
-                      <Award className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-medium">
-                        {currentPaper.cited_by_percentile_year.min}-{currentPaper.cited_by_percentile_year.max}%
-                      </span>
-                    </span>
-                  )}
-                  {currentPaper.primary_topic && (
-                    <span className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Topic:</span>
-                      <span className="font-medium">{currentPaper.primary_topic.display_name}</span>
-                    </span>
-                  )}
-                  {currentPaper.primary_topic?.field && (
-                    <span className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Field:</span>
-                      <span className="font-medium">{currentPaper.primary_topic.field.display_name}</span>
-                    </span>
-                  )}
-                  {currentPaper.primary_topic?.subfield && (
-                    <span className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Subfield:</span>
-                      <span className="font-medium">{currentPaper.primary_topic.subfield.display_name}</span>
-                    </span>
-                  )}
-                  {currentPaper.primary_topic?.domain && (
-                    <span className="flex items-center gap-1">
-                      <span className="text-muted-foreground">Domain:</span>
-                      <span className="font-medium">{currentPaper.primary_topic.domain.display_name}</span>
-                    </span>
-                  )}
-                  {currentPaper.open_access && (
-                    <span className="flex items-center gap-1">
-                      {currentPaper.open_access.is_oa ? (
-                        <>
-                          <Unlock className="h-3 w-3 text-green-600" />
-                          <span className="text-green-600 font-medium">Open</span>
-                          {currentPaper.open_access.oa_url && (
-                            <>
-                              <a 
-                                href={currentPaper.open_access.oa_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline"
-                              >
-                                <Globe className="h-3 w-3" />
-                              </a>
-                              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">A</span>
-                            </>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground font-medium">Closed</span>
-                        </>
-                      )}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Topic & SDGs - Compact Row */}
-              <div className="mb-2 text-xs space-y-1">
-                {currentPaper.sustainable_development_goals && currentPaper.sustainable_development_goals.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-muted-foreground">SDGs:</span>
-                    {currentPaper.sustainable_development_goals.slice(0, 2).map((sdg: { id: string; display_name: string; score: number }) => (
-                      <span 
-                        key={sdg.id}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
-                        title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || 'N/A'})`}
-                      >
-                        {sdg.display_name}
-                        {sdg.score && (
-                          <span className="text-green-600 font-medium">
-                            {sdg.score.toFixed(2)}
-                          </span>
-                        )}
-                      </span>
-                    ))}
-                    {currentPaper.sustainable_development_goals.length > 2 && (
-                      <span className="text-muted-foreground">
-                        +{currentPaper.sustainable_development_goals.length - 2} more
-                      </span>
-                    )}
+          <div className={getContainerClasses()}>
+            {showSettings ? (
+              /* Settings Panel */
+              <div className="h-full overflow-y-auto">
+                <div className={`mx-auto p-6 ${getMaxWidthClass()}`}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight">Focus Mode Settings</h2>
+                      <p className="text-muted-foreground mt-1">Customize your reading experience</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={settings.resetSettings}
+                      className="gap-2"
+                      title="Reset to defaults"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Reset
+                    </Button>
                   </div>
-                )}
-              </div>
 
-              {/* Abstract - Takes Remaining Space */}
-              {currentPaper.abstract && (
-                <div className="flex-1 min-h-0 border-t pt-2">
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Abstract</div>
-                  <div className="text-sm leading-relaxed overflow-y-auto h-full pr-2" data-abstract-scroll tabIndex={0}>
-                    {currentPaper.abstract}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Settings Controls */}
+                    <div className="space-y-8">
+                      {/* Typography Section */}
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-1">Typography</h3>
+                          <p className="text-sm text-muted-foreground">Adjust text appearance for optimal readability</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Font Size</Label>
+                            <Select value={settings.fontSize} onValueChange={settings.setFontSize}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="sm">Small (14px)</SelectItem>
+                                <SelectItem value="base">Medium (16px)</SelectItem>
+                                <SelectItem value="lg">Large (18px)</SelectItem>
+                                <SelectItem value="xl">Extra Large (20px)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Line Height</Label>
+                            <Select value={settings.lineHeight} onValueChange={settings.setLineHeight}>
+                              <SelectTrigger className="w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="tight">Tight (1.25)</SelectItem>
+                                <SelectItem value="normal">Normal (1.5)</SelectItem>
+                                <SelectItem value="relaxed">Relaxed (1.75)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Layout Section */}
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-1">Layout</h3>
+                          <p className="text-sm text-muted-foreground">Control content width and spacing - notice how this page width changes too!</p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Content Width</Label>
+                          <Select value={settings.maxContentWidth} onValueChange={settings.setMaxContentWidth}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="narrow">Narrow (600px)</SelectItem>
+                              <SelectItem value="medium">Medium (800px)</SelectItem>
+                              <SelectItem value="wide">Wide (1000px)</SelectItem>
+                              <SelectItem value="full">Full Width</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Appearance Section */}
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-1">Appearance</h3>
+                          <p className="text-sm text-muted-foreground">Customize the visual theme and information density</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                            <div className="space-y-0.5">
+                              <Label className="text-sm font-medium">Dark Mode</Label>
+                              <p className="text-xs text-muted-foreground">Switch to dark theme for better reading in low light</p>
+                            </div>
+                            <Switch
+                              checked={theme === 'dark'}
+                              onCheckedChange={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                            <div className="space-y-0.5">
+                              <Label className="text-sm font-medium">Show Metadata</Label>
+                              <p className="text-xs text-muted-foreground">Display citation counts, topics, and other paper details</p>
+                            </div>
+                            <Switch
+                              checked={settings.showMetadata}
+                              onCheckedChange={settings.setShowMetadata}
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                            <div className="space-y-0.5">
+                              <Label className="text-sm font-medium">Compact Mode</Label>
+                              <p className="text-xs text-muted-foreground">Reduce spacing for a denser layout</p>
+                            </div>
+                            <Switch
+                              checked={settings.compactMode}
+                              onCheckedChange={settings.setCompactMode}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview Section */}
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-1">Preview</h3>
+                        <p className="text-sm text-muted-foreground">See how your settings will look</p>
+                      </div>
+                      
+                      <div className="rounded-lg border bg-background">
+                        <PaperContent paper={currentPaper} isPreview={true} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Back Button */}
+                  <div className="mt-8 pt-6 border-t">
+                    <Button 
+                      onClick={() => setShowSettings(false)}
+                      className="w-full sm:w-auto gap-2"
+                      size="lg"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Back to Content
+                    </Button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              /* Paper Content */
+              <PaperContent paper={currentPaper} />
+            )}
           </div>
         </div>
       </SheetContent>
