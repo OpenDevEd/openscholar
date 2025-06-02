@@ -6,11 +6,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MIN_YEAR, getYearRangePresets } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import { useSearchFormStore } from "@/lib/store";
+import { updateCurrentSearchFilters } from "@/lib/search-actions";
 
 export function YearRangePicker() {
   const {
@@ -32,6 +33,7 @@ export function YearRangePicker() {
     setYearFromInput(values[0].toString());
     setYearToInput(values[1].toString());
     setIsFilterActive(true);
+    updateCurrentSearchFilters();
   };
 
   const applyYearPreset = (preset: [number, number]) => {
@@ -39,6 +41,7 @@ export function YearRangePicker() {
     setYearFromInput(preset[0].toString());
     setYearToInput(preset[1].toString());
     setIsFilterActive(true);
+    updateCurrentSearchFilters();
   };
 
   return (
@@ -47,32 +50,41 @@ export function YearRangePicker() {
         <Button
           variant="outline"
           className={cn(
-            "flex-1 sm:w-[280px] justify-start text-left font-normal",
-            !isFilterActive && "text-muted-foreground"
+            "w-full h-11 justify-start text-left font-normal border-2 transition-all duration-200",
+            isFilterActive
+              ? "border-purple-300 bg-purple-50 dark:bg-purple-950/30"
+              : "border-dashed border-muted-foreground/30 hover:border-purple-300"
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          <span>{isFilterActive ? `${yearRange[0]} - ${yearRange[1]}` : "Pick a year range"}</span>
+          <CalendarIcon className="mr-3 h-4 w-4" />
+          <span className="truncate">
+            {isFilterActive ? `${yearRange[0]} → ${yearRange[1]}` : "Choose year range"}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" align="start">
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium">Year Range: {yearRange[0]} - {yearRange[1]}</span>
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium">
+              Year Range: {yearRange[0]} - {yearRange[1]}
+            </div>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={clearYearRange}
-              className="h-6 px-2 text-xs"
+              className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
             >
+              <RotateCcw className="h-3 w-3 mr-1" />
               Reset
             </Button>
           </div>
           
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground">From</label>
+          {/* Input Fields */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">From</label>
               <Input
                 type="number"
                 min={MIN_YEAR}
@@ -98,12 +110,14 @@ export function YearRangePicker() {
                     setYearRange([value, yearRange[1]]);
                     setIsFilterActive(true);
                   }
+                  updateCurrentSearchFilters();
                 }}
-                className="h-8 text-sm"
+                className="h-9 text-sm"
+                placeholder={MIN_YEAR.toString()}
               />
             </div>
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground">To</label>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">To</label>
               <Input
                 type="number"
                 min={MIN_YEAR}
@@ -129,30 +143,36 @@ export function YearRangePicker() {
                     setYearRange([yearRange[0], value]);
                     setIsFilterActive(true);
                   }
+                  updateCurrentSearchFilters();
                 }}
-                className="h-8 text-sm"
+                className="h-9 text-sm"
+                placeholder={currentYear.toString()}
               />
             </div>
           </div>
           
-          <div className="px-2">
-            <Slider
-              value={yearRange}
-              onValueChange={handleYearRangeChange}
-              min={MIN_YEAR}
-              max={currentYear}
-              step={1}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>{MIN_YEAR}</span>
-              <span>{currentYear}</span>
+          {/* Slider */}
+          <div className="space-y-3">
+            <div className="px-1">
+              <Slider
+                value={yearRange}
+                onValueChange={handleYearRangeChange}
+                min={MIN_YEAR}
+                max={currentYear}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                <span>{MIN_YEAR}</span>
+                <span>{currentYear}</span>
+              </div>
             </div>
           </div>
           
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Quick presets:</div>
-            <div className="grid grid-cols-2 gap-1">
+          {/* Quick Presets */}
+          <div className="space-y-3">
+            <div className="text-xs font-medium text-muted-foreground">Quick presets</div>
+            <div className="grid grid-cols-2 gap-2">
               {getYearRangePresets().map((preset) => (
                 <Button
                   key={preset.label}
@@ -160,7 +180,7 @@ export function YearRangePicker() {
                   variant="outline"
                   size="sm"
                   onClick={() => applyYearPreset(preset.range)}
-                  className="h-7 px-2 text-xs"
+                  className="h-8 px-3 text-xs font-normal"
                 >
                   {preset.label}
                 </Button>

@@ -3,6 +3,7 @@ import OpenAlexClient from "@/lib/openalex";
 import { fields, type SearchField } from "@/lib/utils";
 import { SearchParameters, SortByWork } from "openalex-sdk/dist/src/types/work";
 import { DateRange } from "react-day-picker";
+import fs from "fs";
 
 function buildSearchParams(query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], additionalParams?: Partial<SearchParameters>): SearchParameters {
     const searchParams: SearchParameters = {

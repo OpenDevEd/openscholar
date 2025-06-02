@@ -16,4 +16,9 @@ export function useMediaQuery(query: string): boolean {
   }, [query]);
 
   return matches;
+}
+
+// Mobile detection hook using standard breakpoint
+export function useIsMobile(): boolean {
+  return useMediaQuery("(max-width: 767px)");
 } 

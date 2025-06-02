@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -36,6 +37,8 @@ import { workToCoins } from '@/lib/utils';
 import { useRatingsStore, useFocusModeSettingsStore } from '@/lib/store';
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from 'next-themes';
+import { RatingSelector } from "../rating-selector";
+import { useIsMobile } from '@/lib/hooks';
 
 interface FocusModeProps {
   isOpen: boolean;
@@ -54,11 +57,17 @@ export function FocusMode({
 }: FocusModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const { ratings, setRating } = useRatingsStore();
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const currentPaper = papers[currentIndex];
+
+  // Swipe threshold for triggering navigation - made more restrictive
+  const swipeThreshold = 120; // Increased from 50
+  const swipeVelocityThreshold = 800; // Increased from 500
 
   // Helper functions for styling based on settings
   const getFontSizeClass = () => {
@@ -91,12 +100,12 @@ export function FocusMode({
   };
 
   const getContainerClasses = () => {
-    const baseClasses = "flex-1 overflow-hidden";
+    const baseClasses = "flex-1 overflow-y-auto overflow-x-hidden focus:outline-none";
     return baseClasses;
   };
 
   const getContentClasses = () => {
-    const baseClasses = "h-full flex flex-col mx-auto";
+    const baseClasses = "min-h-full flex flex-col mx-auto";
     const widthClass = getMaxWidthClass();
     const paddingClass = settings.compactMode ? "p-3" : "p-6";
     const compactClass = settings.compactMode ? "space-y-1" : "space-y-2";
@@ -118,6 +127,16 @@ export function FocusMode({
     }
   }, [currentPaper, isOpen]);
 
+  // Reset scroll position when paper changes
+  useEffect(() => {
+    if (isOpen && !showSettings) {
+      const contentContainer = document.querySelector('[data-content-scroll]') as HTMLElement;
+      if (contentContainer) {
+        contentContainer.scrollTop = 0;
+      }
+    }
+  }, [currentIndex, isOpen, showSettings]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -134,7 +153,7 @@ export function FocusMode({
         case 'ArrowUp':
         case 'ArrowDown':
           // Focus the abstract container and let the browser handle scrolling
-          const abstractContainer = document.querySelector('[data-abstract-scroll]') as HTMLElement;
+          const abstractContainer = document.querySelector('[data-content-scroll]') as HTMLElement;
           if (abstractContainer && !abstractContainer.matches(':focus')) {
             abstractContainer.focus();
           }
@@ -192,15 +211,30 @@ export function FocusMode({
   }, [isOpen, currentIndex, papers.length, currentPaper]);
 
   const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % papers.length);
+    if (currentIndex < papers.length - 1) {
+      if (isMobile) {
+        setSwipeDirection('left');
+      }
+      setCurrentIndex((prev) => prev + 1);
+    }
   };
 
   const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + papers.length) % papers.length);
+    if (currentIndex > 0) {
+      if (isMobile) {
+        setSwipeDirection('right');
+      }
+      setCurrentIndex((prev) => prev - 1);
+    }
   };
 
   const goToIndex = (index: number) => {
-    setCurrentIndex(index);
+    if (index !== currentIndex) {
+      if (isMobile) {
+        setSwipeDirection(index > currentIndex ? 'left' : 'right');
+      }
+      setCurrentIndex(index);
+    }
   };
 
   const handleRatingChange = (paperId: string, rating: string) => {
@@ -208,6 +242,37 @@ export function FocusMode({
       setRating(paperId, null);
     } else {
       setRating(paperId, parseInt(rating));
+    }
+  };
+
+  // Swipe handlers
+  const handleDragEnd = (event: any, info: PanInfo) => {
+    const { offset, velocity } = info;
+    
+    // More restrictive swipe detection
+    const horizontalDistance = Math.abs(offset.x);
+    const verticalDistance = Math.abs(offset.y);
+    const horizontalVelocity = Math.abs(velocity.x);
+    const verticalVelocity = Math.abs(velocity.y);
+    
+    // Only trigger swipe if:
+    // 1. Horizontal movement is significantly more than vertical (intentional horizontal swipe)
+    // 2. Meets distance OR velocity threshold
+    // 3. Horizontal velocity is greater than vertical velocity (horizontal intent)
+    const isHorizontalSwipe = horizontalDistance > verticalDistance * 1.5;
+    const meetsThreshold = horizontalDistance > swipeThreshold || horizontalVelocity > swipeVelocityThreshold;
+    const isHorizontalIntent = horizontalVelocity > verticalVelocity;
+    
+    const shouldSwipe = isHorizontalSwipe && meetsThreshold && isHorizontalIntent;
+    
+    if (shouldSwipe) {
+      if (offset.x > 0 && currentIndex > 0) {
+        // Swipe right - go to previous
+        goToPrevious();
+      } else if (offset.x < 0 && currentIndex < papers.length - 1) {
+        // Swipe left - go to next
+        goToNext();
+      }
     }
   };
 
@@ -368,12 +433,10 @@ export function FocusMode({
 
         {/* Abstract - Takes Remaining Space */}
         {(paper.abstract || isPreview) && (
-          <div className="flex-1 min-h-0 border-t pt-2">
+          <div className="border-t pt-2">
             <div className="text-sm font-medium text-muted-foreground mb-1">Abstract</div>
             <div 
-              className={`overflow-y-auto h-full pr-2 !outline-none ${getFontSizeClass()} ${getLineHeightClass()}`} 
-              data-abstract-scroll 
-              tabIndex={0}
+              className={`pr-2 ${getFontSizeClass()} ${getLineHeightClass()}`} 
             >
               {isPreview 
                 ? "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows."
@@ -403,7 +466,8 @@ export function FocusMode({
                     {currentIndex + 1} / {papers.length}
                   </div>
                 </div>
-                <div className="flex items-center gap-0.5 mr-8 md:mr-0">
+                {/* Star rating buttons - hidden on mobile */}
+                <div className="hidden md:flex items-center gap-0.5 mr-8 md:mr-0">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleRatingChange(currentPaper.id, "no-rating")}
@@ -468,9 +532,16 @@ export function FocusMode({
               
               {/* Second row: Navigation and actions */}
               <div className="flex items-center justify-center md:justify-end gap-1 md:mr-8">
+                {/* Compact rating selector - only on mobile */}
+                <div className="md:hidden">
+                  <RatingSelector paperId={currentPaper.id} variant="compact" />
+                </div>
+                <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
+                
                 <div className="flex items-center gap-1">
                   <Button 
                     variant={showSettings ? "outline-primary" : "outline"}
+                    size="sm"
                     onClick={() => setShowSettings(!showSettings)}
                   >
                     <Settings className="h-3 w-3" />
@@ -479,13 +550,13 @@ export function FocusMode({
                 </div>
                 <div className="w-px h-4 bg-border mx-1"></div>
                 <div className="flex items-center gap-1">
-                  <Button  variant="outline" size="sm" onClick={goToPrevious} disabled={papers.length <= 1}>
+                  <Button variant="outline" size="sm" onClick={goToPrevious} disabled={currentIndex === 0}>
                     <ChevronLeft className="h-3 w-3" />
                   </Button>
                   <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">←</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="sm" onClick={goToNext} disabled={papers.length <= 1}>
+                  <Button variant="outline" size="sm" onClick={goToNext} disabled={currentIndex === papers.length - 1}>
                     <ChevronRight className="h-3 w-3" />
                   </Button>
                   <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">→</span>
@@ -511,11 +582,11 @@ export function FocusMode({
             </div>
           </SheetHeader>
 
-          {/* Main Content - No Scroll */}
-          <div className={getContainerClasses()}>
+          {/* Main Content */}
+          <div className={getContainerClasses()} tabIndex={0}>
             {showSettings ? (
               /* Settings Panel */
-              <div className="h-full overflow-y-auto">
+              <div className="h-full overflow-y-auto !outline-none" data-content-scroll tabIndex={0} >
                 <div className={`mx-auto p-6 ${getMaxWidthClass()}`}>
                   {/* Header */}
                   <div className="flex items-center justify-between mb-8">
@@ -671,8 +742,47 @@ export function FocusMode({
                 </div>
               </div>
             ) : (
-              /* Paper Content */
-              <PaperContent paper={currentPaper} />
+              /* Paper Content with Swipe Animation */
+              <div className="relative h-full overflow-x-hidden !outline-none" data-content-scroll tabIndex={0} >
+                {isMobile ? (
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentIndex}
+                      initial={{
+                        x: swipeDirection === 'left' ? 300 : swipeDirection === 'right' ? -300 : 0,
+                        opacity: 0
+                      }}
+                      animate={{
+                        x: 0,
+                        opacity: 1
+                      }}
+                      exit={{
+                        x: swipeDirection === 'left' ? -300 : swipeDirection === 'right' ? 300 : 0,
+                        opacity: 0
+                      }}
+                      transition={{
+                        type: "tween",
+                        duration: 0.15,
+                        ease: "easeOut"
+                      }}
+                      onAnimationComplete={() => setSwipeDirection(null)}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.1}
+                      onDragEnd={handleDragEnd}
+                      className="h-full cursor-grab active:cursor-grabbing"
+                      style={{ touchAction: 'pan-y' }}
+                    >
+                      <PaperContent key={currentIndex} paper={currentPaper} />
+                    </motion.div>
+                  </AnimatePresence>
+                ) : (
+                  /* Desktop - No Animation */
+                  <div className="h-full">
+                    <PaperContent key={currentIndex} paper={currentPaper} />
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

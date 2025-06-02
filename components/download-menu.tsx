@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Download, Eye } from "lucide-react";
+import { Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,8 +13,6 @@ interface DownloadMenuProps {
   onDownloadCSV?: () => void;
   onDownloadEssentialJSON?: () => void;
   onDownloadEssentialCSV?: () => void;
-  onOpenFocusMode?: () => void;
-  showFocusMode?: boolean;
   variant?: "icon" | "button";
   size?: "sm" | "default";
 }
@@ -24,8 +22,6 @@ export function DownloadMenu({
   onDownloadCSV,
   onDownloadEssentialJSON,
   onDownloadEssentialCSV,
-  onOpenFocusMode,
-  showFocusMode = false,
   variant = "icon",
   size = "default"
 }: DownloadMenuProps) {
@@ -46,12 +42,6 @@ export function DownloadMenu({
         {TriggerButton}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {showFocusMode && onOpenFocusMode && (
-          <DropdownMenuItem onClick={onOpenFocusMode}>
-            <Eye className="h-4 w-4 mr-2" />
-            Open in Focus Mode
-          </DropdownMenuItem>
-        )}
         {onDownloadJSON && (
           <DropdownMenuItem onClick={onDownloadJSON}>
             Download as JSON
