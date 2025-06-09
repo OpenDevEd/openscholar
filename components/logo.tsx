@@ -67,7 +67,7 @@ export function Logo({
             'font-bold text-foreground leading-tight',
             sizeClasses[size]
           )}>
-            OpenAlex
+            OpenScholar
           </span>
           <span className={cn(
             'font-medium text-muted-foreground leading-tight -mt-1',
@@ -76,7 +76,7 @@ export function Logo({
             size === 'lg' && 'text-base',
             size === 'xl' && 'text-lg'
           )}>
-            Scholar
+            openscholar.ai
           </span>
         </div>
       )}

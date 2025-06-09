@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpenAlex Scholar - Academic Paper Search",
-  description: "Search millions of academic papers and research articles with OpenAlex Scholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
+  title: "OpenScholar - Academic Paper Search",
+  description: "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
 };
 
 export default function RootLayout({
