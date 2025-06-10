@@ -2,7 +2,9 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { startSearch, getSearchResults } from '@/app/actions/openalex';
 import { SearchField, getRatingOrNull, generateFilename, downloadWithMetadata } from './utils';
-import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore } from './store';
+import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore, useKeywordExpansionStore } from './store';
+import { toast } from 'sonner';
+import { validateAndExpandKeywords } from './keyword-validation';
 
 // Global search index counter to prevent race conditions
 let globalSearchIndex = 0;
@@ -38,12 +40,18 @@ export const submitSearchAndLoadResults = async (
     // Normalize whitespace: replace newlines, tabs, and multiple spaces with single spaces
     const normalizedQuery = rawQuery.replace(/\s+/g, ' ').trim();
     
+    // Validate and expand keywords - stop if validation fails
+    const validation = validateAndExpandKeywords(normalizedQuery);
+    if (!validation.isValid) {
+      return { results: null, searchId: null };
+    }
+    
     // Determine which range to use based on filter type
     const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
     const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
     
-    // Get full results (which includes the count in meta)
-    const results = await getSearchResults(normalizedQuery, searchField, effectiveDateRange, sortBy, effectiveYearRange);
+    // Get full results (which includes the count in meta) - pass expanded query to API
+    const results = await getSearchResults(normalizedQuery, searchField, effectiveDateRange, sortBy, effectiveYearRange, validation.expandedQuery);
     
     // Check if this is still the latest search before applying results
     if (currentSearchIndex !== globalSearchIndex) {
@@ -121,13 +129,20 @@ export const loadSearchResultsById = async (searchId: string, index?: number) =>
     // Load the search state into form store
     loadSearchState(searchResult);
     
+    // Validate and expand keywords - return null if validation fails
+    const validation = validateAndExpandKeywords(searchResult.query);
+    if (!validation.isValid) {
+      return null;
+    }
+    
     // Get fresh results with current search parameters
     const results = await getSearchResults(
       searchResult.query, 
       searchResult.field, 
       searchResult.dateRange, 
       searchResult.sortBy, 
-      searchResult.yearRange
+      searchResult.yearRange,
+      validation.expandedQuery
     );
     
     // Check if this is still the latest search before applying results
@@ -205,13 +220,20 @@ export const updateCurrentSearchFilters = async () => {
       sortBy,
     });
     
+    // Validate and expand keywords - return null if validation fails
+    const validation = validateAndExpandKeywords(currentSearch.query);
+    if (!validation.isValid) {
+      return null;
+    }
+    
     // Get fresh results with updated parameters
     const results = await getSearchResults(
       currentSearch.query, 
       currentSearchField, 
       effectiveDateRange, 
       sortBy, 
-      effectiveYearRange
+      effectiveYearRange,
+      validation.expandedQuery
     );
     
     // Check if this is still the latest search before applying results
@@ -283,7 +305,14 @@ export const loadSearchResults = async (
     setIsLoadingResults(true);
     setCurrentQuery(query);
     setCurrentPage(1);
-    const results = await getSearchResults(query, searchField, dateRange, sortBy, yearRange);
+    
+    // Validate and expand keywords - return early if validation fails
+    const validation = validateAndExpandKeywords(query);
+    if (!validation.isValid) {
+      return;
+    }
+    
+    const results = await getSearchResults(query, searchField, dateRange, sortBy, yearRange, validation.expandedQuery);
     setResults(results.results, results.meta.count);
     setResultsSearchField(searchField);
     setResultsDateRange(dateRange);

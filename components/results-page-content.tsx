@@ -18,7 +18,7 @@ import {
 } from '@/lib/search-actions';
 import { FocusMode } from '@/components/ui/focus-mode';
 import { Button } from '@/components/ui/button';
-import { Eye, Loader2, Sparkles } from 'lucide-react';
+import { Eye, Loader2, Sparkles, Search } from 'lucide-react';
 import { DownloadMenu } from './download-menu';
 import { useIsMobile } from '@/lib/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -64,7 +64,16 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
     if (searchId && results.length === 0 && !currentQuery) {
       // Only load if we have a searchId but no results/query in state
       // This happens when opening a direct link in a new tab
-      loadSearchResultsById(searchId);
+      const loadResults = async () => {
+        try {
+          const result = await loadSearchResultsById(searchId);
+          // If result is null, it means keyword expansion failed
+          // The warning toast was already shown, no need to do anything else
+        } catch (error) {
+          console.error('Failed to load search results:', error);
+        }
+      };
+      loadResults();
     }
   }, [searchId, results.length, currentQuery]);
 
@@ -84,8 +93,10 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
       isFilterActive
     );
 
-    // Navigate to new search results page
-    router.push(`/results/${newSearchId}`);
+    // Only navigate if search was successful (searchId is not null)
+    if (newSearchId) {
+      router.push(`/results/${newSearchId}`);
+    }
   };
 
   const handleBackToHome = () => {
@@ -121,7 +132,19 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
 
           {/* Main Content */}
           <main className="flex-1 min-w-0 relative">
-            {results.length > 0 ? (
+            {isLoading || isFilterLoading ? (
+              <div className="text-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div>
+                    <h2 className="text-xl font-semibold mb-2">Loading Results</h2>
+                    <p className="text-muted-foreground">
+                      Searching through millions of academic papers...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : results.length > 0 ? (
               <div className="space-y-4">
                 {/* Updating Results Animation */}
                 <motion.div
@@ -182,7 +205,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                 </motion.div>
 
                 {/* Results Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h1 className="text-2xl font-bold">Search Results</h1>
                     <p className="text-muted-foreground">
@@ -190,7 +213,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                     </p>
                   </div>
                   
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center  gap-3 flex-shrink-0">
                     {/* Flashy Focus Mode Button */}
                     <Button
                       onClick={() => openFocusMode(isMobile)}
@@ -221,15 +244,22 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                   onDownloadEssentialItem={downloadEssentialItem}
                 />
               </div>
-            ) : searchId ? (
+            ) : currentQuery ? (
               <div className="text-center py-12">
                 <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
                   <div>
-                    <h2 className="text-xl font-semibold mb-2">Loading Results</h2>
-                    <p className="text-muted-foreground">
-                      Searching through millions of academic papers...
+                    <h2 className="text-xl font-semibold mb-2">No Results Found</h2>
+                    <p className="text-muted-foreground mb-4">
+                      No papers found for "{currentQuery}". Try adjusting your search terms or filters.
                     </p>
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                      <Button variant="outline" onClick={handleBackToHome}>
+                        Try New Search
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

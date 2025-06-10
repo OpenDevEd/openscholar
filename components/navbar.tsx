@@ -4,6 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Search, Menu, Loader2 } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { KeywordExpansionDialog } from "./keyword-expansion-dialog";
+import { KeywordExpansionPreview } from "./keyword-expansion-preview";
+import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
+import { AIEnhanceButton } from "./ai-enhance-button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface NavbarProps {
@@ -56,6 +61,16 @@ export function Navbar({
                     disabled={isLoading || loadingResultIndex !== null || isFilterLoading}
                   />
                 </div>
+                <KeywordExpansionTooltip 
+                  query={query} 
+                  side="bottom" 
+                  buttonClassName="ml-2"
+                />
+                <AIEnhanceButton
+                  query={query}
+                  onQueryChange={setQuery}
+                  className="ml-2"
+                />
                 <Button 
                   type="submit" 
                   disabled={isLoading || loadingResultIndex !== null || isFilterLoading || !query.trim()} 

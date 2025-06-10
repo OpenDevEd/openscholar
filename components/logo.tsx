@@ -59,18 +59,18 @@ export function Logo({
   );
 
   const logoContent = (
-    <div className={cn('flex items-center gap-3', className)}>
+    <div className={cn('flex items-center gap-2 sm:gap-3', className)}>
       <LogoIcon />
       {!shouldShowIconOnly && (
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0">
           <span className={cn(
-            'font-bold text-foreground leading-tight',
+            'font-bold text-foreground leading-tight whitespace-nowrap',
             sizeClasses[size]
           )}>
             OpenScholar
           </span>
           <span className={cn(
-            'font-medium text-muted-foreground leading-tight -mt-1',
+            'font-medium text-muted-foreground leading-tight -mt-1 whitespace-nowrap',
             size === 'sm' && 'text-xs',
             size === 'md' && 'text-sm',
             size === 'lg' && 'text-base',

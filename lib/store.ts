@@ -129,6 +129,25 @@ interface FocusModeSettingsState {
   resetSettings: () => void
 }
 
+interface KeywordExpansionState {
+  keywords: Record<string, string>
+  addKeyword: (shorthand: string, expansion: string) => void
+  updateKeyword: (shorthand: string, expansion: string) => void
+  removeKeyword: (shorthand: string) => void
+  clearKeywords: () => void
+  expandQuery: (query: string) => { expandedQuery: string; warnings: string[] }
+}
+
+export type AIProvider = 'openai' | 'google';
+
+interface AIConfigState {
+  provider: AIProvider;
+  apiKey: string;
+  setProvider: (provider: AIProvider) => void;
+  setApiKey: (apiKey: string) => void;
+  clearConfig: () => void;
+}
+
 export const useRatingsStore = create<RatingsState>()(
   persist(
     (set) => ({
@@ -384,4 +403,61 @@ export const useFocusModeSettingsStore = create<FocusModeSettingsState>()(
       name: 'focus-mode-settings-store',
     }
   )
-) 
+)
+
+export const useKeywordExpansionStore = create<KeywordExpansionState>()(
+  persist(
+    (set, get) => ({
+      keywords: {},
+      addKeyword: (shorthand, expansion) => set((state) => ({
+        keywords: {
+          ...state.keywords,
+          [shorthand]: expansion,
+        },
+      })),
+      updateKeyword: (shorthand, expansion) => set((state) => ({
+        keywords: {
+          ...state.keywords,
+          [shorthand]: expansion,
+        },
+      })),
+      removeKeyword: (shorthand) => set((state) => {
+        const { [shorthand]: _, ...rest } = state.keywords;
+        return { keywords: rest };
+      }),
+      clearKeywords: () => set({ keywords: {} }),
+      expandQuery: (query) => {
+        const { keywords } = get();
+        const warnings: string[] = [];
+        const expandedQuery = query.replace(/(\w[\w-]*)\.\.\./g, (match, keyword) => {
+          const expansion = keywords[keyword];
+          if (expansion) {
+            return expansion;
+          } else {
+            warnings.push(`Keyword "${keyword}" not found`);
+            return match;
+          }
+        });
+        return { expandedQuery, warnings };
+      },
+    }),
+    {
+      name: 'keyword-expansion-store',
+    }
+  )
+)
+
+export const useAIConfigStore = create<AIConfigState>()(
+  persist(
+    (set) => ({
+      provider: 'openai',
+      apiKey: '',
+      setProvider: (provider) => set({ provider }),
+      setApiKey: (apiKey) => set({ apiKey }),
+      clearConfig: () => set({ provider: 'openai', apiKey: '' }),
+    }),
+    {
+      name: 'ai-config-storage',
+    }
+  )
+); 

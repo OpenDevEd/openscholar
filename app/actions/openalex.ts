@@ -50,16 +50,17 @@ function buildSearchParams(query: string, searchField: SearchField, dateRange?: 
     return searchParams;
 }
 
-export async function startSearch(formData: FormData, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number]) {
-    const query = formData.get('query') as string;
+export async function startSearch(formData: FormData, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], expandedQuery?: string) {
+    const query = expandedQuery || formData.get('query') as string;
     const searchParams = buildSearchParams(query, searchField, dateRange, sortBy, yearRange);
     const results = await OpenAlexClient.works(searchParams);
     return results.meta.count;
 }
 
-export async function getSearchResults(query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number]) {
+export async function getSearchResults(query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], expandedQuery?: string) {
     console.log("searchField", searchField);
-    const searchParams = buildSearchParams(query, searchField, dateRange, sortBy, yearRange, {
+    const actualQuery = expandedQuery || query;
+    const searchParams = buildSearchParams(actualQuery, searchField, dateRange, sortBy, yearRange, {
         perPage: 200,
         AbstractArrayToString: true
     });

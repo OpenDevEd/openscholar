@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { HomeSearch } from "@/components/home-search";
 import { SearchHistory } from "@/components/search-history";
 import { useSearchFormStore, useUIStore, useSearchHistoryStore } from "@/lib/store";
 import {
@@ -14,6 +13,12 @@ import { Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { KeywordExpansionDialog } from "@/components/keyword-expansion-dialog";
+import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
+import { AIEnhanceButton } from "@/components/ai-enhance-button";
+import React from "react";
 
 function PageContent() {
   const router = useRouter();
@@ -36,12 +41,18 @@ function PageContent() {
 
   const { getSearchResult, migrateSearchResult } = useSearchHistoryStore();
 
+  // Add state to track the current query for the tooltip
+  const [currentQuery, setCurrentQuery] = React.useState('');
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const query = formData.get("query") as string;
+    const query = currentQuery;
     
     if (!query.trim()) return;
+
+    // Create FormData with the current query value
+    const formData = new FormData();
+    formData.set("query", query);
 
     // Submit search and load results in one call, get the search ID
     const { searchId } = await submitSearchAndLoadResults(
@@ -54,8 +65,10 @@ function PageContent() {
       isFilterActive
     );
 
-    // Navigate to results page with search ID
-    router.push(`/results/${searchId}`);
+    // Only navigate if search was successful (searchId is not null)
+    if (searchId) {
+      router.push(`/results/${searchId}`);
+    }
   };
 
   const handleSearchHistoryClick = async (
@@ -78,10 +91,12 @@ function PageContent() {
     }
     
     // Load the results by ID with the index for loading state
-    await loadSearchResultsById(searchResult.id, index);
+    const result = await loadSearchResultsById(searchResult.id, index);
     
-    // Navigate to results page with the search ID
-    router.push(`/results/${searchResult.id}`);
+    // Only navigate if loading was successful (result is not null)
+    if (result !== null) {
+      router.push(`/results/${searchResult.id}`);
+    }
   };
 
   return (
@@ -93,8 +108,9 @@ function PageContent() {
           <div className="relative w-full max-w-2xl space-y-6 md:space-y-8">
             {/* Logo */}
             <div className="text-center">
-              <Logo size="xl" className="justify-center mb-6 md:mb-8" context="home" />
-              <p className="text-muted-foreground text-base md:text-lg px-4">
+              <Logo size="lg" className="justify-center mb-4 md:mb-6 lg:mb-8 sm:hidden" context="home" />
+              <Logo size="xl" className="justify-center mb-4 md:mb-6 lg:mb-8 hidden sm:flex" context="home" />
+              <p className="text-muted-foreground text-sm sm:text-base md:text-lg px-4">
                 Search millions of academic papers and research articles
               </p>
             </div>
@@ -106,9 +122,11 @@ function PageContent() {
                   <Search className="h-5 w-5 text-muted-foreground ml-4" />
                   <Textarea
                     name="query"
+                    value={currentQuery}
                     placeholder="Search for papers, authors, topics..."
                     className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 focus-visible:ring-0 focus-visible:ring-offset-0 text-base md:text-lg"
                     disabled={isLoading || loadingResultIndex !== null || isFilterLoading}
+                    onChange={(e) => setCurrentQuery(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -118,6 +136,16 @@ function PageContent() {
                         }
                       }
                     }}
+                  />
+                  <KeywordExpansionTooltip 
+                    query={currentQuery} 
+                    side="top" 
+                    buttonClassName="rounded-full h-12 w-12"
+                  />
+                  <AIEnhanceButton
+                    query={currentQuery}
+                    onQueryChange={setCurrentQuery}
+                    className="rounded-full h-12 w-12"
                   />
                   <Button 
                     type="submit" 
