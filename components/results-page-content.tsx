@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from './navbar';
 import { SearchSidebar } from './search-sidebar';
 import { ResultsList } from './results-list';
-import { useSearchFormStore, useUIStore, useResultsStore } from '@/lib/store';
+import { useSearchFormStore, useUIStore, useResultsStore, useResultsPageContentStore } from '@/lib/store';
 import {
   submitSearchAndLoadResults,
+  updateCurrentSearch,
   loadSearchResultsById,
   loadSearchResults,
   updateCurrentSearchFilters,
@@ -30,7 +31,7 @@ interface ResultsPageContentProps {
 export default function ResultsPageContent({ searchId }: ResultsPageContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const { isSidebarOpen, setIsSidebarOpen } = useResultsPageContentStore();
   const isMobile = useIsMobile();
 
   const {
@@ -45,6 +46,8 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
 
   const {
     isLoading,
+    isUpdatingCurrentSearch,
+    isCreatingNewSearch,
     isFocusModeOpen,
     loadingResultIndex,
     isFilterLoading,
@@ -59,11 +62,12 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
     resultsYearRange,
   } = useResultsStore();
 
-  // Load results when opening a direct link with no results in state
+  // Load results when opening a direct link or switching to a different search
   React.useEffect(() => {
-    if (searchId && results.length === 0 && !currentQuery) {
-      // Only load if we have a searchId but no results/query in state
-      // This happens when opening a direct link in a new tab
+    if (searchId && (
+      (results.length === 0 && !currentQuery) || // Direct link with no state
+      (currentSearchId !== searchId) // Different search than what's currently loaded
+    )) {
       const loadResults = async () => {
         try {
           const result = await loadSearchResultsById(searchId);
@@ -75,10 +79,28 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
       };
       loadResults();
     }
-  }, [searchId, results.length, currentQuery]);
+  }, [searchId, results.length, currentQuery, currentSearchId]);
+
+  const handleUpdateCurrentSearch = async (query: string) => {
+    // Update the current search results with new query
+    const formData = new FormData();
+    formData.set('query', query);
+    
+    // Update current search without creating a new entry
+    await updateCurrentSearch(
+      formData,
+      currentSearchField,
+      dateRange,
+      sortBy,
+      yearRange,
+      filterType,
+      isFilterActive
+    );
+    // Note: This updates the existing search entry and stays on the same page
+  };
 
   const handleNewSearch = async (query: string) => {
-    // Create form data for the search
+    // Create a completely new search
     const formData = new FormData();
     formData.set('query', query);
     
@@ -107,9 +129,12 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
     <div className="min-h-screen bg-background">
       <Navbar
         searchQuery={currentQuery}
-        onSearchSubmit={handleNewSearch}
+        onSearchSubmit={handleUpdateCurrentSearch}
+        onNewSearch={handleNewSearch}
         onMenuToggle={() => setIsSidebarOpen(true)}
         isLoading={isLoading}
+        isUpdatingCurrentSearch={isUpdatingCurrentSearch}
+        isCreatingNewSearch={isCreatingNewSearch}
         loadingResultIndex={loadingResultIndex}
         isFilterLoading={isFilterLoading}
       />

@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star } from "lucide-react";
+import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { cn, SearchField, fields } from "@/lib/utils";
 import { sortOptions } from "@/lib/constants";
@@ -21,6 +21,7 @@ import { useSearchFormStore } from "@/lib/store";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { YearRangePicker } from "./year-range-picker";
 import { RatingRangePicker } from "./rating-range-picker";
+import { CountryRegionPicker } from "./country-region-picker";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
@@ -39,6 +40,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     filterType,
     isFilterActive,
     isRatingFilterActive,
+    isCountryFilterActive,
     setCurrentSearchField,
     setDateRange,
     setSortBy,
@@ -46,7 +48,8 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     setIsFilterActive,
     clearDateRange,
     clearYearRange,
-    clearRatingFilter
+    clearRatingFilter,
+    clearCountryFilter
   } = useSearchFormStore();
 
   // Helper functions that update store and trigger search update
@@ -92,6 +95,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     clearDateRange();
     clearYearRange();
     clearRatingFilter(); // This is client-side only, no API call needed
+    clearCountryFilter(); // Clear country filter
     await updateCurrentSearchFilters(); // Only for the server-side filters
   };
 
@@ -99,6 +103,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     let count = 0;
     if (isFilterActive) count++;
     if (isRatingFilterActive) count++;
+    if (isCountryFilterActive) count++;
     if (currentSearchField !== "title_and_abstract") count++;
     if (sortBy !== "relevance_score:desc") count++;
     return count;
@@ -291,6 +296,30 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
               </Button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Country/Region Filter - Floating Panel */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Globe className="h-4 w-4 text-emerald-500" />
+            Region filter
+          </div>
+          {isCountryFilterActive && (
+            <Badge variant="outline" className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400">
+              Active
+            </Badge>
+          )}
+        </div>
+
+        <div className={cn(
+          "rounded-2xl border-2 p-4 transition-all duration-300",
+          isCountryFilterActive 
+            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 shadow-lg" 
+            : "border-border bg-background"
+        )}>
+          <CountryRegionPicker />
         </div>
       </div>
 

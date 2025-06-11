@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SearchHistory } from "@/components/search-history";
-import { useSearchFormStore, useUIStore, useSearchHistoryStore } from "@/lib/store";
+import { useSearchFormStore, useUIStore, useSearchHistoryStore, usePageContentStore } from "@/lib/store";
+import { useQueryChangeHandler } from "@/lib/hooks";
 import {
   submitSearchAndLoadResults,
   loadSearchResultsById,
@@ -36,13 +37,15 @@ function PageContent() {
   const {
     loadingResultIndex,
     isLoading,
+    isCreatingNewSearch,
     isFilterLoading,
   } = useUIStore();
 
   const { getSearchResult, migrateSearchResult } = useSearchHistoryStore();
 
   // Add state to track the current query for the tooltip
-  const [currentQuery, setCurrentQuery] = React.useState('');
+  const { currentQuery, setCurrentQuery } = usePageContentStore();
+  const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -123,10 +126,10 @@ function PageContent() {
                   <Textarea
                     name="query"
                     value={currentQuery}
-                    placeholder="Search for papers, authors, topics..."
+                    placeholder="Search for papers, topics..."
                     className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 focus-visible:ring-0 focus-visible:ring-offset-0 text-base md:text-lg"
-                    disabled={isLoading || loadingResultIndex !== null || isFilterLoading}
-                    onChange={(e) => setCurrentQuery(e.target.value)}
+                    disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                    onChange={(e) => handleQueryChange(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -144,16 +147,16 @@ function PageContent() {
                   />
                   <AIEnhanceButton
                     query={currentQuery}
-                    onQueryChange={setCurrentQuery}
+                    onQueryChange={handleQueryChange}
                     className="rounded-full h-12 w-12"
                   />
                   <Button 
                     type="submit" 
-                    disabled={isLoading || loadingResultIndex !== null || isFilterLoading} 
+                    disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading} 
                     className="rounded-full h-12 w-12 mr-2"
                     size="icon"
                   >
-                    {isLoading && loadingResultIndex === null ? (
+                    {isCreatingNewSearch ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
                       <Search className="h-5 w-5" />
@@ -177,6 +180,7 @@ function PageContent() {
                 loadingResultIndex={loadingResultIndex}
                 currentSearchField={currentSearchField}
                 compact={true}
+                currentSearchId={undefined}
               />
               
               {/* Footer */}

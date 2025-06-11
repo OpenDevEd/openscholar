@@ -1,14 +1,14 @@
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ModalHeader } from "@/components/ui/modal-header";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAIConfigStore, useKeywordExpansionStore } from "@/lib/store";
+import { useAIConfigStore, useKeywordExpansionStore, useAIConfigDialogStore } from "@/lib/store";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Send, Settings, Search, Sparkles, Key, Brain, ArrowRight, CheckCircle, AlertTriangle } from "lucide-react";
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 
 interface AIConfigDialogProps {
@@ -21,11 +21,7 @@ interface AIConfigDialogProps {
 export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIConfigDialogProps) {
   const { provider, apiKey, setProvider, setApiKey } = useAIConfigStore();
   const { expandQuery } = useKeywordExpansionStore();
-  const [isEnhancing, setIsEnhancing] = useState(false);
-  const [enhancedPreview, setEnhancedPreview] = useState<{
-    enhancedQuery: string;
-    explanation: string;
-  } | null>(null);
+  const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore();
 
   const handleProviderChange = (value: AIProvider) => {
     setProvider(value);
@@ -93,26 +89,12 @@ export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIC
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[475px] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0 border-b pb-6">
-          <div className="flex items-start gap-4">
-            <div className="relative">
-              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                <Brain className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                <Sparkles className="h-2.5 w-2.5 text-white" />
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <DialogTitle className="text-lg font-semibold text-foreground mb-1">
-                AI Query Enhancement
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                Enhance your search queries with AI-powered synonyms, operators, and semantic improvements
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+        <ModalHeader
+          icon={Brain}
+          badgeIcon={Sparkles}
+          title="AI Query Enhancement"
+          description="Enhance your search queries with AI-powered synonyms, operators, and semantic improvements"
+        />
         <div 
           className="grid gap-6 py-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0 scrollbar-hide" 
           style={{

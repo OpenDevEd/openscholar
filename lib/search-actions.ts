@@ -2,12 +2,106 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { startSearch, getSearchResults } from '@/app/actions/openalex';
 import { SearchField, getRatingOrNull, generateFilename, downloadWithMetadata } from './utils';
+import { getCountryCodesForRegions } from './constants';
 import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore, useKeywordExpansionStore } from './store';
 import { toast } from 'sonner';
-import { validateAndExpandKeywords } from './keyword-validation';
+import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
 
 // Global search index counter to prevent race conditions
 let globalSearchIndex = 0;
+
+// Update the current search with a new query
+export const updateCurrentSearch = async (
+  formData: FormData,
+  searchField: SearchField,
+  dateRange?: DateRange,
+  sortBy?: string,
+  yearRange?: [number, number],
+  filterType?: "date" | "year",
+  isFilterActive?: boolean
+) => {
+  // Increment search index for this request
+  const currentSearchIndex = ++globalSearchIndex;
+  
+  try {
+    const { setIsUpdatingCurrentSearch } = useUIStore.getState();
+    const { updateSearchResult, getSearchResult } = useSearchHistoryStore.getState();
+    const { 
+      setCurrentQuery, 
+      setCurrentPage, 
+      setResults, 
+      setResultsSearchField, 
+      setResultsDateRange, 
+      setResultsYearRange 
+    } = useResultsStore.getState();
+    const { currentSearchId, selectedRegions, isCountryFilterActive, ratingRange, isRatingFilterActive, onlyRatedPapers } = useSearchFormStore.getState();
+    
+    // Must have a current search to update
+    if (!currentSearchId) {
+      throw new Error('No current search to update');
+    }
+    
+    setIsUpdatingCurrentSearch(true);
+    const rawQuery = formData.get("query") as string;
+    // Normalize whitespace: replace newlines, tabs, and multiple spaces with single spaces
+    const normalizedQuery = rawQuery.replace(/\s+/g, ' ').trim();
+    
+    // Validate and expand keywords - stop if validation fails
+    const validation = validateAndExpandKeywords(normalizedQuery);
+    if (!validation.isValid) {
+      return { results: null, searchId: null };
+    }
+    
+    // Determine which range to use based on filter type
+    const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
+    const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
+    
+    // Get country codes if country filter is active
+    const countryData = isCountryFilterActive ? getCountryCodesForRegions(selectedRegions) : null;
+    const effectiveCountryCodes = countryData ? countryData.countries : undefined;
+    
+    // Get fresh results with new query
+    const results = await getSearchResults(normalizedQuery, searchField, effectiveDateRange, sortBy, effectiveYearRange, effectiveCountryCodes, validation.expandedQuery);
+    
+    // Check if this is still the latest search before applying results
+    if (currentSearchIndex !== globalSearchIndex) {
+      console.log(`Search ${currentSearchIndex} cancelled - newer search ${globalSearchIndex} in progress`);
+      return { results, searchId: null };
+    }
+    
+    // Update the existing search result instead of creating a new one
+    updateSearchResult(currentSearchId, { 
+      query: normalizedQuery, 
+      count: results.meta.count, 
+      field: searchField, 
+      dateRange: effectiveDateRange,
+      yearRange: effectiveYearRange,
+      filterType,
+      sortBy,
+      selectedRegions,
+      isCountryFilterActive,
+      ratingRange,
+      isRatingFilterActive,
+      onlyRatedPapers
+    });
+
+    // Set results in store (currentSearchId stays the same)
+    setCurrentQuery(normalizedQuery);
+    setCurrentPage(1);
+    setResults(results.results, results.meta.count);
+    setResultsSearchField(searchField);
+    setResultsDateRange(effectiveDateRange);
+    setResultsYearRange(effectiveYearRange);
+
+    return { results, searchId: currentSearchId };
+  } finally {
+    // Only clear loading if this is still the latest search
+    if (currentSearchIndex === globalSearchIndex) {
+      const { setIsUpdatingCurrentSearch } = useUIStore.getState();
+      setIsUpdatingCurrentSearch(false);
+    }
+  }
+};
 
 // Create a new search and return its ID
 export const submitSearchAndLoadResults = async (
@@ -23,7 +117,7 @@ export const submitSearchAndLoadResults = async (
   const currentSearchIndex = ++globalSearchIndex;
   
   try {
-    const { setIsLoading } = useUIStore.getState();
+    const { setIsCreatingNewSearch } = useUIStore.getState();
     const { addSearchResult } = useSearchHistoryStore.getState();
     const { 
       setCurrentQuery, 
@@ -33,9 +127,9 @@ export const submitSearchAndLoadResults = async (
       setResultsDateRange, 
       setResultsYearRange 
     } = useResultsStore.getState();
-    const { setCurrentSearchId } = useSearchFormStore.getState();
+    const { setCurrentSearchId, selectedRegions, isCountryFilterActive, ratingRange, isRatingFilterActive, onlyRatedPapers } = useSearchFormStore.getState();
     
-    setIsLoading(true);
+    setIsCreatingNewSearch(true);
     const rawQuery = formData.get("query") as string;
     // Normalize whitespace: replace newlines, tabs, and multiple spaces with single spaces
     const normalizedQuery = rawQuery.replace(/\s+/g, ' ').trim();
@@ -50,8 +144,12 @@ export const submitSearchAndLoadResults = async (
     const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
     const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
     
+    // Get country codes if country filter is active
+    const countryData = isCountryFilterActive ? getCountryCodesForRegions(selectedRegions) : null;
+    const effectiveCountryCodes = countryData ? countryData.countries : undefined;
+    
     // Get full results (which includes the count in meta) - pass expanded query to API
-    const results = await getSearchResults(normalizedQuery, searchField, effectiveDateRange, sortBy, effectiveYearRange, validation.expandedQuery);
+    const results = await getSearchResults(normalizedQuery, searchField, effectiveDateRange, sortBy, effectiveYearRange, effectiveCountryCodes, validation.expandedQuery);
     
     // Check if this is still the latest search before applying results
     if (currentSearchIndex !== globalSearchIndex) {
@@ -67,7 +165,12 @@ export const submitSearchAndLoadResults = async (
       dateRange: effectiveDateRange,
       yearRange: effectiveYearRange,
       filterType,
-      sortBy 
+      sortBy,
+      selectedRegions,
+      isCountryFilterActive,
+      ratingRange,
+      isRatingFilterActive,
+      onlyRatedPapers
     });
 
     // Set current search ID
@@ -85,8 +188,8 @@ export const submitSearchAndLoadResults = async (
   } finally {
     // Only clear loading if this is still the latest search
     if (currentSearchIndex === globalSearchIndex) {
-      const { setIsLoading } = useUIStore.getState();
-      setIsLoading(false);
+      const { setIsCreatingNewSearch } = useUIStore.getState();
+      setIsCreatingNewSearch(false);
     }
   }
 };
@@ -135,6 +238,12 @@ export const loadSearchResultsById = async (searchId: string, index?: number) =>
       return null;
     }
     
+    // Get country codes if available in search result
+    const searchCountryData = searchResult.isCountryFilterActive && searchResult.selectedRegions 
+      ? getCountryCodesForRegions(searchResult.selectedRegions) 
+      : null;
+    const searchCountryCodes = searchCountryData ? searchCountryData.countries : undefined;
+    
     // Get fresh results with current search parameters
     const results = await getSearchResults(
       searchResult.query, 
@@ -142,6 +251,7 @@ export const loadSearchResultsById = async (searchId: string, index?: number) =>
       searchResult.dateRange, 
       searchResult.sortBy, 
       searchResult.yearRange,
+      searchCountryCodes,
       validation.expandedQuery
     );
     
@@ -185,7 +295,12 @@ export const updateCurrentSearchFilters = async () => {
       filterType,
       yearRange,
       isFilterActive,
-      currentSearchId
+      currentSearchId,
+      selectedRegions,
+      isCountryFilterActive,
+      ratingRange,
+      isRatingFilterActive,
+      onlyRatedPapers
     } = useSearchFormStore.getState();
     const { 
       setCurrentQuery, 
@@ -211,6 +326,10 @@ export const updateCurrentSearchFilters = async () => {
     const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
     const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
     
+    // Get country codes if country filter is active
+    const updateCountryData = isCountryFilterActive ? getCountryCodesForRegions(selectedRegions) : null;
+    const effectiveCountryCodes = updateCountryData ? updateCountryData.countries : undefined;
+    
     // Update the search result in history
     updateSearchResult(currentSearchId, {
       field: currentSearchField,
@@ -218,6 +337,11 @@ export const updateCurrentSearchFilters = async () => {
       yearRange: effectiveYearRange,
       filterType,
       sortBy,
+      selectedRegions,
+      isCountryFilterActive,
+      ratingRange,
+      isRatingFilterActive,
+      onlyRatedPapers
     });
     
     // Validate and expand keywords - return null if validation fails
@@ -233,6 +357,7 @@ export const updateCurrentSearchFilters = async () => {
       effectiveDateRange, 
       sortBy, 
       effectiveYearRange,
+      effectiveCountryCodes,
       validation.expandedQuery
     );
     
@@ -312,7 +437,7 @@ export const loadSearchResults = async (
       return;
     }
     
-    const results = await getSearchResults(query, searchField, dateRange, sortBy, yearRange, validation.expandedQuery);
+    const results = await getSearchResults(query, searchField, dateRange, sortBy, yearRange, undefined, validation.expandedQuery);
     setResults(results.results, results.meta.count);
     setResultsSearchField(searchField);
     setResultsDateRange(dateRange);
@@ -391,21 +516,27 @@ export const downloadItem = async (item: any, format: 'json' | 'csv') => {
   const { ratings } = useRatingsStore.getState();
   const { currentQuery, resultsSearchField, resultsDateRange, resultsYearRange } = useResultsStore.getState();
   
+  // Expand keywords for export
+  const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
+  
   const filename = generateFilename(item.title, '', format);
   const itemWithRating = {
     ...item,
     rating: getRatingOrNull(ratings, item.id)
   };
-  const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange, resultsYearRange);
+  const metadata = createSearchMetadata(expandedQuery, resultsSearchField, resultsDateRange, resultsYearRange);
   await downloadWithMetadata(itemWithRating, filename, format, metadata);
 };
 
 export const downloadEssentialItem = async (item: any, format: 'json' | 'csv') => {
   const { currentQuery, resultsSearchField, resultsDateRange, resultsYearRange } = useResultsStore.getState();
   
+  // Expand keywords for export
+  const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
+  
   const essentialInfo = getEssentialInfo(item);
   const filename = generateFilename(item.title, 'essential', format);
-  const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange, resultsYearRange);
+  const metadata = createSearchMetadata(expandedQuery, resultsSearchField, resultsDateRange, resultsYearRange);
   await downloadWithMetadata(essentialInfo, filename, format, metadata);
 };
 
@@ -413,15 +544,18 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
   const { ratings } = useRatingsStore.getState();
   const { results, currentQuery, resultsSearchField, resultsDateRange, resultsYearRange } = useResultsStore.getState();
   
+  // Expand keywords for export
+  const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
+  
   const suffix = onlyEssential ? 'essential_all' : 'all';
-  const filename = generateFilename(currentQuery, suffix, format);
+  const filename = generateFilename(expandedQuery, suffix, format);
   const dataToDownload = onlyEssential 
     ? results.map(getEssentialInfo) 
     : results.map(item => ({
         ...item,
         rating: getRatingOrNull(ratings, item.id)
       }));
-  const metadata = createSearchMetadata(currentQuery, resultsSearchField, resultsDateRange, resultsYearRange);
+  const metadata = createSearchMetadata(expandedQuery, resultsSearchField, resultsDateRange, resultsYearRange);
   await downloadWithMetadata(dataToDownload, filename, format, metadata);
 };
 

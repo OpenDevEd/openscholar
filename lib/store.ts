@@ -27,6 +27,11 @@ export type SearchResult = {
   yearRange?: [number, number];
   filterType?: "date" | "year";
   sortBy?: string;
+  selectedRegions?: string[];
+  isCountryFilterActive?: boolean;
+  ratingRange?: [number, number];
+  isRatingFilterActive?: boolean;
+  onlyRatedPapers?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -61,6 +66,8 @@ interface SearchFormState {
   ratingRange: [number, number]
   isRatingFilterActive: boolean
   onlyRatedPapers: boolean
+  selectedRegions: string[]
+  isCountryFilterActive: boolean
   setCurrentSearchField: (field: SearchField) => void
   setDateRange: (range?: DateRange) => void
   setSortBy: (sortBy: string) => void
@@ -73,6 +80,11 @@ interface SearchFormState {
   setRatingRange: (range: [number, number]) => void
   setIsRatingFilterActive: (active: boolean) => void
   setOnlyRatedPapers: (onlyRatedPapers: boolean) => void
+  setSelectedRegions: (regions: string[]) => void
+  setIsCountryFilterActive: (active: boolean) => void
+  addRegion: (region: string) => void
+  removeRegion: (region: string) => void
+  clearCountryFilter: () => void
   clearDateRange: () => void
   clearYearRange: () => void
   clearRatingFilter: () => void
@@ -84,12 +96,16 @@ interface UIState {
   loadingResultIndex: number | null
   isLoadingResults: boolean
   isLoading: boolean
+  isUpdatingCurrentSearch: boolean
+  isCreatingNewSearch: boolean
   isFilterLoading: boolean
   isFocusModeOpen: boolean
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsLoadingResults: (loading: boolean) => void
   setIsLoading: (loading: boolean) => void
+  setIsUpdatingCurrentSearch: (loading: boolean) => void
+  setIsCreatingNewSearch: (loading: boolean) => void
   setIsFilterLoading: (loading: boolean) => void
   setIsFocusModeOpen: (open: boolean) => void
 }
@@ -292,6 +308,8 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
   ratingRange: [0, 5],
   isRatingFilterActive: false,
   onlyRatedPapers: false,
+  selectedRegions: [],
+  isCountryFilterActive: false,
   setCurrentSearchField: (field) => set({ currentSearchField: field }),
   setDateRange: (range) => set({ dateRange: range }),
   setSortBy: (sortBy) => set({ sortBy }),
@@ -304,6 +322,15 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
   setRatingRange: (range) => set({ ratingRange: range }),
   setIsRatingFilterActive: (active) => set({ isRatingFilterActive: active }),
   setOnlyRatedPapers: (onlyRatedPapers) => set({ onlyRatedPapers }),
+  setSelectedRegions: (regions) => set({ selectedRegions: regions }),
+  setIsCountryFilterActive: (active) => set({ isCountryFilterActive: active }),
+  addRegion: (region) => set((state) => ({
+    selectedRegions: [...state.selectedRegions, region],
+  })),
+  removeRegion: (region) => set((state) => ({
+    selectedRegions: state.selectedRegions.filter((r) => r !== region),
+  })),
+  clearCountryFilter: () => set({ selectedRegions: [], isCountryFilterActive: false }),
   clearDateRange: () => set({ dateRange: undefined, isFilterActive: false }),
   clearYearRange: () => {
     const currentYear = new Date().getFullYear();
@@ -326,6 +353,11 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
       yearFromInput: searchResult.yearRange?.[0]?.toString() || DEFAULT_YEAR_RANGE[0].toString(),
       yearToInput: searchResult.yearRange?.[1]?.toString() || new Date().getFullYear().toString(),
       currentSearchId: searchResult.id,
+      selectedRegions: searchResult.selectedRegions || [],
+      isCountryFilterActive: searchResult.isCountryFilterActive || false,
+      ratingRange: searchResult.ratingRange || [0, 5],
+      isRatingFilterActive: searchResult.isRatingFilterActive || false,
+      onlyRatedPapers: searchResult.onlyRatedPapers || false,
     });
   },
 }))
@@ -335,12 +367,16 @@ export const useUIStore = create<UIState>((set) => ({
   loadingResultIndex: null,
   isLoadingResults: false,
   isLoading: false,
+  isUpdatingCurrentSearch: false,
+  isCreatingNewSearch: false,
   isFilterLoading: false,
   isFocusModeOpen: false,
   setIsDialogOpen: (open) => set({ isDialogOpen: open }),
   setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
   setIsLoadingResults: (loading) => set({ isLoadingResults: loading }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setIsUpdatingCurrentSearch: (loading) => set({ isUpdatingCurrentSearch: loading }),
+  setIsCreatingNewSearch: (loading) => set({ isCreatingNewSearch: loading }),
   setIsFilterLoading: (loading) => set({ isFilterLoading: loading }),
   setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
 }))
@@ -411,8 +447,8 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
       keywords: {},
       addKeyword: (shorthand, expansion) => set((state) => ({
         keywords: {
-          ...state.keywords,
           [shorthand]: expansion,
+          ...state.keywords,
         },
       })),
       updateKeyword: (shorthand, expansion) => set((state) => ({
@@ -460,4 +496,144 @@ export const useAIConfigStore = create<AIConfigState>()(
       name: 'ai-config-storage',
     }
   )
-); 
+);
+
+// UI Component States
+interface ThemeToggleState {
+  mounted: boolean
+  setMounted: (mounted: boolean) => void
+}
+
+interface KeywordExpansionDialogState {
+  isOpen: boolean
+  newShorthand: string
+  newExpansion: string
+  currentKeyword: string
+  suggestedQuery: string
+  setIsOpen: (open: boolean) => void
+  setNewShorthand: (shorthand: string) => void
+  setNewExpansion: (expansion: string) => void
+  setCurrentKeyword: (keyword: string) => void
+  setSuggestedQuery: (query: string) => void
+  resetForm: () => void
+}
+
+interface CountryRegionPickerState {
+  isOpen: boolean
+  expandedNodes: Set<string>
+  searchQuery: string
+  setIsOpen: (open: boolean) => void
+  setExpandedNodes: (nodes: Set<string>) => void
+  setSearchQuery: (query: string) => void
+  toggleNode: (nodeId: string) => void
+  resetPicker: () => void
+}
+
+interface SearchHistoryUIState {
+  currentPage: number
+  setCurrentPage: (page: number) => void
+}
+
+interface NavbarState {
+  query: string
+  setQuery: (query: string) => void
+}
+
+interface PageContentState {
+  currentQuery: string
+  setCurrentQuery: (query: string) => void
+}
+
+interface ResultsPageContentState {
+  isSidebarOpen: boolean
+  setIsSidebarOpen: (open: boolean) => void
+}
+
+interface AIEnhanceState {
+  isDialogOpen: boolean
+  setIsDialogOpen: (open: boolean) => void
+}
+
+interface AIConfigDialogState {
+  isEnhancing: boolean
+  enhancedPreview: {
+    enhancedQuery: string
+    explanation: string
+  } | null
+  setIsEnhancing: (enhancing: boolean) => void
+  setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
+}
+
+export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
+  mounted: false,
+  setMounted: (mounted) => set({ mounted }),
+}))
+
+export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState>((set) => ({
+  isOpen: false,
+  newShorthand: '',
+  newExpansion: '',
+  currentKeyword: '',
+  suggestedQuery: '',
+  setIsOpen: (open) => set({ isOpen: open }),
+  setNewShorthand: (shorthand) => set({ newShorthand: shorthand }),
+  setNewExpansion: (expansion) => set({ newExpansion: expansion }),
+  setCurrentKeyword: (keyword) => set({ currentKeyword: keyword }),
+  setSuggestedQuery: (query) => set({ suggestedQuery: query }),
+  resetForm: () => set({ newShorthand: '', newExpansion: '', currentKeyword: '', suggestedQuery: '' }),
+}))
+
+export const useCountryRegionPickerStore = create<CountryRegionPickerState>((set) => ({
+  isOpen: false,
+  expandedNodes: new Set(['world']),
+  searchQuery: '',
+  setIsOpen: (open) => set({ isOpen: open }),
+  setExpandedNodes: (nodes) => set({ expandedNodes: nodes }),
+  setSearchQuery: (query) => set({ searchQuery: query }),
+  toggleNode: (nodeId) => set((state) => {
+    const newExpanded = new Set(state.expandedNodes);
+    if (newExpanded.has(nodeId)) {
+      newExpanded.delete(nodeId);
+    } else {
+      newExpanded.add(nodeId);
+    }
+    return { expandedNodes: newExpanded };
+  }),
+  resetPicker: () => set({ 
+    isOpen: false, 
+    expandedNodes: new Set(['world']), 
+    searchQuery: '' 
+  }),
+}))
+
+export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({
+  currentPage: 1,
+  setCurrentPage: (page) => set({ currentPage: page }),
+}))
+
+export const useNavbarStore = create<NavbarState>((set) => ({
+  query: '',
+  setQuery: (query) => set({ query: query }),
+}))
+
+export const usePageContentStore = create<PageContentState>((set) => ({
+  currentQuery: '',
+  setCurrentQuery: (query) => set({ currentQuery: query }),
+}))
+
+export const useResultsPageContentStore = create<ResultsPageContentState>((set) => ({
+  isSidebarOpen: false,
+  setIsSidebarOpen: (open) => set({ isSidebarOpen: open }),
+}))
+
+export const useAIEnhanceStore = create<AIEnhanceState>((set) => ({
+  isDialogOpen: false,
+  setIsDialogOpen: (open) => set({ isDialogOpen: open }),
+}))
+
+export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
+  isEnhancing: false,
+  enhancedPreview: null,
+  setIsEnhancing: (enhancing) => set({ isEnhancing: enhancing }),
+  setEnhancedPreview: (preview) => set({ enhancedPreview: preview }),
+})) 

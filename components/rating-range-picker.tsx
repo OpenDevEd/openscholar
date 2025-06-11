@@ -2,20 +2,37 @@ import React from 'react';
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Star } from "lucide-react";
-import { useSearchFormStore } from "@/lib/store";
+import { useSearchFormStore, useSearchHistoryStore } from "@/lib/store";
 
 export function RatingRangePicker() {
   const {
     ratingRange,
     isRatingFilterActive,
     onlyRatedPapers,
+    currentSearchId,
     setRatingRange,
     setIsRatingFilterActive,
     setOnlyRatedPapers,
   } = useSearchFormStore();
 
+  const { updateSearchResult } = useSearchHistoryStore();
+
+  const updateCurrentSearchRatingFilter = (newRatingRange: [number, number], newIsActive: boolean, newOnlyRated: boolean) => {
+    if (currentSearchId) {
+      updateSearchResult(currentSearchId, {
+        ratingRange: newRatingRange,
+        isRatingFilterActive: newIsActive,
+        onlyRatedPapers: newOnlyRated,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  };
+
   const handleToggleChange = (checked: boolean) => {
     setOnlyRatedPapers(checked);
+    let newRange = ratingRange;
+    let newIsActive = checked;
+    
     if (checked) {
       // When enabling, activate the filter
       setIsRatingFilterActive(true);
@@ -23,7 +40,11 @@ export function RatingRangePicker() {
       // When disabling, deactivate the filter and reset range
       setIsRatingFilterActive(false);
       setRatingRange([0, 5]);
+      newRange = [0, 5];
+      newIsActive = false;
     }
+    // Update the current search result to persist the changes
+    updateCurrentSearchRatingFilter(newRange, newIsActive, checked);
     // No need to fetch new results - rating filter works client-side
   };
 
@@ -31,7 +52,10 @@ export function RatingRangePicker() {
     const newRange: [number, number] = [values[0], values[1]];
     setRatingRange(newRange);
     // Filter is active when toggle is on
-    setIsRatingFilterActive(onlyRatedPapers);
+    const newIsActive = onlyRatedPapers;
+    setIsRatingFilterActive(newIsActive);
+    // Update the current search result to persist the changes
+    updateCurrentSearchRatingFilter(newRange, newIsActive, onlyRatedPapers);
     // No need to fetch new results - rating filter works client-side
   };
 
