@@ -157,7 +157,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
 
           {/* Main Content */}
           <main className="flex-1 min-w-0 relative">
-            {isLoading || isFilterLoading ? (
+            {isLoading || (isFilterLoading && results.length === 0) ? (
               <div className="text-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
