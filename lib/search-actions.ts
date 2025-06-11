@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { startSearch, getSearchResults } from '@/app/actions/openalex';
 import { SearchField, getRatingOrNull, generateFilename, downloadWithMetadata } from './utils';
 import { getCountryCodesForRegions } from './constants';
-import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore, useKeywordExpansionStore } from './store';
+import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore, useKeywordExpansionStore, useNavbarStore, usePageContentStore, useKeywordExpansionDialogStore } from './store';
 import { toast } from 'sonner';
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
 
@@ -573,4 +573,45 @@ export const openFocusMode = (isMobile?: boolean) => {
 export const closeFocusMode = () => {
   const { setIsFocusModeOpen } = useUIStore.getState();
   setIsFocusModeOpen(false);
-}; 
+};
+
+export async function handleSearchHistoryClick(
+  query: string,
+  searchField: any,
+  dateRange?: any,
+  sortBy?: string,
+  yearRange?: [number, number],
+  filterType?: "date" | "year",
+  index?: number
+) {
+  // Find the search result in history to get its ID
+  const searchHistory = useSearchHistoryStore.getState().searchHistory;
+  let searchResult = searchHistory[index || 0];
+  
+  // If the search result doesn't have an ID, migrate it
+  if (!searchResult.id) {
+    const { migrateSearchResult } = useSearchHistoryStore.getState();
+    const searchId = migrateSearchResult(searchResult);
+    const { getSearchResult } = useSearchHistoryStore.getState();
+    searchResult = getSearchResult(searchId)!;
+  }
+  
+  // Set the query in all relevant stores
+  const { setQuery } = useNavbarStore.getState();
+  const { setCurrentQuery } = usePageContentStore.getState();
+  const { setSuggestedQuery } = useKeywordExpansionDialogStore.getState();
+  
+  // Set the query and handle keyword expansion (like useQueryChangeHandler does)
+  setQuery(searchResult.query);
+  setCurrentQuery(searchResult.query);
+  
+  // Expand keywords and set suggested query
+  const { expandedQuery } = validateAndExpandKeywordsSilently(searchResult.query);
+  setSuggestedQuery(expandedQuery);
+  
+  // Load the results by ID with the index for loading state
+  const result = await loadSearchResultsById(searchResult.id, index);
+  
+  // Return the search result ID if loading was successful, null otherwise
+  return result !== null ? searchResult.id : null;
+} 

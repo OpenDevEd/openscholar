@@ -13,6 +13,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { useNavbarStore, useSearchHistoryStore, useSearchFormStore, useKeywordExpansionDialogStore, useAIEnhanceStore } from "@/lib/store";
 import { useQueryChangeHandler } from "@/lib/hooks";
+import { handleSearchHistoryClick as sharedHandleSearchHistoryClick } from "@/lib/search-actions";
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sheet,
@@ -94,10 +95,19 @@ export function Navbar({
     filterType?: "date" | "year",
     index?: number
   ) => {
-    if (index !== undefined && searchHistory[index]) {
-      const searchResult = searchHistory[index];
-      // Navigate to the result's URL using Next.js router
-      router.push(`/results/${searchResult.id}`);
+    const searchId = await sharedHandleSearchHistoryClick(
+      query,
+      searchField,
+      dateRange,
+      sortBy,
+      yearRange,
+      filterType,
+      index
+    );
+    
+    // Only navigate if loading was successful (searchId is not null)
+    if (searchId) {
+      router.push(`/results/${searchId}`);
     }
   };
 

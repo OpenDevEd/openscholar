@@ -8,6 +8,7 @@ import { useQueryChangeHandler } from "@/lib/hooks";
 import {
   submitSearchAndLoadResults,
   loadSearchResultsById,
+  handleSearchHistoryClick as sharedHandleSearchHistoryClick,
 } from "@/lib/search-actions";
 import { Logo } from "@/components/logo";
 import { Search } from "lucide-react";
@@ -41,7 +42,7 @@ function PageContent() {
     isFilterLoading,
   } = useUIStore();
 
-  const { getSearchResult, migrateSearchResult } = useSearchHistoryStore();
+
 
   // Add state to track the current query for the tooltip
   const { currentQuery, setCurrentQuery } = usePageContentStore();
@@ -83,22 +84,19 @@ function PageContent() {
     filterType?: "date" | "year",
     index?: number
   ) => {
-    // Find the search result in history to get its ID
-    const searchHistory = useSearchHistoryStore.getState().searchHistory;
-    let searchResult = searchHistory[index || 0];
+    const searchId = await sharedHandleSearchHistoryClick(
+      query,
+      searchField,
+      dateRange,
+      sortBy,
+      yearRange,
+      filterType,
+      index
+    );
     
-    // If the search result doesn't have an ID, migrate it
-    if (!searchResult.id) {
-      const searchId = migrateSearchResult(searchResult);
-      searchResult = getSearchResult(searchId)!;
-    }
-    
-    // Load the results by ID with the index for loading state
-    const result = await loadSearchResultsById(searchResult.id, index);
-    
-    // Only navigate if loading was successful (result is not null)
-    if (result !== null) {
-      router.push(`/results/${searchResult.id}`);
+    // Only navigate if loading was successful (searchId is not null)
+    if (searchId) {
+      router.push(`/results/${searchId}`);
     }
   };
 
