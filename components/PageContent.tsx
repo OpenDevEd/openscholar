@@ -15,11 +15,9 @@ import { Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { KeywordExpansionDialog } from "@/components/keyword-expansion-dialog";
-import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
-import { AIEnhanceButton } from "@/components/ai-enhance-button";
+import { BookOpen, Sparkles } from "lucide-react";
+import Link from "next/link";
 import React from "react";
 
 function PageContent() {
@@ -138,16 +136,30 @@ function PageContent() {
                       }
                     }}
                   />
-                  <KeywordExpansionTooltip 
-                    query={currentQuery} 
-                    side="top" 
-                    buttonClassName="rounded-full h-12 w-12"
-                  />
-                  <AIEnhanceButton
-                    query={currentQuery}
-                    onQueryChange={handleQueryChange}
-                    className="rounded-full h-12 w-12"
-                  />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild size="icon" variant="outline" className="rounded-full h-12 w-12">
+                        <Link href="/keyword-expansion">
+                          <BookOpen className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Keyword Expansion</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild size="icon" variant="outline" className="rounded-full h-12 w-12">
+                        <Link href="/ai-enhancement">
+                          <Sparkles className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>AI Enhancement</p>
+                    </TooltipContent>
+                  </Tooltip>
                   <Button 
                     type="submit" 
                     disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading} 

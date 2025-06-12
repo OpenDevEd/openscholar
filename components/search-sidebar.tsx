@@ -22,6 +22,7 @@ import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { YearRangePicker } from "./year-range-picker";
 import { RatingRangePicker } from "./rating-range-picker";
 import { CountryRegionPicker } from "./country-region-picker";
+import { CountryFocusPicker } from "./country-focus-picker";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
@@ -30,9 +31,10 @@ interface SearchSidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   isMobile?: boolean;
+  mode?: 'sidebar' | 'sheet' | 'page';
 }
 
-export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSidebarProps) {
+export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sidebar' }: SearchSidebarProps) {
   const {
     currentSearchField,
     dateRange,
@@ -41,6 +43,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     isFilterActive,
     isRatingFilterActive,
     isCountryFilterActive,
+    isCountryFocusActive,
     setCurrentSearchField,
     setDateRange,
     setSortBy,
@@ -49,7 +52,8 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     clearDateRange,
     clearYearRange,
     clearRatingFilter,
-    clearCountryFilter
+    clearCountryFilter,
+    clearCountryFocus
   } = useSearchFormStore();
 
   // Helper functions that update store and trigger search update
@@ -96,6 +100,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     clearYearRange();
     clearRatingFilter(); // This is client-side only, no API call needed
     clearCountryFilter(); // Clear country filter
+    clearCountryFocus(); // Clear country focus filter
     await updateCurrentSearchFilters(); // Only for the server-side filters
   };
 
@@ -104,6 +109,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     if (isFilterActive) count++;
     if (isRatingFilterActive) count++;
     if (isCountryFilterActive) count++;
+    if (isCountryFocusActive) count++;
     if (currentSearchField !== "title_and_abstract") count++;
     if (sortBy !== "relevance_score:desc") count++;
     return count;
@@ -299,12 +305,12 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
         </div>
       </div>
 
-      {/* Country/Region Filter - Floating Panel */}
+      {/* Institution Location Filter - Floating Panel */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <Globe className="h-4 w-4 text-emerald-500" />
-            Region filter
+            Institution location
           </div>
           {isCountryFilterActive && (
             <Badge variant="outline" className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400">
@@ -322,6 +328,9 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
           <CountryRegionPicker />
         </div>
       </div>
+
+      {/* Country focus Filter - Floating Panel */}
+      <CountryFocusPicker />
 
       {/* Search Field - Chip Style */}
       <div className="space-y-4">
@@ -406,7 +415,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
     </div>
   );
 
-  if (isMobile) {
+  if (mode === 'sheet') {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent 
@@ -421,6 +430,14 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false }: SearchSideb
           </div>
         </SheetContent>
       </Sheet>
+    );
+  }
+
+  if (mode === 'page') {
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        <SidebarContent />
+      </div>
     );
   }
 

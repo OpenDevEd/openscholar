@@ -3,23 +3,25 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Star } from "lucide-react";
 import { useSearchFormStore, useSearchHistoryStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { useEffectiveSearchId } from "@/lib/hooks";
 
 export function RatingRangePicker() {
   const {
     ratingRange,
     isRatingFilterActive,
     onlyRatedPapers,
-    currentSearchId,
     setRatingRange,
     setIsRatingFilterActive,
     setOnlyRatedPapers,
   } = useSearchFormStore();
 
   const { updateSearchResult } = useSearchHistoryStore();
+  const effectiveSearchId = useEffectiveSearchId();
 
   const updateCurrentSearchRatingFilter = (newRatingRange: [number, number], newIsActive: boolean, newOnlyRated: boolean) => {
-    if (currentSearchId) {
-      updateSearchResult(currentSearchId, {
+    if (effectiveSearchId) {
+      updateSearchResult(effectiveSearchId, {
         ratingRange: newRatingRange,
         isRatingFilterActive: newIsActive,
         onlyRatedPapers: newOnlyRated,
@@ -83,11 +85,12 @@ export function RatingRangePicker() {
         {Array.from({ length: 5 }, (_, i) => (
           <Star
             key={i}
-            className={`h-4 w-4 ${
+            className={cn(
+              "h-4 w-4",
               i < rating 
                 ? 'fill-yellow-400 text-yellow-400' 
                 : 'text-muted-foreground/20'
-            }`}
+            )}
           />
         ))}
       </div>

@@ -29,6 +29,8 @@ export type SearchResult = {
   sortBy?: string;
   selectedRegions?: string[];
   isCountryFilterActive?: boolean;
+  selectedCountryFocus?: string[];
+  isCountryFocusActive?: boolean;
   ratingRange?: [number, number];
   isRatingFilterActive?: boolean;
   onlyRatedPapers?: boolean;
@@ -68,6 +70,9 @@ interface SearchFormState {
   onlyRatedPapers: boolean
   selectedRegions: string[]
   isCountryFilterActive: boolean
+  // Country focus filter (adds country names to search string)
+  selectedCountryFocus: string[]
+  isCountryFocusActive: boolean
   setCurrentSearchField: (field: SearchField) => void
   setDateRange: (range?: DateRange) => void
   setSortBy: (sortBy: string) => void
@@ -85,6 +90,12 @@ interface SearchFormState {
   addRegion: (region: string) => void
   removeRegion: (region: string) => void
   clearCountryFilter: () => void
+  // Country focus filter methods
+  setSelectedCountryFocus: (regions: string[]) => void
+  setIsCountryFocusActive: (active: boolean) => void
+  addCountryFocus: (region: string) => void
+  removeCountryFocus: (region: string) => void
+  clearCountryFocus: () => void
   clearDateRange: () => void
   clearYearRange: () => void
   clearRatingFilter: () => void
@@ -310,6 +321,9 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
   onlyRatedPapers: false,
   selectedRegions: [],
   isCountryFilterActive: false,
+  // Country focus filter initial state
+  selectedCountryFocus: [],
+  isCountryFocusActive: false,
   setCurrentSearchField: (field) => set({ currentSearchField: field }),
   setDateRange: (range) => set({ dateRange: range }),
   setSortBy: (sortBy) => set({ sortBy }),
@@ -331,6 +345,16 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
     selectedRegions: state.selectedRegions.filter((r) => r !== region),
   })),
   clearCountryFilter: () => set({ selectedRegions: [], isCountryFilterActive: false }),
+  // Country focus filter implementations
+  setSelectedCountryFocus: (regions) => set({ selectedCountryFocus: regions }),
+  setIsCountryFocusActive: (active) => set({ isCountryFocusActive: active }),
+  addCountryFocus: (region) => set((state) => ({
+    selectedCountryFocus: [...state.selectedCountryFocus, region],
+  })),
+  removeCountryFocus: (region) => set((state) => ({
+    selectedCountryFocus: state.selectedCountryFocus.filter((r) => r !== region),
+  })),
+  clearCountryFocus: () => set({ selectedCountryFocus: [], isCountryFocusActive: false }),
   clearDateRange: () => set({ dateRange: undefined, isFilterActive: false }),
   clearYearRange: () => {
     const currentYear = new Date().getFullYear();
@@ -355,6 +379,8 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
       currentSearchId: searchResult.id,
       selectedRegions: searchResult.selectedRegions || [],
       isCountryFilterActive: searchResult.isCountryFilterActive || false,
+      selectedCountryFocus: searchResult.selectedCountryFocus || [],
+      isCountryFocusActive: searchResult.isCountryFocusActive || false,
       ratingRange: searchResult.ratingRange || [0, 5],
       isRatingFilterActive: searchResult.isRatingFilterActive || false,
       onlyRatedPapers: searchResult.onlyRatedPapers || false,

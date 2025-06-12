@@ -10,6 +10,9 @@ import { Loader2, RefreshCw, Send, Settings, Search, Sparkles, Key, Brain, Arrow
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance";
 import { Badge } from "@/components/ui/badge";
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { cn } from "@/lib/utils";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffectiveSearchId } from "@/lib/hooks";
 
 interface AIConfigDialogProps {
   open: boolean;
@@ -19,6 +22,9 @@ interface AIConfigDialogProps {
 }
 
 export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIConfigDialogProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const effectiveSearchId = useEffectiveSearchId();
   const { provider, apiKey, setProvider, setApiKey } = useAIConfigStore();
   const { expandQuery } = useKeywordExpansionStore();
   const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore();
@@ -95,13 +101,7 @@ export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIC
           title="AI Query Enhancement"
           description="Enhance your search queries with AI-powered synonyms, operators, and semantic improvements"
         />
-        <div 
-          className="grid gap-6 py-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0 scrollbar-hide" 
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-        >
+        <div className="grid gap-6 py-4 overflow-y-auto overflow-x-hidden flex-1 min-h-0 scrollbar-hide">
           {/* Configuration Section */}
           <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 space-y-4">
             {/* Provider Selection */}
@@ -113,21 +113,24 @@ export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIC
                 <button
                   type="button"
                   onClick={() => handleProviderChange('openai')}
-                  className={`p-3 rounded-xl border-2 transition-all duration-200 ${
+                  className={cn(
+                    "p-3 rounded-xl border-2 transition-all duration-200",
                     provider === 'openai'
                       ? 'border-green-500 bg-green-50 dark:bg-green-950/50'
                       : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
+                  )}
                 >
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center",
                       provider === 'openai' 
                         ? 'bg-green-500' 
                         : 'bg-slate-200 dark:bg-slate-700'
-                    }`}>
-                      <div className={`w-3 h-3 rounded-full ${
+                    )}>
+                      <div className={cn(
+                        "w-3 h-3 rounded-full",
                         provider === 'openai' ? 'bg-white' : 'bg-green-500'
-                      }`}></div>
+                      )}></div>
                     </div>
                     <div>
                       <div className="text-sm font-medium">OpenAI</div>
@@ -139,21 +142,24 @@ export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIC
                 <button
                   type="button"
                   onClick={() => handleProviderChange('google')}
-                  className={`p-3 rounded-xl border-2 transition-all duration-200 ${
+                  className={cn(
+                    "p-3 rounded-xl border-2 transition-all duration-200",
                     provider === 'google'
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
                       : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
+                  )}
                 >
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center",
                       provider === 'google' 
                         ? 'bg-blue-500' 
                         : 'bg-slate-200 dark:bg-slate-700'
-                    }`}>
-                      <div className={`w-3 h-3 rounded-full ${
+                    )}>
+                      <div className={cn(
+                        "w-3 h-3 rounded-full",
                         provider === 'google' ? 'bg-white' : 'bg-blue-500'
-                      }`}></div>
+                      )}></div>
                     </div>
                     <div>
                       <div className="text-sm font-medium">Google</div>
@@ -308,6 +314,27 @@ export function AIConfigDialog({ open, onOpenChange, query, onQueryChange }: AIC
               </p>
             </div>
           )}
+        </div>
+        
+        {/* Footer with Open Full Page link */}
+        <div className="flex-shrink-0 p-4 border-t bg-muted/20">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onOpenChange(false);
+              // Navigate to AI Enhancement page using Next.js router
+              const isOnResultsPage = pathname?.startsWith('/results');
+              const aiEnhancementUrl = isOnResultsPage && effectiveSearchId 
+                ? `/results/${effectiveSearchId}/ai-enhancement`
+                : '/ai-enhancement';
+              router.push(aiEnhancementUrl);
+            }}
+            className="w-full text-muted-foreground hover:text-foreground"
+          >
+            <ArrowRight className="mr-2 h-4 w-4" />
+            Open Full Page
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

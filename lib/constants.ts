@@ -760,7 +760,7 @@ export const REGION_TO_COUNTRIES_MAP = createRegionToCountriesMap();
  * Get country codes for multiple regions and individual countries, handling overlaps properly
  * Returns an object with countries array and a warning if limit exceeded
  */
-export function getCountryCodesForRegions(regionIds: string[]): {
+export function getCountryCodesForRegions(regionIds: string[], bypassLimit = false): {
   countries: string[];
   isLimitExceeded: boolean;
   totalCount: number;
@@ -781,6 +781,15 @@ export function getCountryCodesForRegions(regionIds: string[]): {
   
   const countriesArray = Array.from(allCountries);
   const MAX_COUNTRIES = 100;
+  
+  // Apply limit only if not bypassed (Institution location needs limit, Country focus doesn't)
+  if (bypassLimit) {
+    return {
+      countries: countriesArray,
+      isLimitExceeded: false,
+      totalCount: countriesArray.length
+    };
+  }
   
   return {
     countries: countriesArray.slice(0, MAX_COUNTRIES),

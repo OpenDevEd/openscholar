@@ -1,18 +1,17 @@
-import { useEffect, useState } from 'react';
+"use client";
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Menu, Loader2, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles } from "lucide-react";
+import { Search, Menu, Loader2, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
-import { KeywordExpansionDialog } from "./keyword-expansion-dialog";
-import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
-import { AIEnhanceButton } from "./ai-enhance-button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useNavbarStore, useSearchHistoryStore, useSearchFormStore, useKeywordExpansionDialogStore, useAIEnhanceStore } from "@/lib/store";
-import { useQueryChangeHandler } from "@/lib/hooks";
+import { useNavbarStore, useSearchHistoryStore, useSearchFormStore } from "@/lib/store";
+import { useQueryChangeHandler, useEffectiveSearchId, useEffectiveQuery } from "@/lib/hooks";
 import { handleSearchHistoryClick as sharedHandleSearchHistoryClick } from "@/lib/search-actions";
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -35,7 +34,6 @@ interface NavbarProps {
   searchQuery?: string;
   onSearchSubmit: (query: string) => void;
   onNewSearch?: (query: string) => void;
-  onMenuToggle?: () => void;
   isLoading?: boolean;
   isUpdatingCurrentSearch?: boolean;
   isCreatingNewSearch?: boolean;
@@ -43,11 +41,80 @@ interface NavbarProps {
   isFilterLoading?: boolean;
 }
 
+interface NavButtonProps {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  isActive: boolean;
+  isMobile?: boolean;
+  badge?: number;
+  asChild?: boolean;
+  onClick?: () => void;
+}
+
+const NavButton: React.FC<NavButtonProps> = ({ 
+  href, 
+  icon: Icon, 
+  label, 
+  isActive, 
+  isMobile = false,
+  badge,
+  asChild = true,
+  onClick
+}) => {
+  const buttonContent = (
+    <div className="flex items-center gap-1">
+      <Icon className="h-4 w-4" />
+      {/* Desktop: Always show text, Mobile: Only show text if active */}
+      {(!isMobile || isActive) && <span className={cn(isMobile ? "text-xs" : "")}>{label}</span>}
+      {badge && badge > 0 && (
+        <span className={cn(
+          "text-xs px-1.5 py-0.5 rounded-full",
+          isActive 
+            ? "bg-primary-foreground/20 text-primary-foreground" 
+            : "bg-muted text-muted-foreground",
+          isMobile && "px-1"
+        )}>
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+
+  const buttonProps = {
+    variant: (isActive ? "default" : "ghost") as "default" | "ghost",
+    size: "sm" as const,
+    className: cn(
+      "flex-shrink-0",
+      isMobile ? "h-8" : "h-8",
+      isMobile 
+        ? (isActive ? "px-3 bg-primary text-primary-foreground" : "px-2")
+        : "px-3",
+      !isMobile && isActive && "bg-primary text-primary-foreground"
+    )
+  };
+
+  if (asChild) {
+    return (
+      <Button {...buttonProps} asChild>
+        <Link href={href} onClick={onClick}>
+          {buttonContent}
+        </Link>
+      </Button>
+    );
+  }
+
+  return (
+    <Button {...buttonProps} onClick={onClick}>
+      {buttonContent}
+    </Button>
+  );
+};
+
 export function Navbar({ 
   searchQuery = "", 
   onSearchSubmit, 
   onNewSearch,
-  onMenuToggle,
   isLoading = false,
   isUpdatingCurrentSearch = false,
   isCreatingNewSearch = false,
@@ -59,19 +126,36 @@ export function Navbar({
   const pathname = usePathname();
   const router = useRouter();
   const { searchHistory } = useSearchHistoryStore();
-  const { currentSearchId } = useSearchFormStore();
+
   
   // State for mobile menu interactions
-  const { setIsOpen: setKeywordDialogOpen } = useKeywordExpansionDialogStore();
-  const { setIsDialogOpen: setAIDialogOpen } = useAIEnhanceStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   
   // Check if we're on a results page
   const isOnResultsPage = pathname?.startsWith('/results');
+  
+  // Get effective search ID and query using custom hooks
+  const effectiveSearchId = useEffectiveSearchId();
+  const effectiveQuery = useEffectiveQuery();
+
+  // Determine current page for navigation indicators
+  const getCurrentPage = () => {
+    if (!pathname) return null;
+    if (pathname === '/') return 'home';
+    if (pathname.startsWith('/results') && !pathname.includes('/keyword-expansion') && !pathname.includes('/ai-enhancement') && !pathname.includes('/history') && !pathname.includes('/filters')) return 'results';
+    if (pathname.includes('/keyword-expansion')) return 'keywords';
+    if (pathname.includes('/ai-enhancement')) return 'ai-enhancement';
+    if (pathname.includes('/history')) return 'history';
+    if (pathname.includes('/filters')) return 'filters';
+    return null;
+  };
+
+  const currentPage = getCurrentPage();
 
   useEffect(() => {
-    setQuery(searchQuery);
-  }, [searchQuery, setQuery]);
+    // Use the comprehensive effective query that works across all contexts
+    setQuery(searchQuery || effectiveQuery);
+  }, [searchQuery, effectiveQuery, setQuery]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +198,8 @@ export function Navbar({
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="flex h-16 items-center justify-between gap-4">
+        {/* Desktop: Single row layout (lg and above) */}
+        <div className="hidden lg:flex h-16 items-center justify-between gap-4">
           {/* Left side - Logo and Search */}
           <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
             <Logo size="sm" className="flex-shrink-0" context="navbar" />
@@ -133,17 +218,7 @@ export function Navbar({
                 </div>
                 
                 {/* Desktop: Show all buttons */}
-                <div className="hidden sm:flex items-center">
-                  <KeywordExpansionTooltip 
-                    query={query} 
-                    side="bottom" 
-                    buttonClassName="ml-2"
-                  />
-                  <AIEnhanceButton
-                    query={query}
-                    onQueryChange={handleQueryChange}
-                    className="ml-2"
-                  />
+                <div className="flex items-center">
                   {/* Update Current Search Button */}
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -190,10 +265,119 @@ export function Navbar({
                     </Tooltip>
                   )}
                 </div>
+              </div>
+            </form>
+          </div>
 
-                {/* Mobile: Show only essential search button and more menu */}
-                <div className="sm:hidden flex items-center">
-                  {/* Primary action button - Update Current Search */}
+          {/* Right side - Navigation and Actions */}
+          <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
+            {/* Results Button - Show when we have search results or are on results page */}
+            {(isOnResultsPage || effectiveSearchId) && (
+              <NavButton 
+                href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"} 
+                icon={FileText} 
+                label="Results" 
+                isActive={currentPage === 'results'}
+              />
+            )}
+
+            {/* Keywords Button with Preview Tooltip */}
+            <KeywordExpansionTooltip 
+              query={query} 
+              side="bottom" 
+              variant={currentPage === 'keywords' ? "default" : "ghost"}
+              buttonClassName="h-8 px-3"
+              asLink
+              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : "/keyword-expansion"}
+            />
+
+            {/* AI Enhancement Button */}
+            <NavButton 
+              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"} 
+              icon={Sparkles} 
+              label="AI Enhance" 
+              isActive={currentPage === 'ai-enhancement'}
+            />
+
+            {/* Search History Button */}
+            {isOnResultsPage ? (
+              effectiveSearchId ? (
+                <NavButton 
+                  href={`/results/${effectiveSearchId}/history`} 
+                  icon={Clock} 
+                  label="History" 
+                  isActive={currentPage === 'history'}
+                  badge={searchHistory.length}
+                />
+              ) : (
+                <NavButton 
+                  href="/history" 
+                  icon={Clock} 
+                  label="History" 
+                  isActive={currentPage === 'history'}
+                  badge={searchHistory.length}
+                />
+              )
+            ) : (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <NavButton 
+                    href="/history" 
+                    icon={Clock} 
+                    label="History" 
+                    isActive={currentPage === 'history'}
+                    badge={searchHistory.length}
+                  />
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[400px] sm:w-[500px] flex flex-col">
+                  <SheetHeader className="flex-shrink-0">
+                    <SheetTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Search History
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto px-6 pb-6">
+                    <SearchHistory
+                      onSearchResults={handleSearchHistoryClick}
+                      loadingResultIndex={loadingResultIndex}
+                      currentSearchField="title_and_abstract"
+                      compact={true}
+                      currentSearchId={effectiveSearchId}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+
+            {/* Theme Toggle */}
+              <ThemeToggle />
+            </div>
+        </div>
+
+        {/* Mobile: Two-row layout (below lg) */}
+        <div className="lg:hidden">
+          {/* First row: Logo, Search, Search buttons, Theme toggle */}
+          <div className="flex h-16 items-center justify-between gap-2">
+            {/* Logo */}
+            <Logo size="sm" className="flex-shrink-0" context="navbar" />
+            
+            {/* Search form */}
+            <form onSubmit={handleSubmit} className="flex-1 mx-2">
+              <div className="relative flex items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => handleQueryChange(e.target.value)}
+                    placeholder="Search papers..."
+                    className="pl-10 pr-4"
+                    disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                  />
+                </div>
+                
+                {/* Search action buttons */}
+                <div className="flex items-center">
+                  {/* Update Current Search Button */}
                   <Button 
                     type="submit" 
                     disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()} 
@@ -208,141 +392,127 @@ export function Navbar({
                     )}
                   </Button>
 
-                  {/* Mobile More Menu */}
-                  <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="ml-1">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-background border border-border shadow-lg">
-                      {onNewSearch && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              handleNewSearch();
-                              setDropdownOpen(false);
-                            }}
-                            disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()}
-                            className="cursor-pointer focus:bg-accent"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            {isCreatingNewSearch ? "Creating..." : "Create new search"}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
+                  {/* New Search Button */}
+                  {onNewSearch && (
+                    <Button 
+                      type="button"
+                      onClick={handleNewSearch}
+                      disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()} 
+                      className="ml-2 flex-shrink-0"
+                      size="icon"
+                    >
+                      {isCreatingNewSearch ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
                       )}
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setKeywordDialogOpen(true);
-                          setDropdownOpen(false);
-                        }}
-                        disabled={!query.trim()}
-                        className="cursor-pointer focus:bg-accent"
-                      >
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        Keywords...
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setAIDialogOpen(true);
-                          setDropdownOpen(false);
-                        }}
-                        disabled={!query.trim()}
-                        className="cursor-pointer focus:bg-accent"
-                      >
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        AI Enhance...
-                      </DropdownMenuItem>
-                      {isOnResultsPage && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setDropdownOpen(false);
-                              router.push('/');
-                            }}
-                            className="cursor-pointer focus:bg-accent"
-                          >
-                            <Home className="mr-2 h-4 w-4" />
-                            Back to Home
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    </Button>
+                  )}
                 </div>
               </div>
             </form>
+            
+            {/* Theme Toggle */}
+            <ThemeToggle />
           </div>
 
-          {/* Right side - Navigation and Actions */}
-          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-            {/* Home Button - Show on results pages (desktop only) */}
-            {isOnResultsPage && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button asChild variant="ghost" size="sm" className="hidden sm:flex h-8 w-8 px-0">
-                    <Link href="/">
-                      <Home className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Back to Home</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
+          {/* Second row: Navigation buttons */}
+          <div className="border-t border-border/50 px-2 py-2">
+            <div className="flex items-center justify-center gap-1 overflow-x-auto">
+                                            {/* Results Button */}
+               {(isOnResultsPage || effectiveSearchId) && (
+                 <NavButton 
+                   href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"} 
+                   icon={FileText} 
+                   label="Results" 
+                   isActive={currentPage === 'results'}
+                   isMobile={true}
+                 />
+               )}
 
-            {/* Search History Button */}
-            <Sheet>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 px-0">
-                      <Clock className="h-4 w-4" />
-                    </Button>
-                  </SheetTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Search History {searchHistory.length > 0 ? `(${searchHistory.length})` : ''}</p>
-                </TooltipContent>
-              </Tooltip>
-              <SheetContent side="right" className="w-[400px] sm:w-[500px] flex flex-col">
-                <SheetHeader className="flex-shrink-0">
-                  <SheetTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Search History
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-6 pb-6">
-                  <SearchHistory
-                    onSearchResults={handleSearchHistoryClick}
-                    loadingResultIndex={loadingResultIndex}
-                    currentSearchField="title_and_abstract"
-                    compact={true}
-                    currentSearchId={currentSearchId}
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
+               {/* Keywords Button */}
+               <NavButton 
+                 href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : "/keyword-expansion"} 
+                 icon={BookOpen} 
+                 label="Keywords" 
+                 isActive={currentPage === 'keywords'}
+                 isMobile={true}
+               />
 
-            {/* Theme Toggle - Desktop only */}
-            <div className="hidden sm:block">
-              <ThemeToggle />
+               {/* AI Enhancement Button */}
+               <NavButton 
+                 href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"} 
+                 icon={Sparkles} 
+                 label="AI Enhance" 
+                 isActive={currentPage === 'ai-enhancement'}
+                 isMobile={true}
+               />
+
+               {/* History Button */}
+               {isOnResultsPage ? (
+                 effectiveSearchId ? (
+                   <NavButton 
+                     href={`/results/${effectiveSearchId}/history`} 
+                     icon={Clock} 
+                     label="History" 
+                     isActive={currentPage === 'history'}
+                     badge={searchHistory.length}
+                     isMobile={true}
+                   />
+                 ) : (
+                   <NavButton 
+                     href="/history" 
+                     icon={Clock} 
+                     label="History" 
+                     isActive={currentPage === 'history'}
+                     badge={searchHistory.length}
+                     isMobile={true}
+                   />
+                 )
+               ) : (
+                 <Sheet>
+                   <SheetTrigger asChild>
+                     <NavButton 
+                       href="/history" 
+                       icon={Clock} 
+                       label="History" 
+                       isActive={currentPage === 'history'}
+                       badge={searchHistory.length}
+                       isMobile={true}
+                       asChild={false}
+                     />
+                   </SheetTrigger>
+                   <SheetContent side="right" className="w-[400px] sm:w-[500px] flex flex-col">
+                     <SheetHeader className="flex-shrink-0">
+                       <SheetTitle className="flex items-center gap-2">
+                         <Clock className="h-5 w-5" />
+                         Search History
+                       </SheetTitle>
+                     </SheetHeader>
+                     <div className="flex-1 overflow-y-auto px-6 pb-6">
+                       <SearchHistory
+                         onSearchResults={handleSearchHistoryClick}
+                         loadingResultIndex={loadingResultIndex}
+                         currentSearchField="title_and_abstract"
+                         compact={true}
+                         currentSearchId={effectiveSearchId}
+                       />
+                     </div>
+                   </SheetContent>
+                 </Sheet>
+               )}
+
+               {/* Filters Button - Only on results pages */}
+               {isOnResultsPage && effectiveSearchId && (
+                 <NavButton 
+                   href={`/results/${effectiveSearchId}/filters`} 
+                   icon={Filter} 
+                   label="Filters" 
+                   isActive={currentPage === 'filters'}
+                   isMobile={true}
+                 />
+               )}
             </div>
-            
-            {/* Mobile Menu Button (for sidebar) */}
-            {onMenuToggle && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onMenuToggle}
-                className="lg:hidden h-8 w-8 px-0"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-            )}
           </div>
         </div>
       </div>

@@ -33,7 +33,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { workToCoins } from '@/lib/utils';
+import { workToCoins, cn } from '@/lib/utils';
 import { useRatingsStore, useFocusModeSettingsStore } from '@/lib/store';
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from 'next-themes';
@@ -71,32 +71,32 @@ export function FocusMode({
 
   // Helper functions for styling based on settings
   const getFontSizeClass = () => {
-    switch (settings.fontSize) {
-      case 'sm': return 'text-sm';
-      case 'base': return 'text-base';
-      case 'lg': return 'text-lg';
-      case 'xl': return 'text-xl';
-      default: return 'text-base';
-    }
+    return cn(
+      settings.fontSize === 'sm' && 'text-sm',
+      settings.fontSize === 'base' && 'text-base',
+      settings.fontSize === 'lg' && 'text-lg',
+      settings.fontSize === 'xl' && 'text-xl',
+      !['sm', 'base', 'lg', 'xl'].includes(settings.fontSize) && 'text-base' // default fallback
+    );
   };
 
   const getLineHeightClass = () => {
-    switch (settings.lineHeight) {
-      case 'tight': return 'leading-tight';
-      case 'normal': return 'leading-normal';
-      case 'relaxed': return 'leading-relaxed';
-      default: return 'leading-normal';
-    }
+    return cn(
+      settings.lineHeight === 'tight' && 'leading-tight',
+      settings.lineHeight === 'normal' && 'leading-normal',
+      settings.lineHeight === 'relaxed' && 'leading-relaxed',
+      !['tight', 'normal', 'relaxed'].includes(settings.lineHeight) && 'leading-normal' // default fallback
+    );
   };
 
   const getMaxWidthClass = () => {
-    switch (settings.maxContentWidth) {
-      case 'narrow': return 'max-w-2xl';
-      case 'medium': return 'max-w-4xl';
-      case 'wide': return 'max-w-6xl';
-      case 'full': return 'max-w-none';
-      default: return 'max-w-4xl';
-    }
+    return cn(
+      settings.maxContentWidth === 'narrow' && 'max-w-2xl',
+      settings.maxContentWidth === 'medium' && 'max-w-4xl',
+      settings.maxContentWidth === 'wide' && 'max-w-6xl',
+      settings.maxContentWidth === 'full' && 'max-w-none',
+      !['narrow', 'medium', 'wide', 'full'].includes(settings.maxContentWidth) && 'max-w-4xl' // default fallback
+    );
   };
 
   const getContainerClasses = () => {
@@ -105,11 +105,12 @@ export function FocusMode({
   };
 
   const getContentClasses = () => {
-    const baseClasses = "min-h-full flex flex-col mx-auto";
-    const widthClass = getMaxWidthClass();
-    const paddingClass = settings.compactMode ? "p-3" : "p-6";
-    const compactClass = settings.compactMode ? "space-y-1" : "space-y-2";
-    return `${baseClasses} ${widthClass} ${paddingClass} ${compactClass}`;
+    return cn(
+      "min-h-full flex flex-col mx-auto",
+      getMaxWidthClass(),
+      settings.compactMode ? "p-3" : "p-6",
+      settings.compactMode ? "space-y-1" : "space-y-2"
+    );
   };
 
   useEffect(() => {
@@ -296,8 +297,10 @@ export function FocusMode({
         )}
 
         {/* Title & Year - Compact */}
-        <div className={settings.compactMode ? "mb-1" : "mb-2"}>
-          <h1 className={`font-bold leading-tight mb-1 ${getFontSizeClass()}`}>
+        <div className={cn(
+          settings.compactMode ? "mb-1" : "mb-2"
+        )}>
+          <h1 className={cn("font-bold leading-tight mb-1", getFontSizeClass())}>
             {isPreview ? "The Impact of Machine Learning on Scientific Research Discovery (2024)" : `${paper.title} (${paper.publication_year})`}
           </h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -321,7 +324,9 @@ export function FocusMode({
 
         {/* Inline Metadata - Single Line Approach */}
         {settings.showMetadata && (
-          <div className={settings.compactMode ? "mb-1 text-xs" : "mb-2 text-xs"}>
+          <div className={cn(
+            settings.compactMode ? "mb-1 text-xs" : "mb-2 text-xs"
+          )}>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">Refs:</span>
@@ -403,7 +408,9 @@ export function FocusMode({
 
         {/* Topic & SDGs - Compact Row */}
         {settings.showMetadata && !isPreview && (
-          <div className={settings.compactMode ? "mb-1 text-xs space-y-1" : "mb-2 text-xs space-y-1"}>
+          <div className={cn(
+            settings.compactMode ? "mb-1 text-xs space-y-1" : "mb-2 text-xs space-y-1"
+          )}>
             {paper.sustainable_development_goals && paper.sustainable_development_goals.length > 0 && (
               <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-muted-foreground">SDGs:</span>
@@ -436,7 +443,7 @@ export function FocusMode({
           <div className="border-t pt-2">
             <div className="text-sm font-medium text-muted-foreground mb-1">Abstract</div>
             <div 
-              className={`pr-2 ${getFontSizeClass()} ${getLineHeightClass()}`} 
+              className={cn("pr-2", getFontSizeClass(), getLineHeightClass())} 
             >
               {isPreview 
                 ? "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows."
@@ -474,11 +481,12 @@ export function FocusMode({
                       className="hover:scale-110 transition-transform relative"
                     >
                       <Star 
-                        className={`h-3 w-3 ${
+                        className={cn(
+                          "h-3 w-3",
                           ratings[currentPaper.id] === undefined
                             ? 'text-yellow-400 hover:text-yellow-400' 
                             : 'text-muted-foreground/40 hover:text-muted-foreground/60'
-                        }`}
+                        )}
                       />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-3 h-px bg-muted-foreground/60 rotate-45"></div>
@@ -492,11 +500,12 @@ export function FocusMode({
                       className="hover:scale-110 transition-transform"
                     >
                       <Star 
-                        className={`h-3 w-3 ${
+                        className={cn(
+                          "h-3 w-3",
                           ratings[currentPaper.id] === 0
                             ? 'text-yellow-400 hover:text-yellow-400' 
                             : 'text-muted-foreground hover:text-yellow-400'
-                        }`}
+                        )}
                       />
                     </button>
                     <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">0</span>
@@ -517,11 +526,12 @@ export function FocusMode({
                         className="hover:scale-110 transition-transform"
                       >
                         <Star 
-                          className={`h-3 w-3 ${
+                          className={cn(
+                            "h-3 w-3",
                             ratings[currentPaper.id] && ratings[currentPaper.id] >= star 
                               ? 'fill-yellow-400 text-yellow-400' 
                               : 'fill-muted-foreground text-muted-foreground hover:fill-yellow-400 hover:text-yellow-400'
-                          }`}
+                          )}
                         />
                       </button>
                       <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">{star}</span>
@@ -587,7 +597,7 @@ export function FocusMode({
             {showSettings ? (
               /* Settings Panel */
               <div className="h-full overflow-y-auto !outline-none" data-content-scroll tabIndex={0} >
-                <div className={`mx-auto p-6 ${getMaxWidthClass()}`}>
+                <div className={cn("mx-auto p-6", getMaxWidthClass())}>
                   {/* Header */}
                   <div className="flex items-center justify-between mb-8">
                     <div>

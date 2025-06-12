@@ -341,3 +341,27 @@ export function triggerFileUpload(accept: string = '.json,.csv'): Promise<File> 
     input.click();
   });
 }
+
+/**
+ * Gets the effective search ID by combining the store's currentSearchId with route-based fallback.
+ * This is useful when components need the search ID but the store might not be populated yet
+ * (e.g., when users land directly on a results page).
+ * 
+ * @param pathname - The current pathname from usePathname()
+ * @param currentSearchId - The currentSearchId from useSearchFormStore()
+ * @returns The effective search ID or undefined if not on a results page
+ */
+export function getEffectiveSearchId(pathname: string | null, currentSearchId?: string): string | undefined {
+  // First priority: use store value if available
+  if (currentSearchId) {
+    return currentSearchId;
+  }
+  
+  // Second priority: extract from route if on results page
+  if (pathname?.startsWith('/results')) {
+    const match = pathname.match(/^\/results\/([^\/]+)/);
+    return match ? match[1] : undefined;
+  }
+  
+  return undefined;
+}

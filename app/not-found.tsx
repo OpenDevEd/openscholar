@@ -5,7 +5,7 @@ import { Home, Search } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+    <div className="flex flex-col items-center justify-center p-4 py-20 bg-background">
       <div className="text-center space-y-6 max-w-md">
         <Logo size="lg" className="justify-center" />
         

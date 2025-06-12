@@ -15,15 +15,19 @@ import { ModalHeader } from "@/components/ui/modal-header"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Trash2, Plus, BookOpen, Save } from "lucide-react"
-import { useKeywordExpansionStore, useResultsStore, useKeywordExpansionDialogStore } from "@/lib/store"
+import { useKeywordExpansionStore, useResultsStore, useKeywordExpansionDialogStore, useSearchFormStore } from "@/lib/store"
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation"
+import { useEffectiveSearchId } from "@/lib/hooks"
 import { toast } from "sonner"
+import { useRouter, usePathname } from "next/navigation"
 
 interface KeywordExpansionDialogProps {
   children: React.ReactNode
 }
 
 export function KeywordExpansionDialog({ children }: KeywordExpansionDialogProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const { keywords, addKeyword, updateKeyword, removeKeyword, clearKeywords } = useKeywordExpansionStore()
   const { currentQuery } = useResultsStore()
   const { 
@@ -39,6 +43,9 @@ export function KeywordExpansionDialog({ children }: KeywordExpansionDialogProps
     setSuggestedQuery,
     resetForm
   } = useKeywordExpansionDialogStore()
+
+  const isOnResultsPage = pathname?.startsWith('/results')
+  const effectiveSearchId = useEffectiveSearchId()
 
   const validateKeyword = (keyword: string): string | null => {
     if (!keyword.trim()) return "Keyword cannot be empty"
@@ -113,7 +120,7 @@ export function KeywordExpansionDialog({ children }: KeywordExpansionDialogProps
             description='Create shortcuts for commonly used search terms. Use "keyword..." in your search to expand them automatically.'
           />
 
-          <div className="space-y-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <div className="space-y-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 scrollbar-hide">
           {/* Save Current Search Section */}
           {suggestedQuery && (
             <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800">
@@ -251,9 +258,18 @@ export function KeywordExpansionDialog({ children }: KeywordExpansionDialogProps
           </Card>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={() => setIsOpen(false)}>
             Close
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setIsOpen(false)
+              router.push(isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : '/keyword-expansion')
+            }}
+          >
+            Open Full Page
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -27,9 +27,10 @@ interface SearchHistoryProps {
   currentSearchField: SearchField;
   compact?: boolean;
   currentSearchId?: string;
+  hideHeader?: boolean;
 }
 
-export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId }: SearchHistoryProps) {
+export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false }: SearchHistoryProps) {
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
   const isMobile = useIsMobile();
@@ -154,18 +155,11 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
-          variant={variant === 'compact' ? 'ghost' : 'outline'} 
+          variant="ghost"
           size="sm"
-          className={variant === 'compact' ? 'text-muted-foreground hover:text-foreground transition-colors' : ''}
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
-          {variant === 'compact' ? (
-            <MoreVertical className="h-4 w-4" />
-          ) : (
-            <>
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </>
-          )}
+          <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -192,21 +186,17 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
 
   const ClearAllButton = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => (
     <Button
-      variant={variant === 'compact' ? 'ghost' : 'destructive'}
+      variant="ghost"
       size="sm"
       onClick={handleClearAll}
       disabled={searchHistory.length === 0}
-      className={`${variant === 'compact' 
-        ? 'text-muted-foreground hover:text-destructive transition-colors self-start sm:self-auto' 
-        : 'flex items-center gap-2'
-      } ${searchHistory.length === 0 ? 'opacity-50' : ''}`}
+      className={cn(
+        'text-muted-foreground hover:text-destructive transition-colors self-start sm:self-auto',
+        searchHistory.length === 0 && 'opacity-50'
+      )}
     >
       <Trash2 className="h-4 w-4" />
-      {variant === 'compact' ? (
-        <span className="sm:hidden">Clear All</span>
-      ) : (
-        'Clear All'
-      )}
+      <span className="sm:hidden">Clear All</span>
     </Button>
   );
 
@@ -227,7 +217,10 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   );
 
   const HeaderButtons = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => (
-    <div className="flex gap-2">
+    <div className={cn(
+      "flex items-center",
+      variant === 'compact' ? 'gap-2' : 'gap-2 sm:gap-3 justify-center sm:justify-end'
+    )}>
       <ActionDropdown variant={variant} />
       <ClearAllButton variant={variant} />
     </div>
@@ -259,42 +252,65 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     return (
       <div
         key={actualIndex}
-        className={`group relative overflow-hidden rounded-xl border transition-all duration-200 cursor-pointer md:cursor-default ${
+        className={cn(
+          "group relative overflow-hidden rounded-xl border transition-all duration-200 cursor-pointer md:cursor-default",
           isCurrentSearch 
             ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
-            : `border-border/50 ${
+            : cn(
+                "border-border/50 hover:border-border",
                 variant === 'compact' 
-                  ? 'bg-card/50 backdrop-blur-sm hover:bg-card/80' 
-                  : 'bg-card/30 backdrop-blur-sm hover:bg-card/60'
-              } hover:border-border hover:shadow-${variant === 'compact' ? 'md' : 'lg'}`
-        }`}
+                  ? 'bg-card/50 backdrop-blur-sm hover:bg-card/80 hover:shadow-md' 
+                  : 'bg-card/30 backdrop-blur-sm hover:bg-card/60 hover:shadow-lg'
+              )
+        )}
         onClick={() => handleCardClick(result, actualIndex)}
       >
       {/* Header with actions */}
-      <div className={`flex items-center justify-between px-${variant === 'compact' ? '4 md:px-4' : '5'} pt-${variant === 'compact' ? '4 md:pt-4' : '5'} pb-2`}>
-        <div className={`flex items-center gap-1 text-${variant === 'compact' ? 'xs' : 'sm'} text-muted-foreground bg-muted/60 px-${variant === 'compact' ? '2' : '3'} py-1 rounded-full shrink-0`}>
-          <Search className={`h-${variant === 'compact' ? '3' : '4'} w-${variant === 'compact' ? '3' : '4'}`} />
+      <div className={cn(
+        "flex items-center justify-between pb-2",
+        variant === 'compact' ? 'px-4 pt-4' : 'px-5 pt-5'
+      )}>
+        <div className={cn(
+          "flex items-center gap-1 text-muted-foreground bg-muted/60 py-1 rounded-full shrink-0",
+          variant === 'compact' ? 'text-xs px-2' : 'text-sm px-3'
+        )}>
+          <Search className={cn(
+            variant === 'compact' ? 'h-3 w-3' : 'h-4 w-4'
+          )} />
           {formatNumber(result.count)}{variant === 'full' ? ' results' : ''}
         </div>
         
         {/* Actions */}
-        <div className={`flex items-center gap-1 opacity-100 ${variant === 'compact' ? 'md:opacity-0 md:group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+        <div className={cn(
+          "flex items-center gap-1 transition-opacity",
+          variant === 'compact' 
+            ? 'opacity-100 md:opacity-0 md:group-hover:opacity-100' 
+            : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
+        )}>
           <Button
             variant="ghost"
             size="icon"
-            className={`h-${variant === 'compact' ? '7' : '8'} w-${variant === 'compact' ? '7' : '8'} text-muted-foreground hover:text-primary hover:bg-primary/10`}
+            className={cn(
+              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
             onClick={(e) => {
               e.stopPropagation();
               handleCopyQuery(result.query);
             }}
             title="Copy search query"
           >
-            <Copy className={`h-${variant === 'compact' ? '3' : '3.5'} w-${variant === 'compact' ? '3' : '3.5'}`} />
+            <Copy className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className={`h-${variant === 'compact' ? '7' : '8'} w-${variant === 'compact' ? '7' : '8'} text-muted-foreground hover:text-primary hover:bg-primary/10`}
+            className={cn(
+              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
             onClick={(e) => {
               e.stopPropagation();
               onSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex);
@@ -303,47 +319,74 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             title="View search results"
           >
             {loadingResultIndex === actualIndex ? (
-              <Loader2 className={`h-${variant === 'compact' ? '3' : '3.5'} w-${variant === 'compact' ? '3' : '3.5'} animate-spin`} />
+              <Loader2 className={cn(
+                "animate-spin",
+                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+              )} />
             ) : (
-              <ExternalLink className={`h-${variant === 'compact' ? '3' : '3.5'} w-${variant === 'compact' ? '3' : '3.5'}`} />
+              <ExternalLink className={cn(
+                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+              )} />
             )}
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className={`h-${variant === 'compact' ? '7' : '8'} w-${variant === 'compact' ? '7' : '8'} text-muted-foreground hover:text-destructive hover:bg-destructive/10`}
+            className={cn(
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteItem(actualIndex, result.query);
             }}
             title="Remove from history"
           >
-            <X className={`h-${variant === 'compact' ? '3' : '3.5'} w-${variant === 'compact' ? '3' : '3.5'}`} />
+            <X className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
           </Button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className={`px-${variant === 'compact' ? '4 md:px-4' : '5'} pb-${variant === 'compact' ? '4 md:pb-4' : '5'}`}>
+      <div className={cn(
+        variant === 'compact' ? 'px-4 pb-4' : 'px-5 pb-5'
+      )}>
         <div className="space-y-3">
           {/* Query - now has full width */}
           <div>
-            <p className={`font-${variant === 'compact' ? 'medium' : 'semibold'} text-foreground ${variant === 'compact' ? 'text-sm md:text-base leading-relaxed' : 'text-lg leading-relaxed'} break-words`} title={result.query}>
+            <p className={cn(
+              "text-foreground break-words leading-relaxed",
+              variant === 'compact' ? 'font-medium text-sm md:text-base' : 'font-semibold text-lg'
+            )} title={result.query}>
               {result.query}
             </p>
           </div>
           
           {/* Metadata */}
-          <div className={`flex items-center ${variant === 'compact' ? 'flex-wrap' : ''} gap-${variant === 'compact' ? '2' : '4'} text-${variant === 'compact' ? 'xs' : 'sm'}`}>
-            <span className={`bg-primary/10 text-primary px-${variant === 'compact' ? '2' : '3'} py-1 rounded-${variant === 'compact' ? 'md' : 'lg'} font-medium`}>
+          <div className={cn(
+            "flex items-center",
+            variant === 'compact' ? 'flex-wrap gap-2 text-xs' : 'flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm'
+          )}>
+            <span className={cn(
+              "bg-primary/10 text-primary py-1 font-medium",
+              variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+            )}>
               {variant === 'full' ? 'Field: ' : ''}{result.field}
             </span>
             {result.filterType === "year" && result.yearRange ? (
-              <span className={`bg-blue-50 text-blue-700 px-${variant === 'compact' ? '2' : '3'} py-1 rounded-${variant === 'compact' ? 'md' : 'lg'}`}>
+              <span className={cn(
+                "bg-blue-50 text-blue-700 py-1",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
                 📅 {result.yearRange[0]} - {result.yearRange[1]}
               </span>
             ) : result.dateRange?.from ? (
-              <span className={`bg-blue-50 text-blue-700 px-${variant === 'compact' ? '2' : '3'} py-1 rounded-${variant === 'compact' ? 'md' : 'lg'}`}>
+              <span className={cn(
+                "bg-blue-50 text-blue-700 py-1",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
                 📅 {format(result.dateRange.from, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy")} - {result.dateRange.to ? format(result.dateRange.to, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy") : "now"}
               </span>
             ) : variant === 'full' ? (
@@ -352,8 +395,11 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
               </span>
             ) : null}
             {result.isCountryFilterActive && result.selectedRegions && result.selectedRegions.length > 0 && (
-              <span className={`bg-emerald-50 text-emerald-700 px-${variant === 'compact' ? '2' : '3'} py-1 rounded-${variant === 'compact' ? 'md' : 'lg'} flex items-center gap-1`}>
-                🌍 {(() => {
+              <span className={cn(
+                "bg-emerald-50 text-emerald-700 py-1 flex items-center gap-1",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
+                🌍 Institution location: {(() => {
                   const regions = result.selectedRegions.filter((id: string) => !(id.length === 2 && COUNTRIES[id]));
                   const countries = result.selectedRegions.filter((id: string) => id.length === 2 && COUNTRIES[id]);
                   const parts = [];
@@ -382,8 +428,45 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 )}
               </span>
             )}
+            {result.isCountryFocusActive && result.selectedCountryFocus && result.selectedCountryFocus.length > 0 && (
+              <span className={cn(
+                "bg-purple-50 text-purple-700 py-1 flex items-center gap-1",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
+                🎯 Country focus: {(() => {
+                  const regions = result.selectedCountryFocus.filter((id: string) => !(id.length === 2 && COUNTRIES[id]));
+                  const countries = result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]);
+                  const parts = [];
+                  
+                  if (regions.length > 0) {
+                    parts.push(`${regions.length} region${regions.length > 1 ? 's' : ''}`);
+                  }
+                  if (countries.length > 0) {
+                    parts.push(`${countries.length} countr${countries.length > 1 ? 'ies' : 'y'}`);
+                  }
+                  
+                  return parts.join(' + ');
+                })()}
+                {variant === 'full' && result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]).length > 0 && (
+                  <span className="flex items-center gap-0.5 ml-1">
+                    {result.selectedCountryFocus
+                      .filter((id: string) => id.length === 2 && COUNTRIES[id])
+                      .slice(0, 3)
+                      .map((countryCode: string) => (
+                        <CountryFlag key={countryCode} countryCode={countryCode} className="w-3 h-2" />
+                      ))}
+                    {result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]).length > 3 && (
+                      <span className="text-xs text-purple-600 ml-1">+{result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]).length - 3}</span>
+                    )}
+                  </span>
+                )}
+              </span>
+            )}
             {(result.isRatingFilterActive || result.onlyRatedPapers) && (
-              <span className={`bg-amber-50 text-amber-700 px-${variant === 'compact' ? '2' : '3'} py-1 rounded-${variant === 'compact' ? 'md' : 'lg'} flex items-center gap-1`}>
+              <span className={cn(
+                "bg-amber-50 text-amber-700 py-1 flex items-center gap-1",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
                 ⭐ {(() => {
                   const parts = [];
                   if (result.isRatingFilterActive && result.ratingRange) {
@@ -510,11 +593,11 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     }
 
     return (
-      <div className="flex items-center justify-between pt-6">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6">
+        <p className="text-sm text-muted-foreground text-center sm:text-left">
           Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, searchHistory.length)} of {searchHistory.length} searches
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center sm:justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -523,7 +606,8 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             className="flex items-center gap-1"
           >
             <ChevronLeft className="h-4 w-4" />
-            Previous
+            <span className="hidden xs:inline">Previous</span>
+            <span className="xs:hidden">Prev</span>
           </Button>
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
@@ -558,7 +642,8 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             disabled={currentPage === totalPages}
             className="flex items-center gap-1"
           >
-            Next
+            <span className="hidden xs:inline">Next</span>
+            <span className="xs:hidden">Next</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -599,6 +684,53 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
               })}
             </div>
             <Pagination variant="compact" />
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (hideHeader) {
+    return (
+      <div className="w-full space-y-4">
+        {searchHistory.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            {/* Clean mobile-first header */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
+              {/* Left side - Simple count on mobile, more details on desktop */}
+              <div className="flex items-center justify-between sm:justify-start gap-3">
+                <span className="text-sm text-muted-foreground">
+                  {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, searchHistory.length)}
+                </span>
+                {/* Mobile actions on same line */}
+                <div className="sm:hidden">
+                  <HeaderButtons variant="compact" />
+                </div>
+              </div>
+              
+              {/* Desktop actions */}
+              <div className="hidden sm:flex">
+                <HeaderButtons variant="compact" />
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {displayHistory.map((result, index) => {
+                const actualIndex = startIndex + index;
+                return (
+                  <SearchItem 
+                    key={actualIndex}
+                    result={result} 
+                    index={index} 
+                    actualIndex={actualIndex} 
+                    variant="full" 
+                  />
+                );
+              })}
+            </div>
+            <Pagination variant="full" />
           </>
         )}
       </div>

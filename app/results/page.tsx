@@ -12,7 +12,7 @@ export default function ResultsPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="flex items-center justify-center py-20">
       <p>Redirecting...</p>
     </div>
   );
