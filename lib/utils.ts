@@ -113,6 +113,105 @@ export async function downloadWithMetadata(
 }
 
 /**
+ * Creates search parameters object for OpenAlex API calls
+ * Used by both the OpenAlex action and search metadata creation
+ */
+export function createSearchParameters(
+  query: string,
+  searchField: SearchField,
+  dateRange?: DateRange,
+  sortBy?: string,
+  yearRange?: [number, number],
+  countryCodes?: string[]
+) {
+  const searchParams: any = {
+    perPage: 200,
+    AbstractArrayToString: true
+  };
+
+  // Build filter object
+  const filters: any = {};
+
+  // Handle search based on field type
+  if (query) {
+    // Map search fields to SDK filter format
+    const searchFilterMap = {
+      'title_and_abstract': 'title_and_abstract',
+      'title': 'title',
+      'abstract': 'abstract', 
+      'fulltext': 'fulltext',
+      'display_name': 'display_name'
+    } as const;
+    
+    if (searchField in searchFilterMap) {
+      // Use search filters for specific fields
+      const filterKey = searchFilterMap[searchField as keyof typeof searchFilterMap];
+      
+      // For the SDK, we use the filter object with search subfields
+      if (filterKey === 'title_and_abstract') {
+        filters.title_and_abstract = { search: query };
+      } else if (filterKey === 'title') {
+        filters.title = { search: query };
+      } else if (filterKey === 'abstract') {
+        filters.abstract = { search: query };
+      } else if (filterKey === 'fulltext') {
+        filters.fulltext = { search: query };
+      } else if (filterKey === 'display_name') {
+        filters.display_name = { search: query };
+      }
+    } else {
+      // Fallback to main search
+      searchParams.search = query;
+    }
+  }
+
+  // Add date filtering
+  if (dateRange?.from || dateRange?.to || yearRange) {
+    if (dateRange?.from) {
+      const fromDate = dateRange.from.toISOString().split('T')[0];
+      filters.from_publication_date = fromDate;
+    }
+    if (dateRange?.to) {
+      const toDate = dateRange.to.toISOString().split('T')[0];
+      filters.to_publication_date = toDate;
+    }
+    if (yearRange && !dateRange?.from && !dateRange?.to) {
+      filters.from_publication_date = `${yearRange[0]}-01-01`;
+      filters.to_publication_date = `${yearRange[1]}-12-31`;
+    }
+  }
+  
+  // Country filtering (for Institution location - author affiliations)
+  if (countryCodes && countryCodes.length > 0) {
+    filters.authorships = {
+      countries: countryCodes.join('|')
+    };
+  }
+
+  // Add filters to search params if we have any
+  if (Object.keys(filters).length > 0) {
+    searchParams.filter = filters;
+  }
+
+  // Add sorting
+  if (sortBy) {
+    const [field, order] = sortBy.split(':');
+    searchParams.sortBy = {
+      field: field as any,
+      order: order as 'asc' | 'desc'
+    };
+  } else {
+    // Default sorting
+    searchParams.sortBy = {
+      field: 'relevance_score',
+      order: 'desc'
+    };
+  }
+
+  return searchParams;
+}
+
+/**
  * Converts OpenAlex Work data to COINS (COinS - ContextObjects in Spans) format
  * following the Z39.88 standard for bibliographic metadata embedding
  * 

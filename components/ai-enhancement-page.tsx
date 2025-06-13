@@ -7,9 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, ArrowRight, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useKeywordExpansionStore, useAIConfigDialogStore, useResultsStore, useKeywordExpansionDialogStore } from "@/lib/store"
-import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation"
+import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useResultsStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -28,23 +27,25 @@ interface AIEnhancementPageProps {
   onQueryChange?: (query: string) => void
 }
 
+function getSetQuery() {
+  const { setCurrentQuery } = useResultsStore.getState();
+  return setCurrentQuery;
+}
+
 export function AIEnhancementPage({ 
   initialQuery = "",
   showBackButton = true,
   onBack,
-  onQueryChange
+  onQueryChange = getSetQuery()
 }: AIEnhancementPageProps) {
   const router = useRouter()
   const { provider, apiKey, setProvider, setApiKey } = useAIConfigStore()
-  const { expandQuery } = useKeywordExpansionStore()
   const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore()
   const { suggestedQuery, setSuggestedQuery } = useKeywordExpansionDialogStore()
   const effectiveQuery = useEffectiveQuery()
 
-  // Initialize suggested query using the same pattern as navbar query initialization
-  React.useEffect(() => {
-    setSuggestedQuery(initialQuery || effectiveQuery)
-  }, [initialQuery, effectiveQuery, setSuggestedQuery])
+  // Note: setSuggestedQuery is now handled centrally by QuerySyncProvider
+  // No manual initialization needed here
 
   const handleProviderChange = (value: AIProvider) => {
     setProvider(value)
@@ -80,15 +81,8 @@ export function AIEnhancementPage({
     try {
       setIsEnhancing(true)
       
-      // Validate and expand keywords before sending to AI
-      const validation = validateAndExpandKeywords(suggestedQuery)
-      if (!validation.isValid) {
-        // Validation already showed warning toasts, just stop the enhancement
-        return
-      }
-      
       // Send the expanded query to AI enhancement
-      const result = await enhanceSearchQuery(validation.expandedQuery, provider, apiKey)
+      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey)
       setEnhancedPreview(result)
     } catch (error) {
       toast.error("Enhancement Failed", {
@@ -107,6 +101,8 @@ export function AIEnhancementPage({
       })
       if (onBack) {
         onBack()
+      } else {
+        router.push('/')
       }
     }
   }
@@ -220,9 +216,6 @@ export function AIEnhancementPage({
                   value={apiKey}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Your API key is stored locally and never sent to our servers
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -248,35 +241,6 @@ export function AIEnhancementPage({
                 <p className="text-xs text-muted-foreground">
                   Edit the query above before enhancing it with AI.
                 </p>
-              </div>
-
-              {/* Current Query Preview */}
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Current Query:</Label>
-                <div className="text-sm p-3 border rounded-lg bg-muted/30 font-mono">
-                  {suggestedQuery || (
-                    <span className="text-muted-foreground italic">No query entered</span>
-                  )}
-                </div>
-                {(() => {
-                  if (!suggestedQuery.trim()) return null
-                  const validation = validateAndExpandKeywordsSilently(suggestedQuery)
-                  // Only show preview if validation passes and query actually expanded
-                  if (!validation.isValid || validation.expandedQuery === suggestedQuery) return null
-                  return (
-                    <div className="mt-4 animate-in fade-in-50 duration-300">
-                      <div className="flex items-center gap-2 mb-2">
-                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                        <Label className="text-xs text-muted-foreground">Will be enhanced as:</Label>
-                      </div>
-                      <div className="p-3 border rounded-lg bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800">
-                        <span className="text-green-800 dark:text-green-100 break-words font-mono text-sm">
-                          {validation.expandedQuery}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })()}
               </div>
 
               {/* Action Buttons */}
@@ -305,7 +269,7 @@ export function AIEnhancementPage({
                     </>
                   )}
                 </Button>
-                {enhancedPreview && onQueryChange && (
+                {enhancedPreview && (
                   <Button
                     onClick={handleUseEnhancedQuery}
                     variant="default"
@@ -313,7 +277,7 @@ export function AIEnhancementPage({
                     size="lg"
                   >
                     <Send className="mr-2 h-4 w-4" />
-                    Use Query
+                    Apply Enhanced Query
                   </Button>
                 )}
               </div>

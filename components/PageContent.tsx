@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SearchHistory } from "@/components/search-history";
-import { useSearchFormStore, useUIStore, useSearchHistoryStore, usePageContentStore } from "@/lib/store";
+import { useSearchFormStore, useUIStore, useSearchHistoryStore, useResultsStore } from "@/lib/store";
 import { useQueryChangeHandler } from "@/lib/hooks";
 import {
   submitSearchAndLoadResults,
@@ -43,7 +43,7 @@ function PageContent() {
 
 
   // Add state to track the current query for the tooltip
-  const { currentQuery, setCurrentQuery } = usePageContentStore();
+  const { currentQuery, setCurrentQuery } = useResultsStore();
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {

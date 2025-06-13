@@ -82,7 +82,6 @@ export default function ResultsLayout({ children }: ResultsLayoutProps) {
   return (
     <div className="bg-background">
       <Navbar
-        searchQuery={currentQuery}
         onSearchSubmit={handleUpdateCurrentSearch}
         onNewSearch={handleNewSearch}
         isLoading={isLoading}

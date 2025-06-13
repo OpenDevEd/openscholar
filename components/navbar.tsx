@@ -10,7 +10,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useNavbarStore, useSearchHistoryStore, useSearchFormStore } from "@/lib/store";
+import { useResultsStore, useSearchHistoryStore, useSearchFormStore } from "@/lib/store";
 import { useQueryChangeHandler, useEffectiveSearchId, useEffectiveQuery } from "@/lib/hooks";
 import { handleSearchHistoryClick as sharedHandleSearchHistoryClick } from "@/lib/search-actions";
 import { usePathname, useRouter } from 'next/navigation';
@@ -31,7 +31,6 @@ import {
 import { SearchHistory } from "./search-history";
 
 interface NavbarProps {
-  searchQuery?: string;
   onSearchSubmit: (query: string) => void;
   onNewSearch?: (query: string) => void;
   isLoading?: boolean;
@@ -112,7 +111,6 @@ const NavButton: React.FC<NavButtonProps> = ({
 };
 
 export function Navbar({ 
-  searchQuery = "", 
   onSearchSubmit, 
   onNewSearch,
   isLoading = false,
@@ -121,8 +119,8 @@ export function Navbar({
   loadingResultIndex = null,
   isFilterLoading = false
 }: NavbarProps) {
-  const { query, setQuery } = useNavbarStore();
-  const handleQueryChange = useQueryChangeHandler(setQuery);
+  const { currentQuery, setCurrentQuery } = useResultsStore();
+  const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
   const pathname = usePathname();
   const router = useRouter();
   const { searchHistory } = useSearchHistoryStore();
@@ -152,21 +150,19 @@ export function Navbar({
 
   const currentPage = getCurrentPage();
 
-  useEffect(() => {
-    // Use the comprehensive effective query that works across all contexts
-    setQuery(searchQuery || effectiveQuery);
-  }, [searchQuery, effectiveQuery, setQuery]);
+  // Note: All query initialization and synchronization is now handled centrally by QuerySyncProvider
+  // No local useEffect needed - the provider handles everything
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      onSearchSubmit(query.trim());
+    if (currentQuery.trim()) {
+      onSearchSubmit(currentQuery.trim());
     }
   };
 
   const handleNewSearch = () => {
-    if (query.trim() && onNewSearch) {
-      onNewSearch(query.trim());
+    if (currentQuery.trim() && onNewSearch) {
+      onNewSearch(currentQuery.trim());
     }
   };
 
@@ -209,7 +205,7 @@ export function Navbar({
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    value={query}
+                    value={currentQuery}
                     onChange={(e) => handleQueryChange(e.target.value)}
                     placeholder="Search papers..."
                     className="pl-10 pr-4"
@@ -224,7 +220,7 @@ export function Navbar({
                     <TooltipTrigger asChild>
                       <Button 
                         type="submit" 
-                        disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()} 
+                        disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
                         className="ml-2 flex-shrink-0"
                         size="icon"
                         variant="outline"
@@ -248,7 +244,7 @@ export function Navbar({
                         <Button 
                           type="button"
                           onClick={handleNewSearch}
-                          disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()} 
+                          disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
                           className="ml-2 flex-shrink-0"
                           size="icon"
                         >
@@ -283,7 +279,7 @@ export function Navbar({
 
             {/* Keywords Button with Preview Tooltip */}
             <KeywordExpansionTooltip 
-              query={query} 
+              query={currentQuery} 
               side="bottom" 
               variant={currentPage === 'keywords' ? "default" : "ghost"}
               buttonClassName="h-8 px-3"
@@ -367,7 +363,7 @@ export function Navbar({
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    value={query}
+                    value={currentQuery}
                     onChange={(e) => handleQueryChange(e.target.value)}
                     placeholder="Search papers..."
                     className="pl-10 pr-4"
@@ -380,7 +376,7 @@ export function Navbar({
                   {/* Update Current Search Button */}
                   <Button 
                     type="submit" 
-                    disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()} 
+                    disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
                     className="ml-2 flex-shrink-0"
                     size="icon"
                     variant="outline"
@@ -397,7 +393,7 @@ export function Navbar({
                     <Button 
                       type="button"
                       onClick={handleNewSearch}
-                      disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !query.trim()} 
+                      disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
                       className="ml-2 flex-shrink-0"
                       size="icon"
                     >
@@ -419,99 +415,98 @@ export function Navbar({
           {/* Second row: Navigation buttons */}
           <div className="border-t border-border/50 px-2 py-2">
             <div className="flex items-center justify-center gap-1 overflow-x-auto">
-                                            {/* Results Button */}
-               {(isOnResultsPage || effectiveSearchId) && (
-                 <NavButton 
-                   href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"} 
-                   icon={FileText} 
-                   label="Results" 
-                   isActive={currentPage === 'results'}
-                   isMobile={true}
-                 />
-               )}
+              {/* Results Button */}
+              {(isOnResultsPage || effectiveSearchId) && (
+                <NavButton 
+                  href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"} 
+                  icon={FileText} 
+                  label="Results" 
+                  isActive={currentPage === 'results'}
+                  isMobile={true}
+                />
+              )}
 
-               {/* Keywords Button */}
-               <NavButton 
-                 href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : "/keyword-expansion"} 
-                 icon={BookOpen} 
-                 label="Keywords" 
-                 isActive={currentPage === 'keywords'}
-                 isMobile={true}
-               />
+              {/* Keywords Button */}
+              <NavButton 
+                href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : "/keyword-expansion"} 
+                icon={BookOpen} 
+                label="Keywords" 
+                isActive={currentPage === 'keywords'}
+                isMobile={true}
+              />
 
-               {/* AI Enhancement Button */}
-               <NavButton 
-                 href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"} 
-                 icon={Sparkles} 
-                 label="AI Enhance" 
-                 isActive={currentPage === 'ai-enhancement'}
-                 isMobile={true}
-               />
+              {/* AI Enhancement Button */}
+              <NavButton 
+                href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"} 
+                icon={Sparkles} 
+                label="AI Enhance" 
+                isActive={currentPage === 'ai-enhancement'}
+                isMobile={true}
+              />
 
-               {/* History Button */}
-               {isOnResultsPage ? (
-                 effectiveSearchId ? (
-                   <NavButton 
-                     href={`/results/${effectiveSearchId}/history`} 
-                     icon={Clock} 
-                     label="History" 
-                     isActive={currentPage === 'history'}
-                     badge={searchHistory.length}
-                     isMobile={true}
-                   />
-                 ) : (
-                   <NavButton 
-                     href="/history" 
-                     icon={Clock} 
-                     label="History" 
-                     isActive={currentPage === 'history'}
-                     badge={searchHistory.length}
-                     isMobile={true}
-                   />
-                 )
-               ) : (
-                 <Sheet>
-                   <SheetTrigger asChild>
-                     <NavButton 
-                       href="/history" 
-                       icon={Clock} 
-                       label="History" 
-                       isActive={currentPage === 'history'}
-                       badge={searchHistory.length}
-                       isMobile={true}
-                       asChild={false}
-                     />
-                   </SheetTrigger>
-                   <SheetContent side="right" className="w-[400px] sm:w-[500px] flex flex-col">
-                     <SheetHeader className="flex-shrink-0">
-                       <SheetTitle className="flex items-center gap-2">
-                         <Clock className="h-5 w-5" />
-                         Search History
-                       </SheetTitle>
-                     </SheetHeader>
-                     <div className="flex-1 overflow-y-auto px-6 pb-6">
-                       <SearchHistory
-                         onSearchResults={handleSearchHistoryClick}
-                         loadingResultIndex={loadingResultIndex}
-                         currentSearchField="title_and_abstract"
-                         compact={true}
-                         currentSearchId={effectiveSearchId}
-                       />
-                     </div>
-                   </SheetContent>
-                 </Sheet>
-               )}
+              {/* History Button */}
+              {isOnResultsPage ? (
+                effectiveSearchId ? (
+                  <NavButton 
+                    href={`/results/${effectiveSearchId}/history`} 
+                    icon={Clock} 
+                    label="History" 
+                    isActive={currentPage === 'history'}
+                    isMobile={true}
+                    badge={searchHistory.length}
+                  />
+                ) : (
+                  <NavButton 
+                    href="/history" 
+                    icon={Clock} 
+                    label="History" 
+                    isActive={currentPage === 'history'}
+                    isMobile={true}
+                    badge={searchHistory.length}
+                  />
+                )
+              ) : (
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <NavButton 
+                      href="/history" 
+                      icon={Clock} 
+                      label="History" 
+                      isActive={currentPage === 'history'}
+                      isMobile={true}
+                      badge={searchHistory.length}
+                    />
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[400px] sm:w-[500px] flex flex-col">
+                    <SheetHeader className="flex-shrink-0">
+                      <SheetTitle className="flex items-center gap-2">
+                        <Clock className="h-5 w-5" />
+                        Search History
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto px-6 pb-6">
+                      <SearchHistory
+                        onSearchResults={handleSearchHistoryClick}
+                        loadingResultIndex={loadingResultIndex}
+                        currentSearchField="title_and_abstract"
+                        compact={true}
+                        currentSearchId={effectiveSearchId}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              )}
 
-               {/* Filters Button - Only on results pages */}
-               {isOnResultsPage && effectiveSearchId && (
-                 <NavButton 
-                   href={`/results/${effectiveSearchId}/filters`} 
-                   icon={Filter} 
-                   label="Filters" 
-                   isActive={currentPage === 'filters'}
-                   isMobile={true}
-                 />
-               )}
+              {/* Filters Button - Only on results pages */}
+              {isOnResultsPage && effectiveSearchId && (
+                <NavButton 
+                  href={`/results/${effectiveSearchId}/filters`} 
+                  icon={Filter} 
+                  label="Filters" 
+                  isActive={currentPage === 'filters'}
+                  isMobile={true}
+                />
+              )}
             </div>
           </div>
         </div>

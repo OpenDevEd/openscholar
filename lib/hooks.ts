@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { useKeywordExpansionDialogStore } from "@/lib/store";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSearchFormStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
@@ -30,14 +28,11 @@ export function useIsMobile(): boolean {
   return useMediaQuery("(max-width: 767px)");
 }
 
-// Custom hook to handle query changes with keyword expansion
+// Custom hook to handle query changes without keyword expansion
+// The keyword expansion and setSuggestedQuery is now handled centrally by QuerySyncProvider
 export function useQueryChangeHandler(setQuery: (query: string) => void) {
-  const { setSuggestedQuery } = useKeywordExpansionDialogStore();
-
   return (newQuery: string) => {
     setQuery(newQuery);
-    const { expandedQuery } = validateAndExpandKeywordsSilently(newQuery);
-    setSuggestedQuery(expandedQuery);
   };
 }
 
@@ -115,10 +110,10 @@ export function useEffectiveQuery(): string {
     }
   }
   
-  // Priority 4: Most recent search from history (fallback for any page)
-  if (searchHistory.length > 0) {
-    return searchHistory[0].query;
-  }
+  // // Priority 4: Most recent search from history (fallback for any page)
+  // if (searchHistory.length > 0) {
+  //   return searchHistory[0].query;
+  // }
   
   // Priority 5: Empty string
   return '';

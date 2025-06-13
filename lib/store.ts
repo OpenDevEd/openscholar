@@ -560,15 +560,8 @@ interface SearchHistoryUIState {
   setCurrentPage: (page: number) => void
 }
 
-interface NavbarState {
-  query: string
-  setQuery: (query: string) => void
-}
-
-interface PageContentState {
-  currentQuery: string
-  setCurrentQuery: (query: string) => void
-}
+// Removed NavbarState - using currentQuery from ResultsStore as single source of truth
+// Removed PageContentState - using currentQuery from ResultsStore as single source of truth
 
 interface ResultsPageContentState {
   isSidebarOpen: boolean
@@ -637,15 +630,8 @@ export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({
   setCurrentPage: (page) => set({ currentPage: page }),
 }))
 
-export const useNavbarStore = create<NavbarState>((set) => ({
-  query: '',
-  setQuery: (query) => set({ query: query }),
-}))
-
-export const usePageContentStore = create<PageContentState>((set) => ({
-  currentQuery: '',
-  setCurrentQuery: (query) => set({ currentQuery: query }),
-}))
+// Removed useNavbarStore - using currentQuery from ResultsStore as single source of truth
+// Removed usePageContentStore - using currentQuery from ResultsStore as single source of truth
 
 export const useResultsPageContentStore = create<ResultsPageContentState>((set) => ({
   isSidebarOpen: false,

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConditionalFooter } from "@/components/ui/conditional-footer";
 import { cn } from "@/lib/utils";
@@ -32,13 +33,15 @@ export default function RootLayout({
         className={cn(geistSans.variable, geistMono.variable, "antialiased")}
       >
         <ThemeProvider>
-          <div className="min-h-screen flex flex-col">
-            <div className="flex-1">
-              {children}
+          <QuerySyncProvider>
+            <div className="min-h-screen flex flex-col">
+              <div className="flex-1">
+                {children}
+              </div>
+              <ConditionalFooter />
             </div>
-            <ConditionalFooter />
-          </div>
-          <Toaster />
+            <Toaster />
+          </QuerySyncProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,10 +1,10 @@
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { startSearch, getSearchResults } from '@/app/actions/openalex';
-import { SearchField, getRatingOrNull, generateFilename, downloadWithMetadata, getEffectiveSearchId } from './utils';
+import { SearchField, getRatingOrNull, generateFilename, downloadWithMetadata, getEffectiveSearchId, createSearchParameters } from './utils';
 import { getCountryCodesForRegions, COUNTRIES } from './constants';
 import { getSearchResultsWithFilters, createSearchStateFromStore, extractStateFromSearchResult } from './search-utils';
-import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore, useKeywordExpansionStore, useNavbarStore, usePageContentStore, useKeywordExpansionDialogStore } from './store';
+import { useUIStore, useResultsStore, useSearchHistoryStore, useRatingsStore, useSearchFormStore, useKeywordExpansionStore } from './store';
 import { toast } from 'sonner';
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
 
@@ -175,10 +175,10 @@ const withLoadingState = async <T>(
     setLoading(true);
     return await operation();
   } finally {
-    if (isSearchCurrent(currentSearchIndex)) {
-      const { [loadingKey]: setLoading } = useUIStore.getState();
-      setLoading(false);
-    }
+    // Always clear loading state to prevent stuck loading indicators
+    // This is especially important during navigation when search index might change
+    const { [loadingKey]: setLoading } = useUIStore.getState();
+    setLoading(false);
   }
 };
 
@@ -196,11 +196,11 @@ const withSearchByIdLoadingState = async <T>(
     }
     return await operation();
   } finally {
-    if (isSearchCurrent(currentSearchIndex)) {
-      const { setIsLoading, setLoadingResultIndex } = useUIStore.getState();
-      setIsLoading(false);
-      setLoadingResultIndex(null);
-    }
+    // Always clear loading state to prevent stuck loading indicators
+    // This is especially important during navigation when search index might change
+    const { setIsLoading, setLoadingResultIndex } = useUIStore.getState();
+    setIsLoading(false);
+    setLoadingResultIndex(null);
   }
 };
 
@@ -603,31 +603,8 @@ export const createSearchMetadata = (
   dateRange?: DateRange,
   yearRange?: [number, number]
 ) => {
-  const searchParams: any = {
-    search: query,
-    searchField: searchField,
-    perPage: 200,
-    AbstractArrayToString: true
-  };
-
-  // Add date range filtering if provided
-  if (dateRange?.from || dateRange?.to) {
-    searchParams.filter = {};
-    
-    if (dateRange?.from) {
-      const fromDate = dateRange.from.toISOString().split('T')[0];
-      searchParams.filter.from_publication_date = fromDate;
-    }
-    
-    if (dateRange?.to) {
-      const toDate = dateRange.to.toISOString().split('T')[0];
-      searchParams.filter.to_publication_date = toDate;
-    }
-  } else if (yearRange) {
-    searchParams.filter = {};
-    searchParams.filter.from_publication_date = `${yearRange[0]}-01-01`;
-    searchParams.filter.to_publication_date = `${yearRange[1]}-12-31`;
-  }
+  // Use the centralized utility function to create search parameters
+  const searchParams = createSearchParameters(query, searchField, dateRange, undefined, yearRange);
 
   return {
     search: {
@@ -773,18 +750,11 @@ export async function handleSearchHistoryClick(
       searchResult = getSearchResult(searchId)!;
     }
     
-    // Set the query in all relevant stores
-    const { setQuery } = useNavbarStore.getState();
-    const { setCurrentQuery } = usePageContentStore.getState();
-    const { setSuggestedQuery } = useKeywordExpansionDialogStore.getState();
+    // Set the query in the results store (single source of truth)
+    const { setCurrentQuery } = useResultsStore.getState();
     
-    // Set the query and handle keyword expansion (like useQueryChangeHandler does)
-    setQuery(searchResult.query);
+    // Set the query (setSuggestedQuery is now handled centrally by QuerySyncProvider)
     setCurrentQuery(searchResult.query);
-    
-    // Expand keywords and set suggested query
-    const { expandedQuery } = validateAndExpandKeywordsSilently(searchResult.query);
-    setSuggestedQuery(expandedQuery);
     
     // Load the results by ID with the index for loading state
     const result = await loadSearchResultsById(searchResult.id, index);

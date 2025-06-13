@@ -48,12 +48,8 @@ export function KeywordExpansionPage({
     resetForm
   } = useKeywordExpansionDialogStore()
 
-  // Initialize suggested query using the same pattern as AI enhancement page
-  React.useEffect(() => {
-    const baseQuery = initialSuggestedQuery || effectiveQuery;
-    // Use the original query for the preview to work properly
-    setSuggestedQuery(baseQuery);
-  }, [initialSuggestedQuery, effectiveQuery, setSuggestedQuery])
+  // Note: setSuggestedQuery is now handled centrally by QuerySyncProvider
+  // The suggestedQuery will automatically sync with the navbar query
 
   const validateKeyword = (keyword: string): string | null => {
     if (!keyword.trim()) return "Keyword cannot be empty"

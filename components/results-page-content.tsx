@@ -23,6 +23,7 @@ import { Eye, Loader2, Sparkles, Search } from 'lucide-react';
 import { DownloadMenu } from './download-menu';
 import { useIsMobile, useEffectiveSearchId } from '@/lib/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
+import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation';
 
 interface ResultsPageContentProps {
   searchId?: string;
@@ -32,8 +33,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
-
-
+  const hasAttemptedLoad = React.useRef(false);
 
   const {
     currentSearchField,
@@ -65,10 +65,10 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
   } = useResultsStore();
 
   // Load results when opening a direct link or switching to a different search
+  // Only runs once on initial page load if there are no results
   React.useEffect(() => {
-    if (searchId && (
-      (results.length === 0 && !currentQuery) || // Direct link with no state
-      (effectiveSearchId !== searchId) // Different search than what's currently loaded
+    if (searchId && !hasAttemptedLoad.current && (
+      (results.length === 0)  // Direct link with no state
     )) {
       const loadResults = async () => {
         try {
@@ -80,6 +80,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
         }
       };
       loadResults();
+      hasAttemptedLoad.current = true;
     }
   }, [searchId, results.length, currentQuery, effectiveSearchId]);
 
@@ -135,8 +136,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
           <aside className="hidden lg:block flex-shrink-0">
             <SearchSidebar />
           </aside>
-
-
 
           {/* Main Content */}
           <main className="flex-1 min-w-0 relative">
@@ -217,7 +216,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                   <div className="min-w-0">
                     <h1 className="text-2xl font-bold">Search Results</h1>
                     <p className="text-muted-foreground">
-                      {totalCount.toLocaleString()} results for "{currentQuery}"
+                      {totalCount.toLocaleString()} results
                     </p>
                   </div>
                   

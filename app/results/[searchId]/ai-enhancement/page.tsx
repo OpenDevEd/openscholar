@@ -2,15 +2,12 @@
 
 import React from "react"
 import { AIEnhancementPage } from "@/components/ai-enhancement-page"
-import { useResultsStore, useNavbarStore, useKeywordExpansionDialogStore } from "@/lib/store"
+import { useResultsStore } from "@/lib/store"
 import { useRouter } from "next/navigation"
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation"
 
 export default function AIEnhancementResultsPage({ params }: { params: Promise<{ searchId: string }> }) {
   const router = useRouter()
-  const { currentQuery } = useResultsStore()
-  const { setQuery } = useNavbarStore()
-  const { setSuggestedQuery } = useKeywordExpansionDialogStore()
+  const { currentQuery, setCurrentQuery } = useResultsStore()
   const [searchId, setSearchId] = React.useState<string>("")
 
   React.useEffect(() => {
@@ -27,11 +24,8 @@ export default function AIEnhancementResultsPage({ params }: { params: Promise<{
   }
 
   const handleQueryChange = (newQuery: string) => {
-    // Update the navbar query
-    setQuery(newQuery)
-    // Also update the suggested query (like useQueryChangeHandler does)
-    const { expandedQuery } = validateAndExpandKeywordsSilently(newQuery)
-    setSuggestedQuery(expandedQuery)
+    // Update the current query (setSuggestedQuery is now handled centrally by QuerySyncProvider)
+    setCurrentQuery(newQuery)
   }
 
   return (
