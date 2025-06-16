@@ -12,12 +12,14 @@ async function callOpenAlexSDK(
   dateRange?: DateRange, 
   sortBy?: string, 
   yearRange?: [number, number], 
-  countryCodes?: string[]
+  countryCodes?: string[],
+  citesItemId?: string,
+  relatedToItemId?: string
 ) {
   console.log("query", query);
   
   // Use the centralized utility function to create search parameters
-  const searchParams = createSearchParameters(query, searchField, dateRange, sortBy, yearRange, countryCodes);
+  const searchParams = createSearchParameters(query, searchField, dateRange, sortBy, yearRange, countryCodes, citesItemId, relatedToItemId);
 
   console.log('OpenAlex SDK call with params:', JSON.stringify(searchParams, null, 2));
 
@@ -41,16 +43,16 @@ async function callOpenAlexSDK(
   }
 }
 
-export async function startSearch(formData: FormData, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], countryCodes?: string[], expandedQuery?: string) {
+export async function startSearch(formData: FormData, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], countryCodes?: string[], expandedQuery?: string, citesItemId?: string, relatedToItemId?: string) {
   const query = expandedQuery || formData.get('query') as string;
-  const results = await callOpenAlexSDK(query, searchField, dateRange, sortBy, yearRange, countryCodes);
+  const results = await callOpenAlexSDK(query, searchField, dateRange, sortBy, yearRange, countryCodes, citesItemId, relatedToItemId);
   return results.meta.count;
 }
 
-export async function getSearchResults(query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], countryCodes?: string[], expandedQuery?: string) {
+export async function getSearchResults(query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], countryCodes?: string[], expandedQuery?: string, citesItemId?: string, relatedToItemId?: string) {
   console.log("searchField", searchField);
   const actualQuery = expandedQuery || query;
   
-  const results = await callOpenAlexSDK(actualQuery, searchField, dateRange, sortBy, yearRange, countryCodes);
+  const results = await callOpenAlexSDK(actualQuery, searchField, dateRange, sortBy, yearRange, countryCodes, citesItemId, relatedToItemId);
   return results;
 }

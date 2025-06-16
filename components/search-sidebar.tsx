@@ -6,7 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe } from "lucide-react";
+import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe, Quote, Network } from "lucide-react";
 import { format } from "date-fns";
 import { cn, SearchField, fields } from "@/lib/utils";
 import { sortOptions } from "@/lib/constants";
@@ -23,9 +23,11 @@ import { YearRangePicker } from "./year-range-picker";
 import { RatingRangePicker } from "./rating-range-picker";
 import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
+import { CitesFilter } from "./cites-filter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
+import { RelatedToFilter } from "./related-to-filter";
 
 interface SearchSidebarProps {
   isOpen?: boolean;
@@ -44,6 +46,8 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     isRatingFilterActive,
     isCountryFilterActive,
     isCountryFocusActive,
+    isCitesFilterActive,
+    isRelatedToFilterActive,
     setCurrentSearchField,
     setDateRange,
     setSortBy,
@@ -53,7 +57,9 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     clearYearRange,
     clearRatingFilter,
     clearCountryFilter,
-    clearCountryFocus
+    clearCountryFocus,
+    clearCitesFilter,
+    clearRelatedToFilter
   } = useSearchFormStore();
 
   // Helper functions that update store and trigger search update
@@ -93,6 +99,16 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     // No need to fetch new results - rating filter works client-side
   };
 
+  const handleClearCitesFilter = async () => {
+    clearCitesFilter();
+    await updateCurrentSearchFilters();
+  };
+
+  const handleClearRelatedToFilter = async () => {
+    clearRelatedToFilter();
+    await updateCurrentSearchFilters();
+  };
+
   const handleClearAllFilters = async () => {
     setCurrentSearchField("title_and_abstract");
     setSortBy("relevance_score:desc");
@@ -101,6 +117,8 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     clearRatingFilter(); // This is client-side only, no API call needed
     clearCountryFilter(); // Clear country filter
     clearCountryFocus(); // Clear country focus filter
+    clearCitesFilter(); // Clear cites filter
+    clearRelatedToFilter(); // Clear related_to filter
     await updateCurrentSearchFilters(); // Only for the server-side filters
   };
 
@@ -110,6 +128,8 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     if (isRatingFilterActive) count++;
     if (isCountryFilterActive) count++;
     if (isCountryFocusActive) count++;
+    if (isCitesFilterActive) count++;
+    if (isRelatedToFilterActive) count++;
     if (currentSearchField !== "title_and_abstract") count++;
     if (sortBy !== "relevance_score:desc") count++;
     return count;
@@ -410,6 +430,82 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Cites Filter - Floating Panel */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Quote className="h-4 w-4 text-orange-500" />
+            Citation filter
+          </div>
+          {isCitesFilterActive && (
+            <Badge variant="outline" className="text-xs border-orange-500 text-orange-600 dark:text-orange-400">
+              Active
+            </Badge>
+          )}
+        </div>
+
+        <div className={cn(
+          "rounded-2xl border-2 p-4 transition-all duration-300",
+          isCitesFilterActive 
+            ? "border-orange-500 bg-orange-50 dark:bg-orange-950/50 shadow-lg" 
+            : "border-border bg-background"
+        )}>
+          <div className="space-y-4">
+            <CitesFilter />
+            {isCitesFilterActive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearCitesFilter}
+                className="w-full h-9 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-950/50"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear citation filter
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Related To Filter - Floating Panel */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Network className="h-4 w-4 text-blue-500" />
+            Related works filter
+          </div>
+          {isRelatedToFilterActive && (
+            <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
+              Active
+            </Badge>
+          )}
+        </div>
+
+        <div className={cn(
+          "rounded-2xl border-2 p-4 transition-all duration-300",
+          isRelatedToFilterActive 
+            ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 shadow-lg" 
+            : "border-border bg-background"
+        )}>
+          <div className="space-y-4">
+            <RelatedToFilter />
+            {isRelatedToFilterActive && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearRelatedToFilter}
+                className="w-full h-9 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-950/50"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear related works filter
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

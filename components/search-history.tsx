@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check } from "lucide-react";
 import { format } from "date-fns";
 import { jsonToCSV, downloadAsFile, SearchField, uploadFile, triggerFileUpload } from "@/lib/utils";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
@@ -13,7 +14,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useSearchHistoryStore, useSearchHistoryUIStore } from "@/lib/store";
+import { useSearchHistoryStore, useSearchHistoryUIStore, useKeywordExpansionStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
 import { useIsMobile } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -33,8 +34,13 @@ interface SearchHistoryProps {
 export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false }: SearchHistoryProps) {
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const { keywords, addKeyword } = useKeywordExpansionStore();
   const isMobile = useIsMobile();
   const itemsPerPage = compact ? 5 : 10;
+  
+  // State for bookmark creation
+  const [bookmarkingIndex, setBookmarkingIndex] = useState<number | null>(null);
+  const [bookmarkName, setBookmarkName] = useState('');
 
   // Handlers
   const handleCardClick = (result: any, actualIndex: number) => {
@@ -146,6 +152,40 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         toast.success("All search history cleared");
       }
     });
+  };
+
+  const validateKeyword = (keyword: string): string | null => {
+    if (!keyword.trim()) return "Bookmark name cannot be empty";
+    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return "Bookmark name can only contain letters, numbers, and dashes";
+    if (keyword.includes(' ')) return "Bookmark name cannot contain spaces";
+    if (keywords[keyword]) return `Bookmark "${keyword}" already exists`;
+    return null;
+  };
+
+  const handleBookmarkClick = (index: number) => {
+    setBookmarkingIndex(index);
+    setBookmarkName('');
+  };
+
+  const handleBookmarkCancel = () => {
+    setBookmarkingIndex(null);
+    setBookmarkName('');
+  };
+
+  const handleBookmarkSubmit = (index: number, query: string) => {
+    const validationError = validateKeyword(bookmarkName);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    // Expand the query before saving it as a bookmark
+    const { expandedQuery } = validateAndExpandKeywordsSilently(query);
+    
+    addKeyword(bookmarkName.trim(), expandedQuery);
+    toast.success(`Search saved as bookmark "${bookmarkName}"`);
+    setBookmarkingIndex(null);
+    setBookmarkName('');
   };
 
   const formatNumber = (num: number) => num.toLocaleString();
@@ -265,138 +305,45 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         )}
         onClick={() => handleCardClick(result, actualIndex)}
       >
-      {/* Header with actions */}
+      {/* Header with filters and actions */}
       <div className={cn(
         "flex items-center justify-between pb-2",
         variant === 'compact' ? 'px-4 pt-4' : 'px-5 pt-5'
       )}>
-        <div className={cn(
-          "flex items-center gap-1 text-muted-foreground bg-muted/60 py-1 rounded-full shrink-0",
-          variant === 'compact' ? 'text-xs px-2' : 'text-sm px-3'
-        )}>
-          <Search className={cn(
-            variant === 'compact' ? 'h-3 w-3' : 'h-4 w-4'
-          )} />
-          {formatNumber(result.count)}{variant === 'full' ? ' results' : ''}
-        </div>
-        
-        {/* Actions */}
-        <div className={cn(
-          "flex items-center gap-1 transition-opacity",
-          variant === 'compact' 
-            ? 'opacity-100 md:opacity-0 md:group-hover:opacity-100' 
-            : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
-        )}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopyQuery(result.query);
-            }}
-            title="Copy search query"
-          >
-            <Copy className={cn(
-              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-            )} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex);
-            }}
-            disabled={loadingResultIndex !== null}
-            title="View search results"
-          >
-            {loadingResultIndex === actualIndex ? (
-              <Loader2 className={cn(
-                "animate-spin",
-                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-              )} />
-            ) : (
-              <ExternalLink className={cn(
-                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-              )} />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteItem(actualIndex, result.query);
-            }}
-            title="Remove from history"
-          >
-            <X className={cn(
-              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-            )} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className={cn(
-        variant === 'compact' ? 'px-4 pb-4' : 'px-5 pb-5'
-      )}>
-        <div className="space-y-3">
-          {/* Query - now has full width */}
-          <div>
-            <p className={cn(
-              "text-foreground break-words leading-relaxed",
-              variant === 'compact' ? 'font-medium text-sm md:text-base' : 'font-semibold text-lg'
-            )} title={result.query}>
-              {result.query}
-            </p>
-          </div>
-          
-          {/* Metadata */}
+        {/* Filters section with horizontal scroll */}
+        <div className="flex-1 overflow-x-auto scrollbar-hover">
           <div className={cn(
-            "flex items-center",
-            variant === 'compact' ? 'flex-wrap gap-2 text-xs' : 'flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm'
+            "flex items-center gap-2 min-w-0",
+            variant === 'compact' ? 'text-xs' : 'text-xs sm:text-sm'
           )}>
             <span className={cn(
-              "bg-primary/10 text-primary py-1 font-medium",
+              "bg-primary/10 text-primary py-1 font-medium shrink-0",
               variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
             )}>
               {variant === 'full' ? 'Field: ' : ''}{result.field}
             </span>
             {result.filterType === "year" && result.yearRange ? (
               <span className={cn(
-                "bg-blue-50 text-blue-700 py-1",
+                "bg-blue-50 text-blue-700 py-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
               )}>
                 📅 {result.yearRange[0]} - {result.yearRange[1]}
               </span>
             ) : result.dateRange?.from ? (
               <span className={cn(
-                "bg-blue-50 text-blue-700 py-1",
+                "bg-blue-50 text-blue-700 py-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
               )}>
                 📅 {format(result.dateRange.from, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy")} - {result.dateRange.to ? format(result.dateRange.to, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy") : "now"}
               </span>
             ) : variant === 'full' ? (
-              <span className="bg-gray-50 text-gray-700 px-3 py-1 rounded-lg">
+              <span className="bg-gray-50 text-gray-700 px-3 py-1 rounded-lg shrink-0">
                 📅 All dates
               </span>
             ) : null}
             {result.isCountryFilterActive && result.selectedRegions && result.selectedRegions.length > 0 && (
               <span className={cn(
-                "bg-emerald-50 text-emerald-700 py-1 flex items-center gap-1",
+                "bg-emerald-50 text-emerald-700 py-1 flex items-center gap-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
               )}>
                 🌍 Institution location: {(() => {
@@ -430,7 +377,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             )}
             {result.isCountryFocusActive && result.selectedCountryFocus && result.selectedCountryFocus.length > 0 && (
               <span className={cn(
-                "bg-purple-50 text-purple-700 py-1 flex items-center gap-1",
+                "bg-purple-50 text-purple-700 py-1 flex items-center gap-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
               )}>
                 🎯 Country focus: {(() => {
@@ -462,9 +409,25 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 )}
               </span>
             )}
+            {result.citesItemId && (
+              <span className={cn(
+                "bg-orange-50 text-orange-700 py-1 flex items-center gap-1 shrink-0",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
+                📑 Cites: {result.citesItemId}
+              </span>
+            )}
+            {result.relatedToItemId && (
+              <span className={cn(
+                "bg-blue-50 text-blue-700 py-1 flex items-center gap-1 shrink-0",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
+                🔗 Related: {result.relatedToItemId}
+              </span>
+            )}
             {(result.isRatingFilterActive || result.onlyRatedPapers) && (
               <span className={cn(
-                "bg-amber-50 text-amber-700 py-1 flex items-center gap-1",
+                "bg-amber-50 text-amber-700 py-1 flex items-center gap-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
               )}>
                 ⭐ {(() => {
@@ -483,11 +446,174 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
               </span>
             )}
             {variant === 'full' && (
-              <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg">
+              <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg shrink-0">
                 Sort: {result.sortBy ? sortOptions.find(opt => opt.value === result.sortBy)?.label || result.sortBy : "Relevance"}
               </span>
             )}
           </div>
+        </div>
+        
+        {/* Actions */}
+        <div className={cn(
+          "flex items-center gap-1 transition-opacity ml-2 shrink-0",
+          variant === 'compact' 
+            ? 'opacity-100 md:opacity-0 md:group-hover:opacity-100' 
+            : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
+        )}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopyQuery(result.query);
+            }}
+            title="Copy search query"
+          >
+            <Copy className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "text-muted-foreground hover:text-amber-600 hover:bg-amber-50",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleBookmarkClick(actualIndex);
+            }}
+            disabled={!result.query.trim()}
+            title="Save as bookmark"
+          >
+            <BookmarkPlus className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "text-muted-foreground hover:text-primary hover:bg-primary/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex);
+            }}
+            disabled={loadingResultIndex !== null}
+            title="View search results"
+          >
+            {loadingResultIndex === actualIndex ? (
+              <Loader2 className={cn(
+                "animate-spin",
+                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+              )} />
+            ) : (
+              <Search className={cn(
+                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+              )} />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteItem(actualIndex, result.query);
+            }}
+            title="Remove from history"
+          >
+            <X className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className={cn(
+        variant === 'compact' ? 'px-4 pb-4' : 'px-5 pb-5'
+      )}>
+        <div className="space-y-3">
+          {bookmarkingIndex === actualIndex ? (
+            /* Bookmark creation interface */
+            <div className="space-y-3 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                <BookmarkPlus className="h-4 w-4" />
+                <span className="font-medium text-sm">Save as Bookmark</span>
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                Bookmarks let you create shortcuts for complex search queries. Use the format "bookmark..." in your search to expand them automatically.
+              </p>
+              <div className="space-y-2">
+                <Input
+                  placeholder="Enter bookmark name (e.g., ai-research)"
+                  value={bookmarkName}
+                  onChange={(e) => setBookmarkName(e.target.value)}
+                  className="text-sm bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400 dark:focus:border-amber-600"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleBookmarkSubmit(actualIndex, result.query);
+                    } else if (e.key === 'Escape') {
+                      handleBookmarkCancel();
+                    }
+                  }}
+                  autoFocus
+                />
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Letters, numbers, and dashes only. No spaces allowed.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleBookmarkSubmit(actualIndex, result.query)}
+                    disabled={!bookmarkName.trim()}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleBookmarkCancel}
+                    className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Normal content */
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <p className={cn(
+                "text-foreground break-words leading-relaxed",
+                variant === 'compact' ? 'font-medium text-sm md:text-base' : 'font-semibold text-lg'
+              )} title={result.query}>
+                <span className={cn(
+                  "inline-flex items-center gap-1 text-muted-foreground bg-muted/60 py-0.5 rounded mr-2",
+                  variant === 'compact' ? 'text-xs px-1.5' : 'text-sm px-2'
+                )}>
+                  <Search className={cn(
+                    variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+                  )} />
+                  {formatNumber(result.count)}
+                </span>
+                {result.query}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -41,23 +41,42 @@ export async function enhanceSearchQuery(
     const result = await generateObject({
       model,
       schema: queryEnhancementSchema,
-      system: `You are an academic search query optimization expert. Your task is to enhance search queries for academic papers and research articles to make them more comprehensive and effective.
+      system: `You are an Elasticsearch Query String Query optimization expert for academic search. Your task is to enhance queries following Elasticsearch syntax rules while maximizing character efficiency.
 
-Guidelines for enhancement:
-1. Add relevant synonyms and alternative terms using OR operators
-2. Group related concepts with AND operators
-3. Use parentheses for proper logical grouping
-4. Maintain academic and scientific terminology
-5. Consider field-specific jargon and common variations
-6. Keep the enhanced query readable and not overly complex
-7. Preserve the original intent and scope of the query
+Core Principles:
+1. Use parentheses to group shared terms efficiently: (mechanical OR software) AND engineering
+2. Follow Elasticsearch Query String Query syntax exactly
+3. Prioritize character efficiency - avoid redundant terms
+4. Group synonyms with OR, then AND with shared concepts
+5. Use field-specific academic terminology and abbreviations
+6. Maintain search precision while improving recall
 
-Focus on improving recall while maintaining precision for academic search engines.`,
-      prompt: `Enhance this academic search query to improve search results by adding synonyms, alternative terms, and proper boolean operators:
+Elasticsearch Rules:
+- Use AND, OR, NOT operators (case sensitive)
+- Group with parentheses for precedence
+- Use quotes for exact phrases: "machine learning"
+- Wildcards: algorithm* for variations
+- Field searches: title:"deep learning"
+
+Character Optimization Examples:
+- Instead of: "mechanical engineering" OR "software engineering"
+- Use: (mechanical OR software) AND engineering
+- Instead of: "artificial intelligence" OR "machine learning" OR "deep learning"  
+- Use: (artificial OR machine OR deep) AND (intelligence OR learning)
+
+Focus on creating compact, precise queries that follow Elasticsearch syntax.`,
+      prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax. Prioritize parentheses for efficient grouping and character optimization:
 
 Original query: "${query}"
 
-Provide an enhanced version that maintains the original intent but captures more relevant papers through strategic use of synonyms and boolean logic.`,
+Requirements:
+1. Use parentheses to group shared terms: (term1 OR term2) AND shared_term
+2. Follow Elasticsearch syntax exactly (AND, OR, NOT in caps)
+3. Minimize character count while maximizing search coverage
+4. Add relevant academic synonyms and abbreviations
+5. Group efficiently to avoid redundant terms
+
+Provide a character-efficient enhanced query that captures more relevant academic papers.`,
     });
 
     return {

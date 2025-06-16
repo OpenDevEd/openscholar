@@ -19,6 +19,10 @@ export interface SearchWithFiltersParams {
     isCountryFilterActive?: boolean;
     selectedCountryFocus?: string[];
     isCountryFocusActive?: boolean;
+    citesItemId?: string;
+    isCitesFilterActive?: boolean;
+    relatedToItemId?: string;
+    isRelatedToFilterActive?: boolean;
   };
 }
 
@@ -70,7 +74,11 @@ export async function getSearchResultsWithFilters(
     selectedRegions = storeState.selectedRegions,
     isCountryFilterActive = storeState.isCountryFilterActive,
     selectedCountryFocus = storeState.selectedCountryFocus,
-    isCountryFocusActive = storeState.isCountryFocusActive
+    isCountryFocusActive = storeState.isCountryFocusActive,
+    citesItemId = storeState.citesItemId,
+    isCitesFilterActive = storeState.isCitesFilterActive,
+    relatedToItemId = storeState.relatedToItemId,
+    isRelatedToFilterActive = storeState.isRelatedToFilterActive
   } = overrideState || {};
 
   // Determine which date/year range to use based on filter type
@@ -80,6 +88,12 @@ export async function getSearchResultsWithFilters(
   // Get country codes for API filtering if country filter is active
   const updateCountryData = isCountryFilterActive ? getCountryCodesForRegions(selectedRegions) : null;
   const effectiveCountryCodes = updateCountryData ? updateCountryData.countries : undefined;
+
+  // Get effective cites item ID
+  const effectiveCitesItemId = isCitesFilterActive ? citesItemId : undefined;
+
+  // Get effective related_to item ID
+  const effectiveRelatedToItemId = isRelatedToFilterActive ? relatedToItemId : undefined;
 
   // Get country names for query enhancement if Country focus is active
   const getCountryNames = (): string[] => {
@@ -130,7 +144,9 @@ export async function getSearchResultsWithFilters(
     sortBy,
     effectiveYearRange,
     effectiveCountryCodes,
-    finalApiQuery // Pass the final enhanced query as both search and expanded query
+    finalApiQuery, // Pass the final enhanced query as both search and expanded query
+    effectiveCitesItemId,
+    effectiveRelatedToItemId
   );
 
   return {
@@ -162,7 +178,11 @@ export function createSearchStateFromStore(
     isCountryFocusActive,
     ratingRange,
     isRatingFilterActive,
-    onlyRatedPapers
+    onlyRatedPapers,
+    citesItemId,
+    isCitesFilterActive,
+    relatedToItemId,
+    isRelatedToFilterActive
   } = useSearchFormStore.getState();
 
   return {
@@ -179,7 +199,9 @@ export function createSearchStateFromStore(
     isCountryFocusActive,
     ratingRange,
     isRatingFilterActive,
-    onlyRatedPapers
+    onlyRatedPapers,
+    citesItemId: isCitesFilterActive ? citesItemId : undefined,
+    relatedToItemId: isRelatedToFilterActive ? relatedToItemId : undefined
   };
 }
 
@@ -192,6 +214,10 @@ export function extractStateFromSearchResult(searchResult: any) {
     selectedRegions: searchResult.selectedRegions || [],
     isCountryFilterActive: searchResult.isCountryFilterActive || false,
     selectedCountryFocus: searchResult.selectedCountryFocus || [],
-    isCountryFocusActive: searchResult.isCountryFocusActive || false
+    isCountryFocusActive: searchResult.isCountryFocusActive || false,
+    citesItemId: searchResult.citesItemId || '',
+    isCitesFilterActive: !!searchResult.citesItemId,
+    relatedToItemId: searchResult.relatedToItemId || '',
+    isRelatedToFilterActive: !!searchResult.relatedToItemId
   };
 } 

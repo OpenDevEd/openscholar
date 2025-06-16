@@ -52,9 +52,9 @@ export function KeywordExpansionPage({
   // The suggestedQuery will automatically sync with the navbar query
 
   const validateKeyword = (keyword: string): string | null => {
-    if (!keyword.trim()) return "Keyword cannot be empty"
-    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return "Keywords can only contain letters, numbers, and dashes"
-    if (keyword.includes(' ')) return "Keywords cannot contain spaces"
+    if (!keyword.trim()) return "Bookmark name cannot be empty"
+    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return "Bookmark name can only contain letters, numbers, and dashes"
+    if (keyword.includes(' ')) return "Bookmark name cannot contain spaces"
     return null
   }
 
@@ -74,13 +74,13 @@ export function KeywordExpansionPage({
     }
     
     if (keywords[shorthand]) {
-      toast.error(`Keyword "${shorthand}" already exists`)
+      toast.error(`Bookmark "${shorthand}" already exists`)
       return
     }
     
     addKeyword(shorthand, expansion)
     resetForm()
-    toast.success(`Keyword "${shorthand}" added successfully`)
+    toast.success(`Bookmark "${shorthand}" added successfully`)
   }
 
   const handleSaveCurrentQuery = () => {
@@ -98,7 +98,7 @@ export function KeywordExpansionPage({
     }
     
     if (keywords[keyword]) {
-      toast.error(`Keyword "${keyword}" already exists`)
+      toast.error(`Bookmark "${keyword}" already exists`)
       return
     }
     
@@ -108,7 +108,7 @@ export function KeywordExpansionPage({
     addKeyword(keyword, expandedQuery)
     setCurrentKeyword('')
     setSuggestedQuery('')
-    toast.success(`Search saved as keyword "${keyword}"`)
+    toast.success(`Search saved as bookmark "${keyword}"`)
   }
 
   const handleBack = () => {
@@ -122,18 +122,18 @@ export function KeywordExpansionPage({
   return (
     <div className="container mx-auto p-6">
       <PageHeader
-        title="Keyword Expansion"
+        title="Bookmarks"
         description="Create shortcuts for commonly used search terms"
         icon={BookOpen}
         showBackButton={showBackButton}
         onBack={handleBack}
         stats={{
           count: Object.keys(keywords).length,
-          label: 'Keywords',
-          singularLabel: 'Keyword'
+          label: 'Bookmarks',
+          singularLabel: 'Bookmark'
         }}
         infoItems={[
-          { label: 'Use keyword... format in search', color: 'bg-green-500' },
+          { label: 'Use bookmark... format in search', color: 'bg-green-500' },
           { label: 'Auto-expands to full search terms', color: 'bg-blue-500' },
           { label: 'Saves time on complex queries', color: 'bg-purple-500' }
         ]}
@@ -149,7 +149,7 @@ export function KeywordExpansionPage({
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
                     <Save className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    Save Current Search as Keyword
+                    Save Current Search as Bookmark
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -161,14 +161,14 @@ export function KeywordExpansionPage({
                         value={suggestedQuery}
                         onChange={(e) => setSuggestedQuery(e.target.value)}
                         className="text-sm font-mono min-h-[120px] text-emerald-700 dark:text-emerald-300 bg-background border-emerald-200 dark:border-emerald-800 focus:border-emerald-400 dark:focus:border-emerald-600"
-                        placeholder="Edit the query that will be saved as keyword..."
+                        placeholder="Edit the query that will be saved as bookmark..."
                       />
                     </div>
                     
                     <div className="flex gap-3">
                       <div className="flex-1">
                         <Input
-                          placeholder="Enter keyword name (e.g., my-search)"
+                          placeholder="Enter bookmark name (e.g., my-search)"
                           value={currentKeyword}
                           onChange={(e) => setCurrentKeyword(e.target.value)}
                         />
@@ -184,7 +184,7 @@ export function KeywordExpansionPage({
                     </div>
                     
                     <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                      The query above will be saved as a reusable keyword.
+                      The query above will be saved as a bookmark.
                     </p>
                   </div>
                 </CardContent>
@@ -195,14 +195,14 @@ export function KeywordExpansionPage({
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Plus className="h-5 w-5" />
-                    Add New Keyword
+                    Add New Bookmark
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="shorthand">Keyword</Label>
+                        <Label htmlFor="shorthand">Bookmark</Label>
                         <Input
                           id="shorthand"
                           placeholder="e.g., ml"
@@ -224,7 +224,7 @@ export function KeywordExpansionPage({
                           className="min-h-[120px] text-base"
                         />
                         <p className="text-xs text-muted-foreground">
-                          The full search terms that will replace your keyword.
+                          The full search terms that will replace your bookmark.
                         </p>
                       </div>
                     </div>
@@ -234,7 +234,7 @@ export function KeywordExpansionPage({
                       className="w-full"
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Keyword
+                      Add Bookmark
                     </Button>
                   </div>
                 </CardContent>
@@ -246,14 +246,14 @@ export function KeywordExpansionPage({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="h-5 w-5" />
-                  Add New Keyword
+                  Add New Bookmark
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="shorthand-solo">Keyword</Label>
+                      <Label htmlFor="shorthand-solo">Bookmark</Label>
                       <Input
                         id="shorthand-solo"
                         placeholder="e.g., ml"
@@ -275,7 +275,7 @@ export function KeywordExpansionPage({
                         className="min-h-[120px] text-base"
                       />
                       <p className="text-xs text-muted-foreground">
-                        The full search terms that will replace your keyword.
+                        The full search terms that will replace your bookmark.
                       </p>
                     </div>
                   </div>
@@ -285,7 +285,7 @@ export function KeywordExpansionPage({
                     className="w-full"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Keyword
+                    Add Bookmark
                   </Button>
                 </div>
               </CardContent>
@@ -313,7 +313,7 @@ export function KeywordExpansionPage({
               <ul className="text-sm text-muted-foreground space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  Type your keyword followed by "..." in the search box
+                  Type your bookmark's name followed by "..." in the search box
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
@@ -321,11 +321,11 @@ export function KeywordExpansionPage({
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  Keywords are case-sensitive and can contain letters, numbers, and dashes
+                  Bookmarks are case-sensitive and can contain letters, numbers, and dashes
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  You'll see a warning if a keyword isn't found
+                  You'll see a warning if a bookmark isn't found
                 </li>
               </ul>
             </CardContent>
@@ -338,7 +338,7 @@ export function KeywordExpansionPage({
           <Card className="h-fit max-h-[800px] lg:flex lg:flex-col">
             <CardHeader className="lg:flex-shrink-0">
               <CardTitle className="flex items-center justify-between">
-                <span>Your Keywords</span>
+                <span>Your Bookmarks</span>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{Object.keys(keywords).length}</Badge>
                   {Object.keys(keywords).length > 0 && (
@@ -346,7 +346,7 @@ export function KeywordExpansionPage({
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        if (confirm('Are you sure you want to clear all keywords?')) {
+                        if (confirm('Are you sure you want to clear all bookmarks?')) {
                           Object.keys(keywords).forEach(keyword => removeKeyword(keyword))
                         }
                       }}
@@ -363,8 +363,8 @@ export function KeywordExpansionPage({
                 <div className="flex-1 flex items-center justify-center text-center py-12 text-muted-foreground">
                   <div>
                     <BookOpen className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium mb-2">No keywords defined yet</p>
-                    <p className="text-sm">Add your first keyword using the forms above.</p>
+                    <p className="text-lg font-medium mb-2">No bookmarks defined yet</p>
+                    <p className="text-sm">Add your first bookmark using the forms above.</p>
                   </div>
                 </div>
               ) : (
@@ -401,7 +401,7 @@ export function KeywordExpansionPage({
                           variant="ghost"
                           onClick={() => removeKeyword(shorthand)}
                           className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0 transition-all duration-200 rounded-full"
-                          title={`Delete keyword "${shorthand}"`}
+                          title={`Delete bookmark "${shorthand}"`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

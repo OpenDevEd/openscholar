@@ -14,9 +14,9 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
   if (!query.trim()) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">Keyword Expansion Preview</p>
+        <p className="text-sm font-medium">Bookmark Expansion Preview</p>
         <p className="text-xs text-muted-foreground">
-          Type a query with "keyword..." to see expansion preview
+          Type a query with "bookmark..." to see expansion preview
         </p>
       </div>
     )
@@ -28,13 +28,13 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
   if (!hasKeywords) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">Keyword Expansion Preview</p>
+        <p className="text-sm font-medium">Bookmark Expansion Preview</p>
         <div className="p-2 bg-muted/50 rounded text-xs">
           <span className="text-muted-foreground">Original: </span>
           <span>{query}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          No expandable keywords found. Use "keyword..." format.
+          No expandable bookmarks found. Use "bookmark..." format.
         </p>
       </div>
     )
@@ -72,7 +72,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Keyword Expansion Preview</p>
+      <p className="text-sm font-medium">Bookmark Expansion Preview</p>
       
       <div className="space-y-2">
         <div className="p-2 bg-muted/30 rounded-md">
@@ -106,12 +106,12 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
       
       {!hasExpansions && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
-          Some keywords were not found in your expansion list.
+          Some bookmarks were not found in your expansion list.
         </p>
       )}
       
       <div className="text-xs text-muted-foreground pt-1 border-t">
-        <p>💡 Keywords are highlighted when expanded</p>
+        <p>💡 Bookmarks are highlighted when expanded</p>
       </div>
     </div>
   )

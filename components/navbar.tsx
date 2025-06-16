@@ -140,8 +140,8 @@ export function Navbar({
   const getCurrentPage = () => {
     if (!pathname) return null;
     if (pathname === '/') return 'home';
-    if (pathname.startsWith('/results') && !pathname.includes('/keyword-expansion') && !pathname.includes('/ai-enhancement') && !pathname.includes('/history') && !pathname.includes('/filters')) return 'results';
-    if (pathname.includes('/keyword-expansion')) return 'keywords';
+    if (pathname.startsWith('/results') && !pathname.includes('/bookmarks') && !pathname.includes('/ai-enhancement') && !pathname.includes('/history') && !pathname.includes('/filters')) return 'results';
+    if (pathname.includes('/bookmarks')) return 'bookmarks';
     if (pathname.includes('/ai-enhancement')) return 'ai-enhancement';
     if (pathname.includes('/history')) return 'history';
     if (pathname.includes('/filters')) return 'filters';
@@ -281,10 +281,10 @@ export function Navbar({
             <KeywordExpansionTooltip 
               query={currentQuery} 
               side="bottom" 
-              variant={currentPage === 'keywords' ? "default" : "ghost"}
+              variant={currentPage === 'bookmarks' ? "default" : "ghost"}
               buttonClassName="h-8 px-3"
               asLink
-              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : "/keyword-expansion"}
+              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/bookmarks` : "/bookmarks"}
             />
 
             {/* AI Enhancement Button */}
@@ -428,10 +428,10 @@ export function Navbar({
 
               {/* Keywords Button */}
               <NavButton 
-                href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/keyword-expansion` : "/keyword-expansion"} 
+                href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/bookmarks` : "/bookmarks"} 
                 icon={BookOpen} 
-                label="Keywords" 
-                isActive={currentPage === 'keywords'}
+                label="Bookmarks" 
+                isActive={currentPage === 'bookmarks'}
                 isMobile={true}
               />
 

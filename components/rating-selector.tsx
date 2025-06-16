@@ -54,7 +54,7 @@ export function RatingSelector({ paperId, variant = "default" }: RatingSelectorP
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger className="h-9 w-auto min-w-[4rem] px-2">
+        <SelectTrigger className="h-8 w-auto min-w-[4rem] px-2">
           <div className="flex items-center gap-1">
             {renderCompactStar()}
             <span className="text-xs">

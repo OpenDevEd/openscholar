@@ -3,7 +3,6 @@
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { BookOpen } from "lucide-react"
-import { KeywordExpansionDialog } from "./keyword-expansion-dialog"
 import { KeywordExpansionPreview } from "./keyword-expansion-preview"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useKeywordExpansionDialogStore, useKeywordExpansionStore } from "@/lib/store"
@@ -17,6 +16,7 @@ interface KeywordExpansionTooltipProps {
   asLink?: boolean
   href?: string
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+  iconOnly?: boolean
   [key: string]: any // Allow data attributes
 }
 
@@ -27,6 +27,7 @@ export function KeywordExpansionTooltip({
   asLink = false,
   href,
   variant = "ghost",
+  iconOnly = false,
   ...props
 }: KeywordExpansionTooltipProps) {
   const { isOpen } = useKeywordExpansionDialogStore()
@@ -60,7 +61,7 @@ export function KeywordExpansionTooltip({
   const buttonContent = (
     <>
       <BookOpen className="h-4 w-4" />
-      <span>Keywords</span>
+      {!iconOnly && <span>Bookmarks</span>}
       
       {/* Badges */}
       {hasKeywords && (
@@ -87,48 +88,16 @@ export function KeywordExpansionTooltip({
     <Button 
       asChild
       variant={variant}
-      size="sm"
+      size={iconOnly ? "icon" : "sm"}
       className={cn("flex-shrink-0 relative", buttonClassName)}
-      title="Keyword Expansion Preview"
+      title="Bookmark Expansion Preview"
       {...props}
     >
-      <Link href={href} className="flex items-center gap-2">
+      <Link href={href} className={iconOnly ? "flex items-center justify-center" : "flex items-center gap-2"}>
         {buttonContent}
       </Link>
     </Button>
-  ) : (
-    <KeywordExpansionDialog>
-      <Button 
-        type="button" 
-        variant="outline"
-        className={cn("flex-shrink-0 relative", buttonClassName)}
-        size="icon"
-        title="Keyword Expansion Preview"
-        {...props}
-      >
-        <BookOpen className="h-4 w-4" />
-        
-        {/* Badges */}
-        {hasKeywords && (
-          <div className="absolute -top-1 -right-1 flex flex-col gap-0.5">
-            {/* Missing keywords badge (red) */}
-            {missingCount > 0 && (
-              <span className="h-3 w-3 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center font-bold leading-none">
-                !
-              </span>
-            )}
-            
-            {/* Expandable keywords count badge */}
-            {expandableCount > 0 && (
-              <span className="h-3 w-3 bg-primary rounded-full text-[8px] text-primary-foreground flex items-center justify-center font-bold leading-none">
-                {expandableCount > 9 ? '9+' : expandableCount}
-              </span>
-            )}
-          </div>
-        )}
-      </Button>
-    </KeywordExpansionDialog>
-  )
+  ) : null
 
   // Don't show tooltip when dialog is open
   if (isOpen) {

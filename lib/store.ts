@@ -34,6 +34,9 @@ export type SearchResult = {
   ratingRange?: [number, number];
   isRatingFilterActive?: boolean;
   onlyRatedPapers?: boolean;
+  citesItemId?: string;
+  relatedToItemId?: string;
+  isRelatedToFilterActive?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -73,6 +76,12 @@ interface SearchFormState {
   // Country focus filter (adds country names to search string)
   selectedCountryFocus: string[]
   isCountryFocusActive: boolean
+  // Cites filter (finds works that cite a specific work)
+  citesItemId: string
+  isCitesFilterActive: boolean
+  // Related to filter (finds works related to a specific work)
+  relatedToItemId: string
+  isRelatedToFilterActive: boolean
   setCurrentSearchField: (field: SearchField) => void
   setDateRange: (range?: DateRange) => void
   setSortBy: (sortBy: string) => void
@@ -96,6 +105,14 @@ interface SearchFormState {
   addCountryFocus: (region: string) => void
   removeCountryFocus: (region: string) => void
   clearCountryFocus: () => void
+  // Cites filter methods
+  setCitesItemId: (itemId: string) => void
+  setIsCitesFilterActive: (active: boolean) => void
+  clearCitesFilter: () => void
+  // Related to filter methods
+  setRelatedToItemId: (itemId: string) => void
+  setIsRelatedToFilterActive: (active: boolean) => void
+  clearRelatedToFilter: () => void
   clearDateRange: () => void
   clearYearRange: () => void
   clearRatingFilter: () => void
@@ -324,6 +341,12 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
   // Country focus filter initial state
   selectedCountryFocus: [],
   isCountryFocusActive: false,
+  // Cites filter initial state
+  citesItemId: '',
+  isCitesFilterActive: false,
+  // Related to filter initial state
+  relatedToItemId: '',
+  isRelatedToFilterActive: false,
   setCurrentSearchField: (field) => set({ currentSearchField: field }),
   setDateRange: (range) => set({ dateRange: range }),
   setSortBy: (sortBy) => set({ sortBy }),
@@ -355,6 +378,14 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
     selectedCountryFocus: state.selectedCountryFocus.filter((r) => r !== region),
   })),
   clearCountryFocus: () => set({ selectedCountryFocus: [], isCountryFocusActive: false }),
+  // Cites filter implementations
+  setCitesItemId: (itemId) => set({ citesItemId: itemId }),
+  setIsCitesFilterActive: (active) => set({ isCitesFilterActive: active }),
+  clearCitesFilter: () => set({ citesItemId: '', isCitesFilterActive: false }),
+  // Related to filter implementations
+  setRelatedToItemId: (itemId) => set({ relatedToItemId: itemId }),
+  setIsRelatedToFilterActive: (active) => set({ isRelatedToFilterActive: active }),
+  clearRelatedToFilter: () => set({ relatedToItemId: '', isRelatedToFilterActive: false }),
   clearDateRange: () => set({ dateRange: undefined, isFilterActive: false }),
   clearYearRange: () => {
     const currentYear = new Date().getFullYear();
@@ -384,6 +415,10 @@ export const useSearchFormStore = create<SearchFormState>((set, get) => ({
       ratingRange: searchResult.ratingRange || [0, 5],
       isRatingFilterActive: searchResult.isRatingFilterActive || false,
       onlyRatedPapers: searchResult.onlyRatedPapers || false,
+      citesItemId: searchResult.citesItemId || '',
+      isCitesFilterActive: !!searchResult.citesItemId,
+      relatedToItemId: searchResult.relatedToItemId || '',
+      isRelatedToFilterActive: !!searchResult.relatedToItemId,
     });
   },
 }))
@@ -496,7 +531,7 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
           if (expansion) {
             return expansion;
           } else {
-            warnings.push(`Keyword "${keyword}" not found`);
+            warnings.push(`Bookmark "${keyword}" not found`);
             return match;
           }
         });

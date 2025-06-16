@@ -107,6 +107,15 @@ const executeSearchWithValidation = async (
   operation: string
 ) => {
   try {
+    // Validate relevance sorting with empty query
+    const { query, sortBy } = searchParams;
+    if (sortBy === "relevance_score:desc" && (!query || query.trim() === '')) {
+      toast.error('Relevance sorting requires a search query', {
+        description: 'You cannot sort by relevance without entering search terms. Please enter a query or choose a different sort option.'
+      });
+      return { searchResult: null, cancelled: false, validationError: true };
+    }
+
     // Get enhanced search results
     const searchResult = await getSearchResultsWithFilters(searchParams);
 

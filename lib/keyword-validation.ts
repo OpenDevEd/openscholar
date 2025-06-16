@@ -92,7 +92,7 @@ export function validateAndExpandKeywordsOrThrow(query: string): string {
   const result = validateAndExpandKeywords(query);
   
   if (!result.isValid) {
-    throw new Error(`Keyword validation failed: ${result.warnings.join('; ')}`);
+    throw new Error(`Bookmark validation failed: ${result.warnings.join('; ')}`);
   }
   
   return result.expandedQuery;

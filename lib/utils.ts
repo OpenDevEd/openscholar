@@ -122,7 +122,9 @@ export function createSearchParameters(
   dateRange?: DateRange,
   sortBy?: string,
   yearRange?: [number, number],
-  countryCodes?: string[]
+  countryCodes?: string[],
+  citesItemId?: string,
+  relatedToItemId?: string
 ) {
   const searchParams: any = {
     perPage: 200,
@@ -163,6 +165,20 @@ export function createSearchParameters(
       // Fallback to main search
       searchParams.search = query;
     }
+  }
+
+  // Add cites filtering
+  if (citesItemId) {
+    // Clean the item ID to ensure it's in the correct format
+    const cleanItemId = citesItemId.startsWith('https://openalex.org/') ? citesItemId : `https://openalex.org/${citesItemId}`;
+    filters.cites = cleanItemId;
+  }
+
+  // Add related_to filtering
+  if (relatedToItemId) {
+    // Clean the item ID to ensure it's in the correct format
+    const cleanItemId = relatedToItemId.startsWith('https://openalex.org/') ? relatedToItemId : `https://openalex.org/${relatedToItemId}`;
+    filters.related_to = cleanItemId;
   }
 
   // Add date filtering

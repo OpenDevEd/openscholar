@@ -18,6 +18,7 @@ import { Loader2 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { BookOpen, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
 import React from "react";
 
 function PageContent() {
@@ -116,8 +117,9 @@ function PageContent() {
 
             {/* Search Form */}
             <form onSubmit={handleSubmit} className="w-full px-2 md:px-0">
-              <div className="relative">
-                <div className="flex w-full items-center space-x-2 p-2 border rounded-full shadow-lg hover:shadow-xl transition-shadow bg-background">
+              <div className="relative space-y-3 md:space-y-0">
+                {/* Desktop: Single row layout */}
+                <div className="hidden md:flex w-full items-center space-x-2 p-2 border rounded-full shadow-lg hover:shadow-xl transition-shadow bg-background">
                   <Search className="h-5 w-5 text-muted-foreground ml-4" />
                   <Textarea
                     name="query"
@@ -136,18 +138,15 @@ function PageContent() {
                       }
                     }}
                   />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button asChild size="icon" variant="outline" className="rounded-full h-12 w-12">
-                        <Link href="/keyword-expansion">
-                          <BookOpen className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <p>Keyword Expansion</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <KeywordExpansionTooltip 
+                    query={currentQuery} 
+                    side="top" 
+                    variant="outline"
+                    buttonClassName="rounded-full h-12 w-12"
+                    asLink
+                    href="/bookmarks"
+                    iconOnly
+                  />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button asChild size="icon" variant="outline" className="rounded-full h-12 w-12">
@@ -172,6 +171,68 @@ function PageContent() {
                       <Search className="h-5 w-5" />
                     )}
                   </Button>
+                </div>
+
+                {/* Mobile: Stacked layout */}
+                <div className="md:hidden space-y-3">
+                  {/* Search input area */}
+                  <div className="flex w-full items-center space-x-2 p-2 border rounded-2xl shadow-lg hover:shadow-xl transition-shadow bg-background">
+                    <Search className="h-5 w-5 text-muted-foreground ml-4" />
+                    <Textarea
+                      name="query"
+                      value={currentQuery}
+                      placeholder="Search for papers, topics..."
+                      className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
+                      disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                      onChange={(e) => handleQueryChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          const form = e.currentTarget.form;
+                          if (form) {
+                            form.requestSubmit();
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Buttons row */}
+                  <div className="flex items-center justify-center gap-3">
+                    <KeywordExpansionTooltip 
+                      query={currentQuery} 
+                      side="top" 
+                      variant="outline"
+                      buttonClassName="rounded-full h-12 w-12"
+                      asLink
+                      href="/bookmarks"
+                      iconOnly
+                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button asChild size="icon" variant="outline" className="rounded-full h-12 w-12">
+                          <Link href="/ai-enhancement">
+                            <Sparkles className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>AI Enhancement</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Button 
+                      type="submit" 
+                      disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading} 
+                      className="rounded-full h-12 w-12"
+                      size="icon"
+                    >
+                      {isCreatingNewSearch ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Search className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </form>

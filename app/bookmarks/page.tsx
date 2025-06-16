@@ -3,8 +3,8 @@ import { Metadata } from "next"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "Keyword Expansion | OpenScholar",
-  description: "Manage your keyword shortcuts for faster, more efficient searches.",
+  title: "Bookmarks | OpenScholar",
+  description: "Manage your bookmarks for faster, more efficient searches.",
 }
 
 function KeywordExpansionFallback() {

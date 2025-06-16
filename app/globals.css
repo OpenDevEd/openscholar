@@ -168,3 +168,30 @@
     display: none;
   }
 }
+
+@utility scrollbar-hover {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  
+  &:hover {
+    scrollbar-width: thin;
+    
+    &::-webkit-scrollbar {
+      display: block;
+      height: 8px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background-color: rgb(209 213 219);
+      border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background-color: rgb(243 244 246);
+    }
+  }
+}
