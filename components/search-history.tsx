@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check } from "lucide-react";
 import { format } from "date-fns";
-import { jsonToCSV, downloadAsFile, SearchField, uploadFile, triggerFileUpload } from "@/lib/utils";
+import { jsonToCSV, downloadAsFile, SearchField, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive } from "@/lib/utils";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
@@ -341,7 +341,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 📅 All dates
               </span>
             ) : null}
-            {result.isCountryFilterActive && result.selectedRegions && result.selectedRegions.length > 0 && (
+            {isCountryFilterActive(result.selectedRegions) && (
               <span className={cn(
                 "bg-emerald-50 text-emerald-700 py-1 flex items-center gap-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
@@ -375,7 +375,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 )}
               </span>
             )}
-            {result.isCountryFocusActive && result.selectedCountryFocus && result.selectedCountryFocus.length > 0 && (
+            {isCountryFocusActive(result.selectedCountryFocus) && (
               <span className={cn(
                 "bg-purple-50 text-purple-700 py-1 flex items-center gap-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
@@ -425,14 +425,14 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 🔗 Related: {result.relatedToItemId}
               </span>
             )}
-            {(result.isRatingFilterActive || result.onlyRatedPapers) && (
+            {isRatingFilterActive(result.ratingRange, result.onlyRatedPapers) && (
               <span className={cn(
                 "bg-amber-50 text-amber-700 py-1 flex items-center gap-1 shrink-0",
                 variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
               )}>
                 ⭐ {(() => {
                   const parts = [];
-                  if (result.isRatingFilterActive && result.ratingRange) {
+                  if (result.ratingRange) {
                     const [min, max] = result.ratingRange;
                     if (min > 0 || max < 5) {
                       parts.push(`${min === max ? min : `${min}-${max}`} star${min === 1 && max === 1 ? '' : 's'}`);

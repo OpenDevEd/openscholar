@@ -2,12 +2,12 @@
 
 import React from "react"
 import { KeywordExpansionPage } from "@/components/keyword-expansion-page"
-import { useResultsStore } from "@/lib/store"
+import { useSearchResults } from "@/lib/hooks"
 import { useRouter } from "next/navigation"
 
 export default function KeywordExpansionResultsPage({ params }: { params: Promise<{ searchId: string }> }) {
   const router = useRouter()
-  const { currentQuery } = useResultsStore()
+  const { originalQuery: currentQuery } = useSearchResults()
   const [searchId, setSearchId] = React.useState<string>("")
 
   React.useEffect(() => {

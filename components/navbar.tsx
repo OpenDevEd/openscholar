@@ -4,15 +4,15 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Menu, Loader2, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon } from "lucide-react";
+import { Search, Menu, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useResultsStore, useSearchHistoryStore, useSearchFormStore } from "@/lib/store";
-import { useQueryChangeHandler, useEffectiveSearchId, useEffectiveQuery } from "@/lib/hooks";
-import { handleSearchHistoryClick as sharedHandleSearchHistoryClick } from "@/lib/search-actions";
+import { useResultsStore, useSearchHistoryStore, useCurrentQueryStore } from "@/lib/store";
+import { useQueryChangeHandler, useEffectiveSearchId, useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
+import { toast } from 'sonner';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Sheet,
@@ -29,15 +29,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchHistory } from "./search-history";
+import { useIsMobile } from '@/lib/hooks';
 
 interface NavbarProps {
   onSearchSubmit: (query: string) => void;
   onNewSearch?: (query: string) => void;
-  isLoading?: boolean;
-  isUpdatingCurrentSearch?: boolean;
-  isCreatingNewSearch?: boolean;
   loadingResultIndex?: number | null;
-  isFilterLoading?: boolean;
 }
 
 interface NavButtonProps {
@@ -113,17 +110,33 @@ const NavButton: React.FC<NavButtonProps> = ({
 export function Navbar({ 
   onSearchSubmit, 
   onNewSearch,
-  isLoading = false,
-  isUpdatingCurrentSearch = false,
-  isCreatingNewSearch = false,
-  loadingResultIndex = null,
-  isFilterLoading = false
+  loadingResultIndex = null
 }: NavbarProps) {
-  const { currentQuery, setCurrentQuery } = useResultsStore();
-  const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
   const pathname = usePathname();
   const router = useRouter();
   const { searchHistory } = useSearchHistoryStore();
+  const isMobile = useIsMobile();
+  const effectiveSearchId = useEffectiveSearchId();
+  const { currentSearchField } = useCurrentSearchFormState();
+  
+  // Get SWR loading states for disabling form
+  const { isLoading, isValidating } = useSearchResults();
+  const isFormDisabled = isLoading || isValidating || loadingResultIndex !== null;
+  
+  // Use shared current query state for navbar/home page synchronization
+  const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
+  const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
+  
+  // Get query directly from search history for syncing
+  const searchState = effectiveSearchId ? searchHistory.find(item => item.id === effectiveSearchId) : null;
+  const historyQuery = searchState?.query || '';
+  
+  // Sync current query with search history when navigating to different search results
+  React.useEffect(() => {
+    if (effectiveSearchId) {
+      setCurrentQuery(historyQuery);
+    }
+  }, [historyQuery, effectiveSearchId, setCurrentQuery]);
 
   
   // State for mobile menu interactions
@@ -132,10 +145,6 @@ export function Navbar({
   // Check if we're on a results page
   const isOnResultsPage = pathname?.startsWith('/results');
   
-  // Get effective search ID and query using custom hooks
-  const effectiveSearchId = useEffectiveSearchId();
-  const effectiveQuery = useEffectiveQuery();
-
   // Determine current page for navigation indicators
   const getCurrentPage = () => {
     if (!pathname) return null;
@@ -155,14 +164,12 @@ export function Navbar({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentQuery.trim()) {
-      onSearchSubmit(currentQuery.trim());
-    }
+    onSearchSubmit(currentQuery);
   };
 
   const handleNewSearch = () => {
-    if (currentQuery.trim() && onNewSearch) {
-      onNewSearch(currentQuery.trim());
+    if (onNewSearch) {
+      onNewSearch(currentQuery);
     }
   };
 
@@ -175,19 +182,17 @@ export function Navbar({
     filterType?: "date" | "year",
     index?: number
   ) => {
-    const searchId = await sharedHandleSearchHistoryClick(
-      query,
-      searchField,
-      dateRange,
-      sortBy,
-      yearRange,
-      filterType,
-      index
-    );
+    // With SWR, we just need to navigate to the search result
+    // The data will be automatically loaded by the SWR hook
+    const { searchHistory } = useSearchHistoryStore.getState();
+    const searchResult = searchHistory[index || 0];
     
-    // Only navigate if loading was successful (searchId is not null)
-    if (searchId) {
-      router.push(`/results/${searchId}`);
+    if (searchResult?.id) {
+      router.push(`/results/${searchResult.id}`);
+    } else {
+      toast.error('Search not found', {
+        description: 'The requested search could not be found in your history.'
+      });
     }
   };
 
@@ -209,7 +214,7 @@ export function Navbar({
                     onChange={(e) => handleQueryChange(e.target.value)}
                     placeholder="Search papers..."
                     className="pl-10 pr-4"
-                    disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                    disabled={isFormDisabled}
                   />
                 </div>
                 
@@ -220,16 +225,12 @@ export function Navbar({
                     <TooltipTrigger asChild>
                       <Button 
                         type="submit" 
-                        disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
+                        disabled={isFormDisabled} 
                         className="ml-2 flex-shrink-0"
                         size="icon"
                         variant="outline"
                       >
-                        {isUpdatingCurrentSearch ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RotateCcw className="h-4 w-4" />
-                        )}
+                        <RotateCcw className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -244,15 +245,11 @@ export function Navbar({
                         <Button 
                           type="button"
                           onClick={handleNewSearch}
-                          disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
+                          disabled={isFormDisabled} 
                           className="ml-2 flex-shrink-0"
                           size="icon"
                         >
-                          {isCreatingNewSearch ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Plus className="h-4 w-4" />
-                          )}
+                          <Plus className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -367,7 +364,7 @@ export function Navbar({
                     onChange={(e) => handleQueryChange(e.target.value)}
                     placeholder="Search papers..."
                     className="pl-10 pr-4"
-                    disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                    disabled={isFormDisabled}
                   />
                 </div>
                 
@@ -376,16 +373,12 @@ export function Navbar({
                   {/* Update Current Search Button */}
                   <Button 
                     type="submit" 
-                    disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
+                    disabled={isFormDisabled} 
                     className="ml-2 flex-shrink-0"
                     size="icon"
                     variant="outline"
                   >
-                    {isUpdatingCurrentSearch ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4" />
-                    )}
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
 
                   {/* New Search Button */}
@@ -393,15 +386,11 @@ export function Navbar({
                     <Button 
                       type="button"
                       onClick={handleNewSearch}
-                      disabled={isUpdatingCurrentSearch || isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading || !currentQuery.trim()} 
+                      disabled={isFormDisabled} 
                       className="ml-2 flex-shrink-0"
                       size="icon"
                     >
-                      {isCreatingNewSearch ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
+                      <Plus className="h-4 w-4" />
                     </Button>
                   )}
                 </div>

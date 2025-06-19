@@ -2,12 +2,12 @@
 
 import React from "react"
 import { AIEnhancementPage } from "@/components/ai-enhancement-page"
-import { useResultsStore } from "@/lib/store"
+
 import { useRouter } from "next/navigation"
 
 export default function AIEnhancementResultsPage({ params }: { params: Promise<{ searchId: string }> }) {
   const router = useRouter()
-  const { currentQuery, setCurrentQuery } = useResultsStore()
+  const [currentQuery, setCurrentQuery] = React.useState('')
   const [searchId, setSearchId] = React.useState<string>("")
 
   React.useEffect(() => {

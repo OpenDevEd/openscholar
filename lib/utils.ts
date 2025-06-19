@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge"
 import { Work } from "openalex-sdk/dist/src/types/work";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
+import type { SearchResult } from './store'
 
 export const fields = [
   { value: "title_and_abstract", label: "Title, abstract" },
@@ -13,6 +14,76 @@ export const fields = [
 ] as const;
 
 export type SearchField = (typeof fields)[number]["value"];
+
+// Centralized default filter values
+export const DEFAULT_FILTERS = {
+  field: 'title_and_abstract' as SearchField,
+  sortBy: 'relevance_score:desc',
+  filterType: 'year' as 'date' | 'year',
+  yearRange: () => [2020, new Date().getFullYear()] as [number, number],
+  dateRange: undefined as DateRange | undefined,
+  ratingRange: [0, 5] as [number, number],
+  onlyRatedPapers: false,
+  selectedRegions: [] as string[],
+  selectedCountryFocus: [] as string[],
+  citesItemId: '',
+  relatedToItemId: '',
+} as const;
+
+// Utility functions to check if filters are at default values
+export const isFilterAtDefault = {
+  yearRange: (range?: [number, number]) => {
+    if (!range) return true;
+    const defaultRange = DEFAULT_FILTERS.yearRange();
+    return range[0] === defaultRange[0] && range[1] === defaultRange[1];
+  },
+  dateRange: (range?: DateRange) => !range,
+  ratingRange: (range?: [number, number]) => {
+    if (!range) return true;
+    return range[0] === DEFAULT_FILTERS.ratingRange[0] && range[1] === DEFAULT_FILTERS.ratingRange[1];
+  },
+  onlyRatedPapers: (value?: boolean) => value === undefined || value === DEFAULT_FILTERS.onlyRatedPapers,
+  selectedRegions: (regions?: string[]) => !regions || regions.length === 0,
+  selectedCountryFocus: (focus?: string[]) => !focus || focus.length === 0,
+  citesItemId: (id?: string) => !id || id === DEFAULT_FILTERS.citesItemId,
+  relatedToItemId: (id?: string) => !id || id === DEFAULT_FILTERS.relatedToItemId,
+};
+
+// Helper to check if rating filter is active (combines range and onlyRatedPapers)
+export const isRatingFilterActive = (range?: [number, number], onlyRated?: boolean) => {
+  return !isFilterAtDefault.ratingRange(range) || !isFilterAtDefault.onlyRatedPapers(onlyRated);
+};
+
+// Helper to check if any date/year filter is active based on current filter type
+export const isDateFilterActive = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year") => {
+  if (filterType === "date") {
+    return !isFilterAtDefault.dateRange(dateRange);
+  } else if (filterType === "year") {
+    return !isFilterAtDefault.yearRange(yearRange);
+  }
+  // Fallback to old behavior if filterType is not provided (for backward compatibility)
+  return !isFilterAtDefault.dateRange(dateRange) || !isFilterAtDefault.yearRange(yearRange);
+};
+
+// Helper to check if country filter is active
+export const isCountryFilterActive = (regions?: string[]) => {
+  return !isFilterAtDefault.selectedRegions(regions);
+};
+
+// Helper to check if country focus filter is active  
+export const isCountryFocusActive = (focus?: string[]) => {
+  return !isFilterAtDefault.selectedCountryFocus(focus);
+};
+
+// Helper to check if cites filter is active
+export const isCitesFilterActive = (citesItemId?: string) => {
+  return !isFilterAtDefault.citesItemId(citesItemId);
+};
+
+// Helper to check if related-to filter is active
+export const isRelatedToFilterActive = (relatedToItemId?: string) => {
+  return !isFilterAtDefault.relatedToItemId(relatedToItemId);
+};
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -479,4 +550,59 @@ export function getEffectiveSearchId(pathname: string | null, currentSearchId?: 
   }
   
   return undefined;
+}
+
+/**
+ * Gets current search state from search history based on URL pathname
+ * This replaces useSearchFormStore functionality
+ */
+export function getCurrentSearchState(pathname: string | null) {
+  if (typeof window === 'undefined') return null;
+  
+  // Import here to avoid circular dependencies
+  const { useSearchHistoryStore } = require('./store');
+  const { getSearchResult } = useSearchHistoryStore.getState();
+  
+  // Extract search ID from URL
+  const searchId = getEffectiveSearchId(pathname, undefined);
+  if (!searchId) return null;
+  
+  // Get search result from history
+  const searchResult = getSearchResult(searchId);
+  if (!searchResult) return null;
+  
+  return searchResult;
+}
+
+/**
+ * Gets a specific field from current search state with fallback
+ */
+export function getCurrentSearchField<T>(pathname: string | null, field: string, fallback: T): T {
+  const searchState = getCurrentSearchState(pathname);
+  if (!searchState) return fallback;
+  
+  return (searchState as any)[field] ?? fallback;
+}
+
+/**
+ * Helper functions to get specific search state values with proper defaults
+ */
+export function getCurrentSearchFormState(pathname: string | null) {
+  const defaultYearRange = DEFAULT_FILTERS.yearRange();
+  
+  return {
+    currentSearchField: getCurrentSearchField(pathname, 'field', DEFAULT_FILTERS.field),
+    dateRange: getCurrentSearchField(pathname, 'dateRange', DEFAULT_FILTERS.dateRange),
+    sortBy: getCurrentSearchField(pathname, 'sortBy', DEFAULT_FILTERS.sortBy),
+    filterType: getCurrentSearchField(pathname, 'filterType', DEFAULT_FILTERS.filterType),
+    yearRange: getCurrentSearchField(pathname, 'yearRange', defaultYearRange),
+    yearFromInput: getCurrentSearchField(pathname, 'yearRange', defaultYearRange)[0]?.toString() || defaultYearRange[0].toString(),
+    yearToInput: getCurrentSearchField(pathname, 'yearRange', defaultYearRange)[1]?.toString() || defaultYearRange[1].toString(),
+    ratingRange: getCurrentSearchField(pathname, 'ratingRange', DEFAULT_FILTERS.ratingRange),
+    onlyRatedPapers: getCurrentSearchField(pathname, 'onlyRatedPapers', DEFAULT_FILTERS.onlyRatedPapers),
+    selectedRegions: getCurrentSearchField(pathname, 'selectedRegions', DEFAULT_FILTERS.selectedRegions),
+    selectedCountryFocus: getCurrentSearchField(pathname, 'selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
+    citesItemId: getCurrentSearchField(pathname, 'citesItemId', DEFAULT_FILTERS.citesItemId),
+    relatedToItemId: getCurrentSearchField(pathname, 'relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
+  };
 }

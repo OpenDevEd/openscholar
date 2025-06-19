@@ -18,8 +18,17 @@ export interface KeywordValidationResult {
  * @returns KeywordValidationResult with isValid flag and expanded query or warnings
  */
 export function validateAndExpandKeywords(query: string): KeywordValidationResult {
-  // Check for minimum query length
+  // Allow empty queries - they are valid for browsing all papers
   const trimmedQuery = query.trim();
+  if (trimmedQuery.length === 0) {
+    return {
+      isValid: true,
+      expandedQuery: query,
+      warnings: []
+    };
+  }
+  
+  // Check for minimum query length (only for non-empty queries)
   if (trimmedQuery.length === 1) {
     const warning = 'Single character searches are not supported. Please use at least 2 characters.';
     toast.warning(warning);
@@ -59,8 +68,17 @@ export function validateAndExpandKeywords(query: string): KeywordValidationResul
  * @returns KeywordValidationResult with isValid flag and expanded query or warnings
  */
 export function validateAndExpandKeywordsSilently(query: string): KeywordValidationResult {
-  // Check for minimum query length
+  // Allow empty queries - they are valid for browsing all papers
   const trimmedQuery = query.trim();
+  if (trimmedQuery.length === 0) {
+    return {
+      isValid: true,
+      expandedQuery: query,
+      warnings: []
+    };
+  }
+  
+  // Check for minimum query length (only for non-empty queries)
   if (trimmedQuery.length === 1) {
     const warning = 'Single character searches are not supported. Please use at least 2 characters.';
     return {

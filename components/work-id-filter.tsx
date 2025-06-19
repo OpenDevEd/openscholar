@@ -1,12 +1,14 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X, Quote, Network, ExternalLink, LucideIcon } from "lucide-react";
-import { useSearchFormStore } from "@/lib/store";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { toast } from 'sonner';
-import { cn } from "@/lib/utils";
+import { cn, isCitesFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'related';
@@ -51,18 +53,37 @@ export function WorkIdFilter({
   icon,
   colorScheme 
 }: WorkIdFilterProps) {
-  const store = useSearchFormStore();
+  const {
+    citesItemId,
+    relatedToItemId,
+  } = useCurrentSearchFormState();
+  
+  const updateFilter = useUpdateSearchFilter();
+
   const colors = colorScheme || defaultColorSchemes[type];
   const Icon = icon || (type === 'cites' ? Quote : Network);
   
   // Get the appropriate store values and methods based on type
-  const itemId = type === 'cites' ? store.citesItemId : store.relatedToItemId;
-  const isActive = type === 'cites' ? store.isCitesFilterActive : store.isRelatedToFilterActive;
-  const setItemId = type === 'cites' ? store.setCitesItemId : store.setRelatedToItemId;
-  const setIsActive = type === 'cites' ? store.setIsCitesFilterActive : store.setIsRelatedToFilterActive;
-  const clearFilter = type === 'cites' ? store.clearCitesFilter : store.clearRelatedToFilter;
+  const itemId: string = type === 'cites' ? citesItemId : relatedToItemId;
+  const isActive = type === 'cites' ? isCitesFilterActive(citesItemId) : isRelatedToFilterActive(relatedToItemId);
   
-  const [inputValue, setInputValue] = useState(itemId);
+  const setItemId = (id: string) => {
+    if (type === 'cites') {
+      updateFilter({ citesItemId: id });
+    } else {
+      updateFilter({ relatedToItemId: id });
+    }
+  };
+  
+  const clearFilter = () => {
+    if (type === 'cites') {
+      updateFilter({ citesItemId: '' });
+    } else {
+      updateFilter({ relatedToItemId: '' });
+    }
+  };
+  
+  const [inputValue, setInputValue] = useState(itemId || '');
   
   const config = {
     cites: {
@@ -110,22 +131,37 @@ export function WorkIdFilter({
       return;
     }
     
+    // Update the filter in the store
     setItemId(validatedId);
-    setIsActive(true);
-    await updateCurrentSearchFilters();
     
-    toast.success(currentConfig.successMessage, {
-      description: currentConfig.successDescription(validatedId)
-    });
+    // Trigger search update with the new filter
+    try {
+      await updateCurrentSearchFilters();
+      toast.success(currentConfig.successMessage, {
+        description: currentConfig.successDescription(validatedId)
+      });
+    } catch (error) {
+      console.error('Error updating search with filter:', error);
+      toast.error('Failed to apply filter', {
+        description: 'Could not update search results with the new filter. Please try again.'
+      });
+    }
   };
   
   const handleClearFilter = async () => {
     setInputValue('');
     clearFilter();
-    setIsActive(false);
-    await updateCurrentSearchFilters();
     
-    toast.success(currentConfig.clearMessage);
+    // Trigger search update after clearing the filter
+    try {
+      await updateCurrentSearchFilters();
+      toast.success(currentConfig.clearMessage);
+    } catch (error) {
+      console.error('Error updating search after clearing filter:', error);
+      toast.error('Failed to clear filter', {
+        description: 'Could not update search results after clearing the filter. Please try again.'
+      });
+    }
   };
   
   const handleInputChange = (value: string) => {

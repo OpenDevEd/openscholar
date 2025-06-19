@@ -5,19 +5,29 @@ import { useRouter } from 'next/navigation';
 import { Filter } from 'lucide-react';
 import { SearchSidebar } from '@/components/search-sidebar';
 import { PageHeader } from '@/components/ui/page-header';
-import { useSearchFormStore } from '@/lib/store';
+import { useCurrentSearchFormState } from '@/lib/hooks';
+import { isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from '@/lib/utils';
 
-export default function FiltersPage({ params }: { params: Promise<{ searchId: string }> }) {
+interface FiltersPageProps {
+  params: Promise<{ searchId: string }>;
+}
+
+export default function FiltersPage({ params }: FiltersPageProps) {
   const router = useRouter();
   const [searchId, setSearchId] = React.useState<string>('');
-  const { 
-    isFilterActive, 
-    isRatingFilterActive, 
-    isCountryFilterActive,
-    isCountryFocusActive,
+  const {
+    selectedRegions,
+    selectedCountryFocus,
     currentSearchField,
-    sortBy 
-  } = useSearchFormStore();
+    sortBy,
+    dateRange,
+    yearRange,
+    filterType,
+    ratingRange,
+    onlyRatedPapers,
+    citesItemId,
+    relatedToItemId,
+  } = useCurrentSearchFormState();
 
   React.useEffect(() => {
     params.then(({ searchId }) => setSearchId(searchId));
@@ -31,15 +41,17 @@ export default function FiltersPage({ params }: { params: Promise<{ searchId: st
     }
   };
 
-  // Calculate active filters count
+  // Calculate active filters count using utility functions
   const getActiveFiltersCount = () => {
     let count = 0;
-    if (isFilterActive) count++;
-    if (isRatingFilterActive) count++;
-    if (isCountryFilterActive) count++;
-    if (isCountryFocusActive) count++;
-    if (currentSearchField !== "title_and_abstract") count++;
-    if (sortBy !== "relevance_score:desc") count++;
+    if (isDateFilterActive(dateRange, yearRange, filterType)) count++;
+    if (isRatingFilterActive(ratingRange, onlyRatedPapers)) count++;
+    if (isCountryFilterActive(selectedRegions)) count++;
+    if (isCountryFocusActive(selectedCountryFocus)) count++;
+    if (isCitesFilterActive(citesItemId)) count++;
+    if (isRelatedToFilterActive(relatedToItemId)) count++;
+    if (currentSearchField !== DEFAULT_FILTERS.field) count++;
+    if (sortBy !== DEFAULT_FILTERS.sortBy) count++;
     return count;
   };
 

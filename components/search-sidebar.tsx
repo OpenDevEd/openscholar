@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -8,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe, Quote, Network } from "lucide-react";
 import { format } from "date-fns";
-import { cn, SearchField, fields } from "@/lib/utils";
+import { cn, SearchField, fields, isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 import { sortOptions } from "@/lib/constants";
 import {
   Select,
@@ -17,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSearchFormStore } from "@/lib/store";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { YearRangePicker } from "./year-range-picker";
 import { RatingRangePicker } from "./rating-range-picker";
@@ -28,6 +30,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
 import { RelatedToFilter } from "./related-to-filter";
+import { WorkIdFilter } from "./work-id-filter";
 
 interface SearchSidebarProps {
   isOpen?: boolean;
@@ -42,96 +45,101 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     dateRange,
     sortBy,
     filterType,
-    isFilterActive,
-    isRatingFilterActive,
-    isCountryFilterActive,
-    isCountryFocusActive,
-    isCitesFilterActive,
-    isRelatedToFilterActive,
-    setCurrentSearchField,
-    setDateRange,
-    setSortBy,
-    setFilterType,
-    setIsFilterActive,
-    clearDateRange,
-    clearYearRange,
-    clearRatingFilter,
-    clearCountryFilter,
-    clearCountryFocus,
-    clearCitesFilter,
-    clearRelatedToFilter
-  } = useSearchFormStore();
+    selectedRegions,
+    selectedCountryFocus,
+    ratingRange,
+    onlyRatedPapers,
+    citesItemId,
+    relatedToItemId,
+    yearRange,
+  } = useCurrentSearchFormState();
+  
+  const updateFilter = useUpdateSearchFilter();
+
+  // Computed filter active states using utility functions
+  const isDateActive = isDateFilterActive(dateRange, yearRange, filterType);
+  const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
+  const isCountryActive = isCountryFilterActive(selectedRegions);
+  const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
+  const isCitesActive = isCitesFilterActive(citesItemId);
+  const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
 
   // Helper functions that update store and trigger search update
   const handleSearchFieldChange = async (field: SearchField) => {
-    setCurrentSearchField(field);
+    updateFilter({ currentSearchField: field });
     await updateCurrentSearchFilters();
   };
 
   const handleSortChange = async (sort: string) => {
-    setSortBy(sort);
+    updateFilter({ sortBy: sort });
     await updateCurrentSearchFilters();
   };
 
   const handleFilterTypeChange = async (type: "date" | "year") => {
-    setFilterType(type);
+    updateFilter({ filterType: type });
     await updateCurrentSearchFilters();
   };
 
   const handleDateRangeChange = async (range: DateRange | undefined) => {
-    setDateRange(range);
-    setIsFilterActive(!!range?.from);
+    updateFilter({ dateRange: range });
     await updateCurrentSearchFilters();
   };
 
   const handleClearDateRange = async () => {
-    clearDateRange();
+    updateFilter({ dateRange: undefined });
     await updateCurrentSearchFilters();
   };
 
   const handleClearYearRange = async () => {
-    clearYearRange();
+    const defaultRange = DEFAULT_FILTERS.yearRange();
+    updateFilter({ yearRange: defaultRange });
     await updateCurrentSearchFilters();
   };
 
   const handleClearRatingFilter = () => {
-    clearRatingFilter();
+    updateFilter({ 
+      ratingRange: DEFAULT_FILTERS.ratingRange, 
+      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers 
+    });
     // No need to fetch new results - rating filter works client-side
   };
 
   const handleClearCitesFilter = async () => {
-    clearCitesFilter();
+    updateFilter({ citesItemId: DEFAULT_FILTERS.citesItemId });
     await updateCurrentSearchFilters();
   };
 
   const handleClearRelatedToFilter = async () => {
-    clearRelatedToFilter();
+    updateFilter({ relatedToItemId: DEFAULT_FILTERS.relatedToItemId });
     await updateCurrentSearchFilters();
   };
 
   const handleClearAllFilters = async () => {
-    setCurrentSearchField("title_and_abstract");
-    setSortBy("relevance_score:desc");
-    clearDateRange();
-    clearYearRange();
-    clearRatingFilter(); // This is client-side only, no API call needed
-    clearCountryFilter(); // Clear country filter
-    clearCountryFocus(); // Clear country focus filter
-    clearCitesFilter(); // Clear cites filter
-    clearRelatedToFilter(); // Clear related_to filter
+    const defaultYearRange = DEFAULT_FILTERS.yearRange();
+    updateFilter({
+      currentSearchField: DEFAULT_FILTERS.field,
+      sortBy: DEFAULT_FILTERS.sortBy,
+      dateRange: DEFAULT_FILTERS.dateRange,
+      yearRange: defaultYearRange,
+      ratingRange: DEFAULT_FILTERS.ratingRange,
+      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
+      selectedRegions: DEFAULT_FILTERS.selectedRegions,
+      selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
+      citesItemId: DEFAULT_FILTERS.citesItemId,
+      relatedToItemId: DEFAULT_FILTERS.relatedToItemId
+    });
     await updateCurrentSearchFilters(); // Only for the server-side filters
   };
 
   const getActiveFiltersCount = () => {
     let count = 0;
-    if (isFilterActive) count++;
-    if (isRatingFilterActive) count++;
-    if (isCountryFilterActive) count++;
-    if (isCountryFocusActive) count++;
-    if (isCitesFilterActive) count++;
-    if (isRelatedToFilterActive) count++;
-    if (currentSearchField !== "title_and_abstract") count++;
-    if (sortBy !== "relevance_score:desc") count++;
+    if (isDateActive) count++;
+    if (isRatingActive) count++;
+    if (isCountryActive) count++;
+    if (isCountryFocusFilterActive) count++;
+    if (isCitesActive) count++;
+    if (isRelatedToActive) count++;
+    if (sortBy !== DEFAULT_FILTERS.sortBy) count++;
     return count;
   };
 
@@ -169,7 +177,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             <Clock className="h-4 w-4 text-purple-500" />
             Publication timeframe
           </div>
-          {isFilterActive && (
+          {isDateActive && (
             <Badge variant="outline" className="text-xs border-purple-500 text-purple-600 dark:text-purple-400">
               Active
             </Badge>
@@ -178,7 +186,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
         <div className={cn(
           "rounded-2xl border-2 p-4 transition-all duration-300",
-          isFilterActive 
+          isDateActive 
             ? "border-purple-500 bg-purple-50 dark:bg-purple-950/50 shadow-lg" 
             : "border-border bg-background"
         )}>
@@ -218,13 +226,13 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
                       variant="outline"
                       className={cn(
                         "w-full h-11 justify-start text-left font-normal border-2",
-                        isFilterActive && dateRange?.from
+                        isDateActive && dateRange?.from
                           ? "border-purple-300 bg-purple-50 dark:bg-purple-950/30"
                           : "border-dashed border-muted-foreground/30"
                       )}
                     >
                       <CalendarIcon className="mr-3 h-4 w-4" />
-                      {isFilterActive && dateRange?.from ? (
+                      {isDateActive && dateRange?.from ? (
                         dateRange.to ? (
                           <span className="truncate">
                             {format(dateRange.from, "MMM dd, yyyy")} → {format(dateRange.to, "MMM dd, yyyy")}
@@ -253,7 +261,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
                   </PopoverContent>
                 </Popover>
                 
-                {isFilterActive && (
+                {isDateActive && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -269,7 +277,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             ) : (
               <div className="space-y-3">
                 <YearRangePicker />
-                {isFilterActive && (
+                {isDateActive && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -294,7 +302,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             <Star className="h-4 w-4 text-orange-500" />
             Rating filter
           </div>
-          {isRatingFilterActive && (
+          {isRatingActive && (
             <Badge variant="outline" className="text-xs border-orange-500 text-orange-600 dark:text-orange-400">
               Active
             </Badge>
@@ -303,13 +311,13 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
         <div className={cn(
           "rounded-2xl border-2 p-4 transition-all duration-300",
-          isRatingFilterActive 
+          isRatingActive 
             ? "border-orange-500 bg-orange-50 dark:bg-orange-950/50 shadow-lg" 
             : "border-border bg-background"
         )}>
           <div className="space-y-4">
             <RatingRangePicker />
-            {isRatingFilterActive && (
+            {isRatingActive && (
               <Button
                 type="button"
                 variant="ghost"
@@ -332,7 +340,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             <Globe className="h-4 w-4 text-emerald-500" />
             Institution location
           </div>
-          {isCountryFilterActive && (
+          {isCountryActive && (
             <Badge variant="outline" className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400">
               Active
             </Badge>
@@ -341,7 +349,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
         <div className={cn(
           "rounded-2xl border-2 p-4 transition-all duration-300",
-          isCountryFilterActive 
+          isCountryActive 
             ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 shadow-lg" 
             : "border-border bg-background"
         )}>
@@ -440,7 +448,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             <Quote className="h-4 w-4 text-orange-500" />
             Citation filter
           </div>
-          {isCitesFilterActive && (
+          {isCitesActive && (
             <Badge variant="outline" className="text-xs border-orange-500 text-orange-600 dark:text-orange-400">
               Active
             </Badge>
@@ -449,13 +457,13 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
         <div className={cn(
           "rounded-2xl border-2 p-4 transition-all duration-300",
-          isCitesFilterActive 
+          isCitesActive 
             ? "border-orange-500 bg-orange-50 dark:bg-orange-950/50 shadow-lg" 
             : "border-border bg-background"
         )}>
           <div className="space-y-4">
             <CitesFilter />
-            {isCitesFilterActive && (
+            {isCitesActive && (
               <Button
                 type="button"
                 variant="ghost"
@@ -478,7 +486,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             <Network className="h-4 w-4 text-blue-500" />
             Related works filter
           </div>
-          {isRelatedToFilterActive && (
+          {isRelatedToActive && (
             <Badge variant="outline" className="text-xs border-blue-500 text-blue-600 dark:text-blue-400">
               Active
             </Badge>
@@ -487,13 +495,13 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
         <div className={cn(
           "rounded-2xl border-2 p-4 transition-all duration-300",
-          isRelatedToFilterActive 
+          isRelatedToActive 
             ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 shadow-lg" 
             : "border-border bg-background"
         )}>
           <div className="space-y-4">
             <RelatedToFilter />
-            {isRelatedToFilterActive && (
+            {isRelatedToActive && (
               <Button
                 type="button"
                 variant="ghost"

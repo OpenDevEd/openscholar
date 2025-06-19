@@ -1,8 +1,8 @@
 import { DateRange } from 'react-day-picker';
 import { getSearchResults } from '@/app/actions/openalex';
-import { SearchField } from './utils';
+import { SearchField, getCurrentSearchState, getEffectiveSearchId, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
 import { getCountryCodesForRegions, COUNTRIES } from './constants';
-import { useSearchFormStore } from './store';
+import { useSearchHistoryStore } from './store';
 import { validateAndExpandKeywords } from './keyword-validation';
 
 export interface SearchWithFiltersParams {
@@ -16,13 +16,9 @@ export interface SearchWithFiltersParams {
   // Override state - if provided, uses these instead of store state
   overrideState?: {
     selectedRegions?: string[];
-    isCountryFilterActive?: boolean;
     selectedCountryFocus?: string[];
-    isCountryFocusActive?: boolean;
     citesItemId?: string;
-    isCitesFilterActive?: boolean;
     relatedToItemId?: string;
-    isRelatedToFilterActive?: boolean;
   };
 }
 
@@ -68,36 +64,47 @@ export async function getSearchResultsWithFilters(
     overrideState
   } = params;
 
-  // Get state from store or use overrides
-  const storeState = useSearchFormStore.getState();
+  // Get state from override or from current search in history
+  let stateToUse;
+  if (overrideState) {
+    stateToUse = overrideState;
+  } else {
+    // Get current search state from URL/history
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
+    const currentSearch = getCurrentSearchState(pathname);
+    
+    stateToUse = {
+      selectedRegions: currentSearch?.selectedRegions || [],
+      selectedCountryFocus: currentSearch?.selectedCountryFocus || [],
+      citesItemId: currentSearch?.citesItemId || '',
+      relatedToItemId: currentSearch?.relatedToItemId || ''
+    };
+  }
+
   const {
-    selectedRegions = storeState.selectedRegions,
-    isCountryFilterActive = storeState.isCountryFilterActive,
-    selectedCountryFocus = storeState.selectedCountryFocus,
-    isCountryFocusActive = storeState.isCountryFocusActive,
-    citesItemId = storeState.citesItemId,
-    isCitesFilterActive = storeState.isCitesFilterActive,
-    relatedToItemId = storeState.relatedToItemId,
-    isRelatedToFilterActive = storeState.isRelatedToFilterActive
-  } = overrideState || {};
+    selectedRegions,
+    selectedCountryFocus,
+    citesItemId,
+    relatedToItemId
+  } = stateToUse;
 
   // Determine which date/year range to use based on filter type
   const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
   const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
 
   // Get country codes for API filtering if country filter is active
-  const updateCountryData = isCountryFilterActive ? getCountryCodesForRegions(selectedRegions) : null;
+  const updateCountryData = isCountryFilterActive(selectedRegions) ? getCountryCodesForRegions(selectedRegions) : null;
   const effectiveCountryCodes = updateCountryData ? updateCountryData.countries : undefined;
 
   // Get effective cites item ID
-  const effectiveCitesItemId = isCitesFilterActive ? citesItemId : undefined;
+  const effectiveCitesItemId = isCitesFilterActive(citesItemId) ? citesItemId : undefined;
 
   // Get effective related_to item ID
-  const effectiveRelatedToItemId = isRelatedToFilterActive ? relatedToItemId : undefined;
+  const effectiveRelatedToItemId = isRelatedToFilterActive(relatedToItemId) ? relatedToItemId : undefined;
 
   // Get country names for query enhancement if Country focus is active
   const getCountryNames = (): string[] => {
-    if (!isCountryFocusActive || selectedCountryFocus.length === 0) return [];
+    if (!isCountryFocusActive(selectedCountryFocus)) return [];
     const countryNames: string[] = [];
     const countryData = getCountryCodesForRegions(selectedCountryFocus, true); // Bypass limit for Country focus
     
@@ -133,7 +140,11 @@ export async function getSearchResultsWithFilters(
   let finalApiQuery = validation.expandedQuery;
   if (countryNames.length > 0) {
     const countryTerms = countryNames.map(name => `"${name}"`).join(' OR ');
-    finalApiQuery = `(${validation.expandedQuery}) AND (${countryTerms})`;
+    if (validation.expandedQuery) {
+      finalApiQuery = `(${validation.expandedQuery}) AND (${countryTerms})`;
+    } else {
+      finalApiQuery = `(${countryTerms})`;
+    }
   }
 
   // Get results with the final enhanced query for API, but keep original query for UI
@@ -171,20 +182,14 @@ export function createSearchStateFromStore(
   sortBy?: string,
   resultsCount?: number
 ) {
-  const {
-    selectedRegions,
-    isCountryFilterActive,
-    selectedCountryFocus,
-    isCountryFocusActive,
-    ratingRange,
-    isRatingFilterActive,
-    onlyRatedPapers,
-    citesItemId,
-    isCitesFilterActive,
-    relatedToItemId,
-    isRelatedToFilterActive
-  } = useSearchFormStore.getState();
+  // Get current state from search history instead of SearchFormStore
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
+  const currentSearch = getCurrentSearchState(pathname);
 
+  // Only include rating values if they're different from defaults
+  const ratingRange = currentSearch?.ratingRange;
+  const onlyRatedPapers = currentSearch?.onlyRatedPapers;
+  
   return {
     query,
     field: searchField,
@@ -193,15 +198,13 @@ export function createSearchStateFromStore(
     yearRange,
     filterType,
     sortBy,
-    selectedRegions,
-    isCountryFilterActive,
-    selectedCountryFocus,
-    isCountryFocusActive,
-    ratingRange,
-    isRatingFilterActive,
-    onlyRatedPapers,
-    citesItemId: isCitesFilterActive ? citesItemId : undefined,
-    relatedToItemId: isRelatedToFilterActive ? relatedToItemId : undefined
+    selectedRegions: currentSearch?.selectedRegions || [],
+    selectedCountryFocus: currentSearch?.selectedCountryFocus || [],
+    // Only include rating fields if they're not at default values
+    ...(ratingRange && !isFilterAtDefault.ratingRange(ratingRange) ? { ratingRange } : {}),
+    ...(onlyRatedPapers !== undefined && !isFilterAtDefault.onlyRatedPapers(onlyRatedPapers) ? { onlyRatedPapers } : {}),
+    citesItemId: currentSearch?.citesItemId || '',
+    relatedToItemId: currentSearch?.relatedToItemId || ''
   };
 }
 
@@ -212,12 +215,8 @@ export function createSearchStateFromStore(
 export function extractStateFromSearchResult(searchResult: any) {
   return {
     selectedRegions: searchResult.selectedRegions || [],
-    isCountryFilterActive: searchResult.isCountryFilterActive || false,
     selectedCountryFocus: searchResult.selectedCountryFocus || [],
-    isCountryFocusActive: searchResult.isCountryFocusActive || false,
     citesItemId: searchResult.citesItemId || '',
-    isCitesFilterActive: !!searchResult.citesItemId,
-    relatedToItemId: searchResult.relatedToItemId || '',
-    isRelatedToFilterActive: !!searchResult.relatedToItemId
+    relatedToItemId: searchResult.relatedToItemId || ''
   };
 } 

@@ -1,13 +1,37 @@
-import React, { useState } from 'react';
+"use client";
+
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { workToCoins } from "@/lib/utils";
-import { useResultsStore, useUIStore, useSearchFormStore } from "@/lib/store";
+import { useResultsStore, useUIStore, useSearchHistoryStore } from "@/lib/store";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { RatingSelector } from "./rating-selector";
 import { PaperMetadata } from "./paper-metadata";
 import { DownloadMenu } from "./download-menu";
 import { Button } from "@/components/ui/button";
-import { FileText, Users, Quote, Network, Award, Target, Layers, BookOpen, Building, Leaf, BarChart3, Loader2 } from "lucide-react";
-import { submitSearchAndLoadResults } from "@/lib/search-actions";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Download, 
+  ExternalLink, 
+  Calendar, 
+  BookOpen, 
+  Users, 
+  Quote,
+  Star,
+  StarOff,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Network,
+  Award,
+  Target,
+  Layers,
+  Building,
+  Leaf,
+  BarChart3,
+  FileText
+} from "lucide-react";
+
 
 interface PaperCardProps {
   result: any;
@@ -23,74 +47,29 @@ export function PaperCard({
   const router = useRouter();
   const { expandedAbstracts, toggleAbstract } = useResultsStore();
   const { isFocusModeOpen } = useUIStore();
-  const [isSearchingCites, setIsSearchingCites] = useState(false);
-  const [isSearchingRelated, setIsSearchingRelated] = useState(false);
-  const {
-    setCurrentSearchField,
-    setSortBy,
-    clearDateRange,
-    clearYearRange,
-    clearRatingFilter,
-    clearCountryFilter,
-    clearCountryFocus,
-    clearCitesFilter,
-    clearRelatedToFilter,
-    setCitesItemId,
-    setIsCitesFilterActive,
-    setRelatedToItemId,
-    setIsRelatedToFilterActive
-  } = useSearchFormStore();
+  const updateFilter = useUpdateSearchFilter();
 
   const handleFilteredSearch = async (filterType: 'cites' | 'related') => {
-    // Set loading state for the appropriate button
-    if (filterType === 'cites') {
-      setIsSearchingCites(true);
-    } else {
-      setIsSearchingRelated(true);
-    }
+    // Create new search entry in history (SWR will handle data fetching)
+    const { addSearchResult } = useSearchHistoryStore.getState();
+    const searchId = addSearchResult({
+      query: '',
+      field: "title_and_abstract",
+      count: 0, // SWR will populate the actual count
+      dateRange: undefined,
+      yearRange: undefined,
+      filterType: "year",
+      sortBy: "cited_by_count:desc",
+      selectedRegions: [],
+      selectedCountryFocus: [],
+      // Don't set rating ranges - they should default to undefined (not filtered)
+      citesItemId: filterType === 'cites' ? result.id : '',
+      relatedToItemId: filterType === 'related' ? result.id : '',
+    });
 
-    try {
-      // Clear all filters first
-      setCurrentSearchField("title_and_abstract");
-      setSortBy("cited_by_count:desc");
-      clearDateRange();
-      clearYearRange();
-      clearRatingFilter();
-      clearCountryFilter();
-      clearCountryFocus();
-      clearCitesFilter();
-      clearRelatedToFilter();
-
-      // Set the appropriate filter
-      if (filterType === 'cites') {
-        setCitesItemId(result.id);
-        setIsCitesFilterActive(true);
-      } else {
-        setRelatedToItemId(result.id);
-        setIsRelatedToFilterActive(true);
-      }
-
-      // Create new search with empty query and filter
-      const formData = new FormData();
-      formData.set('query', ''); // Empty query since we're filtering by citations/related works
-      
-      const { searchId } = await submitSearchAndLoadResults(
-        formData,
-        "title_and_abstract",
-        undefined, // dateRange
-        "cited_by_count:desc", // sortBy
-        undefined, // yearRange
-        "year", // filterType
-        false // isFilterActive
-      );
-
-      if (searchId) {
-        router.push(`/results/${searchId}`);
-      }
-    } finally {
-      // Clear loading states
-      setIsSearchingCites(false);
-      setIsSearchingRelated(false);
+    // Navigate to the new search - SWR will handle data fetching
+    if (searchId) {
+      router.push(`/results/${searchId}`);
     }
   };
 
@@ -277,17 +256,12 @@ export function PaperCard({
               variant="ghost"
               size="sm"
               onClick={handleCitesSearch}
-              disabled={isSearchingCites}
-              className="flex items-center gap-1 sm:gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/50 disabled:opacity-50 flex-shrink-0"
+              className="flex items-center gap-1 sm:gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/50 flex-shrink-0"
               title="Find works that cite this paper"
             >
-              {isSearchingCites ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Quote className="h-4 w-4" />
-              )}
+              <Quote className="h-4 w-4" />
               <span className="text-sm">
-                {isSearchingCites ? 'Searching...' : `Cited by: ${result.cited_by_count || 0}`}
+                Cited by: {result.cited_by_count || 0}
               </span>
             </Button>
 
@@ -295,17 +269,12 @@ export function PaperCard({
               variant="ghost"
               size="sm"
               onClick={handleRelatedSearch}
-              disabled={isSearchingRelated}
-              className="flex items-center gap-1 sm:gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50 disabled:opacity-50 flex-shrink-0"
+              className="flex items-center gap-1 sm:gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50 flex-shrink-0"
               title="Find works related to this paper"
             >
-              {isSearchingRelated ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Network className="h-4 w-4" />
-              )}
+              <Network className="h-4 w-4" />
               <span className="text-sm">
-                {isSearchingRelated ? 'Searching...' : `Related: ${result.related_works?.length || 0}`}
+                Related: {result.related_works?.length || 0}
               </span>
             </Button>
           </div>

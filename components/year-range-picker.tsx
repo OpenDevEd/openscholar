@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,38 +12,51 @@ import { CalendarIcon, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MIN_YEAR, getYearRangePresets } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
-import { useSearchFormStore } from "@/lib/store";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
+import { isDateFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 
 export function YearRangePicker() {
   const {
     yearRange,
-    isFilterActive,
+    dateRange,
     yearFromInput,
     yearToInput,
-    setYearRange,
-    setIsFilterActive,
-    setYearFromInput,
-    setYearToInput,
-    clearYearRange
-  } = useSearchFormStore();
+    filterType,
+  } = useCurrentSearchFormState();
+  
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType);
+  
+  const updateFilter = useUpdateSearchFilter();
+
+  const setYearRange = (range: [number, number]) => {
+    updateFilter({ yearRange: range });
+  };
+
+
+
+  const setYearFromInput = (value: string) => {
+    updateFilter({ yearFromInput: value });
+  };
+
+  const setYearToInput = (value: string) => {
+    updateFilter({ yearToInput: value });
+  };
 
   const currentYear = new Date().getFullYear();
+  const [localYearRange, setLocalYearRange] = React.useState<[number, number]>(yearRange);
+  const [localFromInput, setLocalFromInput] = React.useState(yearFromInput);
+  const [localToInput, setLocalToInput] = React.useState(yearToInput);
 
   const handleYearRangeChange = (values: number[]) => {
     setYearRange([values[0], values[1]]);
     setYearFromInput(values[0].toString());
     setYearToInput(values[1].toString());
-    setIsFilterActive(true);
-    updateCurrentSearchFilters();
   };
 
   const applyYearPreset = (preset: [number, number]) => {
     setYearRange(preset);
     setYearFromInput(preset[0].toString());
     setYearToInput(preset[1].toString());
-    setIsFilterActive(true);
-    updateCurrentSearchFilters();
   };
 
   return (
@@ -73,7 +88,11 @@ export function YearRangePicker() {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={clearYearRange}
+              onClick={() => {
+                setYearRange([MIN_YEAR, currentYear]);
+                setYearFromInput(MIN_YEAR.toString());
+                setYearToInput(currentYear.toString());
+              }}
               className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3 mr-1" />
@@ -108,9 +127,7 @@ export function YearRangePicker() {
                     setYearRange([newValue, yearRange[1]]);
                   } else {
                     setYearRange([value, yearRange[1]]);
-                    setIsFilterActive(true);
                   }
-                  updateCurrentSearchFilters();
                 }}
                 className="h-9 text-sm"
                 placeholder={MIN_YEAR.toString()}
@@ -141,9 +158,7 @@ export function YearRangePicker() {
                     setYearRange([yearRange[0], newValue]);
                   } else {
                     setYearRange([yearRange[0], value]);
-                    setIsFilterActive(true);
                   }
-                  updateCurrentSearchFilters();
                 }}
                 className="h-9 text-sm"
                 placeholder={currentYear.toString()}
