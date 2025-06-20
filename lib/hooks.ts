@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getEffectiveSearchId, getCurrentSearchFormState, SearchField, DEFAULT_FILTERS } from "@/lib/utils";
+import { getEffectiveSearchId, getCurrentSearchFormState, DEFAULT_FILTERS } from "@/lib/utils";
 import { useResultsStore } from "@/lib/store";
 import { useSearchHistoryStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { getSearchResultsWithFilters, SearchWithFiltersParams } from '@/lib/search-utils';
+import type { SearchField, SearchFilters } from '@/lib/types';
 
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
@@ -141,6 +142,7 @@ export function useCurrentSearchFormState() {
     sortBy: getField('sortBy', DEFAULT_FILTERS.sortBy),
     filterType: getField('filterType', DEFAULT_FILTERS.filterType),
     yearRange: getField('yearRange', defaultYearRange),
+    isYearRangeEnabled: getField('isYearRangeEnabled', DEFAULT_FILTERS.isYearRangeEnabled),
     yearFromInput: getField('yearRange', defaultYearRange)[0]?.toString() || defaultYearRange[0].toString(),
     yearToInput: getField('yearRange', defaultYearRange)[1]?.toString() || defaultYearRange[1].toString(),
     ratingRange: getField('ratingRange', DEFAULT_FILTERS.ratingRange),
@@ -226,22 +228,30 @@ export function useSearchResults() {
       effectiveSortBy = 'publication_date:desc'; // Default to newest first
     }
     
-    const isFilterActive = dateRange || yearRange;
+    // Check if date filters are actually active using proper logic
+    const isFilterActive = (filterType === "date" && dateRange) || 
+                          (filterType === "year" && yearRange && searchState?.isYearRangeEnabled);
+    
+    // Create unified filters object
+    const filters: SearchFilters = {
+      searchField,
+      sortBy: effectiveSortBy,
+      filterType,
+      dateRange,
+      yearRange,
+      isYearRangeEnabled: searchState?.isYearRangeEnabled, // Use actual value from search state
+      ratingRange: undefined, // Rating filters are handled client-side
+      onlyRatedPapers: undefined,
+      selectedRegions,
+      selectedCountryFocus,
+      citesItemId,
+      relatedToItemId,
+    };
     
     const params: SearchWithFiltersParams = {
       query,
-      searchField,
-      dateRange,
-      sortBy: effectiveSortBy,
-      yearRange,
-      filterType,
+      filters,
       isFilterActive,
-      overrideState: {
-        selectedRegions,
-        selectedCountryFocus,
-        citesItemId,
-        relatedToItemId,
-      }
     };
 
     const result = await getSearchResultsWithFilters(params);

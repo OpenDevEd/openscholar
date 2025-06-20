@@ -50,10 +50,11 @@ export function AIEnhancementPage({
     sortBy,
     filterType,
     yearRange,
+    isYearRangeEnabled,
   } = useCurrentSearchFormState()
   
   // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType)
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled)
 
   // Note: setSuggestedQuery is now handled centrally by QuerySyncProvider
   // No manual initialization needed here

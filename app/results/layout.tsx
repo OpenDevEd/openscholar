@@ -25,10 +25,11 @@ export default function ResultsLayout({ children }: ResultsLayoutProps) {
     sortBy,
     filterType,
     yearRange,
+    isYearRangeEnabled,
   } = useCurrentSearchFormState();
 
   // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType);
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const {
     loadingResultIndex,

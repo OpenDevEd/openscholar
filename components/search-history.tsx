@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check } from "lucide-react";
 import { format } from "date-fns";
-import { jsonToCSV, downloadAsFile, SearchField, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive } from "@/lib/utils";
+import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive } from "@/lib/utils";
+import type { SearchField } from "@/lib/types";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {

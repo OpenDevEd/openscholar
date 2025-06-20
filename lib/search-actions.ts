@@ -2,9 +2,10 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useUIStore, useSearchHistoryStore, useRatingsStore } from './store';
-import { SearchField, getEffectiveSearchId, createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
+import { getEffectiveSearchId, createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { createSearchStateFromStore } from './search-utils';
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
+import type { SearchField, SearchFilters } from './types';
 
 // Utility function to extract query from FormData
 const extractQueryFromFormData = (formData: FormData): string => {
@@ -12,9 +13,9 @@ const extractQueryFromFormData = (formData: FormData): string => {
 };
 
 // Utility function to calculate effective date/year ranges based on filter type
-const getEffectiveRanges = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isFilterActive?: boolean) => {
+const getEffectiveRanges = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isFilterActive?: boolean, isYearRangeEnabled?: boolean) => {
   const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
-  const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
+  const effectiveYearRange = (filterType === "year" && isFilterActive && isYearRangeEnabled) ? yearRange : undefined;
   return { effectiveDateRange, effectiveYearRange };
 };
 
@@ -31,15 +32,23 @@ const createSearchStateWithEffectiveRanges = (
 ) => {
   const { effectiveDateRange, effectiveYearRange } = getEffectiveRanges(dateRange, yearRange, filterType, isFilterActive);
   
-  return createSearchStateFromStore(
-    query,
+  // Create unified filters object
+  const filters: SearchFilters = {
     searchField,
-    effectiveDateRange,
-    effectiveYearRange,
-    filterType,
-    sortBy,
-    resultsCount
-  );
+    sortBy: sortBy || 'relevance_score:desc',
+    filterType: filterType || 'year',
+    dateRange: effectiveDateRange,
+    yearRange: effectiveYearRange,
+    isYearRangeEnabled: undefined, // Will be filled from current search state
+    ratingRange: undefined, // Rating filters are handled client-side
+    onlyRatedPapers: undefined,
+    selectedRegions: [], // Will be filled from current search state
+    selectedCountryFocus: [], // Will be filled from current search state
+    citesItemId: '', // Will be filled from current search state
+    relatedToItemId: '', // Will be filled from current search state
+  };
+  
+  return createSearchStateFromStore(query, filters, resultsCount);
 };
 
 // Submit search and create history item (SWR will handle data fetching)
@@ -167,8 +176,24 @@ export const createSearchMetadata = (
   dateRange?: DateRange,
   yearRange?: [number, number]
 ) => {
+  // Create unified filters object for metadata
+  const filters: SearchFilters = {
+    searchField,
+    sortBy: 'relevance_score:desc',
+    filterType: 'year',
+    dateRange,
+    yearRange,
+    isYearRangeEnabled: false, // Default for metadata
+    ratingRange: undefined,
+    onlyRatedPapers: undefined,
+    selectedRegions: [],
+    selectedCountryFocus: [],
+    citesItemId: '',
+    relatedToItemId: '',
+  };
+  
   // Use the centralized utility function to create search parameters
-  const searchParams = createSearchParameters(query, searchField, dateRange, undefined, yearRange);
+  const searchParams = createSearchParameters(query, filters);
 
   return {
     search: {

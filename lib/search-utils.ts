@@ -1,31 +1,20 @@
 import { DateRange } from 'react-day-picker';
 import { getSearchResults } from '@/app/actions/openalex';
-import { SearchField, getCurrentSearchState, getEffectiveSearchId, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
-import { getCountryCodesForRegions, COUNTRIES } from './constants';
+import { getCurrentSearchState, getEffectiveSearchId, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
+import { getCountryCodesForRegions, COUNTRIES, MIN_YEAR } from './constants';
 import { useSearchHistoryStore } from './store';
 import { validateAndExpandKeywords } from './keyword-validation';
+import type { SearchFilters, SearchField } from './types';
 
 export interface SearchWithFiltersParams {
   query: string;
-  searchField: SearchField;
-  dateRange?: DateRange;
-  sortBy?: string;
-  yearRange?: [number, number];
-  filterType?: "date" | "year";
+  filters: SearchFilters;
   isFilterActive?: boolean;
-  // Override state - if provided, uses these instead of store state
-  overrideState?: {
-    selectedRegions?: string[];
-    selectedCountryFocus?: string[];
-    citesItemId?: string;
-    relatedToItemId?: string;
-  };
 }
 
 export interface EnhancedSearchResult {
   originalQuery: string;
   enhancedQuery: string;
-  effectiveCountryCodes?: string[];
   countryNames: string[];
   validation: {
     isValid: boolean;
@@ -53,60 +42,30 @@ function cleanCountryNameForAPI(countryName: string): string {
 export async function getSearchResultsWithFilters(
   params: SearchWithFiltersParams
 ): Promise<EnhancedSearchResult> {
-  const {
-    query,
-    searchField,
-    dateRange,
-    sortBy,
-    yearRange,
-    filterType,
-    isFilterActive,
-    overrideState
-  } = params;
+  const { query, filters, isFilterActive } = params;
 
-  // Get state from override or from current search in history
-  let stateToUse;
-  if (overrideState) {
-    stateToUse = overrideState;
-  } else {
-    // Get current search state from URL/history
-    const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
-    const currentSearch = getCurrentSearchState(pathname);
-    
-    stateToUse = {
-      selectedRegions: currentSearch?.selectedRegions || [],
-      selectedCountryFocus: currentSearch?.selectedCountryFocus || [],
-      citesItemId: currentSearch?.citesItemId || '',
-      relatedToItemId: currentSearch?.relatedToItemId || ''
-    };
-  }
+  // Determine which date/year range to use based on filter type and if filter is active
+  const effectiveDateRange = (filters.filterType === "date" && isFilterActive) ? filters.dateRange : undefined;
+  const effectiveYearRange = (filters.filterType === "year" && isFilterActive && filters.isYearRangeEnabled) ? filters.yearRange : undefined;
 
-  const {
-    selectedRegions,
-    selectedCountryFocus,
-    citesItemId,
-    relatedToItemId
-  } = stateToUse;
-
-  // Determine which date/year range to use based on filter type
-  const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
-  const effectiveYearRange = (filterType === "year" && isFilterActive) ? yearRange : undefined;
-
-  // Get country codes for API filtering if country filter is active
-  const updateCountryData = isCountryFilterActive(selectedRegions) ? getCountryCodesForRegions(selectedRegions) : null;
-  const effectiveCountryCodes = updateCountryData ? updateCountryData.countries : undefined;
+  // Create filters with effective date/year ranges for the API call
+  const effectiveFilters: SearchFilters = {
+    ...filters,
+    dateRange: effectiveDateRange,
+    yearRange: effectiveYearRange,
+  };
 
   // Get effective cites item ID
-  const effectiveCitesItemId = isCitesFilterActive(citesItemId) ? citesItemId : undefined;
+  const effectiveCitesItemId = isCitesFilterActive(filters.citesItemId) ? filters.citesItemId : undefined;
 
   // Get effective related_to item ID
-  const effectiveRelatedToItemId = isRelatedToFilterActive(relatedToItemId) ? relatedToItemId : undefined;
+  const effectiveRelatedToItemId = isRelatedToFilterActive(filters.relatedToItemId) ? filters.relatedToItemId : undefined;
 
   // Get country names for query enhancement if Country focus is active
   const getCountryNames = (): string[] => {
-    if (!isCountryFocusActive(selectedCountryFocus)) return [];
+    if (!isCountryFocusActive(filters.selectedCountryFocus)) return [];
     const countryNames: string[] = [];
-    const countryData = getCountryCodesForRegions(selectedCountryFocus, true); // Bypass limit for Country focus
+    const countryData = getCountryCodesForRegions(filters.selectedCountryFocus, true); // Bypass limit for Country focus
     
     countryData.countries.forEach(code => {
       if (COUNTRIES[code]) {
@@ -129,7 +88,6 @@ export async function getSearchResultsWithFilters(
     return {
       originalQuery: query,
       enhancedQuery: query,
-      effectiveCountryCodes,
       countryNames,
       validation,
       results: { results: [], meta: { count: 0 } }
@@ -150,11 +108,7 @@ export async function getSearchResultsWithFilters(
   // Get results with the final enhanced query for API, but keep original query for UI
   const results = await getSearchResults(
     finalApiQuery,
-    searchField,
-    effectiveDateRange,
-    sortBy,
-    effectiveYearRange,
-    effectiveCountryCodes,
+    effectiveFilters,
     finalApiQuery, // Pass the final enhanced query as both search and expanded query
     effectiveCitesItemId,
     effectiveRelatedToItemId
@@ -163,7 +117,6 @@ export async function getSearchResultsWithFilters(
   return {
     originalQuery: query,
     enhancedQuery: query, // Keep the original query for UI display
-    effectiveCountryCodes,
     countryNames,
     validation,
     results
@@ -175,45 +128,52 @@ export async function getSearchResultsWithFilters(
  */
 export function createSearchStateFromStore(
   query: string,
-  searchField: SearchField,
-  dateRange?: DateRange,
-  yearRange?: [number, number],
-  filterType?: "date" | "year",
-  sortBy?: string,
+  filters: SearchFilters,
   resultsCount?: number
 ) {
-  // Get current state from search history instead of SearchFormStore
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
-  const currentSearch = getCurrentSearchState(pathname);
-
-  // Only include rating values if they're different from defaults
-  const ratingRange = currentSearch?.ratingRange;
-  const onlyRatedPapers = currentSearch?.onlyRatedPapers;
-  
   return {
     query,
-    field: searchField,
+    field: filters.searchField,
     count: resultsCount || 0,
-    dateRange,
-    yearRange,
-    filterType,
-    sortBy,
-    selectedRegions: currentSearch?.selectedRegions || [],
-    selectedCountryFocus: currentSearch?.selectedCountryFocus || [],
+    dateRange: filters.dateRange,
+    yearRange: filters.yearRange,
+    filterType: filters.filterType,
+    isYearRangeEnabled: filters.isYearRangeEnabled,
+    sortBy: filters.sortBy,
+    selectedRegions: filters.selectedRegions,
+    selectedCountryFocus: filters.selectedCountryFocus,
     // Only include rating fields if they're not at default values
-    ...(ratingRange && !isFilterAtDefault.ratingRange(ratingRange) ? { ratingRange } : {}),
-    ...(onlyRatedPapers !== undefined && !isFilterAtDefault.onlyRatedPapers(onlyRatedPapers) ? { onlyRatedPapers } : {}),
-    citesItemId: currentSearch?.citesItemId || '',
-    relatedToItemId: currentSearch?.relatedToItemId || ''
+    ...(filters.ratingRange && !isFilterAtDefault.ratingRange(filters.ratingRange) ? { ratingRange: filters.ratingRange } : {}),
+    ...(filters.onlyRatedPapers !== undefined && !isFilterAtDefault.onlyRatedPapers(filters.onlyRatedPapers) ? { onlyRatedPapers: filters.onlyRatedPapers } : {}),
+    citesItemId: filters.citesItemId,
+    relatedToItemId: filters.relatedToItemId
   };
 }
 
 /**
- * Helper function to extract search state from a stored search result
- * for use with getSearchResultsWithFilters
+ * Helper function to convert a search result to SearchFilters
  */
-export function extractStateFromSearchResult(searchResult: any) {
+export function searchResultToFilters(searchResult: any): SearchFilters {
+  // Migration logic: if isYearRangeEnabled is undefined, determine it from yearRange
+  let isYearRangeEnabled = searchResult.isYearRangeEnabled;
+  if (isYearRangeEnabled === undefined && searchResult.yearRange) {
+    const currentYear = new Date().getFullYear();
+    const [fromYear, toYear] = searchResult.yearRange;
+    const defaultYearRange = [MIN_YEAR, currentYear];
+    isYearRangeEnabled = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
+  } else if (isYearRangeEnabled === undefined) {
+    isYearRangeEnabled = false;
+  }
+
   return {
+    searchField: searchResult.field || 'title_and_abstract',
+    sortBy: searchResult.sortBy || 'relevance_score:desc',
+    filterType: searchResult.filterType || 'year',
+    dateRange: searchResult.dateRange,
+    yearRange: searchResult.yearRange,
+    isYearRangeEnabled,
+    ratingRange: searchResult.ratingRange,
+    onlyRatedPapers: searchResult.onlyRatedPapers,
     selectedRegions: searchResult.selectedRegions || [],
     selectedCountryFocus: searchResult.selectedCountryFocus || [],
     citesItemId: searchResult.citesItemId || '',

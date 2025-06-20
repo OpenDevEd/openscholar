@@ -23,6 +23,7 @@ export default function FiltersPage({ params }: FiltersPageProps) {
     dateRange,
     yearRange,
     filterType,
+    isYearRangeEnabled,
     ratingRange,
     onlyRatedPapers,
     citesItemId,
@@ -44,7 +45,7 @@ export default function FiltersPage({ params }: FiltersPageProps) {
   // Calculate active filters count using utility functions
   const getActiveFiltersCount = () => {
     let count = 0;
-    if (isDateFilterActive(dateRange, yearRange, filterType)) count++;
+    if (isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled)) count++;
     if (isRatingFilterActive(ratingRange, onlyRatedPapers)) count++;
     if (isCountryFilterActive(selectedRegions)) count++;
     if (isCountryFocusActive(selectedCountryFocus)) count++;

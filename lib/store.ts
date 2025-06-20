@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DateRange } from "react-day-picker";
-import { SearchField } from './utils';
-import { DEFAULT_YEAR_RANGE } from './constants';
+import type { SearchField } from './types';
+import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
 import { format } from 'date-fns'
 
 // Fallback UUID generator for mobile compatibility
@@ -27,6 +27,7 @@ export type SearchResult = {
   dateRange?: DateRange;
   yearRange?: [number, number];
   filterType?: "date" | "year";
+  isYearRangeEnabled?: boolean;
   sortBy?: string;
   selectedRegions?: string[];
   selectedCountryFocus?: string[];
@@ -234,6 +235,37 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
+      version: 1, // Increment when migrations are needed
+      migrate: (persistedState: any, version: number) => {
+        // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
+        if (version === 0) {
+          const currentYear = new Date().getFullYear();
+          const defaultYearRange = [MIN_YEAR, currentYear];
+          
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              // If the item has a custom year range (not the default), enable the toggle
+              if (item.yearRange && Array.isArray(item.yearRange)) {
+                const [fromYear, toYear] = item.yearRange;
+                const isCustomRange = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
+                
+                return {
+                  ...item,
+                  isYearRangeEnabled: isCustomRange
+                };
+              }
+              
+              // If no yearRange or it's the default, keep toggle disabled
+              return {
+                ...item,
+                isYearRangeEnabled: false
+              };
+            });
+          }
+        }
+        
+        return persistedState;
+      },
     }
   )
 )
@@ -414,6 +446,11 @@ interface AIConfigDialogState {
   setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
 }
 
+interface YearRangePickerState {
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+}
+
 export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
   mounted: false,
   setMounted: (mounted) => set({ mounted }),
@@ -484,4 +521,9 @@ export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
   enhancedPreview: null,
   setIsEnhancing: (enhancing) => set({ isEnhancing: enhancing }),
   setEnhancedPreview: (preview) => set({ enhancedPreview: preview }),
+}))
+
+export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
+  isOpen: false,
+  setIsOpen: (open) => set({ isOpen: open }),
 })) 

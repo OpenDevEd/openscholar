@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/popover";
 import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe, Quote, Network } from "lucide-react";
 import { format } from "date-fns";
-import { cn, SearchField, fields, isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { cn, fields, isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import type { SearchField } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import {
   Select,
@@ -52,12 +53,16 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     citesItemId,
     relatedToItemId,
     yearRange,
+    isYearRangeEnabled,
   } = useCurrentSearchFormState();
   
   const updateFilter = useUpdateSearchFilter();
+  
+  // Control date picker popover state to prevent auto-close on filter updates
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   // Computed filter active states using utility functions
-  const isDateActive = isDateFilterActive(dateRange, yearRange, filterType);
+  const isDateActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
   const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
   const isCountryActive = isCountryFilterActive(selectedRegions);
   const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
@@ -82,6 +87,8 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
   const handleDateRangeChange = async (range: DateRange | undefined) => {
     updateFilter({ dateRange: range });
+    // Don't close the date picker when selecting dates
+    // Only update search filters, let user close manually
     await updateCurrentSearchFilters();
   };
 
@@ -92,7 +99,10 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
   const handleClearYearRange = async () => {
     const defaultRange = DEFAULT_FILTERS.yearRange();
-    updateFilter({ yearRange: defaultRange });
+    updateFilter({ 
+      yearRange: defaultRange,
+      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled 
+    });
     await updateCurrentSearchFilters();
   };
 
@@ -121,6 +131,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
       sortBy: DEFAULT_FILTERS.sortBy,
       dateRange: DEFAULT_FILTERS.dateRange,
       yearRange: defaultYearRange,
+      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
       ratingRange: DEFAULT_FILTERS.ratingRange,
       onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
       selectedRegions: DEFAULT_FILTERS.selectedRegions,
@@ -220,7 +231,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
             {/* Filter Content */}
             {filterType === "date" ? (
               <div className="space-y-3">
-                <Popover>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"

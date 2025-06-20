@@ -39,11 +39,11 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
     sortBy,
     filterType,
     yearRange,
-
+    isYearRangeEnabled,
   } = useCurrentSearchFormState();
 
   // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType);
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const effectiveSearchId = useEffectiveSearchId();
 
@@ -61,49 +61,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
     isValidating,
     isLoadingResults,
   } = useSearchResults();
-
-  // SWR automatically handles loading results when the search parameters change
-  // No need for manual loading logic
-
-  const handleUpdateCurrentSearch = async (query: string) => {
-    // Update the current search results with new query
-    const formData = new FormData();
-    formData.set('query', query);
-    
-    // Update current search without creating a new entry
-    await updateCurrentSearch(
-      formData,
-      currentSearchField,
-      dateRange,
-      sortBy,
-      yearRange,
-      filterType,
-      isFilterActive
-    );
-    // Note: This updates the existing search entry and stays on the same page
-  };
-
-  const handleNewSearch = async (query: string) => {
-    // Create a completely new search
-    const formData = new FormData();
-    formData.set('query', query);
-    
-    // Submit search and load results in one call, get the search ID
-    const { searchId: newSearchId } = await submitSearchAndLoadResults(
-      formData,
-      currentSearchField,
-      dateRange,
-      sortBy,
-      yearRange,
-      filterType,
-      isFilterActive
-    );
-
-    // Only navigate if search was successful (searchId is not null)
-    if (newSearchId) {
-      router.push(`/results/${newSearchId}`);
-    }
-  };
 
   const handleBackToHome = () => {
     router.push('/');

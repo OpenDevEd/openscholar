@@ -41,10 +41,11 @@ function PageContent() {
     sortBy,
     filterType,
     yearRange,
+    isYearRangeEnabled,
   } = useCurrentSearchFormState();
 
   // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType);
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const {
     loadingResultIndex,
