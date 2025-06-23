@@ -110,7 +110,12 @@ export const isFilterAtDefault = {
 
 // Helper to check if rating filter is active (combines range and onlyRatedPapers)
 export const isRatingFilterActive = (range?: [number, number], onlyRated?: boolean) => {
-  return !isFilterAtDefault.ratingRange(range) || !isFilterAtDefault.onlyRatedPapers(onlyRated);
+  // If onlyRatedPapers is false, the filter is inactive regardless of range
+  if (onlyRated === false) {
+    return false;
+  }
+  // If onlyRatedPapers is true, check if either the toggle or range is non-default
+  return !isFilterAtDefault.onlyRatedPapers(onlyRated) || !isFilterAtDefault.ratingRange(range);
 };
 
 // Helper to check if any date/year filter is active based on current filter type

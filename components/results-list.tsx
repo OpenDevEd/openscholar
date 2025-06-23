@@ -58,7 +58,7 @@ export function ResultsList({
     }
     
     // Rating filter
-    if (isRatingFilterActive(ratingRange, onlyRatedPapers) && onlyRatedPapers) {
+    if (isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
       
       // If onlyRatedPapers is true, exclude papers without ratings
