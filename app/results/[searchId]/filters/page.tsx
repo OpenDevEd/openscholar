@@ -6,7 +6,7 @@ import { Filter } from 'lucide-react';
 import { SearchSidebar } from '@/components/search-sidebar';
 import { PageHeader } from '@/components/ui/page-header';
 import { useCurrentSearchFormState } from '@/lib/hooks';
-import { isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from '@/lib/utils';
+import { isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from '@/lib/utils';
 
 interface FiltersPageProps {
   params: Promise<{ searchId: string }>;
@@ -27,6 +27,7 @@ export default function FiltersPage({ params }: FiltersPageProps) {
     ratingRange,
     onlyRatedPapers,
     citesItemId,
+    citedByItemId,
     relatedToItemId,
   } = useCurrentSearchFormState();
 
@@ -50,6 +51,7 @@ export default function FiltersPage({ params }: FiltersPageProps) {
     if (isCountryFilterActive(selectedRegions)) count++;
     if (isCountryFocusActive(selectedCountryFocus)) count++;
     if (isCitesFilterActive(citesItemId)) count++;
+    if (isCitedByFilterActive(citedByItemId)) count++;
     if (isRelatedToFilterActive(relatedToItemId)) count++;
     if (currentSearchField !== DEFAULT_FILTERS.field) count++;
     if (sortBy !== DEFAULT_FILTERS.sortBy) count++;

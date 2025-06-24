@@ -21,7 +21,7 @@ export function ReviewFilter() {
     <div className="flex items-center justify-between">
       <div className="space-y-1">
         <Label htmlFor="review-filter" className="text-sm font-medium">
-          Show only reviews
+          Only show reviews
         </Label>
         <p className="text-xs text-muted-foreground">
           Filter for review papers, syntheses, and meta-analyses

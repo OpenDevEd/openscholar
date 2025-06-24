@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe, Quote, Network, FileText } from "lucide-react";
 import { format } from "date-fns";
-import { cn, fields, isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isReviewFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { cn, fields, isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, isReviewFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
@@ -20,6 +20,7 @@ import { RatingRangePicker } from "./rating-range-picker";
 import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
 import { CitesFilter } from "./cites-filter";
+import { CitedByFilter } from "./cited-by-filter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
@@ -452,6 +453,43 @@ function CitesFilterPanel() {
   );
 }
 
+// Cited By Filter Component
+function CitedByFilterPanel() {
+  const { citedByItemId } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isCitedByActive = isCitedByFilterActive(citedByItemId);
+
+  const handleClearCitedByFilter = async () => {
+    updateFilter({ citedByItemId: DEFAULT_FILTERS.citedByItemId });
+    await updateCurrentSearchFilters();
+  };
+
+  return (
+    <FilterWrapper
+      title="Cited by filter"
+      icon={Quote}
+      colorScheme="green"
+      isActive={isCitedByActive}
+    >
+      <div className="space-y-4">
+        <CitedByFilter />
+        {isCitedByActive && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleClearCitedByFilter}
+            className="w-full h-9 text-sm text-green-600 hover:text-green-700 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-950/50"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Clear cited by filter
+          </Button>
+        )}
+      </div>
+    </FilterWrapper>
+  );
+}
+
 // Related To Filter Component
 function RelatedToFilterPanel() {
   const { relatedToItemId } = useCurrentSearchFormState();
@@ -535,6 +573,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     ratingRange,
     onlyRatedPapers,
     citesItemId,
+    citedByItemId,
     relatedToItemId,
     yearRange,
     isYearRangeEnabled,
@@ -551,6 +590,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
   const isCountryActive = isCountryFilterActive(selectedRegions);
   const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
   const isCitesActive = isCitesFilterActive(citesItemId);
+  const isCitedByActive = isCitedByFilterActive(citedByItemId);
   const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
   const isReviewActive = isReviewFilterActive(reviewFilter);
 
@@ -567,6 +607,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
       selectedRegions: DEFAULT_FILTERS.selectedRegions,
       selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
       citesItemId: DEFAULT_FILTERS.citesItemId,
+      citedByItemId: DEFAULT_FILTERS.citedByItemId,
       relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
       reviewFilter: DEFAULT_FILTERS.reviewFilter,
     });
@@ -580,6 +621,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     if (isCountryActive) count++;
     if (isCountryFocusFilterActive) count++;
     if (isCitesActive) count++;
+    if (isCitedByActive) count++;
     if (isRelatedToActive) count++;
     if (isReviewActive) count++;
     if (currentSearchField !== DEFAULT_FILTERS.field) count++;
@@ -608,6 +650,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
       {/* ID Filters - Show at top when active */}
       {isCitesActive && <CitesFilterPanel />}
+      {isCitedByActive && <CitedByFilterPanel />}
       {isRelatedToActive && <RelatedToFilterPanel />}
 
       {/* Date Filter - Floating Panel */}
@@ -633,6 +676,9 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
       
       {/* Cites Filter - Floating Panel (when not active) */}
       {!isCitesActive && <CitesFilterPanel />}
+
+      {/* Cited By Filter - Floating Panel (when not active) */}
+      {!isCitedByActive && <CitedByFilterPanel />}
 
       {/* Related To Filter - Floating Panel (when not active) */}
       {!isRelatedToActive && <RelatedToFilterPanel />}

@@ -1,6 +1,6 @@
 import { DateRange } from 'react-day-picker';
 import { getSearchResults } from '@/app/actions/openalex';
-import { getCurrentSearchState, getEffectiveSearchId, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
+import { getCurrentSearchState, getEffectiveSearchId, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, MIN_YEAR } from './constants';
 import { useSearchHistoryStore } from './store';
 import { validateAndExpandKeywords } from './keyword-validation';
@@ -156,6 +156,7 @@ export function createSearchStateFromStore(
     ...(filters.ratingRange && !isFilterAtDefault.ratingRange(filters.ratingRange) ? { ratingRange: filters.ratingRange } : {}),
     ...(filters.onlyRatedPapers !== undefined && !isFilterAtDefault.onlyRatedPapers(filters.onlyRatedPapers) ? { onlyRatedPapers: filters.onlyRatedPapers } : {}),
     citesItemId: filters.citesItemId,
+    citedByItemId: filters.citedByItemId,
     relatedToItemId: filters.relatedToItemId,
     reviewFilter: filters.reviewFilter
   };
@@ -188,6 +189,7 @@ export function searchResultToFilters(searchResult: any): SearchFilters {
     selectedRegions: searchResult.selectedRegions || [],
     selectedCountryFocus: searchResult.selectedCountryFocus || [],
     citesItemId: searchResult.citesItemId || '',
+    citedByItemId: searchResult.citedByItemId || '',
     relatedToItemId: searchResult.relatedToItemId || '',
     reviewFilter: searchResult.reviewFilter || false
   };

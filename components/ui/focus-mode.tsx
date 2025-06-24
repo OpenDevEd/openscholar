@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { workToCoins, cn } from '@/lib/utils';
-import { useRatingsStore, useFocusModeSettingsStore } from '@/lib/store';
+import { useRatingsStore, useFocusModeSettingsStore, useUIStore } from '@/lib/store';
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from 'next-themes';
 import { RatingSelector } from "../rating-selector";
@@ -55,7 +55,7 @@ export function FocusMode({
   onDownloadItem,
   onDownloadEssentialItem
 }: FocusModeProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const { focusModeIndex: currentIndex, setFocusModeIndex: setCurrentIndex } = useUIStore();
   const [showSettings, setShowSettings] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const { ratings, setRating } = useRatingsStore();
@@ -114,7 +114,6 @@ export function FocusMode({
   };
 
   useEffect(() => {
-    setCurrentIndex(0);
     setShowSettings(false);
   }, [isOpen]);
 
@@ -216,7 +215,7 @@ export function FocusMode({
       if (isMobile) {
         setSwipeDirection('left');
       }
-      setCurrentIndex((prev) => prev + 1);
+      setCurrentIndex(currentIndex + 1);
     }
   };
 
@@ -225,7 +224,7 @@ export function FocusMode({
       if (isMobile) {
         setSwipeDirection('right');
       }
-      setCurrentIndex((prev) => prev - 1);
+      setCurrentIndex(currentIndex - 1);
     }
   };
 

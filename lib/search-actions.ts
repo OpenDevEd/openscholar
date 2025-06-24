@@ -45,6 +45,7 @@ const createSearchStateWithEffectiveRanges = (
     selectedRegions: [], // Will be filled from current search state
     selectedCountryFocus: [], // Will be filled from current search state
     citesItemId: '', // Will be filled from current search state
+    citedByItemId: '', // Will be filled from current search state
     relatedToItemId: '', // Will be filled from current search state
     reviewFilter: false, // Will be filled from current search state
   };
@@ -190,6 +191,7 @@ export const createSearchMetadata = (
     selectedRegions: [],
     selectedCountryFocus: [],
     citesItemId: '',
+    citedByItemId: '',
     relatedToItemId: '',
     reviewFilter: false,
   };
@@ -313,14 +315,15 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
   }
 };
 
-export const openFocusMode = (isMobile?: boolean) => {
-  const { setIsDialogOpen, setIsFocusModeOpen } = useUIStore.getState();
+export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
+  const { setIsDialogOpen, setIsFocusModeOpen, setFocusModeIndex } = useUIStore.getState();
   
   // If isMobile is provided, use it; otherwise fall back to window check for backward compatibility
   const isDesktop = isMobile !== undefined ? !isMobile : window.matchMedia("(min-width: 768px)").matches;
   if (!isDesktop) {
     setIsDialogOpen(false);
   }
+  setFocusModeIndex(initialIndex);
   setIsFocusModeOpen(true);
 };
 

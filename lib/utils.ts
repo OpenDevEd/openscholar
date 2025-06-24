@@ -28,6 +28,7 @@ export const DEFAULT_FILTERS = {
   selectedRegions: [] as string[],
   selectedCountryFocus: [] as string[],
   citesItemId: '',
+  citedByItemId: '',
   relatedToItemId: '',
   reviewFilter: false,
 } as const;
@@ -48,6 +49,7 @@ export function createDefaultFilters(): SearchFilters {
     selectedRegions: [...DEFAULT_FILTERS.selectedRegions],
     selectedCountryFocus: [...DEFAULT_FILTERS.selectedCountryFocus],
     citesItemId: DEFAULT_FILTERS.citesItemId,
+    citedByItemId: DEFAULT_FILTERS.citedByItemId,
     relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
     reviewFilter: DEFAULT_FILTERS.reviewFilter,
   };
@@ -70,6 +72,7 @@ export function areFiltersAtDefault(filters: SearchFilters): boolean {
     isFilterAtDefault.selectedRegions(filters.selectedRegions) &&
     isFilterAtDefault.selectedCountryFocus(filters.selectedCountryFocus) &&
     isFilterAtDefault.citesItemId(filters.citesItemId) &&
+    isFilterAtDefault.citedByItemId(filters.citedByItemId) &&
     isFilterAtDefault.relatedToItemId(filters.relatedToItemId) &&
     isFilterAtDefault.reviewFilter(filters.reviewFilter)
   );
@@ -87,6 +90,7 @@ export function countActiveFilters(filters: SearchFilters): number {
   if (isCountryFilterActive(filters.selectedRegions)) count++;
   if (isCountryFocusActive(filters.selectedCountryFocus)) count++;
   if (isCitesFilterActive(filters.citesItemId)) count++;
+  if (isCitedByFilterActive(filters.citedByItemId)) count++;
   if (isRelatedToFilterActive(filters.relatedToItemId)) count++;
   if (isReviewFilterActive(filters.reviewFilter)) count++;
   return count;
@@ -109,6 +113,7 @@ export const isFilterAtDefault = {
   selectedRegions: (regions?: string[]) => !regions || regions.length === 0,
   selectedCountryFocus: (focus?: string[]) => !focus || focus.length === 0,
   citesItemId: (id?: string) => !id || id === DEFAULT_FILTERS.citesItemId,
+  citedByItemId: (id?: string) => !id || id === DEFAULT_FILTERS.citedByItemId,
   relatedToItemId: (id?: string) => !id || id === DEFAULT_FILTERS.relatedToItemId,
   reviewFilter: (value?: boolean) => value === undefined || value === DEFAULT_FILTERS.reviewFilter,
 };
@@ -148,6 +153,11 @@ export const isCountryFocusActive = (focus?: string[]) => {
 // Helper to check if cites filter is active
 export const isCitesFilterActive = (citesItemId?: string) => {
   return !isFilterAtDefault.citesItemId(citesItemId);
+};
+
+// Helper to check if cited by filter is active
+export const isCitedByFilterActive = (citedByItemId?: string) => {
+  return !isFilterAtDefault.citedByItemId(citedByItemId);
 };
 
 // Helper to check if related-to filter is active
@@ -312,6 +322,13 @@ export function createSearchParameters(
     // Clean the item ID to ensure it's in the correct format
     const cleanItemId = filters.citesItemId.startsWith('https://openalex.org/') ? filters.citesItemId : `https://openalex.org/${filters.citesItemId}`;
     apiFilters.cites = cleanItemId;
+  }
+
+  // Add cited_by filtering
+  if (filters.citedByItemId) {
+    // Clean the item ID to ensure it's in the correct format
+    const cleanItemId = filters.citedByItemId.startsWith('https://openalex.org/') ? filters.citedByItemId : `https://openalex.org/${filters.citedByItemId}`;
+    apiFilters.cited_by = cleanItemId;
   }
 
   // Add related_to filtering
@@ -687,6 +704,7 @@ export function getCurrentSearchFormState(pathname: string | null) {
     selectedRegions: getCurrentSearchField(pathname, 'selectedRegions', DEFAULT_FILTERS.selectedRegions),
     selectedCountryFocus: getCurrentSearchField(pathname, 'selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
     citesItemId: getCurrentSearchField(pathname, 'citesItemId', DEFAULT_FILTERS.citesItemId),
+    citedByItemId: getCurrentSearchField(pathname, 'citedByItemId', DEFAULT_FILTERS.citedByItemId),
     relatedToItemId: getCurrentSearchField(pathname, 'relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
     reviewFilter: getCurrentSearchField(pathname, 'reviewFilter', DEFAULT_FILTERS.reviewFilter),
   };

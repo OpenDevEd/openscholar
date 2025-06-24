@@ -113,14 +113,21 @@ export function ResultsList({
       
       <div ref={resultsContainerRef}>
         <div className="space-y-6">
-          {paginatedResults.map((result: any, index: number) => (
-            <PaperCard
-              key={`${result.id}-${index}`}
-              result={result}
-              onDownloadItem={onDownloadItem}
-              onDownloadEssentialItem={onDownloadEssentialItem}
-            />
-          ))}
+          {paginatedResults.map((result: any, index: number) => {
+            // Calculate the global index in the filtered results
+            const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+            // Find the index in the original unfiltered results array
+            const originalIndex = results.findIndex((r: any) => r.id === result.id);
+            return (
+              <PaperCard
+                key={`${result.id}-${index}`}
+                result={result}
+                resultIndex={originalIndex}
+                onDownloadItem={onDownloadItem}
+                onDownloadEssentialItem={onDownloadEssentialItem}
+              />
+            );
+          })}
           {paginatedResults.length === 0 && (
             <div className="text-center py-12">
               <p className="text-lg text-muted-foreground">

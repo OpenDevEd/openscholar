@@ -40,6 +40,7 @@ export interface SearchFilters {
   
   // Reference filters
   citesItemId: string;
+  citedByItemId: string;
   relatedToItemId: string;
   
   // Content type filters

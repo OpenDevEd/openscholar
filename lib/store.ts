@@ -34,6 +34,7 @@ export type SearchResult = {
   ratingRange?: [number, number];
   onlyRatedPapers?: boolean;
   citesItemId?: string;
+  citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
   createdAt: string;
@@ -61,9 +62,11 @@ interface UIState {
   isDialogOpen: boolean
   loadingResultIndex: number | null
   isFocusModeOpen: boolean
+  focusModeIndex: number
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
+  setFocusModeIndex: (index: number) => void
 }
 
 interface ResultsState {
@@ -275,9 +278,11 @@ export const useUIStore = create<UIState>((set) => ({
   isDialogOpen: false,
   loadingResultIndex: null,
   isFocusModeOpen: false,
+  focusModeIndex: 0,
   setIsDialogOpen: (open) => set({ isDialogOpen: open }),
   setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
   setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
+  setFocusModeIndex: (index) => set({ focusModeIndex: index }),
 }))
 
 export const useResultsStore = create<ResultsState>((set) => ({

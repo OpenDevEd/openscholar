@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { workToCoins } from "@/lib/utils";
 import { useResultsStore, useUIStore, useSearchHistoryStore } from "@/lib/store";
 import { useCurrentSearchFormState, useUpdateSearchFilter, useIsMobile } from "@/lib/hooks";
+import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "./rating-selector";
 import { PaperMetadata } from "./paper-metadata";
 import { DownloadMenu } from "./download-menu";
@@ -36,12 +37,14 @@ import {
 
 interface PaperCardProps {
   result: any;
+  resultIndex: number;
   onDownloadItem: (item: any, format: 'json' | 'csv') => void;
   onDownloadEssentialItem: (item: any, format: 'json' | 'csv') => void;
 }
 
 export function PaperCard({ 
   result, 
+  resultIndex,
   onDownloadItem, 
   onDownloadEssentialItem
 }: PaperCardProps) {
@@ -51,7 +54,7 @@ export function PaperCard({
   const updateFilter = useUpdateSearchFilter();
   const isMobile = useIsMobile();
 
-  const handleFilteredSearch = async (filterType: 'cites' | 'related') => {
+  const handleFilteredSearch = async (filterType: 'cites' | 'cited_by' | 'related') => {
     // Create new search entry in history (SWR will handle data fetching)
     const { addSearchResult } = useSearchHistoryStore.getState();
     const searchId = addSearchResult({
@@ -66,6 +69,7 @@ export function PaperCard({
       selectedCountryFocus: [],
       // Don't set rating ranges - they should default to undefined (not filtered)
       citesItemId: filterType === 'cites' ? result.id : '',
+      citedByItemId: filterType === 'cited_by' ? result.id : '',
       relatedToItemId: filterType === 'related' ? result.id : '',
     });
 
@@ -76,6 +80,7 @@ export function PaperCard({
   };
 
   const handleCitesSearch = () => handleFilteredSearch('cites');
+  const handleCitedBySearch = () => handleFilteredSearch('cited_by');
   const handleRelatedSearch = () => handleFilteredSearch('related');
 
   return (
@@ -92,16 +97,14 @@ export function PaperCard({
         
         {/* Title */}
         <div className="mb-3">
-          <a
-            href={result.id}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group-hover:underline"
+          <button
+            onClick={() => openFocusMode(isMobile, resultIndex)}
+            className="text-left w-full group-hover:underline hover:text-blue-600 transition-colors cursor-pointer"
           >
             <h3 className="font-medium text-lg text-wrap-anywhere">
               {result.title} ({result.publication_year})
             </h3>
-          </a>
+          </button>
         </div>
 
         {/* Authors */}
@@ -267,7 +270,7 @@ export function PaperCard({
             </div>
 
             {/* Citation and related works cards */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={handleCitesSearch}
                 className="bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-left transition-colors group relative"
@@ -280,6 +283,20 @@ export function PaperCard({
                   {result.cited_by_count || 0}
                 </div>
                 <ChevronRight className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-orange-600/60 dark:text-orange-400/60 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors" />
+              </button>
+
+              <button
+                onClick={handleCitedBySearch}
+                className="bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg p-3 text-left transition-colors group relative"
+              >
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
+                  <Quote className="h-4 w-4" />
+                  <span className="text-xs font-medium">Cited by</span>
+                </div>
+                <div className="text-lg font-semibold text-green-700 dark:text-green-300">
+                  {result.referenced_works_count || 0}
+                </div>
+                <ChevronRight className="h-4 w-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-green-600/60 dark:text-green-400/60 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors" />
               </button>
 
               <button
@@ -314,6 +331,19 @@ export function PaperCard({
                 <Quote className="h-4 w-4" />
                 <span className="text-sm">
                   Cited by: {result.cited_by_count || 0}
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCitedBySearch}
+                className="flex items-center gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/50 flex-shrink-0"
+                title="Find works cited by this paper"
+              >
+                <Quote className="h-4 w-4" />
+                <span className="text-sm">
+                  Cites: {result.referenced_works_count || 0}
                 </span>
               </Button>
 

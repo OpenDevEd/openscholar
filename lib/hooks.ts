@@ -150,6 +150,7 @@ export function useCurrentSearchFormState() {
     selectedRegions: getField('selectedRegions', DEFAULT_FILTERS.selectedRegions),
     selectedCountryFocus: getField('selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
     citesItemId: getField('citesItemId', DEFAULT_FILTERS.citesItemId),
+    citedByItemId: getField('citedByItemId', DEFAULT_FILTERS.citedByItemId),
     relatedToItemId: getField('relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
     reviewFilter: getField('reviewFilter', DEFAULT_FILTERS.reviewFilter),
   };
@@ -206,6 +207,7 @@ export function useSearchResults() {
     searchState.selectedRegions,
     searchState.selectedCountryFocus,
     searchState.citesItemId,
+    searchState.citedByItemId,
     searchState.relatedToItemId,
     searchState.reviewFilter,
   ] : null;
@@ -222,6 +224,7 @@ export function useSearchResults() {
     selectedRegions,
     selectedCountryFocus,
     citesItemId,
+    citedByItemId,
     relatedToItemId,
     reviewFilter,
   ]: any[]) => {
@@ -248,6 +251,7 @@ export function useSearchResults() {
       selectedRegions,
       selectedCountryFocus,
       citesItemId,
+      citedByItemId,
       relatedToItemId,
       reviewFilter: searchState?.reviewFilter || false,
     };

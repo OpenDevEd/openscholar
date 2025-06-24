@@ -159,19 +159,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                   </div>
                   
                   <div className="flex items-center  gap-3 flex-shrink-0">
-                    {/* Flashy Focus Mode Button */}
-                    <Button
-                      onClick={() => openFocusMode(isMobile)}
-                      className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-700 hover:via-pink-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0"
-                      size="sm"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-400/20 via-pink-400/20 to-blue-400/20 animate-pulse" />
-                      <div className="relative flex items-center gap-2">
-                        <Eye className="h-4 w-4" />
-                        <span className="font-semibold whitespace-nowrap">Focus Mode</span>
-                      </div>
-                    </Button>
-                    
                     <DownloadMenu
                       variant="button"
                       size="sm"

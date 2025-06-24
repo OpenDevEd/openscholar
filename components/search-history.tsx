@@ -418,6 +418,14 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 📑 Cites: {result.citesItemId}
               </span>
             )}
+            {result.citedByItemId && (
+              <span className={cn(
+                "bg-green-50 text-green-700 py-1 flex items-center gap-1 shrink-0",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
+                📋 Cited by: {result.citedByItemId}
+              </span>
+            )}
             {result.relatedToItemId && (
               <span className={cn(
                 "bg-blue-50 text-blue-700 py-1 flex items-center gap-1 shrink-0",
