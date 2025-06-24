@@ -195,3 +195,7 @@
     }
   }
 }
+
+@utility text-wrap-anywhere {
+  overflow-wrap: break-word;
+}

@@ -96,7 +96,7 @@ export function PaperCard({
             rel="noopener noreferrer"
             className="group-hover:underline"
           >
-            <h3 className="font-medium text-lg break-all hyphens-auto">
+            <h3 className="font-medium text-lg text-wrap-anywhere">
               {result.title} ({result.publication_year})
             </h3>
           </a>
@@ -118,7 +118,7 @@ export function PaperCard({
         <div className="mb-4">
           {/* Abstract */}
           {result.abstract && (
-            <p className="text-sm text-muted-foreground break-words hyphens-auto overflow-wrap-anywhere mb-2">
+            <p className="text-sm text-muted-foreground text-wrap-anywhere mb-2">
               {expandedAbstracts[result.id] 
                 ? result.abstract
                 : result.abstract.length > 500 
