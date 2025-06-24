@@ -105,6 +105,16 @@ export async function getSearchResultsWithFilters(
     }
   }
 
+  // Add review filter if active
+  if (filters.reviewFilter) {
+    const reviewTerms = '(review OR synthesis OR "meta-analysis")';
+    if (finalApiQuery) {
+      finalApiQuery = `(${finalApiQuery}) AND ${reviewTerms}`;
+    } else {
+      finalApiQuery = reviewTerms;
+    }
+  }
+
   // Get results with the final enhanced query for API, but keep original query for UI
   const results = await getSearchResults(
     finalApiQuery,
@@ -146,7 +156,8 @@ export function createSearchStateFromStore(
     ...(filters.ratingRange && !isFilterAtDefault.ratingRange(filters.ratingRange) ? { ratingRange: filters.ratingRange } : {}),
     ...(filters.onlyRatedPapers !== undefined && !isFilterAtDefault.onlyRatedPapers(filters.onlyRatedPapers) ? { onlyRatedPapers: filters.onlyRatedPapers } : {}),
     citesItemId: filters.citesItemId,
-    relatedToItemId: filters.relatedToItemId
+    relatedToItemId: filters.relatedToItemId,
+    reviewFilter: filters.reviewFilter
   };
 }
 
@@ -177,6 +188,7 @@ export function searchResultToFilters(searchResult: any): SearchFilters {
     selectedRegions: searchResult.selectedRegions || [],
     selectedCountryFocus: searchResult.selectedCountryFocus || [],
     citesItemId: searchResult.citesItemId || '',
-    relatedToItemId: searchResult.relatedToItemId || ''
+    relatedToItemId: searchResult.relatedToItemId || '',
+    reviewFilter: searchResult.reviewFilter || false
   };
 } 

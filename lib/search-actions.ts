@@ -46,6 +46,7 @@ const createSearchStateWithEffectiveRanges = (
     selectedCountryFocus: [], // Will be filled from current search state
     citesItemId: '', // Will be filled from current search state
     relatedToItemId: '', // Will be filled from current search state
+    reviewFilter: false, // Will be filled from current search state
   };
   
   return createSearchStateFromStore(query, filters, resultsCount);
@@ -190,6 +191,7 @@ export const createSearchMetadata = (
     selectedCountryFocus: [],
     citesItemId: '',
     relatedToItemId: '',
+    reviewFilter: false,
   };
   
   // Use the centralized utility function to create search parameters

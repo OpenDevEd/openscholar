@@ -446,6 +446,14 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 })()}
               </span>
             )}
+            {result.reviewFilter && (
+              <span className={cn(
+                "bg-pink-50 text-pink-700 py-1 flex items-center gap-1 shrink-0",
+                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+              )}>
+                📄 Reviews only
+              </span>
+            )}
             {variant === 'full' && (
               <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg shrink-0">
                 Sort: {result.sortBy ? sortOptions.find(opt => opt.value === result.sortBy)?.label || result.sortBy : "Relevance"}

@@ -41,4 +41,7 @@ export interface SearchFilters {
   // Reference filters
   citesItemId: string;
   relatedToItemId: string;
+  
+  // Content type filters
+  reviewFilter: boolean;
 } 

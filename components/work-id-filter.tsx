@@ -254,7 +254,7 @@ export function WorkIdFilter({
                colors.textPrimary,
                colors.textSecondary
              )}>
-               {itemId}
+               {itemId.startsWith('https://openalex.org/') ? itemId.replace('https://openalex.org/', '') : itemId}
              </code>
            </div>
          </div>

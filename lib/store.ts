@@ -35,6 +35,7 @@ export type SearchResult = {
   onlyRatedPapers?: boolean;
   citesItemId?: string;
   relatedToItemId?: string;
+  reviewFilter?: boolean;
   createdAt: string;
   updatedAt: string;
 };

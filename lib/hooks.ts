@@ -151,6 +151,7 @@ export function useCurrentSearchFormState() {
     selectedCountryFocus: getField('selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
     citesItemId: getField('citesItemId', DEFAULT_FILTERS.citesItemId),
     relatedToItemId: getField('relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
+    reviewFilter: getField('reviewFilter', DEFAULT_FILTERS.reviewFilter),
   };
 }
 
@@ -206,6 +207,7 @@ export function useSearchResults() {
     searchState.selectedCountryFocus,
     searchState.citesItemId,
     searchState.relatedToItemId,
+    searchState.reviewFilter,
   ] : null;
 
   // SWR fetcher function
@@ -221,6 +223,7 @@ export function useSearchResults() {
     selectedCountryFocus,
     citesItemId,
     relatedToItemId,
+    reviewFilter,
   ]: any[]) => {
     // Auto-switch from relevance sorting if no query provided
     let effectiveSortBy = sortBy;
@@ -246,6 +249,7 @@ export function useSearchResults() {
       selectedCountryFocus,
       citesItemId,
       relatedToItemId,
+      reviewFilter: searchState?.reviewFilter || false,
     };
     
     const params: SearchWithFiltersParams = {

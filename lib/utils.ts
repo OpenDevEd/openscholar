@@ -29,6 +29,7 @@ export const DEFAULT_FILTERS = {
   selectedCountryFocus: [] as string[],
   citesItemId: '',
   relatedToItemId: '',
+  reviewFilter: false,
 } as const;
 
 /**
@@ -48,6 +49,7 @@ export function createDefaultFilters(): SearchFilters {
     selectedCountryFocus: [...DEFAULT_FILTERS.selectedCountryFocus],
     citesItemId: DEFAULT_FILTERS.citesItemId,
     relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
+    reviewFilter: DEFAULT_FILTERS.reviewFilter,
   };
 }
 
@@ -68,7 +70,8 @@ export function areFiltersAtDefault(filters: SearchFilters): boolean {
     isFilterAtDefault.selectedRegions(filters.selectedRegions) &&
     isFilterAtDefault.selectedCountryFocus(filters.selectedCountryFocus) &&
     isFilterAtDefault.citesItemId(filters.citesItemId) &&
-    isFilterAtDefault.relatedToItemId(filters.relatedToItemId)
+    isFilterAtDefault.relatedToItemId(filters.relatedToItemId) &&
+    isFilterAtDefault.reviewFilter(filters.reviewFilter)
   );
 }
 
@@ -85,6 +88,7 @@ export function countActiveFilters(filters: SearchFilters): number {
   if (isCountryFocusActive(filters.selectedCountryFocus)) count++;
   if (isCitesFilterActive(filters.citesItemId)) count++;
   if (isRelatedToFilterActive(filters.relatedToItemId)) count++;
+  if (isReviewFilterActive(filters.reviewFilter)) count++;
   return count;
 }
 
@@ -106,6 +110,7 @@ export const isFilterAtDefault = {
   selectedCountryFocus: (focus?: string[]) => !focus || focus.length === 0,
   citesItemId: (id?: string) => !id || id === DEFAULT_FILTERS.citesItemId,
   relatedToItemId: (id?: string) => !id || id === DEFAULT_FILTERS.relatedToItemId,
+  reviewFilter: (value?: boolean) => value === undefined || value === DEFAULT_FILTERS.reviewFilter,
 };
 
 // Helper to check if rating filter is active (combines range and onlyRatedPapers)
@@ -148,6 +153,11 @@ export const isCitesFilterActive = (citesItemId?: string) => {
 // Helper to check if related-to filter is active
 export const isRelatedToFilterActive = (relatedToItemId?: string) => {
   return !isFilterAtDefault.relatedToItemId(relatedToItemId);
+};
+
+// Helper to check if review filter is active
+export const isReviewFilterActive = (reviewFilter?: boolean) => {
+  return !isFilterAtDefault.reviewFilter(reviewFilter);
 };
 
 export function cn(...inputs: ClassValue[]) {
@@ -678,5 +688,6 @@ export function getCurrentSearchFormState(pathname: string | null) {
     selectedCountryFocus: getCurrentSearchField(pathname, 'selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
     citesItemId: getCurrentSearchField(pathname, 'citesItemId', DEFAULT_FILTERS.citesItemId),
     relatedToItemId: getCurrentSearchField(pathname, 'relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
+    reviewFilter: getCurrentSearchField(pathname, 'reviewFilter', DEFAULT_FILTERS.reviewFilter),
   };
 }
