@@ -12,52 +12,31 @@ import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStor
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { useEffectiveQuery, useCurrentSearchFormState } from "@/lib/hooks"
+import { useEffectiveQuery, useCurrentSearchFormState, useCreateSearchFilters, useEffectiveSearchId } from "@/lib/hooks"
 import { PageHeader } from "@/components/ui/page-header"
-import { cn } from "@/lib/utils"
-import { submitSearchAndLoadResults } from "@/lib/search-actions"
-import { isDateFilterActive } from "@/lib/utils"
+import { cn, isDateFilterActive } from "@/lib/utils"
+import { updateCurrentSearch } from "@/lib/search-actions"
 
 interface AIEnhancementPageProps {
-  /** Optional initial query to enhance */
-  initialQuery?: string
   /** Whether to show back navigation */
   showBackButton?: boolean
   /** Custom back navigation function */
   onBack?: () => void
   /** Function to handle using the enhanced query */
-  onQueryChange?: (query: string) => void
 }
 
 // Note: Query state is now managed by SWR and search history, not a separate store
 
 export function AIEnhancementPage({ 
-  initialQuery = "",
   showBackButton = true,
   onBack,
-  onQueryChange
 }: AIEnhancementPageProps) {
   const router = useRouter()
   const { provider, apiKey, setProvider, setApiKey } = useAIConfigStore()
   const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore()
   const { suggestedQuery, setSuggestedQuery } = useKeywordExpansionDialogStore()
-  const effectiveQuery = useEffectiveQuery()
-  
-  // Get current search form state for filters
-  const {
-    currentSearchField,
-    dateRange,
-    sortBy,
-    filterType,
-    yearRange,
-    isYearRangeEnabled,
-  } = useCurrentSearchFormState()
-  
-  // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled)
-
-  // Note: setSuggestedQuery is now handled centrally by QuerySyncProvider
-  // No manual initialization needed here
+  const createSearchFilters = useCreateSearchFilters()
+  const currentSearchId = useEffectiveSearchId();
 
   const handleProviderChange = (value: AIProvider) => {
     setProvider(value)
@@ -112,26 +91,25 @@ export function AIEnhancementPage({
         const formData = new FormData()
         formData.set("query", enhancedPreview.enhancedQuery)
 
-        // Submit search and load results with current filters
-        const { searchId } = await submitSearchAndLoadResults(
-          formData,
-          currentSearchField,
-          dateRange,
-          sortBy,
-          yearRange,
-          filterType,
-          isFilterActive
-        )
+        // Create filters object from current state
+        const filters = createSearchFilters();
 
-        // Navigate to the new search results if successful
-        if (searchId) {
-          toast.success("Enhanced Query Applied", {
-            description: "Search completed with enhanced query",
-          })
-          router.push(`/results/${searchId}`)
+        // Update the current search with the enhanced query
+        await updateCurrentSearch(formData, filters)
+
+        toast.success("Enhanced Query Applied", {
+          description: "Search updated with enhanced query",
+        })
+        
+        // Navigate to the results page using the current search ID
+        if (currentSearchId) {
+          router.push(`/results/${currentSearchId}`)
+        } else {
+          // Fallback to home if no search ID is available
+          router.push('/')
         }
       } catch (error) {
-        toast.error("Search Failed", {
+        toast.error("Search Update Failed", {
           description: error instanceof Error ? error.message : "Failed to apply enhanced query",
         })
       }

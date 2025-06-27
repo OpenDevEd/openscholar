@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check } from "lucide-react";
 import { format } from "date-fns";
-import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive } from "@/lib/utils";
+import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive, isDateFilterActive } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -323,25 +323,36 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             )}>
               {variant === 'full' ? 'Field: ' : ''}{result.field}
             </span>
-            {result.filterType === "year" && result.yearRange ? (
-              <span className={cn(
-                "bg-blue-50 text-blue-700 py-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                📅 {result.yearRange[0]} - {result.yearRange[1]}
-              </span>
-            ) : result.dateRange?.from ? (
-              <span className={cn(
-                "bg-blue-50 text-blue-700 py-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                📅 {format(result.dateRange.from, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy")} - {result.dateRange.to ? format(result.dateRange.to, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy") : "now"}
-              </span>
-            ) : variant === 'full' ? (
-              <span className="bg-gray-50 text-gray-700 px-3 py-1 rounded-lg shrink-0">
-                📅 All dates
-              </span>
-            ) : null}
+{(() => {
+              const isDateActive = isDateFilterActive(result.dateRange, result.yearRange, result.filterType, result.isYearRangeEnabled);
+              
+              if (result.filterType === "year" && result.yearRange && isDateActive) {
+                return (
+                  <span className={cn(
+                    "bg-blue-50 text-blue-700 py-1 shrink-0",
+                    variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+                  )}>
+                    📅 {result.yearRange[0]} - {result.yearRange[1]}
+                  </span>
+                );
+              } else if (result.dateRange?.from && isDateActive) {
+                return (
+                  <span className={cn(
+                    "bg-blue-50 text-blue-700 py-1 shrink-0",
+                    variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
+                  )}>
+                    📅 {format(result.dateRange.from, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy")} - {result.dateRange.to ? format(result.dateRange.to, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy") : "now"}
+                  </span>
+                );
+              } else if (variant === 'full' && !isDateActive) {
+                return (
+                  <span className="bg-gray-50 text-gray-700 px-3 py-1 rounded-lg shrink-0">
+                    📅 All dates
+                  </span>
+                );
+              }
+              return null;
+            })()}
             {isCountryFilterActive(result.selectedRegions) && (
               <span className={cn(
                 "bg-emerald-50 text-emerald-700 py-1 flex items-center gap-1 shrink-0",

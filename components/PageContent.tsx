@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { SearchHistory } from "@/components/search-history";
 import { useUIStore, useSearchHistoryStore, useCurrentQueryStore } from "@/lib/store";
 import { toast } from 'sonner';
-import { useQueryChangeHandler, useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
+import { useQueryChangeHandler, useCurrentSearchFormState, useSearchResults, useCreateSearchFilters } from "@/lib/hooks";
 import {
   submitSearchAndLoadResults
 } from "@/lib/search-actions";
@@ -15,21 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { BookOpen, Sparkles } from "lucide-react";
-import Link from "next/link";
 import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
 import React from "react";
-import { isDateFilterActive } from '@/lib/utils';
-
-// Add this type annotation for better TypeScript support
-interface SearchHistoryClickParams {
-  query: string;
-  searchField: any;
-  dateRange?: any;
-  sortBy?: string;
-  yearRange?: [number, number];
-  filterType?: "date" | "year";
-  index?: number;
-}
+import Link from "next/link";
 
 function PageContent() {
   const router = useRouter();
@@ -37,18 +25,11 @@ function PageContent() {
   // Zustand stores
   const {
     currentSearchField,
-    dateRange,
-    sortBy,
-    filterType,
-    yearRange,
-    isYearRangeEnabled,
   } = useCurrentSearchFormState();
-
-  // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const {
     loadingResultIndex,
+    setLoadingResultIndex
   } = useUIStore();
 
   // Get SWR loading states for disabling form
@@ -59,24 +40,25 @@ function PageContent() {
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
+  const createSearchFilters = useCreateSearchFilters();
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const query = currentQuery;
+    
+    const form = new FormData(e.currentTarget);
+    const query = form.get("query") as string;
+
+    setLoadingResultIndex(null);
 
     // Create FormData with the current query value (allow empty queries)
     const formData = new FormData();
     formData.set("query", query);
 
+    // Create filters object from current state
+    const filters = createSearchFilters();
+
     // Submit search and load results in one call, get the search ID
-    const { searchId } = await submitSearchAndLoadResults(
-      formData,
-      currentSearchField,
-      dateRange,
-      sortBy,
-      yearRange,
-      filterType,
-      isFilterActive
-    );
+    const { searchId } = await submitSearchAndLoadResults(formData, filters);
 
     // Only navigate if search was successful (searchId is not null)
     if (searchId) {

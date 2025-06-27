@@ -9,7 +9,6 @@ import type { SearchFilters, SearchField } from './types';
 export interface SearchWithFiltersParams {
   query: string;
   filters: SearchFilters;
-  isFilterActive?: boolean;
 }
 
 export interface EnhancedSearchResult {
@@ -42,11 +41,19 @@ function cleanCountryNameForAPI(countryName: string): string {
 export async function getSearchResultsWithFilters(
   params: SearchWithFiltersParams
 ): Promise<EnhancedSearchResult> {
-  const { query, filters, isFilterActive } = params;
+  const { query, filters } = params;
+
+  // Calculate if date filters are active using the utility function
+  const isDateFilterActiveState = isDateFilterActive(
+    filters.dateRange, 
+    filters.yearRange, 
+    filters.filterType, 
+    filters.isYearRangeEnabled
+  );
 
   // Determine which date/year range to use based on filter type and if filter is active
-  const effectiveDateRange = (filters.filterType === "date" && isFilterActive) ? filters.dateRange : undefined;
-  const effectiveYearRange = (filters.filterType === "year" && isFilterActive && filters.isYearRangeEnabled) ? filters.yearRange : undefined;
+  const effectiveDateRange = (filters.filterType === "date" && isDateFilterActiveState) ? filters.dateRange : undefined;
+  const effectiveYearRange = (filters.filterType === "year" && isDateFilterActiveState && filters.isYearRangeEnabled) ? filters.yearRange : undefined;
 
   // Create filters with effective date/year ranges for the API call
   const effectiveFilters: SearchFilters = {
@@ -114,6 +121,8 @@ export async function getSearchResultsWithFilters(
       finalApiQuery = reviewTerms;
     }
   }
+
+  console.log(`finalApiQuery: {${finalApiQuery}}`);
 
   // Get results with the final enhanced query for API, but keep original query for UI
   const results = await getSearchResults(

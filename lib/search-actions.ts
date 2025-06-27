@@ -56,18 +56,21 @@ const createSearchStateWithEffectiveRanges = (
 // Submit search and create history item (SWR will handle data fetching)
 export const submitSearchAndLoadResults = async (
   formData: FormData,
-  searchField: SearchField,
-  dateRange?: DateRange,
-  sortBy?: string,
-  yearRange?: [number, number],
-  filterType?: "date" | "year",
-  isFilterActive?: boolean
+  filters: SearchFilters,
 ) => {
-  const { addSearchResult } = useSearchHistoryStore.getState();
+  const { addSearchResult, getSearchResult } = useSearchHistoryStore.getState();
+  
+  // Get effective search ID from URL to check if we're on a results page
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
+  const effectiveSearchId = getEffectiveSearchId(pathname, undefined);
+  
+  // If we're on a results page, preserve the existing count from current search
+  const currentSearch = effectiveSearchId ? getSearchResult(effectiveSearchId) : null;
+  const existingCount = currentSearch?.count || 0;
   
   const normalizedQuery = extractQueryFromFormData(formData);
   
-  // Validate query only - don't perform search
+  // Validate query - don't perform search if invalid
   const validation = validateAndExpandKeywords(normalizedQuery);
   
   // If validation failed, don't create history item
@@ -75,34 +78,24 @@ export const submitSearchAndLoadResults = async (
     return { searchId: null };
   }
   
-  // Create search state with validated query
-  const searchState = createSearchStateWithEffectiveRanges(
+  // Create search state and add to history
+  const searchState = createSearchStateFromStore(
     normalizedQuery,
-    searchField,
-    dateRange,
-    yearRange,
-    filterType,
-    isFilterActive,
-    sortBy,
-    0 // Results count will be populated by SWR
+    filters,
+    existingCount // Preserve existing count if available, otherwise 0
   );
   
   const searchId = addSearchResult(searchState);
-  
+
   return { searchId };
 };
 
 // Update current search with new query (SWR will handle data fetching)
 export const updateCurrentSearch = async (
   formData: FormData,
-  searchField: SearchField,
-  dateRange?: DateRange,
-  sortBy?: string,
-  yearRange?: [number, number],
-  filterType?: "date" | "year",
-  isFilterActive?: boolean
+  filters: SearchFilters,
 ) => {
-  const { updateSearchResult } = useSearchHistoryStore.getState();
+  const { updateSearchResult, getSearchResult } = useSearchHistoryStore.getState();
   
   // Get effective search ID from URL
   const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
@@ -114,6 +107,10 @@ export const updateCurrentSearch = async (
     });
     throw new Error('No current search ID to update');
   }
+  
+  // Get current search to preserve the existing count
+  const currentSearch = getSearchResult(effectiveSearchId);
+  const existingCount = currentSearch?.count || 0;
 
   const normalizedQuery = extractQueryFromFormData(formData);
   
@@ -125,16 +122,11 @@ export const updateCurrentSearch = async (
     return { searchId: effectiveSearchId };
   }
   
-  // Update search history with new query
-  const searchState = createSearchStateWithEffectiveRanges(
+  // Update search history with new query - DON'T reset count to 0
+  const searchState = createSearchStateFromStore(
     normalizedQuery,
-    searchField,
-    dateRange,
-    yearRange,
-    filterType,
-    isFilterActive,
-    sortBy,
-    0 // Results count will be populated by SWR
+    filters,
+    existingCount // Preserve existing count instead of setting to 0
   );
   
   updateSearchResult(effectiveSearchId, searchState);

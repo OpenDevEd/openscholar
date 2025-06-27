@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation"
 
 export default function AIEnhancementResultsPage({ params }: { params: Promise<{ searchId: string }> }) {
   const router = useRouter()
-  const [currentQuery, setCurrentQuery] = React.useState('')
   const [searchId, setSearchId] = React.useState<string>("")
 
   React.useEffect(() => {
@@ -23,17 +22,10 @@ export default function AIEnhancementResultsPage({ params }: { params: Promise<{
     router.push(`/results/${searchId}`)
   }
 
-  const handleQueryChange = (newQuery: string) => {
-    // Update the current query (setSuggestedQuery is now handled centrally by QuerySyncProvider)
-    setCurrentQuery(newQuery)
-  }
-
   return (
     <AIEnhancementPage 
-      initialQuery={currentQuery}
       showBackButton={true}
       onBack={handleBack}
-      onQueryChange={handleQueryChange}
     />
   )
 } 

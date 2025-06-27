@@ -234,10 +234,6 @@ export function useSearchResults() {
       effectiveSortBy = 'publication_date:desc'; // Default to newest first
     }
     
-    // Check if date filters are actually active using proper logic
-    const isFilterActive = (filterType === "date" && dateRange) || 
-                          (filterType === "year" && yearRange && searchState?.isYearRangeEnabled);
-    
     // Create unified filters object
     const filters: SearchFilters = {
       searchField,
@@ -259,7 +255,6 @@ export function useSearchResults() {
     const params: SearchWithFiltersParams = {
       query,
       filters,
-      isFilterActive,
     };
 
     const result = await getSearchResultsWithFilters(params);
@@ -370,4 +365,44 @@ export function useSearchResults() {
     mutate, // For manual revalidation
     searchState, // Current search parameters
   };
+}
+
+/**
+ * Create a SearchFilters object from current form state with optional overrides
+ */
+export function useCreateSearchFilters() {
+  const {
+    currentSearchField,
+    dateRange,
+    sortBy,
+    filterType,
+    yearRange,
+    isYearRangeEnabled,
+    selectedRegions,
+    selectedCountryFocus,
+    ratingRange,
+    onlyRatedPapers,
+    citesItemId,
+    citedByItemId,
+    relatedToItemId,
+    reviewFilter,
+  } = useCurrentSearchFormState();
+
+  return (overrides: Partial<SearchFilters> = {}): SearchFilters => ({
+    searchField: currentSearchField,
+    sortBy: sortBy || 'relevance_score:desc',
+    filterType: filterType || 'year',
+    dateRange,
+    yearRange,
+    isYearRangeEnabled,
+    ratingRange,
+    onlyRatedPapers,
+    selectedRegions: selectedRegions || [],
+    selectedCountryFocus: selectedCountryFocus || [],
+    citesItemId: citesItemId || '',
+    citedByItemId: citedByItemId || '',
+    relatedToItemId: relatedToItemId || '',
+    reviewFilter: reviewFilter || false,
+    ...overrides, // Override any fields passed in
+  });
 } 
