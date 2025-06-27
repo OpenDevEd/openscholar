@@ -3,8 +3,9 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { SearchHistory } from '@/components/search-history';
-import { useSearchFormStore, useUIStore, useSearchHistoryStore } from '@/lib/store';
-import { handleSearchHistoryClick as sharedHandleSearchHistoryClick } from '@/lib/search-actions';
+import { useUIStore, useSearchHistoryStore } from '@/lib/store';
+import { useCurrentSearchFormState } from '@/lib/hooks';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
 import { History } from 'lucide-react';
 
@@ -14,7 +15,7 @@ interface HistoryPageProps {
 
 export default function HistoryPage({ params }: HistoryPageProps) {
   const router = useRouter();
-  const { currentSearchField } = useSearchFormStore();
+  const { currentSearchField } = useCurrentSearchFormState();
   const { loadingResultIndex } = useUIStore();
   const { searchHistory } = useSearchHistoryStore();
   const [searchId, setSearchId] = React.useState<string>('');
@@ -36,19 +37,17 @@ export default function HistoryPage({ params }: HistoryPageProps) {
     filterType?: "date" | "year",
     index?: number
   ) => {
-    const newSearchId = await sharedHandleSearchHistoryClick(
-      query,
-      searchField,
-      dateRange,
-      sortBy,
-      yearRange,
-      filterType,
-      index
-    );
+    // With SWR, we just need to navigate to the search result
+    // The data will be automatically loaded by the SWR hook
+    const { searchHistory } = useSearchHistoryStore.getState();
+    const searchResult = searchHistory[index || 0];
     
-    // Only navigate if loading was successful (searchId is not null)
-    if (newSearchId) {
-      router.push(`/results/${newSearchId}`);
+    if (searchResult?.id) {
+      router.push(`/results/${searchResult.id}`);
+    } else {
+      toast.error('Search not found', {
+        description: 'The requested search could not be found in your history.'
+      });
     }
   };
 

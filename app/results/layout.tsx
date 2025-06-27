@@ -3,11 +3,13 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/navbar';
-import { useSearchFormStore, useUIStore, useResultsStore } from '@/lib/store';
+import { useUIStore } from '@/lib/store';
+import { useSearchResults } from '@/lib/hooks';
+import { useCurrentSearchFormState } from '@/lib/hooks';
+import { isDateFilterActive } from '@/lib/utils';
 import {
   submitSearchAndLoadResults,
   updateCurrentSearch,
-  loadSearchResultsById,
 } from '@/lib/search-actions';
 
 interface ResultsLayoutProps {
@@ -17,27 +19,25 @@ interface ResultsLayoutProps {
 export default function ResultsLayout({ children }: ResultsLayoutProps) {
   const router = useRouter();
 
-
   const {
     currentSearchField,
     dateRange,
     sortBy,
     filterType,
     yearRange,
-    isFilterActive,
-  } = useSearchFormStore();
+    isYearRangeEnabled,
+  } = useCurrentSearchFormState();
+
+  // Computed filter active state
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const {
-    isLoading,
-    isUpdatingCurrentSearch,
-    isCreatingNewSearch,
     loadingResultIndex,
-    isFilterLoading,
   } = useUIStore();
 
-  const {
-    currentQuery,
-  } = useResultsStore();
+  const { 
+    originalQuery: currentQuery,
+  } = useSearchResults();
 
   const handleUpdateCurrentSearch = async (query: string) => {
     // Update the current search results with new query
@@ -84,11 +84,7 @@ export default function ResultsLayout({ children }: ResultsLayoutProps) {
       <Navbar
         onSearchSubmit={handleUpdateCurrentSearch}
         onNewSearch={handleNewSearch}
-        isLoading={isLoading}
-        isUpdatingCurrentSearch={isUpdatingCurrentSearch}
-        isCreatingNewSearch={isCreatingNewSearch}
         loadingResultIndex={loadingResultIndex}
-        isFilterLoading={isFilterLoading}
       />
       {children}
     </div>

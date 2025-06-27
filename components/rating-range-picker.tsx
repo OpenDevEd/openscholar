@@ -1,64 +1,42 @@
+"use client";
+
 import React from 'react';
+import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Star } from "lucide-react";
-import { useSearchFormStore, useSearchHistoryStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
-import { useEffectiveSearchId } from "@/lib/hooks";
+import { Star, X } from "lucide-react";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
+import { updateCurrentSearchFilters } from "@/lib/search-actions";
+import { cn, isRatingFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 
 export function RatingRangePicker() {
   const {
     ratingRange,
-    isRatingFilterActive,
     onlyRatedPapers,
-    setRatingRange,
-    setIsRatingFilterActive,
-    setOnlyRatedPapers,
-  } = useSearchFormStore();
+  } = useCurrentSearchFormState();
+  
+  const updateFilter = useUpdateSearchFilter();
 
-  const { updateSearchResult } = useSearchHistoryStore();
-  const effectiveSearchId = useEffectiveSearchId();
+  // Computed filter active state
+  const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
 
-  const updateCurrentSearchRatingFilter = (newRatingRange: [number, number], newIsActive: boolean, newOnlyRated: boolean) => {
-    if (effectiveSearchId) {
-      updateSearchResult(effectiveSearchId, {
-        ratingRange: newRatingRange,
-        isRatingFilterActive: newIsActive,
-        onlyRatedPapers: newOnlyRated,
-        updatedAt: new Date().toISOString(),
-      });
-    }
+  const handleRangeChange = (newRange: number[]) => {
+    updateFilter({ 
+      ratingRange: [newRange[0], newRange[1]] as [number, number]
+    });
   };
 
-  const handleToggleChange = (checked: boolean) => {
-    setOnlyRatedPapers(checked);
-    let newRange = ratingRange;
-    let newIsActive = checked;
-    
-    if (checked) {
-      // When enabling, activate the filter
-      setIsRatingFilterActive(true);
-    } else {
-      // When disabling, deactivate the filter and reset range
-      setIsRatingFilterActive(false);
-      setRatingRange([0, 5]);
-      newRange = [0, 5];
-      newIsActive = false;
-    }
-    // Update the current search result to persist the changes
-    updateCurrentSearchRatingFilter(newRange, newIsActive, checked);
-    // No need to fetch new results - rating filter works client-side
+  const handleOnlyRatedChange = (checked: boolean) => {
+    updateFilter({ 
+      onlyRatedPapers: checked,
+    });
   };
 
-  const handleRatingChange = (values: number[]) => {
-    const newRange: [number, number] = [values[0], values[1]];
-    setRatingRange(newRange);
-    // Filter is active when toggle is on
-    const newIsActive = onlyRatedPapers;
-    setIsRatingFilterActive(newIsActive);
-    // Update the current search result to persist the changes
-    updateCurrentSearchRatingFilter(newRange, newIsActive, onlyRatedPapers);
-    // No need to fetch new results - rating filter works client-side
+  const handleClearFilter = () => {
+    updateFilter({ 
+      ratingRange: DEFAULT_FILTERS.ratingRange,
+      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers
+    });
   };
 
   const getRatingLabel = (rating: number) => {
@@ -111,7 +89,7 @@ export function RatingRangePicker() {
         </div>
         <Switch
           checked={onlyRatedPapers}
-          onCheckedChange={handleToggleChange}
+          onCheckedChange={handleOnlyRatedChange}
         />
       </div>
 
@@ -138,7 +116,7 @@ export function RatingRangePicker() {
           <div className="px-3">
             <Slider
               value={ratingRange}
-              onValueChange={handleRatingChange}
+              onValueChange={handleRangeChange}
               min={0}
               max={5}
               step={1}
@@ -163,7 +141,7 @@ export function RatingRangePicker() {
       )}
 
       {/* Active Filter Indicator */}
-      {isRatingFilterActive && (
+      {isRatingActive && (
         <div className="text-center">
           <div className="inline-flex items-center gap-2 text-xs text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/30 px-3 py-2 rounded-full">
             <Star className="h-3 w-3 fill-orange-500 text-orange-500" />

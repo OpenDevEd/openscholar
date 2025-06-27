@@ -1,15 +1,17 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X, Quote, Network, ExternalLink, LucideIcon } from "lucide-react";
-import { useSearchFormStore } from "@/lib/store";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { toast } from 'sonner';
-import { cn } from "@/lib/utils";
+import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 
 interface WorkIdFilterProps {
-  type: 'cites' | 'related';
+  type: 'cites' | 'cited_by' | 'related';
   icon?: LucideIcon;
   colorScheme?: {
     primary: string;
@@ -34,6 +36,16 @@ const defaultColorSchemes = {
     codeBg: 'bg-orange-100',
     darkCodeBg: 'dark:bg-orange-900/40',
   },
+  cited_by: {
+    primary: 'text-green-500',
+    secondary: 'text-green-600',
+    bg: 'bg-green-50',
+    darkBg: 'dark:bg-green-950/20',
+    textPrimary: 'text-green-700',
+    textSecondary: 'dark:text-green-300',
+    codeBg: 'bg-green-100',
+    darkCodeBg: 'dark:bg-green-900/40',
+  },
   related: {
     primary: 'text-blue-500',
     secondary: 'text-blue-600',
@@ -51,19 +63,14 @@ export function WorkIdFilter({
   icon,
   colorScheme 
 }: WorkIdFilterProps) {
-  const store = useSearchFormStore();
-  const colors = colorScheme || defaultColorSchemes[type];
-  const Icon = icon || (type === 'cites' ? Quote : Network);
+  const {
+    citesItemId,
+    citedByItemId,
+    relatedToItemId,
+  } = useCurrentSearchFormState();
   
-  // Get the appropriate store values and methods based on type
-  const itemId = type === 'cites' ? store.citesItemId : store.relatedToItemId;
-  const isActive = type === 'cites' ? store.isCitesFilterActive : store.isRelatedToFilterActive;
-  const setItemId = type === 'cites' ? store.setCitesItemId : store.setRelatedToItemId;
-  const setIsActive = type === 'cites' ? store.setIsCitesFilterActive : store.setIsRelatedToFilterActive;
-  const clearFilter = type === 'cites' ? store.clearCitesFilter : store.clearRelatedToFilter;
-  
-  const [inputValue, setInputValue] = useState(itemId);
-  
+  const updateFilter = useUpdateSearchFilter();
+
   const config = {
     cites: {
       label: 'Citation filter',
@@ -73,6 +80,23 @@ export function WorkIdFilter({
       successDescription: (id: string) => `Showing papers that cite work ${id}`,
       clearMessage: 'Cites filter cleared',
       statusText: 'Finding papers that cite: ',
+      icon: Quote,
+      itemId: citesItemId,
+      isActive: isCitesFilterActive(citesItemId),
+      updateField: 'citesItemId',
+    },
+    cited_by: {
+      label: 'Cited by filter',
+      description: 'Enter an OpenAlex work ID to find papers that are cited by that work',
+      applyText: 'Apply Filter',
+      successMessage: 'Cited by filter applied',
+      successDescription: (id: string) => `Showing papers cited by work ${id}`,
+      clearMessage: 'Cited by filter cleared',
+      statusText: 'Finding papers cited by: ',
+      icon: Quote,
+      itemId: citedByItemId,
+      isActive: isCitedByFilterActive(citedByItemId),
+      updateField: 'citedByItemId',
     },
     related: {
       label: 'Related works filter', 
@@ -82,8 +106,32 @@ export function WorkIdFilter({
       successDescription: (id: string) => `Showing papers related to work ${id}`,
       clearMessage: 'Related works filter cleared',
       statusText: 'Finding papers related to: ',
+      icon: Network,
+      itemId: relatedToItemId,
+      isActive: isRelatedToFilterActive(relatedToItemId),
+      updateField: 'relatedToItemId',
     },
   };
+
+  const colors = colorScheme || defaultColorSchemes[type];
+  const typeConfig = config[type];
+  const Icon = icon || typeConfig.icon;
+  
+  // Get the appropriate store values and methods based on type
+  const itemId: string = typeConfig.itemId;
+  const isActive = typeConfig.isActive;
+  
+  const setItemId = (id: string) => {
+    const updateData = { [typeConfig.updateField]: id };
+    updateFilter(updateData);
+  };
+  
+  const clearFilter = () => {
+    const updateData = { [typeConfig.updateField]: '' };
+    updateFilter(updateData);
+  };
+  
+  const [inputValue, setInputValue] = useState(itemId || '');
   
   const currentConfig = config[type];
   
@@ -110,22 +158,37 @@ export function WorkIdFilter({
       return;
     }
     
+    // Update the filter in the store
     setItemId(validatedId);
-    setIsActive(true);
-    await updateCurrentSearchFilters();
     
-    toast.success(currentConfig.successMessage, {
-      description: currentConfig.successDescription(validatedId)
-    });
+    // Trigger search update with the new filter
+    try {
+      await updateCurrentSearchFilters();
+      toast.success(currentConfig.successMessage, {
+        description: currentConfig.successDescription(validatedId)
+      });
+    } catch (error) {
+      console.error('Error updating search with filter:', error);
+      toast.error('Failed to apply filter', {
+        description: 'Could not update search results with the new filter. Please try again.'
+      });
+    }
   };
   
   const handleClearFilter = async () => {
     setInputValue('');
     clearFilter();
-    setIsActive(false);
-    await updateCurrentSearchFilters();
     
-    toast.success(currentConfig.clearMessage);
+    // Trigger search update after clearing the filter
+    try {
+      await updateCurrentSearchFilters();
+      toast.success(currentConfig.clearMessage);
+    } catch (error) {
+      console.error('Error updating search after clearing filter:', error);
+      toast.error('Failed to clear filter', {
+        description: 'Could not update search results after clearing the filter. Please try again.'
+      });
+    }
   };
   
   const handleInputChange = (value: string) => {
@@ -218,7 +281,7 @@ export function WorkIdFilter({
                colors.textPrimary,
                colors.textSecondary
              )}>
-               {itemId}
+               {itemId.startsWith('https://openalex.org/') ? itemId.replace('https://openalex.org/', '') : itemId}
              </code>
            </div>
          </div>

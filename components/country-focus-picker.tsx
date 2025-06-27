@@ -1,32 +1,34 @@
+"use client";
+
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Focus, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isCountryFocusActive, DEFAULT_FILTERS } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
-import { useSearchFormStore } from "@/lib/store";
+import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { CountrySelector } from "./country-selector";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 
 export function CountryFocusPicker() {
   const {
     selectedCountryFocus,
-    isCountryFocusActive,
-    setSelectedCountryFocus,
-    setIsCountryFocusActive,
-    clearCountryFocus
-  } = useSearchFormStore();
+  } = useCurrentSearchFormState();
+  
+  const updateFilter = useUpdateSearchFilter();
+
+  // Computed filter active state
+  const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
 
   const handleSelectionChange = async (regions: string[]) => {
-    setSelectedCountryFocus(regions);
-    setIsCountryFocusActive(regions.length > 0);
+    updateFilter({ selectedCountryFocus: regions });
     
-    // Update search filters when selection changes
+    // Always update search filters when selection changes
     await updateCurrentSearchFilters();
   };
 
   const handleClearFilter = async () => {
-    clearCountryFocus();
+    updateFilter({ selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus });
     await updateCurrentSearchFilters();
   };
 
@@ -53,7 +55,7 @@ export function CountryFocusPicker() {
           <Focus className="h-4 w-4 text-purple-500" />
           Country focus
         </div>
-        {isCountryFocusActive && (
+        {isCountryFocusFilterActive && (
           <Badge variant="outline" className="text-xs border-purple-500 text-purple-600 dark:text-purple-400">
             Active
           </Badge>
@@ -62,20 +64,17 @@ export function CountryFocusPicker() {
 
       <div className={cn(
         "rounded-2xl border-2 p-4 transition-all duration-300",
-        isCountryFocusActive 
+        isCountryFocusFilterActive 
           ? "border-purple-500 bg-purple-50 dark:bg-purple-950/50 shadow-lg" 
           : "border-border bg-background"
       )}>
         <CountrySelector
           selectedRegions={selectedCountryFocus}
           onSelectionChange={handleSelectionChange}
-          placeholder="Focus search on specific countries"
-          description="Selected countries will enhance the search to focus on papers mentioning these countries"
+          placeholder="Add country focus to search"
+          description="Choose countries to add to your search query"
           showCountryNames={true}
           bypassLimit={true}
-          triggerClassName={cn(
-            isCountryFocusActive && "border-purple-300 bg-purple-50 dark:bg-purple-950/30"
-          )}
         />
 
         {/* Enhanced search preview */}
@@ -115,7 +114,7 @@ export function CountryFocusPicker() {
       </div>
 
       {/* Info about the difference */}
-      {(isCountryFocusActive || selectedCountryFocus.length > 0) && (
+      {(isCountryFocusFilterActive || selectedCountryFocus.length > 0) && (
                   <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
             <strong>Tip:</strong> Country focus enhances your search to include papers about these countries, 
             while Institution location filters by author affiliations. Use both for comprehensive results!

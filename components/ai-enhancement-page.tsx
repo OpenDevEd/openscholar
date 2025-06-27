@@ -8,13 +8,15 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useResultsStore } from "@/lib/store"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { useEffectiveQuery } from "@/lib/hooks"
+import { useEffectiveQuery, useCurrentSearchFormState } from "@/lib/hooks"
 import { PageHeader } from "@/components/ui/page-header"
 import { cn } from "@/lib/utils"
+import { submitSearchAndLoadResults } from "@/lib/search-actions"
+import { isDateFilterActive } from "@/lib/utils"
 
 interface AIEnhancementPageProps {
   /** Optional initial query to enhance */
@@ -27,22 +29,32 @@ interface AIEnhancementPageProps {
   onQueryChange?: (query: string) => void
 }
 
-function getSetQuery() {
-  const { setCurrentQuery } = useResultsStore.getState();
-  return setCurrentQuery;
-}
+// Note: Query state is now managed by SWR and search history, not a separate store
 
 export function AIEnhancementPage({ 
   initialQuery = "",
   showBackButton = true,
   onBack,
-  onQueryChange = getSetQuery()
+  onQueryChange
 }: AIEnhancementPageProps) {
   const router = useRouter()
   const { provider, apiKey, setProvider, setApiKey } = useAIConfigStore()
   const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore()
   const { suggestedQuery, setSuggestedQuery } = useKeywordExpansionDialogStore()
   const effectiveQuery = useEffectiveQuery()
+  
+  // Get current search form state for filters
+  const {
+    currentSearchField,
+    dateRange,
+    sortBy,
+    filterType,
+    yearRange,
+    isYearRangeEnabled,
+  } = useCurrentSearchFormState()
+  
+  // Computed filter active state
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled)
 
   // Note: setSuggestedQuery is now handled centrally by QuerySyncProvider
   // No manual initialization needed here
@@ -73,7 +85,7 @@ export function AIEnhancementPage({
 
     if (!suggestedQuery.trim()) {
       toast.error("Query Required", {
-        description: "Please enter a search query first",
+        description: "Please enter a search query to enhance with AI",
       })
       return
     }
@@ -93,16 +105,35 @@ export function AIEnhancementPage({
     }
   }
 
-  const handleUseEnhancedQuery = () => {
-    if (enhancedPreview && onQueryChange) {
-      onQueryChange(enhancedPreview.enhancedQuery)
-      toast.success("Enhanced Query Applied", {
-        description: "The enhanced query has been added to the search box",
-      })
-      if (onBack) {
-        onBack()
-      } else {
-        router.push('/')
+  const handleUseEnhancedQuery = async () => {
+    if (enhancedPreview) {
+      try {
+        // Create FormData with the enhanced query
+        const formData = new FormData()
+        formData.set("query", enhancedPreview.enhancedQuery)
+
+        // Submit search and load results with current filters
+        const { searchId } = await submitSearchAndLoadResults(
+          formData,
+          currentSearchField,
+          dateRange,
+          sortBy,
+          yearRange,
+          filterType,
+          isFilterActive
+        )
+
+        // Navigate to the new search results if successful
+        if (searchId) {
+          toast.success("Enhanced Query Applied", {
+            description: "Search completed with enhanced query",
+          })
+          router.push(`/results/${searchId}`)
+        }
+      } catch (error) {
+        toast.error("Search Failed", {
+          description: error instanceof Error ? error.message : "Failed to apply enhanced query",
+        })
       }
     }
   }

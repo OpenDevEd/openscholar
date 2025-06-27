@@ -3,23 +3,33 @@
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { SearchHistory } from "@/components/search-history";
-import { useSearchFormStore, useUIStore, useSearchHistoryStore, useResultsStore } from "@/lib/store";
-import { useQueryChangeHandler } from "@/lib/hooks";
+import { useUIStore, useSearchHistoryStore, useCurrentQueryStore } from "@/lib/store";
+import { toast } from 'sonner';
+import { useQueryChangeHandler, useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
 import {
-  submitSearchAndLoadResults,
-  loadSearchResultsById,
-  handleSearchHistoryClick as sharedHandleSearchHistoryClick,
+  submitSearchAndLoadResults
 } from "@/lib/search-actions";
 import { Logo } from "@/components/logo";
 import { Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { BookOpen, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
 import React from "react";
+import { isDateFilterActive } from '@/lib/utils';
+
+// Add this type annotation for better TypeScript support
+interface SearchHistoryClickParams {
+  query: string;
+  searchField: any;
+  dateRange?: any;
+  sortBy?: string;
+  yearRange?: [number, number];
+  filterType?: "date" | "year";
+  index?: number;
+}
 
 function PageContent() {
   const router = useRouter();
@@ -31,29 +41,29 @@ function PageContent() {
     sortBy,
     filterType,
     yearRange,
-    isFilterActive,
-  } = useSearchFormStore();
+    isYearRangeEnabled,
+  } = useCurrentSearchFormState();
+
+  // Computed filter active state
+  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const {
     loadingResultIndex,
-    isLoading,
-    isCreatingNewSearch,
-    isFilterLoading,
   } = useUIStore();
 
+  // Get SWR loading states for disabling form
+  const { isLoading, isValidating } = useSearchResults();
+  const isFormDisabled = isLoading || isValidating || loadingResultIndex !== null;
 
-
-  // Add state to track the current query for the tooltip
-  const { currentQuery, setCurrentQuery } = useResultsStore();
+  // Use shared current query state for navbar/home page synchronization
+  const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const query = currentQuery;
-    
-    if (!query.trim()) return;
 
-    // Create FormData with the current query value
+    // Create FormData with the current query value (allow empty queries)
     const formData = new FormData();
     formData.set("query", query);
 
@@ -83,19 +93,17 @@ function PageContent() {
     filterType?: "date" | "year",
     index?: number
   ) => {
-    const searchId = await sharedHandleSearchHistoryClick(
-      query,
-      searchField,
-      dateRange,
-      sortBy,
-      yearRange,
-      filterType,
-      index
-    );
+    // With SWR, we just need to navigate to the search result
+    // The data will be automatically loaded by the SWR hook
+    const { searchHistory } = useSearchHistoryStore.getState();
+    const searchResult = searchHistory[index || 0];
     
-    // Only navigate if loading was successful (searchId is not null)
-    if (searchId) {
-      router.push(`/results/${searchId}`);
+    if (searchResult?.id) {
+      router.push(`/results/${searchResult.id}`);
+    } else {
+      toast.error('Search not found', {
+        description: 'The requested search could not be found in your history.'
+      });
     }
   };
 
@@ -126,7 +134,7 @@ function PageContent() {
                     value={currentQuery}
                     placeholder="Search for papers, topics..."
                     className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 focus-visible:ring-0 focus-visible:ring-offset-0 text-base md:text-lg"
-                    disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                    disabled={isFormDisabled}
                     onChange={(e) => handleQueryChange(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -161,15 +169,11 @@ function PageContent() {
                   </Tooltip>
                   <Button 
                     type="submit" 
-                    disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading} 
+                    disabled={isFormDisabled} 
                     className="rounded-full h-12 w-12 mr-2"
                     size="icon"
                   >
-                    {isCreatingNewSearch ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Search className="h-5 w-5" />
-                    )}
+                    <Search className="h-5 w-5" />
                   </Button>
                 </div>
 
@@ -183,7 +187,7 @@ function PageContent() {
                       value={currentQuery}
                       placeholder="Search for papers, topics..."
                       className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
-                      disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading}
+                      disabled={isFormDisabled}
                       onChange={(e) => handleQueryChange(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -222,15 +226,11 @@ function PageContent() {
                     </Tooltip>
                     <Button 
                       type="submit" 
-                      disabled={isCreatingNewSearch || loadingResultIndex !== null || isFilterLoading} 
+                      disabled={isFormDisabled} 
                       className="rounded-full h-12 w-12"
                       size="icon"
                     >
-                      {isCreatingNewSearch ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Search className="h-5 w-5" />
-                      )}
+                      <Search className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>

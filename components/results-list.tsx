@@ -1,5 +1,6 @@
+"use client";
+
 import React, { useRef, useEffect } from 'react';
-import { Loader2 } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -8,11 +9,12 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn } from "@/lib/utils";
+import { cn, isRatingFilterActive } from "@/lib/utils";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
-import { useResultsStore, useUIStore, useSearchFormStore, useRatingsStore } from "@/lib/store";
+import { useResultsStore, useRatingsStore } from "@/lib/store";
 import { ResultsFilter } from "./results-filter";
 import { PaperCard } from "./paper-card";
+import { useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
 
 interface ResultsListProps {
   onDownloadItem: (item: any, format: 'json' | 'csv') => void;
@@ -24,21 +26,19 @@ export function ResultsList({
   onDownloadEssentialItem
 }: ResultsListProps) {
   const {
-    results,
-    totalCount,
     currentPage,
     resultsFilter,
     setCurrentPage,
     setResultsFilter
   } = useResultsStore();
   
-  const { isLoadingResults } = useUIStore();
-  const { ratingRange, isRatingFilterActive, onlyRatedPapers } = useSearchFormStore();
+  const { results, totalCount } = useSearchResults();
+  const { ratingRange, onlyRatedPapers } = useCurrentSearchFormState();
   const { ratings } = useRatingsStore();
   const resultsContainerRef = useRef<HTMLDivElement>(null);
 
   // Filter results based on search term and rating filter
-  const filteredResults = results.filter(result => {
+  const filteredResults = results.filter((result: any) => {
     // Text search filter
     if (resultsFilter.trim()) {
       const searchTerm = resultsFilter.toLowerCase();
@@ -58,7 +58,7 @@ export function ResultsList({
     }
     
     // Rating filter
-    if (isRatingFilterActive && onlyRatedPapers) {
+    if (isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
       
       // If onlyRatedPapers is true, exclude papers without ratings
@@ -112,35 +112,35 @@ export function ResultsList({
       />
       
       <div ref={resultsContainerRef}>
-        {isLoadingResults ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
-            <span className="ml-2 text-muted-foreground">Loading results...</span>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {paginatedResults.map((result, index) => (
+        <div className="space-y-6">
+          {paginatedResults.map((result: any, index: number) => {
+            // Calculate the global index in the filtered results
+            const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+            // Find the index in the original unfiltered results array
+            const originalIndex = results.findIndex((r: any) => r.id === result.id);
+            return (
               <PaperCard
                 key={`${result.id}-${index}`}
                 result={result}
+                resultIndex={originalIndex}
                 onDownloadItem={onDownloadItem}
                 onDownloadEssentialItem={onDownloadEssentialItem}
               />
-            ))}
-            {paginatedResults.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-lg text-muted-foreground">
-                  {resultsFilter || isRatingFilterActive ? 'No results match your filters' : 'No results found'}
+            );
+          })}
+          {paginatedResults.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-lg text-muted-foreground">
+                {resultsFilter || isRatingFilterActive(ratingRange, onlyRatedPapers) ? 'No results match your filters' : 'No results found'}
+              </p>
+              {(resultsFilter || isRatingFilterActive(ratingRange, onlyRatedPapers)) && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try adjusting your search terms or filter settings
                 </p>
-                {(resultsFilter || isRatingFilterActive) && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Try adjusting your search terms or filter settings
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       {filteredResults.length > ITEMS_PER_PAGE && (

@@ -8,13 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Trash2, Plus, BookOpen, Save } from "lucide-react"
-import { useKeywordExpansionStore, useResultsStore, useKeywordExpansionDialogStore } from "@/lib/store"
+import { useKeywordExpansionStore, useKeywordExpansionDialogStore } from "@/lib/store"
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { KeywordExpansionPreview } from "./keyword-expansion-preview"
 import { PageHeader } from "@/components/ui/page-header"
-import { useEffectiveQuery } from "@/lib/hooks"
+import { useEffectiveQuery, useSearchResults } from "@/lib/hooks"
 
 interface KeywordExpansionPageProps {
   /** Optional initial query to suggest for saving as keyword */
@@ -32,7 +32,7 @@ export function KeywordExpansionPage({
 }: KeywordExpansionPageProps) {
   const router = useRouter()
   const { keywords, addKeyword, removeKeyword } = useKeywordExpansionStore()
-  const { currentQuery } = useResultsStore()
+  const { originalQuery: currentQuery } = useSearchResults()
   const effectiveQuery = useEffectiveQuery()
   
   // Use dialog store for form state (reusing existing logic)
@@ -288,18 +288,6 @@ export function KeywordExpansionPage({
                     Add Bookmark
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Preview Section - Full width below forms */}
-          {suggestedQuery && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Live Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <KeywordExpansionPreview query={suggestedQuery} />
               </CardContent>
             </Card>
           )}

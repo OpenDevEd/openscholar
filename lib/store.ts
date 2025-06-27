@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DateRange } from "react-day-picker";
-import { SearchField } from './utils';
-import { DEFAULT_YEAR_RANGE } from './constants';
+import type { SearchField } from './types';
+import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
+import { format } from 'date-fns'
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {
@@ -26,17 +27,16 @@ export type SearchResult = {
   dateRange?: DateRange;
   yearRange?: [number, number];
   filterType?: "date" | "year";
+  isYearRangeEnabled?: boolean;
   sortBy?: string;
   selectedRegions?: string[];
-  isCountryFilterActive?: boolean;
   selectedCountryFocus?: string[];
-  isCountryFocusActive?: boolean;
   ratingRange?: [number, number];
-  isRatingFilterActive?: boolean;
   onlyRatedPapers?: boolean;
   citesItemId?: string;
+  citedByItemId?: string;
   relatedToItemId?: string;
-  isRelatedToFilterActive?: boolean;
+  reviewFilter?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -58,102 +58,22 @@ interface SearchHistoryState {
   importSearchHistory: (data: any[]) => number
 }
 
-interface SearchFormState {
-  currentSearchField: SearchField
-  dateRange?: DateRange
-  sortBy: string
-  filterType: "date" | "year"
-  yearRange: [number, number]
-  isFilterActive: boolean
-  yearFromInput: string
-  yearToInput: string
-  currentSearchId?: string
-  ratingRange: [number, number]
-  isRatingFilterActive: boolean
-  onlyRatedPapers: boolean
-  selectedRegions: string[]
-  isCountryFilterActive: boolean
-  // Country focus filter (adds country names to search string)
-  selectedCountryFocus: string[]
-  isCountryFocusActive: boolean
-  // Cites filter (finds works that cite a specific work)
-  citesItemId: string
-  isCitesFilterActive: boolean
-  // Related to filter (finds works related to a specific work)
-  relatedToItemId: string
-  isRelatedToFilterActive: boolean
-  setCurrentSearchField: (field: SearchField) => void
-  setDateRange: (range?: DateRange) => void
-  setSortBy: (sortBy: string) => void
-  setFilterType: (type: "date" | "year") => void
-  setYearRange: (range: [number, number]) => void
-  setIsFilterActive: (active: boolean) => void
-  setYearFromInput: (value: string) => void
-  setYearToInput: (value: string) => void
-  setCurrentSearchId: (id?: string) => void
-  setRatingRange: (range: [number, number]) => void
-  setIsRatingFilterActive: (active: boolean) => void
-  setOnlyRatedPapers: (onlyRatedPapers: boolean) => void
-  setSelectedRegions: (regions: string[]) => void
-  setIsCountryFilterActive: (active: boolean) => void
-  addRegion: (region: string) => void
-  removeRegion: (region: string) => void
-  clearCountryFilter: () => void
-  // Country focus filter methods
-  setSelectedCountryFocus: (regions: string[]) => void
-  setIsCountryFocusActive: (active: boolean) => void
-  addCountryFocus: (region: string) => void
-  removeCountryFocus: (region: string) => void
-  clearCountryFocus: () => void
-  // Cites filter methods
-  setCitesItemId: (itemId: string) => void
-  setIsCitesFilterActive: (active: boolean) => void
-  clearCitesFilter: () => void
-  // Related to filter methods
-  setRelatedToItemId: (itemId: string) => void
-  setIsRelatedToFilterActive: (active: boolean) => void
-  clearRelatedToFilter: () => void
-  clearDateRange: () => void
-  clearYearRange: () => void
-  clearRatingFilter: () => void
-  loadSearchState: (searchResult: SearchResult) => void
-}
-
 interface UIState {
   isDialogOpen: boolean
   loadingResultIndex: number | null
-  isLoadingResults: boolean
-  isLoading: boolean
-  isUpdatingCurrentSearch: boolean
-  isCreatingNewSearch: boolean
-  isFilterLoading: boolean
   isFocusModeOpen: boolean
+  focusModeIndex: number
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
-  setIsLoadingResults: (loading: boolean) => void
-  setIsLoading: (loading: boolean) => void
-  setIsUpdatingCurrentSearch: (loading: boolean) => void
-  setIsCreatingNewSearch: (loading: boolean) => void
-  setIsFilterLoading: (loading: boolean) => void
   setIsFocusModeOpen: (open: boolean) => void
+  setFocusModeIndex: (index: number) => void
 }
 
 interface ResultsState {
-  results: any[]
-  totalCount: number
-  currentQuery: string
   currentPage: number
-  resultsSearchField: SearchField
-  resultsDateRange?: DateRange
-  resultsYearRange?: [number, number]
   expandedAbstracts: Record<string, boolean>
   resultsFilter: string
-  setResults: (results: any[], totalCount?: number) => void
-  setCurrentQuery: (query: string) => void
   setCurrentPage: (page: number) => void
-  setResultsSearchField: (field: SearchField) => void
-  setResultsDateRange: (range?: DateRange) => void
-  setResultsYearRange: (range?: [number, number]) => void
   toggleAbstract: (paperId: string) => void
   setResultsFilter: (filter: string) => void
   clearResults: () => void
@@ -287,8 +207,8 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           const count = item.count || 0;
           const field = item.field || 'title_and_abstract';
           
-          // Skip items without required fields
-          if (!query || typeof count !== 'number') {
+          // Skip items without required fields (allow empty query but require count)
+          if (query === undefined || query === null || typeof count !== 'number') {
             return;
           }
           
@@ -319,145 +239,57 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
+      version: 1, // Increment when migrations are needed
+      migrate: (persistedState: any, version: number) => {
+        // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
+        if (version === 0) {
+          const currentYear = new Date().getFullYear();
+          const defaultYearRange = [MIN_YEAR, currentYear];
+          
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              // If the item has a custom year range (not the default), enable the toggle
+              if (item.yearRange && Array.isArray(item.yearRange)) {
+                const [fromYear, toYear] = item.yearRange;
+                const isCustomRange = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
+                
+                return {
+                  ...item,
+                  isYearRangeEnabled: isCustomRange
+                };
+              }
+              
+              // If no yearRange or it's the default, keep toggle disabled
+              return {
+                ...item,
+                isYearRangeEnabled: false
+              };
+            });
+          }
+        }
+        
+        return persistedState;
+      },
     }
   )
 )
 
-export const useSearchFormStore = create<SearchFormState>((set, get) => ({
-  currentSearchField: "title_and_abstract",
-  dateRange: undefined,
-  sortBy: "relevance_score:desc",
-  filterType: "year",
-  yearRange: DEFAULT_YEAR_RANGE,
-  isFilterActive: false,
-  yearFromInput: DEFAULT_YEAR_RANGE[0].toString(),
-  yearToInput: new Date().getFullYear().toString(),
-  currentSearchId: undefined,
-  ratingRange: [0, 5],
-  isRatingFilterActive: false,
-  onlyRatedPapers: false,
-  selectedRegions: [],
-  isCountryFilterActive: false,
-  // Country focus filter initial state
-  selectedCountryFocus: [],
-  isCountryFocusActive: false,
-  // Cites filter initial state
-  citesItemId: '',
-  isCitesFilterActive: false,
-  // Related to filter initial state
-  relatedToItemId: '',
-  isRelatedToFilterActive: false,
-  setCurrentSearchField: (field) => set({ currentSearchField: field }),
-  setDateRange: (range) => set({ dateRange: range }),
-  setSortBy: (sortBy) => set({ sortBy }),
-  setFilterType: (type) => set({ filterType: type }),
-  setYearRange: (range) => set({ yearRange: range }),
-  setIsFilterActive: (active) => set({ isFilterActive: active }),
-  setYearFromInput: (value) => set({ yearFromInput: value }),
-  setYearToInput: (value) => set({ yearToInput: value }),
-  setCurrentSearchId: (id) => set({ currentSearchId: id }),
-  setRatingRange: (range) => set({ ratingRange: range }),
-  setIsRatingFilterActive: (active) => set({ isRatingFilterActive: active }),
-  setOnlyRatedPapers: (onlyRatedPapers) => set({ onlyRatedPapers }),
-  setSelectedRegions: (regions) => set({ selectedRegions: regions }),
-  setIsCountryFilterActive: (active) => set({ isCountryFilterActive: active }),
-  addRegion: (region) => set((state) => ({
-    selectedRegions: [...state.selectedRegions, region],
-  })),
-  removeRegion: (region) => set((state) => ({
-    selectedRegions: state.selectedRegions.filter((r) => r !== region),
-  })),
-  clearCountryFilter: () => set({ selectedRegions: [], isCountryFilterActive: false }),
-  // Country focus filter implementations
-  setSelectedCountryFocus: (regions) => set({ selectedCountryFocus: regions }),
-  setIsCountryFocusActive: (active) => set({ isCountryFocusActive: active }),
-  addCountryFocus: (region) => set((state) => ({
-    selectedCountryFocus: [...state.selectedCountryFocus, region],
-  })),
-  removeCountryFocus: (region) => set((state) => ({
-    selectedCountryFocus: state.selectedCountryFocus.filter((r) => r !== region),
-  })),
-  clearCountryFocus: () => set({ selectedCountryFocus: [], isCountryFocusActive: false }),
-  // Cites filter implementations
-  setCitesItemId: (itemId) => set({ citesItemId: itemId }),
-  setIsCitesFilterActive: (active) => set({ isCitesFilterActive: active }),
-  clearCitesFilter: () => set({ citesItemId: '', isCitesFilterActive: false }),
-  // Related to filter implementations
-  setRelatedToItemId: (itemId) => set({ relatedToItemId: itemId }),
-  setIsRelatedToFilterActive: (active) => set({ isRelatedToFilterActive: active }),
-  clearRelatedToFilter: () => set({ relatedToItemId: '', isRelatedToFilterActive: false }),
-  clearDateRange: () => set({ dateRange: undefined, isFilterActive: false }),
-  clearYearRange: () => {
-    const currentYear = new Date().getFullYear();
-    set({ 
-      yearRange: [1900, currentYear],
-      yearFromInput: "1900",
-      yearToInput: currentYear.toString(),
-      isFilterActive: false 
-    });
-  },
-  clearRatingFilter: () => set({ ratingRange: [0, 5], isRatingFilterActive: false, onlyRatedPapers: false }),
-  loadSearchState: (searchResult) => {
-    set({
-      currentSearchField: searchResult.field,
-      dateRange: searchResult.dateRange,
-      sortBy: searchResult.sortBy || "relevance_score:desc",
-      filterType: searchResult.filterType || "year",
-      yearRange: searchResult.yearRange || DEFAULT_YEAR_RANGE,
-      isFilterActive: !!(searchResult.dateRange || searchResult.yearRange),
-      yearFromInput: searchResult.yearRange?.[0]?.toString() || DEFAULT_YEAR_RANGE[0].toString(),
-      yearToInput: searchResult.yearRange?.[1]?.toString() || new Date().getFullYear().toString(),
-      currentSearchId: searchResult.id,
-      selectedRegions: searchResult.selectedRegions || [],
-      isCountryFilterActive: searchResult.isCountryFilterActive || false,
-      selectedCountryFocus: searchResult.selectedCountryFocus || [],
-      isCountryFocusActive: searchResult.isCountryFocusActive || false,
-      ratingRange: searchResult.ratingRange || [0, 5],
-      isRatingFilterActive: searchResult.isRatingFilterActive || false,
-      onlyRatedPapers: searchResult.onlyRatedPapers || false,
-      citesItemId: searchResult.citesItemId || '',
-      isCitesFilterActive: !!searchResult.citesItemId,
-      relatedToItemId: searchResult.relatedToItemId || '',
-      isRelatedToFilterActive: !!searchResult.relatedToItemId,
-    });
-  },
-}))
-
 export const useUIStore = create<UIState>((set) => ({
   isDialogOpen: false,
   loadingResultIndex: null,
-  isLoadingResults: false,
-  isLoading: false,
-  isUpdatingCurrentSearch: false,
-  isCreatingNewSearch: false,
-  isFilterLoading: false,
   isFocusModeOpen: false,
+  focusModeIndex: 0,
   setIsDialogOpen: (open) => set({ isDialogOpen: open }),
   setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
-  setIsLoadingResults: (loading) => set({ isLoadingResults: loading }),
-  setIsLoading: (loading) => set({ isLoading: loading }),
-  setIsUpdatingCurrentSearch: (loading) => set({ isUpdatingCurrentSearch: loading }),
-  setIsCreatingNewSearch: (loading) => set({ isCreatingNewSearch: loading }),
-  setIsFilterLoading: (loading) => set({ isFilterLoading: loading }),
   setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
+  setFocusModeIndex: (index) => set({ focusModeIndex: index }),
 }))
 
 export const useResultsStore = create<ResultsState>((set) => ({
-  results: [],
-  totalCount: 0,
-  currentQuery: "",
   currentPage: 1,
-  resultsSearchField: "title_and_abstract",
-  resultsDateRange: undefined,
-  resultsYearRange: undefined,
   expandedAbstracts: {},
   resultsFilter: "",
-  setResults: (results, totalCount) => set({ results, totalCount }),
-  setCurrentQuery: (query) => set({ currentQuery: query }),
   setCurrentPage: (page) => set({ currentPage: page }),
-  setResultsSearchField: (field) => set({ resultsSearchField: field }),
-  setResultsDateRange: (range) => set({ resultsDateRange: range }),
-  setResultsYearRange: (range) => set({ resultsYearRange: range }),
   toggleAbstract: (paperId) => set((state) => ({
     expandedAbstracts: {
       ...state.expandedAbstracts,
@@ -466,9 +298,6 @@ export const useResultsStore = create<ResultsState>((set) => ({
   })),
   setResultsFilter: (filter) => set({ resultsFilter: filter, currentPage: 1 }),
   clearResults: () => set({ 
-    results: [], 
-    totalCount: 0,
-    currentQuery: "", 
     currentPage: 1,
     expandedAbstracts: {},
     resultsFilter: ""
@@ -565,6 +394,11 @@ interface ThemeToggleState {
   setMounted: (mounted: boolean) => void
 }
 
+interface CurrentQueryState {
+  currentQuery: string
+  setCurrentQuery: (query: string) => void
+}
+
 interface KeywordExpansionDialogState {
   isOpen: boolean
   newShorthand: string
@@ -618,9 +452,19 @@ interface AIConfigDialogState {
   setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
 }
 
+interface YearRangePickerState {
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
+}
+
 export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
   mounted: false,
   setMounted: (mounted) => set({ mounted }),
+}))
+
+export const useCurrentQueryStore = create<CurrentQueryState>((set) => ({
+  currentQuery: '',
+  setCurrentQuery: (query) => set({ currentQuery: query }),
 }))
 
 export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState>((set) => ({
@@ -683,4 +527,9 @@ export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
   enhancedPreview: null,
   setIsEnhancing: (enhancing) => set({ isEnhancing: enhancing }),
   setEnhancedPreview: (preview) => set({ enhancedPreview: preview }),
+}))
+
+export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
+  isOpen: false,
+  setIsOpen: (open) => set({ isOpen: open }),
 })) 
