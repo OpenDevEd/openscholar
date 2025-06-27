@@ -19,11 +19,20 @@ import { useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
 interface ResultsListProps {
   onDownloadItem: (item: any, format: 'json' | 'csv') => void;
   onDownloadEssentialItem: (item: any, format: 'json' | 'csv') => void;
+  // Download all handlers for mobile ResultsFilter
+  onDownloadAllJSON?: () => void;
+  onDownloadAllCSV?: () => void;
+  onDownloadAllEssentialJSON?: () => void;
+  onDownloadAllEssentialCSV?: () => void;
 }
 
 export function ResultsList({ 
   onDownloadItem, 
-  onDownloadEssentialItem
+  onDownloadEssentialItem,
+  onDownloadAllJSON,
+  onDownloadAllCSV,
+  onDownloadAllEssentialJSON,
+  onDownloadAllEssentialCSV
 }: ResultsListProps) {
   const {
     currentPage,
@@ -109,6 +118,10 @@ export function ResultsList({
         onChange={handleFilterChange}
         filteredCount={filteredResults.length}
         totalCount={totalCount}
+        onDownloadJSON={onDownloadAllJSON}
+        onDownloadCSV={onDownloadAllCSV}
+        onDownloadEssentialJSON={onDownloadAllEssentialJSON}
+        onDownloadEssentialCSV={onDownloadAllEssentialCSV}
       />
       
       <div ref={resultsContainerRef}>

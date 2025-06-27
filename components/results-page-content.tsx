@@ -158,7 +158,8 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                     </p>
                   </div>
                   
-                  <div className="flex items-center  gap-3 flex-shrink-0">
+                  {/* Hide download button on mobile since it's now in ResultsFilter */}
+                  <div className="hidden sm:flex items-center  gap-3 flex-shrink-0">
                     <DownloadMenu
                       variant="button"
                       size="sm"
@@ -174,6 +175,10 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                 <ResultsList
                   onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
                   onDownloadEssentialItem={(item, format) => downloadEssentialItem(item, format, searchState)}
+                  onDownloadAllJSON={() => downloadAll("json", false, searchState, results)}
+                  onDownloadAllCSV={() => downloadAll("csv", false, searchState, results)}
+                  onDownloadAllEssentialJSON={() => downloadAll("json", true, searchState, results)}
+                  onDownloadAllEssentialCSV={() => downloadAll("csv", true, searchState, results)}
                 />
               </div>
             ) : currentQuery ? (

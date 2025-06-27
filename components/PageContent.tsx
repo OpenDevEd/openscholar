@@ -163,7 +163,7 @@ function PageContent() {
                 <div className="md:hidden space-y-3">
                   {/* Search input area */}
                   <div className="flex w-full items-center space-x-2 p-2 border rounded-2xl shadow-lg hover:shadow-xl transition-shadow bg-background">
-                    <Search className="h-5 w-5 text-muted-foreground ml-4" />
+                    <Search className="h-5 w-5 text-muted-foreground mx-4 ml-2" />
                     <Textarea
                       name="query"
                       value={currentQuery}
