@@ -20,7 +20,9 @@ async function callOpenAlexSDK(
   try {
     const response = await client.works(searchParams);
     
-    console.log('OpenAlex SDK response:', response);
+    console.log('OpenAlex SDK response:', {
+      meta: response.meta,
+    });
     
     return response;
   } catch (error) {
