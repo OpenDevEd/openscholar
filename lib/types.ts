@@ -46,3 +46,11 @@ export interface SearchFilters {
   // Content type filters
   reviewFilter: boolean;
 } 
+
+/**
+ * Represents a single query entry in the search history
+ */
+export interface QueryHistoryEntry {
+  query: string;
+  timestamp: string; // ISO timestamp when this query was made
+}

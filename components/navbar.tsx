@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Menu, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn, Code } from "lucide-react";
+import { Search, Menu, Home, Clock, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn, Code } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
@@ -35,7 +35,6 @@ import { ApiButton } from "./api-button";
 
 interface NavbarProps {
   onSearchSubmit: (query: string) => void;
-  onNewSearch?: (query: string) => void;
   loadingResultIndex?: number | null;
 }
 
@@ -103,7 +102,6 @@ const NavButton: React.FC<NavButtonProps> = ({
 
 export function Navbar({ 
   onSearchSubmit, 
-  onNewSearch,
   loadingResultIndex = null
 }: NavbarProps) {
   const pathname = usePathname();
@@ -162,11 +160,7 @@ export function Navbar({
     onSearchSubmit(currentQuery);
   };
 
-  const handleNewSearch = () => {
-    if (onNewSearch) {
-      onNewSearch(currentQuery);
-    }
-  };
+
 
   // Function to close the mobile sheet when navigation items are clicked
   const closeSheet = () => {
@@ -220,43 +214,15 @@ export function Navbar({
                 
                 {/* Desktop: Show all buttons */}
                 <div className="flex items-center">
-                  {/* Update Current Search Button */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        type="submit" 
-                        disabled={isFormDisabled} 
-                        className="ml-2 flex-shrink-0"
-                        size="icon"
-                        variant="outline"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Update current search</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  {/* New Search Button */}
-                  {onNewSearch && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          type="button"
-                          onClick={handleNewSearch}
-                          disabled={isFormDisabled} 
-                          className="ml-2 flex-shrink-0"
-                          size="icon"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Create new search</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+                  {/* Search Button */}
+                  <Button 
+                    type="submit" 
+                    disabled={isFormDisabled} 
+                    className="ml-2 flex-shrink-0"
+                    size="icon"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
 
                   {/* API Button */}
                   <ApiButton
@@ -542,29 +508,15 @@ export function Navbar({
                 
                 {/* Search action buttons */}
                 <div className="flex items-center">
-                  {/* Update Current Search Button */}
+                  {/* Search Button */}
                   <Button 
                     type="submit" 
                     disabled={isFormDisabled} 
                     className="ml-2 flex-shrink-0"
                     size="icon"
-                    variant="outline"
                   >
-                    <RotateCcw className="h-4 w-4" />
+                    <Search className="h-4 w-4" />
                   </Button>
-
-                  {/* New Search Button */}
-                  {onNewSearch && (
-                    <Button 
-                      type="button"
-                      onClick={handleNewSearch}
-                      disabled={isFormDisabled} 
-                      className="ml-2 flex-shrink-0"
-                      size="icon"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
 
                   {/* API Button */}
                   <ApiButton

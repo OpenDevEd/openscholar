@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check } from "lucide-react";
-import { format } from "date-fns";
+import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive, isDateFilterActive } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
@@ -30,9 +30,10 @@ interface SearchHistoryProps {
   compact?: boolean;
   currentSearchId?: string;
   hideHeader?: boolean;
+  onQuerySelect?: (searchId: string, query: string) => void;
 }
 
-export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false }: SearchHistoryProps) {
+export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false, onQuerySelect }: SearchHistoryProps) {
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -41,14 +42,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   
   // State for bookmark creation
   const [bookmarkingIndex, setBookmarkingIndex] = useState<number | null>(null);
-  const [bookmarkName, setBookmarkName] = useState('');
 
   // Handlers
-  const handleCardClick = (result: any, actualIndex: number) => {
-    if (isMobile) {
-      onSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex);
-    }
-  };
+  // Card clicking removed - users should use action buttons instead
 
   const handleCopyQuery = async (query: string) => {
     try {
@@ -165,16 +161,63 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
 
   const handleBookmarkClick = (index: number) => {
     setBookmarkingIndex(index);
-    setBookmarkName('');
   };
 
   const handleBookmarkCancel = () => {
     setBookmarkingIndex(null);
-    setBookmarkName('');
   };
 
-  const handleBookmarkSubmit = (index: number, query: string) => {
-    const validationError = validateKeyword(bookmarkName);
+
+
+  // Query-specific handlers (now handled locally in QueryHistoryDisplay)
+
+  const handleQueryDelete = (searchId: string, queryIndex: number) => {
+    const { getSearchResult, updateSearchResult } = useSearchHistoryStore.getState();
+    const searchResult = getSearchResult(searchId);
+    
+    if (!searchResult || !searchResult.queryHistory) return;
+    
+    // Remove the query entry from history
+    const updatedQueryHistory = searchResult.queryHistory.filter((_, index) => index !== queryIndex);
+    
+    // Update the search result
+    updateSearchResult(searchId, {
+      queryHistory: updatedQueryHistory,
+      updatedAt: new Date().toISOString()
+    });
+    
+    toast.success('Query entry removed', {
+      description: 'The query entry has been removed from history.'
+    });
+  };
+
+  const formatNumber = (num: number) => num.toLocaleString();
+
+  // Reusable Bookmark Form Component
+  function BookmarkForm({
+    query,
+    onSubmit,
+    onCancel,
+    variant = 'full'
+  }: {
+    query: string;
+    onSubmit: (bookmarkName: string) => void;
+    onCancel: () => void;
+    variant?: 'full' | 'compact';
+  }) {
+    const [localBookmarkName, setLocalBookmarkName] = useState('');
+    const { addKeyword, keywords } = useKeywordExpansionStore();
+
+    const validateKeyword = (keyword: string): string | null => {
+      if (!keyword.trim()) return 'Bookmark name is required';
+      if (!/^[a-zA-Z0-9-]+$/.test(keyword.trim())) return 'Only letters, numbers, and dashes allowed';
+      if (keyword.includes(' ')) return 'Bookmark name cannot contain spaces';
+      if (keywords[keyword]) return `Bookmark "${keyword}" already exists`;
+      return null;
+    };
+
+    const handleSubmit = () => {
+      const validationError = validateKeyword(localBookmarkName);
     if (validationError) {
       toast.error(validationError);
       return;
@@ -183,13 +226,218 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     // Expand the query before saving it as a bookmark
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     
-    addKeyword(bookmarkName.trim(), expandedQuery);
-    toast.success(`Search saved as bookmark "${bookmarkName}"`);
-    setBookmarkingIndex(null);
-    setBookmarkName('');
-  };
+      addKeyword(localBookmarkName.trim(), expandedQuery);
+      const message = variant === 'full' ? 'Search saved as bookmark' : 'Query saved as bookmark';
+      toast.success(`${message} "${localBookmarkName}"`);
+      onSubmit(localBookmarkName);
+      setLocalBookmarkName('');
+    };
 
-  const formatNumber = (num: number) => num.toLocaleString();
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSubmit();
+      } else if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+
+    return (
+      <div className={cn(
+        "space-y-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded",
+        variant === 'full' ? 'space-y-3 p-3 rounded-lg' : 'p-2'
+      )}>
+        <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+          <BookmarkPlus className={cn(variant === 'full' ? 'h-4 w-4' : 'h-3 w-3')} />
+          <span className={cn(
+            "font-medium",
+            variant === 'full' ? 'text-sm' : 'text-xs'
+          )}>
+            {variant === 'full' ? 'Save as Bookmark' : 'Save Query as Bookmark'}
+          </span>
+        </div>
+        
+        {variant === 'full' && (
+          <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+            Bookmarks let you create shortcuts for complex search queries. Use the format "bookmark..." in your search to expand them automatically.
+          </p>
+        )}
+        
+        <div className={cn(
+          "text-amber-700 dark:text-amber-300 font-mono break-all border border-amber-200 dark:border-amber-700 rounded",
+          variant === 'full' 
+            ? 'text-xs bg-amber-100 dark:bg-amber-900/50 p-2' 
+            : 'text-xs p-1.5 bg-background'
+        )}>
+          "{validateAndExpandKeywordsSilently(query).expandedQuery}"
+        </div>
+        
+        <div className={cn(variant === 'full' ? 'space-y-2' : 'space-y-1')}>
+          <Input
+            placeholder={variant === 'full' ? "Enter bookmark name (e.g., ai-research)" : "Enter bookmark name (e.g., ml-research)"}
+            value={localBookmarkName}
+            onChange={(e) => setLocalBookmarkName(e.target.value)}
+            className={cn(
+              "bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400 dark:focus:border-amber-600",
+              variant === 'full' ? 'text-sm' : 'text-xs h-7'
+            )}
+            onKeyDown={handleKeyDown}
+            autoFocus
+          />
+          <p className={cn(
+            "text-amber-600 dark:text-amber-400",
+            variant === 'full' ? 'text-xs' : 'text-xs'
+          )}>
+            Letters, numbers, and dashes only. No spaces allowed.
+          </p>
+          <div className={cn(variant === 'full' ? 'flex gap-2' : 'flex gap-1')}>
+            <Button
+              size="sm"
+              onClick={handleSubmit}
+              disabled={!localBookmarkName.trim()}
+              className={cn(
+                "bg-amber-600 hover:bg-amber-700 text-white",
+                variant === 'compact' && 'h-6 text-xs px-2'
+              )}
+            >
+              <Check className={cn(
+                "mr-1",
+                variant === 'full' ? 'h-3 w-3' : 'h-2 w-2'
+              )} />
+              Save
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onCancel}
+              className={cn(
+                "text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50",
+                variant === 'compact' && 'h-6 text-xs px-2'
+              )}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Reusable Action Buttons Component
+function ActionButtons({
+  query,
+  searchId,
+  index,
+  variant = 'compact',
+  isLoading = false,
+  canDelete = true,
+  onCopy,
+  onBookmark,
+  onSearch,
+  onDelete,
+  className
+}: {
+  query: string;
+  searchId?: string;
+  index?: number;
+  variant?: 'compact' | 'full';
+  isLoading?: boolean;
+  canDelete?: boolean;
+  onCopy: (query: string) => void;
+  onBookmark: (index: number) => void;
+  onSearch: (query: string) => void;
+  onDelete?: (index: number, query: string) => void;
+  className?: string;
+}) {
+    return (
+      <div className={cn(
+        "flex items-center gap-1 transition-opacity duration-200",
+        className
+      )}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCopy(query);
+          }}
+          title="Copy query"
+        >
+          <Copy className={cn(
+            variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+          )} />
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-muted-foreground hover:text-amber-600 hover:bg-amber-50",
+            variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+          )}
+                  onClick={(e) => {
+          e.stopPropagation();
+          if (index !== undefined) onBookmark(index);
+        }}
+          disabled={!query.trim()}
+          title="Save as bookmark"
+        >
+          <BookmarkPlus className={cn(
+            variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+          )} />
+        </Button>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSearch(query);
+          }}
+          disabled={isLoading}
+          title="Search with this query"
+        >
+          {isLoading ? (
+            <Loader2 className={cn(
+              "animate-spin",
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
+          ) : (
+            <Search className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
+          )}
+        </Button>
+        
+        {canDelete && onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
+            )}
+                      onClick={(e) => {
+            e.stopPropagation();
+            if (index !== undefined) onDelete(index, query);
+          }}
+            title="Remove from history"
+          >
+            <Trash2 className={cn(
+              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
+            )} />
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   // Sub-components
   const ActionDropdown = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => (
@@ -237,7 +485,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       )}
     >
       <Trash2 className="h-4 w-4" />
-      <span className="sm:hidden">Clear All</span>
     </Button>
   );
 
@@ -294,7 +541,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       <div
         key={actualIndex}
         className={cn(
-          "group relative overflow-hidden rounded-xl border transition-all duration-200 cursor-pointer md:cursor-default",
+          "group relative overflow-hidden rounded-xl border transition-all duration-200",
           isCurrentSearch 
             ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
             : cn(
@@ -304,7 +551,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                   : 'bg-card/30 backdrop-blur-sm hover:bg-card/60 hover:shadow-lg'
               )
         )}
-        onClick={() => handleCardClick(result, actualIndex)}
       >
       {/* Header with filters and actions */}
       <div className={cn(
@@ -481,147 +727,35 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
           </div>
         </div>
         
-        {/* Actions */}
-        <div className={cn(
-          "flex items-center gap-1 transition-opacity ml-2 shrink-0",
-          variant === 'compact' 
-            ? 'opacity-100 md:opacity-0 md:group-hover:opacity-100' 
-            : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
-        )}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopyQuery(result.query);
-            }}
-            title="Copy search query"
-          >
-            <Copy className={cn(
-              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-            )} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-amber-600 hover:bg-amber-50",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleBookmarkClick(actualIndex);
-            }}
-            disabled={!result.query.trim()}
-            title="Save as bookmark"
-          >
-            <BookmarkPlus className={cn(
-              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-            )} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-primary hover:bg-primary/10",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSearchResults(result.query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex);
-            }}
-            disabled={loadingResultIndex !== null}
-            title="View search results"
-          >
-            {loadingResultIndex === actualIndex ? (
-              <Loader2 className={cn(
-                "animate-spin",
-                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-              )} />
-            ) : (
-              <Search className={cn(
-                variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-              )} />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-              variant === 'compact' ? 'h-7 w-7' : 'h-8 w-8'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteItem(actualIndex, result.query);
-            }}
-            title="Remove from history"
-          >
-            <X className={cn(
-              variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-            )} />
-          </Button>
+        {/* Actions - Always visible */}
+        <div className="flex items-center gap-1 ml-2 shrink-0">
+          <ActionButtons
+            query={result.query}
+            searchId={result.id}
+            index={actualIndex}
+            variant={variant}
+            isLoading={loadingResultIndex === actualIndex}
+            canDelete={true}
+            onCopy={handleCopyQuery}
+            onBookmark={handleBookmarkClick}
+            onSearch={(query) => onSearchResults(query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex)}
+            onDelete={handleDeleteItem}
+          />
         </div>
       </div>
 
       {/* Main content */}
-      <div className={cn(
+        <div className={cn(
         variant === 'compact' ? 'px-4 pb-4' : 'px-5 pb-5'
       )}>
         <div className="space-y-3">
           {bookmarkingIndex === actualIndex ? (
-            /* Bookmark creation interface */
-            <div className="space-y-3 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
-              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                <BookmarkPlus className="h-4 w-4" />
-                <span className="font-medium text-sm">Save as Bookmark</span>
-              </div>
-              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-                Bookmarks let you create shortcuts for complex search queries. Use the format "bookmark..." in your search to expand them automatically.
-              </p>
-              <div className="space-y-2">
-                <Input
-                  placeholder="Enter bookmark name (e.g., ai-research)"
-                  value={bookmarkName}
-                  onChange={(e) => setBookmarkName(e.target.value)}
-                  className="text-sm bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400 dark:focus:border-amber-600"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleBookmarkSubmit(actualIndex, result.query);
-                    } else if (e.key === 'Escape') {
-                      handleBookmarkCancel();
-                    }
-                  }}
-                  autoFocus
-                />
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  Letters, numbers, and dashes only. No spaces allowed.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleBookmarkSubmit(actualIndex, result.query)}
-                    disabled={!bookmarkName.trim()}
-                    className="bg-amber-600 hover:bg-amber-700 text-white"
-                  >
-                    <Check className="h-3 w-3 mr-1" />
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleBookmarkCancel}
-                    className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <BookmarkForm
+              query={result.query}
+              onSubmit={() => setBookmarkingIndex(null)}
+              onCancel={handleBookmarkCancel}
+              variant="full"
+            />
           ) : (
             /* Normal content */
             <div className="flex items-baseline gap-2 flex-wrap">
@@ -642,13 +776,248 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
               </p>
             </div>
           )}
+          
+          {/* Query History Display - show for all search items */}
+          <QueryHistoryDisplay 
+            queryHistory={result.queryHistory} 
+            currentQuery={result.query}
+            searchId={result.id}
+            onQuerySelect={onQuerySelect}
+            onCopyQuery={handleCopyQuery}
+            onDeleteQueryEntry={handleQueryDelete}
+          />
         </div>
       </div>
     </div>
   );
+};
+
+// New component to display query history for a search item
+function QueryHistoryDisplay({ 
+  queryHistory, 
+  currentQuery, 
+  searchId, 
+  onQuerySelect,
+  onCopyQuery,
+  onDeleteQueryEntry
+}: { 
+  queryHistory: any[], 
+  currentQuery: string,
+  searchId?: string,
+  onQuerySelect?: (searchId: string, query: string) => void,
+  onCopyQuery?: (query: string) => void,
+  onDeleteQueryEntry?: (searchId: string, queryIndex: number) => void
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [bookmarkingQueryIndex, setBookmarkingQueryIndex] = useState<number | null>(null);
+  
+  if (!queryHistory || queryHistory.length <= 1) {
+    return null;
+  }
+
+  const handleQueryClick = (query: string) => {
+    if (onQuerySelect && searchId && query !== currentQuery) {
+      onQuerySelect(searchId, query);
+    }
   };
 
+  const handleQueryBookmarkClick = (queryIndex: number) => {
+    setBookmarkingQueryIndex(queryIndex);
+  };
+
+  const handleQueryBookmarkCancel = () => {
+    setBookmarkingQueryIndex(null);
+  };
+
+  return (
+    <div className="mt-2 border-t pt-2">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        Query History ({queryHistory.length})
+      </button>
+      
+      {isExpanded && (
+        <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+          {queryHistory.slice().reverse().map((entry, index) => {
+            const isMostRecent = index === 0;
+            const originalIndex = queryHistory.length - 1 - index;
+            const date = new Date(entry.timestamp);
+            const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+            const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
+            const canDelete = !isMostRecent;
+            
+            return (
+              <div
+                key={index}
+            className={cn(
+                  "rounded-lg border overflow-hidden",
+                  isMostRecent 
+                    ? "bg-primary/5 border-primary/30" 
+                    : "bg-card border-border/60"
+                )}
+              >
+                {/* Current indicator */}
+                {isMostRecent && (
+                  <div className="h-1 bg-primary" />
+                )}
+                
+                {bookmarkingQueryIndex === originalIndex ? (
+                  <div className="p-3">
+                    <BookmarkForm
+                      query={entry.query}
+                      onSubmit={() => setBookmarkingQueryIndex(null)}
+                      onCancel={handleQueryBookmarkCancel}
+                      variant="compact"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    {/* Main content */}
+                    <div className="p-3">
+                      <div className="flex items-start gap-2">
+                        <Search className={cn(
+                          "h-4 w-4 mt-0.5 flex-shrink-0",
+                          isMostRecent ? "text-primary" : "text-muted-foreground"
+                        )} />
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1">
+                            <p className={cn(
+                              "text-sm font-mono break-all",
+                              isMostRecent ? "text-primary font-medium" : "text-foreground"
+                            )}>
+                              {entry.query}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{timeAgo}</span>
+                            <span>•</span>
+                            <span>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Desktop action buttons */}
+                        <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => onCopyQuery?.(entry.query)}
+                            title="Copy query"
+                          >
+                            <Copy className="h-3 w-3" />
+          </Button>
+                          
+          <Button
+            variant="ghost"
+            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleQueryBookmarkClick(originalIndex)}
+            title="Save as bookmark"
+          >
+                            <BookmarkPlus className="h-3 w-3" />
+          </Button>
+                          
+                          {isClickable && (
+          <Button
+            variant="ghost"
+            size="icon"
+                              className="h-7 w-7"
+                              onClick={() => handleQueryClick(entry.query)}
+                              title="Switch to this query"
+                            >
+                              <Search className="h-3 w-3" />
+          </Button>
+                          )}
+                          
+                          {canDelete && onDeleteQueryEntry && searchId && (
+          <Button
+            variant="ghost"
+            size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
+            title="Remove from history"
+          >
+                              <Trash2 className="h-3 w-3" />
+          </Button>
+                          )}
+        </div>
+      </div>
+              </div>
+                    
+                    {/* Mobile action buttons */}
+                    <div className="md:hidden border-t bg-muted/30 px-3 py-2">
+                      <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                            variant="ghost"
+                    size="sm"
+                            className="h-8 px-2 text-xs"
+                            onClick={() => onCopyQuery?.(entry.query)}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-xs"
+                            onClick={() => handleQueryBookmarkClick(originalIndex)}
+                          >
+                            <BookmarkPlus className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          {isClickable && (
+                  <Button
+                              variant="ghost"
+                    size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => handleQueryClick(entry.query)}
+                            >
+                              <Search className="h-3 w-3 mr-1" />
+                              Switch
+                            </Button>
+                          )}
+                          
+                          {canDelete && onDeleteQueryEntry && searchId && (
+                            <Button
+                    variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs text-destructive hover:text-destructive"
+                              onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
+                  >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                  </Button>
+                          )}
+                </div>
+              </div>
+            </div>
+            </div>
+          )}
+        </div>
+            );
+          })}
+      </div>
+      )}
+    </div>
+  );
+}
+
   const Pagination = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => {
+  const { searchHistory } = useSearchHistoryStore();
+  const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const itemsPerPage = variant === 'compact' ? 5 : 10;
+  
     const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
     const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
 
@@ -814,7 +1183,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   if (compact) {
     return (
       <div className="w-full space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3">
           <HeaderSection title="Recent Searches" count={searchHistory.length} variant="compact" />
           <HeaderButtons variant="compact" />
         </div>

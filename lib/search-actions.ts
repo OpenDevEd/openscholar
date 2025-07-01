@@ -95,7 +95,7 @@ export const updateCurrentSearch = async (
   formData: FormData,
   filters: SearchFilters,
 ) => {
-  const { updateSearchResult, getSearchResult } = useSearchHistoryStore.getState();
+  const { updateSearchResult, getSearchResult, addQueryToHistory } = useSearchHistoryStore.getState();
   
   // Get effective search ID from URL
   const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
@@ -122,14 +122,34 @@ export const updateCurrentSearch = async (
     return { searchId: effectiveSearchId };
   }
   
-  // Update search history with new query - DON'T reset count to 0
-  const searchState = createSearchStateFromStore(
-    normalizedQuery,
-    filters,
-    existingCount // Preserve existing count instead of setting to 0
-  );
+  // Check if the query has actually changed
+  const currentQuery = currentSearch?.query || '';
+  const hasQueryChanged = normalizedQuery !== currentQuery;
   
-  updateSearchResult(effectiveSearchId, searchState);
+  if (hasQueryChanged) {
+    // Add the new query to the history and update the current query
+    addQueryToHistory(effectiveSearchId, normalizedQuery);
+    
+    // Update other filters if they've changed
+    const searchState = createSearchStateFromStore(
+      normalizedQuery,
+      filters,
+      existingCount // Preserve existing count instead of setting to 0
+    );
+    
+         // Update only the non-query fields (the query was already updated by addQueryToHistory)
+     const { query, ...otherUpdates } = searchState;
+     updateSearchResult(effectiveSearchId, otherUpdates);
+  } else {
+    // Query hasn't changed, just update other fields
+    const searchState = createSearchStateFromStore(
+      normalizedQuery,
+      filters,
+      existingCount // Preserve existing count instead of setting to 0
+    );
+    
+    updateSearchResult(effectiveSearchId, searchState);
+  }
 
   return { searchId: effectiveSearchId };
 };
@@ -322,4 +342,41 @@ export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
 export const closeFocusMode = () => {
   const { setIsFocusModeOpen } = useUIStore.getState();
   setIsFocusModeOpen(false);
+};
+
+/**
+ * Selects a query from history and navigates to results page
+ * Updates the search history if the query is different from current
+ * Can be used from home page or results page
+ */
+export const selectQueryFromHistory = async (
+  searchId: string,
+  selectedQuery: string,
+  router: any // Next.js router
+) => {
+  const { getSearchResult, addQueryToHistory } = useSearchHistoryStore.getState();
+  
+  // Get the current search result
+  const currentSearch = getSearchResult(searchId);
+  if (!currentSearch) {
+    toast.error('Search not found', {
+      description: 'The requested search could not be found in your history.'
+    });
+    return;
+  }
+  
+  const currentQuery = currentSearch.query;
+  
+  // Check if the selected query is different from current
+  if (selectedQuery !== currentQuery) {
+    // Add the selected query to history and update current query
+    addQueryToHistory(searchId, selectedQuery);
+    
+    toast.success('Query updated', {
+      description: `Switched to: "${selectedQuery}"`
+    });
+  }
+  
+  // Navigate to the results page with the search ID
+  router.push(`/results/${searchId}`);
 }; 

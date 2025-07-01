@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore } from "@/lib/store"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useCurrentQueryStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -86,32 +86,21 @@ export function AIEnhancementPage({
 
   const handleUseEnhancedQuery = async () => {
     if (enhancedPreview) {
-      try {
-        // Create FormData with the enhanced query
-        const formData = new FormData()
-        formData.set("query", enhancedPreview.enhancedQuery)
+      // Just set the enhanced query in the current query store
+      const { setCurrentQuery } = useCurrentQueryStore.getState();
+      setCurrentQuery(enhancedPreview.enhancedQuery);
 
-        // Create filters object from current state
-        const filters = createSearchFilters();
-
-        // Update the current search with the enhanced query
-        await updateCurrentSearch(formData, filters)
-
-        toast.success("Enhanced Query Applied", {
-          description: "Search updated with enhanced query",
-        })
-        
-        // Navigate to the results page using the current search ID
-        if (currentSearchId) {
-          router.push(`/results/${currentSearchId}`)
-        } else {
-          // Fallback to home if no search ID is available
-          router.push('/')
-        }
-      } catch (error) {
-        toast.error("Search Update Failed", {
-          description: error instanceof Error ? error.message : "Failed to apply enhanced query",
-        })
+      toast.success("Enhanced Query Applied", {
+        description: "Query set in search field. Ready to search!",
+      })
+      
+      // Navigate back based on context
+      if (currentSearchId) {
+        // If we have a search ID, go back to that results page
+        router.push(`/results/${currentSearchId}`)
+      } else {
+        // Otherwise go to home page
+        router.push('/')
       }
     }
   }

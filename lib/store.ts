@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DateRange } from "react-day-picker";
-import type { SearchField } from './types';
+import type { SearchField, QueryHistoryEntry } from './types';
 import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
 import { format } from 'date-fns'
 
@@ -22,6 +22,7 @@ const generateUUID = (): string => {
 export type SearchResult = {
   id: string;
   query: string;
+  queryHistory: QueryHistoryEntry[];
   count: number;
   field: SearchField;
   dateRange?: DateRange;
@@ -49,8 +50,9 @@ interface RatingsState {
 
 interface SearchHistoryState {
   searchHistory: SearchResult[]
-  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt'>) => string
+  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory'>) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
+  addQueryToHistory: (id: string, query: string) => void
   getSearchResult: (id: string) => SearchResult | undefined
   removeSearchResult: (index: number) => void
   clearSearchHistory: () => void
@@ -147,6 +149,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         const newResult: SearchResult = {
           ...result,
           id,
+          queryHistory: [{ query: result.query, timestamp: now }],
           createdAt: now,
           updatedAt: now,
         };
@@ -162,6 +165,21 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           searchHistory: state.searchHistory.map((item) =>
             item.id === id
               ? { ...item, ...updates, updatedAt: new Date().toISOString() }
+              : item
+          ),
+        }));
+      },
+      addQueryToHistory: (id, query) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? { 
+                  ...item, 
+                  query,
+                  queryHistory: [...item.queryHistory, { query, timestamp: now }],
+                  updatedAt: now 
+                }
               : item
           ),
         }));
@@ -218,6 +236,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           const newResult: SearchResult = {
             id,
             query,
+            queryHistory: [{ query, timestamp: now }],
             count,
             field: field as SearchField,
             createdAt: now,
@@ -239,7 +258,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
-      version: 1, // Increment when migrations are needed
+      version: 2, // Increment when migrations are needed
       migrate: (persistedState: any, version: number) => {
         // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
         if (version === 0) {
@@ -263,6 +282,21 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
               return {
                 ...item,
                 isYearRangeEnabled: false
+              };
+            });
+          }
+        }
+        
+        // Migration for version 1 -> 2: Add queryHistory field
+        if (version <= 1) {
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              return {
+                ...item,
+                queryHistory: item.queryHistory || [{ 
+                  query: item.query || '', 
+                  timestamp: item.createdAt || new Date().toISOString() 
+                }]
               };
             });
           }

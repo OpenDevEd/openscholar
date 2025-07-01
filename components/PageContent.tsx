@@ -7,7 +7,8 @@ import { useUIStore, useSearchHistoryStore, useCurrentQueryStore } from "@/lib/s
 import { toast } from 'sonner';
 import { useQueryChangeHandler, useCurrentSearchFormState, useSearchResults, useCreateSearchFilters } from "@/lib/hooks";
 import {
-  submitSearchAndLoadResults
+  submitSearchAndLoadResults,
+  selectQueryFromHistory
 } from "@/lib/search-actions";
 import { Logo } from "@/components/logo";
 import { Search } from "lucide-react";
@@ -87,6 +88,10 @@ function PageContent() {
         description: 'The requested search could not be found in your history.'
       });
     }
+  };
+
+  const handleQuerySelect = async (searchId: string, selectedQuery: string) => {
+    await selectQueryFromHistory(searchId, selectedQuery, router);
   };
 
   return (
@@ -234,6 +239,7 @@ function PageContent() {
                 currentSearchField={currentSearchField}
                 compact={true}
                 currentSearchId={undefined}
+                onQuerySelect={handleQuerySelect}
               />
               
               {/* Footer */}
