@@ -354,6 +354,7 @@ export function useSearchResults() {
   return {
     results: data?.results?.results || [],
     totalCount: data?.results?.meta?.count || 0,
+    apiUrl: data?.results?.meta?.url || '',
     originalQuery: data?.originalQuery || '',
     enhancedQuery: data?.enhancedQuery || '',
     countryNames: data?.countryNames || [],

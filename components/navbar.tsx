@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Menu, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn } from "lucide-react";
+import { Search, Menu, Home, Clock, Plus, RotateCcw, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn, Code } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
@@ -31,6 +31,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SearchHistory } from "./search-history";
 import { useIsMobile } from '@/lib/hooks';
+import { ApiButton } from "./api-button";
 
 interface NavbarProps {
   onSearchSubmit: (query: string) => void;
@@ -113,7 +114,7 @@ export function Navbar({
   const { currentSearchField } = useCurrentSearchFormState();
   
   // Get SWR loading states for disabling form
-  const { isLoading, isValidating } = useSearchResults();
+  const { isLoading, isValidating, apiUrl } = useSearchResults();
   const isFormDisabled = isLoading || isValidating || loadingResultIndex !== null;
   
   // Use shared current query state for navbar/home page synchronization
@@ -256,6 +257,12 @@ export function Navbar({
                       </TooltipContent>
                     </Tooltip>
                   )}
+
+                  {/* API Button */}
+                  <ApiButton
+                    apiUrl={apiUrl}
+                    disabled={isFormDisabled}
+                  />
                 </div>
               </div>
             </form>
@@ -558,6 +565,12 @@ export function Navbar({
                       <Plus className="h-4 w-4" />
                     </Button>
                   )}
+
+                  {/* API Button */}
+                  <ApiButton
+                    apiUrl={apiUrl}
+                    disabled={isFormDisabled}
+                  />
                 </div>
               </div>
             </form>

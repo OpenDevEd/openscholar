@@ -20,15 +20,7 @@ async function callOpenAlexSDK(
   try {
     const response = await client.works(searchParams);
     
-    console.log('OpenAlex SDK response:', {
-      meta: response.meta,
-      resultsCount: response.results?.length || 0,
-      firstResult: response.results?.[0] ? {
-        id: response.results[0].id,
-        title: response.results[0].title || response.results[0].display_name,
-        abstract: response.results[0].abstract ? response.results[0].abstract.substring(0, 100) + '...' : 'No abstract'
-      } : 'No results'
-    });
+    console.log('OpenAlex SDK response:', response);
     
     return response;
   } catch (error) {
@@ -53,6 +45,7 @@ export async function getSearchResults(query: string, filters: SearchFilters, ex
     citesItemId: effectiveCitesItemId || filters.citesItemId,
     relatedToItemId: effectiveRelatedToItemId || filters.relatedToItemId
   };
+
   
   const results = await callOpenAlexSDK(actualQuery, effectiveFilters);
   return results;
