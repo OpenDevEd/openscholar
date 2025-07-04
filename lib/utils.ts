@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { Work } from "openalex-sdk/dist/src/types/work";
+import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import type { SearchResult } from './store'

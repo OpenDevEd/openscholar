@@ -1,4 +1,4 @@
-import OpenAlexClient from "openalex-sdk";
+import OpenAlexClient from "@sickrin/openalex-sdk";
 
 const client = new OpenAlexClient();
 

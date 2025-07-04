@@ -1,4 +1,4 @@
-import { Work } from "openalex-sdk/dist/src/types/work";
+import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { DateRange } from 'react-day-picker';
 
 export type PaperResult = Work;
