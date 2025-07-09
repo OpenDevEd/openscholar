@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { workToCoins } from "@/lib/utils";
-import { useResultsStore, useUIStore, useSearchHistoryStore } from "@/lib/store";
+import { useResultsStore, useUIStore, useSearchHistoryStore, useScreeningStore } from "@/lib/store";
 import { useCurrentSearchFormState, useUpdateSearchFilter, useIsMobile } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "./rating-selector";
@@ -31,7 +31,9 @@ import {
   Building,
   Leaf,
   BarChart3,
-  FileText
+  FileText,
+  ClipboardCheck,
+  Plus
 } from "lucide-react";
 
 
@@ -53,6 +55,14 @@ export function PaperCard({
   const { isFocusModeOpen } = useUIStore();
   const updateFilter = useUpdateSearchFilter();
   const isMobile = useIsMobile();
+  const { addDocumentFromWork, documents } = useScreeningStore();
+
+  // Check if this document is already in screening
+  const isInScreening = documents.some(doc => doc.id === result.id || doc.originalWork?.id === result.id);
+
+  const handleAddToScreening = () => {
+    addDocumentFromWork(result);
+  };
 
   const handleFilteredSearch = async (filterType: 'cites' | 'cited_by' | 'related') => {
     // Create new search entry in history (SWR will handle data fetching)
@@ -247,6 +257,27 @@ export function PaperCard({
             <div className="flex items-center justify-between">
               <RatingSelector paperId={result.id} variant="compact" />
               <div className="flex items-center gap-2">
+                {/* Add to Screening Button */}
+                <Button
+                  variant={isInScreening ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleAddToScreening}
+                  disabled={isInScreening}
+                  className={`flex items-center gap-1 px-3 ${
+                    isInScreening 
+                      ? 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/50' 
+                      : 'text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50'
+                  }`}
+                  title={isInScreening ? "Already in screening" : "Add to screening"}
+                >
+                  {isInScreening ? (
+                    <ClipboardCheck className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">{isInScreening ? "Added" : "Screen"}</span>
+                </Button>
+                
                 <DownloadMenu
                   variant="icon"
                   onDownloadJSON={() => onDownloadItem(result, 'json')}
@@ -363,6 +394,27 @@ export function PaperCard({
 
             {/* Right side: Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Add to Screening Button */}
+              <Button
+                variant={isInScreening ? "default" : "outline"}
+                size="sm"
+                onClick={handleAddToScreening}
+                disabled={isInScreening}
+                className={`flex items-center gap-2 flex-shrink-0 ${
+                  isInScreening 
+                    ? 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/50' 
+                    : 'text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50'
+                }`}
+                title={isInScreening ? "Already in screening" : "Add to screening"}
+              >
+                {isInScreening ? (
+                  <ClipboardCheck className="h-4 w-4" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                <span>{isInScreening ? "Added" : "Add to Screening"}</span>
+              </Button>
+
               {/* Open Access PDF Button */}
               {result.open_access?.is_oa && result.open_access?.oa_url && (
                 <Button

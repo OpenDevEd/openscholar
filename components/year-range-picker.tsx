@@ -14,7 +14,7 @@ import { MIN_YEAR, getYearRangePresets } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
-import { isDateFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { isDateFilterActive } from "@/lib/utils";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { useYearRangePickerStore } from "@/lib/store";
 
@@ -22,8 +22,6 @@ export function YearRangePicker() {
   const {
     yearRange,
     dateRange,
-    yearFromInput,
-    yearToInput,
     filterType,
     isYearRangeEnabled,
   } = useCurrentSearchFormState();
@@ -44,31 +42,30 @@ export function YearRangePicker() {
     await updateCurrentSearchFilters();
   };
 
-  const setYearFromInput = (value: string) => {
-    updateFilter({ yearFromInput: value });
-  };
-
-  const setYearToInput = (value: string) => {
-    updateFilter({ yearToInput: value });
-  };
-
   const currentYear = new Date().getFullYear();
-  const [localYearRange, setLocalYearRange] = React.useState<[number, number]>(yearRange);
-  const [localFromInput, setLocalFromInput] = React.useState(yearFromInput);
-  const [localToInput, setLocalToInput] = React.useState(yearToInput);
+
+  // Local input state so manual typing doesn't immediately get overridden by global state
+  const [fromInput, setFromInput] = React.useState<string>(yearRange[0].toString());
+  const [toInput, setToInput] = React.useState<string>(yearRange[1].toString());
+
+  // Keep local inputs in sync when the global yearRange changes via slider / presets
+  React.useEffect(() => {
+    setFromInput(yearRange[0].toString());
+    setToInput(yearRange[1].toString());
+  }, [yearRange]);
 
   const handleYearRangeChange = (values: number[]) => {
     setYearRange([values[0], values[1]]);
-    setYearFromInput(values[0].toString());
-    setYearToInput(values[1].toString());
+    setFromInput(values[0].toString());
+    setToInput(values[1].toString());
     // Don't close the popover when dragging the slider
     // The search will update automatically via the store
   };
 
   const applyYearPreset = async (preset: [number, number]) => {
     setYearRange(preset);
-    setYearFromInput(preset[0].toString());
-    setYearToInput(preset[1].toString());
+    setFromInput(preset[0].toString());
+    setToInput(preset[1].toString());
     // Automatically enable the toggle when a preset is selected
     if (!isYearRangeEnabled) {
       setIsYearRangeEnabled(true);
@@ -117,8 +114,8 @@ export function YearRangePicker() {
                 size="sm"
                 onClick={() => {
                   setYearRange([MIN_YEAR, currentYear]);
-                  setYearFromInput(MIN_YEAR.toString());
-                  setYearToInput(currentYear.toString());
+                  setFromInput(MIN_YEAR.toString());
+                  setToInput(currentYear.toString());
                   setIsYearRangeEnabled(false);
                 }}
                 className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
@@ -146,22 +143,22 @@ export function YearRangePicker() {
                     type="number"
                     min={MIN_YEAR}
                     max={currentYear}
-                    value={yearFromInput}
+                    value={fromInput}
                     onChange={(e) => {
-                      setYearFromInput(e.target.value);
+                      setFromInput(e.target.value);
                     }}
                     onBlur={(e) => {
                       const value = parseInt(e.target.value);
                       if (isNaN(value) || value < MIN_YEAR) {
                         const newValue = MIN_YEAR;
-                        setYearFromInput(newValue.toString());
+                        setFromInput(newValue.toString());
                         setYearRange([newValue, yearRange[1]]);
                       } else if (value > yearRange[1]) {
-                        setYearFromInput(yearRange[1].toString());
+                        setFromInput(yearRange[1].toString());
                         setYearRange([yearRange[1], yearRange[1]]);
                       } else if (value > currentYear) {
                         const newValue = currentYear;
-                        setYearFromInput(newValue.toString());
+                        setFromInput(newValue.toString());
                         setYearRange([newValue, yearRange[1]]);
                       } else {
                         setYearRange([value, yearRange[1]]);
@@ -177,22 +174,22 @@ export function YearRangePicker() {
                     type="number"
                     min={MIN_YEAR}
                     max={currentYear}
-                    value={yearToInput}
+                    value={toInput}
                     onChange={(e) => {
-                      setYearToInput(e.target.value);
+                      setToInput(e.target.value);
                     }}
                     onBlur={(e) => {
                       const value = parseInt(e.target.value);
                       if (isNaN(value) || value > currentYear) {
                         const newValue = currentYear;
-                        setYearToInput(newValue.toString());
+                        setToInput(newValue.toString());
                         setYearRange([yearRange[0], newValue]);
                       } else if (value < yearRange[0]) {
-                        setYearToInput(yearRange[0].toString());
+                        setToInput(yearRange[0].toString());
                         setYearRange([yearRange[0], yearRange[0]]);
                       } else if (value < MIN_YEAR) {
                         const newValue = MIN_YEAR;
-                        setYearToInput(newValue.toString());
+                        setToInput(newValue.toString());
                         setYearRange([yearRange[0], newValue]);
                       } else {
                         setYearRange([yearRange[0], value]);

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Menu, Home, Clock, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn, Code } from "lucide-react";
+import { Search, Menu, Home, Clock, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn, Code, ClipboardCheck } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
@@ -142,11 +142,12 @@ export function Navbar({
   const getCurrentPage = () => {
     if (!pathname) return null;
     if (pathname === '/') return 'home';
-    if (pathname.startsWith('/results') && !pathname.includes('/bookmarks') && !pathname.includes('/ai-enhancement') && !pathname.includes('/history') && !pathname.includes('/filters')) return 'results';
+    if (pathname.startsWith('/results') && !pathname.includes('/bookmarks') && !pathname.includes('/ai-enhancement') && !pathname.includes('/history') && !pathname.includes('/filters') && !pathname.includes('/screening')) return 'results';
     if (pathname.includes('/bookmarks')) return 'bookmarks';
     if (pathname.includes('/ai-enhancement')) return 'ai-enhancement';
     if (pathname.includes('/history')) return 'history';
     if (pathname.includes('/filters')) return 'filters';
+    if (pathname.includes('/screening')) return 'screening';
     return null;
   };
 
@@ -262,6 +263,14 @@ export function Navbar({
               buttonClassName="h-8 px-3"
               asLink
               href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/bookmarks` : "/bookmarks"}
+            />
+
+            {/* Screening Button */}
+            <NavButton 
+              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/screening` : "/screening"} 
+              icon={ClipboardCheck} 
+              label="Screening" 
+              isActive={currentPage === 'screening'}
             />
 
             {/* Search History Button */}
@@ -393,6 +402,19 @@ export function Navbar({
                         <Link href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"}>
                           <Sparkles className="mr-3 h-4 w-4" />
                           AI Enhancement
+                        </Link>
+                      </Button>
+                      
+                      {/* Screening */}
+                      <Button 
+                        variant={currentPage === 'screening' ? "default" : "ghost"} 
+                        className="w-full justify-start" 
+                        asChild 
+                        onClick={closeSheet}
+                      >
+                        <Link href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/screening` : "/screening"}>
+                          <ClipboardCheck className="mr-3 h-4 w-4" />
+                          Screening
                         </Link>
                       </Button>
                       

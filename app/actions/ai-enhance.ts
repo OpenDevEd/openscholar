@@ -1,5 +1,3 @@
-'use server';
-
 import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { getEffectiveSearchId, getCurrentSearchFormState, DEFAULT_FILTERS } from "@/lib/utils";
+import { useDebounceValue } from "@/hooks/use-debounce-value";
 import { useResultsStore } from "@/lib/store";
 import { useSearchHistoryStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
@@ -195,21 +196,24 @@ export function useSearchResults() {
     searchId ? state.searchHistory.find(item => item.id === searchId) : null
   );
 
+  // Debounce the search parameters to avoid spamming the API while the user is still typing / sliding
+  const debouncedSearchState = useDebounceValue(searchState, 300);
+
   // Create SWR key from search parameters
-  const swrKey = searchState ? [
+  const swrKey = debouncedSearchState ? [
     'search-results',
-    searchState.query,
-    searchState.field,
-    searchState.dateRange,
-    searchState.sortBy,
-    searchState.yearRange,
-    searchState.filterType,
-    searchState.selectedRegions,
-    searchState.selectedCountryFocus,
-    searchState.citesItemId,
-    searchState.citedByItemId,
-    searchState.relatedToItemId,
-    searchState.reviewFilter,
+    debouncedSearchState.query,
+    debouncedSearchState.field,
+    debouncedSearchState.dateRange,
+    debouncedSearchState.sortBy,
+    debouncedSearchState.yearRange,
+    debouncedSearchState.filterType,
+    debouncedSearchState.selectedRegions,
+    debouncedSearchState.selectedCountryFocus,
+    debouncedSearchState.citesItemId,
+    debouncedSearchState.citedByItemId,
+    debouncedSearchState.relatedToItemId,
+    debouncedSearchState.reviewFilter,
   ] : null;
 
   // SWR fetcher function
@@ -241,7 +245,7 @@ export function useSearchResults() {
       filterType,
       dateRange,
       yearRange,
-      isYearRangeEnabled: searchState?.isYearRangeEnabled, // Use actual value from search state
+      isYearRangeEnabled: debouncedSearchState?.isYearRangeEnabled, // Use actual value from search state
       ratingRange: undefined, // Rating filters are handled client-side
       onlyRatedPapers: undefined,
       selectedRegions,
@@ -249,7 +253,7 @@ export function useSearchResults() {
       citesItemId,
       citedByItemId,
       relatedToItemId,
-      reviewFilter: searchState?.reviewFilter || false,
+      reviewFilter: debouncedSearchState?.reviewFilter || false,
     };
     
     const params: SearchWithFiltersParams = {

@@ -122,6 +122,7 @@ export function ResultsList({
         onDownloadCSV={onDownloadAllCSV}
         onDownloadEssentialJSON={onDownloadAllEssentialJSON}
         onDownloadEssentialCSV={onDownloadAllEssentialCSV}
+        results={filteredResults}
       />
       
       <div ref={resultsContainerRef}>
