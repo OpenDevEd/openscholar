@@ -109,6 +109,16 @@ export type AIProvider = 'openai' | 'google';
 interface AIConfigState {
   provider: AIProvider;
   apiKey: string;
+  /** cumulative USD spent on AI calls (client-side estimate) */
+  dollarsUsed: number;
+  /** optional spending limit; 0 means unlimited */
+  budget: number;
+  /** update / set a new budget */
+  setBudget: (budget: number) => void;
+  /** increment the running cost tracker */
+  addDollarsUsed: (amount: number) => void;
+  /** reset the tracker back to zero */
+  resetDollarsUsed: () => void;
   setProvider: (provider: AIProvider) => void;
   setApiKey: (apiKey: string) => void;
   clearConfig: () => void;
@@ -412,9 +422,14 @@ export const useAIConfigStore = create<AIConfigState>()(
     (set) => ({
       provider: 'openai',
       apiKey: '',
+      dollarsUsed: 0,
+      budget: 0,
+      setBudget: (budget) => set({ budget }),
+      addDollarsUsed: (amount) => set((state) => ({ dollarsUsed: state.dollarsUsed + amount })),
+      resetDollarsUsed: () => set({ dollarsUsed: 0 }),
       setProvider: (provider) => set({ provider }),
       setApiKey: (apiKey) => set({ apiKey }),
-      clearConfig: () => set({ provider: 'openai', apiKey: '' }),
+      clearConfig: () => set({ provider: 'openai', apiKey: '', dollarsUsed: 0, budget: 0 }),
     }),
     {
       name: 'ai-config-storage',
@@ -491,6 +506,104 @@ interface YearRangePickerState {
   setIsOpen: (open: boolean) => void
 }
 
+// Screening interfaces
+export type ScreeningQuestionType = 'boolean' | 'number' | 'array' | 'string';
+
+export interface ScreeningQuestion {
+  id: string;
+  key: string;
+  type: ScreeningQuestionType;
+  question: string;
+}
+
+export interface ScreeningDocument {
+  id: string;
+  title: string;
+  publication_year?: number;
+  abstract?: string;
+  doi?: string;
+  authorships?: Array<{
+    author: {
+      display_name: string;
+    };
+  }>;
+  open_access?: {
+    is_oa: boolean;
+    oa_url?: string;
+  };
+  /** Zotero group id if imported from Zotero */
+  zotero_group_id?: string;
+  /** Direct link to open document in Zotero app */
+  zotero_uri?: string;
+  primary_location?: {
+    source?: {
+      display_name: string;
+    };
+  };
+  cited_by_count?: number;
+  referenced_works_count?: number;
+  addedAt: string;
+  // Store the original OpenAlex work data
+  originalWork?: any;
+  /** source of import, e.g., 'zotero' */
+  source?: string;
+}
+
+export interface ScreeningResult {
+  documentId: string;
+  answers: Record<string, any>; // key -> answer value
+  completedAt?: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'error';
+  pdfStatus?: 'used' | 'metadata' | 'error';
+  pdfErrorMessage?: string;
+  aiMetadata?: {
+    reasoning: string;
+    confidence: number;
+    flags: string[];
+    provider: string;
+    model: string;
+    processedAt: string;
+  };
+  cost?: number; // USD cost for this screening
+}
+
+interface ScreeningState {
+  documents: ScreeningDocument[];
+  questions: ScreeningQuestion[];
+  results: ScreeningResult[];
+  isScreeningStarted: boolean;
+  currentDocumentIndex: number;
+  
+  // Document management
+  addDocument: (document: Omit<ScreeningDocument, 'addedAt'>) => void;
+  addDocumentFromWork: (work: any) => void;
+  removeDocument: (documentId: string) => void;
+  clearDocuments: () => void;
+  
+  // Question management
+  addQuestion: (question: Omit<ScreeningQuestion, 'id'>) => void;
+  updateQuestion: (questionId: string, updates: Partial<Omit<ScreeningQuestion, 'id'>>) => void;
+  removeQuestion: (questionId: string) => void;
+  clearQuestions: () => void;
+  importQuestionsFromText: (text: string) => { success: boolean; imported: number; errors: string[] };
+  
+  // Screening process
+  startScreening: () => void;
+  stopScreening: () => void;
+  resetScreening: () => void;
+  
+  // Results management
+  saveAnswer: (documentId: string, questionKey: string, answer: any) => void;
+  completeDocumentScreening: (documentId: string) => void;
+  getDocumentResult: (documentId: string) => ScreeningResult | undefined;
+  addAIScreeningResults: (results: ScreeningResult[]) => void;
+  
+  // Navigation
+  goToNextDocument: () => void;
+  goToPreviousDocument: () => void;
+  setCurrentDocument: (index: number) => void;
+}
+
 export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
   mounted: false,
   setMounted: (mounted) => set({ mounted }),
@@ -551,6 +664,238 @@ export const useResultsPageContentStore = create<ResultsPageContentState>((set) 
   setIsSidebarOpen: (open) => set({ isSidebarOpen: open }),
 }))
 
+export const useScreeningStore = create<ScreeningState>()(
+  persist(
+    (set, get) => ({
+      documents: [],
+      questions: [],
+      results: [],
+      isScreeningStarted: false,
+      currentDocumentIndex: 0,
+
+      // Document management
+      addDocument: (document) => set((state) => {
+        // Check if document already exists
+        const existingDoc = state.documents.find(doc => doc.id === document.id || doc.originalWork?.id === document.id);
+        if (existingDoc) {
+          return state; // Don't add duplicates
+        }
+
+        const newDocument: ScreeningDocument = {
+          ...document,
+          id: document.id || `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          addedAt: new Date().toISOString(),
+        };
+        return { documents: [...state.documents, newDocument] };
+      }),
+
+      // Add document from OpenAlex Work
+      addDocumentFromWork: (work: any) => set((state) => {
+        // Check if document already exists
+        const existingDoc = state.documents.find(doc => doc.id === work.id || doc.originalWork?.id === work.id);
+        if (existingDoc) {
+          return state; // Don't add duplicates
+        }
+
+        const newDocument: ScreeningDocument = {
+          id: work.id,
+          title: work.title,
+          publication_year: work.publication_year,
+          abstract: work.abstract,
+          doi: work.doi,
+          authorships: work.authorships,
+          open_access: work.open_access,
+          primary_location: work.primary_location,
+          cited_by_count: work.cited_by_count,
+          referenced_works_count: work.referenced_works_count,
+          addedAt: new Date().toISOString(),
+          originalWork: work,
+        };
+        return { documents: [...state.documents, newDocument] };
+      }),
+
+      removeDocument: (documentId) => set((state) => ({
+        documents: state.documents.filter(doc => doc.id !== documentId),
+        results: state.results.filter(result => result.documentId !== documentId),
+      })),
+
+      clearDocuments: () => set({ documents: [], results: [] }),
+
+      // Question management
+      addQuestion: (question) => set((state) => {
+        const newQuestion: ScreeningQuestion = {
+          ...question,
+          id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        };
+        return { questions: [...state.questions, newQuestion] };
+      }),
+
+      updateQuestion: (questionId, updates) => set((state) => ({
+        questions: state.questions.map(q => 
+          q.id === questionId ? { ...q, ...updates } : q
+        ),
+      })),
+
+      removeQuestion: (questionId) => set((state) => ({
+        questions: state.questions.filter(q => q.id !== questionId),
+      })),
+
+      clearQuestions: () => set({ questions: [] }),
+
+      importQuestionsFromText: (text) => {
+        const lines = text.trim().split('\n').filter(line => line.trim());
+        const errors: string[] = [];
+        let imported = 0;
+
+        const newQuestions: ScreeningQuestion[] = [];
+        const existingKeys = new Set(get().questions.map((q: ScreeningQuestion) => q.key.toLowerCase()));
+
+        lines.forEach((line, index) => {
+          const parts = line.split('|');
+          if (parts.length !== 3) {
+            errors.push(`Line ${index + 1}: Expected format "key|type|question" but got "${line}"`);
+            return;
+          }
+
+          const [key, type, question] = parts.map(part => part.trim());
+          
+          if (!key || !type || !question) {
+            errors.push(`Line ${index + 1}: All fields (key, type, question) are required`);
+            return;
+          }
+
+          if (!['boolean', 'number', 'array', 'string'].includes(type)) {
+            errors.push(`Line ${index + 1}: Invalid type "${type}". Must be one of: boolean, number, array, string`);
+            return;
+          }
+
+          // Check duplicates within existing or newQuestions
+          if (existingKeys.has(key.toLowerCase()) || newQuestions.some(q => q.key.toLowerCase() === key.toLowerCase())) {
+            errors.push(`Line ${index + 1}: Duplicate key "${key}"`);
+            return;
+          }
+
+          newQuestions.push({
+            id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+            key,
+            type: type as ScreeningQuestionType,
+            question,
+          });
+          existingKeys.add(key.toLowerCase());
+          imported++;
+        });
+
+        if (newQuestions.length > 0) {
+          set((state) => ({
+            questions: [...state.questions, ...newQuestions],
+          }));
+        }
+
+        return { success: errors.length === 0, imported, errors };
+      },
+
+      // Screening process
+      startScreening: () => set((state) => {
+        // Initialize results for all documents
+        const newResults = state.documents.map(doc => ({
+          documentId: doc.id,
+          answers: {},
+          status: 'pending' as const,
+        }));
+        
+        return {
+          isScreeningStarted: true,
+          currentDocumentIndex: 0,
+          results: newResults,
+        };
+      }),
+
+      stopScreening: () => set({ isScreeningStarted: false }),
+
+      resetScreening: () => set({
+        isScreeningStarted: false,
+        currentDocumentIndex: 0,
+        results: [],
+      }),
+
+      // Results management
+      saveAnswer: (documentId, questionKey, answer) => set((state) => {
+        const existingResultIndex = state.results.findIndex(r => r.documentId === documentId);
+        
+        if (existingResultIndex >= 0) {
+          // Update existing result
+          const updatedResults = [...state.results];
+          updatedResults[existingResultIndex] = {
+            ...updatedResults[existingResultIndex],
+            answers: {
+              ...updatedResults[existingResultIndex].answers,
+              [questionKey]: answer,
+            },
+            status: 'in_progress' as const,
+          };
+          return { results: updatedResults };
+        } else {
+          // Create new result
+          const newResult: ScreeningResult = {
+            documentId,
+            answers: { [questionKey]: answer },
+            status: 'in_progress' as const,
+          };
+          return { results: [...state.results, newResult] };
+        }
+      }),
+
+      completeDocumentScreening: (documentId) => set((state) => ({
+        results: state.results.map(result => 
+          result.documentId === documentId 
+            ? { ...result, status: 'completed' as const, completedAt: new Date().toISOString() }
+            : result
+        ),
+      })),
+
+      getDocumentResult: (documentId) => {
+        const state = get();
+        return state.results.find(result => result.documentId === documentId);
+      },
+
+      addAIScreeningResults: (results) => set((state) => {
+        // Merge AI results into existing ones, replacing any previous entry for the same documentId
+        const mergedResultsMap = new Map<string, ScreeningResult>();
+
+        // Start with existing results
+        state.results.forEach((r) => {
+          mergedResultsMap.set(r.documentId, r);
+        });
+
+        // Overwrite or add with new AI results
+        results.forEach((r) => {
+          mergedResultsMap.set(r.documentId, r);
+        });
+
+        return {
+          results: Array.from(mergedResultsMap.values()),
+          isScreeningStarted: true,
+        };
+      }),
+
+      // Navigation
+      goToNextDocument: () => set((state) => ({
+        currentDocumentIndex: Math.min(state.currentDocumentIndex + 1, state.documents.length - 1),
+      })),
+
+      goToPreviousDocument: () => set((state) => ({
+        currentDocumentIndex: Math.max(state.currentDocumentIndex - 1, 0),
+      })),
+
+      setCurrentDocument: (index) => set({ currentDocumentIndex: index }),
+    }),
+    {
+      name: 'screening-storage',
+      version: 1,
+    }
+  )
+)
+
 export const useAIEnhanceStore = create<AIEnhanceState>((set) => ({
   isDialogOpen: false,
   setIsDialogOpen: (open) => set({ isDialogOpen: open }),
@@ -567,3 +912,32 @@ export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
   isOpen: false,
   setIsOpen: (open) => set({ isOpen: open }),
 })) 
+
+// Add a global store to persist the DateRangePicker popover state across rerenders
+export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>((set) => ({
+  isOpen: false,
+  setIsOpen: (open) => set({ isOpen: open }),
+})) 
+
+// Zotero configuration store
+interface ZoteroConfigState {
+  zoteroApiKey: string;
+  zoteroGroupId: string;
+  setZoteroApiKey: (key: string) => void;
+  setZoteroGroupId: (id: string) => void;
+}
+
+export const useZoteroConfigStore = create<ZoteroConfigState>()(
+  persist(
+    (set) => ({
+      zoteroApiKey: '',
+      zoteroGroupId: '',
+      setZoteroApiKey: (key) => set({ zoteroApiKey: key }),
+      setZoteroGroupId: (id) => set({ zoteroGroupId: id }),
+    }),
+    {
+      name: 'zotero-config-storage',
+      version: 1,
+    }
+  )
+); 

@@ -157,18 +157,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
                       {totalCount.toLocaleString()} results
                     </p>
                   </div>
-                  
-                  {/* Hide download button on mobile since it's now in ResultsFilter */}
-                  <div className="hidden sm:flex items-center  gap-3 flex-shrink-0">
-                    <DownloadMenu
-                      variant="button"
-                      size="sm"
-                      onDownloadJSON={() => downloadAll("json", false, searchState, results)}
-                      onDownloadCSV={() => downloadAll("csv", false, searchState, results)}
-                      onDownloadEssentialJSON={() => downloadAll("json", true, searchState, results)}
-                      onDownloadEssentialCSV={() => downloadAll("csv", true, searchState, results)}
-                    />
-                  </div>
                 </div>
 
                 {/* Results List */}

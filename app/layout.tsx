@@ -6,6 +6,7 @@ import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConditionalFooter } from "@/components/ui/conditional-footer";
 import { cn } from "@/lib/utils";
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,15 +34,17 @@ export default function RootLayout({
         className={cn(geistSans.variable, geistMono.variable, "antialiased")}
       >
         <ThemeProvider>
-          <QuerySyncProvider>
-            <div className="min-h-screen flex flex-col">
-              <div className="flex-1">
-                {children}
+          <NuqsAdapter>
+            <QuerySyncProvider>
+              <div className="min-h-screen flex flex-col">
+                <div className="flex-1">
+                  {children}
+                </div>
+                <ConditionalFooter />
               </div>
-              <ConditionalFooter />
-            </div>
-            <Toaster />
-          </QuerySyncProvider>
+              <Toaster />
+            </QuerySyncProvider>
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

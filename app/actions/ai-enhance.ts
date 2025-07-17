@@ -1,9 +1,9 @@
-'use server';
-
 import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
+import { GOOGLE_MODEL, OPENAI_MODEL } from '@/lib/screening-utils';
+import { assertWithinBudget, addCostFromUsage } from '@/lib/ai-cost';
 
 export type AIProvider = 'openai' | 'google';
 
@@ -26,19 +26,19 @@ export async function enhanceSearchQuery(
   }
 
   try {
+    assertWithinBudget();
+
     let model;
     
     if (provider === 'openai') {
       const openai = createOpenAI({ apiKey });
-      model = openai('gpt-4-turbo', {
-        structuredOutputs: true,
-      });
+      model = openai(OPENAI_MODEL);
     } else {
       const google = createGoogleGenerativeAI({ apiKey });
-      model = google('gemini-2.5-flash');
+      model = google(GOOGLE_MODEL);
     }
 
-    const result = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: queryEnhancementSchema,
       system: `You are an Elasticsearch Query String Query optimization expert for academic search. Your task is to enhance queries following Elasticsearch syntax rules while maximizing character efficiency.
@@ -79,9 +79,11 @@ Requirements:
 Provide a character-efficient enhanced query that captures more relevant academic papers.`,
     });
 
+    addCostFromUsage(provider, usage);
+
     return {
-      enhancedQuery: result.object.enhancedQuery,
-      explanation: result.object.explanation,
+      enhancedQuery: object.enhancedQuery,
+      explanation: object.explanation,
     };
   } catch (error) {
     console.error('Error enhancing query:', error);

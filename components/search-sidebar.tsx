@@ -16,6 +16,7 @@ import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { YearRangePicker } from "./year-range-picker";
+import { useDateRangePickerStore } from "@/lib/store";
 import { RatingRangePicker } from "./rating-range-picker";
 import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
@@ -107,7 +108,14 @@ function FilterWrapper({ title, icon: Icon, colorScheme, isActive, children }: F
 function DateFilterPanel() {
   const { dateRange, filterType, isYearRangeEnabled, yearRange } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
-  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
+  // Global popover open state so it persists across parent rerenders
+  const { isOpen: isDatePickerOpen, setIsOpen: setIsDatePickerOpen } = useDateRangePickerStore();
+
+  // Local (uncommitted) state while the popover is open. This avoids triggering
+  // global store updates – and thus parent re-renders – on every date click.
+  const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>(dateRange);
+
   const isDateActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
 
   const handleFilterTypeChange = async (type: "date" | "year") => {
@@ -115,14 +123,16 @@ function DateFilterPanel() {
     await updateCurrentSearchFilters();
   };
 
-  const handleDateRangeChange = async (range: DateRange | undefined) => {
+  // Commit the selected range to the global store (and server) only once – when
+  // the popover closes or the user explicitly clears the filter.
+  const commitDateRange = async (range: DateRange | undefined) => {
     updateFilter({ dateRange: range });
     await updateCurrentSearchFilters();
   };
 
   const handleClearDateRange = async () => {
-    updateFilter({ dateRange: undefined });
-    await updateCurrentSearchFilters();
+    setTempDateRange(undefined);
+    await commitDateRange(undefined);
   };
 
   const handleClearYearRange = async () => {
@@ -132,6 +142,17 @@ function DateFilterPanel() {
       isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled 
     });
     await updateCurrentSearchFilters();
+  };
+
+  const handlePopoverOpenChange = async (open: boolean) => {
+    if (open) {
+      // Reset local state to reflect current global value whenever the popover opens
+      setTempDateRange(dateRange);
+    } else {
+      // When closing, persist the selection if it changed
+      await commitDateRange(tempDateRange);
+    }
+    setIsDatePickerOpen(open);
   };
 
   return (
@@ -171,7 +192,7 @@ function DateFilterPanel() {
         {/* Filter Content */}
         {filterType === "date" ? (
           <div className="space-y-3">
-            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+            <Popover open={isDatePickerOpen} onOpenChange={handlePopoverOpenChange}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -203,11 +224,12 @@ function DateFilterPanel() {
                   initialFocus
                   mode="range"
                   defaultMonth={dateRange?.from}
-                  selected={dateRange}
+                  selected={tempDateRange}
                   onSelect={(range) => {
-                    handleDateRangeChange(range);
+                    setTempDateRange(range);
                   }}
                   numberOfMonths={2}
+                  captionLayout="dropdown"
                 />
               </PopoverContent>
             </Popover>
