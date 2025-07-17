@@ -14,9 +14,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useScreeningStore } from '@/lib/store';
-import { FileText, Download, ArrowLeft, Table as TableIcon, Trash2 } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Table as TableIcon, Trash2, RefreshCcw, ClipboardCheck, Sparkles, BarChart3 } from 'lucide-react';
 import { ScreeningDataTableShadcn } from '@/components/screening/screening-data-table-shadcn';
 import { toast } from 'sonner';
+import { generateScreeningCsv } from '@/lib/screening-utils';
 
 interface ScreeningResultsPageProps {
   showBackButton?: boolean;
@@ -39,6 +40,7 @@ export function ScreeningResultsPage({
   } = useScreeningStore();
   
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [tableKey, setTableKey] = useState<number>(() => Date.now());
 
   const handleBack = () => {
     if (onBack) {
@@ -48,9 +50,14 @@ export function ScreeningResultsPage({
     }
   };
 
+  const handleRefreshTable = () => {
+    setTableKey(Date.now());
+  };
+
   const completedResults = results.filter(r => r.status === 'completed').length;
   const failedResults = results.filter(r => r.status === 'error').length;
   const pendingResults = results.filter(r => r.status === 'pending').length;
+  const totalCost = results.reduce((sum, r) => sum + (r.cost ?? 0), 0);
 
   // Prepare data for the table
   const tableData = useMemo(() => {
@@ -64,11 +71,17 @@ export function ScreeningResultsPage({
         year: document.publication_year || '',
         status: result?.status || 'pending',
         completedAt: result?.completedAt || '',
+        pdfStatus: result?.pdfStatus || 'metadata',
+        pdfErrorMessage: result?.pdfErrorMessage || '',
+        source: document.source || '',
+        zotero_group_id: (document as any).zotero_group_id || '',
+        zotero_uri: (document as any).zotero_uri || '',
         // AI metadata
         aiProvider: result?.aiMetadata?.provider || '',
         aiConfidence: result?.aiMetadata?.confidence || '',
         aiFlags: result?.aiMetadata?.flags?.join(', ') || '',
         aiReasoning: result?.aiMetadata?.reasoning || '',
+        cost: result?.cost ?? '',
       };
 
       // Add answers for each question
@@ -81,34 +94,21 @@ export function ScreeningResultsPage({
   }, [documents, results, questions]);
 
   const handleExportResults = () => {
+    const csvEscape = (val: any) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+    const hasZotero = tableData.some((row) => row.source === 'zotero');
     // Create CSV content
     const headers = [
-      'Title', 'Abstract', 'Authors', 'Year', 'Status', 'Completed At', 
-      'AI Provider', 'AI Confidence', 'AI Flags', 'AI Reasoning',
+      'ID',
+      ...(hasZotero ? ['Group ID', 'Zotero URI'] : []),
+      'Title', 'Abstract', 'Authors', 'Year', 'Status', 'Completed At', 'PDF Status',
+      'AI Provider', 'AI Confidence', 'AI Flags', 'AI Reasoning', 'Cost',
       ...questions.map(q => q.question)
     ];
-    const csvContent = [
-      headers.join(','),
-      ...tableData.map(row => [
-        `"${row.title.replace(/"/g, '""')}"`,
-        `"${(row.abstract || '').replace(/"/g, '""')}"`,
-        `"${(Array.isArray(row.authors) ? row.authors.join('; ') : String(row.authors)).replace(/"/g, '""')}"`,
-        row.year,
-        row.status,
-        row.completedAt ? new Date(row.completedAt).toLocaleDateString() : '',
-        row.aiProvider,
-        row.aiConfidence,
-        `"${row.aiFlags.replace(/"/g, '""')}"`,
-        `"${row.aiReasoning.replace(/"/g, '""')}"`,
-        ...questions.map(q => {
-          const value = row[q.key];
-          if (typeof value === 'string') {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        })
-      ].join(','))
-    ].join('\n');
+    const csvContent = generateScreeningCsv(tableData, questions);
 
     // Download CSV
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -165,7 +165,8 @@ export function ScreeningResultsPage({
         infoItems={[
           { label: `${completedResults} completed out of ${documents.length} documents`, color: 'bg-green-500' },
           { label: `${failedResults} failed`, color: 'bg-red-500' },
-          { label: `${pendingResults} pending`, color: 'bg-gray-500' }
+          { label: `${pendingResults} pending`, color: 'bg-gray-500' },
+          { label: `$${totalCost.toFixed(2)} spent`, color: 'bg-yellow-500' }
         ]}
       />
 
@@ -206,22 +207,82 @@ export function ScreeningResultsPage({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{completedResults}</div>
-                <div className="text-sm text-muted-foreground">Completed</div>
+            {/* Main Progress Bar */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Total Progress</span>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {completedResults} of {documents.length}
+                  </span>
+                </div>
+                <span className="text-sm font-medium">
+                  {((completedResults / documents.length) * 100).toFixed(0)}%
+                </span>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{failedResults}</div>
-                <div className="text-sm text-muted-foreground">Failed</div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 rounded-full transition-all duration-500 ease-in-out flex"
+                  style={{ width: `${(completedResults / documents.length) * 100}%` }}
+                />
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-600">{pendingResults}</div>
-                <div className="text-sm text-muted-foreground">Pending</div>
+            </div>
+
+            {/* Status Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+              {/* Completed */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                </div>
+                <p className="text-2xl font-semibold">{completedResults}</p>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{questions.length}</div>
-                <div className="text-sm text-muted-foreground">Questions</div>
+
+              {/* Failed */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-red-500" />
+                  <span className="text-sm text-muted-foreground">Failed</span>
+                </div>
+                <p className="text-2xl font-semibold">{failedResults}</p>
+              </div>
+
+              {/* Questions */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  <span className="text-sm text-muted-foreground">Questions</span>
+                </div>
+                <p className="text-2xl font-semibold">{questions.length}</p>
+              </div>
+
+              {/* Cost */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                  <span className="text-sm text-muted-foreground">Total Cost</span>
+                </div>
+                <p className="text-2xl font-semibold">${totalCost.toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Additional Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center justify-between md:flex-col md:items-start p-4 rounded-lg border bg-card/50">
+                <span className="text-muted-foreground">Success Rate</span>
+                <span className="font-medium">
+                  {((completedResults - failedResults) / Math.max(completedResults, 1) * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex items-center justify-between md:flex-col md:items-start p-4 rounded-lg border bg-card/50">
+                <span className="text-muted-foreground">Avg. Cost per Document</span>
+                <span className="font-medium">
+                  ${(totalCost / Math.max(completedResults, 1)).toFixed(3)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between md:flex-col md:items-start p-4 rounded-lg border bg-card/50">
+                <span className="text-muted-foreground">Pending Documents</span>
+                <span className="font-medium">{pendingResults}</span>
               </div>
             </div>
           </CardContent>
@@ -236,7 +297,7 @@ export function ScreeningResultsPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScreeningDataTableShadcn data={tableData} questions={questions} />
+            <ScreeningDataTableShadcn key={tableKey} data={tableData} questions={questions} />
           </CardContent>
         </Card>
       </div>

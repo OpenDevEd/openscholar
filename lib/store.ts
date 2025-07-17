@@ -109,6 +109,16 @@ export type AIProvider = 'openai' | 'google';
 interface AIConfigState {
   provider: AIProvider;
   apiKey: string;
+  /** cumulative USD spent on AI calls (client-side estimate) */
+  dollarsUsed: number;
+  /** optional spending limit; 0 means unlimited */
+  budget: number;
+  /** update / set a new budget */
+  setBudget: (budget: number) => void;
+  /** increment the running cost tracker */
+  addDollarsUsed: (amount: number) => void;
+  /** reset the tracker back to zero */
+  resetDollarsUsed: () => void;
   setProvider: (provider: AIProvider) => void;
   setApiKey: (apiKey: string) => void;
   clearConfig: () => void;
@@ -412,9 +422,14 @@ export const useAIConfigStore = create<AIConfigState>()(
     (set) => ({
       provider: 'openai',
       apiKey: '',
+      dollarsUsed: 0,
+      budget: 0,
+      setBudget: (budget) => set({ budget }),
+      addDollarsUsed: (amount) => set((state) => ({ dollarsUsed: state.dollarsUsed + amount })),
+      resetDollarsUsed: () => set({ dollarsUsed: 0 }),
       setProvider: (provider) => set({ provider }),
       setApiKey: (apiKey) => set({ apiKey }),
-      clearConfig: () => set({ provider: 'openai', apiKey: '' }),
+      clearConfig: () => set({ provider: 'openai', apiKey: '', dollarsUsed: 0, budget: 0 }),
     }),
     {
       name: 'ai-config-storage',
@@ -516,6 +531,10 @@ export interface ScreeningDocument {
     is_oa: boolean;
     oa_url?: string;
   };
+  /** Zotero group id if imported from Zotero */
+  zotero_group_id?: string;
+  /** Direct link to open document in Zotero app */
+  zotero_uri?: string;
   primary_location?: {
     source?: {
       display_name: string;
@@ -526,6 +545,8 @@ export interface ScreeningDocument {
   addedAt: string;
   // Store the original OpenAlex work data
   originalWork?: any;
+  /** source of import, e.g., 'zotero' */
+  source?: string;
 }
 
 export interface ScreeningResult {
@@ -533,6 +554,8 @@ export interface ScreeningResult {
   answers: Record<string, any>; // key -> answer value
   completedAt?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'error';
+  pdfStatus?: 'used' | 'metadata' | 'error';
+  pdfErrorMessage?: string;
   aiMetadata?: {
     reasoning: string;
     confidence: number;
@@ -541,6 +564,7 @@ export interface ScreeningResult {
     model: string;
     processedAt: string;
   };
+  cost?: number; // USD cost for this screening
 }
 
 interface ScreeningState {
@@ -888,3 +912,32 @@ export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
   isOpen: false,
   setIsOpen: (open) => set({ isOpen: open }),
 })) 
+
+// Add a global store to persist the DateRangePicker popover state across rerenders
+export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>((set) => ({
+  isOpen: false,
+  setIsOpen: (open) => set({ isOpen: open }),
+})) 
+
+// Zotero configuration store
+interface ZoteroConfigState {
+  zoteroApiKey: string;
+  zoteroGroupId: string;
+  setZoteroApiKey: (key: string) => void;
+  setZoteroGroupId: (id: string) => void;
+}
+
+export const useZoteroConfigStore = create<ZoteroConfigState>()(
+  persist(
+    (set) => ({
+      zoteroApiKey: '',
+      zoteroGroupId: '',
+      setZoteroApiKey: (key) => set({ zoteroApiKey: key }),
+      setZoteroGroupId: (id) => set({ zoteroGroupId: id }),
+    }),
+    {
+      name: 'zotero-config-storage',
+      version: 1,
+    }
+  )
+); 

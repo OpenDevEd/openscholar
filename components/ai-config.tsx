@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 export function AIConfig() {
-  const { provider, apiKey, setProvider, setApiKey } = useAIConfigStore()
+  const { provider, apiKey, setProvider, setApiKey, budget, setBudget, dollarsUsed } = useAIConfigStore()
 
   const handleProviderChange = (value: AIProvider) => {
     setProvider(value)
@@ -25,6 +25,16 @@ export function AIConfig() {
     if (value) {
       toast.success("API Key Updated", {
         description: "Your API key has been saved securely",
+      })
+    }
+  }
+
+  const handleBudgetChange = (value: string) => {
+    const num = parseFloat(value)
+    if (!isNaN(num) && num >= 0) {
+      setBudget(num)
+      toast.success("Budget Updated", {
+        description: num === 0 ? "Unlimited budget set" : `Budget set to $${num.toFixed(2)}`,
       })
     }
   }
@@ -112,6 +122,23 @@ export function AIConfig() {
             value={apiKey}
             onChange={(e) => handleApiKeyChange(e.target.value)}
           />
+        </div>
+
+        {/* Budget Input */}
+        <div className="space-y-2">
+          <Label htmlFor="ai-config-budget">Budget (USD)</Label>
+          <Input
+            id="ai-config-budget"
+            type="number"
+            min={0}
+            step={0.01}
+            value={budget === 0 ? "" : budget.toString()}
+            placeholder="Unlimited"
+            onChange={(e) => handleBudgetChange(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            {`Leave empty or 0 for no limit. Current spent: $${dollarsUsed.toFixed(2)}`}
+          </p>
         </div>
       </CardContent>
     </Card>

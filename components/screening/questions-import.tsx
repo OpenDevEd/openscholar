@@ -108,11 +108,15 @@ keywords|array|What are the key terms mentioned in this paper?`;
             </div>
 
             {importResult && (
-              <Alert className={importResult.success ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
+              <Alert
+                className={importResult.success
+                  ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/40"
+                  : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/40"}
+              >
                 {importResult.success ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                 ) : (
-                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                 )}
                 <AlertDescription>
                   <div className="space-y-2">
@@ -127,10 +131,10 @@ keywords|array|What are the key terms mentioned in this paper?`;
                     
                     {importResult.errors.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-red-800">Errors:</p>
+                        <p className="text-sm font-medium text-red-800 dark:text-red-300">Errors:</p>
                         <ul className="text-xs space-y-1">
                           {importResult.errors.map((error, index) => (
-                            <li key={index} className="text-red-700">• {error}</li>
+                            <li key={index} className="text-red-700 dark:text-red-400">• {error}</li>
                           ))}
                         </ul>
                       </div>

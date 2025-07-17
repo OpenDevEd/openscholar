@@ -99,7 +99,17 @@ export function DocumentsList() {
                     DOI
                   </Badge>
                 )}
-                {document.open_access?.is_oa && (
+                {document.open_access?.is_oa && document.open_access?.oa_url && (
+                  <button
+                    onClick={() => document.open_access?.oa_url && window.open(document.open_access.oa_url, '_blank')}
+                    className="inline-flex items-center gap-1 text-xs h-5 px-1.5 text-green-600 border border-green-200 bg-transparent rounded-md hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 flex-shrink-0 cursor-pointer transition-colors duration-200 font-medium"
+                    title="Click to open PDF"
+                  >
+                    <FileText className="h-3 w-3" />
+                    Open Access
+                  </button>
+                )}
+                {document.open_access?.is_oa && !document.open_access?.oa_url && (
                   <Badge variant="outline" className="text-xs h-5 px-1.5 text-green-600 border-green-200 flex-shrink-0">
                     Open Access
                   </Badge>

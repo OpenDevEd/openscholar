@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AIConfig } from '@/components/ai-config';
-import { useScreeningStore } from '@/lib/store';
+import { useScreeningStore, useAIConfigStore } from '@/lib/store';
 import { ClipboardCheck, Plus, FileText, HelpCircle, Upload, Trash2, Settings, Brain } from 'lucide-react';
 import { DocumentsList } from '@/components/screening/documents-list';
 import { QuestionsList } from '@/components/screening/questions-list';
@@ -17,6 +17,7 @@ import { QuestionsImport } from '@/components/screening/questions-import';
 import { AddQuestionDialog } from '@/components/screening/add-question-dialog';
 import { AddDocumentDialog } from '@/components/screening/add-document-dialog';
 import { AIScreeningDialog } from '@/components/screening/ai-screening-dialog';
+import { AddZoteroDocumentDialog } from '@/components/screening/add-zotero-document-dialog';
 
 interface ScreeningPageProps {
   showBackButton?: boolean;
@@ -38,8 +39,11 @@ export function ScreeningPage({
     clearQuestions
   } = useScreeningStore();
 
+  const { dollarsUsed } = useAIConfigStore();
+
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [showAddDocument, setShowAddDocument] = useState(false);
+  const [showAddZotero, setShowAddZotero] = useState(false);
   const [showImportQuestions, setShowImportQuestions] = useState(false);
   const [showAIScreening, setShowAIScreening] = useState(false);
   const [activeTab, setActiveTab] = useState('documents');
@@ -72,7 +76,8 @@ export function ScreeningPage({
         infoItems={[
           { label: `${documents.length} documents ready for screening`, color: 'bg-blue-500' },
           { label: `${questions.length} screening questions configured`, color: 'bg-green-500' },
-          { label: `${completedResults} completed, ${inProgressResults} in progress`, color: 'bg-purple-500' }
+          { label: `${completedResults} completed, ${inProgressResults} in progress`, color: 'bg-purple-500' },
+          { label: `$${dollarsUsed.toFixed(2)} spent`, color: 'bg-yellow-500' },
         ]}
       />
 
@@ -120,6 +125,15 @@ export function ScreeningPage({
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Document
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddZotero(true)}
+                    className="flex-shrink-0"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Zotero Import
                   </Button>
                   {documents.length > 0 && (
                     <Button
@@ -217,7 +231,7 @@ export function ScreeningPage({
                 size="lg"
                 onClick={() => setShowAIScreening(true)}
                 disabled={documents.length === 0 || questions.length === 0}
-                className="sm:flex-1 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                className="sm:flex-1 text-white bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
               >
                 <Brain className="h-4 w-4 mr-2" />
                 AI Screening
@@ -271,6 +285,10 @@ export function ScreeningPage({
       <AIScreeningDialog 
         open={showAIScreening} 
         onOpenChange={setShowAIScreening} 
+      />
+      <AddZoteroDocumentDialog
+        open={showAddZotero}
+        onOpenChange={setShowAddZotero}
       />
     </div>
   );

@@ -12,8 +12,13 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  Table as ReactTable,
+  HeaderGroup,
+  Header,
+  Row,
+  Cell,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, Loader2 } from "lucide-react"
+import { ArrowUpDown, ChevronDown, Maximize2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -23,6 +28,20 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import {
   Select,
   SelectTrigger,
@@ -49,6 +68,8 @@ import { type ScreeningQuestion, useScreeningStore, useAIConfigStore } from '@/l
 import { performScreening } from '@/app/actions/screening'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { AIScreeningDialog } from './ai-screening-dialog'
+import { generateScreeningCsv } from '@/lib/screening-utils';
 
 interface ScreeningDataTableProps {
   data: any[]
@@ -97,6 +118,34 @@ const getStatusBadge = (status: string) => {
   }
 }
 
+const getPdfStatusBadge = (pdfStatus: string, message?: string) => {
+  const badge = (() => {
+    switch (pdfStatus) {
+      case 'used':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">PDF Used</Badge>
+      case 'metadata':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Metadata</Badge>
+      case 'error':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200 cursor-help">PDF Error</Badge>
+      default:
+        return <Badge variant="outline">{pdfStatus}</Badge>
+    }
+  })();
+
+  if (pdfStatus === 'error' && message) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>{badge}</PopoverTrigger>
+        <PopoverContent className="max-w-sm text-sm">
+          <p className="font-medium mb-1 text-red-700">PDF Error</p>
+          <p className="whitespace-pre-wrap break-words">{message}</p>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+  return badge;
+}
+
 const formatCellValue = (value: any, question?: ScreeningQuestion) => {
   if (value === '' || value === null || value === undefined) {
     return <span className="text-muted-foreground">—</span>
@@ -141,21 +190,151 @@ const formatCellValue = (value: any, question?: ScreeningQuestion) => {
   return <TruncatedTextWithPopover text={String(value)} />
 }
 
+interface TableContentProps {
+  table: ReactTable<any>
+  columns: ColumnDef<any>[]
+  selectedRows: Row<any>[]
+  handleDeleteSelected: () => void
+  handleRescreenSelected: () => void
+  handleExportSelected: () => void
+}
+
+const TableContent = ({ 
+  table, 
+  columns, 
+  selectedRows, 
+  handleDeleteSelected, 
+  handleRescreenSelected, 
+  handleExportSelected 
+}: TableContentProps) => {
+  return (
+    <div className="space-y-4 h-full flex flex-col">
+      <div className="rounded-md border flex-1 overflow-auto">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup: HeaderGroup<any>) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header: Header<any, unknown>) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row: Row<any>) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell: Cell<any, unknown>) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="text-sm text-muted-foreground">
+          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+          {table.getFilteredRowModel().rows.length} row(s) selected.
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <span className="text-sm">Rows:</span>
+            <Select
+              value={String(table.getState().pagination.pageSize)}
+              onValueChange={(value) => table.setPageSize(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-[80px]">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 25, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+      
+      {selectedRows.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap p-2 px-4 bg-muted rounded-md">
+          <span className="text-sm font-medium">{selectedRows.length} selected</span>
+          <Button size="sm" variant="destructive" onClick={handleDeleteSelected} className="w-full sm:w-auto">
+            Delete
+          </Button>
+          <Button size="sm" variant="default" onClick={handleRescreenSelected} className="w-full sm:w-auto">
+            AI Rescreen
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleExportSelected} className="w-full sm:w-auto">
+            Export CSV
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTableProps) {
   "use no memo";
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
+  const [showRescreenDialog, setShowRescreenDialog] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Access store for deleting documents
   const { removeDocument, documents, questions: storeQuestions, addAIScreeningResults } = useScreeningStore()
   const { provider, apiKey } = useAIConfigStore()
-  const [isRescreening, setIsRescreening] = useState(false)
-  const [rescreenCompleted, setRescreenCompleted] = useState(0)
-  const [rescreenTotal, setRescreenTotal] = useState(0)
 
   const columns: ColumnDef<any>[] = React.useMemo(() => {
+    const hasZotero = data.some((d) => d.source === 'zotero');
+
     const baseColumns: ColumnDef<any>[] = [
       {
         id: "select",
@@ -186,11 +365,16 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
           const id = row.getValue("id") as string;
           if (!id) return <span className="text-muted-foreground">—</span>;
 
-          // Build link: if the id already includes the domain use as is, otherwise prepend
-          const href = id.startsWith("http") ? id : `https://openalex.org/${id}`;
-
-          // Only show the last path segment for display
-          const label = href.split("/").pop() ?? href;
+          let href: string;
+          let label: string;
+          if (row.original.source === 'zotero' && row.original.zotero_uri) {
+            href = row.original.zotero_uri;
+            // Display only the Zotero item key (strip prefix 'zotero_')
+            label = id.replace(/^zotero_/, '');
+          } else {
+            href = id.startsWith("http") ? id : `https://openalex.org/${id}`;
+            label = href.split("/").pop() ?? href;
+          }
 
           return (
             <a
@@ -205,6 +389,41 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
         enableSorting: false,
       },
+      // ----- Zotero columns immediately after ID -----
+      ...(hasZotero
+        ? ([
+            {
+              accessorKey: 'zotero_group_id',
+              header: () => <span>Group ID</span>,
+              cell: ({ row }) => (
+                row.original.source === 'zotero' && row.original.zotero_group_id ? (
+                  <Badge variant="outline" className="font-mono">{row.original.zotero_group_id}</Badge>
+                ) : <span className="text-muted-foreground">—</span>
+              ),
+              enableSorting: false,
+            },
+            {
+              accessorKey: 'zotero_uri',
+              header: () => <span>Zotero URI</span>,
+              cell: ({ row }) => {
+                if (row.original.source !== 'zotero' || !row.original.zotero_uri) return <span className="text-muted-foreground">—</span>;
+                const uri = row.original.zotero_uri as string;
+                const display = uri.length > 40 ? `${uri.slice(0, 40)}…` : uri;
+                return (
+                  <a
+                    href={uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline truncate max-w-[250px] inline-block"
+                    title={uri}
+                  >
+                    {display}
+                  </a>
+                );
+              },
+              enableSorting: false,
+            },
+          ] as ColumnDef<any>[]) : []),
       {
         accessorKey: "title",
         header: ({ column }) => {
@@ -338,6 +557,25 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         cell: ({ row }) => getStatusBadge(row.getValue("status")),
       },
       {
+        accessorKey: "pdfStatus",
+        header: ({ column }) => {
+          return (
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            >
+              PDF Status
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+          )
+        },
+        cell: ({ row }) => {
+          const status = row.getValue("pdfStatus") as string;
+          const msg = row.original.pdfErrorMessage as string;
+          return getPdfStatusBadge(status, msg);
+        },
+      },
+      {
         accessorKey: "aiProvider",
         header: ({ column }) => {
           return (
@@ -420,6 +658,15 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
           )
         },
       },
+      {
+        accessorKey: 'cost',
+        header: () => <span>Cost ($)</span>,
+        cell: ({ row }) => {
+          const val = row.getValue('cost');
+          return val ? `$${Number(val).toFixed(4)}` : <span className="text-muted-foreground">—</span>;
+        },
+        enableSorting: true,
+      },
     ]
 
     // Add question columns
@@ -450,7 +697,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
     }))
 
     return [...baseColumns, ...questionColumns]
-  }, [questions])
+  }, [questions, data])
 
   const table = useReactTable({
     data,
@@ -485,25 +732,16 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
 
   const handleExportSelected = () => {
     if (selectedRows.length === 0) return
-    const headers = Object.keys(selectedRows[0].original)
-    const csv = [headers.join(',')]
-    selectedRows.forEach((row) => {
-      const vals = headers.map((h) => {
-        const v = row.original[h]
-        if (typeof v === 'string') return `"${v.replace(/"/g, '""')}"`
-        if (Array.isArray(v)) return `"${v.join('; ').replace(/"/g, '""')}"`
-        return v
-      })
-      csv.push(vals.join(','))
-    })
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const tableRows = selectedRows.map(r => r.original);
+    const csvContent = generateScreeningCsv(tableRows, questions);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
     link.download = `screening-selected-${new Date().toISOString().split('T')[0]}.csv`
     link.click()
   }
 
-  const handleRescreenSelected = async () => {
+  const handleRescreenSelected = () => {
     if (selectedRows.length === 0) return
     if (!provider || !apiKey) {
       toast.error('AI provider and API key must be configured first')
@@ -514,181 +752,100 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
     const docsToScreen = documents.filter((d) => selectedIds.includes(d.id))
     if (docsToScreen.length === 0) return
 
-    setIsRescreening(true)
-    setRescreenCompleted(0)
-    setRescreenTotal(docsToScreen.length)
-    try {
-      const results = await performScreening(
-        docsToScreen,
-        storeQuestions,
-        provider,
-        apiKey,
-        5,
-        (completed, total) => {
-          setRescreenCompleted(completed)
-          setRescreenTotal(total)
-        }
-      )
-      addAIScreeningResults(results)
-      toast.success(`Rescreened ${results.length} document(s) successfully`)
-    } catch (err: any) {
-      console.error(err)
-      toast.error('Rescreening failed', { description: err?.message || 'Unknown error' })
-    } finally {
-      setIsRescreening(false)
-      setRescreenCompleted(0)
-      setRescreenTotal(0)
-      table.resetRowSelection()
-    }
+    setShowRescreenDialog(true)
+  }
+
+  const handleRescreenDialogClose = () => {
+    setShowRescreenDialog(false)
+    table.resetRowSelection()
   }
 
   return (
-    <div className="w-full">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter titles..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("title")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+    <>
+      <div className="w-full">
+        <div className="flex items-center py-4">
+          <Input
+            placeholder="Filter titles..."
+            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("title")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+          <div className="flex items-center gap-2 ml-auto">
+            <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  title="View in fullscreen"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-4">
-        <div className="text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1">
-            <span className="text-sm">Rows:</span>
-            <Select
-              value={String(table.getState().pagination.pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger className="h-8 w-[80px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 25, 50, 100].map((size) => (
-                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-none p-6 overflow-hidden !outline-none [&>button]:!bg-white [&>button]:!opacity-100 [&>button]:border [&>button]:shadow-sm [&>button]:rounded-md [&>button]:p-2 [&>button]:h-10 [&>button]:w-10 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Screening Results Fullscreen View</SheetTitle>
+                </SheetHeader>
+                <div className="h-full">
+                  <TableContent
+                    table={table}
+                    columns={columns}
+                    selectedRows={selectedRows}
+                    handleDeleteSelected={handleDeleteSelected}
+                    handleRescreenSelected={handleRescreenSelected}
+                    handleExportSelected={handleExportSelected}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Columns <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    )
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
         </div>
+        
+        <TableContent
+          table={table}
+          columns={columns}
+          selectedRows={selectedRows}
+          handleDeleteSelected={handleDeleteSelected}
+          handleRescreenSelected={handleRescreenSelected}
+          handleExportSelected={handleExportSelected}
+        />
       </div>
-      {selectedRows.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap p-2 px-4 bg-muted rounded-md">
-          <span className="text-sm font-medium">{selectedRows.length} selected</span>
-          <Button size="sm" variant="destructive" onClick={handleDeleteSelected} className="w-full sm:w-auto">
-            Delete
-          </Button>
-          <Button size="sm" variant="default" onClick={handleRescreenSelected} disabled={isRescreening} className="w-full sm:w-auto">
-            {isRescreening ? (
-              <span className="flex items-center gap-1">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {rescreenCompleted}/{rescreenTotal}
-              </span>
-            ) : 'AI Rescreen'}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleExportSelected} className="w-full sm:w-auto">
-            Export CSV
-          </Button>
-        </div>
-      )}
-    </div>
+      
+      {/* AI Rescreen Dialog */}
+      <AIScreeningDialog
+        open={showRescreenDialog}
+        onOpenChange={handleRescreenDialogClose}
+        documentsToScreen={selectedRows.length > 0 ? documents.filter(d => selectedRows.map(r => r.original.id).includes(d.id)) : undefined}
+        title="AI Rescreen Selected Documents"
+        actionLabel="Start Rescreening"
+      />
+    </>
   )
 } 
