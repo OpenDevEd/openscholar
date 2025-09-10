@@ -709,3 +709,133 @@ export function getCurrentSearchFormState(pathname: string | null) {
     reviewFilter: getCurrentSearchField(pathname, 'reviewFilter', DEFAULT_FILTERS.reviewFilter),
   };
 }
+
+/**
+ * Parses a boolean search query and returns formatted parts with operator highlighting
+ */
+export interface BooleanQueryPart {
+  text: string;
+  type: 'operator' | 'term' | 'parenthesis' | 'parenthesis_content';
+  nestingLevel?: number;
+  originalPosition?: number;
+}
+
+export function parseBooleanQuery(query: string, nestingLevel: number = 0): BooleanQueryPart[] {
+  if (!query || typeof query !== 'string') {
+    return [{ text: query || '', type: 'term', nestingLevel: 0, originalPosition: 0 }];
+  }
+
+  const parts: BooleanQueryPart[] = [];
+  let i = 0;
+  
+  while (i < query.length) {
+    const char = query[i];
+    
+    // Handle quoted strings
+    if (char === '"') {
+      const endQuote = query.indexOf('"', i + 1);
+      if (endQuote !== -1) {
+        parts.push({ text: query.slice(i, endQuote + 1), type: 'term', nestingLevel, originalPosition: i });
+        i = endQuote + 1;
+        continue;
+      }
+    }
+    
+    // Handle parentheses and their content
+    if (char === '(') {
+      const { content, endIndex } = extractParenthesesContent(query, i);
+      // Parse the content inside parentheses recursively
+      const innerContent = content.slice(1, -1); // Remove outer parentheses
+      if (innerContent.trim()) {
+        parts.push({ text: '(', type: 'parenthesis', nestingLevel, originalPosition: i });
+        const innerParts = parseBooleanQuery(innerContent, nestingLevel + 1);
+        parts.push(...innerParts.map(part => ({ 
+          ...part, 
+          type: part.type === 'term' ? 'parenthesis_content' as const : part.type,
+          nestingLevel: part.type === 'term' ? nestingLevel : part.nestingLevel
+        })));
+        parts.push({ text: ')', type: 'parenthesis', nestingLevel, originalPosition: endIndex });
+      } else {
+        parts.push({ text: content, type: 'parenthesis', nestingLevel, originalPosition: i });
+      }
+      i = endIndex + 1;
+      continue;
+    }
+    
+    // Handle operators
+    const remaining = query.slice(i);
+    const operatorMatch = remaining.match(/^(\bAND\b|\bOR\b|\bNOT\b)/i);
+    if (operatorMatch) {
+      parts.push({ text: operatorMatch[0], type: 'operator', nestingLevel, originalPosition: i });
+      i += operatorMatch[0].length;
+      continue;
+    }
+    
+    // Handle regular text
+    let textEnd = i;
+    while (textEnd < query.length && 
+           query[textEnd] !== '(' && 
+           query[textEnd] !== ')' && 
+           query[textEnd] !== '"' &&
+           !query.slice(textEnd).match(/^(\bAND\b|\bOR\b|\bNOT\b)/i)) {
+      textEnd++;
+    }
+    
+    if (textEnd > i) {
+      const text = query.slice(i, textEnd).trim();
+      if (text) {
+        parts.push({ text, type: 'term', nestingLevel, originalPosition: i });
+      }
+      i = textEnd;
+    } else {
+      i++;
+    }
+  }
+  
+  return parts.length > 0 ? parts : [{ text: query, type: 'term', nestingLevel: 0, originalPosition: 0 }];
+}
+
+// Helper function to extract content within parentheses, handling nesting
+function extractParenthesesContent(query: string, startIndex: number): { content: string; endIndex: number } {
+  let depth = 0;
+  let i = startIndex;
+  
+  while (i < query.length) {
+    const char = query[i];
+    if (char === '(') {
+      depth++;
+    } else if (char === ')') {
+      depth--;
+      if (depth === 0) {
+        return {
+          content: query.slice(startIndex, i + 1),
+          endIndex: i
+        };
+      }
+    }
+    i++;
+  }
+  
+  // If no matching closing parenthesis found, return the rest of the string
+  return {
+    content: query.slice(startIndex),
+    endIndex: query.length - 1
+  };
+}
+
+/**
+ * Formats a boolean query with syntax highlighting for display
+ */
+export function formatBooleanQueryForDisplay(query: string): string {
+  const parts = parseBooleanQuery(query);
+  return parts.map(part => {
+    switch (part.type) {
+      case 'operator':
+        return `<span class="font-semibold text-blue-600 dark:text-blue-400">${part.text}</span>`;
+      case 'parenthesis':
+        return `<span class="font-medium text-gray-500 dark:text-gray-400">${part.text}</span>`;
+      default:
+        return part.text;
+    }
+  }).join(' ');
+}

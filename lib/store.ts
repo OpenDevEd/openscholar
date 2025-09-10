@@ -940,4 +940,28 @@ export const useZoteroConfigStore = create<ZoteroConfigState>()(
       version: 1,
     }
   )
+);
+
+// Review store for managing review workflow steps
+interface ReviewStoreState {
+  step: number;
+  setStep: (step: number) => void;
+  nextStep: () => void;
+  previousStep: () => void;
+  resetStep: () => void;
+}
+
+export const useReviewStore = create<ReviewStoreState>()(
+  persist(
+    (set, get) => ({
+      step: 1,
+      setStep: (step) => set({ step }),
+      nextStep: () => set((state) => ({ step: state.step + 1 })),
+      previousStep: () => set((state) => ({ step: Math.max(1, state.step - 1) })),
+      resetStep: () => set({ step: 1 }),
+    }),
+    {
+      name: 'review-store',
+    }
+  )
 ); 
