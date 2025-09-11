@@ -40,18 +40,13 @@ export function ScreeningResultsPage({
   } = useScreeningStore();
   
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const [tableKey, setTableKey] = useState<number>(() => Date.now());
 
   const handleBack = () => {
     if (onBack) {
       onBack();
     } else {
-      router.push(searchId ? `/results/${searchId}/screening` : '/screening');
+      router.back();
     }
-  };
-
-  const handleRefreshTable = () => {
-    setTableKey(Date.now());
   };
 
   const completedResults = results.filter(r => r.status === 'completed').length;
@@ -289,7 +284,7 @@ export function ScreeningResultsPage({
         </Card>
 
         {/* Results Table */}
-        <Card>
+        <Card className='relative'>
           <CardHeader>
             <CardTitle>Detailed Results</CardTitle>
             <CardDescription>
@@ -297,7 +292,7 @@ export function ScreeningResultsPage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ScreeningDataTableShadcn key={tableKey} data={tableData} questions={questions} />
+            <ScreeningDataTableShadcn data={tableData} questions={questions} />
           </CardContent>
         </Card>
       </div>

@@ -1,39 +1,18 @@
 "use client"
 
-import React, { useState } from 'react'
-import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-  Table as ReactTable,
-  HeaderGroup,
-  Header,
-  Row,
-  Cell,
-} from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, Maximize2 } from "lucide-react"
+import React, { useMemo, useState } from 'react'
+import { type ColumnDef } from "@tanstack/react-table"
+import { Maximize2, ArrowUpDown, Text } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Sheet,
@@ -42,22 +21,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import {
   Popover,
@@ -69,7 +32,15 @@ import { performScreening } from '@/app/actions/screening'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { AIScreeningDialog } from './ai-screening-dialog'
-import { generateScreeningCsv } from '@/lib/screening-utils';
+import { generateScreeningCsv } from '@/lib/screening-utils'
+
+// Dice UI components
+import { DataTable } from "@/components/data-table/data-table"
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar"
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
+import { DataTableActionBar } from "@/components/data-table/data-table-action-bar"
+import { useDataTable } from "@/hooks/use-data-table";
+import { parseAsString, useQueryState } from 'nuqs'
 
 interface ScreeningDataTableProps {
   data: any[]
@@ -190,143 +161,11 @@ const formatCellValue = (value: any, question?: ScreeningQuestion) => {
   return <TruncatedTextWithPopover text={String(value)} />
 }
 
-interface TableContentProps {
-  table: ReactTable<any>
-  columns: ColumnDef<any>[]
-  selectedRows: Row<any>[]
-  handleDeleteSelected: () => void
-  handleRescreenSelected: () => void
-  handleExportSelected: () => void
-}
-
-const TableContent = ({ 
-  table, 
-  columns, 
-  selectedRows, 
-  handleDeleteSelected, 
-  handleRescreenSelected, 
-  handleExportSelected 
-}: TableContentProps) => {
-  return (
-    <div className="space-y-4 h-full flex flex-col">
-      <div className="rounded-md border flex-1 overflow-auto">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup: HeaderGroup<any>) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header: Header<any, unknown>) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row: Row<any>) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell: Cell<any, unknown>) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1">
-            <span className="text-sm">Rows:</span>
-            <Select
-              value={String(table.getState().pagination.pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger className="h-8 w-[80px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {[10, 25, 50, 100].map((size) => (
-                  <SelectItem key={size} value={String(size)}>{size}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-      
-      {selectedRows.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap p-2 px-4 bg-muted rounded-md">
-          <span className="text-sm font-medium">{selectedRows.length} selected</span>
-          <Button size="sm" variant="destructive" onClick={handleDeleteSelected} className="w-full sm:w-auto">
-            Delete
-          </Button>
-          <Button size="sm" variant="default" onClick={handleRescreenSelected} className="w-full sm:w-auto">
-            AI Rescreen
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleExportSelected} className="w-full sm:w-auto">
-            Export CSV
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}
 
 export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTableProps) {
-  "use no memo";
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = useState({})
-  const [showRescreenDialog, setShowRescreenDialog] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [title] = useQueryState("title", parseAsString.withDefault(""));
+  const [showRescreenDialog, setShowRescreenDialog] = React.useState(false)
+  const [isFullscreen, setIsFullscreen] = React.useState(false)
 
   // Access store for deleting documents
   const { removeDocument, documents, questions: storeQuestions, addAIScreeningResults } = useScreeningStore()
@@ -359,8 +198,11 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         enableHiding: false,
       },
       {
+        id: "id",
         accessorKey: "id",
-        header: () => <span>ID</span>,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="ID" />
+        ),
         cell: ({ row }) => {
           const id = row.getValue("id") as string;
           if (!id) return <span className="text-muted-foreground">—</span>;
@@ -393,6 +235,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
       ...(hasZotero
         ? ([
             {
+              id: 'zotero_group_id',
               accessorKey: 'zotero_group_id',
               header: () => <span>Group ID</span>,
               cell: ({ row }) => (
@@ -403,6 +246,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
               enableSorting: false,
             },
             {
+              id: 'zotero_uri',
               accessorKey: 'zotero_uri',
               header: () => <span>Zotero URI</span>,
               cell: ({ row }) => {
@@ -426,36 +270,29 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
           ] as ColumnDef<any>[]) : []),
       {
         accessorKey: "title",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-              Title
-              <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          )
-        },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Title" />
+        ),
         cell: ({ row }) => (
           <div className="font-medium max-w-[300px]">
             <TruncatedTextWithPopover text={row.getValue("title")} />
           </div>
         ),
+        meta: {
+          label: "Title",
+          placeholder: "Search titles...",
+          variant: "text",
+          icon: Text,
+        },
+        enableColumnFilter: true,
+        id: "title",
       },
       {
+        id: "abstract",
         accessorKey: "abstract",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-              Abstract
-              <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          )
-        },
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Abstract" />
+        ),
         cell: ({ row }) => {
           const abstract = row.getValue("abstract") as string
           if (!abstract) return <span className="text-muted-foreground">—</span>
@@ -467,6 +304,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: "authors",
         accessorKey: "authors",
         header: ({ column }) => {
           return (
@@ -518,6 +356,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: "year",
         accessorKey: "year",
         header: ({ column }) => {
           return (
@@ -542,6 +381,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: "status",
         accessorKey: "status",
         header: ({ column }) => {
           return (
@@ -557,6 +397,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         cell: ({ row }) => getStatusBadge(row.getValue("status")),
       },
       {
+        id: "pdfStatus",
         accessorKey: "pdfStatus",
         header: ({ column }) => {
           return (
@@ -576,6 +417,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: "aiProvider",
         accessorKey: "aiProvider",
         header: ({ column }) => {
           return (
@@ -599,6 +441,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: "aiConfidence",
         accessorKey: "aiConfidence",
         header: ({ column }) => {
           return (
@@ -628,6 +471,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: "aiFlags",
         accessorKey: "aiFlags",
         header: "AI Flags",
         cell: ({ row }) => {
@@ -659,6 +503,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
         },
       },
       {
+        id: 'cost',
         accessorKey: 'cost',
         header: () => <span>Cost ($)</span>,
         cell: ({ row }) => {
@@ -671,6 +516,7 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
 
     // Add question columns
     const questionColumns: ColumnDef<any>[] = questions.map((question) => ({
+      id: question.key,
       accessorKey: question.key,
       header: ({ column }) => {
         return (
@@ -699,22 +545,21 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
     return [...baseColumns, ...questionColumns]
   }, [questions, data])
 
-  const table = useReactTable({
-    data,
+  const filteredData = useMemo(() => {
+    return data.filter((d) => d.title.toLowerCase().includes(title.toLowerCase()))
+  }, [data, title])
+
+  // Use Dice UI's useDataTable hook
+  const { table } = useDataTable({
+    data: filteredData,
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
+    pageCount: Math.ceil(filteredData.length / 10), // Simple page count calculation
+    initialState: {
+      pagination: {
+        pageIndex: 0,
+        pageSize: 10,
+      },
+      sorting: [{ id: "title", desc: false }],
     },
   })
 
@@ -763,81 +608,53 @@ export function ScreeningDataTableShadcn({ data, questions }: ScreeningDataTable
   return (
     <>
       <div className="w-full">
-        <div className="flex items-center py-4">
-          <Input
-            placeholder="Filter titles..."
-            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("title")?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
-          <div className="flex items-center gap-2 ml-auto">
-            <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  title="View in fullscreen"
-                >
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:max-w-none p-6 overflow-hidden !outline-none [&>button]:!bg-white [&>button]:!opacity-100 [&>button]:border [&>button]:shadow-sm [&>button]:rounded-md [&>button]:p-2 [&>button]:h-10 [&>button]:w-10 [&>button]:flex [&>button]:items-center [&>button]:justify-center">
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Screening Results Fullscreen View</SheetTitle>
-                </SheetHeader>
-                <div className="h-full">
-                  <TableContent
-                    table={table}
-                    columns={columns}
-                    selectedRows={selectedRows}
-                    handleDeleteSelected={handleDeleteSelected}
-                    handleRescreenSelected={handleRescreenSelected}
-                    handleExportSelected={handleExportSelected}
-                  />
-                </div>
-              </SheetContent>
-            </Sheet>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Columns <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {column.id}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+        <div className="flex justify-end mb-4 absolute top-4 right-4">
+          <Sheet open={isFullscreen} onOpenChange={setIsFullscreen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" title="View in fullscreen">
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-none p-6 overflow-hidden">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Screening Results Fullscreen View</SheetTitle>
+              </SheetHeader>
+              <div className="h-full">
+                <DataTable table={table}>
+                  <DataTableToolbar table={table} />
+                  <DataTableActionBar table={table}>
+                    <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
+                      Delete Selected
+                    </Button>
+                    <Button size="sm" variant="default" onClick={handleRescreenSelected}>
+                      AI Rescreen
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={handleExportSelected}>
+                      Export CSV
+                    </Button>
+                  </DataTableActionBar>
+                </DataTable>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-        
-        <TableContent
-          table={table}
-          columns={columns}
-          selectedRows={selectedRows}
-          handleDeleteSelected={handleDeleteSelected}
-          handleRescreenSelected={handleRescreenSelected}
-          handleExportSelected={handleExportSelected}
-        />
+
+        <DataTable table={table}>
+          <DataTableToolbar table={table} />
+          <DataTableActionBar table={table}>
+            <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
+              Delete Selected
+            </Button>
+            <Button size="sm" variant="default" onClick={handleRescreenSelected}>
+              AI Rescreen
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleExportSelected}>
+              Export CSV
+            </Button>
+          </DataTableActionBar>
+        </DataTable>
       </div>
-      
+
       {/* AI Rescreen Dialog */}
       <AIScreeningDialog
         open={showRescreenDialog}

@@ -183,6 +183,12 @@ async function screenDocument(
   usePdfs: boolean = false,
   zoteroAuth?: { apiKey: string; groupId: string }
 ) {
+  console.log('Screening Document:', {
+    document,
+    questions,
+    provider,
+    apiKey,
+  });
   const model = createModel(provider, apiKey);
 
   // ---- budget guard ----------------------------------------------

@@ -156,6 +156,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+  html {
+    overflow-x: hidden;
   }
 }
 
@@ -196,6 +200,44 @@
   }
 }
 
+/* Subtle pulsing border animation for active step */
+@keyframes pulse-border {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(59 130 246 / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0);
+  }
+}
+
+@keyframes pulse-border-dark {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(96 165 250 / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgb(96 165 250 / 0);
+  }
+}
+
+.active-step-border {
+  position: relative;
+  animation: pulse-border 2s ease-in-out infinite;
+  border: 2px solid rgb(59 130 246 / 0.3);
+  @apply rounded-lg;
+}
+
+.dark .active-step-border {
+  animation: pulse-border-dark 2s ease-in-out infinite;
+  border: 2px solid rgb(96 165 250 / 0.3);
+}
+
 @utility text-wrap-anywhere {
   overflow-wrap: break-word;
+}
+
+/* Prevent horizontal scrolling during animations */
+@layer utilities {
+  .no-horizontal-scroll {
+    overflow-x: hidden !important;
+  }
 }

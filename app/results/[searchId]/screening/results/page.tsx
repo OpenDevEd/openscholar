@@ -21,12 +21,12 @@ export default function ScreeningResultsRootPage({ params }: ScreeningResultsPag
   }, [params]);
 
   const handleBack = () => {
-    // Navigate back to screening page
     router.push(`/results/${searchId}/screening`);
   };
 
+
   return (
-    <ScreeningResultsPage 
+    <ScreeningResultsPage
       showBackButton={true}
       onBack={handleBack}
       searchId={searchId}
