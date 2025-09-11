@@ -170,7 +170,7 @@ export function DataTableSortList<TData>({
     <Sortable
       value={sorting}
       onValueChange={onSortingChange}
-      getItemValue={(item) => item.id}
+      getItemValue={(item: { id: any; }) => item.id}
     >
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>

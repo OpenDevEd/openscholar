@@ -26,7 +26,7 @@ import { StepHeader } from "./StepHeader";
 import { ResearchQuestionDisplay } from "./ResearchQuestionDisplay";
 import { NavigationButtons } from "./NavigationButtons";
 import { useReview } from "@/components/review/ReviewProvider";
-import { startSearchExecution, getSearchExecutionStatus, cancelSearchExecution } from "../../app/actions/review";
+import { startSearchExecution, getSearchExecutionStatus, cancelSearchExecution, restartReview } from "../../app/actions/review";
 import { TOTAL_STEPS } from "../../lib/repo";
 import { AIConfig } from "@/components/ai-config";
 import { useAIConfigStore } from "@/lib/store";
@@ -176,6 +176,28 @@ export function Step5({ researchQuestion: propResearchQuestion, onContinue, onBa
     }
   };
 
+  const handleRestartReview = async () => {
+    if (!review) return;
+
+    try {
+      setError(null);
+      const result = await restartReview(review.id);
+      if (result.success) {
+        // Refresh review data to get updated state
+        await loadReview(review.id);
+
+        // Clear local state to show the start button again
+        setExecutionStatus(null);
+        setIsPolling(false);
+      } else {
+        setError(result.error || 'Failed to restart review');
+      }
+    } catch (err) {
+      console.error('Failed to restart review:', err);
+      setError('Failed to restart review');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
@@ -314,17 +336,31 @@ export function Step5({ researchQuestion: propResearchQuestion, onContinue, onBa
                   </Badge>
                 </div>
 
-                {(executionStatus.status === 'active' || executionStatus.status === 'waiting') && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCancelSearch}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Square className="h-4 w-4 mr-1" />
-                    Cancel
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {(executionStatus.status === 'active' || executionStatus.status === 'waiting') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelSearch}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Square className="h-4 w-4 mr-1" />
+                      Cancel
+                    </Button>
+                  )}
+
+                  {(executionStatus.status === 'cancelled' || executionStatus.status === 'completed') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRestartReview}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Play className="h-4 w-4 mr-1" />
+                      Restart Review
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Progress Bar */}

@@ -124,7 +124,8 @@ async function processSearchExecution(job: Job): Promise<any> {
       .from(systematicReviews)
       .where(eq(systematicReviews.id, reviewId));
 
-    if (currentReview?.jobCancelled) {
+    // Only check for cancellation if this is still the same job
+    if (currentReview?.jobCancelled && currentReview?.jobId === job.id) {
       console.log(`🛑 Job ${reviewId} has been cancelled. Stopping execution.`);
       throw new Error('Job cancelled by user');
     }
@@ -168,7 +169,8 @@ async function processSearchExecution(job: Job): Promise<any> {
         .from(systematicReviews)
         .where(eq(systematicReviews.id, reviewId));
 
-      if (midStepReview?.jobCancelled) {
+      // Only check for cancellation if this is still the same job
+      if (midStepReview?.jobCancelled && midStepReview?.jobId === job.id) {
         console.log(`🛑 Job ${reviewId} cancelled during step ${i + 1}. Stopping execution.`);
         throw new Error('Job cancelled by user');
       }

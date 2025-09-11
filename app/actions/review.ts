@@ -1096,3 +1096,61 @@ export async function cancelSearchExecution(reviewId: number): Promise<{
     return { success: false, error: 'Failed to cancel search execution' };
   }
 }
+
+export async function restartReview(reviewId: number): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const [review] = await db
+      .select()
+      .from(systematicReviews)
+      .where(eq(systematicReviews.id, reviewId));
+
+    if (!review) {
+      return { success: false, error: 'Review not found' };
+    }
+
+    // Clear results fields and reset progress
+    await db
+      .update(systematicReviews)
+      .set({
+        // Clear results counts
+        searchResultsCount: 0,
+        screeningResultsCount: 0,
+        dataExtractionResultsCount: 0,
+
+        // Reset progress and status
+        progress: 0,
+        status: null, // Clear status to allow restart
+        currentStep: 'search_execution',
+
+        // Clear job-related fields
+        jobId: null,
+        jobCancelled: false,
+
+        // Clear results data
+        searchResults: null,
+        screeningResults: null,
+        dataExtractionResults: null,
+
+        // Clear completion timestamps
+        searchExecutionCompletedAt: null,
+        screeningCompletedAt: null,
+        dataExtractionCompletedAt: null,
+
+        // Clear error logs
+        errorLogs: null,
+
+        // Update timestamp
+        updatedAt: new Date(),
+      })
+      .where(eq(systematicReviews.id, reviewId));
+
+    console.log(`Review ${reviewId} restarted successfully`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to restart review:', error);
+    return { success: false, error: 'Failed to restart review' };
+  }
+}
