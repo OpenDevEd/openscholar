@@ -36,10 +36,7 @@ export const STEP_ORDER: Step[] = [
   "search_terms",
   "screening_questions",
   "data_extraction_questions",
-  "search_execution",
-  "screening",
-  "data_extraction",
-  "completed"
+  "search_execution"
 ];
 
 export const STEP_LABELS: Record<Step, string> = {
@@ -47,11 +44,13 @@ export const STEP_LABELS: Record<Step, string> = {
   search_terms: "Search Terms",
   screening_questions: "Screening Questions",
   data_extraction_questions: "Data Extraction Questions",
-  search_execution: "Search Execution",
-  screening: "Screening",
-  data_extraction: "Data Extraction",
-  completed: "Completed"
+  search_execution: "Systematic Review Process",
+  screening: "Screening", // Kept for backward compatibility
+  data_extraction: "Data Extraction", // Kept for backward compatibility
+  completed: "Completed" // Kept for backward compatibility
 };
+
+export const TOTAL_STEPS = STEP_ORDER.length;
 
 // Step Navigation Utilities
 export function getStepIndex(step: Step): number {

@@ -137,13 +137,7 @@ function getStepDescription(step: Step): string {
     case "data_extraction_questions":
       return "Set up questions for extracting data from included studies.";
     case "search_execution":
-      return "Execute searches across multiple databases and collect results.";
-    case "screening":
-      return "Review search results and exclude irrelevant papers.";
-    case "data_extraction":
-      return "Extract data from included studies using your predefined questions.";
-    case "completed":
-      return "Your systematic review is complete! Review and export your findings.";
+      return "Execute the complete systematic review process: search databases, screen results, and extract data.";
     default:
       return "Continue with your systematic review process.";
   }

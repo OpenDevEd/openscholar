@@ -5,7 +5,7 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 
 interface NavigationButtonsProps {
   onBack?: () => void;
-  onContinue: () => void;
+  onContinue?: () => void;
   continueText?: string;
   backText?: string;
   continueDisabled?: boolean;
@@ -32,15 +32,19 @@ export function NavigationButtons({
       ) : (
         <div /> // Empty div to maintain spacing
       )}
-      <Button
-        onClick={onContinue}
-        disabled={continueDisabled || isLoading}
-        className="px-8 py-3 text-base font-medium"
-        size="lg"
-      >
-        {continueText}
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </Button>
+      {onContinue ? (
+        <Button
+          onClick={onContinue}
+          disabled={continueDisabled || isLoading}
+          className="px-8 py-3 text-base font-medium"
+          size="lg"
+        >
+          {continueText}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      ) : (
+        <div /> // Empty div to maintain spacing
+      )}
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function Logo({
   // Beautiful academic icon with proper aspect ratio
   const LogoIcon = ({ className: iconClassName }: { className?: string }) => (
     <div className={cn(
-      'relative rounded-lg bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white flex items-center justify-center shadow-lg',
+      'relative rounded-lg bg-gradient-to-r from-slate-100 via-slate-200 to-slate-300 text-slate-700 flex items-center justify-center shadow-sm',
       size === 'sm' && 'w-8 h-8',
       size === 'md' && 'w-10 h-10',
       size === 'lg' && 'w-12 h-12',
@@ -44,7 +44,7 @@ export function Logo({
       {/* Academic/Scholar icon with proper aspect ratio */}
       <svg 
         className={cn(
-          'text-white',
+          'text-slate-700',
           size === 'sm' && 'w-4 h-4',
           size === 'md' && 'w-5 h-5',
           size === 'lg' && 'w-6 h-6',

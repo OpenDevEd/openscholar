@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Plus, Search, FileText, Calendar, BarChart3, Clock, Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 
 function ReviewList() {
   const [reviews, setReviews] = useState<ReviewListItem[]>([]);
@@ -89,40 +90,97 @@ function ReviewList() {
       search_terms: "Search Terms",
       screening_questions: "Screening Questions",
       data_extraction_questions: "Data Extraction Questions",
-      search_execution: "Search Execution",
-      screening: "Screening",
-      data_extraction: "Data Extraction",
-      completed: "Completed"
+      search_execution: "Systematic Review Process"
     };
     return labels[step] || step.replace('_', ' ').toUpperCase();
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Loading Reviews</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              Please wait while we load your systematic reviews...
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+          style={{ transformOrigin: 'center center', willChange: 'transform' }}
+        >
+          <Card className="w-full max-w-md">
+            <CardContent className="flex flex-col items-center justify-center p-8">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                style={{ willChange: 'transform' }}
+              >
+                <Loader2 className="h-8 w-8 mb-4 text-primary" />
+              </motion.div>
+              <motion.h3
+                className="text-lg font-semibold mb-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+              >
+                Loading Reviews
+              </motion.h3>
+              <motion.p
+                className="text-sm text-muted-foreground text-center"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+              >
+                Please wait while we load your systematic reviews...
+              </motion.p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container max-w-6xl mx-auto px-4 py-8">
+    <AnimatePresence mode="wait">
+      <motion.div
+        key="main-content"
+        className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeInOut" }}
+      >
+        <motion.div
+          className="container max-w-6xl mx-auto px-4 py-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+        >
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <motion.div
+          className="flex items-center justify-between mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+        >
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Systematic Reviews</h1>
-            <p className="text-muted-foreground mt-2">
+            <motion.h1
+              className="text-3xl font-bold tracking-tight"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              Systematic Reviews
+            </motion.h1>
+            <motion.p
+              className="text-muted-foreground mt-2"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.4 }}
+            >
               Manage and track your systematic review projects
-            </p>
+            </motion.p>
           </div>
 
           <Dialog>
@@ -178,10 +236,15 @@ function ReviewList() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
+        </motion.div>
 
         {/* Search */}
-        <div className="relative mb-6">
+        <motion.div
+          className="relative mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.5, ease: "easeOut" }}
+        >
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search reviews..."
@@ -189,7 +252,7 @@ function ReviewList() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
-        </div>
+        </motion.div>
 
         {/* Error */}
         {error && (
@@ -266,10 +329,40 @@ function ReviewList() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredReviews.map((review) => (
-              <Link key={review.id} href={`/review/${review.id}`}>
-                <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1,
+                  delayChildren: 0.2
+                }
+              }
+            }}
+          >
+            {filteredReviews.map((review, index) => (
+              <motion.div
+                key={review.id}
+                variants={{
+                  hidden: { opacity: 0, y: 20, scale: 0.95 },
+                  visible: {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    transition: {
+                      duration: 0.4,
+                      ease: "easeOut",
+                      delay: index * 0.05
+                    }
+                  }
+                }}
+              >
+                <Link href={`/review/${review.id}`}>
+                  <Card className="h-full hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-[1.02]">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -335,25 +428,52 @@ function ReviewList() {
                   </CardFooter>
                 </Card>
               </Link>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
 export default function ReviewsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Loading</h3>
-          </CardContent>
-        </Card>
-      </div>
+      <motion.div
+        className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ transformOrigin: 'center center', willChange: 'transform' }}
+          >
+          <Card className="w-full max-w-md">
+            <CardContent className="flex flex-col items-center justify-center p-8">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                style={{ willChange: 'transform' }}
+              >
+                <Loader2 className="h-8 w-8 mb-4 text-primary" />
+              </motion.div>
+              <motion.h3
+                className="text-lg font-semibold mb-2"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+              >
+                Loading
+              </motion.h3>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
     }>
       <ReviewList />
     </Suspense>

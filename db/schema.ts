@@ -104,13 +104,18 @@ export const systematicReviews = pgTable('systematic_reviews', {
 
   // Version control
   version: integer('version').default(1),
-  parentReviewId: integer('parent_review_id') // For forked reviews - self reference will be handled in relations
+  parentReviewId: integer('parent_review_id'), // For forked reviews - self reference will be handled in relations
+
+  // Queue management
+  jobId: varchar('job_id', { length: 255 }),
+  jobCancelled: boolean('job_cancelled').default(false),
 }, (table) => [
   // Indexes for better query performance
   index('systematic_reviews_status_idx').on(table.status),
   index('systematic_reviews_user_idx').on(table.userId),
   index('systematic_reviews_created_at_idx').on(table.createdAt),
   index('systematic_reviews_updated_at_idx').on(table.updatedAt),
+  index('systematic_reviews_job_id_idx').on(table.jobId),
 ]);
 
 // Export types for use in application code

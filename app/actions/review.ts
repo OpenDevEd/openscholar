@@ -11,6 +11,7 @@ import {
   createSearchTerm
 } from '@/lib/repo';
 import { eq, desc, and, sql } from 'drizzle-orm';
+import queue from '@/lib/queue';
 
 // ============================================================================
 // GENERAL REVIEW OPERATIONS
@@ -820,5 +821,278 @@ export async function createReviewQuick(data: {
   } catch (error) {
     console.error('Failed to create quick review:', error);
     throw new Error('Failed to create systematic review');
+  }
+}
+
+// ============================================================================
+// SEARCH EXECUTION OPERATIONS
+// ============================================================================
+
+/**
+ * Start search execution by creating a BullMQ job
+ */
+export async function startSearchExecution(reviewId: number, aiConfig?: { provider: string; apiKey: string }): Promise<{
+  success: boolean;
+  jobId?: string;
+  error?: string;
+}> {
+  try {
+    // Get the review to validate it exists and has search terms
+    const [review] = await db
+      .select()
+      .from(systematicReviews)
+      .where(eq(systematicReviews.id, reviewId));
+
+    if (!review) {
+      return { success: false, error: 'Review not found' };
+    }
+
+    if (!review.searchTerms || (Array.isArray(review.searchTerms) && review.searchTerms.length === 0)) {
+      return { success: false, error: 'No search terms configured' };
+    }
+
+    // Create a BullMQ job - worker will query database itself
+    const job = await queue.add(
+      'search-execution',
+      {
+        reviewId, // Worker will query database for searchTerms and researchQuestion
+        aiConfig, // Pass AI configuration to worker
+      },
+      {
+        priority: 5,
+        attempts: 3, // Retry up to 3 times on failure
+        backoff: {
+          type: 'exponential',
+          delay: 5000, // Start with 5 second delay
+        },
+        removeOnComplete: 10,
+        removeOnFail: 5,
+        // Note: Stall detection settings are configured at queue level in lib/queue.ts
+        // stalledInterval: 300000 (5 minutes), maxStalledCount: 3
+      }
+    );
+
+    // Update the review with the job ID
+    const jobIdString = job.id?.toString() || job.opts?.jobId?.toString();
+    if (!jobIdString) {
+      return { success: false, error: 'Failed to create job ID' };
+    }
+
+    await db
+      .update(systematicReviews)
+      .set({
+        jobId: jobIdString,
+        status: 'in_progress',
+        updatedAt: new Date(),
+      })
+      .where(eq(systematicReviews.id, reviewId));
+
+    return { success: true, jobId: jobIdString };
+  } catch (error) {
+    console.error('Failed to start search execution:', error);
+    return { success: false, error: 'Failed to start search execution' };
+  }
+}
+
+/**
+ * Get the current status of a search execution job
+ */
+export async function getSearchExecutionStatus(reviewId: number): Promise<{
+  jobId: string;
+  status: string;
+  progress: number;
+  results?: any[];
+  resultsCount: number;
+  estimatedTimeRemaining?: number;
+  currentStep?: number;
+  steps?: Array<{
+    name: string;
+    index: number;
+    status: 'pending' | 'active' | 'completed';
+    startedAt?: string;
+    completedAt?: string;
+  }>;
+  progressWithinStep?: number;
+  errorMessage?: string;
+  completedAt?: string;
+} | null> {
+  try {
+    const [review] = await db
+      .select()
+      .from(systematicReviews)
+      .where(eq(systematicReviews.id, reviewId));
+
+    if (!review || !review.jobId) {
+      return null;
+    }
+
+    // Get job status from BullMQ
+    const job = await queue.getJob(review.jobId);
+    if (!job) {
+      return null;
+    }
+
+    const state = await job.getState();
+    const progress = job.progress as number || review.progress || 0;
+
+    let resultsCount = review.searchResultsCount || 0;
+    let currentStep = 0;
+    let steps: Array<{
+      name: string;
+      index: number;
+      status: 'pending' | 'active' | 'completed';
+      startedAt?: string;
+      completedAt?: string;
+    }> = [];
+    let progressWithinStep = 0;
+    let estimatedTimeRemaining = 0;
+    let errorMessage = '';
+
+    // Extract additional data from job progress if available
+    if (typeof job.progress === 'object' && job.progress !== null) {
+      const progressData = job.progress as any;
+      resultsCount = progressData.resultsCount || resultsCount;
+      currentStep = progressData.currentStep || 0;
+      steps = progressData.steps || [];
+      progressWithinStep = progressData.progressWithinStep || 0;
+      estimatedTimeRemaining = progressData.estimatedTimeRemaining || 0;
+    }
+
+    // Get error message if job failed
+    if (state === 'failed') {
+      try {
+        // For failed jobs, the error information is in the job.failedReason
+        const failedState = await job.getState();
+        if (failedState === 'failed') {
+          errorMessage = 'Job failed during execution';
+        }
+      } catch (err) {
+        errorMessage = 'Job failed';
+      }
+    }
+
+    // Update the review with latest progress if job is still running
+    if (state === 'active' || state === 'waiting') {
+      // Extract numeric progress value from complex progress object
+      const numericProgress = typeof progress === 'object' && progress !== null
+        ? (progress as any).progress || 0
+        : typeof progress === 'number'
+        ? progress
+        : 0;
+
+      await db
+        .update(systematicReviews)
+        .set({
+          progress: numericProgress,
+          searchResultsCount: resultsCount,
+          updatedAt: new Date(),
+        })
+        .where(eq(systematicReviews.id, reviewId));
+    }
+
+    // If job completed, update the review with results
+    if (state === 'completed') {
+      const result = job.returnvalue as any;
+
+      // Check if job was cancelled
+      if (result?.cancelled) {
+        // Job was cancelled - don't update with results, keep cancelled status
+        console.log(`Job ${review.jobId} completed as cancelled`);
+      } else {
+        // Job completed normally
+        const searchResults = result?.searchResults || [];
+        const finalResultsCount = result?.resultsCount || resultsCount;
+
+        await db
+          .update(systematicReviews)
+          .set({
+            progress: 100,
+            searchResults,
+            searchResultsCount: finalResultsCount,
+            searchExecutionCompletedAt: new Date(),
+            status: 'completed', // Mark as completed when job finishes normally
+            updatedAt: new Date(),
+          })
+          .where(eq(systematicReviews.id, reviewId));
+
+        resultsCount = finalResultsCount;
+      }
+    }
+
+    // Extract numeric progress value for the interface
+    const numericProgress = typeof progress === 'object' && progress !== null
+      ? (progress as any).progress || 0
+      : typeof progress === 'number'
+      ? progress
+      : 0;
+
+    // Determine the correct status - prefer database status over BullMQ state
+    let finalStatus: string = state;
+    if (review.status === 'cancelled') {
+      // If database shows cancelled, always return cancelled status
+      // This overrides BullMQ's completed/failed states for cancelled jobs
+      finalStatus = 'cancelled';
+    }
+
+    return {
+      jobId: review.jobId,
+      status: finalStatus,
+      progress: numericProgress,
+      results: review.searchResults || [],
+      resultsCount,
+      estimatedTimeRemaining: estimatedTimeRemaining > 0 ? estimatedTimeRemaining : undefined,
+      currentStep: currentStep || undefined,
+      steps: steps.length > 0 ? steps : undefined,
+      progressWithinStep: progressWithinStep || undefined,
+      errorMessage: errorMessage || undefined,
+      completedAt: review.searchExecutionCompletedAt?.toISOString(),
+    };
+  } catch (error) {
+    console.error('Failed to get search execution status:', error);
+    return null;
+  }
+}
+
+/**
+ * Cancel a running search execution job
+ */
+export async function cancelSearchExecution(reviewId: number): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const [review] = await db
+      .select()
+      .from(systematicReviews)
+      .where(eq(systematicReviews.id, reviewId));
+
+    if (!review || !review.jobId) {
+      return { success: false, error: 'No active job found' };
+    }
+
+    // Set the cancellation flag in the database (worker will check this)
+    await db
+      .update(systematicReviews)
+      .set({
+        jobCancelled: true,
+        status: 'cancelled',
+        updatedAt: new Date(),
+      })
+      .where(eq(systematicReviews.id, reviewId));
+
+    // Try to remove the job from queue if it's still waiting
+    const job = await queue.getJob(review.jobId);
+    if (job) {
+      const state = await job.getState();
+      if (state === 'waiting' || state === 'delayed') {
+        await job.remove();
+      }
+      // If job is 'active', the worker will check the cancellation flag and exit
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to cancel search execution:', error);
+    return { success: false, error: 'Failed to cancel search execution' };
   }
 }
