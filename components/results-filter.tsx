@@ -47,21 +47,37 @@ export function ResultsFilter({
       return;
     }
 
-    let addedCount = 0;
-    let duplicateCount = 0;
+    // Check how many documents will actually be added (excluding duplicates)
+    const { documents } = useScreeningStore.getState();
+    const newDocuments = results.filter(result =>
+      !documents.some(doc => doc.id === result.id || doc.originalWork?.id === result.id)
+    );
 
-    results.forEach((result) => {
+    const newDocumentsCount = newDocuments.length;
+    const totalResults = results.length;
+    const duplicateCount = totalResults - newDocumentsCount;
+
+    // Create confirmation message
+    let message = `Add ${newDocumentsCount} documents to screening?`;
+    if (duplicateCount > 0) {
+      message += `\n\nNote: ${duplicateCount} documents are already in screening and will be skipped.`;
+    }
+    if (newDocumentsCount > 50) {
+      message += '\n\n⚠️ This will take a while due to the large number of documents.';
+    }
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(message);
+    if (!confirmed) {
+      return;
+    }
+
+    let addedCount = 0;
+
+    newDocuments.forEach((result) => {
       try {
-        // Check if document already exists in screening
-        const { documents } = useScreeningStore.getState();
-        const existingDoc = documents.find(doc => doc.id === result.id || doc.originalWork?.id === result.id);
-        
-        if (existingDoc) {
-          duplicateCount++;
-        } else {
-          addDocumentFromWork(result);
-          addedCount++;
-        }
+        addDocumentFromWork(result);
+        addedCount++;
       } catch (error) {
         console.error('Error adding result to screening:', error);
       }
@@ -69,7 +85,7 @@ export function ResultsFilter({
 
     if (addedCount > 0) {
       toast.success(`Added ${addedCount} documents to screening`, {
-        description: duplicateCount > 0 
+        description: duplicateCount > 0
           ? `${duplicateCount} documents were already in screening and skipped.`
           : 'All documents were successfully added to screening.'
       });

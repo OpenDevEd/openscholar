@@ -33,7 +33,8 @@ import {
   BarChart3,
   FileText,
   ClipboardCheck,
-  Plus
+  Plus,
+  ClipboardPlus
 } from "lucide-react";
 
 
@@ -273,7 +274,7 @@ export function PaperCard({
                   {isInScreening ? (
                     <ClipboardCheck className="h-4 w-4" />
                   ) : (
-                    <Plus className="h-4 w-4" />
+                    <ClipboardPlus className="h-4 w-4" />
                   )}
                   <span className="text-sm">{isInScreening ? "Added" : "Screen"}</span>
                 </Button>
@@ -410,7 +411,7 @@ export function PaperCard({
                 {isInScreening ? (
                   <ClipboardCheck className="h-4 w-4" />
                 ) : (
-                  <Plus className="h-4 w-4" />
+                  <ClipboardPlus className="h-4 w-4" />
                 )}
                 <span>{isInScreening ? "Added" : "Add to Screening"}</span>
               </Button>

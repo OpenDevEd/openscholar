@@ -76,7 +76,7 @@ async function processSearchExecution(job: Job): Promise<any> {
   }
 
   const searchTerms = review.searchTerms;
-  const researchQuestion = review.researchQuestion;
+  const researchQuestion = review.researchQuestion
 
   console.log(`Found ${Array.isArray(searchTerms) ? searchTerms.length : 0} search terms`);
   console.log(`Research question:`, researchQuestion);
