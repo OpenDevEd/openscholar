@@ -423,6 +423,7 @@ export function ResultsActionBar({
 
   const { provider, apiKey } = useAIConfigStore();
   const { setCurrentQuery } = useCurrentQueryStore();
+  const { currentQuestion } = useCurrentQuestionStore();
 
   // Get current search result language
   const effectiveSearchId = useEffectiveSearchId();
@@ -433,7 +434,7 @@ export function ResultsActionBar({
 
   // Conditional button visibility
   const showBroadenButton = totalCount < 10 && currentQuery.trim();
-  const showNarrowButton = currentQuery.length > 150;
+  const showNarrowButton = totalCount > 1000 && currentQuery.trim();
 
   const handleBroadenQuery = async () => {
     if (!currentQuery.trim() || !apiKey || !provider) return;
@@ -447,17 +448,18 @@ export function ResultsActionBar({
 
     try {
       const broadenPrompt = `Current query: "${expandedQuery}"
+${currentQuestion ? `Research Question: "${currentQuestion}"` : ''}
 ${currentLanguage ? `Language Context: The user has specified a language preference of "${currentLanguage}". When broadening the query, consider that the search should focus on content in or related to this language.` : ''}
 
 This query is returning fewer than 10 results. Please broaden the search by:
 
-1. Reducing the number of restrictive AND conditions
+1. Expanding beyond overly restrictive search terms while staying relevant to the research question
 2. Using more OR operators to include synonyms and related terms
 3. Removing overly specific constraints that might be limiting results
-4. Making the query more inclusive while maintaining the core research intent
+4. Making the query more inclusive while maintaining the core research intent${currentQuestion ? ' and addressing the research question' : ''}
 5. Consider using broader search terms and fewer exclusion criteria
 
-Return a more inclusive version of this query that should return more results while preserving the main research focus.`;
+Return a more inclusive version of this query that should return more results while preserving the main research focus${currentQuestion ? ' and directly addressing the research question' : ''}.`;
 
       const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, currentLanguage);
       setCurrentQuery(result.enhancedQuery);
@@ -488,30 +490,32 @@ Return a more inclusive version of this query that should return more results wh
 
     setIsNarrowing(true);
     const loadingToast = toast.loading("Making search more specific...", {
-      description: "Shortening query to 80 characters",
+      description: `Refining query for ${totalCount.toLocaleString()} results`,
     });
 
     try {
       const narrowPrompt = `Current query: "${expandedQuery}"
-Query length: ${expandedQuery.length} characters
+Current results: ${totalCount.toLocaleString()} papers found
+${currentQuestion ? `Research Question: "${currentQuestion}"` : ''}
 ${currentLanguage ? `Language Context: The user has specified a language preference of "${currentLanguage}". When making the query more specific, maintain focus on content in or related to this language.` : ''}
 
-This query is too long. Please make it more specific and concise by:
+This query is returning too many results (${totalCount.toLocaleString()} papers). Please make it more specific and targeted by:
 
-1. Reducing the length to approximately 80 characters or less
-2. Keeping only the most essential search terms
-3. Maintaining the core research focus
-4. Using more precise terminology
-5. Removing redundant or less important terms
+1. Identifying and focusing on the core research question${currentQuestion ? '/topic' : ''} to reduce irrelevant results
+2. Adding more specific keywords that narrow down the research area${currentQuestion ? ' and directly address the research question' : ''}
+3. Using more precise technical terminology relevant to the field${currentQuestion ? ' and question context' : ''}
+4. Incorporating specific methodologies, frameworks, or approaches${currentQuestion ? ' that are relevant to the research question' : ''}
+5. Adding exclusion terms if certain subtopics should be filtered out${currentQuestion ? ' to focus on the specific research question' : ''}
+6. Considering the specific context or application domain${currentQuestion ? ' mentioned in the research question' : ''}
 
-Return a shorter, more focused version of this query that captures the main research intent in fewer characters.`;
+Return a more targeted version of this query that will reduce the result count while maintaining the essential research focus${currentQuestion ? ' and directly addressing the research question' : ''}.`;
 
       const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, currentLanguage);
       setCurrentQuery(result.enhancedQuery);
 
       toast.dismiss(loadingToast);
       toast.success("Query Made More Specific", {
-        description: `Shortened to ${result.enhancedQuery.length} characters: "${result.enhancedQuery}"`,
+        description: `Refined query for better focus: "${result.enhancedQuery}"`,
       });
 
       // Auto-submit the narrowed query
