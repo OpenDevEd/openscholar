@@ -53,6 +53,7 @@ import {
 import { Card, CardContent } from "./ui/card";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningResponses } from "@/lib/types";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 
 interface PapersListProps {
   results: any[];
@@ -445,8 +446,9 @@ export function ResultsList({
         return;
       }
 
+      const { expandedQuery } = validateAndExpandKeywordsSilently(storeCurrentQuery);
       // Create enhanced prompt that includes user instructions
-      const enhancedPrompt = `Original query: "${storeCurrentQuery}"
+      const enhancedPrompt = `Original query: "${expandedQuery}"
 
 User enhancement instructions: "${aiInstructions}"
 

@@ -77,6 +77,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { ApiButton } from "./api-button";
 import { LanguageSelector } from "./language-selector";
 import { SearchContext } from "@/app/results/layout";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 
 export function useSearchBarLogic() {
   const { handleUpdateCurrentSearch, loadingResultIndex } =
@@ -142,7 +143,9 @@ export function useSearchBarLogic() {
           });
 
           try {
-            const translatedQuery = await translateQuery(currentQuery, language, provider, apiKey);
+            const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
+
+            const translatedQuery = await translateQuery(expandedQuery, language, provider, apiKey);
 
             // Update both language and translated query
             updateSearchResult(effectiveSearchId, {
@@ -435,13 +438,15 @@ export function ResultsActionBar({
   const handleBroadenQuery = async () => {
     if (!currentQuery.trim() || !apiKey || !provider) return;
 
+    const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
+
     setIsBroadening(true);
     const loadingToast = toast.loading("Broadening search query...", {
       description: "Making the search less restrictive",
     });
 
     try {
-      const broadenPrompt = `Current query: "${currentQuery}"
+      const broadenPrompt = `Current query: "${expandedQuery}"
 ${currentLanguage ? `Language Context: The user has specified a language preference of "${currentLanguage}". When broadening the query, consider that the search should focus on content in or related to this language.` : ''}
 
 This query is returning fewer than 10 results. Please broaden the search by:
@@ -479,14 +484,16 @@ Return a more inclusive version of this query that should return more results wh
   const handleNarrowQuery = async () => {
     if (!currentQuery.trim() || !apiKey || !provider) return;
 
+    const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
+
     setIsNarrowing(true);
     const loadingToast = toast.loading("Making search more specific...", {
       description: "Shortening query to 80 characters",
     });
 
     try {
-      const narrowPrompt = `Current query: "${currentQuery}"
-Query length: ${currentQuery.length} characters
+      const narrowPrompt = `Current query: "${expandedQuery}"
+Query length: ${expandedQuery.length} characters
 ${currentLanguage ? `Language Context: The user has specified a language preference of "${currentLanguage}". When making the query more specific, maintain focus on content in or related to this language.` : ''}
 
 This query is too long. Please make it more specific and concise by:

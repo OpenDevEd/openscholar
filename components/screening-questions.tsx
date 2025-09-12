@@ -10,6 +10,7 @@ import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
 import type { ScreeningQuestionEntry } from "@/lib/types";
 import { toast } from "sonner";
 import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
+import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation';
 
 interface ScreeningQuestionsProps {
   searchId: string;
@@ -28,7 +29,9 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
   const screeningQuestions = searchResult?.screeningQuestions || [];
 
   // Get research question from question history or use the search query as fallback
-  const researchQuestion = searchResult?.questionHistory?.[searchResult.questionHistory.length - 1]?.question || searchResult?.query || '';
+  const lastQuestionFromHistory = searchResult?.questionHistory?.[searchResult.questionHistory.length - 1]?.question;
+  const searchQuery = searchResult?.query || '';
+  const researchQuestion = lastQuestionFromHistory || (searchQuery ? validateAndExpandKeywordsSilently(searchQuery).expandedQuery : '');
 
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) {

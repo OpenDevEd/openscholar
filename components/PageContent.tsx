@@ -93,14 +93,8 @@ function PageContent() {
         // Start AI enhancement loading state
         setIsEnhancingQuestion(true);
 
-        // Get current search result to access language setting
-        const effectiveSearchId = useEffectiveSearchId();
-        const currentSearchResult = useSearchHistoryStore((state) =>
-          effectiveSearchId ? state.searchHistory.find((item) => item.id === effectiveSearchId) : null
-        );
-
         // Convert research question to search query using AI
-        const result = await enhanceSearchQuery(originalQuery, provider, apiKey, currentSearchResult?.language);
+        const result = await enhanceSearchQuery(originalQuery, provider, apiKey);
 
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;
