@@ -1,36 +1,235 @@
-import { generateObject } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { z } from 'zod';
-import { GOOGLE_MODEL, OPENAI_MODEL } from '@/lib/screening-utils';
-import { assertWithinBudget, addCostFromUsage } from '@/lib/ai-cost';
+import { z } from "zod";
+import { generateObject } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
+import { GOOGLE_MODEL, OPENAI_MODEL } from "@/lib/screening-utils";
 
-export type AIProvider = 'openai' | 'google';
+export type AIProvider = "openai" | "google";
 
+// Define schema with strict validation requirements
 const queryEnhancementSchema = z.object({
-  enhancedQuery: z.string().describe('The enhanced search query with synonyms, AND/OR operators, and parentheses for proper grouping'),
-  explanation: z.string().describe('A brief explanation of how the query was enhanced and what improvements were made'),
+  enhancedQuery: z
+    .string()
+    .describe(
+      "A complete, syntactically valid Elasticsearch Boolean query string. Must have balanced parentheses and no unfinished groups."
+    ),
 });
+
+// Define schema for screening questions generation
+const screeningQuestionsSchema = z.object({
+  questions: z
+    .array(z.string())
+    .min(1)
+    .max(10)
+    .describe(
+      "An array of 3-5 screening questions that are specific, answerable with yes/no, and help determine if a paper meets inclusion criteria."
+    ),
+});
+
+// Function to create dynamic schema for screening responses
+function createScreeningResponsesSchema(questions: string[]) {
+  const responseProperties: Record<string, any> = {};
+
+  for (const question of questions) {
+    responseProperties[question] = z.union([z.boolean(), z.null()]).describe(
+      `Response to: "${question}" (true=yes, false=no, null=unclear)`
+    );
+  }
+
+  return z.object({
+    responses: z.object(responseProperties).describe(
+      "An object where keys are screening questions and values are boolean responses (true=yes, false=no, null=unclear)"
+    ),
+    confidence: z
+      .number()
+      .min(0)
+      .max(1)
+      .describe("Overall confidence level in the screening results (0-1)"),
+  });
+}
+
+// Helper to check query validity
+function validateQuery(query: string): string {
+  const openParens = (query.match(/\(/g) || []).length;
+  const closeParens = (query.match(/\)/g) || []).length;
+
+  if (openParens !== closeParens) {
+    throw new Error("Generated query has unbalanced parentheses");
+  }
+
+  if (/OR\s*$|AND\s*$|NOT\s*$/.test(query)) {
+    throw new Error("Generated query ends with an incomplete operator");
+  }
+
+  return query;
+}
 
 export async function enhanceSearchQuery(
   query: string,
-  provider: AIProvider,
-  apiKey: string
+  provider: "openai" | "google",
+  apiKey: string,
+  language?: string
 ) {
   if (!apiKey) {
-    throw new Error('API key is required');
+    throw new Error("API key is required");
   }
 
   if (!query.trim()) {
-    throw new Error('Query is required');
+    throw new Error("Query is required");
   }
 
   try {
     assertWithinBudget();
 
     let model;
-    
-    if (provider === 'openai') {
+
+    if (provider === "openai") {
+      const openai = createOpenAI({ apiKey });
+      model = openai(OPENAI_MODEL);
+    } else {
+      const google = createGoogleGenerativeAI({ apiKey });
+      model = google(GOOGLE_MODEL);
+    }
+
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError: Error | null = null;
+
+    while (retryCount < maxRetries) {
+      try {
+        const { object, usage } = await generateObject({
+          model,
+          schema: queryEnhancementSchema,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                thinkingBudget: 0,
+              },
+            },
+            openai: {
+              reasoningEffort: "minimal",
+            },
+          },
+          temperature: 1,
+          system: `You are an Elasticsearch Query String Query optimization expert for academic search.
+You may receive either:
+1. An existing Boolean query.
+2. A natural-language research question.
+
+${language ? `Language Context: The user has specified a language preference of "${language}". When generating queries, consider that the search should focus on content in or related to this language.` : ''}
+
+Your task:
+- If input is a Boolean query: optimize it for character efficiency.
+- If input is a research question: rewrite it as a precise Boolean query first, then optimize.
+
+Core Principles:
+1. Use parentheses to group shared terms efficiently: (mechanical OR software) AND engineering
+2. Follow Elasticsearch Query String Query syntax exactly
+3. Prioritize character efficiency - avoid redundant terms
+4. Group synonyms with OR, then AND with shared concepts
+5. Use field-specific academic terminology and abbreviations
+6. Maintain precision while improving recall
+
+Elasticsearch Rules:
+- Use AND, OR, NOT operators (case sensitive)
+- Group with parentheses for precedence
+- Use quotes for exact phrases: "machine learning"
+- Wildcards: algorithm* for variations
+- Field searches: title:"deep learning"
+
+Validation Rules:
+- Always return a complete Boolean query with balanced parentheses
+- Never leave unfinished groups
+- Do not end with OR, AND, or NOT
+- Limit synonym groups to the most common 2–3 academic terms to avoid truncation
+- The final query must be executable in Elasticsearch
+
+Examples:
+Q: "What are the effects of climate change on agriculture in Africa?"
+→ (climate OR "global warming") AND agriculture AND Africa
+
+Q: "Artificial intelligence and deep learning in medical imaging"
+→ (artificial OR AI OR deep) AND (intelligence OR learning) AND ("medical imaging" OR radiology)
+
+Character Optimization Examples:
+- Instead of: "mechanical engineering" OR "software engineering"
+- Use: (mechanical OR software) AND engineering
+- Instead of: "artificial intelligence" OR "machine learning" OR "deep learning"
+- Use: (artificial OR machine OR deep) AND (intelligence OR learning)`,
+          prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax.
+Input query: "${query}"
+
+Requirements:
+1. If natural language → convert into Boolean form first.
+2. If already Boolean → optimize directly.
+3. Always produce a syntactically valid query (balanced parentheses, no dangling operators).
+4. Minimize character count while maximizing recall and precision.
+5. Provide synonyms and abbreviations, but keep groups concise (max 2–3 terms per group).
+${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. Ensure ALL parentheses are properly balanced and closed.' : ''}`,
+        });
+
+        // Validate the query
+        const validatedQuery = validateQuery(object.enhancedQuery);
+
+        // If we get here, validation passed
+        addCostFromUsage(provider, usage);
+
+        return {
+          enhancedQuery: validatedQuery,
+          explanation: "",
+        };
+
+      } catch (validationError) {
+        lastError = validationError as Error;
+        console.warn(`Query validation failed (attempt ${retryCount + 1}/${maxRetries}):`, validationError);
+
+        // Check if this is a parentheses error that we should retry
+        if (lastError.message.includes("unbalanced parentheses") || lastError.message.includes("incomplete operator")) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw new Error(`Failed to generate valid query after ${maxRetries} attempts. Last error: ${lastError.message}`);
+          }
+          // Continue to next retry
+          continue;
+        } else {
+          // Not a retryable error, throw immediately
+          throw validationError;
+        }
+      }
+    }
+
+    // This should never be reached, but just in case
+    throw lastError || new Error("Failed to enhance query after all retries");
+
+  } catch (error) {
+    console.error("Error enhancing query:", error);
+    throw new Error(
+      "Failed to enhance query. Please check your API key and try again."
+    );
+  }
+}
+
+export async function generateScreeningQuestions(
+  researchQuestion: string,
+  existingQuestions: string[],
+  provider: "openai" | "google",
+  apiKey: string
+) {
+  if (!apiKey) {
+    throw new Error("API key is required");
+  }
+
+  if (!researchQuestion.trim()) {
+    throw new Error("Research question is required");
+  }
+
+  try {
+    assertWithinBudget();
+
+    let model;
+
+    if (provider === "openai") {
       const openai = createOpenAI({ apiKey });
       model = openai(OPENAI_MODEL);
     } else {
@@ -40,53 +239,255 @@ export async function enhanceSearchQuery(
 
     const { object, usage } = await generateObject({
       model,
-      schema: queryEnhancementSchema,
-      system: `You are an Elasticsearch Query String Query optimization expert for academic search. Your task is to enhance queries following Elasticsearch syntax rules while maximizing character efficiency.
+      schema: screeningQuestionsSchema,
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        },
+        openai: {
+          reasoningEffort: "minimal",
+        },
+      },
+      temperature: 0.7,
+      system: `You are an expert systematic review researcher specializing in screening question development for literature reviews.
 
-Core Principles:
-1. Use parentheses to group shared terms efficiently: (mechanical OR software) AND engineering
-2. Follow Elasticsearch Query String Query syntax exactly
-3. Prioritize character efficiency - avoid redundant terms
-4. Group synonyms with OR, then AND with shared concepts
-5. Use field-specific academic terminology and abbreviations
-6. Maintain search precision while improving recall
+Your task is to generate high-quality screening questions that help determine if academic papers meet inclusion criteria for a systematic review.
 
-Elasticsearch Rules:
-- Use AND, OR, NOT operators (case sensitive)
-- Group with parentheses for precedence
-- Use quotes for exact phrases: "machine learning"
-- Wildcards: algorithm* for variations
-- Field searches: title:"deep learning"
+Key Principles:
+1. Each question should be answerable with YES or NO based on paper content
+2. Questions should be specific and focused on inclusion/exclusion criteria
+3. Avoid vague questions like "Is this paper relevant?"
+4. Focus on study design, population, intervention, outcome, or methodology
+5. Questions should be mutually exclusive and collectively exhaustive where possible
 
-Character Optimization Examples:
-- Instead of: "mechanical engineering" OR "software engineering"
-- Use: (mechanical OR software) AND engineering
-- Instead of: "artificial intelligence" OR "machine learning" OR "deep learning"  
-- Use: (artificial OR machine OR deep) AND (intelligence OR learning)
+Question Types to Consider:
+- Study Design: "Does the study use a randomized controlled trial design?"
+- Population: "Does the study focus on adults aged 18-65?"
+- Intervention: "Does the study evaluate a specific treatment or intervention?"
+- Outcome: "Does the study measure clinically relevant outcomes?"
+- Setting: "Is the study conducted in a clinical setting?"
+- Time Frame: "Does the study have a follow-up period of at least 6 months?"
 
-Focus on creating compact, precise queries that follow Elasticsearch syntax.`,
-      prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax. Prioritize parentheses for efficient grouping and character optimization:
+Guidelines:
+- Generate 3-5 questions that are most critical for the research question
+- Questions should be clear and unambiguous
+- Avoid questions that require subjective interpretation
+- Ensure questions can be answered by reading the paper's abstract and methods
+- Do not duplicate existing questions
+
+Output Format:
+Return an array of 3-5 screening questions as strings.`,
+      prompt: `Generate screening questions for this systematic review:
+
+Research Question: "${researchQuestion}"
+
+${existingQuestions.length > 0 ? `Existing screening questions (DO NOT duplicate these):
+${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+` : ''}Please generate 3-5 new screening questions that:
+1. Are specific and answerable with YES/NO
+2. Help determine if papers meet inclusion criteria
+3. Cover different aspects (study design, population, intervention, outcome)
+4. Are not duplicates of existing questions
+5. Can be answered from the paper's title, abstract, and methods section`,
+    });
+
+    addCostFromUsage(provider, usage);
+
+    // Filter out any questions that are too similar to existing ones
+    const newQuestions = object.questions.filter(newQuestion => {
+      const normalizedNew = newQuestion.toLowerCase().trim();
+      return !existingQuestions.some(existingQuestion => {
+        const normalizedExisting = existingQuestion.toLowerCase().trim();
+        // Check for exact matches or very similar questions
+        return normalizedExisting === normalizedNew ||
+               normalizedExisting.includes(normalizedNew) ||
+               normalizedNew.includes(normalizedExisting);
+      });
+    });
+
+    return {
+      questions: newQuestions,
+    };
+
+  } catch (error) {
+    console.error("Error generating screening questions:", error);
+    throw new Error(
+      "Failed to generate screening questions. Please check your API key and try again."
+    );
+  }
+}
+
+export async function translateQuery(
+  query: string,
+  targetLanguage: string,
+  provider: "openai" | "google",
+  apiKey: string
+) {
+  if (!apiKey) {
+    throw new Error("API key is required");
+  }
+
+  if (!query.trim()) {
+    throw new Error("Query is required");
+  }
+
+  if (!targetLanguage) {
+    throw new Error("Target language is required");
+  }
+
+  try {
+    assertWithinBudget();
+
+    let model;
+
+    if (provider === "openai") {
+      const openai = createOpenAI({ apiKey });
+      model = openai(OPENAI_MODEL);
+    } else {
+      const google = createGoogleGenerativeAI({ apiKey });
+      model = google(GOOGLE_MODEL);
+    }
+
+    const { object, usage } = await generateObject({
+      model,
+      schema: z.object({
+        translatedQuery: z.string().describe("The query translated to the target language, maintaining the same meaning and structure"),
+      }),
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        },
+        openai: {
+          reasoningEffort: "minimal",
+        },
+      },
+      temperature: 0.3,
+      system: `You are a professional translator specializing in academic search queries. Your task is to translate the given query to the specified language while maintaining:
+
+1. Academic terminology and precision
+2. The same search intent and meaning
+3. Appropriate academic language for the target language
+4. The same query structure and complexity
+
+Translate naturally and fluently, using the most appropriate academic terms in the target language.`,
+      prompt: `Translate this academic search query to ${targetLanguage}:
 
 Original query: "${query}"
 
-Requirements:
-1. Use parentheses to group shared terms: (term1 OR term2) AND shared_term
-2. Follow Elasticsearch syntax exactly (AND, OR, NOT in caps)
-3. Minimize character count while maximizing search coverage
-4. Add relevant academic synonyms and abbreviations
-5. Group efficiently to avoid redundant terms
+Provide only the translated query without any additional explanation or formatting.`,
+    });
 
-Provide a character-efficient enhanced query that captures more relevant academic papers.`,
+    addCostFromUsage(provider, usage);
+
+    return object.translatedQuery;
+  } catch (error) {
+    console.error('Translation failed:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Translation failed: ${error.message}`
+        : "Failed to translate query. Please check your API key and try again."
+    );
+  }
+}
+
+export async function generateScreeningResponses(
+  title: string,
+  abstract: string,
+  questions: string[],
+  provider: "openai" | "google",
+  apiKey: string
+) {
+  if (!apiKey) {
+    throw new Error("API key is required");
+  }
+
+  if (!title.trim() && !abstract.trim()) {
+    throw new Error("Either title or abstract is required");
+  }
+
+  if (!questions || questions.length === 0) {
+    throw new Error("Questions list is required");
+  }
+
+  try {
+    assertWithinBudget();
+
+    let model;
+
+    if (provider === "openai") {
+      const openai = createOpenAI({ apiKey });
+      model = openai(OPENAI_MODEL);
+    } else {
+      const google = createGoogleGenerativeAI({ apiKey });
+      model = google(GOOGLE_MODEL);
+    }
+
+    // Create dynamic schema based on questions
+    const schema = createScreeningResponsesSchema(questions);
+
+    const { object, usage } = await generateObject({
+      model,
+      schema,
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        },
+        openai: {
+          reasoningEffort: "minimal",
+        },
+      },
+      temperature: 0.1, // Lower temperature for more consistent screening decisions
+      system: `You are an expert systematic review researcher conducting literature screening.
+
+Your task is to carefully analyze academic papers and provide YES/NO answers to specific screening questions based on the paper's content.
+
+CRITICAL INSTRUCTIONS:
+1. Answer each question based ONLY on the information provided in the title and abstract
+2. Use boolean values: true for YES, false for NO, null for UNCLEAR/INSUFFICIENT_INFORMATION
+3. Be conservative - if information is ambiguous or missing, use null
+4. Base decisions on explicit evidence, not assumptions or implications
+5. Consider the question's intent and what constitutes a valid YES/NO answer
+6. If a question cannot be definitively answered from the provided text, use null
+
+RESPONSE FORMAT:
+Return a JSON object with:
+- responses: Object mapping each question to boolean|null
+- confidence: Overall confidence score (0-1)`,
+      prompt: `Please screen this academic paper by answering the following questions:
+
+PAPER TITLE: "${title}"
+
+ABSTRACT: "${abstract || 'No abstract available'}"
+
+SCREENING QUESTIONS:
+${questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+INSTRUCTIONS:
+- Answer each question as true (YES), false (NO), or null (UNCLEAR/insufficient information)
+- Base your answers ONLY on the title and abstract content above
+- If the information needed to answer a question is not present, use null
+
+Provide your screening decisions:`,
     });
 
     addCostFromUsage(provider, usage);
 
     return {
-      enhancedQuery: object.enhancedQuery,
-      explanation: object.explanation,
+      responses: object.responses,
+      confidence: object.confidence,
     };
+
   } catch (error) {
-    console.error('Error enhancing query:', error);
-    throw new Error('Failed to enhance query. Please check your API key and try again.');
+    console.error("Error generating screening responses:", error);
+    throw new Error(
+      "Failed to generate screening responses. Please check your API key and try again."
+    );
   }
-} 
+}

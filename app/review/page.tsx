@@ -401,19 +401,19 @@ function ReviewList() {
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
                         <div className="text-lg font-semibold text-blue-600">
-                          {review.searchResultsCount || 0}
+                          {(review.searchResultsCount || 0).toLocaleString()}
                         </div>
                         <div className="text-xs text-muted-foreground">Search</div>
                       </div>
                       <div>
                         <div className="text-lg font-semibold text-green-600">
-                          {review.screeningResultsCount || 0}
+                          {(review.screeningResultsCount || 0).toLocaleString()}
                         </div>
                         <div className="text-xs text-muted-foreground">Screened</div>
                       </div>
                       <div>
                         <div className="text-lg font-semibold text-purple-600">
-                          {review.dataExtractionResultsCount || 0}
+                          {(review.dataExtractionResultsCount || 0).toLocaleString()}
                         </div>
                         <div className="text-xs text-muted-foreground">Extracted</div>
                       </div>

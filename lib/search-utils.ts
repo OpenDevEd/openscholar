@@ -148,7 +148,8 @@ export async function getSearchResultsWithFilters(
 export function createSearchStateFromStore(
   query: string,
   filters: SearchFilters,
-  resultsCount?: number
+  resultsCount?: number,
+  researchQuestion?: string
 ) {
   return {
     query,
@@ -167,7 +168,14 @@ export function createSearchStateFromStore(
     citesItemId: filters.citesItemId,
     citedByItemId: filters.citedByItemId,
     relatedToItemId: filters.relatedToItemId,
-    reviewFilter: filters.reviewFilter
+    reviewFilter: filters.reviewFilter,
+    // Include questionHistory if research question is provided
+    ...(researchQuestion ? {
+      questionHistory: [{
+        question: researchQuestion,
+        timestamp: new Date().toISOString()
+      }]
+    } : {})
   };
 }
 

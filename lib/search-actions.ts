@@ -12,6 +12,12 @@ const extractQueryFromFormData = (formData: FormData): string => {
   return formData.get('query') as string || '';
 };
 
+// Utility function to extract research question from FormData
+const extractResearchQuestionFromFormData = (formData: FormData): string | undefined => {
+  const researchQuestion = formData.get('researchQuestion') as string;
+  return researchQuestion && researchQuestion.trim() ? researchQuestion.trim() : undefined;
+};
+
 // Utility function to calculate effective date/year ranges based on filter type
 const getEffectiveRanges = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isFilterActive?: boolean, isYearRangeEnabled?: boolean) => {
   const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
@@ -69,20 +75,22 @@ export const submitSearchAndLoadResults = async (
   const existingCount = currentSearch?.count || 0;
   
   const normalizedQuery = extractQueryFromFormData(formData);
-  
+  const researchQuestion = extractResearchQuestionFromFormData(formData);
+
   // Validate query - don't perform search if invalid
   const validation = validateAndExpandKeywords(normalizedQuery);
-  
+
   // If validation failed, don't create history item
   if (!validation.isValid) {
     return { searchId: null };
   }
-  
+
   // Create search state and add to history
   const searchState = createSearchStateFromStore(
     normalizedQuery,
     filters,
-    existingCount // Preserve existing count if available, otherwise 0
+    existingCount, // Preserve existing count if available, otherwise 0
+    researchQuestion
   );
   
   const searchId = addSearchResult(searchState);
@@ -129,14 +137,15 @@ export const updateCurrentSearch = async (
   if (hasQueryChanged) {
     // Add the new query to the history and update the current query
     addQueryToHistory(effectiveSearchId, normalizedQuery);
-    
+
     // Update other filters if they've changed
     const searchState = createSearchStateFromStore(
       normalizedQuery,
       filters,
-      existingCount // Preserve existing count instead of setting to 0
+      existingCount, // Preserve existing count instead of setting to 0
+      undefined // No research question when updating existing search
     );
-    
+
          // Update only the non-query fields (the query was already updated by addQueryToHistory)
      const { query, ...otherUpdates } = searchState;
      updateSearchResult(effectiveSearchId, otherUpdates);
@@ -145,7 +154,8 @@ export const updateCurrentSearch = async (
     const searchState = createSearchStateFromStore(
       normalizedQuery,
       filters,
-      existingCount // Preserve existing count instead of setting to 0
+      existingCount, // Preserve existing count instead of setting to 0
+      undefined // No research question when updating existing search
     );
     
     updateSearchResult(effectiveSearchId, searchState);

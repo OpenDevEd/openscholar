@@ -54,3 +54,25 @@ export interface QueryHistoryEntry {
   query: string;
   timestamp: string; // ISO timestamp when this query was made
 }
+
+/**
+ * Represents a single question entry in the search history
+ */
+export interface QuestionHistoryEntry {
+  question: string;
+  timestamp: string; // ISO timestamp when this question was asked
+}
+
+/**
+ * Represents a screening question for a search result
+ */
+export interface ScreeningQuestionEntry {
+  question: string;
+  locked: boolean;
+}
+
+/**
+ * Represents screening responses for papers
+ * Key: PaperID, Value: Record of Question -> boolean | null
+ */
+export type ScreeningResponses = Record<string, Record<string, boolean | null>>;
