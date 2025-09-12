@@ -22,7 +22,7 @@ interface LanguageOption {
   flagUrl: string;
 }
 
-const languageOptions: LanguageOption[] = [
+export const languageOptions: LanguageOption[] = [
   { code: "en", name: "English", flagUrl: "https://flagcdn.com/w20/gb.png" },
   { code: "es", name: "Spanish", flagUrl: "https://flagcdn.com/w20/es.png" },
   { code: "fr", name: "French", flagUrl: "https://flagcdn.com/w20/fr.png" },

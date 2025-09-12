@@ -54,6 +54,7 @@ import { Card, CardContent } from "./ui/card";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningResponses } from "@/lib/types";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { languageOptions } from "./language-selector";
 
 interface PapersListProps {
   results: any[];
@@ -452,7 +453,10 @@ export function ResultsList({
 
 User enhancement instructions: "${aiInstructions}"
 
-Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules.`;
+
+Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules. ${currentSearchResult?.language ? `The output MUST be translated to ${languageOptions.find(option => option.code === currentSearchResult?.language)?.name} if it is not already in that language.` : ''}`;
+
+      console.log("passing language", currentSearchResult?.language);
 
       // Call the AI service with the enhanced prompt
       const response = await enhanceSearchQuery(

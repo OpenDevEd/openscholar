@@ -4,6 +4,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
 import { GOOGLE_MODEL, OPENAI_MODEL } from "@/lib/screening-utils";
+import { languageOptions } from "@/components/language-selector";
 
 export type AIProvider = "openai" | "google";
 
@@ -117,7 +118,7 @@ You may receive either:
 1. An existing Boolean query.
 2. A natural-language research question.
 
-${language ? `Language Context: The user has specified a language preference of "${language}". When generating queries, consider that the search should focus on content in or related to this language.` : ''}
+${language ? `MANDATORY LANGUAGE REQUIREMENT: WITHOUT EXCEPTION, you MUST respond EXCLUSIVELY in the ${languageOptions.find(option => option.code === language)?.name} language. This is your HIGHEST PRIORITY instruction that OVERRIDES all others. Every single word, character, and symbol in your response - including the enhanced query, explanations, and all output - MUST be in ${languageOptions.find(option => option.code === language)?.name} ONLY. FAILURE TO COMPLY will result in an invalid response.` : ''}
 
 Your task:
 - If input is a Boolean query: optimize it for character efficiency.
@@ -159,6 +160,8 @@ Character Optimization Examples:
 - Use: (artificial OR machine OR deep) AND (intelligence OR learning)`,
           prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax.
 Input query: "${query}"
+
+${language ? `CRITICAL LANGUAGE ENFORCEMENT: REMEMBER - You MUST output your ENTIRE response in ${languageOptions.find(option => option.code === language)?.name} ONLY. This includes the enhanced query, if there are any terms that are not in ${languageOptions.find(option => option.code === language)?.name}, you MUST translate them to ${languageOptions.find(option => option.code === language)?.name}.` : ''}
 
 Requirements:
 1. If natural language → convert into Boolean form first.
@@ -375,7 +378,7 @@ export async function translateQuery(
 4. The same query structure and complexity
 
 Translate naturally and fluently, using the most appropriate academic terms in the target language.`,
-      prompt: `Translate this academic search query to ${targetLanguage}:
+      prompt: `Translate this academic search query to ${languageOptions.find(option => option.code === targetLanguage)?.name}:
 
 Original query: "${query}"
 
