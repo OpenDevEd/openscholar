@@ -93,7 +93,7 @@ export async function enhanceSearchQuery(
       model = google(GOOGLE_MODEL);
     }
 
-    const maxRetries = 3;
+    const maxRetries = 10;
     let retryCount = 0;
     let lastError: Error | null = null;
 
@@ -208,7 +208,7 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
   } catch (error) {
     console.error("Error enhancing query:", error);
     throw new Error(
-      "Failed to enhance query. Please check your API key and try again."
+      "Failed to enhance query. Please try again."
     );
   }
 }
