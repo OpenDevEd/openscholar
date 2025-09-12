@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useMemo,
+  createContext,
+} from "react";
 import { usePathname } from "next/navigation";
 import {
   Pagination,
@@ -11,19 +17,42 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn, isRatingFilterActive, getEffectiveSearchId } from "@/lib/utils";
+import { ScreeningQuestions } from "./screening-questions";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
-import { useResultsStore, useRatingsStore, useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
+import {
+  useResultsStore,
+  useRatingsStore,
+  useSearchHistoryStore,
+  useAIConfigStore,
+} from "@/lib/store";
 import { ResultsFilter } from "./results-filter";
 import { PaperCard } from "./paper-card";
 import { useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
-import { SearchBar, ResearchQuestionBar, ResultsActionBar, useSearchBarLogic } from "./navbar";
-import { Loader2, Search, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  SearchBar,
+  ResearchQuestionBar,
+  ResultsActionBar,
+  useSearchBarLogic,
+} from "./navbar";
+import {
+  Loader2,
+  Search,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
+import {
+  enhanceSearchQuery,
+  generateScreeningResponses,
+} from "@/app/actions/ai-enhance";
+import { Card, CardContent } from "./ui/card";
+import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
+import { ScreeningResponses } from "@/lib/types";
 
 interface PapersListProps {
   results: any[];
@@ -58,6 +87,14 @@ interface ResultsListProps {
   currentQuery?: string;
   onBackToHome?: () => void;
 }
+
+export const ScreeningContext = createContext<{
+  missingResponses?: Record<string, string[]>;
+  loadingResponses?: Record<string, Record<string, boolean>>;
+  existingResponses?: ScreeningResponses;
+  setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
+  setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
+}>({});
 
 function PapersList({
   results,
@@ -339,6 +376,12 @@ export function ResultsList({
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [aiInstructions, setAiInstructions] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [queryFlash, setQueryFlash] = useState(false);
+  const [isScreening, setIsScreening] = useState(false);
+  const [loadingQuestions, setLoadingQuestions] = useState<string[]>([]);
+  const [combinationLoading, setCombinationLoading] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
   const pathname = usePathname();
 
@@ -347,10 +390,17 @@ export function ResultsList({
 
   // Get the current search result using the same selector pattern as hooks.ts
   const currentSearchResult = useSearchHistoryStore((state) =>
-    searchId ? state.searchHistory.find(item => item.id === searchId) : null
+    searchId ? state.searchHistory.find((item) => item.id === searchId) : null
   );
 
-  const { currentQuery: storeCurrentQuery, setCurrentQuery, handleQueryChange, handleSubmit } = useSearchBarLogic();
+  const { setScreeningResponse, setScreeningResponses } = useSearchHistoryStore();
+
+  const {
+    currentQuery: storeCurrentQuery,
+    setCurrentQuery,
+    handleQueryChange,
+    handleSubmit,
+  } = useSearchBarLogic();
   const { provider, apiKey } = useAIConfigStore();
 
   // Use the queryHistory from the current search result (same as search-history.tsx)
@@ -369,7 +419,9 @@ export function ResultsList({
   }, [queryHistory.length]);
 
   // AI Enhancement function
-  const handleAiEnhancement = async () => {
+  const handleAiEnhancement = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!aiInstructions.trim() || !storeCurrentQuery.trim()) {
       return;
     }
@@ -379,15 +431,16 @@ export function ResultsList({
     try {
       // Check if AI configuration is available
       if (!apiKey) {
-        toast.error('Configuration Required', {
-          description: 'Please configure your AI API key in the settings first.',
+        toast.error("Configuration Required", {
+          description:
+            "Please configure your AI API key in the settings first.",
         });
         return;
       }
 
       if (!provider) {
-        toast.error('Configuration Required', {
-          description: 'Please select an AI provider in the settings first.',
+        toast.error("Configuration Required", {
+          description: "Please select an AI provider in the settings first.",
         });
         return;
       }
@@ -400,20 +453,33 @@ User enhancement instructions: "${aiInstructions}"
 Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules.`;
 
       // Call the AI service with the enhanced prompt
-      const response = await enhanceSearchQuery(enhancedPrompt, provider, apiKey);
+      const response = await enhanceSearchQuery(
+        enhancedPrompt,
+        provider,
+        apiKey,
+        currentSearchResult?.language
+      );
 
       // Update the query with the enhanced version
       handleQueryChange(response.enhancedQuery);
 
+      // Trigger green flash effect
+      setQueryFlash(true);
+      setTimeout(() => setQueryFlash(false), 1000);
+
       // Show success toast with explanation
-      toast.success('Query Enhanced!', {
+      toast.success("Query Enhanced!", {
         description: response.explanation,
       });
 
+      setTimeout(() => {
+        document.getElementById("search-bar-submit")?.click();
+      }, 100);
     } catch (error) {
-      console.error('AI enhancement failed:', error);
-      toast.error('Enhancement Failed', {
-        description: 'Failed to enhance query. Please check your API key and try again.',
+      console.error("AI enhancement failed:", error);
+      toast.error("Enhancement Failed", {
+        description:
+          "Failed to enhance query. Please check your API key and try again.",
       });
     } finally {
       setIsEnhancing(false);
@@ -439,7 +505,8 @@ Please enhance this academic search query according to the user's specific instr
 
   // Determine button states (switched: Previous goes to newer, Next goes to older)
   const canGoPrevious = queryHistory.length > 0 && historyIndex > 0;
-  const canGoNext = queryHistory.length > 0 && historyIndex < queryHistory.length - 1;
+  const canGoNext =
+    queryHistory.length > 0 && historyIndex < queryHistory.length - 1;
 
   // Reset to current query (last index is the current)
   const resetToLatest = () => {
@@ -450,7 +517,8 @@ Please enhance this academic search query according to the user's specific instr
   };
 
   // Check if current query is different from the current one in history (last index is current)
-  const hasUnsavedChanges = queryHistory.length > 0 &&
+  const hasUnsavedChanges =
+    queryHistory.length > 0 &&
     storeCurrentQuery !== queryHistory[queryHistory.length - 1]?.query;
 
   // Filter results based on search term and rating filter
@@ -498,11 +566,30 @@ Please enhance this academic search query according to the user's specific instr
     return true;
   });
 
-  const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
-  const paginatedResults = filteredResults.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+  const totalPages = useMemo(
+    () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
+    [filteredResults]
   );
+  const paginatedResults = useMemo(
+    () =>
+      filteredResults.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+      ),
+    [filteredResults, currentPage]
+  );
+
+  const missingResponses = useMemo(() => {
+    return generateMissingScreeningCombinationsByPaper(
+      paginatedResults,
+      currentSearchResult?.screeningQuestions || [],
+      currentSearchResult?.screeningResponses || {}
+    );
+  }, [
+    paginatedResults,
+    currentSearchResult?.screeningQuestions,
+    currentSearchResult?.screeningResponses,
+  ]);
 
   // Notify Zotero when results are rendered/rerendered
   useEffect(() => {
@@ -513,6 +600,10 @@ Please enhance this academic search query according to the user's specific instr
           cancelable: true,
         })
       );
+    }
+
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
     }
   }, [paginatedResults]);
 
@@ -528,215 +619,250 @@ Please enhance this academic search query according to the user's specific instr
   };
 
   return (
-    <div className="space-y-6">
-      {/* Updating Results Animation */}
-      <div>
-        {isAdjusting ? (
-          <div className="space-y-6">
-            {/* AI Adjustment Interface */}
-            <div className="bg-card rounded-xl p-6 border border-border/50">
-              {/* Header with navigation and done button */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={goToPrevious}
-                    disabled={!canGoPrevious}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span>Previous</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={goToNext}
-                    disabled={!canGoNext}
-                  >
-                    <span>Next</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  {hasUnsavedChanges && (
+    <ScreeningContext.Provider
+      value={{
+        missingResponses,
+        loadingResponses: combinationLoading,
+        existingResponses: currentSearchResult?.screeningResponses || {},
+        setScreeningResponse: (paperId, question, response) => {
+          setScreeningResponse(searchId || "", paperId, question, response);
+        },
+        setScreeningResponses: (paperId, responses) => {
+          setScreeningResponses(searchId || "", paperId, responses);
+        }
+      }}
+    >
+      <div className="space-y-4">
+        {/* Updating Results Animation */}
+        <div className="space-y-4">
+          {isAdjusting ? (
+            <Card>
+              <CardContent>
+                {/* AI Adjustment Interface */}
+                {/* Header with navigation and done button */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={resetToLatest}
-                      className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-950/50"
+                      className="flex items-center gap-2"
+                      onClick={goToPrevious}
+                      disabled={!canGoPrevious}
                     >
-                      Reset
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Previous</span>
                     </Button>
-                  )}
-                </div>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => setIsAdjusting(false)}
-                >
-                  Done
-                </Button>
-              </div>
-
-              {/* Current Query Form */}
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* AI Enhancement Input */}
-                <div>
-                  <label htmlFor="ai-instructions" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    AI Enhancement Instructions
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="ai-instructions"
-                      placeholder="e.g., 'make this query more specific about machine learning research'"
-                      className="flex-1"
-                      value={aiInstructions}
-                      onChange={(e) => setAiInstructions(e.target.value)}
-                    />
                     <Button
-                      type="button"
                       variant="outline"
-                      className="px-4"
-                      onClick={() => handleAiEnhancement()}
-                      disabled={!aiInstructions.trim() || isEnhancing}
+                      size="sm"
+                      className="flex items-center gap-2"
+                      onClick={goToNext}
+                      disabled={!canGoNext}
                     >
-                      {isEnhancing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Enhancing...
-                        </>
-                      ) : (
-                        'Go'
-                      )}
+                      <span>Next</span>
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
+                    {hasUnsavedChanges && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resetToLatest}
+                        className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-950/50"
+                      >
+                        Reset
+                      </Button>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Describe how you'd like the AI to enhance or modify your search query
-                  </p>
-                </div>
-
-                {/* Current Query */}
-                <div>
-                  <label htmlFor="current-query" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Current Query
-                  </label>
-                  <Textarea
-                    id="current-query"
-                    placeholder="No query set..."
-                    className="w-full min-h-[120px] resize-y"
-                    value={storeCurrentQuery}
-                    onChange={(e) => handleQueryChange(e.target.value)}
-                  />
-                </div>
-
-                {/* Search Button */}
-                <div className="flex justify-center">
                   <Button
-                    type="submit"
-                    size="lg"
-                    className="flex items-center gap-2 px-8 py-3"
+                    variant="default"
+                    size="sm"
+                    onClick={() => setIsAdjusting(false)}
                   >
-                    <Search className="h-5 w-5" />
-                    <span>Search</span>
+                    Done
                   </Button>
                 </div>
-              </form>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <ResearchQuestionBar />
-            <SearchBar />
-            <ResultsActionBar
-              totalCount={totalCount}
-              onDownloadAllJSON={onDownloadAllJSON}
-              onDownloadAllCSV={onDownloadAllCSV}
-              onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}
-              onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
-              isAdjusting={isAdjusting}
-              setIsAdjusting={setIsAdjusting}
-            />
-          </div>
-        )}
-      </div>
-      <motion.div
-        animate={{
-          height: isValidating ? "auto" : 0,
-          marginBottom: isValidating ? 16 : 0,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 400,
-          damping: 30,
-          duration: 0.4,
-        }}
-        className="overflow-hidden"
-      >
-        <AnimatePresence>
-          {isValidating && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{
-                type: "spring",
-                stiffness: 400,
-                damping: 25,
-                duration: 0.3,
-              }}
-            >
-              <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-4 shadow-sm relative overflow-hidden">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
+
+                {/* AI Enhancement Form */}
+                <form onSubmit={handleAiEnhancement} className=" mb-6">
+                  {/* AI Enhancement Input */}
+                  <div>
+                    <label
+                      htmlFor="ai-instructions"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </motion.div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-blue-900 dark:text-blue-100">
-                      Updating results...
+                      AI Enhancement Instructions
+                    </label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="ai-instructions"
+                        placeholder="e.g., 'make this query more specific about machine learning research'"
+                        className="flex-1"
+                        value={aiInstructions}
+                        onChange={(e) => setAiInstructions(e.target.value)}
+                      />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="px-4"
+                        disabled={!aiInstructions.trim() || isEnhancing}
+                      >
+                        {isEnhancing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Enhancing...
+                          </>
+                        ) : (
+                          "Go"
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Describe how you'd like the AI to enhance or modify your
+                      search query
                     </p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Applying your new filters
-                    </p>
                   </div>
-                </div>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
-                  className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
-                />
-              </div>
-            </motion.div>
+                </form>
+
+                {/* Current Query Form */}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Current Query */}
+                  <div>
+                    <label
+                      htmlFor="current-query"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Current Query
+                    </label>
+                    <Textarea
+                      id="current-query"
+                      placeholder="No query set..."
+                      className={cn(
+                        "w-full min-h-[120px] resize-y transition-colors duration-300",
+                        queryFlash && "bg-green-50 border-green-300 dark:bg-green-950/30 dark:border-green-700"
+                      )}
+                      value={storeCurrentQuery}
+                      onChange={(e) => handleQueryChange(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Search Button */}
+                  <div className="flex justify-center">
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="flex items-center gap-2 px-8 py-3"
+                      id="search-bar-submit"
+                    >
+                      <Search className="h-5 w-5" />
+                      <span>Search</span>
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <ResearchQuestionBar />
+              <SearchBar />
+            </div>
           )}
-        </AnimatePresence>
-      </motion.div>
-      <PapersList
-        results={results}
-        filteredResults={filteredResults}
-        paginatedResults={paginatedResults}
-        resultsFilter={resultsFilter}
-        ratingRange={ratingRange}
-        onlyRatedPapers={onlyRatedPapers}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        isLoading={isLoading}
-        isValidating={isValidating}
-        currentQuery={currentQuery}
-        onBackToHome={onBackToHome}
-        onDownloadItem={onDownloadItem}
-        onDownloadEssentialItem={onDownloadEssentialItem}
-        onPageChange={handlePageChange}
-        resultsContainerRef={resultsContainerRef}
-      />
-    </div>
+          <ResultsActionBar
+            totalCount={totalCount}
+            currentQuery={storeCurrentQuery}
+            onDownloadAllJSON={onDownloadAllJSON}
+            onDownloadAllCSV={onDownloadAllCSV}
+            onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}
+            onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
+            isAdjusting={isAdjusting}
+            setIsAdjusting={setIsAdjusting}
+            isScreening={isScreening}
+            setIsScreening={setIsScreening}
+          />
+          {isScreening && (
+            <div className="space-y-4">
+              <ScreeningQuestions searchId={searchId || ""} />
+            </div>
+          )}
+        </div>
+        <motion.div
+          animate={{
+            height: isValidating ? "auto" : 0,
+            marginBottom: isValidating ? 16 : 0,
+          }}
+          transition={{
+            type: "spring",
+            stiffness: 400,
+            damping: 30,
+            duration: 0.4,
+          }}
+          className="overflow-hidden"
+        >
+          <AnimatePresence>
+            {isValidating && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 25,
+                  duration: 0.3,
+                }}
+              >
+                <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-950/30 dark:via-purple-950/30 dark:to-pink-950/30 border border-blue-200/50 dark:border-blue-800/50 rounded-xl p-4 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      >
+                        <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </motion.div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-blue-900 dark:text-blue-100">
+                        Updating results...
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        Applying your new filters
+                      </p>
+                    </div>
+                  </div>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+        <PapersList
+          results={results}
+          filteredResults={filteredResults}
+          paginatedResults={paginatedResults}
+          resultsFilter={resultsFilter}
+          ratingRange={ratingRange}
+          onlyRatedPapers={onlyRatedPapers}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          isLoading={isLoading}
+          isValidating={isValidating}
+          currentQuery={currentQuery}
+          onBackToHome={onBackToHome}
+          onDownloadItem={onDownloadItem}
+          onDownloadEssentialItem={onDownloadEssentialItem}
+          onPageChange={handlePageChange}
+          resultsContainerRef={resultsContainerRef}
+        />
+      </div>
+    </ScreeningContext.Provider>
   );
 }

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useCurrentQueryStore } from "@/lib/store"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useCurrentQueryStore, useSearchHistoryStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -39,6 +39,11 @@ export function AIEnhancementPage({
   const createSearchFilters = useCreateSearchFilters()
   const currentSearchId = useEffectiveSearchId();
 
+  // Get current search result to access language setting
+  const currentSearchResult = useSearchHistoryStore((state) =>
+    currentSearchId ? state.searchHistory.find((item) => item.id === currentSearchId) : null
+  );
+
   const handleEnhanceQuery = async () => {
     if (!apiKey) {
       toast.error("API Key Required", {
@@ -58,7 +63,7 @@ export function AIEnhancementPage({
       setIsEnhancing(true)
       
       // Send the expanded query to AI enhancement
-      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey)
+      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, currentSearchResult?.language)
       setEnhancedPreview(result)
     } catch (error) {
       toast.error("Enhancement Failed", {
@@ -227,12 +232,12 @@ export function AIEnhancementPage({
                     return <span key={i}>{part}</span>
                   })}
                 </div>
-                <div className="p-3 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                {/* <div className="p-3 rounded-lg bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
                   <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium mb-1">AI Explanation:</p>
                   <p className="text-xs text-emerald-600 dark:text-emerald-400">
                     {enhancedPreview.explanation}
                   </p>
-                </div>
+                </div> */}
               </CardContent>
             </Card>
           ) : (

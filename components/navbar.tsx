@@ -27,6 +27,9 @@ import {
   Eye,
   Download,
   Sparkles,
+  Expand,
+  Minimize2,
+  Loader2,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
@@ -52,7 +55,7 @@ import {
   useSearchResults,
 } from "@/lib/hooks";
 import { toast } from "sonner";
-import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
+import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Sheet,
@@ -72,6 +75,7 @@ import { Separator } from "@/components/ui/separator";
 import { SearchHistory } from "./search-history";
 import { useIsMobile } from "@/lib/hooks";
 import { ApiButton } from "./api-button";
+import { LanguageSelector } from "./language-selector";
 import { SearchContext } from "@/app/results/layout";
 
 export function useSearchBarLogic() {
@@ -80,19 +84,134 @@ export function useSearchBarLogic() {
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
   const { isLoading, isValidating, apiUrl } = useSearchResults();
+
+  // Translation loading state
+  const [isTranslating, setIsTranslating] = React.useState(false);
+
   const isFormDisabled =
-    isLoading || isValidating || loadingResultIndex !== null;
+    isLoading || isValidating || loadingResultIndex !== null || isTranslating;
+
+  // Get current search ID and result for language persistence
+  const effectiveSearchId = useEffectiveSearchId();
+  const { updateSearchResult } = useSearchHistoryStore();
+
+  // Get current language directly from store (single source of truth)
+  const selectedLanguage = useSearchHistoryStore((state) => {
+    const currentResult = effectiveSearchId ? state.searchHistory.find((item) => item.id === effectiveSearchId) : null;
+    return currentResult?.language || "";
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleUpdateCurrentSearch(currentQuery);
   };
 
-  return { handleSubmit, handleQueryChange, isFormDisabled, currentQuery, setCurrentQuery, apiUrl };
+  const handleLanguageChange = async (language: string) => {
+    const previousValue = selectedLanguage;
+
+    if (effectiveSearchId && language && previousValue !== language) {
+      try {
+        // If there's a current query and language changed, translate it
+        if (currentQuery.trim()) {
+          const { provider, apiKey } = useAIConfigStore.getState();
+
+          if (!apiKey) {
+            toast.error("API Key Required", {
+              description: "Please configure your AI API key to translate queries.",
+            });
+            // Still save the language even if translation fails
+            updateSearchResult(effectiveSearchId, { language: language || undefined });
+            return;
+          }
+
+          if (!provider) {
+            toast.error("Provider Required", {
+              description: "Please select an AI provider to translate queries.",
+            });
+            // Still save the language even if translation fails
+            updateSearchResult(effectiveSearchId, { language: language || undefined });
+            return;
+          }
+
+          // Set translation loading state
+          setIsTranslating(true);
+
+          // Show loading toast
+          const loadingToast = toast.loading("Translating query...", {
+            description: `Converting to ${language}`,
+          });
+
+          try {
+            const translatedQuery = await translateQuery(currentQuery, language, provider, apiKey);
+
+            // Update both language and translated query
+            updateSearchResult(effectiveSearchId, {
+              language: language || undefined,
+            });
+
+            // Update local query state to show the translation
+            setCurrentQuery(translatedQuery);
+
+            setTimeout(() => {
+              console.log("search-bar", document.getElementById("search-bar-submit"));
+              document.getElementById("search-bar-submit")?.click();
+            }, 100);
+
+            // Dismiss loading toast and show success
+            toast.dismiss(loadingToast);
+            toast.success("Query Translated", {
+              description: `Translated to ${language}: "${translatedQuery}"`,
+            });
+          } catch (translationError) {
+            toast.dismiss(loadingToast);
+            toast.error("Translation Failed", {
+              description: "Could not translate query, but language preference was saved.",
+            });
+            // Still save the language even if translation fails
+          } finally {
+            // Always clear translation loading state
+            setIsTranslating(false);
+          }
+        } else {
+          // No query to translate, just save the language
+          updateSearchResult(effectiveSearchId, { language: language || undefined });
+        }
+      } catch (error) {
+        console.error("Language change error:", error);
+        toast.error("Language Update Failed", {
+          description: "Could not update language preference.",
+        });
+        // Make sure to clear loading state on any error
+        setIsTranslating(false);
+      }
+    }
+  };
+
+  return {
+    handleSubmit,
+    handleQueryChange,
+    isFormDisabled,
+    currentQuery,
+    setCurrentQuery,
+    apiUrl,
+    selectedLanguage,
+    handleLanguageChange,
+    isTranslating
+  };
 }
 
 export function SearchBar() {
-    const { handleSubmit, handleQueryChange, isFormDisabled, currentQuery, setCurrentQuery, apiUrl } = useSearchBarLogic();
+    const {
+      handleSubmit,
+      handleQueryChange,
+      isFormDisabled,
+      currentQuery,
+      setCurrentQuery,
+      apiUrl,
+      selectedLanguage,
+      handleLanguageChange,
+      isTranslating
+    } = useSearchBarLogic();
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
@@ -102,19 +221,35 @@ export function SearchBar() {
           <Input
             value={currentQuery}
             onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder="Search papers..."
-            className="pl-10 pr-4"
+            placeholder={isTranslating ? "Translating query..." : "Search papers..."}
+            className="pl-10 pr-10"
             disabled={isFormDisabled}
           />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <p>The language setting will be applied when using a research question or AI adjustment</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Desktop: Show all buttons */}
         <div className="flex items-center">
+          {/* Language Selector */}
+          <LanguageSelector
+            value={selectedLanguage}
+            onValueChange={handleLanguageChange}
+            disabled={isFormDisabled}
+          />
+
           {/* Search Button */}
           <Button
             type="submit"
             disabled={isFormDisabled}
             className="ml-2 flex-shrink-0"
+            id="search-bar-submit"
           >
             <Search className="h-4 w-4" />
             Search
@@ -129,8 +264,9 @@ export function SearchBar() {
 }
 
 export function ResearchQuestionBar() {
-  const { handleUpdateCurrentSearch, loadingResultIndex } =
+  const { handleUpdateCurrentSearch, loadingResultIndex,  } =
     useContext(SearchContext);
+  const { handleSubmit: handleSubmitSearch } = useSearchBarLogic();
   const { currentQuestion, setCurrentQuestion } = useCurrentQuestionStore();
   const { isLoading, isValidating } = useSearchResults();
   const { addQuestionToHistory, getSearchResult } = useSearchHistoryStore();
@@ -186,7 +322,10 @@ export function ResearchQuestionBar() {
     try {
       setIsEnhancing(true);
 
-      const result = await enhanceSearchQuery(questionToProcess, provider, apiKey);
+      // Get current search result to access language setting
+      const currentSearchResult = getSearchResult(effectiveSearchId);
+
+      const result = await enhanceSearchQuery(questionToProcess, provider, apiKey, currentSearchResult?.language);
 
       // Set the enhanced query as the current search query
       const { setCurrentQuery } = useCurrentQueryStore.getState();
@@ -195,6 +334,11 @@ export function ResearchQuestionBar() {
       toast.success("Question Enhanced", {
         description: `Query set in search field: "${result.enhancedQuery}"`
       });
+
+      setTimeout(() => {
+        console.log("search-bar", document.getElementById("search-bar-submit"));
+        document.getElementById("search-bar-submit")?.click();
+      }, 100);
 
     } catch (error) {
       toast.error("Enhancement Failed", {
@@ -245,38 +389,183 @@ export function ResearchQuestionBar() {
 
 interface ResultsActionBarProps {
   totalCount: number;
+  currentQuery?: string;
   onDownloadAllJSON?: () => void;
   onDownloadAllCSV?: () => void;
   onDownloadAllEssentialJSON?: () => void;
   onDownloadAllEssentialCSV?: () => void;
   isAdjusting?: boolean;
-  setIsAdjusting?: (isAdjusting: boolean) => void;
+  setIsAdjusting?: any;
+  isScreening?: boolean;
+  setIsScreening?: any
 }
 
 export function ResultsActionBar({
   totalCount,
+  currentQuery = "",
   onDownloadAllJSON,
   onDownloadAllCSV,
   onDownloadAllEssentialJSON,
   onDownloadAllEssentialCSV,
   isAdjusting,
   setIsAdjusting,
+  isScreening,
+  setIsScreening,
 }: ResultsActionBarProps) {
   const hasDownloadHandlers = onDownloadAllJSON || onDownloadAllCSV || onDownloadAllEssentialJSON || onDownloadAllEssentialCSV;
 
+  // State for loading buttons
+  const [isBroadening, setIsBroadening] = React.useState(false);
+  const [isNarrowing, setIsNarrowing] = React.useState(false);
+
+  const { provider, apiKey } = useAIConfigStore();
+  const { setCurrentQuery } = useCurrentQueryStore();
+
+  // Get current search result language
+  const effectiveSearchId = useEffectiveSearchId();
+  const currentLanguage = useSearchHistoryStore((state) => {
+    const currentResult = effectiveSearchId ? state.searchHistory.find((item) => item.id === effectiveSearchId) : null;
+    return currentResult?.language || "";
+  });
+
+  // Conditional button visibility
+  const showBroadenButton = totalCount < 10 && currentQuery.trim();
+  const showNarrowButton = currentQuery.length > 150;
+
+  const handleBroadenQuery = async () => {
+    if (!currentQuery.trim() || !apiKey || !provider) return;
+
+    setIsBroadening(true);
+    const loadingToast = toast.loading("Broadening search query...", {
+      description: "Making the search less restrictive",
+    });
+
+    try {
+      const broadenPrompt = `Current query: "${currentQuery}"
+${currentLanguage ? `Language Context: The user has specified a language preference of "${currentLanguage}". When broadening the query, consider that the search should focus on content in or related to this language.` : ''}
+
+This query is returning fewer than 10 results. Please broaden the search by:
+
+1. Reducing the number of restrictive AND conditions
+2. Using more OR operators to include synonyms and related terms
+3. Removing overly specific constraints that might be limiting results
+4. Making the query more inclusive while maintaining the core research intent
+5. Consider using broader search terms and fewer exclusion criteria
+
+Return a more inclusive version of this query that should return more results while preserving the main research focus.`;
+
+      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, currentLanguage);
+      setCurrentQuery(result.enhancedQuery);
+
+      toast.dismiss(loadingToast);
+      toast.success("Query Broadened", {
+        description: `New query: "${result.enhancedQuery}"`,
+      });
+
+      // Auto-submit the broadened query
+      setTimeout(() => {
+        document.getElementById("search-bar-submit")?.click();
+      }, 100);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error("Failed to broaden query", {
+        description: "Could not modify the search query",
+      });
+    } finally {
+      setIsBroadening(false);
+    }
+  };
+
+  const handleNarrowQuery = async () => {
+    if (!currentQuery.trim() || !apiKey || !provider) return;
+
+    setIsNarrowing(true);
+    const loadingToast = toast.loading("Making search more specific...", {
+      description: "Shortening query to 80 characters",
+    });
+
+    try {
+      const narrowPrompt = `Current query: "${currentQuery}"
+Query length: ${currentQuery.length} characters
+${currentLanguage ? `Language Context: The user has specified a language preference of "${currentLanguage}". When making the query more specific, maintain focus on content in or related to this language.` : ''}
+
+This query is too long. Please make it more specific and concise by:
+
+1. Reducing the length to approximately 80 characters or less
+2. Keeping only the most essential search terms
+3. Maintaining the core research focus
+4. Using more precise terminology
+5. Removing redundant or less important terms
+
+Return a shorter, more focused version of this query that captures the main research intent in fewer characters.`;
+
+      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, currentLanguage);
+      setCurrentQuery(result.enhancedQuery);
+
+      toast.dismiss(loadingToast);
+      toast.success("Query Made More Specific", {
+        description: `Shortened to ${result.enhancedQuery.length} characters: "${result.enhancedQuery}"`,
+      });
+
+      // Auto-submit the narrowed query
+      setTimeout(() => {
+        document.getElementById("search-bar-submit")?.click();
+      }, 100);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error("Failed to narrow query", {
+        description: "Could not modify the search query",
+      });
+    } finally {
+      setIsNarrowing(false);
+    }
+  };
+
   return (
     <div className="flex items-center justify-between">
-      <p className="text-lg text-muted-foreground">{totalCount.toLocaleString()} results</p>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" disabled>
+        <p className="text-lg text-muted-foreground">{totalCount.toLocaleString()} results</p>
+        {showBroadenButton && (
+          <Button
+            variant="outline"
+            onClick={handleBroadenQuery}
+            disabled={isBroadening}
+            className="text-xs"
+          >
+            {isBroadening ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Expand className="h-3 w-3 mr-1" />
+            )}
+            Make broader
+          </Button>
+        )}
+        {showNarrowButton && (
+          <Button
+            variant="outline"
+            onClick={handleNarrowQuery}
+            disabled={isNarrowing}
+            className="text-xs"
+          >
+            {isNarrowing ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Minimize2 className="h-3 w-3 mr-1" />
+            )}
+            Make more specific
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {/* <Button variant="outline" size="sm" disabled>
           <Settings2 className="h-4 w-4 mr-1" />
           Configure
-        </Button>
-        <Button variant="outline" size="sm" disabled>
+        </Button> */}
+        <Button variant={isScreening ? "default" : "outline"} onClick={() => setIsScreening?.((prev: boolean) => !prev)}>
           <Eye className="h-4 w-4 mr-1" />
           Screen
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setIsAdjusting?.(true)}>
+        <Button variant={isAdjusting ? "default" : "outline"} onClick={() => setIsAdjusting?.((prev: boolean) => !prev)}>
           <Sparkles className="h-4 w-4 mr-1" />
           Adjust
         </Button>

@@ -14,13 +14,14 @@ import {
   useCurrentSearchFormState,
   useSearchResults,
   useCreateSearchFilters,
+  useEffectiveSearchId,
 } from "@/lib/hooks";
 import {
   submitSearchAndLoadResults,
   selectQueryFromHistory,
 } from "@/lib/search-actions";
 import { Logo } from "@/components/logo";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,9 @@ import { BookOpen, Sparkles } from "lucide-react";
 import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
 import React from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
+import { useAIConfigStore } from "@/lib/store";
 
 function PageContent() {
   const router = useRouter();
@@ -41,14 +45,20 @@ function PageContent() {
 
   const { loadingResultIndex, setLoadingResultIndex } = useUIStore();
 
+  // Loading state for AI enhancement
+  const [isEnhancingQuestion, setIsEnhancingQuestion] = React.useState(false);
+
   // Get SWR loading states for disabling form
   const { isLoading, isValidating } = useSearchResults();
   const isFormDisabled =
-    isLoading || isValidating || loadingResultIndex !== null;
+    isLoading || isValidating || loadingResultIndex !== null || isEnhancingQuestion;
 
   // Use shared current query state for navbar/home page synchronization
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
+
+  // AI configuration and research question state
+  const { provider, apiKey } = useAIConfigStore();
 
   const createSearchFilters = useCreateSearchFilters();
 
@@ -56,13 +66,69 @@ function PageContent() {
     e.preventDefault();
 
     const form = new FormData(e.currentTarget);
-    const query = form.get("query") as string;
+    const originalQuery = form.get("query") as string;
 
     setLoadingResultIndex(null);
 
-    // Create FormData with the current query value (allow empty queries)
+    let searchQuery = originalQuery;
+
+    // Check if the query ends with a question mark (indicating a research question)
+    if (originalQuery.trim().endsWith('?')) {
+      try {
+        // Check if AI configuration is available
+        if (!apiKey) {
+          toast.error("Configuration Required", {
+            description: "Please configure your AI API key in the settings first.",
+          });
+          return;
+        }
+
+        if (!provider) {
+          toast.error("Configuration Required", {
+            description: "Please select an AI provider in the settings first.",
+          });
+          return;
+        }
+
+        // Start AI enhancement loading state
+        setIsEnhancingQuestion(true);
+
+        // Get current search result to access language setting
+        const effectiveSearchId = useEffectiveSearchId();
+        const currentSearchResult = useSearchHistoryStore((state) =>
+          effectiveSearchId ? state.searchHistory.find((item) => item.id === effectiveSearchId) : null
+        );
+
+        // Convert research question to search query using AI
+        const result = await enhanceSearchQuery(originalQuery, provider, apiKey, currentSearchResult?.language);
+
+        // Use the enhanced query for searching
+        searchQuery = result.enhancedQuery;
+
+        toast.success("Research Question Processed", {
+          description: `Converted to search query: "${searchQuery}"`,
+        });
+
+      } catch (error) {
+        console.error("Failed to convert research question:", error);
+        toast.error("Question Conversion Failed", {
+          description: "Failed to convert research question to search query. Please check your AI configuration.",
+        });
+        return;
+      } finally {
+        // End AI enhancement loading state
+        setIsEnhancingQuestion(false);
+      }
+    }
+
+    // Create FormData with the processed query value
     const formData = new FormData();
-    formData.set("query", query);
+    formData.set("query", searchQuery);
+
+    // Include research question if it was detected
+    if (originalQuery.trim().endsWith('?')) {
+      formData.set("researchQuestion", originalQuery);
+    }
 
     // Create filters object from current state
     const filters = createSearchFilters();
@@ -127,6 +193,26 @@ function PageContent() {
               </p>
             </div>
 
+            {/* AI Enhancement Loading */}
+            <AnimatePresence>
+              {isEnhancingQuestion && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-center"
+                >
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      Converting research question to search query...
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Search Form */}
             <form onSubmit={handleSubmit} className="w-full px-2 md:px-0">
               <div className="relative space-y-3 md:space-y-0">
@@ -138,7 +224,7 @@ function PageContent() {
                     <Textarea
                       name="query"
                       value={currentQuery}
-                      placeholder="Search for papers, topics..."
+                      placeholder="Search for papers, topics... or ask a research question ending with ?"
                       className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 mr-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
                       disabled={isFormDisabled}
                       onChange={(e) => handleQueryChange(e.target.value)}
@@ -185,7 +271,11 @@ function PageContent() {
                       className="rounded-full h-12 w-12"
                       size="icon"
                     >
-                      <Search className="h-5 w-5" />
+                      {isEnhancingQuestion ? (
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <Search className="h-5 w-5" />
+                      )}
                     </Button>
                   </div>
                   </div>

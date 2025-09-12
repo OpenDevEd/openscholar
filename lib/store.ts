@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DateRange } from "react-day-picker";
-import type { SearchField, QueryHistoryEntry, QuestionHistoryEntry } from './types';
+import type { SearchField, QueryHistoryEntry, QuestionHistoryEntry, ScreeningQuestionEntry, ScreeningResponses } from './types';
 import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
 import { format } from 'date-fns'
 
@@ -24,6 +24,8 @@ export type SearchResult = {
   query: string;
   queryHistory: QueryHistoryEntry[];
   questionHistory: QuestionHistoryEntry[];
+  screeningQuestions: ScreeningQuestionEntry[];
+  screeningResponses: ScreeningResponses;
   count: number;
   field: SearchField;
   dateRange?: DateRange;
@@ -39,6 +41,7 @@ export type SearchResult = {
   citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
+  language?: string; // ISO 639-1 language code (e.g., 'en', 'es', 'fr')
   createdAt: string;
   updatedAt: string;
 };
@@ -51,10 +54,19 @@ interface RatingsState {
 
 interface SearchHistoryState {
   searchHistory: SearchResult[]
-  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'questionHistory'>) => string
+  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory'> & { questionHistory?: QuestionHistoryEntry[] }) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQueryToHistory: (id: string, query: string) => void
   addQuestionToHistory: (id: string, question: string) => void
+  addScreeningQuestion: (id: string, question: string, locked?: boolean) => void
+  updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
+  removeScreeningQuestion: (id: string, questionIndex: number) => void
+  clearScreeningQuestions: (id: string) => void
+  setScreeningResponse: (searchId: string, paperId: string, question: string, response: boolean | null) => void
+  setScreeningResponses: (searchId: string, paperId: string, responses: Record<string, boolean | null>) => void
+  getScreeningResponse: (searchId: string, paperId: string, question: string) => boolean | null | undefined
+  clearScreeningResponses: (searchId: string, paperId?: string) => void
+  removeScreeningQuestionFromAllPapers: (searchId: string, question: string) => void
   getSearchResult: (id: string) => SearchResult | undefined
   removeSearchResult: (index: number) => void
   clearSearchHistory: () => void
@@ -162,7 +174,9 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           ...result,
           id,
           queryHistory: [{ query: result.query, timestamp: now }],
-          questionHistory: [],
+          questionHistory: result.questionHistory || [],
+          screeningQuestions: [],
+          screeningResponses: {},
           createdAt: now,
           updatedAt: now,
         };
@@ -211,6 +225,129 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           ),
         }));
       },
+      addScreeningQuestion: (id, question, locked = false) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  screeningQuestions: [...(item.screeningQuestions || []), { question, locked }],
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
+      updateScreeningQuestion: (id, questionIndex, updates) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  screeningQuestions: (item.screeningQuestions || []).map((q, index) =>
+                    index === questionIndex ? { ...q, ...updates } : q
+                  ),
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
+      removeScreeningQuestion: (id, questionIndex) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  screeningQuestions: (item.screeningQuestions || []).filter((_, index) => index !== questionIndex),
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
+      clearScreeningQuestions: (id) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  screeningQuestions: [],
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
+      setScreeningResponse: (searchId, paperId, question, response) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === searchId
+              ? {
+                  ...item,
+                  screeningResponses: {
+                    ...item.screeningResponses,
+                    [paperId]: {
+                      ...(item.screeningResponses?.[paperId] || {}),
+                      [question]: response
+                    }
+                  },
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
+      setScreeningResponses: (searchId, paperId, responses) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === searchId
+              ? { ...item, screeningResponses: { ...item.screeningResponses, [paperId]: {...item.screeningResponses?.[paperId] || {}, ...responses,} } }
+              : item,
+          ),
+        }));
+      },
+      getScreeningResponse: (searchId, paperId, question) => {
+        const searchResult = get().searchHistory.find(item => item.id === searchId);
+        return searchResult?.screeningResponses?.[paperId]?.[question];
+      },
+      clearScreeningResponses: (searchId, paperId) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === searchId
+              ? {
+                  ...item,
+                  screeningResponses: paperId
+                    ? Object.fromEntries(
+                        Object.entries(item.screeningResponses || {}).filter(([key]) => key !== paperId)
+                      )
+                    : {},
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
+      removeScreeningQuestionFromAllPapers: (searchId, question) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === searchId
+              ? {
+                  ...item,
+                  screeningResponses: Object.fromEntries(
+                    Object.entries(item.screeningResponses || {}).map(([paperId, responses]) => [
+                      paperId,
+                      Object.fromEntries(
+                        Object.entries(responses).filter(([q]) => q !== question)
+                      )
+                    ])
+                  ),
+                  updatedAt: new Date().toISOString()
+                }
+              : item
+          ),
+        }));
+      },
       getSearchResult: (id) => {
         return get().searchHistory.find((item) => item.id === id);
       },
@@ -228,6 +365,8 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             ...result,
             id,
             questionHistory: result.questionHistory || [],
+            screeningQuestions: result.screeningQuestions || [],
+            screeningResponses: result.screeningResponses || {},
             createdAt: now,
             updatedAt: now,
           };
@@ -266,6 +405,8 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             query,
             queryHistory: [{ query, timestamp: now }],
             questionHistory: [],
+            screeningQuestions: [],
+            screeningResponses: {},
             count,
             field: field as SearchField,
             createdAt: now,
@@ -287,7 +428,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
-      version: 3, // Increment when migrations are needed
+      version: 6, // Increment when migrations are needed
       migrate: (persistedState: any, version: number) => {
         // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
         if (version === 0) {
@@ -342,7 +483,43 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             });
           }
         }
-        
+
+        // Migration for version 3 -> 4: Add screeningQuestions field
+        if (version <= 3) {
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              return {
+                ...item,
+                screeningQuestions: item.screeningQuestions || []
+              };
+            });
+          }
+        }
+
+        // Migration for version 4 -> 5: Add screeningResponses field
+        if (version <= 4) {
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              return {
+                ...item,
+                screeningResponses: item.screeningResponses || {}
+              };
+            });
+          }
+        }
+
+        // Migration for version 5 -> 6: Add language field
+        if (version <= 5) {
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              return {
+                ...item,
+                language: item.language || undefined // Default to undefined for backward compatibility
+              };
+            });
+          }
+        }
+
         return persistedState;
       },
     }

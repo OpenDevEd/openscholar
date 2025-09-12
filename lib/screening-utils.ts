@@ -1,4 +1,5 @@
 import type { ScreeningDocument, ScreeningQuestion } from '@/lib/store';
+import { ScreeningQuestionEntry, ScreeningResponses } from './types';
 
 // Batch processing configuration
 export const DEFAULT_BATCH_SIZE = 5; // Process 5 documents at a time
@@ -173,4 +174,86 @@ export function generateScreeningCsv(rows: any[], questions: ScreeningQuestion[]
   });
 
   return [headers.join(','), ...csvLines].join('\n');
+}
+
+/**
+ * Generate all missing screening combinations for current page results
+ * @param currentPagePapers - Array of papers on the current page
+ * @param screeningQuestions - Array of screening questions
+ * @param existingResponses - Existing screening responses object
+ * @returns Array of objects with { paperId, question } for missing combinations
+ */
+export function generateMissingScreeningCombinations(
+  currentPagePapers: { id: string }[],
+  screeningQuestions: ScreeningQuestionEntry[],
+  existingResponses: ScreeningResponses
+): { paperId: string; question: string }[] {
+  const missingCombinations: { paperId: string; question: string }[] = [];
+
+  // Iterate through each paper on the current page
+  for (const paper of currentPagePapers) {
+    const paperId = paper.id;
+
+    // Get existing responses for this paper (if any)
+    const paperResponses = existingResponses[paperId] || {};
+
+    // Check each question for this paper
+    for (const questionEntry of screeningQuestions) {
+      const question = questionEntry.question;
+
+      // If this combination doesn't have a response yet, add it to missing
+      if (!(question in paperResponses)) {
+        missingCombinations.push({
+          paperId,
+          question
+        });
+      }
+    }
+  }
+
+  return missingCombinations;
+}
+
+/**
+ * Generate missing combinations grouped by paper
+ * @param currentPagePapers - Array of papers on the current page
+ * @param screeningQuestions - Array of screening questions
+ * @param existingResponses - Existing screening responses object
+ * @returns Object with paperId as key and array of missing questions as value
+ */
+export function generateMissingScreeningCombinationsByPaper(
+  currentPagePapers: { id: string }[],
+  screeningQuestions: ScreeningQuestionEntry[],
+  existingResponses: ScreeningResponses
+): Record<string, string[]> {
+  const missingByPaper: Record<string, string[]> = {};
+
+  // Initialize with all paper IDs
+  for (const paper of currentPagePapers) {
+    missingByPaper[paper.id] = [];
+  }
+
+  // Iterate through each paper and question to find missing combinations
+  for (const paper of currentPagePapers) {
+    const paperId = paper.id;
+    const paperResponses = existingResponses[paperId] || {};
+
+    for (const questionEntry of screeningQuestions) {
+      const question = questionEntry.question;
+
+      // If this combination doesn't have a response, add it
+      if (!(question in paperResponses)) {
+        missingByPaper[paperId].push(question);
+      }
+    }
+  }
+
+  // Remove papers with no missing questions
+  Object.keys(missingByPaper).forEach(paperId => {
+    if (missingByPaper[paperId].length === 0) {
+      delete missingByPaper[paperId];
+    }
+  });
+
+  return missingByPaper;
 } 

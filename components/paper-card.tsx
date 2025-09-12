@@ -1,23 +1,34 @@
 "use client";
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useContext, useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
-import { useResultsStore, useUIStore, useSearchHistoryStore } from "@/lib/store";
+import {
+  useResultsStore,
+  useUIStore,
+  useSearchHistoryStore,
+  useAIConfigStore,
+} from "@/lib/store";
 // import { useScreeningStore } from "@/lib/store";
-import { useCurrentSearchFormState, useUpdateSearchFilter, useIsMobile } from "@/lib/hooks";
+import { getEffectiveSearchId } from "@/lib/utils";
+import {
+  useCurrentSearchFormState,
+  useUpdateSearchFilter,
+  useIsMobile,
+} from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "./rating-selector";
 import { PaperMetadata } from "./paper-metadata";
 import { DownloadMenu } from "./download-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Download, 
-  ExternalLink, 
-  Calendar, 
-  BookOpen, 
-  Users, 
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Download,
+  ExternalLink,
+  Calendar,
+  BookOpen,
+  Users,
   Quote,
   Star,
   StarOff,
@@ -34,43 +45,141 @@ import {
   BarChart3,
   FileText,
   // ClipboardCheck,
-  Plus
+  Plus,
+  Check,
+  X,
+  Minus,
+  Table,
   // ClipboardPlus
 } from "lucide-react";
-
+import { ScreeningContext } from "./results-list";
+import { generateScreeningResponses } from "@/app/actions/ai-enhance";
+import { toast } from "sonner";
 
 interface PaperCardProps {
   result: any;
   resultIndex: number;
-  onDownloadItem: (item: any, format: 'json' | 'csv') => void;
-  onDownloadEssentialItem: (item: any, format: 'json' | 'csv') => void;
+  onDownloadItem: (item: any, format: "json" | "csv") => void;
+  onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
 }
 
-export function PaperCard({ 
-  result, 
+function finalState(
+  isQuestionAnswered: boolean | null,
+  isQuestionLoading: boolean,
+  isQuestionMissing: boolean
+) {
+  if (isQuestionLoading) return "loading";
+  if (isQuestionMissing) return "unchecked";
+  if (isQuestionAnswered != null)
+    return isQuestionAnswered === true
+      ? "checked"
+      : isQuestionAnswered === false
+      ? "crossed"
+      : "unchecked";
+  return "unchecked";
+}
+
+export function PaperCard({
+  result,
   resultIndex,
-  onDownloadItem, 
-  onDownloadEssentialItem
+  onDownloadItem,
+  onDownloadEssentialItem,
 }: PaperCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { expandedAbstracts, toggleAbstract } = useResultsStore();
   const { isFocusModeOpen } = useUIStore();
   const updateFilter = useUpdateSearchFilter();
   const isMobile = useIsMobile();
+  const { missingResponses, existingResponses, setScreeningResponses } =
+    useContext(ScreeningContext);
+  const myMissingResponses = missingResponses?.[result.id] || [];
+  const [myLoadingResponses, setMyLoadingResponses] = useState<
+    Record<string, boolean>
+  >({});
+  const myExistingResponses = existingResponses?.[result.id] || {};
+
+  const { provider, apiKey, budget, dollarsUsed } = useAIConfigStore();
+
+  const stableMyMissingResponses = JSON.stringify(myMissingResponses);
+  const [canStartScreening, setCanStartScreening] = useState(false);
+  const [calledFor, setCalledFor] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setTimeout(() => {
+      setCanStartScreening(true);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    if (provider && apiKey && myMissingResponses.length > 0) {
+      if (budget > 0 && dollarsUsed >= budget) {
+        return;
+      }
+
+      setMyLoadingResponses(
+        myMissingResponses.reduce(
+          (acc, question) => ({ ...acc, [question]: true }),
+          {}
+        )
+      );
+      const screen = async () => {
+        const calledForKey = JSON.stringify(myMissingResponses);
+
+        if (calledFor[calledForKey]) {
+          return;
+        }
+
+        setCalledFor((prev) => ({ ...prev, [calledForKey]: true }));
+
+        console.log("generating responses for", result.id);
+        const screeningResponses = await generateScreeningResponses(
+          result.title,
+          result.abstract,
+          myMissingResponses,
+          provider,
+          apiKey
+        );
+
+        console.log("screening responses", result.id, screeningResponses);
+        if (setScreeningResponses) {
+          setScreeningResponses(result.id, screeningResponses.responses);
+          setMyLoadingResponses({});
+        }
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      };
+      if (canStartScreening) {
+        screen();
+      }
+    }
+  }, [stableMyMissingResponses, canStartScreening]);
+
   // const { addDocumentFromWork, documents } = useScreeningStore();
 
   // Check if this document is already in screening
   // const isInScreening = documents.some(doc => doc.id === result.id || doc.originalWork?.id === result.id);
 
+  // Get current search and screening data
+  const searchId = getEffectiveSearchId(pathname, undefined);
+  const { getSearchResult } = useSearchHistoryStore();
+  const searchResult = getSearchResult(searchId || "");
+  const screeningQuestions = searchResult?.screeningQuestions || [];
+  const screeningResponses = searchResult?.screeningResponses || {};
+
+  // State for expanded view
+  const [showExpandedView, setShowExpandedView] = useState(false);
+
   // const handleAddToScreening = () => {
   //   addDocumentFromWork(result);
   // };
 
-  const handleFilteredSearch = async (filterType: 'cites' | 'cited_by' | 'related') => {
+  const handleFilteredSearch = async (
+    filterType: "cites" | "cited_by" | "related"
+  ) => {
     // Create new search entry in history (SWR will handle data fetching)
     const { addSearchResult } = useSearchHistoryStore.getState();
     const searchId = addSearchResult({
-      query: '',
+      query: "",
       field: "title_and_abstract",
       count: 0, // SWR will populate the actual count
       dateRange: undefined,
@@ -80,9 +189,9 @@ export function PaperCard({
       selectedRegions: [],
       selectedCountryFocus: [],
       // Don't set rating ranges - they should default to undefined (not filtered)
-      citesItemId: filterType === 'cites' ? result.id : '',
-      citedByItemId: filterType === 'cited_by' ? result.id : '',
-      relatedToItemId: filterType === 'related' ? result.id : '',
+      citesItemId: filterType === "cites" ? result.id : "",
+      citedByItemId: filterType === "cited_by" ? result.id : "",
+      relatedToItemId: filterType === "related" ? result.id : "",
     });
 
     // Navigate to the new search - SWR will handle data fetching
@@ -91,22 +200,183 @@ export function PaperCard({
     }
   };
 
-  const handleCitesSearch = () => handleFilteredSearch('cites');
-  const handleCitedBySearch = () => handleFilteredSearch('cited_by');
-  const handleRelatedSearch = () => handleFilteredSearch('related');
+  const handleCitesSearch = () => handleFilteredSearch("cites");
+  const handleCitedBySearch = () => handleFilteredSearch("cited_by");
+  const handleRelatedSearch = () => handleFilteredSearch("related");
 
   return (
     <div className="border rounded-lg hover:bg-accent/50 transition-colors group">
       <div className="p-4 overflow-hidden">
         {/* COINS metadata span - only render when focus mode is not active */}
         {!isFocusModeOpen && (
-          <span 
-            className="Z3988" 
+          <span
+            className="Z3988"
             title={workToCoins(result)}
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
           ></span>
         )}
-        
+
+        {/* Screening Questions Checkboxes */}
+        {screeningQuestions.length > 0 && (
+          <div className="mb-3">
+            <div className="flex flex-wrap gap-2 items-center">
+              {screeningQuestions.map((question, index) => {
+                const isQuestionAnswered =
+                  myExistingResponses[question.question];
+                const isQuestionLoading = myLoadingResponses[question.question];
+                const isQuestionMissing = myMissingResponses.includes(
+                  question.question
+                );
+
+                const displayState = finalState(
+                  isQuestionAnswered,
+                  isQuestionLoading,
+                  isQuestionMissing
+                );
+
+                return (
+                  <button
+                    key={index}
+                    disabled={displayState === "loading"}
+                    className={`flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors ${
+                      displayState === "checked"
+                        ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100"
+                        : displayState === "crossed"
+                        ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100"
+                        : displayState === "loading"
+                        ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait"
+                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                    }`}
+                    title={`Question ${index + 1}: ${question.question}`}
+                  >
+                    {displayState === "checked" && (
+                      <Check className="h-3 w-3 text-green-700" />
+                    )}
+                    {displayState === "crossed" && (
+                      <X className="h-3 w-3 text-red-700" />
+                    )}
+                    {displayState === "unchecked" && (
+                      <Minus className="h-3 w-3 text-gray-500" />
+                    )}
+                    {displayState === "loading" && (
+                      <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                    )}
+                    <span className="font-mono">{index + 1}</span>
+                  </button>
+                );
+              })}
+
+              {/* Expand Button */}
+              <button
+                onClick={() => setShowExpandedView(!showExpandedView)}
+                className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors ml-2"
+                title="Show detailed screening responses"
+              >
+                <Table className="h-3 w-3 text-blue-700" />
+                {showExpandedView ? "Hide" : "Details"}
+              </button>
+            </div>
+
+            {/* Expanded Table View */}
+            {showExpandedView && (
+              <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
+                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                  <Table className="h-4 w-4" />
+                  Screening Responses
+                </h4>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                          #
+                        </th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                          Question
+                        </th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                          Response
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {screeningQuestions.map((question, index) => {
+                        const isQuestionAnswered =
+                          myExistingResponses[question.question];
+                        const isQuestionLoading =
+                          myLoadingResponses[question.question];
+                        const isQuestionMissing = myMissingResponses.includes(
+                          question.question
+                        );
+                        const displayState = finalState(
+                          isQuestionAnswered,
+                          isQuestionLoading,
+                          isQuestionMissing
+                        );
+                        const statusText =
+                          isQuestionAnswered === true
+                            ? "Yes"
+                            : isQuestionAnswered === false
+                            ? "No"
+                            : isQuestionLoading
+                            ? "Loading..."
+                            : "Not applicable";
+
+                        return (
+                          <tr
+                            key={index}
+                            className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                          >
+                            <td className="py-2 px-2 font-mono text-muted-foreground">
+                              {index + 1}
+                            </td>
+                            <td className="py-2 px-2 text-foreground max-w-xs">
+                              <div
+                                className="truncate"
+                                title={question.question}
+                              >
+                                {question.question}
+                              </div>
+                            </td>
+                            <td className="py-2 px-2">
+                              <div
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                                  displayState === "checked"
+                                    ? "bg-green-100 text-green-800 border border-green-200"
+                                    : displayState === "crossed"
+                                    ? "bg-red-100 text-red-800 border border-red-200"
+                                    : displayState === "loading"
+                                    ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                    : "bg-gray-100 text-gray-700 border border-gray-200"
+                                }`}
+                              >
+                                {displayState === "checked" && (
+                                  <Check className="h-3 w-3 text-green-800" />
+                                )}
+                                {displayState === "crossed" && (
+                                  <X className="h-3 w-3 text-red-800" />
+                                )}
+                                {displayState === "unchecked" && (
+                                  <Minus className="h-3 w-3 text-gray-600" />
+                                )}
+                                {displayState === "loading" && (
+                                  <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                                )}
+                                {statusText}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Title */}
         <div className="mb-3">
           <button
@@ -118,15 +388,19 @@ export function PaperCard({
             </h3>
           </button>
         </div>
-
         {/* Authors */}
         {result.authorships && (
           <div className="mb-3">
             <div className="flex gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              <span>{result.authorships
-                .map((author: { author: { display_name: string } }) => author.author.display_name)
-                .join(', ')}</span>
+              <span>
+                {result.authorships
+                  .map(
+                    (author: { author: { display_name: string } }) =>
+                      author.author.display_name
+                  )
+                  .join(", ")}
+              </span>
             </div>
           </div>
         )}
@@ -136,15 +410,14 @@ export function PaperCard({
           {/* Abstract */}
           {result.abstract && (
             <p className="text-sm text-muted-foreground text-wrap-anywhere mb-2">
-              {expandedAbstracts[result.id] 
+              {expandedAbstracts[result.id]
                 ? result.abstract
-                : result.abstract.length > 500 
-                  ? `${result.abstract.slice(0, 500)}...` 
-                  : result.abstract
-              }
+                : result.abstract.length > 500
+                ? `${result.abstract.slice(0, 500)}...`
+                : result.abstract}
             </p>
           )}
-          
+
           {/* Expanded Metadata - shown when expanded, excluding already shown content */}
           {expandedAbstracts[result.id] && (
             <div className="mt-4 space-y-3">
@@ -155,8 +428,13 @@ export function PaperCard({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Award className="h-3 w-3 flex-shrink-0" />
                     <div>
-                      <span className="font-medium">Citation Percentile (Year):</span>
-                      <span className="ml-1">{result.cited_by_percentile_year.min}-{result.cited_by_percentile_year.max}%</span>
+                      <span className="font-medium">
+                        Citation Percentile (Year):
+                      </span>
+                      <span className="ml-1">
+                        {result.cited_by_percentile_year.min}-
+                        {result.cited_by_percentile_year.max}%
+                      </span>
                     </div>
                   </div>
                 )}
@@ -165,65 +443,82 @@ export function PaperCard({
                     <Target className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <span className="font-medium">Topic:</span>
-                      <span className="ml-1">{result.primary_topic.display_name}</span>
+                      <span className="ml-1">
+                        {result.primary_topic.display_name}
+                      </span>
                     </div>
                   </div>
                 )}
-                
+
                 {result.primary_topic?.subfield && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Layers className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <span className="font-medium">Subfield:</span>
-                      <span className="ml-1">{result.primary_topic.subfield.display_name}</span>
+                      <span className="ml-1">
+                        {result.primary_topic.subfield.display_name}
+                      </span>
                     </div>
                   </div>
                 )}
-                
+
                 {result.primary_topic?.field && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <span className="font-medium">Field:</span>
-                      <span className="ml-1">{result.primary_topic.field.display_name}</span>
+                      <span className="ml-1">
+                        {result.primary_topic.field.display_name}
+                      </span>
                     </div>
                   </div>
                 )}
-                
+
                 {result.primary_topic?.domain && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Building className="h-3 w-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <span className="font-medium">Domain:</span>
-                      <span className="ml-1">{result.primary_topic.domain.display_name}</span>
+                      <span className="ml-1">
+                        {result.primary_topic.domain.display_name}
+                      </span>
                     </div>
                   </div>
                 )}
-                
-                {result.sustainable_development_goals && result.sustainable_development_goals.length > 0 && (
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Leaf className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <span className="font-medium">SDGs:</span>
-                      <div className="ml-1 flex flex-wrap gap-1 mt-1">
-                        {result.sustainable_development_goals.map((sdg: { id: string; display_name: string; score: number }) => (
-                          <span 
-                            key={sdg.id}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
-                            title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || 'N/A'})`}
-                          >
-                            {sdg.display_name}
-                            {sdg.score && (
-                              <span className="text-green-600 font-medium">
-                                {sdg.score.toFixed(2)}
+
+                {result.sustainable_development_goals &&
+                  result.sustainable_development_goals.length > 0 && (
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <Leaf className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="font-medium">SDGs:</span>
+                        <div className="ml-1 flex flex-wrap gap-1 mt-1">
+                          {result.sustainable_development_goals.map(
+                            (sdg: {
+                              id: string;
+                              display_name: string;
+                              score: number;
+                            }) => (
+                              <span
+                                key={sdg.id}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
+                                title={`${sdg.display_name} (Score: ${
+                                  sdg.score?.toFixed(2) || "N/A"
+                                })`}
+                              >
+                                {sdg.display_name}
+                                {sdg.score && (
+                                  <span className="text-green-600 font-medium">
+                                    {sdg.score.toFixed(2)}
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
-                        ))}
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               {/* Additional Citation Metrics not shown in main content */}
@@ -236,18 +531,18 @@ export function PaperCard({
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <BarChart3 className="h-3 w-3 flex-shrink-0" />
                   <span className="font-medium">FWCI:</span>
-                  <span>{result.fwci ? result.fwci.toFixed(2) : 'N/A'}</span>
+                  <span>{result.fwci ? result.fwci.toFixed(2) : "N/A"}</span>
                 </div>
               </div>
             </div>
           )}
-          
+
           {/* Show More/Less Button - Always visible */}
           <button
             onClick={() => toggleAbstract(result.id)}
             className="mt-2 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
           >
-            {expandedAbstracts[result.id] ? 'Show Less' : 'Show More'}
+            {expandedAbstracts[result.id] ? "Show Less" : "Show More"}
           </button>
         </div>
 
@@ -281,19 +576,25 @@ export function PaperCard({
                   <span className="text-sm">{isInScreening ? "Added" : "Screen"}</span>
                 </Button>
                 */}
-                
+
                 <DownloadMenu
                   variant="icon"
-                  onDownloadJSON={() => onDownloadItem(result, 'json')}
-                  onDownloadCSV={() => onDownloadItem(result, 'csv')}
-                  onDownloadEssentialJSON={() => onDownloadEssentialItem(result, 'json')}
-                  onDownloadEssentialCSV={() => onDownloadEssentialItem(result, 'csv')}
+                  onDownloadJSON={() => onDownloadItem(result, "json")}
+                  onDownloadCSV={() => onDownloadItem(result, "csv")}
+                  onDownloadEssentialJSON={() =>
+                    onDownloadEssentialItem(result, "json")
+                  }
+                  onDownloadEssentialCSV={() =>
+                    onDownloadEssentialItem(result, "csv")
+                  }
                 />
                 {result.open_access?.is_oa && result.open_access?.oa_url && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(result.open_access.oa_url, '_blank')}
+                    onClick={() =>
+                      window.open(result.open_access.oa_url, "_blank")
+                    }
                     className="flex items-center gap-1 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 px-3"
                     title="Open Access PDF"
                   >
@@ -355,7 +656,7 @@ export function PaperCard({
             {/* Left side: Rating and Citation buttons */}
             <div className="flex items-center gap-4 flex-wrap">
               <RatingSelector paperId={result.id} variant="compact" />
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -426,12 +727,14 @@ export function PaperCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(result.open_access.oa_url, '_blank')}
+                  onClick={() =>
+                    window.open(result.open_access.oa_url, "_blank")
+                  }
                   onMouseDown={(e) => {
                     // Handle middle click
                     if (e.button === 1) {
                       e.preventDefault();
-                      window.open(result.open_access.oa_url, '_blank');
+                      window.open(result.open_access.oa_url, "_blank");
                     }
                   }}
                   className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
@@ -441,20 +744,23 @@ export function PaperCard({
                   <span>PDF</span>
                 </Button>
               )}
-              
+
               {/* Download Menu */}
               <DownloadMenu
                 variant="icon"
-                onDownloadJSON={() => onDownloadItem(result, 'json')}
-                onDownloadCSV={() => onDownloadItem(result, 'csv')}
-                onDownloadEssentialJSON={() => onDownloadEssentialItem(result, 'json')}
-                onDownloadEssentialCSV={() => onDownloadEssentialItem(result, 'csv')}
+                onDownloadJSON={() => onDownloadItem(result, "json")}
+                onDownloadCSV={() => onDownloadItem(result, "csv")}
+                onDownloadEssentialJSON={() =>
+                  onDownloadEssentialItem(result, "json")
+                }
+                onDownloadEssentialCSV={() =>
+                  onDownloadEssentialItem(result, "csv")
+                }
               />
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
-} 
+}
