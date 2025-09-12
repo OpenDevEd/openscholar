@@ -134,7 +134,7 @@ export function ResultsFilter({
       
       {value && (
         <div className="mt-2 text-xs text-muted-foreground">
-          Showing {filteredCount} of {totalCount} results
+          Showing {filteredCount.toLocaleString()} of {totalCount.toLocaleString()} results
         </div>
       )}
     </div>

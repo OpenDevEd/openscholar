@@ -376,7 +376,7 @@ export function Step5({ researchQuestion: propResearchQuestion, onContinue, onBa
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
-                    {executionStatus.resultsCount}
+                    {executionStatus.resultsCount?.toLocaleString()}
                   </div>
                   <div className="text-sm text-muted-foreground">Results Found</div>
                 </div>
@@ -515,7 +515,7 @@ export function Step5({ researchQuestion: propResearchQuestion, onContinue, onBa
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-green-700 dark:text-green-300">Total results found:</span>
                       <Badge className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                        {executionStatus.resultsCount}
+                        {executionStatus.resultsCount?.toLocaleString()}
                       </Badge>
                     </div>
 

@@ -54,3 +54,11 @@ export interface QueryHistoryEntry {
   query: string;
   timestamp: string; // ISO timestamp when this query was made
 }
+
+/**
+ * Represents a single question entry in the search history
+ */
+export interface QuestionHistoryEntry {
+  question: string;
+  timestamp: string; // ISO timestamp when this question was asked
+}

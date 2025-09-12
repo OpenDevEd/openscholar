@@ -1,19 +1,59 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import React, { useContext, useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Menu, Home, Clock, MoreHorizontal, BookOpen, Sparkles, FileText, Filter, LucideIcon, Languages, List, Table, Shield, Settings, LogIn, Code, ClipboardCheck } from "lucide-react";
+import {
+  Search,
+  Menu,
+  Home,
+  Clock,
+  MoreHorizontal,
+  BookOpen,
+  FileText,
+  Filter,
+  LucideIcon,
+  Languages,
+  List,
+  Table,
+  Shield,
+  Settings,
+  LogIn,
+  Code,
+  ClipboardCheck,
+  HelpCircle,
+  Settings2,
+  Eye,
+  Download,
+  Sparkles,
+} from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { KeywordExpansionTooltip } from "./keyword-expansion-tooltip";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { DownloadMenu } from "./download-menu";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useResultsStore, useSearchHistoryStore, useCurrentQueryStore } from "@/lib/store";
-import { useQueryChangeHandler, useEffectiveSearchId, useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
-import { toast } from 'sonner';
-import { usePathname, useRouter } from 'next/navigation';
+import {
+  useResultsStore,
+  useSearchHistoryStore,
+  useCurrentQueryStore,
+  useCurrentQuestionStore,
+  useAIConfigStore,
+} from "@/lib/store";
+import {
+  useQueryChangeHandler,
+  useEffectiveSearchId,
+  useCurrentSearchFormState,
+  useSearchResults,
+} from "@/lib/hooks";
+import { toast } from "sonner";
+import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sheet,
   SheetContent,
@@ -30,11 +70,231 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SearchHistory } from "./search-history";
-import { useIsMobile } from '@/lib/hooks';
+import { useIsMobile } from "@/lib/hooks";
 import { ApiButton } from "./api-button";
+import { SearchContext } from "@/app/results/layout";
+
+export function useSearchBarLogic() {
+  const { handleUpdateCurrentSearch, loadingResultIndex } =
+  useContext(SearchContext);
+  const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
+  const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
+  const { isLoading, isValidating, apiUrl } = useSearchResults();
+  const isFormDisabled =
+    isLoading || isValidating || loadingResultIndex !== null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleUpdateCurrentSearch(currentQuery);
+  };
+
+  return { handleSubmit, handleQueryChange, isFormDisabled, currentQuery, setCurrentQuery, apiUrl };
+}
+
+export function SearchBar() {
+    const { handleSubmit, handleQueryChange, isFormDisabled, currentQuery, setCurrentQuery, apiUrl } = useSearchBarLogic();
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="relative flex items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={currentQuery}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            placeholder="Search papers..."
+            className="pl-10 pr-4"
+            disabled={isFormDisabled}
+          />
+        </div>
+
+        {/* Desktop: Show all buttons */}
+        <div className="flex items-center">
+          {/* Search Button */}
+          <Button
+            type="submit"
+            disabled={isFormDisabled}
+            className="ml-2 flex-shrink-0"
+          >
+            <Search className="h-4 w-4" />
+            Search
+          </Button>
+
+          {/* API Button */}
+          <ApiButton apiUrl={apiUrl} disabled={isFormDisabled} />
+        </div>
+      </div>
+    </form>
+  );
+}
+
+export function ResearchQuestionBar() {
+  const { handleUpdateCurrentSearch, loadingResultIndex } =
+    useContext(SearchContext);
+  const { currentQuestion, setCurrentQuestion } = useCurrentQuestionStore();
+  const { isLoading, isValidating } = useSearchResults();
+  const { addQuestionToHistory, getSearchResult } = useSearchHistoryStore();
+  const { provider, apiKey } = useAIConfigStore();
+  const effectiveSearchId = useEffectiveSearchId();
+  const [isEnhancing, setIsEnhancing] = React.useState(false);
+
+  const isFormDisabled =
+    isLoading || isValidating || loadingResultIndex !== null || isEnhancing;
+
+  // Get the latest question from questionHistory when search changes
+  React.useEffect(() => {
+    if (effectiveSearchId) {
+      const currentSearch = getSearchResult(effectiveSearchId);
+      if (currentSearch?.questionHistory && currentSearch.questionHistory.length > 0) {
+        // Get the most recent question
+        const latestQuestion = currentSearch.questionHistory[currentSearch.questionHistory.length - 1].question;
+        setCurrentQuestion(latestQuestion);
+      } else {
+        // Clear the question if no history exists
+        setCurrentQuestion('');
+      }
+    }
+  }, [effectiveSearchId, getSearchResult, setCurrentQuestion]);
+
+  const handleQuestionChange = (question: string) => {
+    setCurrentQuestion(question);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!effectiveSearchId) {
+      toast.error("No active search", {
+        description: "Please perform a search first before asking questions."
+      });
+      return;
+    }
+
+    const questionToProcess = currentQuestion.trim();
+
+    // Always add to question history if there's a question
+    if (questionToProcess) {
+      addQuestionToHistory(effectiveSearchId, questionToProcess);
+    }
+
+    // If question is empty, just add to history and return
+    if (!questionToProcess) {
+      return;
+    }
+
+    // If question is not empty, enhance it and set as current query
+    try {
+      setIsEnhancing(true);
+
+      const result = await enhanceSearchQuery(questionToProcess, provider, apiKey);
+
+      // Set the enhanced query as the current search query
+      const { setCurrentQuery } = useCurrentQueryStore.getState();
+      setCurrentQuery(result.enhancedQuery);
+
+      toast.success("Question Enhanced", {
+        description: `Query set in search field: "${result.enhancedQuery}"`
+      });
+
+    } catch (error) {
+      toast.error("Enhancement Failed", {
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="relative flex items-center">
+        <div className="relative flex-1">
+          <HelpCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={currentQuestion}
+            onChange={(e) => handleQuestionChange(e.target.value)}
+            placeholder="Research question..."
+            className="pl-10 pr-4"
+            disabled={isFormDisabled}
+          />
+        </div>
+
+        <div className="flex items-center">
+          <Button
+            type="submit"
+            disabled={isFormDisabled || !currentQuestion.trim()}
+            className="ml-2 flex-shrink-0"
+          >
+            {isEnhancing ? (
+              <>
+                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Enhancing...
+              </>
+            ) : (
+              <>
+                <HelpCircle className="h-4 w-4 mr-1" />
+                Ask
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+interface ResultsActionBarProps {
+  totalCount: number;
+  onDownloadAllJSON?: () => void;
+  onDownloadAllCSV?: () => void;
+  onDownloadAllEssentialJSON?: () => void;
+  onDownloadAllEssentialCSV?: () => void;
+  isAdjusting?: boolean;
+  setIsAdjusting?: (isAdjusting: boolean) => void;
+}
+
+export function ResultsActionBar({
+  totalCount,
+  onDownloadAllJSON,
+  onDownloadAllCSV,
+  onDownloadAllEssentialJSON,
+  onDownloadAllEssentialCSV,
+  isAdjusting,
+  setIsAdjusting,
+}: ResultsActionBarProps) {
+  const hasDownloadHandlers = onDownloadAllJSON || onDownloadAllCSV || onDownloadAllEssentialJSON || onDownloadAllEssentialCSV;
+
+  return (
+    <div className="flex items-center justify-between">
+      <p className="text-lg text-muted-foreground">{totalCount.toLocaleString()} results</p>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" disabled>
+          <Settings2 className="h-4 w-4 mr-1" />
+          Configure
+        </Button>
+        <Button variant="outline" size="sm" disabled>
+          <Eye className="h-4 w-4 mr-1" />
+          Screen
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setIsAdjusting?.(true)}>
+          <Sparkles className="h-4 w-4 mr-1" />
+          Adjust
+        </Button>
+        {hasDownloadHandlers && (
+          <DownloadMenu
+            variant="button"
+            onDownloadJSON={onDownloadAllJSON}
+            onDownloadCSV={onDownloadAllCSV}
+            onDownloadEssentialJSON={onDownloadAllEssentialJSON}
+            onDownloadEssentialCSV={onDownloadAllEssentialCSV}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface NavbarProps {
-  onSearchSubmit: (query: string) => void;
   loadingResultIndex?: number | null;
 }
 
@@ -48,26 +308,28 @@ interface NavButtonProps {
   onClick?: () => void;
 }
 
-const NavButton: React.FC<NavButtonProps> = ({ 
-  href, 
-  icon: Icon, 
-  label, 
-  isActive, 
+const NavButton: React.FC<NavButtonProps> = ({
+  href,
+  icon: Icon,
+  label,
+  isActive,
   badge,
   asChild = true,
-  onClick
+  onClick,
 }) => {
   const buttonContent = (
     <div className="flex items-center gap-2">
       <Icon className="h-4 w-4" />
       <span>{label}</span>
       {badge && badge > 0 && (
-        <span className={cn(
-          "text-xs px-1.5 py-0.5 rounded-full",
-          isActive 
-            ? "bg-primary-foreground/20 text-primary-foreground" 
-            : "bg-muted text-muted-foreground"
-        )}>
+        <span
+          className={cn(
+            "text-xs px-1.5 py-0.5 rounded-full",
+            isActive
+              ? "bg-primary-foreground/20 text-primary-foreground"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
           {badge}
         </span>
       )}
@@ -80,7 +342,7 @@ const NavButton: React.FC<NavButtonProps> = ({
     className: cn(
       "flex-shrink-0 h-8 px-3",
       isActive && "bg-primary text-primary-foreground"
-    )
+    ),
   };
 
   if (asChild) {
@@ -100,29 +362,23 @@ const NavButton: React.FC<NavButtonProps> = ({
   );
 };
 
-export function Navbar({ 
-  onSearchSubmit, 
-  loadingResultIndex = null
-}: NavbarProps) {
+export function Navbar({ loadingResultIndex = null }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { searchHistory } = useSearchHistoryStore();
   const isMobile = useIsMobile();
   const effectiveSearchId = useEffectiveSearchId();
   const { currentSearchField } = useCurrentSearchFormState();
-  
-  // Get SWR loading states for disabling form
-  const { isLoading, isValidating, apiUrl } = useSearchResults();
-  const isFormDisabled = isLoading || isValidating || loadingResultIndex !== null;
-  
+
   // Use shared current query state for navbar/home page synchronization
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
-  const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
-  
+
   // Get query directly from search history for syncing
-  const searchState = effectiveSearchId ? searchHistory.find(item => item.id === effectiveSearchId) : null;
-  const historyQuery = searchState?.query || '';
-  
+  const searchState = effectiveSearchId
+    ? searchHistory.find((item) => item.id === effectiveSearchId)
+    : null;
+  const historyQuery = searchState?.query || "";
+
   // Sync current query with search history when navigating to different search results
   React.useEffect(() => {
     if (effectiveSearchId) {
@@ -130,24 +386,31 @@ export function Navbar({
     }
   }, [historyQuery, effectiveSearchId, setCurrentQuery]);
 
-  
   // State for mobile menu interactions
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  
+
   // Check if we're on a results page
-  const isOnResultsPage = pathname?.startsWith('/results');
-  
+  const isOnResultsPage = pathname?.startsWith("/results");
+
   // Determine current page for navigation indicators
   const getCurrentPage = () => {
     if (!pathname) return null;
-    if (pathname === '/') return 'home';
-    if (pathname.startsWith('/results') && !pathname.includes('/bookmarks') && !pathname.includes('/ai-enhancement') && !pathname.includes('/history') && !pathname.includes('/filters') && !pathname.includes('/screening')) return 'results';
-    if (pathname.includes('/bookmarks')) return 'bookmarks';
-    if (pathname.includes('/ai-enhancement')) return 'ai-enhancement';
-    if (pathname.includes('/history')) return 'history';
-    if (pathname.includes('/filters')) return 'filters';
-    if (pathname.includes('/screening')) return 'screening';
+    if (pathname === "/") return "home";
+    if (
+      pathname.startsWith("/results") &&
+      !pathname.includes("/bookmarks") &&
+      !pathname.includes("/ai-enhancement") &&
+      !pathname.includes("/history") &&
+      !pathname.includes("/filters") &&
+      !pathname.includes("/screening")
+    )
+      return "results";
+    if (pathname.includes("/bookmarks")) return "bookmarks";
+    if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
+    if (pathname.includes("/history")) return "history";
+    if (pathname.includes("/filters")) return "filters";
+    if (pathname.includes("/screening")) return "screening";
     return null;
   };
 
@@ -155,13 +418,6 @@ export function Navbar({
 
   // Note: All query initialization and synchronization is now handled centrally by QuerySyncProvider
   // No local useEffect needed - the provider handles everything
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearchSubmit(currentQuery);
-  };
-
-
 
   // Function to close the mobile sheet when navigation items are clicked
   const closeSheet = () => {
@@ -181,12 +437,12 @@ export function Navbar({
     // The data will be automatically loaded by the SWR hook
     const { searchHistory } = useSearchHistoryStore.getState();
     const searchResult = searchHistory[index || 0];
-    
+
     if (searchResult?.id) {
       router.push(`/results/${searchResult.id}`);
     } else {
-      toast.error('Search not found', {
-        description: 'The requested search could not be found in your history.'
+      toast.error("Search not found", {
+        description: "The requested search could not be found in your history.",
       });
     }
   };
@@ -199,111 +455,88 @@ export function Navbar({
           {/* Left side - Logo and Search */}
           <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
             <Logo size="sm" className="flex-shrink-0" context="navbar" />
-            
-            <form onSubmit={handleSubmit} className="flex-1 max-w-2xl">
-              <div className="relative flex items-center">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={currentQuery}
-                    onChange={(e) => handleQueryChange(e.target.value)}
-                    placeholder="Search papers..."
-                    className="pl-10 pr-4"
-                    disabled={isFormDisabled}
-                  />
-                </div>
-                
-                {/* Desktop: Show all buttons */}
-                <div className="flex items-center">
-                  {/* Search Button */}
-                  <Button 
-                    type="submit" 
-                    disabled={isFormDisabled} 
-                    className="ml-2 flex-shrink-0"
-                    size="icon"
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-
-                  {/* API Button */}
-                  <ApiButton
-                    apiUrl={apiUrl}
-                    disabled={isFormDisabled}
-                  />
-                </div>
-              </div>
-            </form>
           </div>
 
           {/* Right side - Navigation and Actions */}
           <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
             {/* Results Button - Show when we have search results or are on results page */}
             {(isOnResultsPage || effectiveSearchId) && (
-              <NavButton 
-                href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"} 
-                icon={FileText} 
-                label="Results" 
-                isActive={currentPage === 'results'}
+              <NavButton
+                href={
+                  effectiveSearchId
+                    ? `/results/${effectiveSearchId}`
+                    : "/results"
+                }
+                icon={FileText}
+                label="Results"
+                isActive={currentPage === "results"}
               />
             )}
 
             {/* AI Enhancement Button */}
-            <NavButton 
-              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"} 
-              icon={Sparkles} 
-              label="AI Enhance" 
+            {/* <NavButton
+              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"}
+              icon={Sparkles}
+              label="AI Enhance"
               isActive={currentPage === 'ai-enhancement'}
-            />
+            /> */}
 
             {/* Keywords Button with Preview Tooltip */}
-            <KeywordExpansionTooltip 
-              query={currentQuery} 
-              side="bottom" 
-              variant={currentPage === 'bookmarks' ? "default" : "ghost"}
+            <KeywordExpansionTooltip
+              query={currentQuery}
+              side="bottom"
+              variant={currentPage === "bookmarks" ? "default" : "ghost"}
               buttonClassName="h-8 px-3"
               asLink
-              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/bookmarks` : "/bookmarks"}
+              href={
+                isOnResultsPage && effectiveSearchId
+                  ? `/results/${effectiveSearchId}/bookmarks`
+                  : "/bookmarks"
+              }
             />
 
             {/* Screening Button */}
-            <NavButton 
-              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/screening` : "/screening"} 
-              icon={ClipboardCheck} 
-              label="Screening" 
+            {/* <NavButton
+              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/screening` : "/screening"}
+              icon={ClipboardCheck}
+              label="Screening"
               isActive={currentPage === 'screening'}
-            />
+            /> */}
 
             {/* Search History Button */}
             {isOnResultsPage ? (
               effectiveSearchId ? (
-                <NavButton 
-                  href={`/results/${effectiveSearchId}/history`} 
-                  icon={Clock} 
-                  label="History" 
-                  isActive={currentPage === 'history'}
+                <NavButton
+                  href={`/results/${effectiveSearchId}/history`}
+                  icon={Clock}
+                  label="History"
+                  isActive={currentPage === "history"}
                   badge={searchHistory.length}
                 />
               ) : (
-                <NavButton 
-                  href="/history" 
-                  icon={Clock} 
-                  label="History" 
-                  isActive={currentPage === 'history'}
+                <NavButton
+                  href="/history"
+                  icon={Clock}
+                  label="History"
+                  isActive={currentPage === "history"}
                   badge={searchHistory.length}
                 />
               )
             ) : (
               <Sheet>
                 <SheetTrigger asChild>
-                  <NavButton 
-                    href="/history" 
-                    icon={Clock} 
-                    label="History" 
-                    isActive={currentPage === 'history'}
+                  <NavButton
+                    href="/history"
+                    icon={Clock}
+                    label="History"
+                    isActive={currentPage === "history"}
                     badge={searchHistory.length}
                   />
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[400px] sm:w-[500px] flex flex-col">
+                <SheetContent
+                  side="right"
+                  className="w-[400px] sm:w-[500px] flex flex-col"
+                >
                   <SheetHeader className="flex-shrink-0">
                     <SheetTitle className="flex items-center gap-2">
                       <Clock className="h-5 w-5" />
@@ -324,8 +557,8 @@ export function Navbar({
             )}
 
             {/* Theme Toggle */}
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Mobile: Single row with hamburger menu */}
@@ -346,14 +579,14 @@ export function Navbar({
                       <span className="sr-only">Navigation Menu</span>
                     </SheetTitle>
                   </SheetHeader>
-                  
+
                   <div className="flex-1 overflow-y-auto p-6">
                     <div className="space-y-1">
                       {/* Home */}
-                      <Button 
-                        variant={currentPage === 'home' ? "default" : "ghost"} 
-                        className="w-full justify-start" 
-                        asChild 
+                      <Button
+                        variant={currentPage === "home" ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        asChild
                         onClick={closeSheet}
                       >
                         <Link href="/">
@@ -361,28 +594,38 @@ export function Navbar({
                           Home
                         </Link>
                       </Button>
-                      
+
                       {/* Results - Show when we have search results or are on results page */}
                       {(isOnResultsPage || effectiveSearchId) && (
-                        <Button 
-                          variant={currentPage === 'results' ? "default" : "ghost"} 
-                          className="w-full justify-start" 
-                          asChild 
+                        <Button
+                          variant={
+                            currentPage === "results" ? "default" : "ghost"
+                          }
+                          className="w-full justify-start"
+                          asChild
                           onClick={closeSheet}
                         >
-                          <Link href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"}>
+                          <Link
+                            href={
+                              effectiveSearchId
+                                ? `/results/${effectiveSearchId}`
+                                : "/results"
+                            }
+                          >
                             <FileText className="mr-3 h-4 w-4" />
                             Results
                           </Link>
                         </Button>
                       )}
-                      
+
                       {/* Filters */}
                       {isOnResultsPage && effectiveSearchId && (
-                        <Button 
-                          variant={currentPage === 'filters' ? "default" : "ghost"} 
-                          className="w-full justify-start" 
-                          asChild 
+                        <Button
+                          variant={
+                            currentPage === "filters" ? "default" : "ghost"
+                          }
+                          className="w-full justify-start"
+                          asChild
                           onClick={closeSheet}
                         >
                           <Link href={`/results/${effectiveSearchId}/filters`}>
@@ -391,118 +634,164 @@ export function Navbar({
                           </Link>
                         </Button>
                       )}
-                      
+
                       {/* AI Enhancement */}
-                      <Button 
-                        variant={currentPage === 'ai-enhancement' ? "default" : "ghost"} 
-                        className="w-full justify-start" 
-                        asChild 
+                      {/* <Button
+                        variant={currentPage === 'ai-enhancement' ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        asChild
                         onClick={closeSheet}
                       >
                         <Link href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/ai-enhancement` : "/ai-enhancement"}>
                           <Sparkles className="mr-3 h-4 w-4" />
                           AI Enhancement
                         </Link>
-                      </Button>
-                      
+                      </Button> */}
+
                       {/* Screening */}
-                      <Button 
-                        variant={currentPage === 'screening' ? "default" : "ghost"} 
-                        className="w-full justify-start" 
-                        asChild 
+                      {/* <Button
+                        variant={currentPage === 'screening' ? "default" : "ghost"}
+                        className="w-full justify-start"
+                        asChild
                         onClick={closeSheet}
                       >
                         <Link href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/screening` : "/screening"}>
                           <ClipboardCheck className="mr-3 h-4 w-4" />
                           Screening
                         </Link>
-                      </Button>
-                      
+                      </Button> */}
+
                       {/* Translate (disabled) */}
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                        disabled
+                      >
                         <Languages className="mr-3 h-4 w-4" />
                         Translate
                       </Button>
                     </div>
-                    
+
                     <Separator className="my-4" />
-                    
+
                     <div className="space-y-1">
                       {/* Bookmarks */}
-                      <Button 
-                        variant={currentPage === 'bookmarks' ? "default" : "ghost"} 
-                        className="w-full justify-start" 
-                        asChild 
+                      <Button
+                        variant={
+                          currentPage === "bookmarks" ? "default" : "ghost"
+                        }
+                        className="w-full justify-start"
+                        asChild
                         onClick={closeSheet}
                       >
-                        <Link href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/bookmarks` : "/bookmarks"}>
+                        <Link
+                          href={
+                            isOnResultsPage && effectiveSearchId
+                              ? `/results/${effectiveSearchId}/bookmarks`
+                              : "/bookmarks"
+                          }
+                        >
                           <BookOpen className="mr-3 h-4 w-4" />
                           Bookmarks
                         </Link>
                       </Button>
-                      
+
                       {/* History */}
-                      <Button 
-                        variant={currentPage === 'history' ? "default" : "ghost"} 
-                        className="w-full justify-start" 
-                        asChild 
+                      <Button
+                        variant={
+                          currentPage === "history" ? "default" : "ghost"
+                        }
+                        className="w-full justify-start"
+                        asChild
                         onClick={closeSheet}
                       >
-                        <Link href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/history` : "/history"}>
+                        <Link
+                          href={
+                            isOnResultsPage && effectiveSearchId
+                              ? `/results/${effectiveSearchId}/history`
+                              : "/history"
+                          }
+                        >
                           <Clock className="mr-3 h-4 w-4" />
                           History
                           {searchHistory.length > 0 && (
-                            <span className={`ml-auto text-xs rounded-full px-2 py-0.5 ${currentPage === 'history' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary text-primary-foreground'}`}>
+                            <span
+                              className={`ml-auto text-xs rounded-full px-2 py-0.5 ${
+                                currentPage === "history"
+                                  ? "bg-primary-foreground/20 text-primary-foreground"
+                                  : "bg-primary text-primary-foreground"
+                              }`}
+                            >
                               {searchHistory.length}
                             </span>
                           )}
                         </Link>
                       </Button>
                     </div>
-                    
+
                     <Separator className="my-4" />
-                    
+
                     <div className="space-y-1">
                       <div className="px-3 py-2 text-sm font-medium text-muted-foreground">
                         View Options
                       </div>
-                      
+
                       {/* List View (disabled for now) */}
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                        disabled
+                      >
                         <List className="mr-3 h-4 w-4" />
                         List View
                       </Button>
-                      
+
                       {/* Table View (disabled for now) */}
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                        disabled
+                      >
                         <Table className="mr-3 h-4 w-4" />
                         Table View
                       </Button>
-                      
+
                       {/* Screening Results (disabled for now) */}
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                        disabled
+                      >
                         <Shield className="mr-3 h-4 w-4" />
                         Screening Results
                       </Button>
                     </div>
-                    
+
                     <Separator className="my-4" />
-                    
+
                     <div className="space-y-1">
                       {/* Preferences (disabled for now) */}
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                        disabled
+                      >
                         <Settings className="mr-3 h-4 w-4" />
                         Preferences
                       </Button>
-                      
+
                       {/* Login (disabled for now) */}
-                      <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                        disabled
+                      >
                         <LogIn className="mr-3 h-4 w-4" />
                         Login
                       </Button>
                     </div>
                   </div>
-                  
+
                   {/* Theme Toggle at bottom */}
                   <div className="p-6 pt-4 border-t">
                     <div className="flex items-center justify-between">
@@ -513,44 +802,9 @@ export function Navbar({
                 </div>
               </SheetContent>
             </Sheet>
-
-            {/* Search form */}
-            <form onSubmit={handleSubmit} className="flex-1 mx-2">
-              <div className="relative flex items-center">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={currentQuery}
-                    onChange={(e) => handleQueryChange(e.target.value)}
-                    placeholder="Search papers..."
-                    className="pl-10 pr-4"
-                    disabled={isFormDisabled}
-                  />
-                </div>
-                
-                {/* Search action buttons */}
-                <div className="flex items-center">
-                  {/* Search Button */}
-                  <Button 
-                    type="submit" 
-                    disabled={isFormDisabled} 
-                    className="ml-2 flex-shrink-0"
-                    size="icon"
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-
-                  {/* API Button */}
-                  <ApiButton
-                    apiUrl={apiUrl}
-                    disabled={isFormDisabled}
-                  />
-                </div>
-              </div>
-            </form>
           </div>
         </div>
       </div>
     </nav>
   );
-} 
+}

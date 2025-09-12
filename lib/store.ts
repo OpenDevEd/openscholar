@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DateRange } from "react-day-picker";
-import type { SearchField, QueryHistoryEntry } from './types';
+import type { SearchField, QueryHistoryEntry, QuestionHistoryEntry } from './types';
 import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
 import { format } from 'date-fns'
 
@@ -23,6 +23,7 @@ export type SearchResult = {
   id: string;
   query: string;
   queryHistory: QueryHistoryEntry[];
+  questionHistory: QuestionHistoryEntry[];
   count: number;
   field: SearchField;
   dateRange?: DateRange;
@@ -50,9 +51,10 @@ interface RatingsState {
 
 interface SearchHistoryState {
   searchHistory: SearchResult[]
-  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory'>) => string
+  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'questionHistory'>) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQueryToHistory: (id: string, query: string) => void
+  addQuestionToHistory: (id: string, question: string) => void
   getSearchResult: (id: string) => SearchResult | undefined
   removeSearchResult: (index: number) => void
   clearSearchHistory: () => void
@@ -160,6 +162,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           ...result,
           id,
           queryHistory: [{ query: result.query, timestamp: now }],
+          questionHistory: [],
           createdAt: now,
           updatedAt: now,
         };
@@ -184,11 +187,25 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         set((state) => ({
           searchHistory: state.searchHistory.map((item) =>
             item.id === id
-              ? { 
-                  ...item, 
+              ? {
+                  ...item,
                   query,
                   queryHistory: [...item.queryHistory, { query, timestamp: now }],
-                  updatedAt: now 
+                  updatedAt: now
+                }
+              : item
+          ),
+        }));
+      },
+      addQuestionToHistory: (id, question) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  questionHistory: [...item.questionHistory, { question, timestamp: now }],
+                  updatedAt: now
                 }
               : item
           ),
@@ -210,6 +227,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           const migratedResult: SearchResult = {
             ...result,
             id,
+            questionHistory: result.questionHistory || [],
             createdAt: now,
             updatedAt: now,
           };
@@ -247,6 +265,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             id,
             query,
             queryHistory: [{ query, timestamp: now }],
+            questionHistory: [],
             count,
             field: field as SearchField,
             createdAt: now,
@@ -268,7 +287,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
-      version: 2, // Increment when migrations are needed
+      version: 3, // Increment when migrations are needed
       migrate: (persistedState: any, version: number) => {
         // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
         if (version === 0) {
@@ -303,10 +322,22 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
               return {
                 ...item,
-                queryHistory: item.queryHistory || [{ 
-                  query: item.query || '', 
-                  timestamp: item.createdAt || new Date().toISOString() 
+                queryHistory: item.queryHistory || [{
+                  query: item.query || '',
+                  timestamp: item.createdAt || new Date().toISOString()
                 }]
+              };
+            });
+          }
+        }
+
+        // Migration for version 2 -> 3: Add questionHistory field
+        if (version <= 2) {
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+              return {
+                ...item,
+                questionHistory: item.questionHistory || []
               };
             });
           }
@@ -446,6 +477,11 @@ interface ThemeToggleState {
 interface CurrentQueryState {
   currentQuery: string
   setCurrentQuery: (query: string) => void
+}
+
+interface CurrentQuestionState {
+  currentQuestion: string
+  setCurrentQuestion: (question: string) => void
 }
 
 interface KeywordExpansionDialogState {
@@ -612,6 +648,11 @@ export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
 export const useCurrentQueryStore = create<CurrentQueryState>((set) => ({
   currentQuery: '',
   setCurrentQuery: (query) => set({ currentQuery: query }),
+}))
+
+export const useCurrentQuestionStore = create<CurrentQuestionState>((set) => ({
+  currentQuestion: '',
+  setCurrentQuestion: (question) => set({ currentQuestion: question }),
 }))
 
 export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState>((set) => ({
