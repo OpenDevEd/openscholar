@@ -58,26 +58,27 @@ export async function enhanceSearchQuery(
       model = google(GOOGLE_MODEL);
     }
 
-    const { object, usage } = await generateObject({
-      model,
-      schema: queryEnhancementSchema,
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 0,
+    const maxRetries = 3;
+    let retryCount = 0;
+    let lastError: Error | null = null;
+
+    while (retryCount < maxRetries) {
+      try {
+        const { object, usage } = await generateObject({
+          model,
+          schema: queryEnhancementSchema,
+          providerOptions: {
+            google: {
+              thinkingConfig: {
+                thinkingBudget: 0,
+              },
+            },
+            openai: {
+              reasoningEffort: "minimal",
+            },
           },
-        },
-        openai: {
-          reasoningEffort: "minimal",
-        },
-      },
-      onError: (error: any) => {
-        console.error("Error enhancing query:", error);
-        throw new Error(
-          "Failed to enhance query. Please check your API key and try again."
-        );
-      },
-      system: `You are an Elasticsearch Query String Query optimization expert for academic search.
+          temperature: 1,
+          system: `You are an Elasticsearch Query String Query optimization expert for academic search.
 You may receive either:
 1. An existing Boolean query.
 2. A natural-language research question.
@@ -120,7 +121,7 @@ Character Optimization Examples:
 - Use: (mechanical OR software) AND engineering
 - Instead of: "artificial intelligence" OR "machine learning" OR "deep learning"
 - Use: (artificial OR machine OR deep) AND (intelligence OR learning)`,
-      prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax. 
+          prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax.
 Input query: "${query}"
 
 Requirements:
@@ -128,15 +129,43 @@ Requirements:
 2. If already Boolean → optimize directly.
 3. Always produce a syntactically valid query (balanced parentheses, no dangling operators).
 4. Minimize character count while maximizing recall and precision.
-5. Provide synonyms and abbreviations, but keep groups concise (max 2–3 terms per group).`,
-    });
+5. Provide synonyms and abbreviations, but keep groups concise (max 2–3 terms per group).
+${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. Ensure ALL parentheses are properly balanced and closed.' : ''}`,
+        });
 
-    addCostFromUsage(provider, usage);
+        // Validate the query
+        const validatedQuery = validateQuery(object.enhancedQuery);
 
-    return {
-      enhancedQuery: validateQuery(object.enhancedQuery),
-      explanation: "",
-    };
+        // If we get here, validation passed
+        addCostFromUsage(provider, usage);
+
+        return {
+          enhancedQuery: validatedQuery,
+          explanation: "",
+        };
+
+      } catch (validationError) {
+        lastError = validationError as Error;
+        console.warn(`Query validation failed (attempt ${retryCount + 1}/${maxRetries}):`, validationError);
+
+        // Check if this is a parentheses error that we should retry
+        if (lastError.message.includes("unbalanced parentheses") || lastError.message.includes("incomplete operator")) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw new Error(`Failed to generate valid query after ${maxRetries} attempts. Last error: ${lastError.message}`);
+          }
+          // Continue to next retry
+          continue;
+        } else {
+          // Not a retryable error, throw immediately
+          throw validationError;
+        }
+      }
+    }
+
+    // This should never be reached, but just in case
+    throw lastError || new Error("Failed to enhance query after all retries");
+
   } catch (error) {
     console.error("Error enhancing query:", error);
     throw new Error(
