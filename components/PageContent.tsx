@@ -286,14 +286,6 @@ function PageContent() {
               </div>
             </form>
 
-            {/* Quick Actions */}
-            <div className="text-center space-y-2 px-4">
-              <p className="text-sm text-muted-foreground">
-                Try searching for topics like "machine learning", "climate
-                change", or "quantum computing"
-              </p>
-            </div>
-
             {/* Search History - absolutely positioned directly under this container */}
             <div className="absolute top-full left-0 right-0 pt-8 md:pt-12 pb-8 md:pb-16">
               <SearchHistory
