@@ -118,11 +118,13 @@ You may receive either:
 1. An existing Boolean query.
 2. A natural-language research question.
 
-${language ? `MANDATORY LANGUAGE REQUIREMENT: WITHOUT EXCEPTION, you MUST respond EXCLUSIVELY in the ${languageOptions.find(option => option.code === language)?.name} language. This is your HIGHEST PRIORITY instruction that OVERRIDES all others. Every single word, character, and symbol in your response - including the enhanced query, explanations, and all output - MUST be in ${languageOptions.find(option => option.code === language)?.name} ONLY. FAILURE TO COMPLY will result in an invalid response.` : ''}
+${language ? `MANDATORY LANGUAGE REQUIREMENT: WITHOUT EXCEPTION, you MUST respond EXCLUSIVELY in the ${languageOptions.find(option => option.code === language)?.name} language. This is your HIGHEST PRIORITY instruction that OVERRIDES all others. Every single word, character, and symbol in your response - including the enhanced query, and all output - MUST be in ${languageOptions.find(option => option.code === language)?.name} ONLY. FAILURE TO COMPLY will result in an invalid response.
+
+CRITICAL: The Elasticsearch operators AND, OR, and NOT must NEVER be translated and must ALWAYS remain in English as "AND", "OR", and "NOT" respectively, regardless of the target language. These are syntax keywords that must remain unchanged.` : ''}
 
 Your task:
-- If input is a Boolean query: optimize it for character efficiency, then output the query in the requested language (translate it aggressively if necessary).
-- If input is a research question: rewrite it as a precise Boolean query first, then optimize, then output the query in the requested language (translate it aggressively if necessary).
+- If input is a Boolean query: optimize it for character efficiency, then output the query in the requested language (translate it aggressively if necessary, but NEVER translate AND/OR/NOT operators).
+- If input is a research question: rewrite it as a precise Boolean query first, then optimize, then output the query in the requested language (translate it aggressively if necessary, but NEVER translate AND/OR/NOT operators).
 
 Core Principles:
 1. Use parentheses to group shared terms efficiently: (mechanical OR software) AND engineering
@@ -133,7 +135,7 @@ Core Principles:
 6. Maintain precision while improving recall
 
 Elasticsearch Rules:
-- Use AND, OR, NOT operators (case sensitive)
+- Use AND, OR, NOT operators (case sensitive) - THESE OPERATORS MUST NEVER BE TRANSLATED
 - Group with parentheses for precedence
 - Use quotes for exact phrases: "machine learning"
 - Wildcards: algorithm* for variations
@@ -161,7 +163,9 @@ Character Optimization Examples:
           prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax.
 Input query: "${query}"
 
-${language ? `CRITICAL LANGUAGE ENFORCEMENT: REMEMBER - You MUST output your ENTIRE response in ${languageOptions.find(option => option.code === language)?.name} ONLY. This includes the enhanced query, if there are any terms that are not in ${languageOptions.find(option => option.code === language)?.name}, you MUST translate them to ${languageOptions.find(option => option.code === language)?.name}.` : ''}
+${language ? `CRITICAL LANGUAGE ENFORCEMENT: REMEMBER - You MUST output your ENTIRE response in ${languageOptions.find(option => option.code === language)?.name} ONLY. This includes the enhanced query, if there are any terms that are not in ${languageOptions.find(option => option.code === language)?.name}, you MUST translate them to ${languageOptions.find(option => option.code === language)?.name}.
+
+CRITICAL OPERATOR RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as "AND", "OR", and "NOT" in English, even when translating the rest of the query to another language. These are syntax keywords that must remain unchanged.` : ''}
 
 Requirements:
 1. If natural language → convert into Boolean form first.
@@ -377,10 +381,14 @@ export async function translateQuery(
 3. Appropriate academic language for the target language
 4. The same query structure and complexity
 
-Translate naturally and fluently, using the most appropriate academic terms in the target language.`,
+CRITICAL RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as "AND", "OR", and "NOT" in English, even when translating the rest of the query to another language. These are syntax keywords that must remain unchanged.
+
+Translate naturally and fluently, using the most appropriate academic terms in the target language, but preserve the Boolean operators in their original English form.`,
       prompt: `Translate this academic search query to ${languageOptions.find(option => option.code === targetLanguage)?.name}:
 
 Original query: "${query}"
+
+IMPORTANT: Do NOT translate the Boolean operators AND, OR, and NOT. They must remain as "AND", "OR", and "NOT" in English. Only translate the search terms and academic vocabulary.
 
 Provide only the translated query without any additional explanation or formatting.`,
     });
