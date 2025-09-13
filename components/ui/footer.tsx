@@ -1,7 +1,7 @@
 export function FooterBanner() {
   return (
     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-100/50 shadow-sm">
-      <span className="text-sm text-muted-foreground">Built with</span>
+      <span className="text-sm text-muted-foreground">Built by</span>
 {/* https://opendeved.net/ */}
       <a
         href="https://opendeved.net/"
