@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,36 +10,11 @@ import { AIProvider } from "@/app/actions/ai-enhance"
 import { getAPIConfig } from "@/app/actions/api-key"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { ConfigProviderContext } from './config-provider'
 
 export function AIConfig() {
   const { provider, apiKey, setProvider, setApiKey, budget, setBudget, dollarsUsed } = useAIConfigStore()
-  const [isDemoMode, setIsDemoMode] = useState(false)
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true)
-
-  useEffect(() => {
-    const loadAPIConfig = async () => {
-      try {
-        const config = await getAPIConfig()
-        if (config.isDemo && config.provider && config.apiKey) {
-          setProvider(config.provider)
-          setApiKey(config.apiKey)
-          setIsDemoMode(true)
-          toast.success("Demo Mode", {
-            description: "An API key has been provided for demonstration purposes",
-          })
-        }
-      } catch (error) {
-        console.error("Failed to load API config:", error)
-        toast.error("Configuration Error", {
-          description: "Failed to load API configuration",
-        })
-      } finally {
-        setIsLoadingConfig(false)
-      }
-    }
-
-    loadAPIConfig()
-  }, [setProvider, setApiKey])
+  const { isDemoMode } = useContext(ConfigProviderContext)
 
   const handleProviderChange = (value: AIProvider) => {
     setProvider(value)

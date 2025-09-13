@@ -6,7 +6,8 @@ import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConditionalFooter } from "@/components/ui/conditional-footer";
 import { cn } from "@/lib/utils";
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import ConfigProvider from "@/components/config-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,7 +21,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "OpenScholar - Academic Paper Search",
-  description: "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
+  description:
+    "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
 };
 
 export default function RootLayout({
@@ -33,19 +35,19 @@ export default function RootLayout({
       <body
         className={cn(geistSans.variable, geistMono.variable, "antialiased")}
       >
-        <ThemeProvider>
-          <NuqsAdapter>
-            <QuerySyncProvider>
-              <div className="min-h-screen flex flex-col">
-                <div className="flex-1">
-                  {children}
+        <ConfigProvider>
+          <ThemeProvider>
+            <NuqsAdapter>
+              <QuerySyncProvider>
+                <div className="min-h-screen flex flex-col">
+                  <div className="flex-1">{children}</div>
+                  <ConditionalFooter />
                 </div>
-                <ConditionalFooter />
-              </div>
-              <Toaster />
-            </QuerySyncProvider>
-          </NuqsAdapter>
-        </ThemeProvider>
+                <Toaster />
+              </QuerySyncProvider>
+            </NuqsAdapter>
+          </ThemeProvider>
+        </ConfigProvider>
       </body>
     </html>
   );

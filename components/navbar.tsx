@@ -251,7 +251,6 @@ export function SearchBar() {
           <Button
             type="submit"
             disabled={isFormDisabled}
-            className="flex-shrink-0 flex-1"
             id="search-bar-submit"
           >
             <Search className="h-4 w-4" />
