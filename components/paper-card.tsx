@@ -8,6 +8,7 @@ import {
   useUIStore,
   useSearchHistoryStore,
   useAIConfigStore,
+  useTranslationStore,
 } from "@/lib/store";
 // import { useScreeningStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
@@ -53,7 +54,7 @@ import {
   // ClipboardPlus
 } from "lucide-react";
 import { ScreeningContext } from "./results-list";
-import { generateScreeningResponses } from "@/app/actions/ai-enhance";
+import { generateScreeningResponses, translatePaperContent } from "@/app/actions/ai-enhance";
 import { toast } from "sonner";
 
 interface PaperCardProps {
@@ -91,7 +92,7 @@ export function PaperCard({
   const { isFocusModeOpen } = useUIStore();
   const updateFilter = useUpdateSearchFilter();
   const isMobile = useIsMobile();
-  const { missingResponses, existingResponses, setScreeningResponses } =
+  const { missingResponses, existingResponses, setScreeningResponses, canStartScreening } =
     useContext(ScreeningContext);
   const myMissingResponses = missingResponses?.[result.id] || [];
   const [myLoadingResponses, setMyLoadingResponses] = useState<
@@ -101,15 +102,16 @@ export function PaperCard({
 
   const { provider, apiKey, budget, dollarsUsed } = useAIConfigStore();
 
-  const stableMyMissingResponses = JSON.stringify(myMissingResponses);
-  const [canStartScreening, setCanStartScreening] = useState(false);
-  const [calledFor, setCalledFor] = useState<Record<string, boolean>>({});
+  const searchId = getEffectiveSearchId(pathname, undefined);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setCanStartScreening(true);
-    }, 3000);
-  }, []);
+  // Get selected language for translation
+  const selectedLanguage = useSearchHistoryStore((state) => {
+    const currentResult = searchId ? state.searchHistory.find((item) => item.id === searchId) : null;
+    return currentResult?.language || "";
+  });
+
+  const stableMyMissingResponses = JSON.stringify(myMissingResponses);
+  const [calledFor, setCalledFor] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (provider && apiKey && myMissingResponses.length > 0) {
@@ -169,7 +171,6 @@ export function PaperCard({
   // const isInScreening = documents.some(doc => doc.id === result.id || doc.originalWork?.id === result.id);
 
   // Get current search and screening data
-  const searchId = getEffectiveSearchId(pathname, undefined);
   const { getSearchResult } = useSearchHistoryStore();
   const searchResult = getSearchResult(searchId || "");
   const screeningQuestions = searchResult?.screeningQuestions || [];
@@ -177,6 +178,18 @@ export function PaperCard({
 
   // State for expanded view
   const [showExpandedView, setShowExpandedView] = useState(false);
+
+  // Translation store
+  const {
+    getTranslation,
+    setTranslation,
+    clearTranslation,
+  } = useTranslationStore();
+
+  // Get translation data from store
+  const translatedContent = getTranslation(result.id);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [showTranslated, setShowTranslated] = useState(false);
 
   // const handleAddToScreening = () => {
   //   addDocumentFromWork(result);
@@ -212,6 +225,49 @@ export function PaperCard({
   const handleCitesSearch = () => handleFilteredSearch("cites");
   const handleCitedBySearch = () => handleFilteredSearch("cited_by");
   const handleRelatedSearch = () => handleFilteredSearch("related");
+
+  // Translation function
+  const handleTranslateContent = async () => {
+    if (!selectedLanguage || selectedLanguage === "en" || !apiKey || !provider) {
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const translation = await translatePaperContent(
+        result.title,
+        result.abstract || "",
+        selectedLanguage,
+        provider,
+        apiKey
+      );
+
+      setTranslation(result.id, translation);
+      setShowTranslated(true);
+    } catch (error) {
+      console.error("Translation error:", error);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Auto-translate when language changes and conditions are met
+  useEffect(() => {
+    if (selectedLanguage && selectedLanguage !== "en" && apiKey && provider && !isTranslating) {
+      // Only translate if we don't have content for this language or if the language has changed
+      const needsTranslation = !translatedContent || translatedContent.sourceLanguage !== selectedLanguage;
+
+      if (needsTranslation) {
+        handleTranslateContent();
+      } else if (translatedContent && translatedContent.sourceLanguage === selectedLanguage) {
+        // If we have the right translation, make sure it's shown
+        setShowTranslated(true);
+      }
+    } else if (selectedLanguage === "en" || !selectedLanguage) {
+      // If switching back to English or no language selected, show original content
+      setShowTranslated(false);
+    }
+  }, [selectedLanguage, apiKey, provider, result.id, translatedContent]);
 
   return (
     <div className="border rounded-lg hover:bg-accent/50 transition-colors group">
@@ -388,12 +444,39 @@ export function PaperCard({
 
         {/* Title */}
         <div className="mb-3">
+          {/* Translation toggle and status */}
+          {(selectedLanguage && selectedLanguage !== "en") && (
+            <div className="flex items-center gap-2 mb-2">
+              {isTranslating && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                  Translating to English...
+                </div>
+              )}
+
+              {translatedContent && translatedContent.sourceLanguage === selectedLanguage && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTranslated(!showTranslated);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  {showTranslated ? "Original" : "English"}
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => openFocusMode(isMobile, resultIndex)}
             className="text-left w-full group-hover:underline hover:text-blue-600 transition-colors cursor-pointer"
           >
             <h3 className="font-medium text-lg text-wrap-anywhere">
-              {result.title} ({result.publication_year})
+              {(showTranslated && translatedContent)
+                ? `${translatedContent.translatedTitle} (${result.publication_year})`
+                : `${result.title} (${result.publication_year})`
+              }
             </h3>
           </button>
         </div>
@@ -420,10 +503,16 @@ export function PaperCard({
           {result.abstract && (
             <p className="text-sm text-muted-foreground text-wrap-anywhere mb-2">
               {expandedAbstracts[result.id]
-                ? result.abstract
-                : result.abstract.length > 500
-                ? `${result.abstract.slice(0, 500)}...`
-                : result.abstract}
+                ? (showTranslated && translatedContent
+                    ? translatedContent.translatedAbstract
+                    : result.abstract)
+                : (showTranslated && translatedContent
+                    ? (translatedContent.translatedAbstract.length > 500
+                        ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
+                        : translatedContent.translatedAbstract)
+                    : (result.abstract.length > 500
+                        ? `${result.abstract.slice(0, 500)}...`
+                        : result.abstract))}
             </p>
           )}
 

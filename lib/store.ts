@@ -1182,4 +1182,50 @@ export const useReviewStore = create<ReviewStoreState>()(
       name: 'review-store',
     }
   )
+);
+
+// Translation Store - for storing translation data by paper ID
+interface TranslationData {
+  translatedTitle: string;
+  translatedAbstract: string;
+  sourceLanguage: string;
+}
+
+interface TranslationState {
+  translations: Record<string, TranslationData>;
+  setTranslation: (id: string, data: TranslationData) => void;
+  getTranslation: (id: string) => TranslationData | null;
+  clearTranslation: (id: string) => void;
+  clearAllTranslations: () => void;
+}
+
+export const useTranslationStore = create<TranslationState>()(
+  (set, get) => ({
+    translations: {},
+
+    setTranslation: (id: string, data: TranslationData) => {
+      set((state) => ({
+        translations: {
+          ...state.translations,
+          [id]: data,
+        },
+      }));
+    },
+
+    getTranslation: (id: string) => {
+      return get().translations[id] || null;
+    },
+
+    clearTranslation: (id: string) => {
+      set((state) => {
+        const newTranslations = { ...state.translations };
+        delete newTranslations[id];
+        return { translations: newTranslations };
+      });
+    },
+
+    clearAllTranslations: () => {
+      set({ translations: {} });
+    },
+  })
 ); 

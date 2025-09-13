@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -33,8 +34,8 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { workToCoins, cn } from '@/lib/utils';
-import { useRatingsStore, useFocusModeSettingsStore, useUIStore } from '@/lib/store';
+import { workToCoins, cn, getEffectiveSearchId } from '@/lib/utils';
+import { useRatingsStore, useFocusModeSettingsStore, useUIStore, useTranslationStore, useSearchHistoryStore } from '@/lib/store';
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from 'next-themes';
 import { RatingSelector } from "../rating-selector";
@@ -62,8 +63,21 @@ export function FocusMode({
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+  const pathname = usePathname();
+
+  // Translation store
+  const { getTranslation } = useTranslationStore();
+  const [showTranslated, setShowTranslated] = useState(false);
 
   const currentPaper = papers[currentIndex];
+  const translatedContent = getTranslation(currentPaper?.id);
+
+  // Get selected language for translation
+  const selectedLanguage = useSearchHistoryStore((state) => {
+    const searchId = getEffectiveSearchId(pathname, undefined);
+    const currentResult = searchId ? state.searchHistory.find((item) => item.id === searchId) : null;
+    return currentResult?.language || "";
+  });
 
   // Swipe threshold for triggering navigation - made more restrictive
   const swipeThreshold = 120; // Increased from 50
@@ -203,12 +217,19 @@ export function FocusMode({
           e.preventDefault();
           setShowSettings(!showSettings);
           break;
+        case 't':
+        case 'T':
+          e.preventDefault();
+          if (selectedLanguage && selectedLanguage !== "en" && translatedContent) {
+            setShowTranslated(!showTranslated);
+          }
+          break;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, currentIndex, papers.length, currentPaper]);
+  }, [isOpen, currentIndex, papers.length, currentPaper, selectedLanguage, translatedContent, showTranslated]);
 
   const goToNext = () => {
     if (currentIndex < papers.length - 1) {
@@ -277,13 +298,14 @@ export function FocusMode({
   };
 
   // Reusable Paper Content Component
-  const PaperContent = ({ 
-    paper, 
-    isPreview = false 
-  }: { 
-    paper: any; 
-    isPreview?: boolean 
+  const PaperContent = ({
+    paper,
+    isPreview = false
+  }: {
+    paper: any;
+    isPreview?: boolean
   }) => {
+    const paperTranslatedContent = getTranslation(paper?.id);
     return (
       <div className={getContentClasses()}>
         {/* COINS metadata span - only for main content */}
@@ -299,8 +321,13 @@ export function FocusMode({
         <div className={cn(
           settings.compactMode ? "mb-1" : "mb-2"
         )}>
-          <h1 className={cn("font-bold leading-tight mb-1", getFontSizeClass())}>
-            {isPreview ? "The Impact of Machine Learning on Scientific Research Discovery (2024)" : `${paper.title} (${paper.publication_year})`}
+            <h1 className={cn("font-bold leading-tight mb-1", getFontSizeClass())}>
+            {isPreview
+              ? "The Impact of Machine Learning on Scientific Research Discovery (2024)"
+              : showTranslated && paperTranslatedContent
+                ? `${paperTranslatedContent.translatedTitle} (${paper.publication_year})`
+                : `${paper.title} (${paper.publication_year})`
+            }
           </h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {isPreview ? (
@@ -441,12 +468,14 @@ export function FocusMode({
         {(paper.abstract || isPreview) && (
           <div className="border-t pt-2">
             <div className="text-sm font-medium text-muted-foreground mb-1">Abstract</div>
-            <div 
-              className={cn("pr-2", getFontSizeClass(), getLineHeightClass())} 
+            <div
+              className={cn("pr-2", getFontSizeClass(), getLineHeightClass())}
             >
-              {isPreview 
+              {isPreview
                 ? "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows."
-                : paper.abstract
+                : showTranslated && paperTranslatedContent
+                  ? paperTranslatedContent.translatedAbstract
+                  : paper.abstract
               }
             </div>
           </div>
@@ -548,7 +577,25 @@ export function FocusMode({
                 <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
                 
                 <div className="flex items-center gap-1">
-                  <Button 
+                  {(selectedLanguage && selectedLanguage !== "en") && (
+                    <>
+                      <Button
+                        variant={showTranslated ? "outline-primary" : "outline"}
+                        size="sm"
+                        onClick={() => setShowTranslated(!showTranslated)}
+                        title={showTranslated ? "Show Original" : "Show English Translation"}
+                        disabled={!translatedContent}
+                      >
+                        <Globe className="h-3 w-3 md:mr-1" />
+                        <span className="hidden sm:inline">
+                          {showTranslated ? "Original" : "English"}
+                        </span>
+                      </Button>
+                      <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">T</span>
+                    </>
+                  )}
+                  <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+                  <Button
                     variant={showSettings ? "outline-primary" : "outline"}
                     size="sm"
                     onClick={() => setShowSettings(!showSettings)}

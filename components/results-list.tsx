@@ -96,6 +96,7 @@ export const ScreeningContext = createContext<{
   existingResponses?: ScreeningResponses;
   setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
   setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
+  canStartScreening?: boolean;
 }>({});
 
 function PapersList({
@@ -384,8 +385,15 @@ export function ResultsList({
   const [combinationLoading, setCombinationLoading] = useState<
     Record<string, Record<string, boolean>>
   >({});
+  const [canStartScreening, setCanStartScreening] = useState(false);
 
   const pathname = usePathname();
+
+  useEffect(() => {
+    setTimeout(() => {
+      setCanStartScreening(true);
+    }, 2000);
+  }, []);
 
   // Get the current search ID from the URL (same logic as hooks.ts)
   const searchId = getEffectiveSearchId(pathname, undefined);
@@ -635,7 +643,8 @@ Please enhance this academic search query according to the user's specific instr
         },
         setScreeningResponses: (paperId, responses) => {
           setScreeningResponses(searchId || "", paperId, responses);
-        }
+        },
+        canStartScreening,
       }}
     >
       <div className="space-y-4">

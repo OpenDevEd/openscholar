@@ -398,6 +398,89 @@ Provide only the translated query without any additional explanation or formatti
   }
 }
 
+export async function translatePaperContent(
+  title: string,
+  abstract: string,
+  sourceLanguage: string,
+  provider: "openai" | "google",
+  apiKey: string
+) {
+  if (!apiKey) {
+    throw new Error("API key is required");
+  }
+
+  if (!title.trim() && !abstract.trim()) {
+    throw new Error("Title or abstract is required");
+  }
+
+  if (!sourceLanguage) {
+    throw new Error("Source language is required");
+  }
+
+  try {
+    assertWithinBudget();
+
+    let model;
+
+    if (provider === "openai") {
+      const openai = createOpenAI({ apiKey });
+      model = openai(OPENAI_MODEL);
+    } else {
+      const google = createGoogleGenerativeAI({ apiKey });
+      model = google(GOOGLE_MODEL);
+    }
+
+    const { object, usage } = await generateObject({
+      model,
+      schema: z.object({
+        translatedTitle: z.string().describe("The paper title translated to English"),
+        translatedAbstract: z.string().describe("The paper abstract translated to English"),
+      }),
+      providerOptions: {
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
+        },
+        openai: {
+          reasoningEffort: "minimal",
+        },
+      },
+      temperature: 0.3,
+      system: `You are a professional translator specializing in academic content. Your task is to translate academic paper titles and abstracts FROM the specified language TO English while maintaining:
+
+1. Academic terminology and precision
+2. The same meaning and scientific accuracy
+3. Appropriate academic English terminology
+4. Natural and fluent English translation
+
+Translate professionally and accurately, preserving the scientific content and academic tone.`,
+      prompt: `Translate this academic paper content FROM ${languageOptions.find(option => option.code === sourceLanguage)?.name} TO English:
+
+Title: "${title}"
+
+Abstract: "${abstract}"
+
+Provide the English translation of the title and abstract, maintaining academic precision and terminology.`,
+    });
+
+    addCostFromUsage(provider, usage);
+
+    return {
+      translatedTitle: object.translatedTitle,
+      translatedAbstract: object.translatedAbstract,
+      sourceLanguage: sourceLanguage,
+    };
+  } catch (error) {
+    console.error('Paper translation failed:', error);
+    throw new Error(
+      error instanceof Error
+        ? `Translation failed: ${error.message}`
+        : "Failed to translate paper content. Please check your API key and try again."
+    );
+  }
+}
+
 export async function generateScreeningResponses(
   title: string,
   abstract: string,
