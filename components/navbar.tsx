@@ -218,13 +218,13 @@ export function SearchBar() {
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="relative flex items-center">
+      <div className="relative flex flex-col md:flex-row md:items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={currentQuery}
             onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder={isTranslating ? "Translating query..." : "Search papers..."}
+            placeholder={isTranslating ? "Translating query..." : "Search using keywords..."}
             className="pl-10 pr-10"
             disabled={isFormDisabled}
           />
@@ -238,8 +238,8 @@ export function SearchBar() {
           </Tooltip>
         </div>
 
-        {/* Desktop: Show all buttons */}
-        <div className="flex items-center">
+        {/* Mobile: Buttons flow to second row, Desktop: Inline */}
+        <div className="flex items-center gap-2">
           {/* Language Selector */}
           <LanguageSelector
             value={selectedLanguage}
@@ -251,7 +251,7 @@ export function SearchBar() {
           <Button
             type="submit"
             disabled={isFormDisabled}
-            className="ml-2 flex-shrink-0"
+            className="flex-shrink-0 flex-1"
             id="search-bar-submit"
           >
             <Search className="h-4 w-4" />
@@ -354,23 +354,23 @@ export function ResearchQuestionBar() {
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="relative flex items-center">
+      <div className="relative flex flex-col md:flex-row md:items-center gap-2 md:gap-0">
         <div className="relative flex-1">
           <HelpCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={currentQuestion}
             onChange={(e) => handleQuestionChange(e.target.value)}
-            placeholder="Research question..."
+            placeholder="Ask a research question to get keywords..."
             className="pl-10 pr-4"
             disabled={isFormDisabled}
           />
         </div>
 
-        <div className="flex items-center">
+        <div className="flex md:ml-2">
           <Button
             type="submit"
             disabled={isFormDisabled || !currentQuestion.trim()}
-            className="ml-2 flex-shrink-0"
+            className="flex-shrink-0 w-full md:w-auto"
           >
             {isEnhancing ? (
               <>
@@ -533,56 +533,71 @@ Return a more targeted version of this query that will reduce the result count w
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <p className="text-lg text-muted-foreground">{totalCount.toLocaleString()} results</p>
-        {showBroadenButton && (
-          <Button
-            variant="outline"
-            onClick={handleBroadenQuery}
-            disabled={isBroadening}
-            className="text-xs"
-          >
-            {isBroadening ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            ) : (
-              <Expand className="h-3 w-3 mr-1" />
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
+      {/* Results count and query adjustment buttons */}
+      <div className="flex items-center justify-between gap-2 order-2 md:order-1">
+        <p className="text-lg text-muted-foreground whitespace-nowrap truncate overflow-hidden">{totalCount.toLocaleString()} results</p>
+        {(showBroadenButton || showNarrowButton) && (
+          <div className="flex items-center gap-2 flex-1 md:flex-shrink-0">
+            {showBroadenButton && (
+              <Button
+                variant="outline"
+                onClick={handleBroadenQuery}
+                disabled={isBroadening}
+                className="text-xs flex-1 md:flex-shrink-0"
+              >
+                {isBroadening ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Expand className="h-3 w-3 mr-1" />
+                )}
+                Make broader
+              </Button>
             )}
-            Make broader
-          </Button>
-        )}
-        {showNarrowButton && (
-          <Button
-            variant="outline"
-            onClick={handleNarrowQuery}
-            disabled={isNarrowing}
-            className="text-xs"
-          >
-            {isNarrowing ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            ) : (
-              <Minimize2 className="h-3 w-3 mr-1" />
+            {showNarrowButton && (
+              <Button
+                variant="outline"
+                onClick={handleNarrowQuery}
+                disabled={isNarrowing}
+                className="text-xs flex-1 md:flex-shrink-0"
+              >
+                {isNarrowing ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Minimize2 className="h-3 w-3 mr-1" />
+                )}
+                Make more specific
+              </Button>
             )}
-            Make more specific
-          </Button>
+          </div>
         )}
       </div>
-      <div className="flex items-center gap-2">
+
+      {/* Action buttons - Screen, Adjust, Download */}
+      <div className="flex items-center gap-2 md:flex-shrink-0 order-1 md:order-2">
         {/* <Button variant="outline" size="sm" disabled>
           <Settings2 className="h-4 w-4 mr-1" />
           Configure
         </Button> */}
-        <Button variant={isScreening ? "default" : "outline"} onClick={() => setIsScreening?.((prev: boolean) => !prev)}>
+        <Button
+          variant={isScreening ? "default" : "outline"}
+          onClick={() => setIsScreening?.((prev: boolean) => { const newVal = !prev; console.log("newVal", newVal); if (newVal) { setIsAdjusting?.(false) } return newVal; })}
+          className="flex-1 md:flex-shrink-0"
+        >
           <Eye className="h-4 w-4 mr-1" />
           Screen
         </Button>
-        <Button variant={isAdjusting ? "default" : "outline"} onClick={() => setIsAdjusting?.((prev: boolean) => !prev)}>
+        <Button
+          variant={isAdjusting ? "default" : "outline"}
+          onClick={() => setIsAdjusting?.((prev: boolean) => { const newVal = !prev; console.log("newVal", newVal); if (newVal) { setIsScreening?.(false) } return newVal; })}
+          className="flex-1 md:flex-shrink-0"
+        >
           <Sparkles className="h-4 w-4 mr-1" />
           Adjust
         </Button>
         {hasDownloadHandlers && (
           <DownloadMenu
-            variant="button"
+            variant="icon"
             onDownloadJSON={onDownloadAllJSON}
             onDownloadCSV={onDownloadAllCSV}
             onDownloadEssentialJSON={onDownloadAllEssentialJSON}

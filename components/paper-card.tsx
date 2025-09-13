@@ -117,12 +117,6 @@ export function PaperCard({
         return;
       }
 
-      setMyLoadingResponses(
-        myMissingResponses.reduce(
-          (acc, question) => ({ ...acc, [question]: true }),
-          {}
-        )
-      );
       const screen = async () => {
         const calledForKey = JSON.stringify(myMissingResponses);
 
@@ -130,23 +124,38 @@ export function PaperCard({
           return;
         }
 
+        setMyLoadingResponses(
+          myMissingResponses.reduce(
+            (acc, question) => ({ ...acc, [question]: true }),
+            {}
+          )
+        );
+
         setCalledFor((prev) => ({ ...prev, [calledForKey]: true }));
 
         console.log("generating responses for", result.id);
-        const screeningResponses = await generateScreeningResponses(
-          result.title,
-          result.abstract,
-          myMissingResponses,
-          provider,
-          apiKey
-        );
+        try {
+          const screeningResponses = await generateScreeningResponses(
+            result.title,
+            result.abstract,
+            myMissingResponses,
+            provider,
+            apiKey
+          );
 
-        console.log("screening responses", result.id, screeningResponses);
-        if (setScreeningResponses) {
-          setScreeningResponses(result.id, screeningResponses.responses);
+          console.log("screening responses", result.id, screeningResponses);
+          if (setScreeningResponses) {
+            setScreeningResponses(result.id, screeningResponses.responses);
+          }
+        } catch (error) {
+          console.error("Error generating screening responses:", error);
+          toast.error(
+            "Failed to generate screening responses. Please check your API key and try again."
+          );
+        } finally {
           setMyLoadingResponses({});
+          setCalledFor((prev) => ({ ...prev, [calledForKey]: false }));
         }
-        await new Promise((resolve) => setTimeout(resolve, 3000));
       };
       if (canStartScreening) {
         screen();
@@ -321,7 +330,7 @@ export function PaperCard({
                             ? "No"
                             : isQuestionLoading
                             ? "Loading..."
-                            : "Not applicable";
+                            : "?";
 
                         return (
                           <tr

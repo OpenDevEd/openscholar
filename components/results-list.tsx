@@ -656,7 +656,6 @@ Please enhance this academic search query according to the user's specific instr
                       disabled={!canGoPrevious}
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      <span>Previous</span>
                     </Button>
                     <Button
                       variant="outline"
@@ -665,7 +664,6 @@ Please enhance this academic search query according to the user's specific instr
                       onClick={goToNext}
                       disabled={!canGoNext}
                     >
-                      <span>Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                     {hasUnsavedChanges && (

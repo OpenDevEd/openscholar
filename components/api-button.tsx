@@ -57,7 +57,7 @@ export function ApiButton({
           <PopoverTrigger asChild>
             <Button 
               disabled={isButtonDisabled} 
-              className={cn("ml-2 flex-shrink-0", className)}
+              className={cn("flex-shrink-0", className)}
               size={size}
               variant={variant}
             >

@@ -68,10 +68,22 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
 
   const handleTestQuestion = (question: string) => {
     const truncatedQuestion = question.length > 50 ? question.substring(0, 50) + '...' : question;
-    if (window.confirm(`Remove "${truncatedQuestion}" from all existing paper responses? This will clear all answers for this question across all papers.`)) {
-      removeScreeningQuestionFromAllPapers(searchId, question);
-      toast.success(`Removed "${truncatedQuestion}" from all paper responses`);
+    removeScreeningQuestionFromAllPapers(searchId, question);
+    toast.success(`Removed "${truncatedQuestion}" from all paper responses`);
+  };
+
+  const handleTestAllQuestions = () => {
+    if (screeningQuestions.length === 0) {
+      toast.info("No questions to test");
+      return;
     }
+
+    // Remove all questions from all paper responses
+    screeningQuestions.forEach((questionEntry) => {
+      removeScreeningQuestionFromAllPapers(searchId, questionEntry.question);
+    });
+
+    toast.success(`Removed all ${screeningQuestions.length} questions from paper responses`);
   };
 
   const handleClearAllQuestions = () => {
@@ -197,7 +209,7 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
       </Card>
 
       {/* Questions List */}
-      <Card>
+      <Card >
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -205,16 +217,25 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
               Screening Questions ({(screeningQuestions || []).length})
             </span>
             {(screeningQuestions || []).length > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleClearAllQuestions}
-                className="text-destructive hover:bg-destructive/10 h-8 px-2 text-xs"
-                title="Clear all screening questions"
-              >
-                <X className="h-4 w-4 mr-1" />
-                Clear All
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleTestAllQuestions}
+                  title="Test all questions - remove from all responses"
+                >
+                  Test All
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleClearAllQuestions}
+                  className="text-destructive hover:bg-destructive/10 h-8 px-2 text-xs"
+                  title="Clear all screening questions"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Clear All
+                </Button>
+              </div>
             )}
           </CardTitle>
         </CardHeader>
