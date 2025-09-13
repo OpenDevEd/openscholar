@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,28 +10,43 @@ import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
 import type { ScreeningQuestionEntry } from "@/lib/types";
 import { toast } from "sonner";
 import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
-import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation';
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 
 interface ScreeningQuestionsProps {
   searchId: string;
   className?: string;
 }
 
-export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsProps) {
-  const [newQuestion, setNewQuestion] = useState('');
+export function ScreeningQuestions({
+  searchId,
+  className,
+}: ScreeningQuestionsProps) {
+  const [newQuestion, setNewQuestion] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const { getSearchResult, addScreeningQuestion, removeScreeningQuestion, clearScreeningQuestions, removeScreeningQuestionFromAllPapers } = useSearchHistoryStore();
+  const {
+    getSearchResult,
+    addScreeningQuestion,
+    removeScreeningQuestion,
+    clearScreeningQuestions,
+    removeScreeningQuestionFromAllPapers,
+  } = useSearchHistoryStore();
   const { provider, apiKey } = useAIConfigStore();
 
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
 
   // Get research question from question history or use the search query as fallback
-  const lastQuestionFromHistory = searchResult?.questionHistory?.[searchResult.questionHistory.length - 1]?.question;
-  const searchQuery = searchResult?.query || '';
-  const researchQuestion = lastQuestionFromHistory || (searchQuery ? validateAndExpandKeywordsSilently(searchQuery).expandedQuery : '');
+  const lastQuestionFromHistory =
+    searchResult?.questionHistory?.[searchResult.questionHistory.length - 1]
+      ?.question;
+  const searchQuery = searchResult?.query || "";
+  const researchQuestion =
+    lastQuestionFromHistory ||
+    (searchQuery
+      ? validateAndExpandKeywordsSilently(searchQuery).expandedQuery
+      : "");
 
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) {
@@ -40,7 +55,9 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
     }
 
     // Check for duplicates
-    const duplicate = (screeningQuestions || []).find(q => q.question.toLowerCase() === newQuestion.trim().toLowerCase());
+    const duplicate = (screeningQuestions || []).find(
+      (q) => q.question.toLowerCase() === newQuestion.trim().toLowerCase()
+    );
     if (duplicate) {
       toast.error("This question already exists");
       return;
@@ -49,7 +66,7 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
     setIsAdding(true);
     try {
       addScreeningQuestion(searchId, newQuestion.trim());
-      setNewQuestion('');
+      setNewQuestion("");
       toast.success("Question added successfully");
     } catch (error) {
       toast.error("Failed to add question");
@@ -59,15 +76,15 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
   };
 
   const handleDeleteQuestion = (questionIndex: number, question: string) => {
-    const truncatedQuestion = question.length > 50 ? question.substring(0, 50) + '...' : question;
-    if (window.confirm(`Are you sure you want to delete "${truncatedQuestion}"?`)) {
-      removeScreeningQuestion(searchId, questionIndex);
-      toast.success("Question deleted");
-    }
+    const truncatedQuestion =
+      question.length > 50 ? question.substring(0, 50) + "..." : question;
+    removeScreeningQuestion(searchId, questionIndex);
+    toast.success("Question deleted");
   };
 
   const handleTestQuestion = (question: string) => {
-    const truncatedQuestion = question.length > 50 ? question.substring(0, 50) + '...' : question;
+    const truncatedQuestion =
+      question.length > 50 ? question.substring(0, 50) + "..." : question;
     removeScreeningQuestionFromAllPapers(searchId, question);
     toast.success(`Removed "${truncatedQuestion}" from all paper responses`);
   };
@@ -83,7 +100,9 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
       removeScreeningQuestionFromAllPapers(searchId, questionEntry.question);
     });
 
-    toast.success(`Removed all ${screeningQuestions.length} questions from paper responses`);
+    toast.success(
+      `Removed all ${screeningQuestions.length} questions from paper responses`
+    );
   };
 
   const handleClearAllQuestions = () => {
@@ -92,10 +111,10 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete all ${screeningQuestions.length} screening questions? This action cannot be undone.`)) {
-      clearScreeningQuestions(searchId);
-      toast.success(`Cleared all ${screeningQuestions.length} screening questions`);
-    }
+    clearScreeningQuestions(searchId);
+    toast.success(
+      `Cleared all ${screeningQuestions.length} screening questions`
+    );
   };
 
   const handleGenerateWithAI = async () => {
@@ -105,7 +124,9 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
     }
 
     if (!researchQuestion.trim()) {
-      toast.error("No research question available for generating screening questions");
+      toast.error(
+        "No research question available for generating screening questions"
+      );
       return;
     }
 
@@ -113,7 +134,7 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
     try {
       const result = await generateScreeningQuestions(
         researchQuestion,
-        (screeningQuestions || []).map(q => q.question),
+        (screeningQuestions || []).map((q) => q.question),
         provider,
         apiKey
       );
@@ -131,11 +152,14 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
       }
 
       if (addedCount > 0) {
-        toast.success(`Added ${addedCount} new screening question${addedCount > 1 ? 's' : ''}`);
+        toast.success(
+          `Added ${addedCount} new screening question${
+            addedCount > 1 ? "s" : ""
+          }`
+        );
       } else {
         toast.warning("No new questions were generated (may be duplicates)");
       }
-
     } catch (error) {
       console.error("Error generating screening questions:", error);
       toast.error("Failed to generate screening questions. Please try again.");
@@ -145,7 +169,7 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleAddQuestion();
     }
@@ -174,7 +198,8 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
                 disabled={isAdding}
               />
               <p className="text-xs text-muted-foreground">
-                Questions that help determine if a paper meets your inclusion criteria.
+                Questions that help determine if a paper meets your inclusion
+                criteria.
               </p>
             </div>
             <div className="flex gap-3">
@@ -209,7 +234,7 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
       </Card>
 
       {/* Questions List */}
-      <Card >
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
@@ -243,8 +268,12 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
           {(screeningQuestions || []).length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <HelpCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium mb-2">No screening questions yet</p>
-              <p className="text-sm">Add your first question using the form above.</p>
+              <p className="text-lg font-medium mb-2">
+                No screening questions yet
+              </p>
+              <p className="text-sm">
+                Add your first question using the form above.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -276,7 +305,9 @@ export function ScreeningQuestions({ searchId, className }: ScreeningQuestionsPr
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDeleteQuestion(index, questionEntry.question)}
+                      onClick={() =>
+                        handleDeleteQuestion(index, questionEntry.question)
+                      }
                       className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                       title="Delete question"
                     >
