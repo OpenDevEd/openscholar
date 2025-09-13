@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
 import {
@@ -56,6 +56,7 @@ import {
 import { ScreeningContext } from "./results-list";
 import { generateScreeningResponses, translatePaperContent } from "@/app/actions/ai-enhance";
 import { toast } from "sonner";
+import useSWRImmutable from "swr/immutable";
 
 interface PaperCardProps {
   result: any;
@@ -78,6 +79,62 @@ function finalState(
       ? "crossed"
       : "unchecked";
   return "unchecked";
+}
+
+export function useTranslate(data: { id: string, title: string, abstract: string } | undefined, autoSet: boolean = true) {
+  const pathname = usePathname();
+  const searchId = getEffectiveSearchId(pathname, undefined);
+
+  const { provider, apiKey } = useAIConfigStore();
+
+  const selectedLanguage = useSearchHistoryStore((state) => {
+    const currentResult = searchId ? state.searchHistory.find((item) => item.id === searchId) : null;
+    return currentResult?.language || "";
+  });
+
+  const {
+    getTranslation,
+    setTranslation,
+    clearTranslation,
+  } = useTranslationStore();
+
+  const translatedContent = data?.id ? getTranslation(data.id) : null;
+  const [showTranslated, setShowTranslated] = useState(false);
+
+  const handleTranslateContent = useCallback(async () => {
+    const needsTranslation = !translatedContent || translatedContent.sourceLanguage !== selectedLanguage || !selectedLanguage || selectedLanguage === "en";
+
+    if (!apiKey || !provider || !data?.id || !needsTranslation) {
+      return;
+    }
+
+    try {
+      const translation = await translatePaperContent(
+        data.title ,
+        data.abstract || "",
+        selectedLanguage,
+        provider,
+        apiKey
+      );
+
+      setTranslation(data.id, translation);
+      if (autoSet) {
+        setShowTranslated(true);
+      }
+    } catch (error) {
+      console.error("Translation error:", error);
+    } finally {
+    }
+  }, [data?.id, translatedContent, selectedLanguage, apiKey, provider]);
+
+  const { isLoading: isTranslating } = useSWRImmutable(data?.id ? `translation-${data.id}` : null, () => handleTranslateContent());
+
+  return {
+    translatedContent,
+    showTranslated,
+    isTranslating,
+    setShowTranslated,
+  };
 }
 
 export function PaperCard({
@@ -179,17 +236,6 @@ export function PaperCard({
   // State for expanded view
   const [showExpandedView, setShowExpandedView] = useState(false);
 
-  // Translation store
-  const {
-    getTranslation,
-    setTranslation,
-    clearTranslation,
-  } = useTranslationStore();
-
-  // Get translation data from store
-  const translatedContent = getTranslation(result.id);
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [showTranslated, setShowTranslated] = useState(false);
 
   // const handleAddToScreening = () => {
   //   addDocumentFromWork(result);
@@ -226,48 +272,10 @@ export function PaperCard({
   const handleCitedBySearch = () => handleFilteredSearch("cited_by");
   const handleRelatedSearch = () => handleFilteredSearch("related");
 
-  // Translation function
-  const handleTranslateContent = async () => {
-    if (!selectedLanguage || selectedLanguage === "en" || !apiKey || !provider) {
-      return;
-    }
+  const { translatedContent, showTranslated, isTranslating, setShowTranslated } = useTranslate(result);
 
-    setIsTranslating(true);
-    try {
-      const translation = await translatePaperContent(
-        result.title,
-        result.abstract || "",
-        selectedLanguage,
-        provider,
-        apiKey
-      );
-
-      setTranslation(result.id, translation);
-      setShowTranslated(true);
-    } catch (error) {
-      console.error("Translation error:", error);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
 
   // Auto-translate when language changes and conditions are met
-  useEffect(() => {
-    if (selectedLanguage && selectedLanguage !== "en" && apiKey && provider && !isTranslating) {
-      // Only translate if we don't have content for this language or if the language has changed
-      const needsTranslation = !translatedContent || translatedContent.sourceLanguage !== selectedLanguage;
-
-      if (needsTranslation) {
-        handleTranslateContent();
-      } else if (translatedContent && translatedContent.sourceLanguage === selectedLanguage) {
-        // If we have the right translation, make sure it's shown
-        setShowTranslated(true);
-      }
-    } else if (selectedLanguage === "en" || !selectedLanguage) {
-      // If switching back to English or no language selected, show original content
-      setShowTranslated(false);
-    }
-  }, [selectedLanguage, apiKey, provider, result.id, translatedContent]);
 
   return (
     <div className="border rounded-lg hover:bg-accent/50 transition-colors group">
@@ -454,7 +462,7 @@ export function PaperCard({
                 </div>
               )}
 
-              {translatedContent && translatedContent.sourceLanguage === selectedLanguage && (
+              {translatedContent && translatedContent.sourceLanguage === selectedLanguage && !translatedContent.isAlreadyInEnglish && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

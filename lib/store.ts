@@ -1189,6 +1189,7 @@ interface TranslationData {
   translatedTitle: string;
   translatedAbstract: string;
   sourceLanguage: string;
+  isAlreadyInEnglish: boolean;
 }
 
 interface TranslationState {
