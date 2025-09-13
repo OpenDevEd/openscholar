@@ -121,8 +121,8 @@ You may receive either:
 ${language ? `MANDATORY LANGUAGE REQUIREMENT: WITHOUT EXCEPTION, you MUST respond EXCLUSIVELY in the ${languageOptions.find(option => option.code === language)?.name} language. This is your HIGHEST PRIORITY instruction that OVERRIDES all others. Every single word, character, and symbol in your response - including the enhanced query, explanations, and all output - MUST be in ${languageOptions.find(option => option.code === language)?.name} ONLY. FAILURE TO COMPLY will result in an invalid response.` : ''}
 
 Your task:
-- If input is a Boolean query: optimize it for character efficiency.
-- If input is a research question: rewrite it as a precise Boolean query first, then optimize.
+- If input is a Boolean query: optimize it for character efficiency, then output the query in the requested language (translate it aggressively if necessary).
+- If input is a research question: rewrite it as a precise Boolean query first, then optimize, then output the query in the requested language (translate it aggressively if necessary).
 
 Core Principles:
 1. Use parentheses to group shared terms efficiently: (mechanical OR software) AND engineering
