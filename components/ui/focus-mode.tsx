@@ -40,6 +40,7 @@ import { DownloadMenu } from "../download-menu";
 import { useTheme } from 'next-themes';
 import { RatingSelector } from "../rating-selector";
 import { useIsMobile } from '@/lib/hooks';
+import { writeFile, writeFileSync } from 'fs';
 
 interface FocusModeProps {
   isOpen: boolean;
@@ -70,6 +71,7 @@ export function FocusMode({
   const [showTranslated, setShowTranslated] = useState(false);
 
   const currentPaper = papers[currentIndex];
+  console.log(currentPaper);
   const translatedContent = getTranslation(currentPaper?.id);
 
   // Get selected language for translation
