@@ -9,6 +9,8 @@ import {
   useSearchHistoryStore,
   useAIConfigStore,
   useTranslationStore,
+  useTransientScreeningStore,
+  ScreeningQuestion,
 } from "@/lib/store";
 // import { useScreeningStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
@@ -16,6 +18,7 @@ import {
   useCurrentSearchFormState,
   useUpdateSearchFilter,
   useIsMobile,
+  useIsTablet,
 } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "./rating-selector";
@@ -54,9 +57,13 @@ import {
   // ClipboardPlus
 } from "lucide-react";
 import { ScreeningContext } from "./results-list";
-import { generateScreeningResponses, translatePaperContent } from "@/app/actions/ai-enhance";
+import {
+  generateScreeningResponses,
+  translatePaperContent,
+} from "@/app/actions/ai-enhance";
 import { toast } from "sonner";
 import useSWRImmutable from "swr/immutable";
+import { ScreeningQuestionEntry } from "@/lib/types";
 
 interface PaperCardProps {
   result: any;
@@ -81,14 +88,19 @@ function finalState(
   return "unchecked";
 }
 
-export function useTranslate(data: { id: string, title: string, abstract: string } | undefined, autoSet: boolean = true) {
+export function useTranslate(
+  data: { id: string; title: string; abstract: string } | undefined,
+  autoSet: boolean = true
+) {
   const pathname = usePathname();
   const searchId = getEffectiveSearchId(pathname, undefined);
 
   const { provider, apiKey } = useAIConfigStore();
 
   const selectedLanguage = useSearchHistoryStore((state) => {
-    const currentResult = searchId ? state.searchHistory.find((item) => item.id === searchId) : null;
+    const currentResult = searchId
+      ? state.searchHistory.find((item) => item.id === searchId)
+      : null;
     return currentResult?.language || "";
   });
 
@@ -96,13 +108,28 @@ export function useTranslate(data: { id: string, title: string, abstract: string
     getTranslation,
     setTranslation,
     clearTranslation,
+    getShowTranslated,
+    setShowTranslated: setShowTranslatedStore,
   } = useTranslationStore();
 
   const translatedContent = data?.id ? getTranslation(data.id) : null;
-  const [showTranslated, setShowTranslated] = useState(false);
+  const showTranslated = data?.id ? getShowTranslated(data.id) : false;
+
+  const setShowTranslated = useCallback(
+    (show: boolean) => {
+      if (data?.id) {
+        setShowTranslatedStore(data?.id, show);
+      }
+    },
+    [data?.id]
+  );
 
   const handleTranslateContent = useCallback(async () => {
-    const needsTranslation = !translatedContent || translatedContent.sourceLanguage !== selectedLanguage || !selectedLanguage || selectedLanguage === "en";
+    const needsTranslation =
+      !!selectedLanguage &&
+      selectedLanguage !== "en" &&
+      (!translatedContent ||
+        translatedContent.sourceLanguage !== selectedLanguage);
 
     if (!apiKey || !provider || !data?.id || !needsTranslation) {
       return;
@@ -110,14 +137,14 @@ export function useTranslate(data: { id: string, title: string, abstract: string
 
     try {
       const translation = await translatePaperContent(
-        data.title ,
+        data.title,
         data.abstract || "",
         selectedLanguage,
         provider,
         apiKey
       );
 
-      setTranslation(data.id, translation);
+      setTranslation(data?.id, translation);
       if (autoSet) {
         setShowTranslated(true);
       }
@@ -127,7 +154,10 @@ export function useTranslate(data: { id: string, title: string, abstract: string
     }
   }, [data?.id, translatedContent, selectedLanguage, apiKey, provider]);
 
-  const { isLoading: isTranslating } = useSWRImmutable(data?.id ? `translation-${data.id}` : null, () => handleTranslateContent());
+  const { isLoading: isTranslating } = useSWRImmutable(
+    data?.id ? `translation-${data.id}` : null,
+    () => handleTranslateContent()
+  );
 
   return {
     translatedContent,
@@ -135,6 +165,285 @@ export function useTranslate(data: { id: string, title: string, abstract: string
     isTranslating,
     setShowTranslated,
   };
+}
+
+export function useScreening(data: {
+  id: string;
+  title: string;
+  abstract: string;
+}) {
+  const pathname = usePathname();
+  const searchId = getEffectiveSearchId(pathname, undefined);
+  // Get current search and screening data
+  const { getSearchResult } = useSearchHistoryStore();
+  const searchResult = getSearchResult(searchId || "");
+
+  const {
+    missingResponses,
+    existingResponses,
+    setScreeningResponses,
+    canStartScreening,
+  } = useContext(ScreeningContext);
+
+  const myExistingResponses = existingResponses?.[data.id] || {};
+  const myMissingResponses = missingResponses?.[data.id] || []
+
+  const { testIndexPerQuestion } = useTransientScreeningStore();
+
+  const stableMyMissingResponses = JSON.stringify(myMissingResponses.map((question) => question + "#" + (testIndexPerQuestion[question] || 0)));
+
+  const screeningQuestions = searchResult?.screeningQuestions || [];
+  const screeningResponses = searchResult?.screeningResponses || {};
+
+  const { provider, apiKey, budget, dollarsUsed } = useAIConfigStore();
+
+  const startScreening = useCallback(async (): Promise<
+    | { responses: Record<string, boolean | null>; confidence: number }
+    | undefined
+  > => {
+    if (provider && apiKey && myMissingResponses.length > 0) {
+      if (budget > 0 && dollarsUsed >= budget) {
+        return;
+      }
+
+      try {
+        const screeningResponses = await generateScreeningResponses(
+          data.title,
+          data.abstract,
+          myMissingResponses,
+          provider,
+          apiKey
+        );
+
+        if (setScreeningResponses) {
+          setScreeningResponses(data.id, screeningResponses.responses);
+        }
+
+        return screeningResponses;
+      } catch (error) {
+        console.error("Error generating screening responses:", error);
+        toast.error(
+          "Failed to generate screening responses. Please check your API key and try again."
+        );
+      }
+    }
+  }, [data.title, data.abstract, myMissingResponses, provider, apiKey]);
+
+  const { isLoading: isScreening } = useSWRImmutable(
+    (data.id && canStartScreening)
+      ? ["screening", data.id, stableMyMissingResponses]
+      : null,
+    () => startScreening(),
+    {}
+  );
+
+  return {
+    screeningQuestions,
+    screeningResponses,
+    myExistingResponses,
+    myLoadingResponses: (isScreening
+      ? myMissingResponses.reduce((acc, question) => ({ ...acc, [question]: true }), {})
+      : {}) as Record<string, boolean>,
+    myMissingResponses,
+  };
+}
+
+export function ScreeningResponses({
+  data,
+  expandShortcut,
+}: {
+  data: { id: string; title: string; abstract: string };
+  expandShortcut?: string;
+}) {
+  const {
+    screeningQuestions,
+    screeningResponses,
+    myExistingResponses,
+    myLoadingResponses,
+    myMissingResponses,
+  } = useScreening(data);
+
+  // State for expanded view
+  const [showExpandedView, setShowExpandedView] = useState(false);
+
+  // Handle keyboard shortcut
+  useEffect(() => {
+    if (!expandShortcut) return;
+
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === expandShortcut && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        setShowExpandedView(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [expandShortcut]);
+
+  return (
+    <>
+      {screeningQuestions.length > 0 && (
+        <div className="mb-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            {screeningQuestions.map((question, index) => {
+              const isQuestionAnswered = myExistingResponses[question.question];
+              const isQuestionLoading = myLoadingResponses[question.question];
+              const isQuestionMissing = myMissingResponses.includes(
+                question.question
+              );
+
+              const displayState = finalState(
+                isQuestionAnswered,
+                isQuestionLoading,
+                isQuestionMissing
+              );
+
+              return (
+                <button
+                  key={index}
+                  disabled={displayState === "loading"}
+                  className={`flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors ${
+                    displayState === "checked"
+                      ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100"
+                      : displayState === "crossed"
+                      ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100"
+                      : displayState === "loading"
+                      ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait"
+                      : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                  }`}
+                  title={`Question ${index + 1}: ${question.question}`}
+                >
+                  {displayState === "checked" && (
+                    <Check className="h-3 w-3 text-green-700" />
+                  )}
+                  {displayState === "crossed" && (
+                    <X className="h-3 w-3 text-red-700" />
+                  )}
+                  {displayState === "unchecked" && (
+                    <Minus className="h-3 w-3 text-gray-500" />
+                  )}
+                  {displayState === "loading" && (
+                    <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                  )}
+                  <span className="font-mono">{index + 1}</span>
+                </button>
+              );
+            })}
+
+            {/* Expand Button */}
+            <button
+              onClick={() => setShowExpandedView(!showExpandedView)}
+              className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors"
+              title={`Show detailed screening responses${expandShortcut ? ` (${expandShortcut.toUpperCase()})` : ""}`}
+            >
+              <Table className="h-3 w-3 text-blue-700" />
+              {showExpandedView ? "Hide" : "Details"}
+              {expandShortcut && (
+                <span className="text-xs text-muted-background bg-black/10 px-1 rounded hidden md:inline">
+                  {expandShortcut.toUpperCase()}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Expanded Table View */}
+          {showExpandedView && (
+            <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
+              <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                <Table className="h-4 w-4" />
+                Screening Responses
+              </h4>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                        #
+                      </th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                        Question
+                      </th>
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                        Response
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {screeningQuestions.map((question, index) => {
+                      const isQuestionAnswered =
+                        myExistingResponses[question.question];
+                      const isQuestionLoading =
+                        myLoadingResponses[question.question];
+                      const isQuestionMissing = myMissingResponses.includes(
+                        question.question
+                      );
+                      const displayState = finalState(
+                        isQuestionAnswered,
+                        isQuestionLoading,
+                        isQuestionMissing
+                      );
+                      const statusText =
+                        isQuestionAnswered === true
+                          ? "Yes"
+                          : isQuestionAnswered === false
+                          ? "No"
+                          : isQuestionLoading
+                          ? "Loading..."
+                          : "?";
+
+                      return (
+                        <tr
+                          key={index}
+                          className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                        >
+                          <td className="py-2 px-2 font-mono text-muted-foreground">
+                            {index + 1}
+                          </td>
+                          <td className="py-2 px-2 text-foreground max-w-xs">
+                            <div className="truncate" title={question.question}>
+                              {question.question}
+                            </div>
+                          </td>
+                          <td className="py-2 px-2">
+                            <div
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                                displayState === "checked"
+                                  ? "bg-green-100 text-green-800 border border-green-200"
+                                  : displayState === "crossed"
+                                  ? "bg-red-100 text-red-800 border border-red-200"
+                                  : displayState === "loading"
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                  : "bg-gray-100 text-gray-700 border border-gray-200"
+                              }`}
+                            >
+                              {displayState === "checked" && (
+                                <Check className="h-3 w-3 text-green-800" />
+                              )}
+                              {displayState === "crossed" && (
+                                <X className="h-3 w-3 text-red-800" />
+                              )}
+                              {displayState === "unchecked" && (
+                                <Minus className="h-3 w-3 text-gray-600" />
+                              )}
+                              {displayState === "loading" && (
+                                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                              )}
+                              {statusText}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
 }
 
 export function PaperCard({
@@ -148,94 +457,16 @@ export function PaperCard({
   const { expandedAbstracts, toggleAbstract } = useResultsStore();
   const { isFocusModeOpen } = useUIStore();
   const updateFilter = useUpdateSearchFilter();
-  const isMobile = useIsMobile();
-  const { missingResponses, existingResponses, setScreeningResponses, canStartScreening } =
-    useContext(ScreeningContext);
-  const myMissingResponses = missingResponses?.[result.id] || [];
-  const [myLoadingResponses, setMyLoadingResponses] = useState<
-    Record<string, boolean>
-  >({});
-  const myExistingResponses = existingResponses?.[result.id] || {};
-
-  const { provider, apiKey, budget, dollarsUsed } = useAIConfigStore();
+  const isMobile = useIsTablet();
 
   const searchId = getEffectiveSearchId(pathname, undefined);
-
-  // Get selected language for translation
+  // Get current search and screening data
   const selectedLanguage = useSearchHistoryStore((state) => {
-    const currentResult = searchId ? state.searchHistory.find((item) => item.id === searchId) : null;
+    const currentResult = searchId
+      ? state.searchHistory.find((item) => item.id === searchId)
+      : null;
     return currentResult?.language || "";
   });
-
-  const stableMyMissingResponses = JSON.stringify(myMissingResponses);
-  const [calledFor, setCalledFor] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (provider && apiKey && myMissingResponses.length > 0) {
-      if (budget > 0 && dollarsUsed >= budget) {
-        return;
-      }
-
-      const screen = async () => {
-        const calledForKey = JSON.stringify(myMissingResponses);
-
-        if (calledFor[calledForKey]) {
-          return;
-        }
-
-        setMyLoadingResponses(
-          myMissingResponses.reduce(
-            (acc, question) => ({ ...acc, [question]: true }),
-            {}
-          )
-        );
-
-        setCalledFor((prev) => ({ ...prev, [calledForKey]: true }));
-
-        console.log("generating responses for", result.id);
-        try {
-          const screeningResponses = await generateScreeningResponses(
-            result.title,
-            result.abstract,
-            myMissingResponses,
-            provider,
-            apiKey
-          );
-
-          console.log("screening responses", result.id, screeningResponses);
-          if (setScreeningResponses) {
-            setScreeningResponses(result.id, screeningResponses.responses);
-          }
-        } catch (error) {
-          console.error("Error generating screening responses:", error);
-          toast.error(
-            "Failed to generate screening responses. Please check your API key and try again."
-          );
-        } finally {
-          setMyLoadingResponses({});
-          setCalledFor((prev) => ({ ...prev, [calledForKey]: false }));
-        }
-      };
-      if (canStartScreening) {
-        screen();
-      }
-    }
-  }, [stableMyMissingResponses, canStartScreening]);
-
-  // const { addDocumentFromWork, documents } = useScreeningStore();
-
-  // Check if this document is already in screening
-  // const isInScreening = documents.some(doc => doc.id === result.id || doc.originalWork?.id === result.id);
-
-  // Get current search and screening data
-  const { getSearchResult } = useSearchHistoryStore();
-  const searchResult = getSearchResult(searchId || "");
-  const screeningQuestions = searchResult?.screeningQuestions || [];
-  const screeningResponses = searchResult?.screeningResponses || {};
-
-  // State for expanded view
-  const [showExpandedView, setShowExpandedView] = useState(false);
-
 
   // const handleAddToScreening = () => {
   //   addDocumentFromWork(result);
@@ -272,8 +503,12 @@ export function PaperCard({
   const handleCitedBySearch = () => handleFilteredSearch("cited_by");
   const handleRelatedSearch = () => handleFilteredSearch("related");
 
-  const { translatedContent, showTranslated, isTranslating, setShowTranslated } = useTranslate(result);
-
+  const {
+    translatedContent,
+    showTranslated,
+    isTranslating,
+    setShowTranslated,
+  } = useTranslate(result);
 
   // Auto-translate when language changes and conditions are met
 
@@ -290,170 +525,12 @@ export function PaperCard({
         )}
 
         {/* Screening Questions Checkboxes */}
-        {screeningQuestions.length > 0 && (
-          <div className="mb-3">
-            <div className="flex flex-wrap gap-2 items-center">
-              {screeningQuestions.map((question, index) => {
-                const isQuestionAnswered =
-                  myExistingResponses[question.question];
-                const isQuestionLoading = myLoadingResponses[question.question];
-                const isQuestionMissing = myMissingResponses.includes(
-                  question.question
-                );
-
-                const displayState = finalState(
-                  isQuestionAnswered,
-                  isQuestionLoading,
-                  isQuestionMissing
-                );
-
-                return (
-                  <button
-                    key={index}
-                    disabled={displayState === "loading"}
-                    className={`flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors ${
-                      displayState === "checked"
-                        ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100"
-                        : displayState === "crossed"
-                        ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100"
-                        : displayState === "loading"
-                        ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait"
-                        : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
-                    }`}
-                    title={`Question ${index + 1}: ${question.question}`}
-                  >
-                    {displayState === "checked" && (
-                      <Check className="h-3 w-3 text-green-700" />
-                    )}
-                    {displayState === "crossed" && (
-                      <X className="h-3 w-3 text-red-700" />
-                    )}
-                    {displayState === "unchecked" && (
-                      <Minus className="h-3 w-3 text-gray-500" />
-                    )}
-                    {displayState === "loading" && (
-                      <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                    )}
-                    <span className="font-mono">{index + 1}</span>
-                  </button>
-                );
-              })}
-
-              {/* Expand Button */}
-              <button
-                onClick={() => setShowExpandedView(!showExpandedView)}
-                className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors ml-2"
-                title="Show detailed screening responses"
-              >
-                <Table className="h-3 w-3 text-blue-700" />
-                {showExpandedView ? "Hide" : "Details"}
-              </button>
-            </div>
-
-            {/* Expanded Table View */}
-            {showExpandedView && (
-              <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
-                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
-                  <Table className="h-4 w-4" />
-                  Screening Responses
-                </h4>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">
-                          #
-                        </th>
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">
-                          Question
-                        </th>
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">
-                          Response
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {screeningQuestions.map((question, index) => {
-                        const isQuestionAnswered =
-                          myExistingResponses[question.question];
-                        const isQuestionLoading =
-                          myLoadingResponses[question.question];
-                        const isQuestionMissing = myMissingResponses.includes(
-                          question.question
-                        );
-                        const displayState = finalState(
-                          isQuestionAnswered,
-                          isQuestionLoading,
-                          isQuestionMissing
-                        );
-                        const statusText =
-                          isQuestionAnswered === true
-                            ? "Yes"
-                            : isQuestionAnswered === false
-                            ? "No"
-                            : isQuestionLoading
-                            ? "Loading..."
-                            : "?";
-
-                        return (
-                          <tr
-                            key={index}
-                            className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                          >
-                            <td className="py-2 px-2 font-mono text-muted-foreground">
-                              {index + 1}
-                            </td>
-                            <td className="py-2 px-2 text-foreground max-w-xs">
-                              <div
-                                className="truncate"
-                                title={question.question}
-                              >
-                                {question.question}
-                              </div>
-                            </td>
-                            <td className="py-2 px-2">
-                              <div
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                                  displayState === "checked"
-                                    ? "bg-green-100 text-green-800 border border-green-200"
-                                    : displayState === "crossed"
-                                    ? "bg-red-100 text-red-800 border border-red-200"
-                                    : displayState === "loading"
-                                    ? "bg-blue-100 text-blue-800 border border-blue-200"
-                                    : "bg-gray-100 text-gray-700 border border-gray-200"
-                                }`}
-                              >
-                                {displayState === "checked" && (
-                                  <Check className="h-3 w-3 text-green-800" />
-                                )}
-                                {displayState === "crossed" && (
-                                  <X className="h-3 w-3 text-red-800" />
-                                )}
-                                {displayState === "unchecked" && (
-                                  <Minus className="h-3 w-3 text-gray-600" />
-                                )}
-                                {displayState === "loading" && (
-                                  <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                                )}
-                                {statusText}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        <ScreeningResponses data={result} />
 
         {/* Title */}
         <div className="mb-3">
           {/* Translation toggle and status */}
-          {(selectedLanguage && selectedLanguage !== "en") && (
+          {selectedLanguage && selectedLanguage !== "en" && (
             <div className="flex items-center gap-2 mb-2">
               {isTranslating && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -462,17 +539,19 @@ export function PaperCard({
                 </div>
               )}
 
-              {translatedContent && translatedContent.sourceLanguage === selectedLanguage && !translatedContent.isAlreadyInEnglish && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowTranslated(!showTranslated);
-                  }}
-                  className="text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  {showTranslated ? "Original" : "English"}
-                </button>
-              )}
+              {translatedContent &&
+                translatedContent.sourceLanguage === selectedLanguage &&
+                !translatedContent.isAlreadyInEnglish && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowTranslated(!showTranslated);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {showTranslated ? "Original" : "English"}
+                  </button>
+                )}
             </div>
           )}
 
@@ -481,10 +560,9 @@ export function PaperCard({
             className="text-left w-full group-hover:underline hover:text-blue-600 transition-colors cursor-pointer"
           >
             <h3 className="font-medium text-lg text-wrap-anywhere">
-              {(showTranslated && translatedContent)
+              {showTranslated && translatedContent
                 ? `${translatedContent.translatedTitle} (${result.publication_year})`
-                : `${result.title} (${result.publication_year})`
-              }
+                : `${result.title} (${result.publication_year})`}
             </h3>
           </button>
         </div>
@@ -511,16 +589,16 @@ export function PaperCard({
           {result.abstract && (
             <p className="text-sm text-muted-foreground text-wrap-anywhere mb-2">
               {expandedAbstracts[result.id]
-                ? (showTranslated && translatedContent
-                    ? translatedContent.translatedAbstract
-                    : result.abstract)
-                : (showTranslated && translatedContent
-                    ? (translatedContent.translatedAbstract.length > 500
-                        ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
-                        : translatedContent.translatedAbstract)
-                    : (result.abstract.length > 500
-                        ? `${result.abstract.slice(0, 500)}...`
-                        : result.abstract))}
+                ? showTranslated && translatedContent
+                  ? translatedContent.translatedAbstract
+                  : result.abstract
+                : showTranslated && translatedContent
+                ? translatedContent.translatedAbstract.length > 500
+                  ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
+                  : translatedContent.translatedAbstract
+                : result.abstract.length > 500
+                ? `${result.abstract.slice(0, 500)}...`
+                : result.abstract}
             </p>
           )}
 
@@ -708,6 +786,27 @@ export function PaperCard({
                     <span className="text-sm">PDF</span>
                   </Button>
                 )}
+
+                {/* DOI Button */}
+                {result.doi && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const doiUrl = result.doi.startsWith("http")
+                        ? result.doi
+                        : `https://doi.org/${result.doi}`;
+                      window.open(doiUrl, "_blank");
+                    }}
+                    className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 px-3"
+                    title="Open DOI"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span className="text-xs font-mono">
+                      {result.doi.replace("https://doi.org/", "")}
+                    </span>
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -758,49 +857,10 @@ export function PaperCard({
           </div>
         ) : (
           /* Desktop Layout: Original horizontal layout */
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between content-end gap-4 flex-wrap">
             {/* Left side: Rating and Citation buttons */}
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-4 shrink-0">
               <RatingSelector paperId={result.id} variant="compact" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCitesSearch}
-                className="flex items-center gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/50 flex-shrink-0"
-                title="Find works that cite this paper"
-              >
-                <Quote className="h-4 w-4" />
-                <span className="text-sm">
-                  Cited by: {result.cited_by_count || 0}
-                </span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCitedBySearch}
-                className="flex items-center gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/50 flex-shrink-0"
-                title="Find works cited by this paper"
-              >
-                <Quote className="h-4 w-4" />
-                <span className="text-sm">
-                  Cites: {result.referenced_works_count || 0}
-                </span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRelatedSearch}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50 flex-shrink-0"
-                title="Find works related to this paper"
-              >
-                <Network className="h-4 w-4" />
-                <span className="text-sm">
-                  Related: {result.related_works?.length || 0}
-                </span>
-              </Button>
             </div>
 
             {/* Right side: Action buttons */}
@@ -851,6 +911,37 @@ export function PaperCard({
                 </Button>
               )}
 
+              {/* DOI Button */}
+              {result.doi && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const doiUrl = result.doi.startsWith("http")
+                      ? result.doi
+                      : `https://doi.org/${result.doi}`;
+                    window.open(doiUrl, "_blank");
+                  }}
+                  onMouseDown={(e) => {
+                    // Handle middle click
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      const doiUrl = result.doi.startsWith("http")
+                        ? result.doi
+                        : `https://doi.org/${result.doi}`;
+                      window.open(doiUrl, "_blank");
+                    }
+                  }}
+                  className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0"
+                  title="Open DOI"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  <span className="text-xs font-mono">
+                    {result.doi.replace("https://doi.org/", "")}
+                  </span>
+                </Button>
+              )}
+
               {/* Download Menu */}
               <DownloadMenu
                 variant="icon"
@@ -863,6 +954,47 @@ export function PaperCard({
                   onDownloadEssentialItem(result, "csv")
                 }
               />
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0 justify-center w-full bg-card-foreground/5 rounded-lg p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCitesSearch}
+                className="flex items-center gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950/50 flex-shrink-0"
+                title="Find works that cite this paper"
+              >
+                <Quote className="h-4 w-4" />
+                <span className="text-sm">
+                  Cited by: {result.cited_by_count || 0}
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCitedBySearch}
+                className="flex items-center gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-950/50 flex-shrink-0"
+                title="Find works cited by this paper"
+              >
+                <Quote className="h-4 w-4" />
+                <span className="text-sm">
+                  Cites: {result.referenced_works_count || 0}
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRelatedSearch}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/50 flex-shrink-0"
+                title="Find works related to this paper"
+              >
+                <Network className="h-4 w-4" />
+                <span className="text-sm">
+                  Related: {result.related_works?.length || 0}
+                </span>
+              </Button>
             </div>
           </div>
         )}

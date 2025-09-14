@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Sparkles, HelpCircle, X, TestTube, Play } from "lucide-react";
-import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
+import { useSearchHistoryStore, useAIConfigStore, useTransientScreeningStore } from "@/lib/store";
 import type { ScreeningQuestionEntry } from "@/lib/types";
 import { toast } from "sonner";
 import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
@@ -33,7 +33,7 @@ export function ScreeningQuestions({
     removeScreeningQuestionFromAllPapers,
   } = useSearchHistoryStore();
   const { provider, apiKey } = useAIConfigStore();
-
+  const { incrementTestIndexPerQuestion } = useTransientScreeningStore();
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
 
@@ -86,6 +86,7 @@ export function ScreeningQuestions({
     const truncatedQuestion =
       question.length > 50 ? question.substring(0, 50) + "..." : question;
     removeScreeningQuestionFromAllPapers(searchId, question);
+    incrementTestIndexPerQuestion(question);
     toast.success(`Removed "${truncatedQuestion}" from all paper responses`);
   };
 
@@ -98,6 +99,7 @@ export function ScreeningQuestions({
     // Remove all questions from all paper responses
     screeningQuestions.forEach((questionEntry) => {
       removeScreeningQuestionFromAllPapers(searchId, questionEntry.question);
+      incrementTestIndexPerQuestion(questionEntry.question);
     });
 
     toast.success(

@@ -1194,8 +1194,11 @@ interface TranslationData {
 
 interface TranslationState {
   translations: Record<string, TranslationData>;
+  showTranslations: Record<string, boolean>;
   setTranslation: (id: string, data: TranslationData) => void;
   getTranslation: (id: string) => TranslationData | null;
+  getShowTranslated: (id: string) => boolean;
+  setShowTranslated: (id: string, show: boolean) => void;
   clearTranslation: (id: string) => void;
   clearAllTranslations: () => void;
 }
@@ -1203,7 +1206,7 @@ interface TranslationState {
 export const useTranslationStore = create<TranslationState>()(
   (set, get) => ({
     translations: {},
-
+    showTranslations: {},
     setTranslation: (id: string, data: TranslationData) => {
       set((state) => ({
         translations: {
@@ -1215,6 +1218,19 @@ export const useTranslationStore = create<TranslationState>()(
 
     getTranslation: (id: string) => {
       return get().translations[id] || null;
+    },
+
+    getShowTranslated: (id: string) => {
+      return get().showTranslations[id] || false;
+    },
+
+    setShowTranslated: (id: string, show: boolean) => {
+      set((state) => ({
+        showTranslations: {
+          ...state.showTranslations,
+          [id]: show,
+        },
+      }));
     },
 
     clearTranslation: (id: string) => {
@@ -1230,3 +1246,33 @@ export const useTranslationStore = create<TranslationState>()(
     },
   })
 ); 
+
+export const useTransientScreeningStore = create<{
+  calledFor: Record<string, boolean>;
+  setCalledFor: (key: string, value: boolean) => void;
+  myLoadingResponses: Record<string, Record<string, boolean>>;
+  getMyLoadingResponses: (key: string) => Record<string, boolean>;
+  setMyLoadingResponses: (key: string, value: Record<string, boolean>) => void;
+  clearMyLoadingResponses: (key: string) => void;
+  testIndexPerQuestion: Record<string, number>;
+  setTestIndexPerQuestion: (key: string, value: number) => void;
+  incrementTestIndexPerQuestion: (key: string) => void;
+}>()(
+  persist(
+    (set, get) => ({
+      calledFor: {},
+      setCalledFor: (key, value) => set((state) => ({ calledFor: { ...state.calledFor, [key]: value } })),
+      myLoadingResponses: {},
+      getMyLoadingResponses: (key) => get().myLoadingResponses[key] || false,
+      setMyLoadingResponses: (key, value) => set((state) => ({ myLoadingResponses: { ...state.myLoadingResponses, [key]: value } })),
+      clearMyLoadingResponses: (key) => set((state) => ({ myLoadingResponses: { ...state.myLoadingResponses, [key]: {} } })),
+      testIndexPerQuestion: {},
+      setTestIndexPerQuestion: (key, value) => set((state) => ({ testIndexPerQuestion: { ...state.testIndexPerQuestion, [key]: value } })),
+      incrementTestIndexPerQuestion: (key) => set((state) => ({ testIndexPerQuestion: { ...state.testIndexPerQuestion, [key]: (state.testIndexPerQuestion[key] || 0) + 1 } })),
+    }),
+    {
+      name: 'transient-screening-store',
+      partialize: (state) => ({ testIndexPerQuestion: state.testIndexPerQuestion }),
+    }
+  )
+);

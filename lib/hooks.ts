@@ -33,6 +33,10 @@ export function useIsMobile(): boolean {
   return useMediaQuery("(max-width: 767px)");
 }
 
+export function useIsTablet(): boolean {
+  return useMediaQuery("(max-width: 1023px)");
+}
+
 // Custom hook to handle query changes without keyword expansion
 // The keyword expansion and setSuggestedQuery is now handled centrally by QuerySyncProvider
 export function useQueryChangeHandler(setQuery: (query: string) => void) {

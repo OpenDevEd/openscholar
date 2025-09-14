@@ -24,6 +24,7 @@ import {
   useRatingsStore,
   useSearchHistoryStore,
   useAIConfigStore,
+  useUIStore,
 } from "@/lib/store";
 import { ResultsFilter } from "./results-filter";
 import { PaperCard } from "./paper-card";
@@ -55,6 +56,8 @@ import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-uti
 import { ScreeningResponses } from "@/lib/types";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { languageOptions } from "./language-selector";
+import { FocusMode } from "./ui/focus-mode";
+import { downloadEssentialItem, downloadItem } from "@/lib/search-actions";
 
 interface PapersListProps {
   results: any[];
@@ -372,7 +375,7 @@ export function ResultsList({
   const { currentPage, resultsFilter, setCurrentPage, setResultsFilter } =
     useResultsStore();
 
-  const { results, totalCount } = useSearchResults();
+  const { results, totalCount, searchState } = useSearchResults();
   const { ratingRange, onlyRatedPapers } = useCurrentSearchFormState();
   const { ratings } = useRatingsStore();
   const resultsContainerRef = useRef<HTMLDivElement>(null);
@@ -388,6 +391,13 @@ export function ResultsList({
   const [canStartScreening, setCanStartScreening] = useState(false);
 
   const pathname = usePathname();
+
+  const {
+    isFocusModeOpen,
+    loadingResultIndex,
+    focusModeIndex,
+  } = useUIStore();
+
 
   useEffect(() => {
     setTimeout(() => {
@@ -594,8 +604,16 @@ Please enhance this academic search query according to the user's specific instr
   );
 
   const missingResponses = useMemo(() => {
+    let results = paginatedResults;
+    if (isFocusModeOpen) {
+      console.log("focusModeIndex", focusModeIndex);
+      const currentlyFocusedPaper = filteredResults[focusModeIndex];
+      if (paginatedResults.some((result: any) => result.id !== currentlyFocusedPaper.id)) {
+        results = [currentlyFocusedPaper]
+      }
+    }
     return generateMissingScreeningCombinationsByPaper(
-      paginatedResults,
+      results,
       currentSearchResult?.screeningQuestions || [],
       currentSearchResult?.screeningResponses || {}
     );
@@ -647,6 +665,13 @@ Please enhance this academic search query according to the user's specific instr
         canStartScreening,
       }}
     >
+      <FocusMode
+        isOpen={isFocusModeOpen}
+        onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
+        papers={filteredResults}
+        onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
+        onDownloadEssentialItem={(item, format) => downloadEssentialItem(item, format, searchState)}
+      />
       <div className="space-y-4">
         {/* Updating Results Animation */}
         <div className="space-y-4">

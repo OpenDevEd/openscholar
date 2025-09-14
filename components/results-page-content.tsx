@@ -46,11 +46,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
   const effectiveSearchId = useEffectiveSearchId();
 
   const {
-    isFocusModeOpen,
-    loadingResultIndex,
-  } = useUIStore();
-
-  const {
     results,
     totalCount,
     originalQuery: currentQuery,
@@ -90,14 +85,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
           </main>
         </div>
       </div>
-
-      <FocusMode
-        isOpen={isFocusModeOpen}
-        onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
-        papers={results}
-        onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
-        onDownloadEssentialItem={(item, format) => downloadEssentialItem(item, format, searchState)}
-      />
     </>
   );
 } 

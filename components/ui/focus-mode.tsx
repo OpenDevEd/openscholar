@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
   Lock,
   Globe,
   ExternalLink,
+  FileText,
   Settings,
   RotateCcw,
   Loader2,
@@ -59,7 +60,7 @@ import { useTheme } from "next-themes";
 import { RatingSelector } from "../rating-selector";
 import { useIsMobile } from "@/lib/hooks";
 import { writeFile, writeFileSync } from "fs";
-import { useTranslate } from "../paper-card";
+import { ScreeningResponses, useTranslate } from "../paper-card";
 
 interface FocusModeProps {
   isOpen: boolean;
@@ -157,7 +158,7 @@ export function FocusMode({
     showTranslated,
     isTranslating,
     setShowTranslated,
-  } = useTranslate(currentPaper, false);
+  } = useTranslate(currentPaper);
 
   useEffect(() => {
     setShowSettings(false);
@@ -231,6 +232,16 @@ export function FocusMode({
           e.preventDefault();
           if (currentPaper.open_access?.oa_url) {
             window.open(currentPaper.open_access.oa_url, "_blank");
+          }
+          break;
+        case "i":
+        case "I":
+          e.preventDefault();
+          if (currentPaper.doi) {
+            const doiUrl = currentPaper.doi.startsWith("http")
+              ? currentPaper.doi
+              : `https://doi.org/${currentPaper.doi}`;
+            window.open(doiUrl, "_blank");
           }
           break;
         case "x":
@@ -369,6 +380,8 @@ export function FocusMode({
           ></span>
         )}
 
+        <ScreeningResponses data={paper} expandShortcut="e" />
+
         {/* Title & Year - Compact */}
         <div className={cn(settings.compactMode ? "mb-1" : "mb-2")}>
           <h1
@@ -477,36 +490,51 @@ export function FocusMode({
                   </span>
                 </span>
               )}
-              {!isPreview && paper.open_access && (
+              {!isPreview && paper.open_access && paper.open_access.is_oa && (
                 <span className="flex items-center gap-1">
-                  {paper.open_access.is_oa ? (
-                    <>
-                      <Unlock className="h-3 w-3 text-green-600" />
-                      <span className="text-green-600 font-medium">Open</span>
-                      {paper.open_access.oa_url && (
-                        <>
-                          <a
-                            href={paper.open_access.oa_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            <Globe className="h-3 w-3" />
-                          </a>
-                          <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                            A
-                          </span>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-muted-foreground font-medium">
-                        Closed
-                      </span>
-                    </>
-                  )}
+                  
+                  <>
+                    <FileText className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600 font-medium">PDF</span>
+                    {paper.open_access.oa_url && (
+                      <>
+                        <a
+                          href={paper.open_access.oa_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        ></a>
+                        <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                          A
+                        </span>
+                      </>
+                    )}
+                  </>
+                  
+                </span>
+              )}
+
+              {/* DOI Button */}
+              {!isPreview && paper.doi && (
+                <span className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      const doiUrl = paper.doi.startsWith("http")
+                        ? paper.doi
+                        : `https://doi.org/${paper.doi}`;
+                      window.open(doiUrl, "_blank");
+                    }}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
+                    title="Open DOI"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span className="font-mono">
+                      {paper.doi.replace("https://doi.org/", "")}
+                    </span>
+                  </button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    I
+                  </span>
                 </span>
               )}
             </div>
