@@ -818,8 +818,11 @@ export function PaperCard({
                     title="Open DOI"
                   >
                     <ExternalLink className="h-3 w-3" />
-                    <span className="text-xs font-mono">
+                    <span className="text-xs font-mono hidden md:inline">
                       {result.doi.replace("https://doi.org/", "")}
+                    </span>
+                    <span className="inline md:hidden text-sm">
+                      DOI
                     </span>
                   </Button>
                 )}
