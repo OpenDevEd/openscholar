@@ -443,7 +443,7 @@ export async function translatePaperContent(
       schema: z.object({
         translatedTitle: z.string().describe("The paper title translated to English"),
         translatedAbstract: z.string().describe("The paper abstract translated to English"),
-        isAlreadyInEnglish: z.boolean().describe("Whether the paper title and abstract are already in English"),
+        // isAlreadyInEnglish: z.boolean().describe("Whether the paper title and abstract are already in English"),
       }),
       providerOptions: {
         google: {
@@ -471,8 +471,6 @@ Title: "${title}"
 Abstract: "${abstract}"
 
 Provide the English translation of the title and abstract, maintaining academic precision and terminology.
-
-If the paper title and abstract are already in English, return true for isAlreadyInEnglish.
 `,
     });
 
@@ -482,7 +480,7 @@ If the paper title and abstract are already in English, return true for isAlread
       translatedTitle: object.translatedTitle,
       translatedAbstract: object.translatedAbstract,
       sourceLanguage: sourceLanguage,
-      isAlreadyInEnglish: object.isAlreadyInEnglish,
+      isAlreadyInEnglish: false,
     };
   } catch (error) {
     console.error('Paper translation failed:', error);
