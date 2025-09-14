@@ -186,11 +186,15 @@ export function useScreening(data: {
   } = useContext(ScreeningContext);
 
   const myExistingResponses = existingResponses?.[data.id] || {};
-  const myMissingResponses = missingResponses?.[data.id] || []
+  const myMissingResponses = missingResponses?.[data.id] || [];
 
   const { testIndexPerQuestion } = useTransientScreeningStore();
 
-  const stableMyMissingResponses = JSON.stringify(myMissingResponses.map((question) => question + "#" + (testIndexPerQuestion[question] || 0)));
+  const stableMyMissingResponses = JSON.stringify(
+    myMissingResponses.map(
+      (question) => question + "#" + (testIndexPerQuestion[question] || 0)
+    )
+  );
 
   const screeningQuestions = searchResult?.screeningQuestions || [];
   const screeningResponses = searchResult?.screeningResponses || {};
@@ -230,7 +234,7 @@ export function useScreening(data: {
   }, [data.title, data.abstract, myMissingResponses, provider, apiKey]);
 
   const { isLoading: isScreening } = useSWRImmutable(
-    (data.id && canStartScreening)
+    data.id && canStartScreening
       ? ["screening", data.id, stableMyMissingResponses]
       : null,
     () => startScreening(),
@@ -242,7 +246,10 @@ export function useScreening(data: {
     screeningResponses,
     myExistingResponses,
     myLoadingResponses: (isScreening
-      ? myMissingResponses.reduce((acc, question) => ({ ...acc, [question]: true }), {})
+      ? myMissingResponses.reduce(
+          (acc, question) => ({ ...acc, [question]: true }),
+          {}
+        )
       : {}) as Record<string, boolean>,
     myMissingResponses,
   };
@@ -271,13 +278,18 @@ export function ScreeningResponses({
     if (!expandShortcut) return;
 
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === expandShortcut && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        setShowExpandedView(prev => !prev);
+      if (
+        event.key === expandShortcut &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey
+      ) {
+        setShowExpandedView((prev) => !prev);
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, [expandShortcut]);
 
   return (
@@ -334,7 +346,9 @@ export function ScreeningResponses({
             <button
               onClick={() => setShowExpandedView(!showExpandedView)}
               className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors"
-              title={`Show detailed screening responses${expandShortcut ? ` (${expandShortcut.toUpperCase()})` : ""}`}
+              title={`Show detailed screening responses${
+                expandShortcut ? ` (${expandShortcut.toUpperCase()})` : ""
+              }`}
             >
               <Table className="h-3 w-3 text-blue-700" />
               {showExpandedView ? "Hide" : "Details"}
@@ -530,30 +544,32 @@ export function PaperCard({
         {/* Title */}
         <div className="mb-3">
           {/* Translation toggle and status */}
-          {selectedLanguage && selectedLanguage !== "en" && (
-            <div className="flex items-center gap-2 mb-2">
-              {isTranslating && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                  Translating to English...
-                </div>
-              )}
-
-              {translatedContent &&
-                translatedContent.sourceLanguage === selectedLanguage &&
-                !translatedContent.isAlreadyInEnglish && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowTranslated(!showTranslated);
-                    }}
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
-                  >
-                    {showTranslated ? "Original" : "English"}
-                  </button>
+          {selectedLanguage &&
+            selectedLanguage !== "en" &&
+            !(translatedContent && translatedContent.isAlreadyInEnglish) && (
+              <div className="flex items-center gap-2 mb-2">
+                {isTranslating && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                    Translating to English...
+                  </div>
                 )}
-            </div>
-          )}
+
+                {translatedContent &&
+                  translatedContent.sourceLanguage === selectedLanguage &&
+                  !translatedContent.isAlreadyInEnglish && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTranslated(!showTranslated);
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {showTranslated ? "Original" : "English"}
+                    </button>
+                  )}
+              </div>
+            )}
 
           <button
             onClick={() => openFocusMode(isMobile, resultIndex)}
