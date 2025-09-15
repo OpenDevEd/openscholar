@@ -380,7 +380,7 @@ export function FocusMode({
           ></span>
         )}
 
-        <ScreeningResponses data={paper} expandShortcut="e" />
+        <ScreeningResponses data={paper} expandShortcut="e" variant="mobile" />
 
         {/* Title & Year - Compact */}
         <div className={cn(settings.compactMode ? "mb-1" : "mb-2")}>

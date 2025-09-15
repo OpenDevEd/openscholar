@@ -258,9 +258,11 @@ export function useScreening(data: {
 export function ScreeningResponses({
   data,
   expandShortcut,
+  variant,
 }: {
   data: { id: string; title: string; abstract: string };
   expandShortcut?: string;
+  variant?: "default" | "mobile";
 }) {
   const {
     screeningQuestions,
@@ -368,17 +370,17 @@ export function ScreeningResponses({
                 Screening Responses
               </h4>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+              <div className={variant === "mobile" ? "overflow-hidden" : "overflow-x-auto"}>
+                <table className={variant === "mobile" ? "w-full text-xs" : "w-full text-xs min-w-full"}>
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground w-8">
                         #
                       </th>
                       <th className="text-left py-2 px-2 font-medium text-muted-foreground">
                         Question
                       </th>
-                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">
                         Response
                       </th>
                     </tr>
@@ -411,15 +413,15 @@ export function ScreeningResponses({
                           key={index}
                           className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                         >
-                          <td className="py-2 px-2 font-mono text-muted-foreground">
+                          <td className="py-2 px-2 font-mono text-muted-foreground w-8 align-top">
                             {index + 1}
                           </td>
-                          <td className="py-2 px-2 text-foreground max-w-xs">
-                            <div className="truncate" title={question.question}>
+                          <td className="py-2 px-2 text-foreground">
+                            <div className={variant === "mobile" ? "break-words whitespace-normal" : "truncate max-w-xs"} title={question.question}>
                               {question.question}
                             </div>
                           </td>
-                          <td className="py-2 px-2">
+                          <td className="py-2 px-2 w-16 align-top">
                             <div
                               className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
                                 displayState === "checked"
