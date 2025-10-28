@@ -623,9 +623,9 @@ Please enhance this academic search query according to the user's specific instr
     currentSearchResult?.screeningResponses,
   ]);
 
-  // Notify Zotero when results are rendered/rerendered
+  // Notify Zotero when results are rendered/rerendered, focus mode changes, or focus index changes
   useEffect(() => {
-    if (paginatedResults.length > 0) {
+    if (paginatedResults.length > 0 || isFocusModeOpen) {
       document.dispatchEvent(
         new Event("ZoteroItemUpdated", {
           bubbles: true,
@@ -637,7 +637,7 @@ Please enhance this academic search query according to the user's specific instr
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
-  }, [paginatedResults]);
+  }, [paginatedResults, isFocusModeOpen, focusModeIndex]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);

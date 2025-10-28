@@ -531,7 +531,7 @@ export function PaperCard({
   return (
     <div className="border rounded-lg hover:bg-accent/50 transition-colors group">
       <div className="p-4 overflow-hidden">
-        {/* COINS metadata span - only render when focus mode is not active */}
+        {/* COINS metadata span - always render for each paper card in the list */}
         {!isFocusModeOpen && (
           <span
             className="Z3988"
@@ -601,6 +601,30 @@ export function PaperCard({
           </div>
         )}
 
+        {/* Journal/Source with volume/issue/pages */}
+        {result.primary_location?.source?.display_name && (
+          <div className="mb-3">
+            <div className="flex gap-2 text-sm text-muted-foreground">
+              <BookOpen className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span className="italic">
+                {result.primary_location.source.display_name}
+                {(result.biblio?.volume || result.biblio?.issue || result.biblio?.first_page) && (
+                  <>
+                    {result.biblio?.volume && `, Vol. ${result.biblio.volume}`}
+                    {result.biblio?.issue && ` (${result.biblio.issue})`}
+                    {result.biblio?.first_page && (
+                      <>
+                        {`, pp. ${result.biblio.first_page}`}
+                        {result.biblio?.last_page && `-${result.biblio.last_page}`}
+                      </>
+                    )}
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Abstract and Extended Content */}
         <div className="mb-4">
           {/* Abstract */}
@@ -640,6 +664,20 @@ export function PaperCard({
                     </div>
                   </div>
                 )}
+
+                {/* Publication Type */}
+                {result.type && (
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-medium">Type:</span>
+                      <span className="ml-1 capitalize">
+                        {result.type.replace(/-/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {result.primary_topic && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Target className="h-3 w-3 mt-0.5 flex-shrink-0" />

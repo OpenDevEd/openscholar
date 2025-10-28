@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Quote, TrendingUp, BookOpen, BarChart3, Award, Target, Layers, Building, Leaf, Unlock, Lock, Globe } from 'lucide-react';
+import { Users, Quote, TrendingUp, BookOpen, BarChart3, Award, Target, Layers, Building, Leaf, Unlock, Lock, Globe, FileText } from 'lucide-react';
 
 interface PaperMetadataProps {
   result: any;
@@ -52,6 +52,40 @@ export function PaperMetadata({ result, isExpanded = false }: PaperMetadataProps
             <Award className="h-3 w-3" />
             <span className="font-medium">Citation Percentile (Year):</span>
             <span>{result.cited_by_percentile_year.min}-{result.cited_by_percentile_year.max}%</span>
+          </div>
+        </div>
+      )}
+
+      {/* Publication Type */}
+      {result.type && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+          <FileText className="h-3 w-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">Type:</span>
+            <span className="ml-1 capitalize">{result.type.replace(/-/g, ' ')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Journal/Source */}
+      {result.primary_location?.source?.display_name && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+          <BookOpen className="h-3 w-3 mt-0.5 flex-shrink-0" />
+          <div>
+            <span className="font-medium">Journal:</span>
+            <span className="ml-1 italic">{result.primary_location.source.display_name}</span>
+            {(result.biblio?.volume || result.biblio?.issue) && (
+              <span className="ml-1">
+                (Vol. {result.biblio?.volume}
+                {result.biblio?.issue && ` Issue ${result.biblio.issue}`})
+              </span>
+            )}
+            {result.biblio?.first_page && (
+              <span className="ml-1">
+                , pp. {result.biblio.first_page}
+                {result.biblio?.last_page && `-${result.biblio.last_page}`}
+              </span>
+            )}
           </div>
         </div>
       )}

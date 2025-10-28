@@ -164,17 +164,18 @@ export function FocusMode({
     setShowSettings(false);
   }, [isOpen]);
 
-  // Notify Zotero when current paper changes
-  useEffect(() => {
-    if (isOpen && currentPaper) {
-      document.dispatchEvent(
-        new Event("ZoteroItemUpdated", {
-          bubbles: true,
-          cancelable: true,
-        })
-      );
-    }
-  }, [currentPaper, isOpen]);
+  // Notify Zotero when current paper changes or focus mode opens/closes
+  // This is handled in results-list.tsx to avoid duplicate events
+  // useEffect(() => {
+  //   if (isOpen && currentPaper) {
+  //     document.dispatchEvent(
+  //       new Event("ZoteroItemUpdated", {
+  //         bubbles: true,
+  //         cancelable: true,
+  //       })
+  //     );
+  //   }
+  // }, [currentPaper, isOpen]);
 
   // Reset scroll position when paper changes
   useEffect(() => {
@@ -371,8 +372,8 @@ export function FocusMode({
   }) => {
     return (
       <div className={getContentClasses()}>
-        {/* COINS metadata span - only for main content */}
-        {!isPreview && (
+        {/* COINS metadata span - only render for the currently focused paper (not preview) */}
+        {!isPreview && isOpen && (
           <span
             className="Z3988"
             title={workToCoins(paper)}
@@ -414,6 +415,27 @@ export function FocusMode({
               )
             )}
           </div>
+          {/* Journal/Source with volume/issue/pages */}
+          {!isPreview && paper.primary_location?.source?.display_name && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <BookOpen className="h-3 w-3 flex-shrink-0" />
+              <span className="italic truncate">
+                {paper.primary_location.source.display_name}
+                {(paper.biblio?.volume || paper.biblio?.issue || paper.biblio?.first_page) && (
+                  <>
+                    {paper.biblio?.volume && `, Vol. ${paper.biblio.volume}`}
+                    {paper.biblio?.issue && ` (${paper.biblio.issue})`}
+                    {paper.biblio?.first_page && (
+                      <>
+                        {`, pp. ${paper.biblio.first_page}`}
+                        {paper.biblio?.last_page && `-${paper.biblio.last_page}`}
+                      </>
+                    )}
+                  </>
+                )}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Inline Metadata - Single Line Approach */}
@@ -424,6 +446,14 @@ export function FocusMode({
             )}
           >
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {!isPreview && paper.type && (
+                <span className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Type:</span>
+                  <span className="font-medium capitalize">
+                    {paper.type.replace(/-/g, ' ')}
+                  </span>
+                </span>
+              )}
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">Refs:</span>
                 <span className="font-medium">
