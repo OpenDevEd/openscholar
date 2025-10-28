@@ -18,47 +18,6 @@ const extractResearchQuestionFromFormData = (formData: FormData): string | undef
   return researchQuestion && researchQuestion.trim() ? researchQuestion.trim() : undefined;
 };
 
-// Utility function to calculate effective date/year ranges based on filter type
-const getEffectiveRanges = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isFilterActive?: boolean, isYearRangeEnabled?: boolean) => {
-  const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
-  const effectiveYearRange = (filterType === "year" && isFilterActive && isYearRangeEnabled) ? yearRange : undefined;
-  return { effectiveDateRange, effectiveYearRange };
-};
-
-// Helper function to create search state with effective ranges
-const createSearchStateWithEffectiveRanges = (
-  query: string,
-  searchField: SearchField,
-  dateRange?: DateRange,
-  yearRange?: [number, number],
-  filterType?: "date" | "year",
-  isFilterActive?: boolean,
-  sortBy?: string,
-  resultsCount?: number
-) => {
-  const { effectiveDateRange, effectiveYearRange } = getEffectiveRanges(dateRange, yearRange, filterType, isFilterActive);
-  
-  // Create unified filters object
-  const filters: SearchFilters = {
-    searchField,
-    sortBy: sortBy || 'relevance_score:desc',
-    filterType: filterType || 'year',
-    dateRange: effectiveDateRange,
-    yearRange: effectiveYearRange,
-    isYearRangeEnabled: undefined, // Will be filled from current search state
-    ratingRange: undefined, // Rating filters are handled client-side
-    onlyRatedPapers: undefined,
-    selectedRegions: [], // Will be filled from current search state
-    selectedCountryFocus: [], // Will be filled from current search state
-    citesItemId: '', // Will be filled from current search state
-    citedByItemId: '', // Will be filled from current search state
-    relatedToItemId: '', // Will be filled from current search state
-    reviewFilter: false, // Will be filled from current search state
-  };
-  
-  return createSearchStateFromStore(query, filters, resultsCount);
-};
-
 // Submit search and create history item (SWR will handle data fetching)
 export const submitSearchAndLoadResults = async (
   formData: FormData,

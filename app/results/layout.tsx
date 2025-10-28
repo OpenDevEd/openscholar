@@ -23,28 +23,7 @@ export const SearchContext = createContext<{
 });
 
 export default function ResultsLayout({ children }: ResultsLayoutProps) {
-  const router = useRouter();
-
-  const {
-    currentSearchField,
-    dateRange,
-    sortBy,
-    filterType,
-    yearRange,
-    isYearRangeEnabled,
-  } = useCurrentSearchFormState();
-
-  // Computed filter active state
-  const isFilterActive = isDateFilterActive(
-    dateRange,
-    yearRange,
-    filterType,
-    isYearRangeEnabled
-  );
-
   const { loadingResultIndex } = useUIStore();
-
-  const { originalQuery: currentQuery } = useSearchResults();
 
   const createSearchFilters = useCreateSearchFilters();
 
@@ -62,7 +41,7 @@ export default function ResultsLayout({ children }: ResultsLayoutProps) {
   };
 
   return (
-    <div className="bg-background">
+    <div className="bg-background relative">
       <SearchContext.Provider value={{ handleUpdateCurrentSearch, loadingResultIndex }}>
         <Navbar
           loadingResultIndex={loadingResultIndex}

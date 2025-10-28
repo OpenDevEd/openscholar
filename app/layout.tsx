@@ -8,6 +8,16 @@ import { ConditionalFooter } from "@/components/ui/conditional-footer";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
+import { shadcn } from "@clerk/themes";
+import StoreProvider from "./providers/store-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,24 +41,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(geistSans.variable, geistMono.variable, "antialiased")}
-      >
-        <ConfigProvider>
-          <ThemeProvider>
-            <NuqsAdapter>
-              <QuerySyncProvider>
-                <div className="min-h-screen flex flex-col">
-                  <div className="flex-1">{children}</div>
-                  <ConditionalFooter />
-                </div>
-                <Toaster />
-              </QuerySyncProvider>
-            </NuqsAdapter>
-          </ThemeProvider>
-        </ConfigProvider>
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        theme: shadcn,
+      }}
+    >
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className={cn(geistSans.variable, geistMono.variable, "antialiased")}
+        >
+          <ConfigProvider>
+            <ThemeProvider>
+              <NuqsAdapter>
+                <QuerySyncProvider>
+                  <StoreProvider>
+                    <div className="min-h-screen flex flex-col">
+                      <div className="flex-1">{children}</div>
+                      <ConditionalFooter />
+                    </div>
+                    <Toaster />
+                  </StoreProvider>
+                </QuerySyncProvider>
+              </NuqsAdapter>
+            </ThemeProvider>
+          </ConfigProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

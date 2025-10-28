@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,6 @@ import {
   Menu,
   Home,
   Clock,
-  MoreHorizontal,
   BookOpen,
   FileText,
   Filter,
@@ -20,12 +19,8 @@ import {
   Shield,
   Settings,
   LogIn,
-  Code,
-  ClipboardCheck,
   HelpCircle,
-  Settings2,
   Eye,
-  Download,
   Sparkles,
   Expand,
   Minimize2,
@@ -42,7 +37,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  useResultsStore,
   useSearchHistoryStore,
   useCurrentQueryStore,
   useCurrentQuestionStore,
@@ -51,7 +45,6 @@ import {
 import {
   useQueryChangeHandler,
   useEffectiveSearchId,
-  useCurrentSearchFormState,
   useSearchResults,
 } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -64,20 +57,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SearchHistory } from "./search-history";
-import { useIsMobile } from "@/lib/hooks";
 import { ApiButton } from "./api-button";
 import { LanguageSelector } from "./language-selector";
 import { SearchContext } from "@/app/results/layout";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { SignInWrapped } from "./PageContent";
 
 export function useSearchBarLogic() {
   const { handleUpdateCurrentSearch, loadingResultIndex } =
@@ -613,7 +599,7 @@ interface NavbarProps {
 }
 
 interface NavButtonProps {
-  href: string;
+  href?: string;
   icon: LucideIcon;
   label: string;
   isActive: boolean;
@@ -622,7 +608,7 @@ interface NavButtonProps {
   onClick?: () => void;
 }
 
-const NavButton: React.FC<NavButtonProps> = ({
+export const NavButton: React.FC<NavButtonProps> = ({
   href,
   icon: Icon,
   label,
@@ -662,7 +648,7 @@ const NavButton: React.FC<NavButtonProps> = ({
   if (asChild) {
     return (
       <Button {...buttonProps} asChild>
-        <Link href={href} onClick={onClick}>
+        <Link href={href || ""} onClick={onClick}>
           {buttonContent}
         </Link>
       </Button>
@@ -680,9 +666,7 @@ export function Navbar({ loadingResultIndex = null }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { searchHistory } = useSearchHistoryStore();
-  const isMobile = useIsMobile();
   const effectiveSearchId = useEffectiveSearchId();
-  const { currentSearchField } = useCurrentSearchFormState();
 
   // Use shared current query state for navbar/home page synchronization
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
@@ -700,8 +684,6 @@ export function Navbar({ loadingResultIndex = null }: NavbarProps) {
     }
   }, [historyQuery, effectiveSearchId, setCurrentQuery]);
 
-  // State for mobile menu interactions
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // Check if we're on a results page
@@ -868,10 +850,9 @@ export function Navbar({ loadingResultIndex = null }: NavbarProps) {
                   </div>
                 </SheetContent>
               </Sheet>
-            )}
+            )}            
 
-            {/* Theme Toggle */}
-            <ThemeToggle />
+            <SignInWrapped />
           </div>
         </div>
 
@@ -1116,6 +1097,8 @@ export function Navbar({ loadingResultIndex = null }: NavbarProps) {
                 </div>
               </SheetContent>
             </Sheet>
+
+            <SignInWrapped />
           </div>
         </div>
       </div>
