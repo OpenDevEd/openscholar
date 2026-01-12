@@ -58,12 +58,20 @@ import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
 import { RelatedToFilter } from "./related-to-filter";
 import { ReviewFilter } from "./review-filter";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { PanelLeftClose } from "lucide-react";
+import { useFilterSidebarOptional } from "./filter-sidebar-provider";
 
 interface SearchSidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   isMobile?: boolean;
-  mode?: "sidebar" | "sheet" | "page";
+  mode?: "sidebar" | "sheet" | "page" | "panel";
 }
 
 // Filter wrapper component for consistent styling
@@ -722,22 +730,36 @@ export function SearchSidebar({
 
   const activeFiltersCount = getActiveFiltersCount();
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ hideHeader = false }: { hideHeader?: boolean }) => (
     <div className="space-y-6">
-      {/* Simple Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Filters</h2>
-        {activeFiltersCount > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearAllFilters}
-            className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
-          >
-            Clear all ({activeFiltersCount})
-          </Button>
-        )}
-      </div>
+      {/* Simple Header - hidden when using panel mode with external header */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+          {activeFiltersCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAllFilters}
+              className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
+            >
+              Clear all ({activeFiltersCount})
+            </Button>
+          )}
+        </div>
+      )}
+      
+      {/* Clear all button when header is hidden (for panel mode) */}
+      {hideHeader && activeFiltersCount > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClearAllFilters}
+          className="w-full text-xs h-7 px-3 text-muted-foreground hover:text-foreground justify-start"
+        >
+          Clear all filters ({activeFiltersCount})
+        </Button>
+      )}
 
       {/* ID Filters - Show at top when active */}
       {isCitesActive && <CitesFilterPanel />}
@@ -799,6 +821,95 @@ export function SearchSidebar({
       <div className="w-full max-w-2xl mx-auto">
         <SidebarContent />
       </div>
+    );
+  }
+
+  if (mode === "panel") {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const filterSidebar = useFilterSidebarOptional();
+    
+    // If no provider or on mobile, don't render the panel
+    if (!filterSidebar || filterSidebar.isMobile) return null;
+    
+    const { isCollapsed, toggle, currentWidth } = filterSidebar;
+
+    if (isCollapsed) {
+      // Collapsed state - thin vertical bar with filter icon
+      return (
+        <aside 
+          className="h-full border-r bg-sidebar flex flex-col items-center py-4 gap-3 shrink-0 sidebar-transition"
+          style={{ width: currentWidth }}
+        >
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggle}
+                className="h-10 w-10 text-muted-foreground hover:text-foreground"
+              >
+                <Filter className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="flex items-center gap-2">
+              Expand filters
+              {activeFiltersCount > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </TooltipContent>
+          </Tooltip>
+          {activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="text-xs px-2">
+              {activeFiltersCount}
+            </Badge>
+          )}
+        </aside>
+      );
+    }
+
+    // Expanded state - full filters panel
+    return (
+      <aside 
+        className="h-full border-r bg-sidebar flex flex-col overflow-hidden shrink-0 sidebar-transition"
+        style={{ width: currentWidth }}
+      >
+        {/* Header with collapse button */}
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-sidebar shrink-0">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-semibold text-foreground">Filters</h2>
+            {activeFiltersCount > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {activeFiltersCount}
+              </Badge>
+            )}
+          </div>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={toggle}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              Collapse filters (Ctrl+Shift+F)
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        
+        {/* Scrollable content */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="p-4">
+            <SidebarContent hideHeader />
+          </div>
+        </div>
+      </aside>
     );
   }
 

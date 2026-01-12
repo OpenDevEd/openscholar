@@ -127,8 +127,9 @@ export function ScreeningResultsPage({
 
   if (documents.length === 0) {
     return (
-      <div className="container mx-auto p-6">
-        <PageHeader
+      <div className="flex-1 overflow-y-auto">
+        <div className="container mx-auto p-6">
+          <PageHeader
           title="Screening Results"
           description="No documents available for screening"
           icon={FileText}
@@ -146,12 +147,14 @@ export function ScreeningResultsPage({
           </CardContent>
         </Card>
       </div>
+      </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <PageHeader
+    <div className="flex-1 overflow-y-auto">
+      <div className="container mx-auto p-6">
+        <PageHeader
         title="Screening Results"
         description="Review and export your systematic screening results"
         icon={TableIcon}
@@ -324,6 +327,7 @@ export function ScreeningResultsPage({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 } 

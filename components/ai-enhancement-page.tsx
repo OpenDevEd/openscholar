@@ -104,8 +104,9 @@ export function AIEnhancementPage({
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <PageHeader
+    <div className="flex-1 overflow-y-auto">
+      <div className="container mx-auto p-6">
+        <PageHeader
         title="AI Query Enhancement"
         description="Enhance your search queries with AI-powered synonyms, operators, and semantic improvements"
         icon={Brain}
@@ -290,6 +291,7 @@ export function AIEnhancementPage({
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   )

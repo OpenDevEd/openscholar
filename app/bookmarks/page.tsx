@@ -1,6 +1,7 @@
 import { KeywordExpansionPage } from "@/components/keyword-expansion-page"
 import { Metadata } from "next"
 import { Suspense } from "react"
+import { PageWrapper } from "@/components/PageWrapper"
 
 export const metadata: Metadata = {
   title: "Bookmarks | OpenScholar",
@@ -28,10 +29,12 @@ function KeywordExpansionFallback() {
 
 export default function KeywordExpansionRootPage() {
   return (
-    <Suspense fallback={<KeywordExpansionFallback />}>
-      <KeywordExpansionPage 
-        showBackButton={true}
-      />
-    </Suspense>
+    <PageWrapper>
+      <Suspense fallback={<KeywordExpansionFallback />}>
+        <KeywordExpansionPage 
+          showBackButton={true}
+        />
+      </Suspense>
+    </PageWrapper>
   )
 } 

@@ -66,8 +66,9 @@ export function ScreeningPage({
   const inProgressResults = results.filter(r => r.status === 'in_progress').length;
 
   return (
-    <div className="container mx-auto p-6">
-      <PageHeader
+    <div className="flex-1 overflow-y-auto">
+      <div className="container mx-auto p-6">
+        <PageHeader
         title="Document Screening"
         description="Systematically review and evaluate documents using custom screening criteria"
         icon={ClipboardCheck}
@@ -290,6 +291,7 @@ export function ScreeningPage({
         open={showAddZotero}
         onOpenChange={setShowAddZotero}
       />
+      </div>
     </div>
   );
 } 

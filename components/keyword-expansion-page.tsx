@@ -122,8 +122,9 @@ export function KeywordExpansionPage({
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <PageHeader
+    <div className="flex-1 overflow-y-auto">
+      <div className="container mx-auto p-6">
+        <PageHeader
         title="Bookmarks"
         description="Create shortcuts for commonly used search terms"
         icon={BookOpen}
@@ -403,6 +404,7 @@ export function KeywordExpansionPage({
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   )

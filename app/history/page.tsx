@@ -8,6 +8,7 @@ import { useCurrentSearchFormState, useIsMobile } from '@/lib/hooks';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
 import { History } from 'lucide-react';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function HistoryPage() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="bg-background">
+    <PageWrapper>
       <div className="container mx-auto p-4 sm:p-6">
         <PageHeader
           title="Search History"
@@ -73,6 +74,6 @@ export default function HistoryPage() {
           hideHeader={true}
         />
       </div>
-    </div>
+    </PageWrapper>
   );
 } 

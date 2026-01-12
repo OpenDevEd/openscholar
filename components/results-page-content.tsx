@@ -2,15 +2,18 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { SearchSidebar } from './search-sidebar';
 import { ResultsList } from './results-list';
 import {
   downloadItem,
   downloadEssentialItem,
   downloadAll,
 } from '@/lib/search-actions';
-import { useIsMobile } from '@/lib/hooks';
 import { useSearch } from '@/lib/search';
+import { SearchSidebar } from './search-sidebar';
+import { TwoColumnLayout } from './layout/two-column-layout';
+import { ContentScrollArea } from './layout/content-scroll-area';
+import { useFilterSidebarOptional } from './filter-sidebar-provider';
+import { PageWrapper } from './PageWrapper';
 
 interface ResultsPageContentProps {
   searchId?: string;
@@ -18,7 +21,6 @@ interface ResultsPageContentProps {
 
 export default function ResultsPageContent({ searchId }: ResultsPageContentProps) {
   const router = useRouter();
-  const isMobile = useIsMobile();
 
   // Use the new search context
   const {
@@ -47,32 +49,37 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
     router.push('/');
   };
 
-  return (
-    <>
-      <div className="container mx-auto p-6 pb-0">
-        <div className="flex gap-6">
-          {/* Desktop Sidebar */}
-          <aside className="hidden lg:block flex-shrink-0">
-            <SearchSidebar />
-          </aside>
+  const filterSidebar = useFilterSidebarOptional();
+  const isFilterSidebarVisible = filterSidebar && !filterSidebar.isMobile && !filterSidebar.isCollapsed;
+  const filterSidebarWidth = `${filterSidebar?.currentWidth || 320}px`;
 
-          {/* Main Content */}
-          <main className="flex-1 min-w-0 relative">
-            <ResultsList
-              onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
-              onDownloadEssentialItem={(item, format) => downloadEssentialItem(item, format, searchState)}
-              onDownloadAllJSON={() => downloadAll("json", false, searchState, results)}
-              onDownloadAllCSV={() => downloadAll("csv", false, searchState, results)}
-              onDownloadAllEssentialJSON={() => downloadAll("json", true, searchState, results)}
-              onDownloadAllEssentialCSV={() => downloadAll("csv", true, searchState, results)}
-              isLoading={isLoading}
-              isValidating={isValidating}
-              currentQuery={query}
-              onBackToHome={handleBackToHome}
-            />
-          </main>
-        </div>
-      </div>
-    </>
+  return (
+    <PageWrapper>
+      <TwoColumnLayout
+        leftColumn={<SearchSidebar mode="panel" />}
+        rightColumn={
+          <ContentScrollArea>
+            <div className="py-6 px-4 md:px-6">
+            <main className="w-full">
+              <ResultsList
+                onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
+                onDownloadEssentialItem={(item, format) => downloadEssentialItem(item, format, searchState)}
+                onDownloadAllJSON={() => downloadAll("json", false, searchState, results)}
+                onDownloadAllCSV={() => downloadAll("csv", false, searchState, results)}
+                onDownloadAllEssentialJSON={() => downloadAll("json", true, searchState, results)}
+                onDownloadAllEssentialCSV={() => downloadAll("csv", true, searchState, results)}
+                isLoading={isLoading}
+                isValidating={isValidating}
+                currentQuery={query}
+                onBackToHome={handleBackToHome}
+              />
+            </main>
+          </div>
+          </ContentScrollArea>
+        }
+        leftColumnWidth={filterSidebarWidth}
+        className="h-full"
+      />
+    </PageWrapper>
   );
 }

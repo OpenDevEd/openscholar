@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { SearchHistory } from "@/components/search-history";
 import {
   useUIStore,
   useSearchHistoryStore,
@@ -13,11 +12,11 @@ import {
   useQueryChangeHandler,
   useCreateSearchFilters,
 } from "@/lib/hooks";
-import { submitNewSearch, restoreFromHistory } from "@/lib/search";
+import { submitNewSearch } from "@/lib/search";
 import { selectQueryFromHistory } from "@/lib/search-actions";
 import { serializeSearchParams, type ParsedSearchParams } from "@/lib/search-params";
 import { Logo } from "@/components/logo";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, BookOpen } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,14 +24,12 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { BookOpen, Sparkles } from "lucide-react";
 import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
 import React from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { useAIConfigStore } from "@/lib/store";
-import { FooterBanner } from "./ui/footer";
 
 function PageContent() {
   const router = useRouter();
@@ -122,216 +119,121 @@ function PageContent() {
     // Submit new search and get the URL to navigate to
     const researchQuestion = originalQuery.trim().endsWith('?') ? originalQuery : undefined;
     const { url } = submitNewSearch(searchQuery, filters, researchQuestion);
-    
+
     // Navigate to the results page with search params
     router.push(url);
   };
 
-  const handleSearchHistoryClick = async (
-    query: string,
-    searchField: any,
-    dateRange?: any,
-    sortBy?: string,
-    yearRange?: [number, number],
-    filterType?: "date" | "year",
-    index?: number
-  ) => {
-    // With SWR, we just need to navigate to the search result
-    // The data will be automatically loaded by the SWR hook
-    const { searchHistory } = useSearchHistoryStore.getState();
-    const searchResult = searchHistory[index || 0];
-
-    if (searchResult?.id) {
-      // Build URL params from the stored search result
-      const urlParams: Partial<ParsedSearchParams> = {
-        q: searchResult.query,
-        field: searchResult.field,
-        sort: searchResult.sortBy || 'relevance_score:desc',
-        ft: searchResult.filterType || 'year',
-      };
-      
-      // Add optional filters
-      if (searchResult.isYearRangeEnabled && searchResult.yearRange) {
-        urlParams.yf = searchResult.yearRange[0];
-        urlParams.yt = searchResult.yearRange[1];
-      }
-      if (searchResult.filterType === 'date' && searchResult.dateRange) {
-        if (searchResult.dateRange.from) {
-          urlParams.df = new Date(searchResult.dateRange.from).toISOString().split('T')[0];
-        }
-        if (searchResult.dateRange.to) {
-          urlParams.dt = new Date(searchResult.dateRange.to).toISOString().split('T')[0];
-        }
-      }
-      if (searchResult.selectedRegions && searchResult.selectedRegions.length > 0) {
-        urlParams.reg = searchResult.selectedRegions;
-      }
-      if (searchResult.selectedCountryFocus && searchResult.selectedCountryFocus.length > 0) {
-        urlParams.focus = searchResult.selectedCountryFocus;
-      }
-      if (searchResult.citesItemId) {
-        urlParams.cites = searchResult.citesItemId;
-      }
-      if (searchResult.citedByItemId) {
-        urlParams.citedBy = searchResult.citedByItemId;
-      }
-      if (searchResult.relatedToItemId) {
-        urlParams.rel = searchResult.relatedToItemId;
-      }
-      if (searchResult.reviewFilter) {
-        urlParams.review = true;
-      }
-      
-      const queryString = serializeSearchParams(urlParams as ParsedSearchParams);
-      router.push(`/results/${searchResult.id}?${queryString}`);
-    } else {
-      toast.error("Search not found", {
-        description: "The requested search could not be found in your history.",
-      });
-    }
-  };
-
-  const handleQuerySelect = async (searchId: string, selectedQuery: string) => {
-    await selectQueryFromHistory(searchId, selectedQuery, router);
-  };
-
   return (
-    <main className="w-full h-screen bg-background">
-      {/* Full screen container */}
-      <div className="relative w-full h-full">
-        {/* Centered logo + search bar container */}
-        <div className="absolute inset-0 flex items-center justify-center px-4">
-          <div className="relative w-full max-w-2xl space-y-6 md:space-y-8">
-            {/* Logo */}
-            <div className="text-center">
-              <Logo
-                size="lg"
-                className="justify-center mb-4 md:mb-6 lg:mb-8 sm:hidden"
-                context="home"
+    <div className="flex flex items-center justify-center px-4 py-12 md:py-20 h-full">
+      <div className="w-full max-w-2xl space-y-8">
+        {/* Logo & Tagline */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Logo
+              size="xl"
+              className="hidden sm:flex"
+              context="home"
+              clickable={false}
+            />
+            <Logo
+              size="lg"
+              className="sm:hidden"
+              context="home"
+              clickable={false}
+            />
+          </div>
+          <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto">
+            Search millions of academic papers and research articles
+          </p>
+        </div>
+
+        {/* AI Enhancement Loading */}
+        <AnimatePresence>
+          {isEnhancingQuestion && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="text-center"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 dark:bg-orange-950/30 dark:border-orange-800">
+                <Loader2 className="h-4 w-4 animate-spin text-orange-600 dark:text-orange-400" />
+                <span className="text-sm text-orange-700 dark:text-orange-300">
+                  Converting research question to search query...
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Search Form - Glass Card */}
+        <form onSubmit={handleSubmit} className="w-full">
+          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Textarea
+                name="query"
+                value={currentQuery}
+                placeholder="Search for papers, topics... or ask a research question ending with ?"
+                className="w-full border-0 bg-transparent resize-none min-h-[80px] max-h-40 focus-visible:ring-0 focus-visible:ring-offset-0 text-base md:text-lg placeholder:text-muted-foreground/60"
+                disabled={isFormDisabled}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    const form = e.currentTarget.form;
+                    if (form) {
+                      form.requestSubmit();
+                    }
+                  }
+                }}
               />
-              <Logo
-                size="xl"
-                className="justify-center mb-4 md:mb-6 lg:mb-8 hidden sm:flex"
-                context="home"
-              />
-              <p className="text-muted-foreground text-sm sm:text-base md:text-lg px-4">
-                Search millions of academic papers and research articles
-              </p>
             </div>
 
-            {/* AI Enhancement Loading */}
-            <AnimatePresence>
-              {isEnhancingQuestion && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-center"
-                >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
-                      Converting research question to search query...
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Search Form */}
-            <form onSubmit={handleSubmit} className="w-full px-2 md:px-0">
-              <div className="relative space-y-3 md:space-y-0">
-
-                <div className="space-y-3">
-                  {/* Search input area */}
-                  <div className="flex w-full flex-col gap-2 items-center space-x-2 p-2 border rounded-xl shadow-lg hover:shadow-xl transition-shadow bg-background">
-                    {/* <Search className="h-5 w-5 text-muted-foreground mx-4 ml-2" /> */}
-                    <Textarea
-                      name="query"
-                      value={currentQuery}
-                      placeholder="Search for papers, topics... or ask a research question ending with ?"
-                      className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 mr-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
-                      disabled={isFormDisabled}
-                      onChange={(e) => handleQueryChange(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          const form = e.currentTarget.form;
-                          if (form) {
-                            form.requestSubmit();
-                          }
-                        }
-                      }}
-                    />
-                     <div className="flex items-center justify-center gap-3">
-                    <KeywordExpansionTooltip
-                      query={currentQuery}
-                      side="top"
-                      variant="outline"
-                      buttonClassName="rounded-full h-12 w-12"
-                      asLink
-                      href="/bookmarks"
-                      iconOnly
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          asChild
-                          size="icon"
-                          variant="outline"
-                          className="rounded-full h-12 w-12"
-                        >
-                          <Link href="/ai-enhancement">
-                            <Sparkles className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>AI Enhancement</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Button
-                      type="submit"
-                      disabled={isFormDisabled}
-                      className="rounded-full h-12 w-12"
-                      size="icon"
-                    >
-                      {isEnhancingQuestion ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <Search className="h-5 w-5" />
-                      )}
-                    </Button>
-                  </div>
-                  </div>
-
-                  {/* Buttons row */}
-                 
-                </div>
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/50">
+              <div className="flex items-center gap-2">
+                <KeywordExpansionTooltip
+                  query={currentQuery}
+                  side="top"
+                  variant="ghost"
+                  buttonClassName="h-10 px-3"
+                  asLink
+                  href="/bookmarks"
+                />
               </div>
-            </form>
 
-            {/* Search History - absolutely positioned directly under this container */}
-            <div className="absolute top-full left-0 right-0 pt-8 md:pt-12 pb-8 md:pb-16">
-              <SearchHistory
-                onSearchResults={handleSearchHistoryClick}
-                loadingResultIndex={loadingResultIndex}
-                currentSearchField="title_and_abstract"
-                compact={true}
-                currentSearchId={undefined}
-                onQuerySelect={handleQuerySelect}
-              />
-
-              {/* Footer */}
-              <div className="text-center mt-12 pt-6">
-                <FooterBanner />
-              </div>
+              <Button
+                type="submit"
+                disabled={isFormDisabled || !currentQuery.trim()}
+                size="lg"
+                className="rounded-full px-6 gap-2 btn-hover"
+              >
+                {isEnhancingQuestion ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    <span>Search</span>
+                  </>
+                )}
+              </Button>
             </div>
           </div>
-        </div>
+        </form>
+
+        {/* Keyboard Shortcut Hint */}
+        <p className="text-center text-xs text-muted-foreground">
+          Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to search,
+          <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono ml-1">Shift+Enter</kbd> for new line
+        </p>
       </div>
-    </main>
+    </div>
   );
 }
 
