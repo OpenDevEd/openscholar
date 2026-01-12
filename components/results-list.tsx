@@ -25,6 +25,7 @@ import {
   useSearchHistoryStore,
   useAIConfigStore,
   useUIStore,
+  useCurrentQueryStore,
 } from "@/lib/store";
 import { ResultsFilter } from "./results-filter";
 import { PaperCard } from "./paper-card";
@@ -33,7 +34,6 @@ import {
   SearchBar,
   ResearchQuestionBar,
   ResultsActionBar,
-  useSearchBarLogic,
 } from "./navbar";
 import {
   Loader2,
@@ -433,13 +433,24 @@ export function ResultsList({
 
   const { setScreeningResponse, setScreeningResponses } = useSearchHistoryStore();
 
-  const {
-    currentQuery: storeCurrentQuery,
-    setCurrentQuery,
-    handleQueryChange,
-    handleSubmit,
-  } = useSearchBarLogic();
+  // Get query and language from URL params (source of truth)
+  const urlQuery = search.params.q;
+  const urlLanguage = search.params.lang ?? '';
+  
+  // For updating query - use store sync + URL update pattern
+  const setStoreQuery = useCurrentQueryStore((s) => s.setCurrentQuery);
   const { provider, model, apiKey } = useAIConfigStore();
+  
+  // Helper to update query via URL and store
+  const handleQueryChange = React.useCallback((newQuery: string) => {
+    setStoreQuery(newQuery);
+  }, [setStoreQuery]);
+  
+  // Helper to submit query (update URL via search context)
+  const handleSubmit = React.useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    search.setQuery(urlQuery);
+  }, [search, urlQuery]);
 
   // Use the queryHistory from the current search result (same as search-history.tsx)
   const queryHistory = currentSearchResult?.queryHistory || [];
@@ -460,7 +471,7 @@ export function ResultsList({
   const handleAiEnhancement = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!aiInstructions.trim() || !storeCurrentQuery.trim()) {
+    if (!aiInstructions.trim() || !urlQuery.trim()) {
       return;
     }
 
@@ -483,16 +494,16 @@ export function ResultsList({
         return;
       }
 
-      const { expandedQuery } = validateAndExpandKeywordsSilently(storeCurrentQuery);
+      const { expandedQuery } = validateAndExpandKeywordsSilently(urlQuery);
       // Create enhanced prompt that includes user instructions
       const enhancedPrompt = `Original query: "${expandedQuery}"
 
 User enhancement instructions: "${aiInstructions}"
 
 
-Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules. ${currentSearchResult?.language ? `The output MUST be translated to ${languageOptions.find(option => option.code === currentSearchResult?.language)?.name} if it is not already in that language.` : ''}`;
+Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules. ${urlLanguage ? `The output MUST be translated to ${languageOptions.find(option => option.code === urlLanguage)?.name} if it is not already in that language.` : ''}`;
 
-      console.log("passing language", currentSearchResult?.language);
+      console.log("passing language", urlLanguage);
 
       // Call the AI service with the enhanced prompt
       const response = await enhanceSearchQuery(
@@ -500,7 +511,7 @@ Please enhance this academic search query according to the user's specific instr
         provider,
         apiKey,
         model,
-        currentSearchResult?.language
+        urlLanguage || undefined
       );
 
       // Update the query with the enhanced version
@@ -562,7 +573,7 @@ Please enhance this academic search query according to the user's specific instr
   // Check if current query is different from the current one in history (last index is current)
   const hasUnsavedChanges =
     queryHistory.length > 0 &&
-    storeCurrentQuery !== queryHistory[queryHistory.length - 1]?.query;
+    urlQuery !== queryHistory[queryHistory.length - 1]?.query;
 
   // Filter results based on search term and rating filter
   const filteredResults = results.filter((result: any) => {
@@ -797,7 +808,7 @@ Please enhance this academic search query according to the user's specific instr
                         "w-full min-h-[120px] resize-y transition-colors duration-300",
                         queryFlash && "bg-green-50 border-green-300 dark:bg-green-950/30 dark:border-green-700"
                       )}
-                      value={storeCurrentQuery}
+                      value={urlQuery}
                       onChange={(e) => handleQueryChange(e.target.value)}
                     />
                   </div>
@@ -825,7 +836,7 @@ Please enhance this academic search query according to the user's specific instr
           )}
           <ResultsActionBar
             totalCount={totalCount}
-            currentQuery={storeCurrentQuery}
+            currentQuery={urlQuery}
             onDownloadAllJSON={onDownloadAllJSON}
             onDownloadAllCSV={onDownloadAllCSV}
             onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}

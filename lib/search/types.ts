@@ -3,6 +3,9 @@
  * 
  * Clean type definitions for the URL-based search state management.
  * URL params are the source of truth; store is just for history.
+ * 
+ * NOTE: DEFAULT_SEARCH_PARAMS and hasActiveFilters are defined in lib/search-params
+ * to avoid duplication. Re-exported from lib/search/index.ts for convenience.
  */
 
 import type { SearchField, SearchFilters, PaperResult } from '../types';
@@ -32,31 +35,6 @@ export interface SearchParams {
   review: boolean;        // reviewOnly
   lang: string | null;
 }
-
-/**
- * Default values for search params
- */
-export const DEFAULT_SEARCH_PARAMS: SearchParams = {
-  q: '',
-  field: 'title_and_abstract',
-  sort: 'relevance_score:desc',
-  page: 1,
-  yf: null,
-  yt: null,
-  df: null,
-  dt: null,
-  ft: 'year',
-  rmin: 0,
-  rmax: 5,
-  rated: false,
-  reg: [],
-  focus: [],
-  cites: '',
-  citedBy: '',
-  rel: '',
-  review: false,
-  lang: null,
-};
 
 /**
  * Search results from the API
@@ -129,33 +107,4 @@ export interface SearchContextValue {
   getShareableUrl: () => string;
   toSearchFilters: () => SearchFilters;
   mutate: () => void;
-}
-
-/**
- * Check if params have any non-default filter values
- */
-export function hasActiveFilters(params: Partial<SearchParams>): boolean {
-  return (
-    (params.yf !== null && params.yf !== undefined) ||
-    (params.yt !== null && params.yt !== undefined) ||
-    (params.df !== null && params.df !== undefined) ||
-    (params.dt !== null && params.dt !== undefined) ||
-    (params.rmin !== undefined && params.rmin !== 0) ||
-    (params.rmax !== undefined && params.rmax !== 5) ||
-    params.rated === true ||
-    (params.reg !== undefined && params.reg.length > 0) ||
-    (params.focus !== undefined && params.focus.length > 0) ||
-    (params.cites !== undefined && params.cites !== '') ||
-    (params.citedBy !== undefined && params.citedBy !== '') ||
-    (params.rel !== undefined && params.rel !== '') ||
-    params.review === true
-  );
-}
-
-/**
- * Check if URL has any meaningful search params (query or filters)
- */
-export function hasSearchParams(params: Partial<SearchParams>): boolean {
-  const hasQuery = params.q !== undefined && params.q !== '';
-  return hasQuery || hasActiveFilters(params);
 }

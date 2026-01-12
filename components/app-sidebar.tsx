@@ -24,17 +24,19 @@ import { cn } from "@/lib/utils";
 import {
   useSearchHistoryStore,
   useCurrentQueryStore,
+  useSearchHistoryUIStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
+import { restoreFromHistory } from "@/lib/search";
+import { SearchHistoryTab } from "./search-history-tab";
 import {
   Home,
-  FileText,
   BookOpen,
   Clock,
   Settings,
   PanelLeftClose,
   PanelLeft,
-  Search,
+  ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
@@ -112,93 +114,56 @@ function NavItem({
   return content;
 }
 
-interface SearchHistoryItemProps {
-  query: string;
-  searchId: string;
-  isActive: boolean;
-  isCollapsed: boolean;
-  onClick: () => void;
-}
-
-function SearchHistoryItem({ 
-  query, 
-  searchId, 
-  isActive, 
-  isCollapsed,
-  onClick 
-}: SearchHistoryItemProps) {
-  const truncatedQuery = query.length > 30 ? query.slice(0, 30) + "..." : query;
-
-  const content = (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-left",
-        "hover:bg-sidebar-accent group",
-        isActive && "bg-sidebar-accent/70",
-        isCollapsed && "justify-center px-2"
-      )}
-    >
-      <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-      {!isCollapsed && (
-        <span className="flex-1 truncate text-sm text-sidebar-foreground">
-          {truncatedQuery}
-        </span>
-      )}
-    </button>
-  );
-
-  if (isCollapsed) {
-    return (
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          {content}
-        </TooltipTrigger>
-        <TooltipContent side="right">
-          {query}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return content;
-}
-
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed, isMobile } = useSidebar();
   const { searchHistory } = useSearchHistoryStore();
+  const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
   const effectiveSearchId = useEffectiveSearchId();
 
-  // Determine if we're on a results page
-  const isOnResultsPage = pathname?.startsWith("/results");
+  // Pagination settings for sidebar
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
+  const displayItems = searchHistory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Determine current page
   const getCurrentPage = () => {
     if (!pathname) return null;
     if (pathname === "/") return "home";
-    if (pathname.startsWith("/results") && !pathname.includes("/bookmarks") && !pathname.includes("/history"))
-      return "results";
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/history")) return "history";
     if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
   };
 
-  const currentPage = getCurrentPage();
-
-  const handleHistoryClick = (searchId: string) => {
-    router.push(`/results/${searchId}`);
-    onClose?.();
-  };
+  const currentPageValue = getCurrentPage();
 
   const handleNavClick = () => {
     onClose?.();
   };
 
-  // Get last 5 searches for the sidebar
-  const recentSearches = searchHistory.slice(0, 5);
+  const handlePrevPage = () => {
+    setCurrentPage(Math.max(1, currentPage - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(Math.min(totalPages, currentPage + 1));
+  };
+
+  const handleSearchHistoryClick = (searchId: string) => {
+    // Navigate to the search result page with full params from storage
+    const entry = searchHistory.find(s => s.id === searchId);
+    if (entry) {
+      router.push(restoreFromHistory(entry));
+    } else {
+      router.push(`/results/${searchId}`);
+    }
+    onClose?.();
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -211,95 +176,178 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               href="/"
               icon={Home}
               label="Home"
-              isActive={currentPage === "home"}
+              isActive={currentPageValue === "home"}
               isCollapsed={isCollapsed && !isMobile}
               onClick={handleNavClick}
             />
 
-            {(isOnResultsPage || effectiveSearchId) && (
-              <NavItem
-                href={effectiveSearchId ? `/results/${effectiveSearchId}` : "/results"}
-                icon={FileText}
-                label="Results"
-                isActive={currentPage === "results"}
-                isCollapsed={isCollapsed && !isMobile}
-                onClick={handleNavClick}
-              />
-            )}
-
             <NavItem
-              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/bookmarks` : "/bookmarks"}
+              href="/bookmarks"
               icon={BookOpen}
               label="Bookmarks"
-              isActive={currentPage === "bookmarks"}
+              isActive={currentPageValue === "bookmarks"}
               isCollapsed={isCollapsed && !isMobile}
               onClick={handleNavClick}
             />
 
             <NavItem
-              href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/history` : "/history"}
+              href="/history"
               icon={Clock}
               label="History"
-              isActive={currentPage === "history"}
+              isActive={currentPageValue === "history"}
               isCollapsed={isCollapsed && !isMobile}
               badge={searchHistory.length}
               onClick={handleNavClick}
             />
           </div>
 
-          {/* Search History Section */}
-          {recentSearches.length > 0 && (!isCollapsed || isMobile) && (
+          {/* Search History Section - Always shown with pagination */}
+          {searchHistory.length > 0 && (
             <>
               <Separator className="my-4" />
               <div className="space-y-2">
-                <div className="px-3 py-1">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Recent Searches
-                  </span>
+                <div className={cn(
+                  "flex items-center justify-between",
+                  isCollapsed && !isMobile ? "justify-center px-2" : "px-3 py-1"
+                )}>
+                  {!isCollapsed || isMobile ? (
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Searches
+                    </span>
+                  ) : (
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        Search history
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {!isCollapsed && !isMobile && totalPages > 1 && (
+                    <span className="text-xs text-muted-foreground">
+                      {currentPage} / {totalPages}
+                    </span>
+                  )}
                 </div>
+                
                 <div className="space-y-1">
-                  {recentSearches.map((search) => (
-                    <SearchHistoryItem
+                  {displayItems.map((search) => (
+                    <SearchHistoryTab
                       key={search.id}
-                      query={search.query}
                       searchId={search.id}
+                      query={search.query}
+                      count={search.count}
                       isActive={search.id === effectiveSearchId}
                       isCollapsed={isCollapsed && !isMobile}
-                      onClick={() => handleHistoryClick(search.id)}
+                      onClick={() => handleSearchHistoryClick(search.id)}
                     />
                   ))}
                 </div>
-                {searchHistory.length > 5 && (
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className={cn(
+                    "flex items-center justify-center gap-1 pt-2",
+                    isCollapsed && !isMobile && "flex-col gap-2"
+                  )}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                      className={cn(
+                        "h-7 w-7",
+                        isCollapsed && !isMobile ? "h-8 w-8" : ""
+                      )}
+                      title={isCollapsed && !isMobile ? "Previous page" : undefined}
+                    >
+                      {isCollapsed && !isMobile ? (
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild>
+                            <ChevronLeft className="h-4 w-4" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Previous page
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <>
+                          <ChevronLeft className="h-4 w-4" />
+                          {!isCollapsed || isMobile && (
+                            <span className="sr-only">Previous</span>
+                          )}
+                        </>
+                      )}
+                    </Button>
+
+                    {totalPages > 2 && (
+                      <div className={cn(
+                        "flex items-center justify-center",
+                        isCollapsed && !isMobile ? "text-xs" : ""
+                      )}>
+                        {!isCollapsed || isMobile ? (
+                          <span className="text-xs text-muted-foreground px-2">
+                            {currentPage} / {totalPages}
+                          </span>
+                        ) : (
+                          <Tooltip delayDuration={0}>
+                            <TooltipTrigger asChild>
+                            <span className="text-xs text-muted-foreground">
+                              {currentPage}
+                            </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              Page {currentPage} of {totalPages}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      className={cn(
+                        "h-7 w-7",
+                        isCollapsed && !isMobile ? "h-8 w-8" : ""
+                      )}
+                      title={isCollapsed && !isMobile ? "Next page" : undefined}
+                    >
+                      {isCollapsed && !isMobile ? (
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild>
+                            <ChevronRight className="h-4 w-4" />
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Next page
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <>
+                          <ChevronRight className="h-4 w-4" />
+                          {!isCollapsed || isMobile && (
+                            <span className="sr-only">Next</span>
+                          )}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* "Show all" link (expanded state only) */}
+                {!isCollapsed && !isMobile && searchHistory.length > itemsPerPage && (
                   <Link
-                    href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/history` : "/history"}
+                    href="/history"
                     onClick={handleNavClick}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    <span>Show all</span>
-                    <ChevronRight className="h-4 w-4" />
+                    <span>Show all {searchHistory.length}</span>
                   </Link>
                 )}
               </div>
-            </>
-          )}
-
-          {/* Collapsed state - just show search icon */}
-          {isCollapsed && !isMobile && recentSearches.length > 0 && (
-            <>
-              <Separator className="my-4" />
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={isOnResultsPage && effectiveSearchId ? `/results/${effectiveSearchId}/history` : "/history"}
-                    className="flex items-center justify-center p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
-                  >
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {searchHistory.length} recent searches
-                </TooltipContent>
-              </Tooltip>
             </>
           )}
         </ScrollArea>

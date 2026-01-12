@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useCurrentQueryStore, useSearchHistoryStore } from "@/lib/store"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useCurrentQueryStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useEffectiveQuery, useCurrentSearchFormState, useCreateSearchFilters, useEffectiveSearchId } from "@/lib/hooks"
+import { useSearchOptional } from "@/lib/search"
 import { PageHeader } from "@/components/ui/page-header"
 import { AIConfig } from "@/components/ai-config"
 import { cn, isDateFilterActive } from "@/lib/utils"
@@ -39,10 +40,9 @@ export function AIEnhancementPage({
   const createSearchFilters = useCreateSearchFilters()
   const currentSearchId = useEffectiveSearchId();
 
-  // Get current search result to access language setting
-  const currentSearchResult = useSearchHistoryStore((state) =>
-    currentSearchId ? state.searchHistory.find((item) => item.id === currentSearchId) : null
-  );
+  // Get language from URL params (source of truth on results page)
+  const search = useSearchOptional();
+  const currentLanguage = search?.params?.lang ?? '';
 
   const handleEnhanceQuery = async () => {
     if (!apiKey) {
@@ -63,7 +63,7 @@ export function AIEnhancementPage({
       setIsEnhancing(true)
 
       // Send the expanded query to AI enhancement
-      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, model, currentSearchResult?.language)
+      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, model, currentLanguage || undefined)
       setEnhancedPreview(result)
     } catch (error) {
       toast.error("Enhancement Failed", {

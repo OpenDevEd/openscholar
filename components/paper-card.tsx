@@ -20,7 +20,9 @@ import {
   useIsMobile,
   useIsTablet,
 } from "@/lib/hooks";
+import { useSearchOptional } from "@/lib/search";
 import { openFocusMode } from "@/lib/search-actions";
+import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "./rating-selector";
 import { PaperMetadata } from "./paper-metadata";
 import { DownloadMenu } from "./download-menu";
@@ -92,17 +94,11 @@ export function useTranslate(
   data: { id: string; title: string; abstract: string } | undefined,
   autoSet: boolean = true
 ) {
-  const pathname = usePathname();
-  const searchId = getEffectiveSearchId(pathname, undefined);
+  // Get language from URL params (source of truth on results page)
+  const search = useSearchOptional();
+  const selectedLanguage = search?.params?.lang ?? '';
 
   const { provider, model, apiKey } = useAIConfigStore();
-
-  const selectedLanguage = useSearchHistoryStore((state) => {
-    const currentResult = searchId
-      ? state.searchHistory.find((item) => item.id === searchId)
-      : null;
-    return currentResult?.language || "";
-  });
 
   const {
     getTranslation,
@@ -478,47 +474,22 @@ export function PaperCard({
   const isMobile = useIsTablet();
 
   const searchId = getEffectiveSearchId(pathname, undefined);
-  // Get current search and screening data
-  const selectedLanguage = useSearchHistoryStore((state) => {
-    const currentResult = searchId
-      ? state.searchHistory.find((item) => item.id === searchId)
-      : null;
-    return currentResult?.language || "";
-  });
+  
+  // Get language from URL params (source of truth on results page)
+  const search = useSearchOptional();
+  const selectedLanguage = search?.params?.lang ?? '';
 
   // const handleAddToScreening = () => {
   //   addDocumentFromWork(result);
   // };
 
-  const handleFilteredSearch = async (
-    filterType: "cites" | "cited_by" | "related"
-  ) => {
-    // Create new search entry in history (SWR will handle data fetching)
-    const { addSearchResult } = useSearchHistoryStore.getState();
-    const searchId = addSearchResult({
-      query: "",
-      field: "title_and_abstract",
-      count: 0, // SWR will populate the actual count
-      dateRange: undefined,
-      yearRange: undefined,
-      filterType: "year",
-      sortBy: "cited_by_count:desc",
-      selectedRegions: [],
-      selectedCountryFocus: [],
-      // Don't set rating ranges - they should default to undefined (not filtered)
-      citesItemId: filterType === "cites" ? result.id : "",
-      citedByItemId: filterType === "cited_by" ? result.id : "",
-      relatedToItemId: filterType === "related" ? result.id : "",
-    });
-
-    // Navigate to the new search - SWR will handle data fetching
-    if (searchId) {
-      router.push(`/results/${searchId}`);
-    }
+  const handleFilteredSearch = (filterType: "cites" | "citedBy" | "related") => {
+    const { url } = createCitationSearch(result.id, filterType);
+    router.push(url);
   };
 
   const handleCitesSearch = () => handleFilteredSearch("cites");
-  const handleCitedBySearch = () => handleFilteredSearch("cited_by");
+  const handleCitedBySearch = () => handleFilteredSearch("citedBy");
   const handleRelatedSearch = () => handleFilteredSearch("related");
 
   const {

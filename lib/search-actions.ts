@@ -6,97 +6,11 @@ import { getEffectiveSearchId, createSearchParameters, generateFilename, downloa
 import { createSearchStateFromStore } from './search-utils';
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
 import type { SearchField, SearchFilters } from './types';
-import { serializeSearchParams, searchResultToParams } from './search-params';
+import { searchResultToParams, buildResultsUrl } from './search-params';
 
 // Utility function to extract query from FormData
 const extractQueryFromFormData = (formData: FormData): string => {
   return formData.get('query') as string || '';
-};
-
-// Utility function to extract research question from FormData
-const extractResearchQuestionFromFormData = (formData: FormData): string | undefined => {
-  const researchQuestion = formData.get('researchQuestion') as string;
-  return researchQuestion && researchQuestion.trim() ? researchQuestion.trim() : undefined;
-};
-
-// Utility function to calculate effective date/year ranges based on filter type
-const getEffectiveRanges = (dateRange?: DateRange, yearRange?: [number, number], filterType?: "date" | "year", isFilterActive?: boolean, isYearRangeEnabled?: boolean) => {
-  const effectiveDateRange = (filterType === "date" && isFilterActive) ? dateRange : undefined;
-  const effectiveYearRange = (filterType === "year" && isFilterActive && isYearRangeEnabled) ? yearRange : undefined;
-  return { effectiveDateRange, effectiveYearRange };
-};
-
-// Helper function to create search state with effective ranges
-const createSearchStateWithEffectiveRanges = (
-  query: string,
-  searchField: SearchField,
-  dateRange?: DateRange,
-  yearRange?: [number, number],
-  filterType?: "date" | "year",
-  isFilterActive?: boolean,
-  sortBy?: string,
-  resultsCount?: number
-) => {
-  const { effectiveDateRange, effectiveYearRange } = getEffectiveRanges(dateRange, yearRange, filterType, isFilterActive);
-  
-  // Create unified filters object
-  const filters: SearchFilters = {
-    searchField,
-    sortBy: sortBy || 'relevance_score:desc',
-    filterType: filterType || 'year',
-    dateRange: effectiveDateRange,
-    yearRange: effectiveYearRange,
-    isYearRangeEnabled: undefined, // Will be filled from current search state
-    ratingRange: undefined, // Rating filters are handled client-side
-    onlyRatedPapers: undefined,
-    selectedRegions: [], // Will be filled from current search state
-    selectedCountryFocus: [], // Will be filled from current search state
-    citesItemId: '', // Will be filled from current search state
-    citedByItemId: '', // Will be filled from current search state
-    relatedToItemId: '', // Will be filled from current search state
-    reviewFilter: false, // Will be filled from current search state
-  };
-  
-  return createSearchStateFromStore(query, filters, resultsCount);
-};
-
-// Submit search and create history item (SWR will handle data fetching)
-export const submitSearchAndLoadResults = async (
-  formData: FormData,
-  filters: SearchFilters,
-) => {
-  const { addSearchResult, getSearchResult } = useSearchHistoryStore.getState();
-  
-  // Get effective search ID from URL to check if we're on a results page
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
-  const effectiveSearchId = getEffectiveSearchId(pathname, undefined);
-  
-  // If we're on a results page, preserve the existing count from current search
-  const currentSearch = effectiveSearchId ? getSearchResult(effectiveSearchId) : null;
-  const existingCount = currentSearch?.count || 0;
-  
-  const normalizedQuery = extractQueryFromFormData(formData);
-  const researchQuestion = extractResearchQuestionFromFormData(formData);
-
-  // Validate query - don't perform search if invalid
-  const validation = validateAndExpandKeywords(normalizedQuery);
-
-  // If validation failed, don't create history item
-  if (!validation.isValid) {
-    return { searchId: null };
-  }
-
-  // Create search state and add to history
-  const searchState = createSearchStateFromStore(
-    normalizedQuery,
-    filters,
-    existingCount, // Preserve existing count if available, otherwise 0
-    researchQuestion
-  );
-  
-  const searchId = addSearchResult(searchState);
-
-  return { searchId };
 };
 
 // Update current search with new query (SWR will handle data fetching)
@@ -374,8 +288,7 @@ export const selectQueryFromHistory = async (
     : currentSearch;
   
   const urlParams = searchResultToParams(searchResultWithQuery);
-  const queryString = serializeSearchParams(urlParams as any);
   
   // Navigate to the results page with the search ID and URL params
-  router.push(`/results/${searchId}?${queryString}`);
+  router.push(buildResultsUrl(searchId, urlParams));
 }; 
