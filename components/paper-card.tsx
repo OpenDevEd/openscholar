@@ -95,7 +95,7 @@ export function useTranslate(
   const pathname = usePathname();
   const searchId = getEffectiveSearchId(pathname, undefined);
 
-  const { provider, apiKey } = useAIConfigStore();
+  const { provider, model, apiKey } = useAIConfigStore();
 
   const selectedLanguage = useSearchHistoryStore((state) => {
     const currentResult = searchId
@@ -141,7 +141,8 @@ export function useTranslate(
         data.abstract || "",
         selectedLanguage,
         provider,
-        apiKey
+        apiKey,
+        model
       );
 
       setTranslation(data?.id, translation);
@@ -199,7 +200,7 @@ export function useScreening(data: {
   const screeningQuestions = searchResult?.screeningQuestions || [];
   const screeningResponses = searchResult?.screeningResponses || {};
 
-  const { provider, apiKey, budget, dollarsUsed } = useAIConfigStore();
+  const { provider, model, apiKey, budget, dollarsUsed } = useAIConfigStore();
 
   const startScreening = useCallback(async (): Promise<
     | { responses: Record<string, boolean | null>; confidence: number }
@@ -216,7 +217,8 @@ export function useScreening(data: {
           data.abstract,
           myMissingResponses,
           provider,
-          apiKey
+          apiKey,
+          model
         );
 
         if (setScreeningResponses) {

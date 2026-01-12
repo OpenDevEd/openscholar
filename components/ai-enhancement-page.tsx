@@ -33,7 +33,7 @@ export function AIEnhancementPage({
   onBack,
 }: AIEnhancementPageProps) {
   const router = useRouter()
-  const { provider, apiKey } = useAIConfigStore()
+  const { provider, model, apiKey } = useAIConfigStore()
   const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore()
   const { suggestedQuery, setSuggestedQuery } = useKeywordExpansionDialogStore()
   const createSearchFilters = useCreateSearchFilters()
@@ -61,9 +61,9 @@ export function AIEnhancementPage({
 
     try {
       setIsEnhancing(true)
-      
+
       // Send the expanded query to AI enhancement
-      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, currentSearchResult?.language)
+      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, model, currentSearchResult?.language)
       setEnhancedPreview(result)
     } catch (error) {
       toast.error("Enhancement Failed", {

@@ -32,7 +32,7 @@ export function ScreeningQuestions({
     clearScreeningQuestions,
     removeScreeningQuestionFromAllPapers,
   } = useSearchHistoryStore();
-  const { provider, apiKey } = useAIConfigStore();
+  const { provider, model, apiKey } = useAIConfigStore();
   const { incrementTestIndexPerQuestion } = useTransientScreeningStore();
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
@@ -138,7 +138,8 @@ export function ScreeningQuestions({
         researchQuestion,
         (screeningQuestions || []).map((q) => q.question),
         provider,
-        apiKey
+        apiKey,
+        model
       );
 
       // Add each generated question to the screening questions

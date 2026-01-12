@@ -439,7 +439,7 @@ export function ResultsList({
     handleQueryChange,
     handleSubmit,
   } = useSearchBarLogic();
-  const { provider, apiKey } = useAIConfigStore();
+  const { provider, model, apiKey } = useAIConfigStore();
 
   // Use the queryHistory from the current search result (same as search-history.tsx)
   const queryHistory = currentSearchResult?.queryHistory || [];
@@ -499,6 +499,7 @@ Please enhance this academic search query according to the user's specific instr
         enhancedPrompt,
         provider,
         apiKey,
+        model,
         currentSearchResult?.language
       );
 

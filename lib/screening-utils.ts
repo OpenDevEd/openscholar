@@ -5,20 +5,6 @@ import { ScreeningQuestionEntry, ScreeningResponses } from './types';
 export const DEFAULT_BATCH_SIZE = 5; // Process 5 documents at a time
 export const MAX_PARALLEL_REQUESTS = 3; // Maximum parallel requests per batch
 
-// AI Model constants
-export const OPENAI_MODEL = 'o4-mini-2025-04-16';
-export const GOOGLE_MODEL = 'gemini-2.5-flash';
-export const PRICING = {
-  [OPENAI_MODEL]: {
-    input: 1.10,
-    output: 4.40,
-  },
-  [GOOGLE_MODEL]: {
-    input: 0.10,
-    output: 0.40,
-  },
-}
-
 // Generate system prompt for screening
 export function generateSystemPrompt(questions: ScreeningQuestion[]): string {
   const questionDescriptions = questions.map(q => 

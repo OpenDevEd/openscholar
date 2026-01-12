@@ -2,8 +2,9 @@ import { z } from "zod";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
-import { GOOGLE_MODEL, OPENAI_MODEL } from "@/lib/screening-utils";
 import { languageOptions } from "@/components/language-selector";
 import type { AIProvider } from "@/lib/types";
 
@@ -67,8 +68,9 @@ function validateQuery(query: string): string {
 
 export async function enhanceSearchQuery(
   query: string,
-  provider: "openai" | "google",
+  provider: AIProvider,
   apiKey: string,
+  modelId: string,
   language?: string
 ) {
   if (!apiKey) {
@@ -86,10 +88,18 @@ export async function enhanceSearchQuery(
 
     if (provider === "openai") {
       const openai = createOpenAI({ apiKey });
-      model = openai(OPENAI_MODEL);
-    } else {
+      model = openai(modelId);
+    } else if (provider === "google") {
       const google = createGoogleGenerativeAI({ apiKey });
-      model = google(GOOGLE_MODEL);
+      model = google(modelId);
+    } else if (provider === "anthropic") {
+      const anthropic = createAnthropic({ apiKey });
+      model = anthropic(modelId);
+    } else if (provider === "openrouter") {
+      const openrouter = createOpenRouter({ apiKey });
+      model = openrouter(modelId);
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
     }
 
     const maxRetries = 10;
@@ -179,7 +189,7 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
         const validatedQuery = validateQuery(object.enhancedQuery);
 
         // If we get here, validation passed
-        addCostFromUsage(provider, usage);
+        addCostFromUsage(provider, modelId, usage);
 
         return {
           enhancedQuery: validatedQuery,
@@ -219,8 +229,9 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
 export async function generateScreeningQuestions(
   researchQuestion: string,
   existingQuestions: string[],
-  provider: "openai" | "google",
-  apiKey: string
+  provider: AIProvider,
+  apiKey: string,
+  modelId: string
 ) {
   if (!apiKey) {
     throw new Error("API key is required");
@@ -237,10 +248,18 @@ export async function generateScreeningQuestions(
 
     if (provider === "openai") {
       const openai = createOpenAI({ apiKey });
-      model = openai(OPENAI_MODEL);
-    } else {
+      model = openai(modelId);
+    } else if (provider === "google") {
       const google = createGoogleGenerativeAI({ apiKey });
-      model = google(GOOGLE_MODEL);
+      model = google(modelId);
+    } else if (provider === "anthropic") {
+      const anthropic = createAnthropic({ apiKey });
+      model = anthropic(modelId);
+    } else if (provider === "openrouter") {
+      const openrouter = createOpenRouter({ apiKey });
+      model = openrouter(modelId);
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
     }
 
     const { object, usage } = await generateObject({
@@ -300,7 +319,7 @@ ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 5. Can be answered from the paper's title, abstract, and methods section`,
     });
 
-    addCostFromUsage(provider, usage);
+    addCostFromUsage(provider, modelId, usage);
 
     // Filter out any questions that are too similar to existing ones
     const newQuestions = object.questions.filter(newQuestion => {
@@ -329,8 +348,9 @@ ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 export async function translateQuery(
   query: string,
   targetLanguage: string,
-  provider: "openai" | "google",
-  apiKey: string
+  provider: AIProvider,
+  apiKey: string,
+  modelId: string
 ) {
   if (!apiKey) {
     throw new Error("API key is required");
@@ -351,10 +371,18 @@ export async function translateQuery(
 
     if (provider === "openai") {
       const openai = createOpenAI({ apiKey });
-      model = openai(OPENAI_MODEL);
-    } else {
+      model = openai(modelId);
+    } else if (provider === "google") {
       const google = createGoogleGenerativeAI({ apiKey });
-      model = google(GOOGLE_MODEL);
+      model = google(modelId);
+    } else if (provider === "anthropic") {
+      const anthropic = createAnthropic({ apiKey });
+      model = anthropic(modelId);
+    } else if (provider === "openrouter") {
+      const openrouter = createOpenRouter({ apiKey });
+      model = openrouter(modelId);
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
     }
 
     const { object, usage } = await generateObject({
@@ -392,7 +420,7 @@ IMPORTANT: Do NOT translate the Boolean operators AND, OR, and NOT. They must re
 Provide only the translated query without any additional explanation or formatting.`,
     });
 
-    addCostFromUsage(provider, usage);
+    addCostFromUsage(provider, modelId, usage);
 
     return object.translatedQuery;
   } catch (error) {
@@ -409,8 +437,9 @@ export async function translatePaperContent(
   title: string,
   abstract: string,
   sourceLanguage: string,
-  provider: "openai" | "google",
-  apiKey: string
+  provider: AIProvider,
+  apiKey: string,
+  modelId: string
 ) {
   if (!apiKey) {
     throw new Error("API key is required");
@@ -431,10 +460,18 @@ export async function translatePaperContent(
 
     if (provider === "openai") {
       const openai = createOpenAI({ apiKey });
-      model = openai(OPENAI_MODEL);
-    } else {
+      model = openai(modelId);
+    } else if (provider === "google") {
       const google = createGoogleGenerativeAI({ apiKey });
-      model = google(GOOGLE_MODEL);
+      model = google(modelId);
+    } else if (provider === "anthropic") {
+      const anthropic = createAnthropic({ apiKey });
+      model = anthropic(modelId);
+    } else if (provider === "openrouter") {
+      const openrouter = createOpenRouter({ apiKey });
+      model = openrouter(modelId);
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
     }
 
     const { object, usage } = await generateObject({
@@ -470,10 +507,10 @@ Title: "${title}"
 Abstract: "${abstract}"
 
 Provide the English translation of the title and abstract, maintaining academic precision and terminology.
-`,
+ `,
     });
 
-    addCostFromUsage(provider, usage);
+    addCostFromUsage(provider, modelId, usage);
 
     return {
       translatedTitle: object.translatedTitle,
@@ -495,8 +532,9 @@ export async function generateScreeningResponses(
   title: string,
   abstract: string,
   questions: string[],
-  provider: "openai" | "google",
-  apiKey: string
+  provider: AIProvider,
+  apiKey: string,
+  modelId: string
 ) {
   if (!apiKey) {
     throw new Error("API key is required");
@@ -517,10 +555,18 @@ export async function generateScreeningResponses(
 
     if (provider === "openai") {
       const openai = createOpenAI({ apiKey });
-      model = openai(OPENAI_MODEL);
-    } else {
+      model = openai(modelId);
+    } else if (provider === "google") {
       const google = createGoogleGenerativeAI({ apiKey });
-      model = google(GOOGLE_MODEL);
+      model = google(modelId);
+    } else if (provider === "anthropic") {
+      const anthropic = createAnthropic({ apiKey });
+      model = anthropic(modelId);
+    } else if (provider === "openrouter") {
+      const openrouter = createOpenRouter({ apiKey });
+      model = openrouter(modelId);
+    } else {
+      throw new Error(`Unsupported provider: ${provider}`);
     }
 
     // Create dynamic schema based on questions
@@ -573,7 +619,7 @@ INSTRUCTIONS:
 Provide your screening decisions:`,
     });
 
-    addCostFromUsage(provider, usage);
+    addCostFromUsage(provider, modelId, usage);
 
     return {
       responses: object.responses,

@@ -34,7 +34,7 @@ export function AIScreeningDialog({
   actionLabel = "Start AI Screening"
 }: AIScreeningDialogProps) {
   const { documents, questions, addAIScreeningResults } = useScreeningStore();
-  const { provider, apiKey, dollarsUsed, budget } = useAIConfigStore();
+  const { provider, model, apiKey, dollarsUsed, budget } = useAIConfigStore();
   const { zoteroApiKey, zoteroGroupId } = useZoteroConfigStore();
   
   const [isScreening, setIsScreening] = useState(false);
@@ -78,6 +78,7 @@ export function AIScreeningDialog({
         questions,
         provider,
         apiKey,
+        model,
         batchSize,
         (completed, total, currentBatchNum, totalBatchesNum) => {
           setCompletedDocuments(completed);

@@ -120,7 +120,7 @@ export function useSearchBarLogic() {
       try {
         // If there's a current query and language changed, translate it
         if (currentQuery.trim()) {
-          const { provider, apiKey } = useAIConfigStore.getState();
+          const { provider, model, apiKey } = useAIConfigStore.getState();
 
           if (!apiKey) {
             toast.error("API Key Required", {
@@ -151,7 +151,7 @@ export function useSearchBarLogic() {
           try {
             const { expandedQuery } = validateAndExpandKeywordsSilently(currentQuery);
 
-            const translatedQuery = await translateQuery(expandedQuery, language, provider, apiKey);
+            const translatedQuery = await translateQuery(expandedQuery, language, provider, apiKey, model);
 
             // Update both language and translated query
             updateSearchResult(effectiveSearchId, {
@@ -276,7 +276,7 @@ export function ResearchQuestionBar() {
   const { handleSubmit: handleSubmitSearch } = useSearchBarLogic();
   const { currentQuestion, setCurrentQuestion } = useCurrentQuestionStore();
   const { addQuestionToHistory, getSearchResult } = useSearchHistoryStore();
-  const { provider, apiKey } = useAIConfigStore();
+  const { provider, model, apiKey } = useAIConfigStore();
   const effectiveSearchId = useEffectiveSearchId();
   const [isEnhancing, setIsEnhancing] = React.useState(false);
 
@@ -334,7 +334,7 @@ export function ResearchQuestionBar() {
       // Get current search result to access language setting
       const currentSearchResult = getSearchResult(effectiveSearchId);
 
-      const result = await enhanceSearchQuery(questionToProcess, provider, apiKey, currentSearchResult?.language);
+      const result = await enhanceSearchQuery(questionToProcess, provider, apiKey, model, currentSearchResult?.language);
 
       // Set the enhanced query as the current search query
       const { setCurrentQuery } = useCurrentQueryStore.getState();
@@ -432,7 +432,7 @@ export function ResultsActionBar({
   const search = useSearchOptional();
   const getShareableUrl = search?.getShareableUrl ?? (() => '');
 
-  const { provider, apiKey } = useAIConfigStore();
+  const { provider, model, apiKey } = useAIConfigStore();
   const { setCurrentQuery } = useCurrentQueryStore();
   const { currentQuestion } = useCurrentQuestionStore();
 

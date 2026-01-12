@@ -2,6 +2,8 @@
 import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import type { AIProvider, ScreeningDocument, ScreeningQuestion, ScreeningResult } from '@/lib/types';
 import { 
@@ -9,9 +11,6 @@ import {
   MAX_PARALLEL_REQUESTS, 
   generateSystemPrompt, 
   generateUserPrompt,
-  OPENAI_MODEL,
-  GOOGLE_MODEL,
-  PRICING
 } from '@/lib/screening-utils';
 import { downloadPDFFromURL } from './pdf-download';
 import { buildZoteroHeaders, isZoteroFileUrl } from '@/lib/zotero-utils';
@@ -157,14 +156,20 @@ function createScreeningSchema(questions: ScreeningQuestion[]) {
 }
 
 // Create AI model instance based on provider
-function createModel(provider: AIProvider, apiKey: string) {
+function createModel(provider: AIProvider, apiKey: string, modelId: string) {
   switch (provider) {
     case 'openai':
       const openai = createOpenAI({ apiKey });
-      return openai(OPENAI_MODEL);
+      return openai(modelId);
     case 'google':
       const google = createGoogleGenerativeAI({ apiKey });
-      return google(GOOGLE_MODEL);
+      return google(modelId);
+    case 'anthropic':
+      const anthropic = createAnthropic({ apiKey });
+      return anthropic(modelId);
+    case 'openrouter':
+      const openrouter = createOpenRouter({ apiKey });
+      return openrouter(modelId);
     default:
       throw new Error(`Unsupported AI provider: ${provider}`);
   }
@@ -178,6 +183,7 @@ async function screenDocument(
   questions: ScreeningQuestion[],
   provider: AIProvider,
   apiKey: string,
+  modelId: string,
   usePdfs: boolean = false,
   zoteroAuth?: { apiKey: string; groupId: string }
 ) {
@@ -186,8 +192,9 @@ async function screenDocument(
     questions,
     provider,
     apiKey,
+    modelId,
   });
-  const model = createModel(provider, apiKey);
+  const model = createModel(provider, apiKey, modelId);
 
   // ---- budget guard ----------------------------------------------
   assertWithinBudget();
@@ -220,18 +227,18 @@ async function screenDocument(
     });
     
     // Add PDF file if requested and available
-    if (usePdfs && document.open_access?.oa_url) {
-      try {
-        const pdfResult = await downloadPDFWithFallback(document.open_access.oa_url, document.id, document, zoteroAuth);
+        if (usePdfs && document.open_access?.oa_url) {
+        try {
+          const pdfResult = await downloadPDFWithFallback(document.open_access.oa_url, document.id, document, zoteroAuth);
 
-        if (pdfResult.success && pdfResult.data) {
-          userContent.push({
-            type: 'file' as const,
-            data: pdfResult.data,
-            mimeType: 'application/pdf',
-            filename: `${document.id}.pdf`,
-          });
-          pdfIncluded = true;
+          if (pdfResult.success && pdfResult.data) {
+            userContent.push({
+              type: 'file' as const,
+              data: pdfResult.data,
+              mediaType: 'application/pdf',
+              filename: `${document.id}.pdf`,
+            });
+            pdfIncluded = true;
           console.log(`PDF downloaded & included for document ${document.id}`);
         } else {
           // Attempt Zotero full-text fallback (only available for Zotero-origin docs)
@@ -285,7 +292,7 @@ async function screenDocument(
       });
 
       // ---- cost tracking ------------------------------------------------
-      const cost = addCostFromUsage(provider, usage);
+      const cost = addCostFromUsage(provider, modelId, usage);
 
       return {
         ...object,
@@ -333,7 +340,7 @@ async function screenDocument(
           });
 
           // cost tracking for fallback
-          const cost = addCostFromUsage(provider, usage);
+      const cost = addCostFromUsage(provider, modelId, usage);
 
           return {
             ...object,
@@ -394,6 +401,7 @@ async function processBatch(
   questions: ScreeningQuestion[],
   provider: AIProvider,
   apiKey: string,
+  modelId: string,
   onProgress?: (completed: number, total: number) => void,
   usePdfs: boolean = false,
   zoteroAuth?: { apiKey: string; groupId: string }
@@ -406,7 +414,7 @@ async function processBatch(
 
     // Process chunk in parallel, capturing individual failures
     const settled = await Promise.allSettled(
-      chunk.map((doc) => screenDocument(doc, questions, provider, apiKey, usePdfs, zoteroAuth))
+      chunk.map((doc) => screenDocument(doc, questions, provider, apiKey, modelId, usePdfs, zoteroAuth))
     );
 
     settled.forEach((res, idx) => {
@@ -462,6 +470,7 @@ export async function performScreening(
   questions: ScreeningQuestion[],
   provider: AIProvider,
   apiKey: string,
+  modelId: string,
   batchSize: number = DEFAULT_BATCH_SIZE,
   onProgress?: (completed: number, total: number, currentBatch: number, totalBatches: number) => void,
   usePdfs: boolean = false,
@@ -492,6 +501,7 @@ export async function performScreening(
         questions,
         provider,
         apiKey,
+        modelId,
         (completed, total) => {
           const globalCompleted = allResults.length + completed;
           if (onProgress) {
@@ -546,7 +556,7 @@ export async function performScreening(
         confidence: response.confidence,
         flags: response.flags,
         provider,
-        model: provider === 'openai' ? OPENAI_MODEL : GOOGLE_MODEL,
+        model: modelId,
         processedAt: new Date().toISOString(),
       },
       cost: response.cost, // Include cost in the result

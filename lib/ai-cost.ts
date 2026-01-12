@@ -1,5 +1,5 @@
 import { useAIConfigStore } from './store'
-import { PRICING, OPENAI_MODEL, GOOGLE_MODEL } from './screening-utils'
+import { getModelPricing } from './ai-models'
 import type { AIProvider } from '@/lib/types'
 
 /** Throw if the configured budget (if any) has been exceeded */
@@ -16,10 +16,11 @@ export function assertWithinBudget() {
 
 /**
  * Read token usage from Vercel AI SDK result & increment dollarsUsed
- * @param provider currently only 'openai' | 'google'
+ * @param provider the AI provider being used
+ * @param modelId the model ID being used
  * @param usage token usage object returned by the SDK
  */
-export function addCostFromUsage(provider: AIProvider, usage: any): number {
+export function addCostFromUsage(provider: AIProvider, modelId: string, usage: any): number {
   try {
     const { addDollarsUsed } = useAIConfigStore.getState()
 
@@ -27,8 +28,8 @@ export function addCostFromUsage(provider: AIProvider, usage: any): number {
     const completionTokens = usage?.completionTokens ?? usage?.outputTokens ?? 0
     if (!promptTokens && !completionTokens) return 0
 
-    const priceTable = PRICING[provider === 'openai' ? OPENAI_MODEL : GOOGLE_MODEL]
-    const cost = ((promptTokens / 1_000_000) * priceTable.input) + ((completionTokens / 1_000_000) * priceTable.output)
+    const pricing = getModelPricing(provider, modelId)
+    const cost = ((promptTokens / 1_000_000) * pricing.input) + ((completionTokens / 1_000_000) * pricing.output)
     if (cost > 0) addDollarsUsed(cost)
     return cost
   } catch {

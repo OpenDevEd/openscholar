@@ -50,7 +50,7 @@ function PageContent() {
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
   // AI configuration and research question state
-  const { provider, apiKey } = useAIConfigStore();
+  const { provider, model, apiKey } = useAIConfigStore();
 
   const createSearchFilters = useCreateSearchFilters();
 
@@ -86,7 +86,7 @@ function PageContent() {
         setIsEnhancingQuestion(true);
 
         // Convert research question to search query using AI
-        const result = await enhanceSearchQuery(originalQuery, provider, apiKey);
+        const result = await enhanceSearchQuery(originalQuery, provider, apiKey, model);
 
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;
