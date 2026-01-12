@@ -11,15 +11,11 @@ import {
 import { toast } from "sonner";
 import {
   useQueryChangeHandler,
-  useCurrentSearchFormState,
-  useSearchResults,
   useCreateSearchFilters,
-  useEffectiveSearchId,
 } from "@/lib/hooks";
-import {
-  submitSearchAndLoadResults,
-  selectQueryFromHistory,
-} from "@/lib/search-actions";
+import { submitNewSearch, restoreFromHistory } from "@/lib/search";
+import { selectQueryFromHistory } from "@/lib/search-actions";
+import { serializeSearchParams, type ParsedSearchParams } from "@/lib/search-params";
 import { Logo } from "@/components/logo";
 import { Search, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,18 +37,13 @@ import { FooterBanner } from "./ui/footer";
 function PageContent() {
   const router = useRouter();
 
-  // Zustand stores
-  const { currentSearchField } = useCurrentSearchFormState();
-
   const { loadingResultIndex, setLoadingResultIndex } = useUIStore();
 
   // Loading state for AI enhancement
   const [isEnhancingQuestion, setIsEnhancingQuestion] = React.useState(false);
 
-  // Get SWR loading states for disabling form
-  const { isLoading, isValidating } = useSearchResults();
-  const isFormDisabled =
-    isLoading || isValidating || loadingResultIndex !== null || isEnhancingQuestion;
+  // Home page doesn't need SWR loading states - just local state
+  const isFormDisabled = loadingResultIndex !== null || isEnhancingQuestion;
 
   // Use shared current query state for navbar/home page synchronization
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
@@ -128,13 +119,12 @@ function PageContent() {
     // Create filters object from current state
     const filters = createSearchFilters();
 
-    // Submit search and load results in one call, get the search ID
-    const { searchId } = await submitSearchAndLoadResults(formData, filters);
-
-    // Only navigate if search was successful (searchId is not null)
-    if (searchId) {
-      router.push(`/results/${searchId}`);
-    }
+    // Submit new search and get the URL to navigate to
+    const researchQuestion = originalQuery.trim().endsWith('?') ? originalQuery : undefined;
+    const { url } = submitNewSearch(searchQuery, filters, researchQuestion);
+    
+    // Navigate to the results page with search params
+    router.push(url);
   };
 
   const handleSearchHistoryClick = async (
@@ -152,7 +142,48 @@ function PageContent() {
     const searchResult = searchHistory[index || 0];
 
     if (searchResult?.id) {
-      router.push(`/results/${searchResult.id}`);
+      // Build URL params from the stored search result
+      const urlParams: Partial<ParsedSearchParams> = {
+        q: searchResult.query,
+        field: searchResult.field,
+        sort: searchResult.sortBy || 'relevance_score:desc',
+        ft: searchResult.filterType || 'year',
+      };
+      
+      // Add optional filters
+      if (searchResult.isYearRangeEnabled && searchResult.yearRange) {
+        urlParams.yf = searchResult.yearRange[0];
+        urlParams.yt = searchResult.yearRange[1];
+      }
+      if (searchResult.filterType === 'date' && searchResult.dateRange) {
+        if (searchResult.dateRange.from) {
+          urlParams.df = new Date(searchResult.dateRange.from).toISOString().split('T')[0];
+        }
+        if (searchResult.dateRange.to) {
+          urlParams.dt = new Date(searchResult.dateRange.to).toISOString().split('T')[0];
+        }
+      }
+      if (searchResult.selectedRegions && searchResult.selectedRegions.length > 0) {
+        urlParams.reg = searchResult.selectedRegions;
+      }
+      if (searchResult.selectedCountryFocus && searchResult.selectedCountryFocus.length > 0) {
+        urlParams.focus = searchResult.selectedCountryFocus;
+      }
+      if (searchResult.citesItemId) {
+        urlParams.cites = searchResult.citesItemId;
+      }
+      if (searchResult.citedByItemId) {
+        urlParams.citedBy = searchResult.citedByItemId;
+      }
+      if (searchResult.relatedToItemId) {
+        urlParams.rel = searchResult.relatedToItemId;
+      }
+      if (searchResult.reviewFilter) {
+        urlParams.review = true;
+      }
+      
+      const queryString = serializeSearchParams(urlParams as ParsedSearchParams);
+      router.push(`/results/${searchResult.id}?${queryString}`);
     } else {
       toast.error("Search not found", {
         description: "The requested search could not be found in your history.",
@@ -286,7 +317,7 @@ function PageContent() {
               <SearchHistory
                 onSearchResults={handleSearchHistoryClick}
                 loadingResultIndex={loadingResultIndex}
-                currentSearchField={currentSearchField}
+                currentSearchField="title_and_abstract"
                 compact={true}
                 currentSearchId={undefined}
                 onQuerySelect={handleQuerySelect}

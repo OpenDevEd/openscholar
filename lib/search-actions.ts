@@ -6,6 +6,7 @@ import { getEffectiveSearchId, createSearchParameters, generateFilename, downloa
 import { createSearchStateFromStore } from './search-utils';
 import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
 import type { SearchField, SearchFilters } from './types';
+import { serializeSearchParams, searchResultToParams } from './search-params';
 
 // Utility function to extract query from FormData
 const extractQueryFromFormData = (formData: FormData): string => {
@@ -165,33 +166,13 @@ export const updateCurrentSearch = async (
 };
 
 // Update current search with new filters and refresh results
+// NOTE: With URL-based state, this is now mostly a no-op since
+// SWR automatically refetches when URL params change.
+// Kept for backwards compatibility.
 export const updateCurrentSearchFilters = async () => {
-  const { updateSearchResult, getSearchResult } = useSearchHistoryStore.getState();
-  
-  // Get effective search ID from URL
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
-  const effectiveSearchId = getEffectiveSearchId(pathname, undefined);
-  
-  if (!effectiveSearchId) {
-    toast.error('No active search', {
-      description: 'Please perform a search before applying filters.'
-    });
-    throw new Error('No current search ID to update');
-  }
-  
-  const currentSearch = getSearchResult(effectiveSearchId);
-  if (!currentSearch) {
-    toast.error('Search not found', {
-      description: 'The current search could not be found in your history.'
-    });
-    throw new Error('Current search not found in history');
-  }
-
-  // SWR will automatically refetch when the search parameters change
-  // We just need to update the timestamp to trigger a revalidation
-  updateSearchResult(effectiveSearchId, { 
-    updatedAt: new Date().toISOString() 
-  });
+  // URL params now handle state - SWR auto-refetches on param change
+  // This function is kept for backwards compatibility but does nothing
+  return;
 };
 
 export const createSearchMetadata = (
@@ -387,6 +368,14 @@ export const selectQueryFromHistory = async (
     });
   }
   
-  // Navigate to the results page with the search ID
-  router.push(`/results/${searchId}`);
+  // Build URL params from the search result (with the new query if changed)
+  const searchResultWithQuery = selectedQuery !== currentQuery 
+    ? { ...currentSearch, query: selectedQuery }
+    : currentSearch;
+  
+  const urlParams = searchResultToParams(searchResultWithQuery);
+  const queryString = serializeSearchParams(urlParams as any);
+  
+  // Navigate to the results page with the search ID and URL params
+  router.push(`/results/${searchId}?${queryString}`);
 }; 

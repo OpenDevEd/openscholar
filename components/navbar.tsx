@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useEffect, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,8 @@ import {
   Expand,
   Minimize2,
   Loader2,
+  Share2,
+  Check,
 } from "lucide-react";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
@@ -42,7 +44,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  useResultsStore,
   useSearchHistoryStore,
   useCurrentQueryStore,
   useCurrentQuestionStore,
@@ -51,9 +52,8 @@ import {
 import {
   useQueryChangeHandler,
   useEffectiveSearchId,
-  useCurrentSearchFormState,
-  useSearchResults,
 } from "@/lib/hooks";
+import { useSearchOptional } from "@/lib/search";
 import { toast } from "sonner";
 import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { usePathname, useRouter } from "next/navigation";
@@ -76,21 +76,24 @@ import { SearchHistory } from "./search-history";
 import { useIsMobile } from "@/lib/hooks";
 import { ApiButton } from "./api-button";
 import { LanguageSelector } from "./language-selector";
-import { SearchContext } from "@/app/results/layout";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 
 export function useSearchBarLogic() {
-  const { handleUpdateCurrentSearch, loadingResultIndex } =
-  useContext(SearchContext);
+  // Use the new search context (returns undefined if outside provider)
+  const search = useSearchOptional();
+  
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
-  const { isLoading, isValidating, apiUrl } = useSearchResults();
 
   // Translation loading state
   const [isTranslating, setIsTranslating] = React.useState(false);
 
-  const isFormDisabled =
-    isLoading || isValidating || loadingResultIndex !== null || isTranslating;
+  // Get loading states from search context or default to false
+  const isLoading = search?.isLoading ?? false;
+  const isValidating = search?.isValidating ?? false;
+  const apiUrl = search?.apiUrl ?? '';
+
+  const isFormDisabled = isLoading || isValidating || isTranslating;
 
   // Get current search ID and result for language persistence
   const effectiveSearchId = useEffectiveSearchId();
@@ -104,7 +107,10 @@ export function useSearchBarLogic() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleUpdateCurrentSearch(currentQuery);
+    // Update query via the search context if available
+    if (search) {
+      search.setQuery(currentQuery);
+    }
   };
 
   const handleLanguageChange = async (language: string) => {
@@ -266,18 +272,19 @@ export function SearchBar() {
 }
 
 export function ResearchQuestionBar() {
-  const { handleUpdateCurrentSearch, loadingResultIndex,  } =
-    useContext(SearchContext);
+  const search = useSearchOptional();
   const { handleSubmit: handleSubmitSearch } = useSearchBarLogic();
   const { currentQuestion, setCurrentQuestion } = useCurrentQuestionStore();
-  const { isLoading, isValidating } = useSearchResults();
   const { addQuestionToHistory, getSearchResult } = useSearchHistoryStore();
   const { provider, apiKey } = useAIConfigStore();
   const effectiveSearchId = useEffectiveSearchId();
   const [isEnhancing, setIsEnhancing] = React.useState(false);
 
-  const isFormDisabled =
-    isLoading || isValidating || loadingResultIndex !== null || isEnhancing;
+  // Get loading states from search context
+  const isLoading = search?.isLoading ?? false;
+  const isValidating = search?.isValidating ?? false;
+
+  const isFormDisabled = isLoading || isValidating || isEnhancing;
 
   // Get the latest question from questionHistory when search changes
   React.useEffect(() => {
@@ -419,6 +426,11 @@ export function ResultsActionBar({
   // State for loading buttons
   const [isBroadening, setIsBroadening] = React.useState(false);
   const [isNarrowing, setIsNarrowing] = React.useState(false);
+  const [isCopied, setIsCopied] = React.useState(false);
+
+  // Get shareable URL from search context
+  const search = useSearchOptional();
+  const getShareableUrl = search?.getShareableUrl ?? (() => '');
 
   const { provider, apiKey } = useAIConfigStore();
   const { setCurrentQuery } = useCurrentQueryStore();
@@ -531,6 +543,23 @@ Return a more targeted version of this query that will reduce the result count w
     }
   };
 
+  const handleCopyShareLink = async () => {
+    try {
+      const shareableUrl = getShareableUrl();
+      await navigator.clipboard.writeText(shareableUrl);
+      setIsCopied(true);
+      toast.success("Link copied!", {
+        description: "Share this URL with others to share your search.",
+      });
+      // Reset the icon after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      toast.error("Failed to copy link", {
+        description: "Could not copy the share link to clipboard.",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
       {/* Results count and query adjustment buttons */}
@@ -603,6 +632,25 @@ Return a more targeted version of this query that will reduce the result count w
             onDownloadEssentialCSV={onDownloadAllEssentialCSV}
           />
         )}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleCopyShareLink}
+              className="flex-shrink-0"
+            >
+              {isCopied ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{isCopied ? "Copied!" : "Copy shareable link"}</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
@@ -682,7 +730,10 @@ export function Navbar({ loadingResultIndex = null }: NavbarProps) {
   const { searchHistory } = useSearchHistoryStore();
   const isMobile = useIsMobile();
   const effectiveSearchId = useEffectiveSearchId();
-  const { currentSearchField } = useCurrentSearchFormState();
+  
+  // Get search field from context or default
+  const search = useSearchOptional();
+  const currentSearchField = (search?.params?.field ?? 'title_and_abstract') as any;
 
   // Use shared current query state for navbar/home page synchronization
   const { currentQuery, setCurrentQuery } = useCurrentQueryStore();

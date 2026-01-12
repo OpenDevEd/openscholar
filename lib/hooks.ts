@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getEffectiveSearchId, getCurrentSearchFormState, DEFAULT_FILTERS } from "@/lib/utils";
-import { useDebounceValue } from "@/hooks/use-debounce-value";
-import { useResultsStore } from "@/lib/store";
+import { getEffectiveSearchId, DEFAULT_FILTERS } from "@/lib/utils";
 import { useSearchHistoryStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
-import useSWR from 'swr';
-import { toast } from 'sonner';
-import { getSearchResultsWithFilters, SearchWithFiltersParams } from '@/lib/search-utils';
 import type { SearchField, SearchFilters } from '@/lib/types';
+
+// Import the new search context
+import { useSearchOptional } from './search';
 
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
@@ -117,263 +115,182 @@ export function useEffectiveQuery(): string {
 }
 
 /**
- * Custom hook to get current search form state from search history
- * This replaces useSearchFormStore functionality and properly subscribes to state changes
+ * Custom hook to get current search form state from URL params
+ * Updated to use URL as source of truth instead of store
+ * 
+ * NOTE: This hook uses useSearchState() which requires a Suspense boundary
+ * when using nuqs. For pages that don't need URL-based state, consider
+ * using the store directly or wrapping the page in Suspense.
  */
 export function useCurrentSearchFormState() {
   const pathname = usePathname();
+  const isOnResultsPage = pathname?.startsWith('/results');
   
-  // Extract search ID from URL
-  const searchId = getEffectiveSearchId(pathname, undefined);
+  // Only use URL-based state on results pages
+  // For other pages, use store defaults
+  if (!isOnResultsPage) {
+    return useCurrentSearchFormStateFromStore();
+  }
   
-  // Use a proper Zustand selector that subscribes to changes in the search history
-  // This will trigger re-renders when the specific search result changes
-  const searchState = useSearchHistoryStore((state) => 
-    searchId ? state.searchHistory.find(item => item.id === searchId) : null
-  );
+  return useCurrentSearchFormStateFromUrl();
+}
+
+/**
+ * Internal hook that uses URL-based state via useSearch context
+ * Only use this on pages with results (or wrapped in Suspense)
+ */
+function useCurrentSearchFormStateFromUrl() {
+  const search = useSearchOptional();
   
-  const currentYear = new Date().getFullYear();
   const defaultYearRange = DEFAULT_FILTERS.yearRange();
   
-  // Helper function to get field with fallback
-  const getField = <T>(field: string, fallback: T): T => {
-    if (!searchState) return fallback;
-    return (searchState as any)[field] ?? fallback;
-  };
+  // If not inside SearchProvider, fall back to defaults
+  if (!search) {
+    return useCurrentSearchFormStateFromStore();
+  }
   
+  // Map from URL-based state to the old API format
   return {
-    currentSearchField: getField('field', DEFAULT_FILTERS.field),
-    dateRange: getField('dateRange', DEFAULT_FILTERS.dateRange),
-    sortBy: getField('sortBy', DEFAULT_FILTERS.sortBy),
-    filterType: getField('filterType', DEFAULT_FILTERS.filterType),
-    yearRange: getField('yearRange', defaultYearRange),
-    isYearRangeEnabled: getField('isYearRangeEnabled', DEFAULT_FILTERS.isYearRangeEnabled),
-    yearFromInput: getField('yearRange', defaultYearRange)[0]?.toString() || defaultYearRange[0].toString(),
-    yearToInput: getField('yearRange', defaultYearRange)[1]?.toString() || defaultYearRange[1].toString(),
-    ratingRange: getField('ratingRange', DEFAULT_FILTERS.ratingRange),
-    onlyRatedPapers: getField('onlyRatedPapers', DEFAULT_FILTERS.onlyRatedPapers),
-    selectedRegions: getField('selectedRegions', DEFAULT_FILTERS.selectedRegions),
-    selectedCountryFocus: getField('selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
-    citesItemId: getField('citesItemId', DEFAULT_FILTERS.citesItemId),
-    citedByItemId: getField('citedByItemId', DEFAULT_FILTERS.citedByItemId),
-    relatedToItemId: getField('relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
-    reviewFilter: getField('reviewFilter', DEFAULT_FILTERS.reviewFilter),
+    currentSearchField: search.params.field as SearchField,
+    dateRange: search.params.df || search.params.dt ? {
+      from: search.params.df ? new Date(search.params.df) : undefined,
+      to: search.params.dt ? new Date(search.params.dt) : undefined,
+    } : DEFAULT_FILTERS.dateRange,
+    sortBy: search.params.sort,
+    filterType: search.params.ft as 'date' | 'year',
+    yearRange: search.params.yf && search.params.yt 
+      ? [search.params.yf, search.params.yt] as [number, number]
+      : defaultYearRange,
+    isYearRangeEnabled: !!(search.params.yf || search.params.yt),
+    yearFromInput: search.params.yf?.toString() || defaultYearRange[0].toString(),
+    yearToInput: search.params.yt?.toString() || defaultYearRange[1].toString(),
+    ratingRange: [search.params.rmin, search.params.rmax] as [number, number],
+    onlyRatedPapers: search.params.rated,
+    selectedRegions: search.params.reg,
+    selectedCountryFocus: search.params.focus,
+    citesItemId: search.params.cites,
+    citedByItemId: search.params.citedBy,
+    relatedToItemId: search.params.rel,
+    reviewFilter: search.params.review,
   };
 }
 
 /**
- * Custom hook to update search filters in history
- * This replaces SearchFormStore setters
+ * Internal hook that uses store-based state (for non-results pages)
+ */
+function useCurrentSearchFormStateFromStore() {
+  const effectiveSearchId = useEffectiveSearchId();
+  const { getSearchResult } = useSearchHistoryStore();
+  const searchResult = effectiveSearchId ? getSearchResult(effectiveSearchId) : null;
+  
+  const defaultYearRange = DEFAULT_FILTERS.yearRange();
+  
+  return {
+    currentSearchField: (searchResult?.field || 'title_and_abstract') as SearchField,
+    dateRange: searchResult?.dateRange || DEFAULT_FILTERS.dateRange,
+    sortBy: searchResult?.sortBy || 'relevance_score:desc',
+    filterType: (searchResult?.filterType || 'year') as 'date' | 'year',
+    yearRange: searchResult?.yearRange || defaultYearRange,
+    isYearRangeEnabled: searchResult?.isYearRangeEnabled || false,
+    yearFromInput: searchResult?.yearRange?.[0]?.toString() || defaultYearRange[0].toString(),
+    yearToInput: searchResult?.yearRange?.[1]?.toString() || defaultYearRange[1].toString(),
+    ratingRange: (searchResult?.ratingRange || [0, 5]) as [number, number],
+    onlyRatedPapers: searchResult?.onlyRatedPapers || false,
+    selectedRegions: searchResult?.selectedRegions || [],
+    selectedCountryFocus: searchResult?.selectedCountryFocus || [],
+    citesItemId: searchResult?.citesItemId || '',
+    citedByItemId: searchResult?.citedByItemId || '',
+    relatedToItemId: searchResult?.relatedToItemId || '',
+    reviewFilter: searchResult?.reviewFilter || false,
+  };
+}
+
+/**
+ * Custom hook to update search filters via URL params
+ * Updated to use URL as source of truth
+ * 
+ * NOTE: This hook uses useSearchState() which requires being on a results page
+ * or being wrapped in a Suspense boundary.
  */
 export function useUpdateSearchFilter() {
   const pathname = usePathname();
-  const { updateSearchResult } = useSearchHistoryStore();
+  const isOnResultsPage = pathname?.startsWith('/results');
   
-  const updateFilter = (updates: Record<string, any>) => {
-    const effectiveSearchId = getEffectiveSearchId(pathname, undefined);
-    if (effectiveSearchId) {
-      // Map field names from component API to SearchResult schema
-      const mappedUpdates = { ...updates };
-      
-      // Map currentSearchField to field
-      if ('currentSearchField' in mappedUpdates) {
-        mappedUpdates.field = mappedUpdates.currentSearchField;
-        delete mappedUpdates.currentSearchField;
-      }
-      
-      updateSearchResult(effectiveSearchId, mappedUpdates);
-    }
-  };
+  // On results pages, use URL-based state
+  if (isOnResultsPage) {
+    return useUpdateSearchFilterFromUrl();
+  }
   
-  return updateFilter;
+  // On other pages, return a no-op function
+  return useCallback((_updates: Record<string, unknown>) => {
+    console.warn('useUpdateSearchFilter called outside of results page - no-op');
+  }, []);
 }
 
 /**
- * SWR-based hook for search results - the single source of truth for search data
- * This replaces the Zustand results store
+ * Internal hook that uses URL-based state updates
  */
-export function useSearchResults() {
-  const pathname = usePathname();
-  const searchId = getEffectiveSearchId(pathname, undefined);
-  const { updateSearchResult } = useSearchHistoryStore();
-  const searchState = useSearchHistoryStore((state) => 
-    searchId ? state.searchHistory.find(item => item.id === searchId) : null
-  );
-
-  // Debounce the search parameters to avoid spamming the API while the user is still typing / sliding
-  const debouncedSearchState = useDebounceValue(searchState, 300);
-
-  // Create SWR key from search parameters
-  const swrKey = debouncedSearchState ? [
-    'search-results',
-    debouncedSearchState.query,
-    debouncedSearchState.field,
-    debouncedSearchState.dateRange,
-    debouncedSearchState.sortBy,
-    debouncedSearchState.yearRange,
-    debouncedSearchState.filterType,
-    debouncedSearchState.selectedRegions,
-    debouncedSearchState.selectedCountryFocus,
-    debouncedSearchState.citesItemId,
-    debouncedSearchState.citedByItemId,
-    debouncedSearchState.relatedToItemId,
-    debouncedSearchState.reviewFilter,
-  ] : null;
-
-  // SWR fetcher function
-  const fetcher = async ([
-    _key,
-    query,
-    searchField,
-    dateRange,
-    sortBy,
-    yearRange,
-    filterType,
-    selectedRegions,
-    selectedCountryFocus,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-    reviewFilter,
-  ]: any[]) => {
-    // Auto-switch from relevance sorting if no query provided
-    let effectiveSortBy = sortBy;
-    if (sortBy === 'relevance_score:desc' && (!query || query.trim() === '')) {
-      effectiveSortBy = 'publication_date:desc'; // Default to newest first
+function useUpdateSearchFilterFromUrl() {
+  const search = useSearchOptional();
+  
+  const updateFilter = useCallback((updates: Record<string, unknown>) => {
+    // If not inside SearchProvider, do nothing
+    if (!search) {
+      console.warn('useUpdateSearchFilter called outside of SearchProvider - no-op');
+      return;
     }
     
-    // Create unified filters object
-    const filters: SearchFilters = {
-      searchField,
-      sortBy: effectiveSortBy,
-      filterType,
-      dateRange,
-      yearRange,
-      isYearRangeEnabled: debouncedSearchState?.isYearRangeEnabled, // Use actual value from search state
-      ratingRange: undefined, // Rating filters are handled client-side
-      onlyRatedPapers: undefined,
-      selectedRegions,
-      selectedCountryFocus,
-      citesItemId,
-      citedByItemId,
-      relatedToItemId,
-      reviewFilter: debouncedSearchState?.reviewFilter || false,
-    };
-    
-    const params: SearchWithFiltersParams = {
-      query,
-      filters,
-    };
-
-    const result = await getSearchResultsWithFilters(params);
-    return result;
-  };
-
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
-    swrKey,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      revalidateOnMount: true,
-      revalidateIfStale: true,
-      revalidateOnError: false, // Don't retry on error
-      dedupingInterval: 10000, // 10 seconds deduplication
-      keepPreviousData: true, // Keep previous data while loading new data
-      errorRetryCount: 0, // Don't retry failed requests
-      errorRetryInterval: 0, // Don't retry failed requests
-      onSuccess: (data) => {
-        // Update search history count when new data is successfully fetched
-        if (data?.results?.meta?.count !== undefined && searchId && searchState) {
-          const newCount = data.results.meta.count;
-          // Only update if the count has changed to avoid unnecessary re-renders
-          if (searchState.count !== newCount) {
-            updateSearchResult(searchId, { count: newCount });
-          }
-        }
-      },
-      onError: (error, key) => {
-        console.error('Search request failed:', error);
-        
-        // Handle specific error types with detailed messages
-        if (error && typeof error === 'object' && 'message' in error) {
-          if (error.message.includes('400')) {
-            toast.error('Search query too large', {
-              description: 'Your search query is too complex or long. Please try simplifying it or using fewer search terms.',
-              action: {
-                label: 'Retry',
-                onClick: () => mutate(),
-              },
-            });
-          } else if (error.message.includes('403')) {
-            toast.error('Search request rejected', {
-              description: 'The search query contains invalid parameters. Please try simplifying your search.',
-              action: {
-                label: 'Retry',
-                onClick: () => mutate(),
-              },
-            });
-          } else if (error.message.includes('429')) {
-            toast.error('Too many requests', {
-              description: 'Please wait a moment before trying again.',
-              action: {
-                label: 'Retry',
-                onClick: () => mutate(),
-              },
-            });
-          } else if (error.message.includes('500')) {
-            toast.error('Server error', {
-              description: 'The search service is temporarily unavailable. Please try again later.',
-              action: {
-                label: 'Retry',
-                onClick: () => mutate(),
-              },
-            });
-          } else if (error.message.toLowerCase().includes('network') || error.message.toLowerCase().includes('fetch')) {
-            toast.error('Connection error', {
-              description: 'Please check your internet connection and try again.',
-              action: {
-                label: 'Retry',
-                onClick: () => mutate(),
-              },
-            });
-          } else {
-            toast.error('Search failed', {
-              description: 'An unexpected error occurred. Please try again.',
-              action: {
-                label: 'Retry',
-                onClick: () => mutate(),
-              },
-            });
-          }
-        } else {
-          toast.error('Search failed', {
-            description: 'An unexpected error occurred. Please try again.',
-            action: {
-              label: 'Retry',
-              onClick: () => mutate(),
-            },
-          });
-        }
-      },
+    if ('currentSearchField' in updates || 'field' in updates) {
+      search.setField((updates.currentSearchField || updates.field) as SearchField);
     }
-  );
-
-  return {
-    results: data?.results?.results || [],
-    totalCount: data?.results?.meta?.count || 0,
-    apiUrl: data?.results?.meta?.url || '',
-    originalQuery: data?.originalQuery || '',
-    enhancedQuery: data?.enhancedQuery || '',
-    countryNames: data?.countryNames || [],
-    validation: data?.validation || { isValid: true, expandedQuery: '', warnings: [] },
-    isLoading, // Initial loading (no data yet)
-    isValidating, // Background loading/refetching (has data, getting new data)
-    isLoadingResults: isLoading || isValidating, // Combined loading state for UI
-    error,
-    mutate, // For manual revalidation
-    searchState, // Current search parameters
-  };
+    if ('sortBy' in updates) {
+      search.setSort(updates.sortBy as string);
+    }
+    if ('filterType' in updates) {
+      search.setFilterType(updates.filterType as 'date' | 'year');
+    }
+    if ('yearRange' in updates) {
+      const range = updates.yearRange as [number, number] | undefined;
+      search.setYearRange(range?.[0] ?? null, range?.[1] ?? null);
+    }
+    if ('isYearRangeEnabled' in updates) {
+      // If disabling year range, clear the values
+      if (!updates.isYearRangeEnabled) {
+        search.setYearRange(null, null);
+      }
+    }
+    if ('dateRange' in updates) {
+      const range = updates.dateRange as DateRange | undefined;
+      search.setDateRange(range?.from ?? null, range?.to ?? null);
+    }
+    if ('ratingRange' in updates) {
+      const range = updates.ratingRange as [number, number];
+      search.setRatingRange(range[0], range[1]);
+    }
+    if ('onlyRatedPapers' in updates) {
+      search.setOnlyRated(updates.onlyRatedPapers as boolean);
+    }
+    if ('selectedRegions' in updates) {
+      search.setRegions(updates.selectedRegions as string[]);
+    }
+    if ('selectedCountryFocus' in updates) {
+      search.setCountryFocus(updates.selectedCountryFocus as string[]);
+    }
+    if ('citesItemId' in updates) {
+      search.setCites(updates.citesItemId as string);
+    }
+    if ('citedByItemId' in updates) {
+      search.setCitedBy(updates.citedByItemId as string);
+    }
+    if ('relatedToItemId' in updates) {
+      search.setRelatedTo(updates.relatedToItemId as string);
+    }
+    if ('reviewFilter' in updates) {
+      search.setReviewOnly(updates.reviewFilter as boolean);
+    }
+  }, [search]);
+  
+  return updateFilter;
 }
 
 /**

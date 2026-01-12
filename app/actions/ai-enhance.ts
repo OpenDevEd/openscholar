@@ -5,8 +5,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
 import { GOOGLE_MODEL, OPENAI_MODEL } from "@/lib/screening-utils";
 import { languageOptions } from "@/components/language-selector";
-
-export type AIProvider = "openai" | "google";
+import type { AIProvider } from "@/lib/types";
 
 // Define schema with strict validation requirements
 const queryEnhancementSchema = z.object({
@@ -588,3 +587,6 @@ Provide your screening decisions:`,
     );
   }
 }
+
+// Re-export AIProvider for backwards compatibility
+export type { AIProvider } from "@/lib/types";

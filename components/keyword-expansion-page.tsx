@@ -14,7 +14,8 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { KeywordExpansionPreview } from "./keyword-expansion-preview"
 import { PageHeader } from "@/components/ui/page-header"
-import { useEffectiveQuery, useSearchResults } from "@/lib/hooks"
+import { useEffectiveQuery } from "@/lib/hooks"
+import { useSearchOptional } from "@/lib/search"
 
 interface KeywordExpansionPageProps {
   /** Optional initial query to suggest for saving as keyword */
@@ -32,7 +33,8 @@ export function KeywordExpansionPage({
 }: KeywordExpansionPageProps) {
   const router = useRouter()
   const { keywords, addKeyword, removeKeyword } = useKeywordExpansionStore()
-  const { originalQuery: currentQuery } = useSearchResults()
+  const search = useSearchOptional()
+  const currentQuery = search?.originalQuery || ''
   const effectiveQuery = useEffectiveQuery()
   
   // Use dialog store for form state (reusing existing logic)

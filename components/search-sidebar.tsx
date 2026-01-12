@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -8,13 +8,39 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { X, CalendarIcon, Filter, SortAsc, Settings, Sparkles, Zap, Clock, Target, Star, Globe, Quote, Network, FileText } from "lucide-react";
+import {
+  X,
+  CalendarIcon,
+  Filter,
+  SortAsc,
+  Settings,
+  Sparkles,
+  Zap,
+  Clock,
+  Target,
+  Star,
+  Globe,
+  Quote,
+  Network,
+  FileText,
+} from "lucide-react";
 import { format } from "date-fns";
-import { cn, fields, isDateFilterActive, isRatingFilterActive, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, isReviewFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import {
+  cn,
+  fields,
+  isDateFilterActive,
+  isRatingFilterActive,
+  isCountryFilterActive,
+  isCountryFocusActive,
+  isCitesFilterActive,
+  isCitedByFilterActive,
+  isRelatedToFilterActive,
+  isReviewFilterActive,
+  DEFAULT_FILTERS,
+} from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { YearRangePicker } from "./year-range-picker";
 import { useDateRangePickerStore } from "@/lib/store";
 import { RatingRangePicker } from "./rating-range-picker";
@@ -22,7 +48,12 @@ import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
 import { CitesFilter } from "./cites-filter";
 import { CitedByFilter } from "./cited-by-filter";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { DateRange } from "react-day-picker";
 import { RelatedToFilter } from "./related-to-filter";
@@ -32,50 +63,57 @@ interface SearchSidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   isMobile?: boolean;
-  mode?: 'sidebar' | 'sheet' | 'page';
+  mode?: "sidebar" | "sheet" | "page";
 }
 
 // Filter wrapper component for consistent styling
 interface FilterWrapperProps {
   title: string;
   icon: React.ElementType;
-  colorScheme: 'purple' | 'orange' | 'emerald' | 'blue' | 'green' | 'pink';
+  colorScheme: "purple" | "orange" | "emerald" | "blue" | "green" | "pink";
   isActive: boolean;
   children: React.ReactNode;
 }
 
-function FilterWrapper({ title, icon: Icon, colorScheme, isActive, children }: FilterWrapperProps) {
+function FilterWrapper({
+  title,
+  icon: Icon,
+  colorScheme,
+  isActive,
+  children,
+}: FilterWrapperProps) {
   const colorClasses = {
     purple: {
       icon: "text-purple-500",
       badge: "border-purple-500 text-purple-600 dark:text-purple-400",
-      border: "border-purple-500 bg-purple-50 dark:bg-purple-950/50 shadow-lg"
+      border: "border-purple-500 bg-purple-50 dark:bg-purple-950/50 shadow-lg",
     },
     orange: {
       icon: "text-orange-500",
       badge: "border-orange-500 text-orange-600 dark:text-orange-400",
-      border: "border-orange-500 bg-orange-50 dark:bg-orange-950/50 shadow-lg"
+      border: "border-orange-500 bg-orange-50 dark:bg-orange-950/50 shadow-lg",
     },
     emerald: {
       icon: "text-emerald-500",
       badge: "border-emerald-500 text-emerald-600 dark:text-emerald-400",
-      border: "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 shadow-lg"
+      border:
+        "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 shadow-lg",
     },
     blue: {
       icon: "text-blue-500",
       badge: "border-blue-500 text-blue-600 dark:text-blue-400",
-      border: "border-blue-500 bg-blue-50 dark:bg-blue-950/50 shadow-lg"
+      border: "border-blue-500 bg-blue-50 dark:bg-blue-950/50 shadow-lg",
     },
     green: {
       icon: "text-green-500",
       badge: "border-green-500 text-green-600 dark:text-green-400",
-      border: "border-green-500 bg-green-50 dark:bg-green-950/50 shadow-lg"
+      border: "border-green-500 bg-green-50 dark:bg-green-950/50 shadow-lg",
     },
     pink: {
       icon: "text-pink-500",
       badge: "border-pink-500 text-pink-600 dark:text-pink-400",
-      border: "border-pink-500 bg-pink-50 dark:bg-pink-950/50 shadow-lg"
-    }
+      border: "border-pink-500 bg-pink-50 dark:bg-pink-950/50 shadow-lg",
+    },
   };
 
   const colors = colorClasses[colorScheme];
@@ -94,10 +132,12 @@ function FilterWrapper({ title, icon: Icon, colorScheme, isActive, children }: F
         )}
       </div>
 
-      <div className={cn(
-        "rounded-2xl border-2 p-4 transition-all duration-300",
-        isActive ? colors.border : "border-border bg-background"
-      )}>
+      <div
+        className={cn(
+          "rounded-2xl border-2 p-4 transition-all duration-300",
+          isActive ? colors.border : "border-border bg-background"
+        )}
+      >
         {children}
       </div>
     </div>
@@ -106,28 +146,35 @@ function FilterWrapper({ title, icon: Icon, colorScheme, isActive, children }: F
 
 // Date Filter Component
 function DateFilterPanel() {
-  const { dateRange, filterType, isYearRangeEnabled, yearRange } = useCurrentSearchFormState();
+  const { dateRange, filterType, isYearRangeEnabled, yearRange } =
+    useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
   // Global popover open state so it persists across parent rerenders
-  const { isOpen: isDatePickerOpen, setIsOpen: setIsDatePickerOpen } = useDateRangePickerStore();
+  const { isOpen: isDatePickerOpen, setIsOpen: setIsDatePickerOpen } =
+    useDateRangePickerStore();
 
   // Local (uncommitted) state while the popover is open. This avoids triggering
   // global store updates – and thus parent re-renders – on every date click.
-  const [tempDateRange, setTempDateRange] = React.useState<DateRange | undefined>(dateRange);
+  const [tempDateRange, setTempDateRange] = React.useState<
+    DateRange | undefined
+  >(dateRange);
 
-  const isDateActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
+  const isDateActive = isDateFilterActive(
+    dateRange,
+    yearRange,
+    filterType,
+    isYearRangeEnabled
+  );
 
   const handleFilterTypeChange = async (type: "date" | "year") => {
     updateFilter({ filterType: type });
-    await updateCurrentSearchFilters();
   };
 
   // Commit the selected range to the global store (and server) only once – when
   // the popover closes or the user explicitly clears the filter.
   const commitDateRange = async (range: DateRange | undefined) => {
     updateFilter({ dateRange: range });
-    await updateCurrentSearchFilters();
   };
 
   const handleClearDateRange = async () => {
@@ -137,11 +184,10 @@ function DateFilterPanel() {
 
   const handleClearYearRange = async () => {
     const defaultRange = DEFAULT_FILTERS.yearRange();
-    updateFilter({ 
+    updateFilter({
       yearRange: defaultRange,
-      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled 
+      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
     });
-    await updateCurrentSearchFilters();
   };
 
   const handlePopoverOpenChange = async (open: boolean) => {
@@ -185,14 +231,17 @@ function DateFilterPanel() {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Specific dates
+            Date range
           </button>
         </div>
 
         {/* Filter Content */}
         {filterType === "date" ? (
           <div className="space-y-3">
-            <Popover open={isDatePickerOpen} onOpenChange={handlePopoverOpenChange}>
+            <Popover
+              open={isDatePickerOpen}
+              onOpenChange={handlePopoverOpenChange}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -207,7 +256,8 @@ function DateFilterPanel() {
                   {isDateActive && dateRange?.from ? (
                     dateRange.to ? (
                       <span className="truncate">
-                        {format(dateRange.from, "MMM dd, yyyy")} → {format(dateRange.to, "MMM dd, yyyy")}
+                        {format(dateRange.from, "MMM dd, yyyy")} →{" "}
+                        {format(dateRange.to, "MMM dd, yyyy")}
                       </span>
                     ) : (
                       <span className="truncate">
@@ -215,7 +265,9 @@ function DateFilterPanel() {
                       </span>
                     )
                   ) : (
-                    <span className="text-muted-foreground">Choose date range</span>
+                    <span className="text-muted-foreground">
+                      Choose date range
+                    </span>
                   )}
                 </Button>
               </PopoverTrigger>
@@ -233,7 +285,7 @@ function DateFilterPanel() {
                 />
               </PopoverContent>
             </Popover>
-            
+
             {isDateActive && (
               <Button
                 type="button"
@@ -276,9 +328,9 @@ function RatingFilterPanel() {
   const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
 
   const handleClearRatingFilter = () => {
-    updateFilter({ 
-      ratingRange: DEFAULT_FILTERS.ratingRange, 
-      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers 
+    updateFilter({
+      ratingRange: DEFAULT_FILTERS.ratingRange,
+      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
     });
   };
 
@@ -332,15 +384,14 @@ function SearchFieldPanel() {
 
   const handleSearchFieldChange = async (field: SearchField) => {
     updateFilter({ currentSearchField: field });
-    await updateCurrentSearchFilters();
   };
 
   const fieldIcons = {
-    "title_and_abstract": Target,
-    "title": Zap,
-    "abstract": Filter,
-    "fulltext": Sparkles,
-    "display_name": Settings
+    title_and_abstract: Target,
+    title: Zap,
+    abstract: Filter,
+    fulltext: Sparkles,
+    display_name: Settings,
   };
 
   return (
@@ -351,12 +402,15 @@ function SearchFieldPanel() {
       </div>
       <div className="grid grid-cols-1 gap-2">
         {fields.map((field) => {
-          const Icon = fieldIcons[field.value as keyof typeof fieldIcons] || Filter;
+          const Icon =
+            fieldIcons[field.value as keyof typeof fieldIcons] || Filter;
           const isSelected = currentSearchField === field.value;
           return (
             <button
               key={field.value}
-              onClick={() => handleSearchFieldChange(field.value as SearchField)}
+              onClick={() =>
+                handleSearchFieldChange(field.value as SearchField)
+              }
               className={cn(
                 "flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left",
                 isSelected
@@ -364,19 +418,25 @@ function SearchFieldPanel() {
                   : "border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
               )}
             >
-              <div className={cn(
-                "p-1.5 rounded-lg",
-                isSelected 
-                  ? "bg-blue-500 text-white" 
-                  : "bg-muted text-muted-foreground"
-              )}>
+              <div
+                className={cn(
+                  "p-1.5 rounded-lg",
+                  isSelected
+                    ? "bg-blue-500 text-white"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
                 <Icon className="h-3.5 w-3.5" />
               </div>
               <div className="flex-1">
-                <div className={cn(
-                  "font-medium text-sm",
-                  isSelected ? "text-blue-700 dark:text-blue-300" : "text-foreground"
-                )}>
+                <div
+                  className={cn(
+                    "font-medium text-sm",
+                    isSelected
+                      ? "text-blue-700 dark:text-blue-300"
+                      : "text-foreground"
+                  )}
+                >
                   {field.label}
                 </div>
               </div>
@@ -398,7 +458,6 @@ function SortOptionsPanel() {
 
   const handleSortChange = async (sort: string) => {
     updateFilter({ sortBy: sort });
-    await updateCurrentSearchFilters();
   };
 
   return (
@@ -421,10 +480,14 @@ function SortOptionsPanel() {
                   : "border-border hover:border-green-300 hover:bg-green-50/50 dark:hover:bg-green-950/20"
               )}
             >
-              <div className={cn(
-                "font-medium text-sm",
-                isSelected ? "text-green-700 dark:text-green-300" : "text-foreground"
-              )}>
+              <div
+                className={cn(
+                  "font-medium text-sm",
+                  isSelected
+                    ? "text-green-700 dark:text-green-300"
+                    : "text-foreground"
+                )}
+              >
                 {option.label}
               </div>
               {isSelected && (
@@ -446,7 +509,6 @@ function CitesFilterPanel() {
 
   const handleClearCitesFilter = async () => {
     updateFilter({ citesItemId: DEFAULT_FILTERS.citesItemId });
-    await updateCurrentSearchFilters();
   };
 
   return (
@@ -483,7 +545,6 @@ function CitedByFilterPanel() {
 
   const handleClearCitedByFilter = async () => {
     updateFilter({ citedByItemId: DEFAULT_FILTERS.citedByItemId });
-    await updateCurrentSearchFilters();
   };
 
   return (
@@ -520,7 +581,6 @@ function RelatedToFilterPanel() {
 
   const handleClearRelatedToFilter = async () => {
     updateFilter({ relatedToItemId: DEFAULT_FILTERS.relatedToItemId });
-    await updateCurrentSearchFilters();
   };
 
   return (
@@ -557,7 +617,6 @@ function ReviewFilterPanel() {
 
   const handleClearReviewFilter = async () => {
     updateFilter({ reviewFilter: DEFAULT_FILTERS.reviewFilter });
-    await updateCurrentSearchFilters();
   };
 
   return (
@@ -586,7 +645,12 @@ function ReviewFilterPanel() {
   );
 }
 
-export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sidebar' }: SearchSidebarProps) {
+export function SearchSidebar({
+  isOpen,
+  onClose,
+  isMobile = false,
+  mode = "sidebar",
+}: SearchSidebarProps) {
   const {
     currentSearchField,
     sortBy,
@@ -603,11 +667,16 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     dateRange,
     filterType,
   } = useCurrentSearchFormState();
-  
+
   const updateFilter = useUpdateSearchFilter();
 
   // Computed filter active states using utility functions
-  const isDateActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
+  const isDateActive = isDateFilterActive(
+    dateRange,
+    yearRange,
+    filterType,
+    isYearRangeEnabled
+  );
   const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
   const isCountryActive = isCountryFilterActive(selectedRegions);
   const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
@@ -633,7 +702,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
       relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
       reviewFilter: DEFAULT_FILTERS.reviewFilter,
     });
-    await updateCurrentSearchFilters(); // Only for the server-side filters
+    // Only for the server-side filters
   };
 
   const getActiveFiltersCount = () => {
@@ -695,7 +764,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
       {/* Review Filter - Floating Panel */}
       <ReviewFilterPanel />
-      
+
       {/* Cites Filter - Floating Panel (when not active) */}
       {!isCitesActive && <CitesFilterPanel />}
 
@@ -704,15 +773,14 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
 
       {/* Related To Filter - Floating Panel (when not active) */}
       {!isRelatedToActive && <RelatedToFilterPanel />}
-
     </div>
   );
 
-  if (mode === 'sheet') {
+  if (mode === "sheet") {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent 
-          side="right" 
+        <SheetContent
+          side="right"
           className="w-80 p-0 bg-background border-r overflow-hidden flex flex-col"
         >
           <SheetHeader className="px-6 py-4 border-b bg-background">
@@ -726,7 +794,7 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
     );
   }
 
-  if (mode === 'page') {
+  if (mode === "page") {
     return (
       <div className="w-full max-w-2xl mx-auto">
         <SidebarContent />
@@ -739,4 +807,4 @@ export function SearchSidebar({ isOpen, onClose, isMobile = false, mode = 'sideb
       <SidebarContent />
     </div>
   );
-} 
+}

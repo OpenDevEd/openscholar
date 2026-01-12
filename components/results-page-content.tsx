@@ -1,25 +1,16 @@
 "use client";
 
 import React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Navbar } from './navbar';
+import { useRouter } from 'next/navigation';
 import { SearchSidebar } from './search-sidebar';
 import { ResultsList } from './results-list';
-import { useUIStore } from '@/lib/store';
 import {
-  submitSearchAndLoadResults,
-  updateCurrentSearch,
   downloadItem,
   downloadEssentialItem,
   downloadAll,
-  openFocusMode,
 } from '@/lib/search-actions';
-import { FocusMode } from '@/components/ui/focus-mode';
-import { Eye } from 'lucide-react';
-import { DownloadMenu } from './download-menu';
-import { useIsMobile, useEffectiveSearchId, useCurrentSearchFormState, useSearchResults } from '@/lib/hooks';
-import { isDateFilterActive } from '@/lib/utils';
-import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation';
+import { useIsMobile } from '@/lib/hooks';
+import { useSearch } from '@/lib/search';
 
 interface ResultsPageContentProps {
   searchId?: string;
@@ -27,33 +18,30 @@ interface ResultsPageContentProps {
 
 export default function ResultsPageContent({ searchId }: ResultsPageContentProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const isMobile = useIsMobile();
-  const hasAttemptedLoad = React.useRef(false);
 
+  // Use the new search context
   const {
-    currentSearchField,
-    dateRange,
-    sortBy,
-    filterType,
-    yearRange,
-    isYearRangeEnabled,
-  } = useCurrentSearchFormState();
-
-  // Computed filter active state
-  const isFilterActive = isDateFilterActive(dateRange, yearRange, filterType, isYearRangeEnabled);
-
-  const effectiveSearchId = useEffectiveSearchId();
-
-  const {
+    params,
     results,
     totalCount,
-    originalQuery: currentQuery,
-    searchState,
     isLoading,
     isValidating,
-    isLoadingResults,
-  } = useSearchResults();
+    toSearchFilters,
+  } = useSearch();
+
+  const query = params.q;
+
+  // Create a searchState-like object for download functions
+  const searchState = React.useMemo(() => {
+    const filters = toSearchFilters();
+    return {
+      query,
+      field: filters.searchField,
+      dateRange: filters.dateRange,
+      yearRange: filters.yearRange,
+    };
+  }, [query, toSearchFilters]);
 
   const handleBackToHome = () => {
     router.push('/');
@@ -79,7 +67,7 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
               onDownloadAllEssentialCSV={() => downloadAll("csv", true, searchState, results)}
               isLoading={isLoading}
               isValidating={isValidating}
-              currentQuery={currentQuery}
+              currentQuery={query}
               onBackToHome={handleBackToHome}
             />
           </main>
@@ -87,4 +75,4 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
       </div>
     </>
   );
-} 
+}

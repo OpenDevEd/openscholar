@@ -3,7 +3,7 @@ import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
-import type { ScreeningDocument, ScreeningQuestion, ScreeningResult } from '@/lib/store';
+import type { AIProvider, ScreeningDocument, ScreeningQuestion, ScreeningResult } from '@/lib/types';
 import { 
   DEFAULT_BATCH_SIZE, 
   MAX_PARALLEL_REQUESTS, 
@@ -17,8 +17,6 @@ import { downloadPDFFromURL } from './pdf-download';
 import { buildZoteroHeaders, isZoteroFileUrl } from '@/lib/zotero-utils';
 import { getZoteroFullText } from './zotero';
 import { assertWithinBudget, addCostFromUsage } from '@/lib/ai-cost';
-
-export type AIProvider = 'openai' | 'google';
 
 // Centralized PDF download with local-first fallback
 async function downloadPDFWithFallback(url: string, documentId: string, document?: ScreeningDocument, zoteroAuth?: { apiKey: string; groupId: string }): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }> {

@@ -28,7 +28,7 @@ import {
 } from "@/lib/store";
 import { ResultsFilter } from "./results-filter";
 import { PaperCard } from "./paper-card";
-import { useCurrentSearchFormState, useSearchResults } from "@/lib/hooks";
+import { useSearch } from "@/lib/search";
 import {
   SearchBar,
   ResearchQuestionBar,
@@ -375,8 +375,26 @@ export function ResultsList({
   const { currentPage, resultsFilter, setCurrentPage, setResultsFilter } =
     useResultsStore();
 
-  const { results, totalCount, searchState } = useSearchResults();
-  const { ratingRange, onlyRatedPapers } = useCurrentSearchFormState();
+  // Use the new search context
+  const search = useSearch();
+  const results = search.results;
+  const totalCount = search.totalCount;
+  
+  // Get rating filter values from params
+  const ratingRange: [number, number] = [search.params.rmin, search.params.rmax];
+  const onlyRatedPapers = search.params.rated;
+  
+  // Create searchState for download functions (backwards compatibility)
+  const searchState = {
+    query: search.params.q,
+    field: search.params.field,
+    dateRange: search.params.df || search.params.dt ? {
+      from: search.params.df ? new Date(search.params.df) : undefined,
+      to: search.params.dt ? new Date(search.params.dt) : undefined,
+    } : undefined,
+    yearRange: search.params.yf && search.params.yt ? [search.params.yf, search.params.yt] as [number, number] : undefined,
+  };
+  
   const { ratings } = useRatingsStore();
   const resultsContainerRef = useRef<HTMLDivElement>(null);
   const [isAdjusting, setIsAdjusting] = useState(false);

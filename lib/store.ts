@@ -1,9 +1,30 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DateRange } from "react-day-picker";
-import type { SearchField, QueryHistoryEntry, QuestionHistoryEntry, ScreeningQuestionEntry, ScreeningResponses } from './types';
+import type { 
+  SearchField, 
+  QueryHistoryEntry, 
+  QuestionHistoryEntry, 
+  ScreeningQuestionEntry, 
+  ScreeningResponses,
+  AIProvider,
+  ScreeningQuestionType,
+  ScreeningQuestion,
+  ScreeningDocument,
+  ScreeningResult,
+  SearchResult,
+} from './types';
 import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
-import { format } from 'date-fns'
+
+// Re-export types for backwards compatibility
+export type { 
+  AIProvider, 
+  ScreeningQuestionType, 
+  ScreeningQuestion, 
+  ScreeningDocument, 
+  ScreeningResult,
+  SearchResult,
+} from './types';
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {
@@ -17,33 +38,6 @@ const generateUUID = (): string => {
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
-};
-
-export type SearchResult = {
-  id: string;
-  query: string;
-  queryHistory: QueryHistoryEntry[];
-  questionHistory: QuestionHistoryEntry[];
-  screeningQuestions: ScreeningQuestionEntry[];
-  screeningResponses: ScreeningResponses;
-  count: number;
-  field: SearchField;
-  dateRange?: DateRange;
-  yearRange?: [number, number];
-  filterType?: "date" | "year";
-  isYearRangeEnabled?: boolean;
-  sortBy?: string;
-  selectedRegions?: string[];
-  selectedCountryFocus?: string[];
-  ratingRange?: [number, number];
-  onlyRatedPapers?: boolean;
-  citesItemId?: string;
-  citedByItemId?: string;
-  relatedToItemId?: string;
-  reviewFilter?: boolean;
-  language?: string; // ISO 639-1 language code (e.g., 'en', 'es', 'fr')
-  createdAt: string;
-  updatedAt: string;
 };
 
 interface RatingsState {
@@ -117,8 +111,6 @@ interface KeywordExpansionState {
   clearKeywords: () => void
   expandQuery: (query: string) => { expandedQuery: string; warnings: string[] }
 }
-
-export type AIProvider = 'openai' | 'google';
 
 interface AIConfigState {
   provider: AIProvider;
@@ -719,66 +711,8 @@ interface YearRangePickerState {
   setIsOpen: (open: boolean) => void
 }
 
-// Screening interfaces
-export type ScreeningQuestionType = 'boolean' | 'number' | 'array' | 'string';
-
-export interface ScreeningQuestion {
-  id: string;
-  key: string;
-  type: ScreeningQuestionType;
-  question: string;
-}
-
-export interface ScreeningDocument {
-  id: string;
-  title: string;
-  publication_year?: number;
-  abstract?: string;
-  doi?: string;
-  authorships?: Array<{
-    author: {
-      display_name: string;
-    };
-  }>;
-  open_access?: {
-    is_oa: boolean;
-    oa_url?: string;
-  };
-  /** Zotero group id if imported from Zotero */
-  zotero_group_id?: string;
-  /** Direct link to open document in Zotero app */
-  zotero_uri?: string;
-  primary_location?: {
-    source?: {
-      display_name: string;
-    };
-  };
-  cited_by_count?: number;
-  referenced_works_count?: number;
-  addedAt: string;
-  // Store the original OpenAlex work data
-  originalWork?: any;
-  /** source of import, e.g., 'zotero' */
-  source?: string;
-}
-
-export interface ScreeningResult {
-  documentId: string;
-  answers: Record<string, any>; // key -> answer value
-  completedAt?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'error';
-  pdfStatus?: 'used' | 'metadata' | 'error';
-  pdfErrorMessage?: string;
-  aiMetadata?: {
-    reasoning: string;
-    confidence: number;
-    flags: string[];
-    provider: string;
-    model: string;
-    processedAt: string;
-  };
-  cost?: number; // USD cost for this screening
-}
+// Screening types are imported from '@/lib/types'
+// Re-exported at the top of this file for backwards compatibility
 
 interface ScreeningState {
   documents: ScreeningDocument[];

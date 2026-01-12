@@ -2,33 +2,41 @@
 // REPOSITORY TYPES AND UTILITIES
 // ============================================================================
 
-// Search Term Types
-export type SearchTerm = {
-  term: string;
-  enabled: boolean;
+// Import types from centralized location
+import type { 
+  SearchTerm, 
+  SearchTermData, 
+  ScreeningQuestion, 
+  DataExtractionQuestion,
+  ReviewStatus,
+  ReviewStep,
+  ScreeningQuestionType,
+} from './types';
+
+// Import utility functions from centralized location
+import {
+  normalizeSearchTerms as _normalizeSearchTerms,
+  createSearchTerm as _createSearchTerm,
+  isSearchTermObject as _isSearchTermObject,
+  isSearchTermString as _isSearchTermString,
+  validateSearchTerm as _validateSearchTerm,
+  createScreeningQuestion as _createScreeningQuestion,
+  createDataExtractionQuestion as _createDataExtractionQuestion,
+  validateScreeningQuestion as _validateScreeningQuestion,
+  validateDataExtractionQuestion as _validateDataExtractionQuestion,
+} from './types';
+
+// Re-export types for backwards compatibility
+export type { 
+  SearchTerm, 
+  SearchTermData, 
+  ScreeningQuestion, 
+  DataExtractionQuestion,
+  ReviewStatus,
 };
 
-export type SearchTermData = SearchTerm | string; // For backward compatibility
-
-// Screening Question Types
-export type ScreeningQuestion = {
-  id: string;
-  key: string;
-  type: 'boolean' | 'string' | 'number' | 'array';
-  question: string;
-};
-
-// Data Extraction Question Types
-export type DataExtractionQuestion = {
-  id: string;
-  key: string;
-  type: 'boolean' | 'string' | 'number' | 'array';
-  question: string;
-};
-
-// Review Types
-export type ReviewStatus = 'draft' | 'in_progress' | 'completed' | 'paused' | 'cancelled';
-export type Step = 'research_question' | 'search_terms' | 'screening_questions' | 'data_extraction_questions' | 'search_execution' | 'screening' | 'data_extraction' | 'completed';
+// Re-export with original name for backwards compatibility
+export type Step = ReviewStep;
 
 // Step Configuration - Centralized DRY constants
 export const STEP_ORDER: Step[] = [
@@ -81,77 +89,28 @@ export function isLastStep(step: Step): boolean {
   return step === STEP_ORDER[STEP_ORDER.length - 1];
 }
 
-// Utility Functions
-export function normalizeSearchTerms(data: SearchTermData[] | null | undefined): SearchTerm[] {
-  if (!data) return [];
+// Re-export utility functions from centralized types
+export const normalizeSearchTerms = _normalizeSearchTerms;
+export const createSearchTerm = _createSearchTerm;
+export const isSearchTermObject = _isSearchTermObject;
+export const isSearchTermString = _isSearchTermString;
+export const validateSearchTerm = _validateSearchTerm;
+export const validateScreeningQuestion = _validateScreeningQuestion;
+export const validateDataExtractionQuestion = _validateDataExtractionQuestion;
 
-  return data.map(item => {
-    if (typeof item === 'string') {
-      // Convert old format to new format
-      return { term: item, enabled: true };
-    }
-    return item;
-  });
-}
-
-export function createSearchTerm(term: string, enabled: boolean = true): SearchTerm {
-  return { term, enabled };
-}
-
+// These have slightly different signatures in repo.ts, keep local versions
 export function createScreeningQuestion(
   question: string,
-  type: 'boolean' | 'string' | 'number' | 'array' = 'boolean'
+  type: ScreeningQuestionType = 'boolean'
 ): ScreeningQuestion {
-  return {
-    id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    key: question.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_'),
-    type,
-    question: question.trim()
-  };
+  return _createScreeningQuestion(question, type);
 }
 
 export function createDataExtractionQuestion(
   question: string,
-  type: 'boolean' | 'string' | 'number' | 'array' = 'boolean'
+  type: ScreeningQuestionType = 'boolean'
 ): DataExtractionQuestion {
-  return {
-    id: `deq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    key: question.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_'),
-    type,
-    question: question.trim()
-  };
-}
-
-// Type Guards
-export function isSearchTermObject(item: SearchTermData): item is SearchTerm {
-  return typeof item === 'object' && item !== null && 'term' in item && 'enabled' in item;
-}
-
-export function isSearchTermString(item: SearchTermData): item is string {
-  return typeof item === 'string';
-}
-
-// Validation Functions
-export function validateSearchTerm(term: SearchTerm): boolean {
-  return !!(term.term && typeof term.term === 'string' && typeof term.enabled === 'boolean');
-}
-
-export function validateScreeningQuestion(question: ScreeningQuestion): boolean {
-  return !!(
-    question.id &&
-    question.key &&
-    question.question &&
-    ['boolean', 'string', 'number', 'array'].includes(question.type)
-  );
-}
-
-export function validateDataExtractionQuestion(question: DataExtractionQuestion): boolean {
-  return !!(
-    question.id &&
-    question.key &&
-    question.question &&
-    ['boolean', 'string', 'number', 'array'].includes(question.type)
-  );
+  return _createDataExtractionQuestion(question, type);
 }
 
 // Mock Data Generators (for development)

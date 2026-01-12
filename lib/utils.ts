@@ -3,17 +3,15 @@ import { twMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
-import type { SearchResult } from './store'
-import type { SearchField, SearchFilters } from './types'
+import type { SearchResult, SearchField, SearchFilters } from './types'
+import { SEARCH_FIELDS } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 
-export const fields = [
-  { value: "title_and_abstract", label: "Title, abstract" },
-  { value: "title", label: "Title" },
-  { value: "abstract", label: "Abstract" },
-  { value: "fulltext", label: "Fulltext" },
-  { value: "display_name", label: "Display name" }
-] as const;
+// Re-export SEARCH_FIELDS as 'fields' for backwards compatibility
+export { SEARCH_FIELDS as fields } from './types';
+
+// Also create a local alias for use within this file
+const fields = SEARCH_FIELDS;
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {

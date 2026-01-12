@@ -1,6 +1,6 @@
 import { useAIConfigStore } from './store'
 import { PRICING, OPENAI_MODEL, GOOGLE_MODEL } from './screening-utils'
-import type { AIProvider } from '@/app/actions/ai-enhance'
+import type { AIProvider } from '@/lib/types'
 
 /** Throw if the configured budget (if any) has been exceeded */
 export function assertWithinBudget() {
