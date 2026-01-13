@@ -25,7 +25,6 @@ import {
   useSearchHistoryStore,
   useAIConfigStore,
   useUIStore,
-  useCurrentQueryStore,
 } from "@/lib/store";
 import { ResultsFilter } from "./results-filter";
 import { PaperCard } from "./paper-card";
@@ -437,20 +436,26 @@ export function ResultsList({
   const urlQuery = search.params.q;
   const urlLanguage = search.params.lang ?? '';
   
-  // For updating query - use store sync + URL update pattern
-  const setStoreQuery = useCurrentQueryStore((s) => s.setCurrentQuery);
-  const { provider, model, apiKey } = useAIConfigStore();
+  // Local state for editable query in the Adjust panel
+  const [editableQuery, setEditableQuery] = React.useState(urlQuery);
   
-  // Helper to update query via URL and store
+  // Sync editable query when URL query changes (e.g., from history navigation)
+  React.useEffect(() => {
+    setEditableQuery(urlQuery);
+  }, [urlQuery]);
+  
+  // Handle query change in the editable textarea
   const handleQueryChange = React.useCallback((newQuery: string) => {
-    setStoreQuery(newQuery);
-  }, [setStoreQuery]);
+    setEditableQuery(newQuery);
+  }, []);
   
-  // Helper to submit query (update URL via search context)
+  // Handle form submission - update URL params (source of truth)
   const handleSubmit = React.useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    search.setQuery(urlQuery);
-  }, [search, urlQuery]);
+    search.setQuery(editableQuery);
+  }, [search, editableQuery]);
+  
+  const { provider, model, apiKey } = useAIConfigStore();
 
   // Use the queryHistory from the current search result (same as search-history.tsx)
   const queryHistory = currentSearchResult?.queryHistory || [];
@@ -503,8 +508,6 @@ User enhancement instructions: "${aiInstructions}"
 
 Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules. ${urlLanguage ? `The output MUST be translated to ${languageOptions.find(option => option.code === urlLanguage)?.name} if it is not already in that language.` : ''}`;
 
-      console.log("passing language", urlLanguage);
-
       // Call the AI service with the enhanced prompt
       const response = await enhanceSearchQuery(
         enhancedPrompt,
@@ -514,8 +517,8 @@ Please enhance this academic search query according to the user's specific instr
         urlLanguage || undefined
       );
 
-      // Update the query with the enhanced version
-      handleQueryChange(response.enhancedQuery);
+      // Directly update URL params (source of truth) to trigger search
+      search.setQuery(response.enhancedQuery);
 
       // Trigger green flash effect
       setQueryFlash(true);
@@ -525,12 +528,7 @@ Please enhance this academic search query according to the user's specific instr
       toast.success("Query Enhanced!", {
         description: response.explanation,
       });
-
-      setTimeout(() => {
-        document.getElementById("search-bar-submit")?.click();
-      }, 100);
     } catch (error) {
-      console.error("AI enhancement failed:", error);
       toast.error("Enhancement Failed", {
         description:
           "Failed to enhance query. Please check your API key and try again.",
@@ -545,7 +543,8 @@ Please enhance this academic search query according to the user's specific instr
     if (historyIndex > 0) {
       const prevIndex = historyIndex - 1;
       setHistoryIndex(prevIndex);
-      handleQueryChange(queryHistory[prevIndex].query);
+      // Directly update URL params (source of truth) to trigger search
+      search.setQuery(queryHistory[prevIndex].query);
     }
   };
 
@@ -553,7 +552,8 @@ Please enhance this academic search query according to the user's specific instr
     if (historyIndex < queryHistory.length - 1) {
       const nextIndex = historyIndex + 1;
       setHistoryIndex(nextIndex);
-      handleQueryChange(queryHistory[nextIndex].query);
+      // Directly update URL params (source of truth) to trigger search
+      search.setQuery(queryHistory[nextIndex].query);
     }
   };
 
@@ -566,7 +566,8 @@ Please enhance this academic search query according to the user's specific instr
   const resetToLatest = () => {
     if (queryHistory.length > 0) {
       setHistoryIndex(queryHistory.length - 1);
-      handleQueryChange(queryHistory[queryHistory.length - 1].query);
+      // Directly update URL params (source of truth) to trigger search
+      search.setQuery(queryHistory[queryHistory.length - 1].query);
     }
   };
 
@@ -636,7 +637,6 @@ Please enhance this academic search query according to the user's specific instr
   const missingResponses = useMemo(() => {
     let results = paginatedResults;
     if (isFocusModeOpen) {
-      console.log("focusModeIndex", focusModeIndex);
       const currentlyFocusedPaper = filteredResults[focusModeIndex];
       if (paginatedResults.some((result: any) => result.id !== currentlyFocusedPaper.id)) {
         results = [currentlyFocusedPaper]
@@ -808,7 +808,7 @@ Please enhance this academic search query according to the user's specific instr
                         "w-full min-h-[120px] resize-y transition-colors duration-300",
                         queryFlash && "bg-green-50 border-green-300 dark:bg-green-950/30 dark:border-green-700"
                       )}
-                      value={urlQuery}
+                      value={editableQuery}
                       onChange={(e) => handleQueryChange(e.target.value)}
                     />
                   </div>

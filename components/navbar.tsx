@@ -113,12 +113,14 @@ export function useSearchBarLogic() {
   // The displayed query value (always from local state for responsiveness)
   const currentQuery = localInputValue;
   
-  // Update query - updates local state, and store for cross-page sync
+  // Update query - updates local state, and store only on home page
   const setCurrentQuery = React.useCallback((q: string) => {
     setLocalInputValue(q);
-    // Also sync to store for home page / cross-page consistency
-    setStoreQuery(q);
-  }, [setStoreQuery]);
+    // Only sync to store on home page (results page uses URL as source of truth)
+    if (!isOnResultsPage) {
+      setStoreQuery(q);
+    }
+  }, [setStoreQuery, isOnResultsPage]);
   
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
@@ -183,13 +185,8 @@ export function useSearchBarLogic() {
 
           const translatedQuery = await translateQuery(expandedQuery, language, provider, apiKey, model);
 
-          // Update local query state to show the translation
-          setCurrentQuery(translatedQuery);
-
-          setTimeout(() => {
-            console.log("search-bar", document.getElementById("search-bar-submit"));
-            document.getElementById("search-bar-submit")?.click();
-          }, 100);
+          // Directly update URL params (source of truth) to trigger search
+          search.setQuery(translatedQuery);
 
           // Dismiss loading toast and show success
           toast.dismiss(loadingToast);
@@ -349,18 +346,14 @@ export function ResearchQuestionBar() {
 
       const result = await enhanceSearchQuery(questionToProcess, provider, apiKey, model, currentSearchResult?.language);
 
-      // Set the enhanced query as the current search query
-      const { setCurrentQuery } = useCurrentQueryStore.getState();
-      setCurrentQuery(result.enhancedQuery);
+      // Directly update URL params (source of truth) to trigger search
+      if (search) {
+        search.setQuery(result.enhancedQuery);
+      }
 
       toast.success("Question Enhanced", {
-        description: `Query set in search field: "${result.enhancedQuery}"`
+        description: `Searching for: "${result.enhancedQuery}"`
       });
-
-      setTimeout(() => {
-        console.log("search-bar", document.getElementById("search-bar-submit"));
-        document.getElementById("search-bar-submit")?.click();
-      }, 100);
 
     } catch (error) {
       toast.error("Enhancement Failed", {
@@ -447,9 +440,6 @@ export function ResultsActionBar({
 
   const { provider, model, apiKey } = useAIConfigStore();
   const { currentQuestion } = useCurrentQuestionStore();
-  
-  // Store access for updating query (cross-page sync)
-  const setStoreQuery = useCurrentQueryStore((s) => s.setCurrentQuery);
 
   // Language and query from URL params (source of truth on results page)
   const currentLanguage = search?.params?.lang ?? '';
@@ -486,18 +476,16 @@ This query is returning fewer than 10 results. Please broaden the search by:
 Return a more inclusive version of this query that should return more results while preserving the main research focus${currentQuestion ? ' and directly addressing the research question' : ''}.`;
 
       const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, currentLanguage);
-      // Update store for cross-page sync
-      setStoreQuery(result.enhancedQuery);
+      
+      // Directly update URL params (source of truth) to trigger search
+      if (search) {
+        search.setQuery(result.enhancedQuery);
+      }
 
       toast.dismiss(loadingToast);
       toast.success("Query Broadened", {
         description: `New query: "${result.enhancedQuery}"`,
       });
-
-      // Auto-submit the broadened query
-      setTimeout(() => {
-        document.getElementById("search-bar-submit")?.click();
-      }, 100);
     } catch (error) {
       toast.dismiss(loadingToast);
       toast.error("Failed to broaden query", {
@@ -536,18 +524,16 @@ This query is returning too many results (${totalCount.toLocaleString()} papers)
 Return a more targeted version of this query that will reduce the result count while maintaining the essential research focus${currentQuestion ? ' and directly addressing the research question' : ''}.`;
 
       const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, currentLanguage);
-      // Update store for cross-page sync
-      setStoreQuery(result.enhancedQuery);
+      
+      // Directly update URL params (source of truth) to trigger search
+      if (search) {
+        search.setQuery(result.enhancedQuery);
+      }
 
       toast.dismiss(loadingToast);
       toast.success("Query Made More Specific", {
         description: `Refined query for better focus: "${result.enhancedQuery}"`,
       });
-
-      // Auto-submit the narrowed query
-      setTimeout(() => {
-        document.getElementById("search-bar-submit")?.click();
-      }, 100);
     } catch (error) {
       toast.dismiss(loadingToast);
       toast.error("Failed to narrow query", {
@@ -624,7 +610,7 @@ Return a more targeted version of this query that will reduce the result count w
         </Button> */}
         <Button
           variant={isScreening ? "default" : "outline"}
-          onClick={() => setIsScreening?.((prev: boolean) => { const newVal = !prev; console.log("newVal", newVal); if (newVal) { setIsAdjusting?.(false) } return newVal; })}
+          onClick={() => setIsScreening?.((prev: boolean) => { const newVal = !prev; if (newVal) { setIsAdjusting?.(false) } return newVal; })}
           className="flex-1 md:flex-shrink-0"
         >
           <Eye className="h-4 w-4 mr-1" />
@@ -632,7 +618,7 @@ Return a more targeted version of this query that will reduce the result count w
         </Button>
         <Button
           variant={isAdjusting ? "default" : "outline"}
-          onClick={() => setIsAdjusting?.((prev: boolean) => { const newVal = !prev; console.log("newVal", newVal); if (newVal) { setIsScreening?.(false) } return newVal; })}
+          onClick={() => setIsAdjusting?.((prev: boolean) => { const newVal = !prev; if (newVal) { setIsScreening?.(false) } return newVal; })}
           className="flex-1 md:flex-shrink-0"
         >
           <Sparkles className="h-4 w-4 mr-1" />

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { SearchHistory } from '@/components/search-history';
 import { useUIStore, useSearchHistoryStore } from '@/lib/store';
 import { useCurrentSearchFormState, useIsMobile } from '@/lib/hooks';
+import { restoreFromHistory } from '@/lib/search/actions';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
 import { History } from 'lucide-react';
@@ -26,13 +27,12 @@ export default function HistoryPage() {
     filterType?: "date" | "year",
     index?: number
   ) => {
-    // With SWR, we just need to navigate to the search result
-    // The data will be automatically loaded by the SWR hook
+    // Navigate to the search result with full URL params
     const { searchHistory } = useSearchHistoryStore.getState();
     const searchResult = searchHistory[index || 0];
     
-    if (searchResult?.id) {
-      router.push(`/results/${searchResult.id}`);
+    if (searchResult) {
+      router.push(restoreFromHistory(searchResult));
     } else {
       toast.error('Search not found', {
         description: 'The requested search could not be found in your history.'

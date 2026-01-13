@@ -23,7 +23,6 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
   useSearchHistoryStore,
-  useCurrentQueryStore,
   useSearchHistoryUIStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";

@@ -122,8 +122,6 @@ export async function getSearchResultsWithFilters(
     }
   }
 
-  console.log(`finalApiQuery: {${finalApiQuery}}`);
-
   // Get results with the final enhanced query for API, but keep original query for UI
   const results = await getSearchResults(
     finalApiQuery,

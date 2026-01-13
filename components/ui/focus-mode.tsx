@@ -90,7 +90,6 @@ export function FocusMode({
   const pathname = usePathname();
 
   const currentPaper = papers[currentIndex];
-  console.log(currentPaper);
 
   // Get language from URL params (source of truth on results page)
   const search = useSearchOptional();
