@@ -92,6 +92,11 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       setStatus('ready');
       return;
     }
+
+    // Skip if searchParams is null (during SSR)
+    if (!searchParams) {
+      return;
+    }
     
     // Only run initialization logic once when pending
     if (status !== 'pending') {
@@ -156,7 +161,7 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
   
   // After redirect completes, check if we can mark as ready
   useEffect(() => {
-    if (status === 'redirecting') {
+    if (status === 'redirecting' && searchParams) {
       const existingEntry = getSearchResult(searchId);
       // Check if URL has any search-related params (q is always present with clearOnDefault: false)
       const hasUrlParams = searchParams.has('q') || searchParams.has('field') || searchParams.toString() !== '';

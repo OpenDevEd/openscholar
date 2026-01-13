@@ -539,7 +539,7 @@ Provide your screening decisions:`,
     addCostFromUsage(provider, modelId, usage);
 
     return {
-      responses: object.responses,
+      responses: object.responses as Record<string, boolean | null>,
       confidence: object.confidence,
     };
 

@@ -10,13 +10,15 @@ declare global {
     var db: DBType | undefined;
 }
 
+const globalForDb = globalThis as typeof globalThis & { db?: DBType };
+
 let db: DBType;
 
 if (process.env.NODE_ENV === "production") {
     db = drizzle(process.env.DATABASE_URL!, { schema });
 } else {
-    if (!global.db) global.db = drizzle(process.env.DATABASE_URL!, { schema });
-    db = global.db;
+    if (!globalForDb.db) globalForDb.db = drizzle(process.env.DATABASE_URL!, { schema });
+    db = globalForDb.db;
 }
 
 export { db };
