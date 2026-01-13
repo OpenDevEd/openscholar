@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { FloatingInput, FloatingTextarea } from "./components/floating-input";
+import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
 import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
 import { usePathname } from "next/navigation";
@@ -160,45 +160,8 @@ Please enhance this academic search query according to the user's specific instr
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={subtleSpring}
-      className="px-4 py-5 space-y-4"
+      className="px-4 py-3 space-y-3"
     >
-      {/* History Navigation */}
-      <div className="flex items-center justify-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={goToPrevious}
-          disabled={!canGoPrevious || isFormDisabled}
-          className="h-8 w-8"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-
-        <span className="text-sm text-muted-foreground tabular-nums min-w-[80px] text-center">
-          {queryHistory.length > 0 ? (
-            <>
-              Query{" "}
-              <span className="font-medium text-foreground">
-                {historyIndex + 1}
-              </span>{" "}
-              of {queryHistory.length}
-            </>
-          ) : (
-            "No history"
-          )}
-        </span>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={goToNext}
-          disabled={!canGoNext || isFormDisabled}
-          className="h-8 w-8"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-
       {/* AI Enhancement Input */}
       <form onSubmit={handleAiEnhancement}>
         <FloatingInput
@@ -214,46 +177,100 @@ Please enhance this academic search query according to the user's specific instr
               size="sm"
               variant="outline"
               disabled={isFormDisabled || !aiInstructions.trim()}
-              className="h-8 px-3"
+              className="h-7 px-2.5 text-xs"
             >
               {isEnhancing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <>
-                  Go
-                  <span className="hidden sm:inline ml-1">→</span>
-                </>
+                "Enhance"
               )}
             </Button>
           }
         />
       </form>
 
-      {/* Editable Query Textarea */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <FloatingTextarea
-          label="Current Query"
-          placeholder="No query set..."
-          value={editableQuery}
-          onChange={(e) => setEditableQuery(e.target.value)}
-          disabled={isFormDisabled}
-          flash={queryFlash}
-        />
-
-        {/* Search Button */}
-        <div className="flex justify-center">
-          <Button
-            type="submit"
-            disabled={isFormDisabled || !editableQuery.trim()}
-            className="h-10 px-6"
-          >
-            {isLoading || isValidating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4 mr-2" />
+      {/* Editable Query Textarea with inline controls */}
+      <form onSubmit={handleSubmit}>
+        <div className="group relative">
+          {/* Floating label with history navigation */}
+          <div className="absolute -top-2.5 left-3 z-10 flex items-center gap-2">
+            <span
+              className={cn(
+                "px-1.5 py-0.5 text-xs font-medium",
+                "text-muted-foreground bg-background rounded",
+                "transition-colors duration-200",
+                "group-focus-within:text-primary"
+              )}
+            >
+              Current Query
+            </span>
+            {queryHistory.length > 1 && (
+              <div className="flex items-center gap-0.5 bg-background rounded px-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={goToPrevious}
+                  disabled={!canGoPrevious || isFormDisabled}
+                  className="h-5 w-5"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <span className="text-[10px] text-muted-foreground tabular-nums px-0.5">
+                  {historyIndex + 1}/{queryHistory.length}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={goToNext}
+                  disabled={!canGoNext || isFormDisabled}
+                  className="h-5 w-5"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
             )}
-            Search
-          </Button>
+          </div>
+
+          {/* Textarea container */}
+          <div
+            className={cn(
+              "border rounded-xl px-3 py-2.5",
+              "bg-background/50",
+              "transition-all duration-300",
+              "border-border/60",
+              "focus-within:border-primary/50",
+              "focus-within:ring-2 focus-within:ring-primary/10",
+              "focus-within:bg-background",
+              queryFlash && "bg-green-50 border-green-400 dark:bg-green-950/30 dark:border-green-600"
+            )}
+          >
+            <textarea
+              className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground/60 min-h-[60px]"
+              placeholder="No query set..."
+              value={editableQuery}
+              onChange={(e) => setEditableQuery(e.target.value)}
+              disabled={isFormDisabled}
+            />
+            
+            {/* Inline search button */}
+            <div className="flex justify-end pt-1.5 border-t border-border/40">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isFormDisabled || !editableQuery.trim()}
+                className="h-7 px-3 text-xs"
+              >
+                {isLoading || isValidating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Search className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Search
+              </Button>
+            </div>
+          </div>
         </div>
       </form>
     </motion.div>
