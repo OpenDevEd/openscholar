@@ -35,6 +35,7 @@ export type NewSearchResultData = {
   relatedToItemId?: string;
   reviewFilter?: boolean;
   language?: string;
+  page?: number;
 };
 
 /**
@@ -84,6 +85,9 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     
     // Language
     language: params.lang || undefined,
+    
+    // Pagination
+    page: params.page,
   };
 }
 
@@ -151,6 +155,11 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   // Language
   if (result.language) {
     params.lang = result.language;
+  }
+  
+  // Pagination - only include if not on first page
+  if (result.page && result.page > 1) {
+    params.page = result.page;
   }
   
   return params;

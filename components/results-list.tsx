@@ -361,12 +361,15 @@ export function ResultsList({
   currentQuery,
   onBackToHome,
 }: ResultsListProps) {
-  const { currentPage, resultsFilter, setCurrentPage } = useResultsStore();
+  const { resultsFilter } = useResultsStore();
 
   // Use the new search context
   const search = useSearch();
   const results = search.results;
   const totalCount = search.totalCount;
+  
+  // Get pagination from URL params (source of truth)
+  const currentPage = search.params.page;
 
   // Get rating filter values from params
   const ratingRange: [number, number] = [search.params.rmin, search.params.rmax];
@@ -507,12 +510,12 @@ export function ResultsList({
     }
 
     if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
+      search.setPage(1);
     }
-  }, [paginatedResults, isFocusModeOpen, focusModeIndex, currentPage, totalPages, setCurrentPage]);
+  }, [paginatedResults, isFocusModeOpen, focusModeIndex, currentPage, totalPages, search]);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    search.setPage(page);
     resultsContainerRef.current?.scrollTo(0, 0);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };

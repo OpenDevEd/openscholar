@@ -224,14 +224,18 @@ export function SearchProvider({ children }: SearchProviderProps) {
     syncToStore({ sortBy: sort });
   }, [setUrlParams, syncToStore]);
   
-  const setPage = useCallback((page: number) => setUrlParams({ page }), [setUrlParams]);
+  const setPage = useCallback((page: number) => {
+    setUrlParams({ page });
+    syncToStore({ page });
+  }, [setUrlParams, syncToStore]);
   
   const setYearRange = useCallback((from: number | null, to: number | null) => {
-    setUrlParams({ yf: from, yt: to, ft: 'year' });
+    setUrlParams({ yf: from, yt: to, ft: 'year', page: 1 });
     syncToStore({
       yearRange: from !== null && to !== null ? [from, to] : undefined,
       isYearRangeEnabled: from !== null || to !== null,
       filterType: 'year',
+      page: 1,
     });
   }, [setUrlParams, syncToStore]);
   
@@ -240,10 +244,12 @@ export function SearchProvider({ children }: SearchProviderProps) {
       df: from ? format(from, 'yyyy-MM-dd') : null,
       dt: to ? format(to, 'yyyy-MM-dd') : null,
       ft: 'date',
+      page: 1,
     });
     syncToStore({
       dateRange: from || to ? { from: from ?? undefined, to: to ?? undefined } : undefined,
       filterType: 'date',
+      page: 1,
     });
   }, [setUrlParams, syncToStore]);
   
@@ -253,48 +259,48 @@ export function SearchProvider({ children }: SearchProviderProps) {
   }, [setUrlParams, syncToStore]);
   
   const setRatingRange = useCallback((min: number, max: number) => {
-    setUrlParams({ rmin: min, rmax: max });
-    syncToStore({ ratingRange: [min, max] });
+    setUrlParams({ rmin: min, rmax: max, page: 1 });
+    syncToStore({ ratingRange: [min, max], page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setOnlyRated = useCallback((value: boolean) => {
-    setUrlParams({ rated: value });
-    syncToStore({ onlyRatedPapers: value });
+    setUrlParams({ rated: value, page: 1 });
+    syncToStore({ onlyRatedPapers: value, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setRegions = useCallback((regions: string[]) => {
-    setUrlParams({ reg: regions });
-    syncToStore({ selectedRegions: regions });
+    setUrlParams({ reg: regions, page: 1 });
+    syncToStore({ selectedRegions: regions, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setCountryFocus = useCallback((countries: string[]) => {
-    setUrlParams({ focus: countries });
-    syncToStore({ selectedCountryFocus: countries });
+    setUrlParams({ focus: countries, page: 1 });
+    syncToStore({ selectedCountryFocus: countries, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setCites = useCallback((id: string) => {
-    setUrlParams({ cites: id });
-    syncToStore({ citesItemId: id });
+    setUrlParams({ cites: id, page: 1 });
+    syncToStore({ citesItemId: id, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setCitedBy = useCallback((id: string) => {
-    setUrlParams({ citedBy: id });
-    syncToStore({ citedByItemId: id });
+    setUrlParams({ citedBy: id, page: 1 });
+    syncToStore({ citedByItemId: id, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setRelatedTo = useCallback((id: string) => {
-    setUrlParams({ rel: id });
-    syncToStore({ relatedToItemId: id });
+    setUrlParams({ rel: id, page: 1 });
+    syncToStore({ relatedToItemId: id, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setReviewOnly = useCallback((value: boolean) => {
-    setUrlParams({ review: value });
-    syncToStore({ reviewFilter: value });
+    setUrlParams({ review: value, page: 1 });
+    syncToStore({ reviewFilter: value, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setLanguage = useCallback((lang: string | null) => {
-    setUrlParams({ lang });
-    syncToStore({ language: lang || undefined });
+    setUrlParams({ lang, page: 1 });
+    syncToStore({ language: lang || undefined, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   // Bulk update
@@ -355,6 +361,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedBy: '',
       rel: '',
       review: false,
+      page: 1,
     });
     // Also reset in store
     syncToStore({
@@ -370,6 +377,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedByItemId: '',
       relatedToItemId: '',
       reviewFilter: false,
+      page: 1,
     });
   }, [setUrlParams, syncToStore]);
   
