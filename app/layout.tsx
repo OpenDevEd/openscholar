@@ -34,10 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(outfit.variable, geistMono.variable, "antialiased")}
-      >
+    <html lang="en" suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
+      <body>
         <ConfigProvider>
           <ThemeProvider>
             <NuqsAdapter>
