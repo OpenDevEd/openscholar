@@ -268,7 +268,7 @@ export function HistoryFilterBadges({
       result={filterParams}
       variant="history"
       className={className}
-      showAll={true}
+      showAll={false}
     />
   );
 }

@@ -107,7 +107,7 @@ export function SearchTooltipContent({
       <UnifiedFilterBadges
         result={filterParams}
         variant="sidebar"
-        showAll={true}
+        showAll={false}
       />
 
       {/* Query Evolution: Expandable mini-list */}

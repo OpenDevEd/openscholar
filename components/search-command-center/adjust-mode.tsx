@@ -150,7 +150,7 @@ Please enhance this academic search query according to the user's specific instr
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="px-4 py-3 space-y-3">
       {/* AI Enhancement Input */}
       <form onSubmit={handleAiEnhancement}>
         <FloatingInput
@@ -166,12 +166,22 @@ Please enhance this academic search query according to the user's specific instr
               size="sm"
               variant="outline"
               disabled={isFormDisabled || !aiInstructions.trim()}
-              className="h-7 px-2.5 text-xs"
+              className={cn(
+                "h-7 px-2.5 text-xs gap-1.5",
+                "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                "border-violet-500/30 hover:border-violet-500/50",
+                "text-violet-700 dark:text-violet-300",
+                "transition-all duration-200"
+              )}
             >
               {isEnhancing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                "Enhance"
+                <>
+                  <Wand2 className="h-3 w-3" />
+                  Enhance
+                </>
               )}
             </Button>
           }

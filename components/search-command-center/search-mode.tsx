@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, HelpCircle, Loader2 } from "lucide-react";
+import { Search, Wand2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { LanguageSelector } from "@/components/language-selector";
@@ -15,6 +15,7 @@ import { useQueryChangeHandler, useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
 import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { cn } from "@/lib/utils";
 
 interface SearchModeProps {
   isLoading?: boolean;
@@ -162,7 +163,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="px-4 py-5 space-y-4">
       {/* Research Question Input */}
       <form onSubmit={handleQuestionSubmit}>
         <FloatingInput
@@ -171,20 +172,28 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           value={currentQuestion}
           onChange={(e) => setCurrentQuestion(e.target.value)}
           disabled={isFormDisabled}
-          icon={<HelpCircle className="h-4 w-4" />}
+          icon={<Wand2 className="h-4 w-4" />}
           action={
             <Button
               type="submit"
               size="sm"
+              variant="outline"
               disabled={isFormDisabled || !currentQuestion.trim()}
-              className="h-8 px-3"
+              className={cn(
+                "h-7 px-2.5 text-xs gap-1.5",
+                "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                "border-violet-500/30 hover:border-violet-500/50",
+                "text-violet-700 dark:text-violet-300",
+                "transition-all duration-200"
+              )}
             >
               {isEnhancing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <>
-                  Ask
-                  <span className="hidden sm:inline ml-1">→</span>
+                  <Wand2 className="h-3 w-3" />
+                  Ask AI
                 </>
               )}
             </Button>
