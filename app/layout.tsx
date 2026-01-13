@@ -42,7 +42,7 @@ export default function RootLayout({
               <QuerySyncProvider>
                 <SidebarProvider>
                   <FilterSidebarProvider>
-                    <div className="flex h-screen overflow-hidden">
+                    <div className="flex min-h-screen">
                       {/* Sidebar */}
                       <AppSidebar />
                       

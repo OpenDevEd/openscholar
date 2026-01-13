@@ -11,30 +11,28 @@ interface TwoColumnLayoutProps {
   className?: string;
 }
 
-export function TwoColumnLayout({ 
-  leftColumn, 
-  rightColumn, 
+export function TwoColumnLayout({
+  leftColumn,
+  rightColumn,
   leftColumnWidth,
   rightColumnClassName,
-  className 
+  className,
 }: TwoColumnLayoutProps) {
   return (
-    <div className={cn("flex h-full overflow-hidden", className)}>
+    <div className={cn("flex min-h-full", className)}>
       {/* Left Column - Filters/Sidebar */}
-      <div 
+      <div
         className={cn(
-          "shrink-0 overflow-hidden",
-          leftColumnWidth
+          "shrink-0 sticky top-0 h-screen"
+          // Removed leftColumnWidth from className as it's a value not a class
         )}
+        style={{ width: leftColumnWidth }}
       >
         {leftColumn}
       </div>
-      
+
       {/* Right Column - Main Content */}
-      <div className={cn(
-        "flex-1 min-w-0 overflow-hidden flex flex-col",
-        rightColumnClassName
-      )}>
+      <div className={cn("flex-1 min-w-0 flex flex-col", rightColumnClassName)}>
         {rightColumn}
       </div>
     </div>

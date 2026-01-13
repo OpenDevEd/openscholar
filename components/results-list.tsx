@@ -492,8 +492,6 @@ export function ResultsList({
 
   const handlePageChange = (page: number) => {
     search.setPage(page);
-    resultsContainerRef.current?.scrollTo(0, 0);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (

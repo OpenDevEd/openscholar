@@ -20,8 +20,8 @@ export function AppShell({ children, className }: AppShellProps) {
           <span className="font-semibold text-foreground">OpenScholar</span>
         </header>
 
-        {/* Page Content - overflow handled by children */}
-        <div className={cn("flex-1 min-h-0 overflow-hidden", className)}>
+        {/* Page Content */}
+        <div className={cn("flex-1", className)}>
           {children}
         </div>
       </div>

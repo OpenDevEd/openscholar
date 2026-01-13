@@ -570,7 +570,7 @@ export function AppSidebar() {
   return (
     <motion.aside
       className={cn(
-        "h-full glass-sidebar flex flex-col",
+        "h-screen glass-sidebar flex flex-col",
         "sticky top-0 left-0 z-40 transition-shadow duration-300",
         "hover:shadow-lg"
       )}

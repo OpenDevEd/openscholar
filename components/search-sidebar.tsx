@@ -816,19 +816,19 @@ export function SearchSidebar({
   if (mode === "panel") {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const filterSidebar = useFilterSidebarOptional();
-    
+
     // If no provider or on mobile, don't render the panel
     if (!filterSidebar || filterSidebar.isMobile) return null;
-    
+
     const { isCollapsed, toggle, currentWidth } = filterSidebar;
 
     if (isCollapsed) {
       // Collapsed state - matches main sidebar structure exactly
       return (
-        <motion.aside 
-          className="h-full glass-sidebar flex flex-col items-center shrink-0 relative pt-3"
+        <motion.aside
+          className="h-full w-full glass-sidebar flex flex-col items-center pt-3"
           initial={false}
-          animate={{ width: currentWidth }}
+          animate={{ width: "100%" }}
           transition={sidebarSpring}
         >
           {/* Floating toggle button */}
@@ -844,9 +844,9 @@ export function SearchSidebar({
                   whileTap={{ scale: 0.95 }}
                   transition={hoverSpring}
                 >
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={toggle}
                     className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
                   >
@@ -869,7 +869,7 @@ export function SearchSidebar({
               </TooltipContent>
             </Tooltip>
           </motion.div>
-          
+
           {/* Clear all button when filters are active */}
           <AnimatePresence>
             {activeFiltersCount > 0 && (
@@ -887,9 +887,9 @@ export function SearchSidebar({
                       whileTap={{ scale: 0.95 }}
                       transition={hoverSpring}
                     >
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={handleClearAllFilters}
                         className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
                       >
@@ -910,10 +910,10 @@ export function SearchSidebar({
 
     // Expanded state - full filters panel matching main sidebar structure
     return (
-      <motion.aside 
-        className="h-full glass-sidebar flex flex-col overflow-hidden shrink-0 relative"
+      <motion.aside
+        className="h-full w-full glass-sidebar flex flex-col overflow-hidden"
         initial={false}
-        animate={{ width: currentWidth }}
+        animate={{ width: "100%" }}
         transition={sidebarSpring}
       >
         {/* Floating toggle button in top-right corner */}
@@ -937,9 +937,9 @@ export function SearchSidebar({
                       whileTap={{ scale: 0.95 }}
                       transition={hoverSpring}
                     >
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={handleClearAllFilters}
                         className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
                       >
@@ -961,9 +961,9 @@ export function SearchSidebar({
                 whileTap={{ scale: 0.95 }}
                 transition={hoverSpring}
               >
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={toggle}
                   className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
                 >
@@ -981,7 +981,7 @@ export function SearchSidebar({
             </TooltipContent>
           </Tooltip>
         </div>
-        
+
         {/* Scrollable content with ScrollArea */}
         <ScrollArea className="flex-1 min-h-0 p-0 sidebar-scrollbar">
           <SidebarContent hideHeader />

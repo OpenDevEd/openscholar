@@ -1,24 +1,26 @@
 "use client";
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { ResultsList } from './results-list';
+import React from "react";
+import { useRouter } from "next/navigation";
+import { ResultsList } from "./results-list";
 import {
   downloadItem,
   downloadEssentialItem,
   downloadAll,
-} from '@/lib/search-actions';
-import { useSearch } from '@/lib/search';
-import { SearchSidebar } from './search-sidebar';
-import { TwoColumnLayout } from './layout/two-column-layout';
-import { useFilterSidebarOptional } from './filter-sidebar-provider';
-import { PageWrapper } from './PageWrapper';
+} from "@/lib/search-actions";
+import { useSearch } from "@/lib/search";
+import { SearchSidebar } from "./search-sidebar";
+import { TwoColumnLayout } from "./layout/two-column-layout";
+import { useFilterSidebarOptional } from "./filter-sidebar-provider";
+import { PageWrapper } from "./PageWrapper";
 
 interface ResultsPageContentProps {
   searchId?: string;
 }
 
-export default function ResultsPageContent({ searchId }: ResultsPageContentProps) {
+export default function ResultsPageContent({
+  searchId,
+}: ResultsPageContentProps) {
   const router = useRouter();
 
   // Use the new search context
@@ -45,28 +47,41 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
   }, [query, toSearchFilters]);
 
   const handleBackToHome = () => {
-    router.push('/');
+    router.push("/");
   };
 
   const filterSidebar = useFilterSidebarOptional();
-  const isFilterSidebarVisible = filterSidebar && !filterSidebar.isMobile && !filterSidebar.isCollapsed;
+  const isFilterSidebarVisible =
+    filterSidebar && !filterSidebar.isMobile && !filterSidebar.isCollapsed;
   const filterSidebarWidth = `${filterSidebar?.currentWidth || 320}px`;
 
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div className="flex flex-col flex-1 w-full">
       <TwoColumnLayout
         leftColumn={<SearchSidebar mode="panel" />}
         rightColumn={
-          <PageWrapper className="h-full">
+          <PageWrapper>
             <div className="py-6 px-4 md:px-6">
               <main className="w-full">
                 <ResultsList
-                  onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
-                  onDownloadEssentialItem={(item, format) => downloadEssentialItem(item, format, searchState)}
-                  onDownloadAllJSON={() => downloadAll("json", false, searchState, results)}
-                  onDownloadAllCSV={() => downloadAll("csv", false, searchState, results)}
-                  onDownloadAllEssentialJSON={() => downloadAll("json", true, searchState, results)}
-                  onDownloadAllEssentialCSV={() => downloadAll("csv", true, searchState, results)}
+                  onDownloadItem={(item, format) =>
+                    downloadItem(item, format, searchState)
+                  }
+                  onDownloadEssentialItem={(item, format) =>
+                    downloadEssentialItem(item, format, searchState)
+                  }
+                  onDownloadAllJSON={() =>
+                    downloadAll("json", false, searchState, results)
+                  }
+                  onDownloadAllCSV={() =>
+                    downloadAll("csv", false, searchState, results)
+                  }
+                  onDownloadAllEssentialJSON={() =>
+                    downloadAll("json", true, searchState, results)
+                  }
+                  onDownloadAllEssentialCSV={() =>
+                    downloadAll("csv", true, searchState, results)
+                  }
                   isLoading={isLoading}
                   isValidating={isValidating}
                   currentQuery={query}
@@ -77,7 +92,6 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
           </PageWrapper>
         }
         leftColumnWidth={filterSidebarWidth}
-        className="h-full"
       />
     </div>
   );

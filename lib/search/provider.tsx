@@ -225,7 +225,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   }, [setUrlParams, syncToStore]);
   
   const setPage = useCallback((page: number) => {
-    setUrlParams({ page });
+    setUrlParams({ page }, { scroll: true });
     syncToStore({ page });
   }, [setUrlParams, syncToStore]);
   
