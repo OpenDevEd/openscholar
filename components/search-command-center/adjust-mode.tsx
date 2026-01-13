@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,11 +54,16 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     setEditableQuery(urlQuery);
   }, [urlQuery]);
 
-  // Update history index when query history changes
+  // Track previous history length to detect new additions
+  const prevHistoryLengthRef = useRef(queryHistory.length);
+
+  // Update history index only when a NEW entry is added (not when navigating)
   useEffect(() => {
-    if (queryHistory.length > 0) {
+    if (queryHistory.length > prevHistoryLengthRef.current) {
+      // New entry added - jump to latest
       setHistoryIndex(queryHistory.length - 1);
     }
+    prevHistoryLengthRef.current = queryHistory.length;
   }, [queryHistory.length]);
 
   // Navigation handlers
@@ -69,7 +74,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (canGoPrevious) {
       const prevIndex = historyIndex - 1;
       setHistoryIndex(prevIndex);
-      search.setQuery(queryHistory[prevIndex].query);
+      search.setQuery(queryHistory[prevIndex].query, { skipHistory: true });
     }
   }, [canGoPrevious, historyIndex, queryHistory, search]);
 
@@ -77,7 +82,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (canGoNext) {
       const nextIndex = historyIndex + 1;
       setHistoryIndex(nextIndex);
-      search.setQuery(queryHistory[nextIndex].query);
+      search.setQuery(queryHistory[nextIndex].query, { skipHistory: true });
     }
   }, [canGoNext, historyIndex, queryHistory, search]);
 

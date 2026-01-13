@@ -82,7 +82,7 @@ export interface SearchContextValue {
   error: Error | null;
   
   // Param setters (update URL → SWR auto-refetches)
-  setQuery: (q: string) => void;
+  setQuery: (q: string, options?: { skipHistory?: boolean }) => void;
   setField: (field: SearchField) => void;
   setSort: (sort: string) => void;
   setPage: (page: number) => void;

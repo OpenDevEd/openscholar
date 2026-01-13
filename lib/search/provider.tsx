@@ -199,7 +199,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   );
   
   // Param setters - just update URL, SWR auto-refetches
-  const setQuery = useCallback((q: string) => {
+  const setQuery = useCallback((q: string, options?: { skipHistory?: boolean }) => {
     // Get current query from store to check if it changed
     const existing = getSearchResult(searchId);
     const currentQuery = existing?.query ?? '';
@@ -208,7 +208,8 @@ export function SearchProvider({ children }: SearchProviderProps) {
     setUrlParams({ q });
     
     // Track in history if query actually changed and we have a valid searchId
-    if (searchId && q !== currentQuery) {
+    // Skip history tracking when navigating through history (preview mode)
+    if (searchId && q !== currentQuery && !options?.skipHistory) {
       addQueryToHistory(searchId, q);
     }
   }, [setUrlParams, searchId, getSearchResult, addQueryToHistory]);
