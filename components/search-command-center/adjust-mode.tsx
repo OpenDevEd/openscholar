@@ -1,20 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
 import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
-import { usePathname } from "next/navigation";
-import { getEffectiveSearchId } from "@/lib/utils";
 import { toast } from "sonner";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { languageOptions } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "./index";
 
 interface AdjustModeProps {
   searchId: string;
@@ -24,7 +20,6 @@ interface AdjustModeProps {
 
 export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
   const search = useSearch();
-  const pathname = usePathname();
   const { provider, model, apiKey } = useAIConfigStore();
 
   // Get query from URL params
@@ -155,13 +150,7 @@ Please enhance this academic search query according to the user's specific instr
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={subtleSpring}
-      className="px-4 py-3 space-y-3"
-    >
+    <div className="p-4 space-y-4">
       {/* AI Enhancement Input */}
       <form onSubmit={handleAiEnhancement}>
         <FloatingInput
@@ -273,6 +262,6 @@ Please enhance this academic search query according to the user's specific instr
           </div>
         </div>
       </form>
-    </motion.div>
+    </div>
   );
 }

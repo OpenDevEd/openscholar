@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
 import { Search, HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
@@ -16,8 +15,6 @@ import { useQueryChangeHandler, useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
 import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { cn } from "@/lib/utils";
-import { subtleSpring } from "./index";
 
 interface SearchModeProps {
   isLoading?: boolean;
@@ -165,13 +162,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={subtleSpring}
-      className="px-4 py-5 space-y-4"
-    >
+    <div className="p-4 space-y-4">
       {/* Research Question Input */}
       <form onSubmit={handleQuestionSubmit}>
         <FloatingInput
@@ -237,6 +228,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           }
         />
       </form>
-    </motion.div>
+    </div>
   );
 }
