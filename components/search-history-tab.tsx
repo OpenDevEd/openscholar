@@ -15,6 +15,7 @@ import { DateRange } from "react-day-picker";
 import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
 import { countActiveFilters } from "@/lib/filters";
+import { QueryText } from "@/components/ui/query-text";
 
 // Spring animation config consistent with sidebar
 const springConfig = {
@@ -176,11 +177,10 @@ export function SearchHistoryTab({
             whileTap={{ x: 1, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
-            <span 
-              className="truncate text-xs font-medium text-sidebar-foreground flex-1 w-0 min-w-0 text-left transition-colors duration-200"
-            >
-              {query}
-            </span>
+            <QueryText 
+              query={query}
+              className="truncate text-xs font-medium flex-1 w-0 min-w-0 text-left transition-colors duration-200"
+            />
             <AnimatePresence>
               {totalCount > 0 && (
                 <motion.span

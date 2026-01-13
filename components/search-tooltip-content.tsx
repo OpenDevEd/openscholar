@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
 import { UnifiedFilterBadges } from "@/components/ui/filter-display";
 import { QueryEvolution } from "@/components/ui/query-evolution";
+import { QueryText } from "@/components/ui/query-text";
 
 interface SearchTooltipContentProps {
   id: string;
@@ -88,9 +89,10 @@ export function SearchTooltipContent({
       {/* Header: Query + Count */}
       <div className="space-y-1">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-sm font-medium text-foreground break-words flex-1 leading-snug">
-            {query}
-          </p>
+          <QueryText 
+            query={query}
+            className="text-sm font-medium break-words flex-1 leading-snug"
+          />
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
             {formatNumber(count)}
           </span>

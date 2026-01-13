@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { parseAsInteger, useQueryState } from 'nuqs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useSearchHistoryStore, useSearchHistoryUIStore, useKeywordExpansionStore } from "@/lib/store";
+import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
 import { useIsMobile } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -25,6 +26,7 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
+import { QueryText } from "@/components/ui/query-text";
 
 // Helper functions for display labels
 function getFieldLabel(field?: string): string {
@@ -70,7 +72,7 @@ interface SearchHistoryProps {
 
 export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false, onQuerySelect }: SearchHistoryProps) {
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
-  const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
   const { keywords, addKeyword } = useKeywordExpansionStore();
   const isMobile = useIsMobile();
   const itemsPerPage = compact ? 5 : 10;
@@ -588,7 +590,7 @@ function ActionButtons({
               )
         )}
       >
-        <div className={cn(variant === 'compact' ? 'p-4' : 'p-5')}>
+        <div className={cn(variant === 'compact' ? 'p-4' : 'p-5', !isQueryHistoryExpanded && "pb-2")}>
           
           {/* === HERO SECTION: Result Count + Info Rows === */}
           <div className={cn(
@@ -633,11 +635,7 @@ function ActionButtons({
                 "break-words leading-tight",
                 variant === 'compact' ? 'text-sm font-medium' : 'text-base font-semibold'
               )}>
-                {result.query ? (
-                  <span className="text-foreground">{result.query}</span>
-                ) : (
-                  <span className="text-muted-foreground italic">No query</span>
-                )}
+                <QueryText query={result.query} />
               </p>
               
               {/* Row 2: Research Question (if available) */}
@@ -701,41 +699,48 @@ function ActionButtons({
             </div>
           )}
           
-          {/* === FILTERS SECTION (only if filters exist) === */}
-          {hasActiveFilters(result) && (
-            <div className="mt-3 pt-2 border-t border-border/50 overflow-x-auto scrollbar-hover">
-              <HistoryFilterBadges result={result} variant={variant} />
+          {/* === FOOTER: Filters + History + Actions (single row) === */}
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
+            {/* Left: Filters (scrollable) */}
+            <div className="flex-1 overflow-x-auto scrollbar-hover">
+              {hasActiveFilters(result) && (
+                <HistoryFilterBadges result={result} variant={variant} />
+              )}
             </div>
-          )}
-          
-          {/* === FOOTER: Query History Toggle + Actions === */}
-          <div className={cn(
-            "flex items-center justify-between",
-            hasActiveFilters(result) 
-              ? 'mt-2' 
-              : 'mt-3 pt-2 border-t border-border/50'
-          )}>
-            {/* Query History Toggle */}
-            <QueryHistoryToggle 
-              count={queryHistoryCount}
-              isExpanded={isQueryHistoryExpanded}
-              onToggle={() => setIsQueryHistoryExpanded(!isQueryHistoryExpanded)}
-              variant={variant}
-            />
             
-            {/* Action Buttons */}
-            <ActionButtons
-              query={result.query}
-              searchId={result.id}
-              index={actualIndex}
-              variant={variant}
-              isLoading={loadingResultIndex === actualIndex}
-              canDelete={true}
-              onCopy={handleCopyQuery}
-              onBookmark={handleBookmarkClick}
-              onSearch={(query) => onSearchResults(query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex)}
-              onDelete={handleDeleteItem}
-            />
+            {/* Right: History Toggle + Action Buttons */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* History Toggle - only show if count > 1 */}
+              {queryHistoryCount > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "text-muted-foreground hover:text-foreground gap-1",
+                    variant === 'compact' ? 'h-7 px-2' : 'h-8 px-2'
+                  )}
+                  onClick={() => setIsQueryHistoryExpanded(!isQueryHistoryExpanded)}
+                  title="Query History"
+                >
+                  <History className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+                  <span className={cn(variant === 'compact' ? 'text-xs' : 'text-xs')}>{queryHistoryCount}</span>
+                </Button>
+              )}
+              
+              {/* Action Buttons */}
+              <ActionButtons
+                query={result.query}
+                searchId={result.id}
+                index={actualIndex}
+                variant={variant}
+                isLoading={loadingResultIndex === actualIndex}
+                canDelete={true}
+                onCopy={handleCopyQuery}
+                onBookmark={handleBookmarkClick}
+                onSearch={(query) => onSearchResults(query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex)}
+                onDelete={handleDeleteItem}
+              />
+            </div>
           </div>
           
           {/* === EXPANDED QUERY HISTORY === */}
@@ -757,40 +762,6 @@ function ActionButtons({
       </div>
     );
   };
-
-// Toggle button for query history section
-function QueryHistoryToggle({ 
-  count, 
-  isExpanded, 
-  onToggle,
-  variant = 'compact'
-}: { 
-  count: number; 
-  isExpanded: boolean; 
-  onToggle: () => void;
-  variant?: 'compact' | 'full';
-}) {
-  if (count <= 1) {
-    return <div />; // Empty spacer for flex layout
-  }
-  
-  return (
-    <button
-      onClick={onToggle}
-      className={cn(
-        "flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors",
-        variant === 'compact' ? 'text-xs' : 'text-sm'
-      )}
-    >
-      {isExpanded ? (
-        <ChevronUp className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
-      ) : (
-        <ChevronDown className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
-      )}
-      <span>Query History ({count})</span>
-    </button>
-  );
-}
 
 // Component to display query history for a search item
 function QueryHistoryDisplay({ 
@@ -1191,7 +1162,7 @@ function QueryHistoryDisplay({
 
   const Pagination = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => {
   const { searchHistory } = useSearchHistoryStore();
-  const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
   const itemsPerPage = variant === 'compact' ? 5 : 10;
   
     const totalPages = Math.ceil(searchHistory.length / itemsPerPage);

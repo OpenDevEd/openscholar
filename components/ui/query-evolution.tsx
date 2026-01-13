@@ -12,6 +12,7 @@ import { formatTimeAgo } from "@/lib/format";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
+import { QueryText } from "@/components/ui/query-text";
 
 interface QueryEvolutionProps {
   queryHistory: QueryHistoryEntry[];
@@ -123,17 +124,13 @@ export function QueryEvolution({
                     )}
                   >
                     <div className="flex-1 min-w-0">
-                      <p
+                      <QueryText 
+                        query={entry.query}
                         className={cn(
                           "text-[10px] break-words leading-relaxed",
-                          isCurrent
-                            ? "text-foreground font-medium"
-                            : "text-muted-foreground"
+                          isCurrent && "font-medium"
                         )}
-                        title={entry.query}
-                      >
-                        {entry.query}
-                      </p>
+                      />
                       <span className="text-[9px] text-muted-foreground/50">
                         {formatTimeAgo(entry.timestamp)}
                       </span>
