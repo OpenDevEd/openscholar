@@ -475,7 +475,7 @@ This query is returning fewer than 10 results. Please broaden the search by:
 
 Return a more inclusive version of this query that should return more results while preserving the main research focus${currentQuestion ? ' and directly addressing the research question' : ''}.`;
 
-      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, currentLanguage);
+      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, model, currentLanguage);
       
       // Directly update URL params (source of truth) to trigger search
       if (search) {
@@ -523,7 +523,7 @@ This query is returning too many results (${totalCount.toLocaleString()} papers)
 
 Return a more targeted version of this query that will reduce the result count while maintaining the essential research focus${currentQuestion ? ' and directly addressing the research question' : ''}.`;
 
-      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, currentLanguage);
+      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, model, currentLanguage);
       
       // Directly update URL params (source of truth) to trigger search
       if (search) {

@@ -63,7 +63,7 @@ This query is returning fewer than 10 results. Please broaden the search by:
 
 Return a more inclusive version of this query.`;
 
-      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, currentLanguage);
+      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, model, currentLanguage);
 
       if (search) {
         search.setQuery(result.enhancedQuery);
@@ -103,7 +103,7 @@ This query is returning too many results. Please make it more specific by:
 
 Return a more targeted version of this query.`;
 
-      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, currentLanguage);
+      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, model, currentLanguage);
 
       if (search) {
         search.setQuery(result.enhancedQuery);
