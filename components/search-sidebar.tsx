@@ -732,7 +732,7 @@ export function SearchSidebar({
   });
 
   const SidebarContent = ({ hideHeader = false }: { hideHeader?: boolean }) => (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Simple Header - hidden when using panel mode with external header */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
@@ -927,7 +927,7 @@ export function SearchSidebar({
                 transition={sidebarSpring}
                 className="flex items-center gap-1"
               >
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs size-8">
                   {activeFiltersCount}
                 </Badge>
                 <Tooltip delayDuration={0}>
@@ -941,7 +941,7 @@ export function SearchSidebar({
                         variant="ghost" 
                         size="icon" 
                         onClick={handleClearAllFilters}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
                       >
                         <X className="h-3.5 w-3.5" />
                       </Button>
@@ -983,7 +983,7 @@ export function SearchSidebar({
         </div>
         
         {/* Scrollable content with ScrollArea */}
-        <ScrollArea className="flex-1 min-h-0 p-6 sidebar-scrollbar">
+        <ScrollArea className="flex-1 min-h-0 p-0 sidebar-scrollbar">
           <SidebarContent hideHeader />
         </ScrollArea>
       </motion.aside>

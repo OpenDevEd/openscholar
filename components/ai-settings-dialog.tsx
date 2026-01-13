@@ -1,11 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ModalHeader } from "@/components/ui/modal-header"
 import { AIConfig } from "@/components/ai-config"
 import { Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 
 interface AISettingsDialogProps {
   open: boolean
@@ -25,6 +26,11 @@ export function AISettingsDialog({ open, onOpenChange }: AISettingsDialogProps) 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col overflow-hidden p-0">
+        <VisuallyHidden>
+          <DialogTitle>
+            AI Settings
+          </DialogTitle>
+        </VisuallyHidden>
         {/* {view === 'config' && (
           <ModalHeader
             icon={Settings2}
