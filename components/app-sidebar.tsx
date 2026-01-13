@@ -39,6 +39,17 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+// Spring animation config for sidebar
+const sidebarSpring = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+};
+
+// Stagger delay for nav items
+const staggerDelay = 0.03;
 
 interface NavItemProps {
   href: string;
@@ -48,6 +59,7 @@ interface NavItemProps {
   isCollapsed: boolean;
   badge?: number;
   onClick?: () => void;
+  index?: number;
 }
 
 function NavItem({ 
@@ -57,39 +69,63 @@ function NavItem({
   isActive, 
   isCollapsed,
   badge,
-  onClick 
+  onClick,
+  index = 0
 }: NavItemProps) {
   const content = (
     <Link
       href={href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+        "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 h-auto",
         "hover:bg-sidebar-accent group",
         isActive && "bg-sidebar-accent text-sidebar-primary font-medium",
         !isActive && "text-sidebar-foreground",
-        isCollapsed && "justify-center px-2"
+        isCollapsed && "justify-center"
       )}
     >
-      <Icon className={cn(
-        "h-5 w-5 flex-shrink-0 transition-colors",
-        isActive ? "text-sidebar-primary" : "text-muted-foreground group-hover:text-sidebar-foreground"
-      )} />
-      {!isCollapsed && (
-        <>
-          <span className="flex-1 truncate">{label}</span>
-          {badge !== undefined && badge > 0 && (
-            <span className={cn(
-              "text-xs px-2 py-0.5 rounded-full",
-              isActive 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "bg-muted text-muted-foreground"
-            )}>
-              {badge}
-            </span>
-          )}
-        </>
-      )}
+      <motion.div
+        initial={false}
+        animate={{ scale: isCollapsed ? 1.1 : 1 }}
+        transition={sidebarSpring}
+      >
+        <Icon className={cn(
+          "h-5 w-5 flex-shrink-0 transition-colors",
+          isActive ? "text-sidebar-primary" : "text-muted-foreground group-hover:text-sidebar-foreground"
+        )} />
+      </motion.div>
+      <AnimatePresence mode="wait">
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ 
+              duration: 0.15, 
+              delay: index * staggerDelay,
+              ease: [0.32, 0.72, 0, 1]
+            }}
+            className="flex-1 flex items-center gap-2"
+          >
+            <span className="flex-1 truncate">{label}</span>
+            {badge !== undefined && badge > 0 && (
+              <motion.span 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1 + index * staggerDelay }}
+                className={cn(
+                  "text-xs px-2 py-0.5 rounded-full",
+                  isActive 
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {badge}
+              </motion.span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Link>
   );
 
@@ -169,7 +205,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     <div className="flex flex-col h-full">
       {/* Navigation */}
       <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full px-3 py-2">
+        <ScrollArea className={cn("h-full py-4", isCollapsed && !isMobile ? "px-2" : "px-4")}>
           {/* Primary Navigation */}
           <div className="space-y-1">
             <NavItem
@@ -179,6 +215,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               isActive={currentPageValue === "home"}
               isCollapsed={isCollapsed && !isMobile}
               onClick={handleNavClick}
+              index={0}
             />
 
             <NavItem
@@ -188,6 +225,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               isActive={currentPageValue === "bookmarks"}
               isCollapsed={isCollapsed && !isMobile}
               onClick={handleNavClick}
+              index={1}
             />
 
             <NavItem
@@ -198,6 +236,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               isCollapsed={isCollapsed && !isMobile}
               badge={searchHistory.length}
               onClick={handleNavClick}
+              index={2}
             />
           </div>
 
@@ -205,149 +244,128 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           {searchHistory.length > 0 && (
             <>
               <Separator className="my-4" />
-              <div className="space-y-2">
-                <div className={cn(
-                  "flex items-center justify-between",
-                  isCollapsed && !isMobile ? "justify-center px-2" : "px-3 py-1"
-                )}>
-                  {!isCollapsed || isMobile ? (
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Searches
-                    </span>
-                  ) : (
-                    <Tooltip delayDuration={0}>
-                      <TooltipTrigger asChild>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Search history
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {!isCollapsed && !isMobile && totalPages > 1 && (
-                    <span className="text-xs text-muted-foreground">
-                      {currentPage} / {totalPages}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="space-y-1">
-                  {displayItems.map((search) => (
-                    <SearchHistoryTab
-                      key={search.id}
-                      searchId={search.id}
-                      query={search.query}
-                      count={search.count}
-                      isActive={search.id === effectiveSearchId}
-                      isCollapsed={isCollapsed && !isMobile}
-                      onClick={() => handleSearchHistoryClick(search.id)}
-                    />
-                  ))}
-                </div>
+              <div className="space-y-1">
+                {displayItems.map((search) => (
+                  <SearchHistoryTab
+                    key={search.id}
+                    searchId={search.id}
+                    query={search.query}
+                    count={search.count}
+                    field={search.field}
+                    dateRange={search.dateRange}
+                    yearRange={search.yearRange}
+                    selectedRegions={search.selectedRegions}
+                    language={search.language}
+                    createdAt={search.createdAt}
+                    isActive={search.id === effectiveSearchId}
+                    isCollapsed={isCollapsed && !isMobile}
+                    onClick={() => handleSearchHistoryClick(search.id)}
+                  />
+                ))}
+              </div>
 
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className={cn(
-                    "flex items-center justify-center gap-1 pt-2",
-                    isCollapsed && !isMobile && "flex-col gap-2"
-                  )}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 1}
-                      className={cn(
-                        "h-7 w-7",
-                        isCollapsed && !isMobile ? "h-8 w-8" : ""
-                      )}
-                      title={isCollapsed && !isMobile ? "Previous page" : undefined}
-                    >
-                      {isCollapsed && !isMobile ? (
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className={cn(
+                  "flex items-center justify-center gap-1 pt-2",
+                  isCollapsed && !isMobile && "flex-col gap-2"
+                )}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                    className={cn(
+                      "h-7 w-7",
+                      isCollapsed && !isMobile ? "h-8 w-8" : ""
+                    )}
+                    title={isCollapsed && !isMobile ? "Previous page" : undefined}
+                  >
+                    {isCollapsed && !isMobile ? (
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <ChevronLeft className="h-4 w-4" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Previous page
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <>
+                        <ChevronLeft className="h-4 w-4" />
+                        {!isCollapsed || isMobile && (
+                          <span className="sr-only">Previous</span>
+                        )}
+                      </>
+                    )}
+                  </Button>
+
+                  {totalPages > 2 && (
+                    <div className={cn(
+                      "flex items-center justify-center",
+                      isCollapsed && !isMobile ? "text-xs" : ""
+                    )}>
+                      {!isCollapsed || isMobile ? (
+                        <span className="text-xs text-muted-foreground px-2">
+                          {currentPage} / {totalPages}
+                        </span>
+                      ) : (
                         <Tooltip delayDuration={0}>
                           <TooltipTrigger asChild>
-                            <ChevronLeft className="h-4 w-4" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            Previous page
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <>
-                          <ChevronLeft className="h-4 w-4" />
-                          {!isCollapsed || isMobile && (
-                            <span className="sr-only">Previous</span>
-                          )}
-                        </>
-                      )}
-                    </Button>
-
-                    {totalPages > 2 && (
-                      <div className={cn(
-                        "flex items-center justify-center",
-                        isCollapsed && !isMobile ? "text-xs" : ""
-                      )}>
-                        {!isCollapsed || isMobile ? (
-                          <span className="text-xs text-muted-foreground px-2">
-                            {currentPage} / {totalPages}
-                          </span>
-                        ) : (
-                          <Tooltip delayDuration={0}>
-                            <TooltipTrigger asChild>
                             <span className="text-xs text-muted-foreground">
                               {currentPage}
                             </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              Page {currentPage} of {totalPages}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleNextPage}
-                      disabled={currentPage === totalPages}
-                      className={cn(
-                        "h-7 w-7",
-                        isCollapsed && !isMobile ? "h-8 w-8" : ""
-                      )}
-                      title={isCollapsed && !isMobile ? "Next page" : undefined}
-                    >
-                      {isCollapsed && !isMobile ? (
-                        <Tooltip delayDuration={0}>
-                          <TooltipTrigger asChild>
-                            <ChevronRight className="h-4 w-4" />
                           </TooltipTrigger>
                           <TooltipContent side="right">
-                            Next page
+                            Page {currentPage} of {totalPages}
                           </TooltipContent>
                         </Tooltip>
-                      ) : (
-                        <>
-                          <ChevronRight className="h-4 w-4" />
-                          {!isCollapsed || isMobile && (
-                            <span className="sr-only">Next</span>
-                          )}
-                        </>
                       )}
-                    </Button>
-                  </div>
-                )}
+                    </div>
+                  )}
 
-                {/* "Show all" link (expanded state only) */}
-                {!isCollapsed && !isMobile && searchHistory.length > itemsPerPage && (
-                  <Link
-                    href="/history"
-                    onClick={handleNavClick}
-                    className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                    className={cn(
+                      "h-7 w-7",
+                      isCollapsed && !isMobile ? "h-8 w-8" : ""
+                    )}
+                    title={isCollapsed && !isMobile ? "Next page" : undefined}
                   >
-                    <span>Show all {searchHistory.length}</span>
-                  </Link>
-                )}
-              </div>
+                    {isCollapsed && !isMobile ? (
+                      <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                          <ChevronRight className="h-4 w-4" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Next page
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <>
+                        <ChevronRight className="h-4 w-4" />
+                        {!isCollapsed || isMobile && (
+                          <span className="sr-only">Next</span>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* "Show all" link (expanded state only) */}
+              {!isCollapsed && !isMobile && searchHistory.length > itemsPerPage && (
+                <Link
+                  href="/history"
+                  onClick={handleNavClick}
+                  className="flex items-center justify-center gap-2 px-2 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span>Show all {searchHistory.length}</span>
+                </Link>
+              )}
             </>
           )}
         </ScrollArea>
@@ -355,8 +373,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className={cn(
-        "border-t border-sidebar-border p-3",
-        isCollapsed && !isMobile && "flex flex-col items-center gap-2"
+        "border-t border-sidebar-border py-4",
+        isCollapsed && !isMobile ? "px-2 flex flex-col items-center gap-2" : "px-4"
       )}>
         {(!isCollapsed || isMobile) ? (
           <div className="flex items-center justify-between">
@@ -415,61 +433,92 @@ export function AppSidebar() {
 
   // Desktop: Render as sidebar
   return (
-    <aside
+    <motion.aside
       className={cn(
-        "h-full bg-sidebar border-r border-sidebar-border flex flex-col sidebar-transition",
+        "h-full bg-sidebar border-r border-sidebar-border flex flex-col",
         "sticky top-0 left-0 z-40"
       )}
-      style={{ width: currentWidth }}
+      initial={false}
+      animate={{ width: currentWidth }}
+      transition={sidebarSpring}
     >
       {/* Header */}
       <div className={cn(
-        "flex items-center border-b border-sidebar-border p-4",
+        "flex items-center border-b border-sidebar-border py-4 min-h-[52px]",
+        isCollapsed && !isMobile ? "px-2" : "px-4",
         isCollapsed ? "justify-center" : "justify-between"
       )}>
-        {!isCollapsed ? (
-          <>
-            <Logo size="sm" context="navbar" />
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggle}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                Collapse sidebar (Ctrl+B)
-              </TooltipContent>
-            </Tooltip>
-          </>
-        ) : (
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggle}
-                className="h-10 w-10 text-muted-foreground hover:text-foreground"
-              >
-                <PanelLeft className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              Expand sidebar (Ctrl+B)
-            </TooltipContent>
-          </Tooltip>
-        )}
+        <AnimatePresence mode="wait">
+          {!isCollapsed ? (
+            <motion.div
+              key="expanded-header"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center justify-between w-full h-full"
+            >
+              <Logo size="sm" context="navbar" />
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggle}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <PanelLeftClose className="h-4 w-4" />
+                    </motion.div>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Collapse sidebar (Ctrl+B)
+                </TooltipContent>
+              </Tooltip>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="collapsed-header"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={sidebarSpring}
+              className="h-full flex items-center"
+            >
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggle}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <PanelLeft className="h-4 w-4" />
+                    </motion.div>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  Expand sidebar (Ctrl+B)
+                </TooltipContent>
+              </Tooltip>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         <SidebarContent />
       </div>
-    </aside>
+    </motion.aside>
   );
 }
 

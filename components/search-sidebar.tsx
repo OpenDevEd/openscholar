@@ -66,6 +66,14 @@ import {
 } from "@/components/ui/tooltip";
 import { PanelLeftClose } from "lucide-react";
 import { useFilterSidebarOptional } from "./filter-sidebar-provider";
+import { motion, AnimatePresence } from "motion/react";
+
+// Spring animation config for sidebar
+const sidebarSpring = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+};
 
 interface SearchSidebarProps {
   isOpen?: boolean;
@@ -836,9 +844,11 @@ export function SearchSidebar({
     if (isCollapsed) {
       // Collapsed state - thin vertical bar with filter icon
       return (
-        <aside 
-          className="h-full border-r bg-sidebar flex flex-col items-center py-4 gap-3 shrink-0 sidebar-transition"
-          style={{ width: currentWidth }}
+        <motion.aside 
+          className="h-full border-r bg-sidebar flex flex-col items-center py-4 gap-3 shrink-0"
+          initial={false}
+          animate={{ width: currentWidth }}
+          transition={sidebarSpring}
         >
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
@@ -848,7 +858,12 @@ export function SearchSidebar({
                 onClick={toggle}
                 className="h-10 w-10 text-muted-foreground hover:text-foreground"
               >
-                <Filter className="h-5 w-5" />
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Filter className="h-5 w-5" />
+                </motion.div>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right" className="flex items-center gap-2">
@@ -860,32 +875,57 @@ export function SearchSidebar({
               )}
             </TooltipContent>
           </Tooltip>
-          {activeFiltersCount > 0 && (
-            <Badge variant="secondary" className="text-xs px-2">
-              {activeFiltersCount}
-            </Badge>
-          )}
-        </aside>
+          <AnimatePresence>
+            {activeFiltersCount > 0 && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={sidebarSpring}
+              >
+                <Badge variant="secondary" className="text-xs px-2">
+                  {activeFiltersCount}
+                </Badge>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.aside>
       );
     }
 
     // Expanded state - full filters panel
     return (
-      <aside 
-        className="h-full border-r bg-sidebar flex flex-col overflow-hidden shrink-0 sidebar-transition"
-        style={{ width: currentWidth }}
+      <motion.aside 
+        className="h-full border-r bg-sidebar flex flex-col overflow-hidden shrink-0"
+        initial={false}
+        animate={{ width: currentWidth }}
+        transition={sidebarSpring}
       >
         {/* Header with collapse button */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-sidebar shrink-0">
-          <div className="flex items-center gap-2">
+          <motion.div 
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
+          >
             <Filter className="h-4 w-4 text-muted-foreground" />
             <h2 className="font-semibold text-foreground">Filters</h2>
-            {activeFiltersCount > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {activeFiltersCount}
-              </Badge>
-            )}
-          </div>
+            <AnimatePresence>
+              {activeFiltersCount > 0 && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={sidebarSpring}
+                >
+                  <Badge variant="secondary" className="text-xs">
+                    {activeFiltersCount}
+                  </Badge>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button 
@@ -894,7 +934,12 @@ export function SearchSidebar({
                 onClick={toggle}
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
               >
-                <PanelLeftClose className="h-4 w-4" />
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </motion.div>
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
@@ -904,12 +949,17 @@ export function SearchSidebar({
         </div>
         
         {/* Scrollable content */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <motion.div 
+          className="flex-1 min-h-0 overflow-y-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, delay: 0.1 }}
+        >
           <div className="p-4">
             <SidebarContent hideHeader />
           </div>
-        </div>
-      </aside>
+        </motion.div>
+      </motion.aside>
     );
   }
 

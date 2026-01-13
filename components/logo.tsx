@@ -39,9 +39,9 @@ export function Logo({
     )}>
       <img
         src="/icon.svg"
-        alt="OpenScholar"
+        alt="OpenScholar.ai"
         className={cn(
-          'object-contain',
+          'object-contain flex',
           size === 'sm' && 'w-8 h-8',
           size === 'md' && 'w-10 h-10',
           size === 'lg' && 'w-12 h-12',
@@ -55,7 +55,7 @@ export function Logo({
     <div className={cn('flex items-center gap-2 sm:gap-3', className)}>
       <LogoIcon />
       {!shouldShowIconOnly && (
-        <div className="flex flex-col min-w-0">
+        <div className="flex items-baseline min-w-0">
           <span className={cn(
             'font-bold text-foreground leading-tight whitespace-nowrap',
             sizeClasses[size]
@@ -63,13 +63,13 @@ export function Logo({
             OpenScholar
           </span>
           <span className={cn(
-            'font-medium text-muted-foreground leading-tight -mt-1 whitespace-nowrap',
+            'font-medium text-muted-foreground leading-tight whitespace-nowrap',
             size === 'sm' && 'text-xs',
             size === 'md' && 'text-sm',
             size === 'lg' && 'text-base',
             size === 'xl' && 'text-lg'
           )}>
-            openscholar.ai
+            .ai
           </span>
         </div>
       )}

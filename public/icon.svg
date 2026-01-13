@@ -16,25 +16,25 @@
     </filter>
   </defs>
   <g filter="url(#orange-glow)" stroke="url(#orange-gradient)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 10 100 L 10 20 Q 10 0 30 5 L 75 15 L 120 5 Q 140 0 140 20 L 140 100 Q 140 115 120 110 L 75 100 L 30 110 Q 10 115 10 100 Z" />
-    <path d="M 75 100 L 75 15" />
-    <path d="M 40 40 L 40 55 L 55 70" />
-    <circle cx="40" cy="40" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <circle cx="55" cy="70" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <path d="M 55 30 L 65 40 L 65 80" />
-    <circle cx="55" cy="30" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <circle cx="65" cy="80" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <path d="M 40 75 L 50 85" />
-    <circle cx="40" cy="75" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <circle cx="50" cy="85" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <path d="M 110 40 L 110 55 L 95 70" />
-    <circle cx="110" cy="40" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <circle cx="95" cy="70" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <path d="M 95 30 L 85 40 L 85 80" />
-    <circle cx="95" cy="30" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <circle cx="85" cy="80" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <path d="M 110 75 L 100 85" />
-    <circle cx="110" cy="75" r="3" fill="url(#orange-gradient)" stroke="none" />
-    <circle cx="100" cy="85" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <path d="M 10 117.5 L 10 37.5 Q 10 17.5 30 22.5 L 75 32.5 L 120 22.5 Q 140 17.5 140 37.5 L 140 117.5 Q 140 132.5 120 127.5 L 75 117.5 L 30 127.5 Q 10 132.5 10 117.5 Z" />
+    <path d="M 75 117.5 L 75 32.5" />
+    <path d="M 40 57.5 L 40 72.5 L 55 87.5" />
+    <circle cx="40" cy="57.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <circle cx="55" cy="87.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <path d="M 55 47.5 L 65 57.5 L 65 97.5" />
+    <circle cx="55" cy="47.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <circle cx="65" cy="97.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <path d="M 40 92.5 L 50 102.5" />
+    <circle cx="40" cy="92.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <circle cx="50" cy="102.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <path d="M 110 57.5 L 110 72.5 L 95 87.5" />
+    <circle cx="110" cy="57.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <circle cx="95" cy="87.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <path d="M 95 47.5 L 85 57.5 L 85 97.5" />
+    <circle cx="95" cy="47.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <circle cx="85" cy="97.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <path d="M 110 92.5 L 100 102.5" />
+    <circle cx="110" cy="92.5" r="3" fill="url(#orange-gradient)" stroke="none" />
+    <circle cx="100" cy="102.5" r="3" fill="url(#orange-gradient)" stroke="none" />
   </g>
 </svg>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive, isDateFilterActive } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
@@ -190,8 +191,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       description: 'The query entry has been removed from history.'
     });
   };
-
-  const formatNumber = (num: number) => num.toLocaleString();
 
   // Reusable Bookmark Form Component
   function BookmarkForm({
@@ -764,13 +763,21 @@ function ActionButtons({
                 variant === 'compact' ? 'font-medium text-sm md:text-base' : 'font-semibold text-lg'
               )} title={result.query}>
                 <span className={cn(
-                  "inline-flex items-center gap-1 text-muted-foreground bg-muted/60 py-0.5 rounded mr-2",
+                  "inline-flex items-center gap-1 py-0.5 rounded mr-2 font-medium",
                   variant === 'compact' ? 'text-xs px-1.5' : 'text-sm px-2'
-                )}>
+                )}
+                style={{
+                  backgroundColor: getIdColor(result.id).bg,
+                  color: getIdColor(result.id).text,
+                  border: `1px solid ${getIdColor(result.id).border}`
+                }}>
                   <Search className={cn(
                     variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
                   )} />
                   {formatNumber(result.count)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatTimeAgo(result.createdAt)}
                 </span>
                 {result.query}
               </p>

@@ -311,10 +311,40 @@
   }
 }
 
-/* Sidebar transition */
+/* Sidebar transition - enhanced with smoother easing */
 @utility sidebar-transition {
-  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1),
-              padding 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 250ms cubic-bezier(0.32, 0.72, 0, 1),
+              padding 250ms cubic-bezier(0.32, 0.72, 0, 1),
+              box-shadow 250ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Sidebar content fade animation */
+@utility sidebar-content-fade {
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+
+/* Sidebar content hidden state */
+@utility sidebar-content-hidden {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
+/* Sidebar content visible state */
+@utility sidebar-content-visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+/* Sidebar icon scale animation */
+@utility sidebar-icon-scale {
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Nav item stagger animation base */
+@utility nav-item-animate {
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
 }
 
 /* Button hover effect */
