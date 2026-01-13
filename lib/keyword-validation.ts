@@ -96,22 +96,4 @@ export function validateAndExpandKeywordsSilently(query: string): KeywordValidat
     expandedQuery: warnings.length === 0 ? expandedQuery : query,
     warnings
   };
-}
-
-/**
- * Validates keyword expansion and throws an error if validation fails.
- * Use this for functions that need to abort completely on keyword validation failure.
- * 
- * @param query - The query to validate and expand
- * @returns The expanded query if validation passes
- * @throws Error if validation fails
- */
-export function validateAndExpandKeywordsOrThrow(query: string): string {
-  const result = validateAndExpandKeywords(query);
-  
-  if (!result.isValid) {
-    throw new Error(`Bookmark validation failed: ${result.warnings.join('; ')}`);
-  }
-  
-  return result.expandedQuery;
 } 

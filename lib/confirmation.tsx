@@ -86,33 +86,4 @@ export const showConfirmation = ({
   ), {
     duration: Infinity,
   });
-};
-
-// Convenience functions for common use cases
-export const confirmDelete = (itemName: string, onConfirm: () => void) => {
-  showConfirmation({
-    title: "Delete Item",
-    message: `Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
-    confirmText: "Delete",
-    onConfirm
-  });
-};
-
-export const confirmClearAll = (count: number, itemType: string, onConfirm: () => void) => {
-  showConfirmation({
-    title: `Clear All ${itemType}`,
-    message: `Are you sure you want to delete all ${count} ${itemType.toLowerCase()}? This action cannot be undone.`,
-    confirmText: "Clear All",
-    onConfirm
-  });
-};
-
-export const confirmAction = (action: string, onConfirm: () => void) => {
-  showConfirmation({
-    title: "Confirm Action",
-    message: `Are you sure you want to ${action}?`,
-    confirmText: "Confirm",
-    variant: 'default',
-    onConfirm
-  });
 }; 

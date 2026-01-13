@@ -26,7 +26,7 @@ export function FooterBanner() {
 
 export function Footer() {
   return (
-    <footer className="py-8 mt-auto border-t border-border/50">
+    <footer className="py-8 border-t border-border/50 shrink-0">
       <div className="container mx-auto px-6">
         <div className="text-center">
           <FooterBanner />

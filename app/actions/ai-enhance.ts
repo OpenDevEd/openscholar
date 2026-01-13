@@ -1,10 +1,7 @@
 import { z } from "zod";
 import { generateObject } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
+import { createAIModel } from "@/lib/ai-utils";
 import { languageOptions } from "@/components/language-selector";
 import type { AIProvider } from "@/lib/types";
 
@@ -84,23 +81,7 @@ export async function enhanceSearchQuery(
   try {
     assertWithinBudget();
 
-    let model;
-
-    if (provider === "openai") {
-      const openai = createOpenAI({ apiKey });
-      model = openai(modelId);
-    } else if (provider === "google") {
-      const google = createGoogleGenerativeAI({ apiKey });
-      model = google(modelId);
-    } else if (provider === "anthropic") {
-      const anthropic = createAnthropic({ apiKey });
-      model = anthropic(modelId);
-    } else if (provider === "openrouter") {
-      const openrouter = createOpenRouter({ apiKey });
-      model = openrouter(modelId);
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`);
-    }
+    const model = createAIModel(provider, apiKey, modelId);
 
     const maxRetries = 10;
     let retryCount = 0;
@@ -244,23 +225,7 @@ export async function generateScreeningQuestions(
   try {
     assertWithinBudget();
 
-    let model;
-
-    if (provider === "openai") {
-      const openai = createOpenAI({ apiKey });
-      model = openai(modelId);
-    } else if (provider === "google") {
-      const google = createGoogleGenerativeAI({ apiKey });
-      model = google(modelId);
-    } else if (provider === "anthropic") {
-      const anthropic = createAnthropic({ apiKey });
-      model = anthropic(modelId);
-    } else if (provider === "openrouter") {
-      const openrouter = createOpenRouter({ apiKey });
-      model = openrouter(modelId);
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`);
-    }
+    const model = createAIModel(provider, apiKey, modelId);
 
     const { object, usage } = await generateObject({
       model,
@@ -367,23 +332,7 @@ export async function translateQuery(
   try {
     assertWithinBudget();
 
-    let model;
-
-    if (provider === "openai") {
-      const openai = createOpenAI({ apiKey });
-      model = openai(modelId);
-    } else if (provider === "google") {
-      const google = createGoogleGenerativeAI({ apiKey });
-      model = google(modelId);
-    } else if (provider === "anthropic") {
-      const anthropic = createAnthropic({ apiKey });
-      model = anthropic(modelId);
-    } else if (provider === "openrouter") {
-      const openrouter = createOpenRouter({ apiKey });
-      model = openrouter(modelId);
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`);
-    }
+    const model = createAIModel(provider, apiKey, modelId);
 
     const { object, usage } = await generateObject({
       model,
@@ -456,23 +405,7 @@ export async function translatePaperContent(
   try {
     assertWithinBudget();
 
-    let model;
-
-    if (provider === "openai") {
-      const openai = createOpenAI({ apiKey });
-      model = openai(modelId);
-    } else if (provider === "google") {
-      const google = createGoogleGenerativeAI({ apiKey });
-      model = google(modelId);
-    } else if (provider === "anthropic") {
-      const anthropic = createAnthropic({ apiKey });
-      model = anthropic(modelId);
-    } else if (provider === "openrouter") {
-      const openrouter = createOpenRouter({ apiKey });
-      model = openrouter(modelId);
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`);
-    }
+    const model = createAIModel(provider, apiKey, modelId);
 
     const { object, usage } = await generateObject({
       model,
@@ -551,23 +484,7 @@ export async function generateScreeningResponses(
   try {
     assertWithinBudget();
 
-    let model;
-
-    if (provider === "openai") {
-      const openai = createOpenAI({ apiKey });
-      model = openai(modelId);
-    } else if (provider === "google") {
-      const google = createGoogleGenerativeAI({ apiKey });
-      model = google(modelId);
-    } else if (provider === "anthropic") {
-      const anthropic = createAnthropic({ apiKey });
-      model = anthropic(modelId);
-    } else if (provider === "openrouter") {
-      const openrouter = createOpenRouter({ apiKey });
-      model = openrouter(modelId);
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`);
-    }
+    const model = createAIModel(provider, apiKey, modelId);
 
     // Create dynamic schema based on questions
     const schema = createScreeningResponsesSchema(questions);

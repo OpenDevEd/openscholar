@@ -12,7 +12,7 @@ interface AppShellProps {
 
 export function AppShell({ children, className }: AppShellProps) {
   return (
-    <PageWrapper removeOverflow={true}>
+    <PageWrapper>
       <div className="flex flex-col min-h-0">
         {/* Mobile Header */}
         <header className="lg:hidden flex items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 h-14 shrink-0">

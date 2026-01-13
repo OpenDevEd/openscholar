@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
-import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload, isCountryFilterActive, isCountryFocusActive, isRatingFilterActive, isDateFilterActive } from "@/lib/utils";
+import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { sortOptions, COUNTRIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { showConfirmation } from "@/lib/confirmation";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { HistoryFilterBadges } from "@/components/ui/filter-display";
 
 interface SearchHistoryProps {
   onSearchResults: (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], filterType?: "date" | "year", index?: number) => void;
@@ -558,172 +559,7 @@ function ActionButtons({
       )}>
         {/* Filters section with horizontal scroll */}
         <div className="flex-1 overflow-x-auto scrollbar-hover">
-          <div className={cn(
-            "flex items-center gap-2 min-w-0",
-            variant === 'compact' ? 'text-xs' : 'text-xs sm:text-sm'
-          )}>
-            <span className={cn(
-              "bg-primary/10 text-primary py-1 font-medium shrink-0",
-              variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-            )}>
-              {variant === 'full' ? 'Field: ' : ''}{result.field}
-            </span>
-{(() => {
-              const isDateActive = isDateFilterActive(result.dateRange, result.yearRange, result.filterType, result.isYearRangeEnabled);
-              
-              if (result.filterType === "year" && result.yearRange && isDateActive) {
-                return (
-                  <span className={cn(
-                    "bg-blue-50 text-blue-700 py-1 shrink-0",
-                    variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-                  )}>
-                    📅 {result.yearRange[0]} - {result.yearRange[1]}
-                  </span>
-                );
-              } else if (result.dateRange?.from && isDateActive) {
-                return (
-                  <span className={cn(
-                    "bg-blue-50 text-blue-700 py-1 shrink-0",
-                    variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-                  )}>
-                    📅 {format(result.dateRange.from, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy")} - {result.dateRange.to ? format(result.dateRange.to, variant === 'compact' ? "MMM yyyy" : "MMM dd, yyyy") : "now"}
-                  </span>
-                );
-              } else if (variant === 'full' && !isDateActive) {
-                return (
-                  <span className="bg-gray-50 text-gray-700 px-3 py-1 rounded-lg shrink-0">
-                    📅 All dates
-                  </span>
-                );
-              }
-              return null;
-            })()}
-            {isCountryFilterActive(result.selectedRegions) && (
-              <span className={cn(
-                "bg-emerald-50 text-emerald-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                🌍 Institution location: {(() => {
-                  const regions = result.selectedRegions.filter((id: string) => !(id.length === 2 && COUNTRIES[id]));
-                  const countries = result.selectedRegions.filter((id: string) => id.length === 2 && COUNTRIES[id]);
-                  const parts = [];
-                  
-                  if (regions.length > 0) {
-                    parts.push(`${regions.length} region${regions.length > 1 ? 's' : ''}`);
-                  }
-                  if (countries.length > 0) {
-                    parts.push(`${countries.length} countr${countries.length > 1 ? 'ies' : 'y'}`);
-                  }
-                  
-                  return parts.join(' + ');
-                })()}
-                {variant === 'full' && result.selectedRegions.filter((id: string) => id.length === 2 && COUNTRIES[id]).length > 0 && (
-                  <span className="flex items-center gap-0.5 ml-1">
-                    {result.selectedRegions
-                      .filter((id: string) => id.length === 2 && COUNTRIES[id])
-                      .slice(0, 3)
-                      .map((countryCode: string) => (
-                        <CountryFlag key={countryCode} countryCode={countryCode} className="w-3 h-2" />
-                      ))}
-                    {result.selectedRegions.filter((id: string) => id.length === 2 && COUNTRIES[id]).length > 3 && (
-                      <span className="text-xs text-emerald-600 ml-1">+{result.selectedRegions.filter((id: string) => id.length === 2 && COUNTRIES[id]).length - 3}</span>
-                    )}
-                  </span>
-                )}
-              </span>
-            )}
-            {isCountryFocusActive(result.selectedCountryFocus) && (
-              <span className={cn(
-                "bg-purple-50 text-purple-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                🎯 Country focus: {(() => {
-                  const regions = result.selectedCountryFocus.filter((id: string) => !(id.length === 2 && COUNTRIES[id]));
-                  const countries = result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]);
-                  const parts = [];
-                  
-                  if (regions.length > 0) {
-                    parts.push(`${regions.length} region${regions.length > 1 ? 's' : ''}`);
-                  }
-                  if (countries.length > 0) {
-                    parts.push(`${countries.length} countr${countries.length > 1 ? 'ies' : 'y'}`);
-                  }
-                  
-                  return parts.join(' + ');
-                })()}
-                {variant === 'full' && result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]).length > 0 && (
-                  <span className="flex items-center gap-0.5 ml-1">
-                    {result.selectedCountryFocus
-                      .filter((id: string) => id.length === 2 && COUNTRIES[id])
-                      .slice(0, 3)
-                      .map((countryCode: string) => (
-                        <CountryFlag key={countryCode} countryCode={countryCode} className="w-3 h-2" />
-                      ))}
-                    {result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]).length > 3 && (
-                      <span className="text-xs text-purple-600 ml-1">+{result.selectedCountryFocus.filter((id: string) => id.length === 2 && COUNTRIES[id]).length - 3}</span>
-                    )}
-                  </span>
-                )}
-              </span>
-            )}
-            {result.citesItemId && (
-              <span className={cn(
-                "bg-orange-50 text-orange-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                📑 Cites: {result.citesItemId}
-              </span>
-            )}
-            {result.citedByItemId && (
-              <span className={cn(
-                "bg-green-50 text-green-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                📋 Cited by: {result.citedByItemId}
-              </span>
-            )}
-            {result.relatedToItemId && (
-              <span className={cn(
-                "bg-blue-50 text-blue-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                🔗 Related: {result.relatedToItemId}
-              </span>
-            )}
-            {isRatingFilterActive(result.ratingRange, result.onlyRatedPapers) && (
-              <span className={cn(
-                "bg-amber-50 text-amber-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                ⭐ {(() => {
-                  const parts = [];
-                  if (result.ratingRange) {
-                    const [min, max] = result.ratingRange;
-                    if (min > 0 || max < 5) {
-                      parts.push(`${min === max ? min : `${min}-${max}`} star${min === 1 && max === 1 ? '' : 's'}`);
-                    }
-                  }
-                  if (result.onlyRatedPapers) {
-                    parts.push('rated only');
-                  }
-                  return parts.length > 0 ? parts.join(', ') : 'filtered';
-                })()}
-              </span>
-            )}
-            {result.reviewFilter && (
-              <span className={cn(
-                "bg-pink-50 text-pink-700 py-1 flex items-center gap-1 shrink-0",
-                variant === 'compact' ? 'px-2 rounded-md' : 'px-3 rounded-lg'
-              )}>
-                📄 Reviews only
-              </span>
-            )}
-            {variant === 'full' && (
-              <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg shrink-0">
-                Sort: {result.sortBy ? sortOptions.find(opt => opt.value === result.sortBy)?.label || result.sortBy : "Relevance"}
-              </span>
-            )}
-          </div>
+          <HistoryFilterBadges result={result} variant={variant} />
         </div>
         
         {/* Actions - Always visible */}

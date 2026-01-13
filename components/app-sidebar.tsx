@@ -314,6 +314,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 {displayItems.map((search, idx) => (
                   <SearchHistoryTab
                     key={search.id}
+                    id={search.id}
                     searchId={search.id}
                     query={search.query}
                     count={search.count}
@@ -327,6 +328,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     selectedCountryFocus={search.selectedCountryFocus}
                     language={search.language}
                     createdAt={search.createdAt}
+                    updatedAt={search.updatedAt}
                     isActive={search.id === effectiveSearchId}
                     isCollapsed={isCollapsed && !isMobile}
                     reviewFilter={search.reviewFilter}
@@ -335,6 +337,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     citesItemId={search.citesItemId}
                     citedByItemId={search.citedByItemId}
                     relatedToItemId={search.relatedToItemId}
+                    queryHistory={search.queryHistory}
+                    questionHistory={search.questionHistory}
+                    screeningQuestions={search.screeningQuestions}
+                    screeningResponses={search.screeningResponses}
                     onClick={() => handleSearchHistoryClick(search.id)}
                     index={idx + 3}
                   />

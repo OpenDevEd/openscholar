@@ -1,0 +1,97 @@
+/**
+ * Filter Types
+ * Shared type definitions for the filter display system
+ */
+
+import { LucideIcon } from "lucide-react";
+import { SearchField } from "@/lib/types/search.types";
+import { DateRange } from "react-day-picker";
+
+/**
+ * All possible filter types
+ */
+export type FilterType =
+  | "field"
+  | "sort"
+  | "year"
+  | "date"
+  | "regions"
+  | "countryFocus"
+  | "language"
+  | "review"
+  | "rating"
+  | "onlyRated"
+  | "cites"
+  | "citedBy"
+  | "relatedTo";
+
+/**
+ * Section categories for grouping filters
+ */
+export type FilterSectionType =
+  | "search"
+  | "time"
+  | "geographic"
+  | "content"
+  | "ratings"
+  | "citations";
+
+/**
+ * A single filter item with all display data
+ */
+export interface FilterItem {
+  /** Unique key for React rendering */
+  key: string;
+  /** The type of filter */
+  type: FilterType;
+  /** Lucide icon component for tooltip display */
+  icon: LucideIcon;
+  /** Emoji for history page badge display */
+  emoji: string;
+  /** Human-readable label */
+  label: string;
+  /** Formatted display value */
+  displayValue: string;
+  /** Country codes for geographic filters (for flag display) */
+  countryCodes?: string[];
+  /** Rating range for star display */
+  ratingRange?: [number, number];
+}
+
+/**
+ * A section containing multiple filter items
+ */
+export interface FilterSection {
+  /** Section identifier */
+  id: FilterSectionType;
+  /** Section title */
+  title: string;
+  /** Color classes for tooltip card style (e.g., "bg-orange-500/10 border-orange-500/20") */
+  tooltipColor: string;
+  /** Color classes for history page badge style (e.g., "bg-orange-50 text-orange-700") */
+  badgeColor: string;
+  /** Filter items in this section */
+  items: FilterItem[];
+}
+
+/**
+ * Input parameters for building filter data
+ * Matches the shape used by search results and tooltip props
+ */
+export interface FilterParams {
+  field?: SearchField;
+  sortBy?: string;
+  yearRange?: [number, number];
+  dateRange?: DateRange;
+  filterType?: "date" | "year";
+  isYearRangeEnabled?: boolean;
+  selectedRegions?: string[];
+  selectedCountryFocus?: string[];
+  language?: string;
+  reviewFilter?: boolean;
+  ratingRange?: [number, number];
+  onlyRatedPapers?: boolean;
+  citesItemId?: string;
+  citedByItemId?: string;
+  relatedToItemId?: string;
+}

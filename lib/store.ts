@@ -700,16 +700,6 @@ interface SearchHistoryUIState {
 // Removed NavbarState - using currentQuery from ResultsStore as single source of truth
 // Removed PageContentState - using currentQuery from ResultsStore as single source of truth
 
-interface ResultsPageContentState {
-  isSidebarOpen: boolean
-  setIsSidebarOpen: (open: boolean) => void
-}
-
-interface AIEnhanceState {
-  isDialogOpen: boolean
-  setIsDialogOpen: (open: boolean) => void
-}
-
 interface AIConfigDialogState {
   isEnhancing: boolean
   enhancedPreview: {
@@ -824,11 +814,6 @@ export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({
 
 // Removed useNavbarStore - using currentQuery from ResultsStore as single source of truth
 // Removed usePageContentStore - using currentQuery from ResultsStore as single source of truth
-
-export const useResultsPageContentStore = create<ResultsPageContentState>((set) => ({
-  isSidebarOpen: false,
-  setIsSidebarOpen: (open) => set({ isSidebarOpen: open }),
-}))
 
 export const useScreeningStore = create<ScreeningState>()(
   persist(
@@ -1062,11 +1047,6 @@ export const useScreeningStore = create<ScreeningState>()(
   )
 )
 
-export const useAIEnhanceStore = create<AIEnhanceState>((set) => ({
-  isDialogOpen: false,
-  setIsDialogOpen: (open) => set({ isDialogOpen: open }),
-}))
-
 export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
   isEnhancing: false,
   enhancedPreview: null,
@@ -1104,30 +1084,6 @@ export const useZoteroConfigStore = create<ZoteroConfigState>()(
     {
       name: 'zotero-config-storage',
       version: 1,
-    }
-  )
-);
-
-// Review store for managing review workflow steps
-interface ReviewStoreState {
-  step: number;
-  setStep: (step: number) => void;
-  nextStep: () => void;
-  previousStep: () => void;
-  resetStep: () => void;
-}
-
-export const useReviewStore = create<ReviewStoreState>()(
-  persist(
-    (set, get) => ({
-      step: 1,
-      setStep: (step) => set({ step }),
-      nextStep: () => set((state) => ({ step: state.step + 1 })),
-      previousStep: () => set((state) => ({ step: Math.max(1, state.step - 1) })),
-      resetStep: () => set({ step: 1 }),
-    }),
-    {
-      name: 'review-store',
     }
   )
 );

@@ -244,11 +244,6 @@ export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
   setIsFocusModeOpen(true);
 };
 
-export const closeFocusMode = () => {
-  const { setIsFocusModeOpen } = useUIStore.getState();
-  setIsFocusModeOpen(false);
-};
-
 /**
  * Selects a query from history and navigates to results page
  * Updates the search history if the query is different from current

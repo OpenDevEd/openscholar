@@ -1,52 +1,32 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Focus, X } from "lucide-react";
-import { cn, isCountryFocusActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { Focus } from "lucide-react";
+import { cn, isCountryFocusActive } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
-import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { CountrySelector } from "./country-selector";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
+import { useCountryFilter } from "@/hooks/use-country-filter";
 
 export function CountryFocusPicker() {
-  const {
-    selectedCountryFocus,
-  } = useCurrentSearchFormState();
-  
-  const updateFilter = useUpdateSearchFilter();
+  const { selectedValues, handleSelectionChange } = useCountryFilter('selectedCountryFocus');
 
   // Computed filter active state
-  const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
-
-  const handleSelectionChange = async (regions: string[]) => {
-    updateFilter({ selectedCountryFocus: regions });
-    
-    // Always update search filters when selection changes
-    await updateCurrentSearchFilters();
-  };
-
-  const handleClearFilter = async () => {
-    updateFilter({ selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus });
-    await updateCurrentSearchFilters();
-  };
+  const isCountryFocusFilterActive = isCountryFocusActive(selectedValues);
 
   // Get country names for display and search enhancement
-  const getCountryNames = () => {
-    const countryNames: string[] = [];
-    const countryData = getCountryCodesForRegions(selectedCountryFocus);
+  const countryNames = useMemo(() => {
+    const names: string[] = [];
+    const countryData = getCountryCodesForRegions(selectedValues);
     
     countryData.countries.forEach(code => {
-      if (COUNTRIES[code] && !countryNames.includes(COUNTRIES[code])) {
-        countryNames.push(COUNTRIES[code]);
+      if (COUNTRIES[code] && !names.includes(COUNTRIES[code])) {
+        names.push(COUNTRIES[code]);
       }
     });
     
-    return countryNames;
-  };
-
-  const countryNames = getCountryNames();
+    return names;
+  }, [selectedValues]);
 
   return (
     <div className="space-y-3">
@@ -69,7 +49,7 @@ export function CountryFocusPicker() {
           : "border-border bg-background"
       )}>
         <CountrySelector
-          selectedRegions={selectedCountryFocus}
+          selectedRegions={selectedValues}
           onSelectionChange={handleSelectionChange}
           placeholder="Add country focus to search"
           description="Choose countries to add to your search query"
@@ -114,7 +94,7 @@ export function CountryFocusPicker() {
       </div>
 
       {/* Info about the difference */}
-      {(isCountryFocusFilterActive || selectedCountryFocus.length > 0) && (
+      {(isCountryFocusFilterActive || selectedValues.length > 0) && (
                   <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
             <strong>Tip:</strong> Country focus enhances your search to include papers about these countries, 
             while Institution location filters by author affiliations. Use both for comprehensive results!

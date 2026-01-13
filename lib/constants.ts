@@ -705,29 +705,6 @@ export function getCountriesFromRegion(entry: Entry): string[] {
 }
 
 /**
- * Get all available regions (non-leaf nodes) from the hierarchy
- */
-export function getAllRegions(entry: Entry = COUNTRY_HIERARCHY): { id: string; label: string; level: number; parentId?: string }[] {
-  const regions: { id: string; label: string; level: number; parentId?: string }[] = [];
-  
-  function traverse(node: Entry, level: number = 0, parentId?: string) {
-    const id = node.label.toLowerCase().replace(/\s+/g, '_');
-    
-    if (node.children && node.children.length > 0) {
-      // This is a region node
-      regions.push({ id, label: node.label, level, parentId });
-      
-      node.children.forEach(child => {
-        traverse(child, level + 1, id);
-      });
-    }
-  }
-  
-  traverse(entry);
-  return regions;
-}
-
-/**
  * Create a mapping from region IDs to their country codes
  */
 export function createRegionToCountriesMap(): Record<string, string[]> {

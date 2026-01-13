@@ -53,47 +53,6 @@ export function createDefaultFilters(): SearchFilters {
   };
 }
 
-/**
- * Check if all filters are at their default values
- */
-export function areFiltersAtDefault(filters: SearchFilters): boolean {
-  const defaults = createDefaultFilters();
-  return (
-    filters.searchField === defaults.searchField &&
-    filters.sortBy === defaults.sortBy &&
-    filters.filterType === defaults.filterType &&
-    isFilterAtDefault.yearRange(filters.yearRange) &&
-    isFilterAtDefault.isYearRangeEnabled(filters.isYearRangeEnabled) &&
-    isFilterAtDefault.dateRange(filters.dateRange) &&
-    isFilterAtDefault.ratingRange(filters.ratingRange) &&
-    isFilterAtDefault.onlyRatedPapers(filters.onlyRatedPapers) &&
-    isFilterAtDefault.selectedRegions(filters.selectedRegions) &&
-    isFilterAtDefault.selectedCountryFocus(filters.selectedCountryFocus) &&
-    isFilterAtDefault.citesItemId(filters.citesItemId) &&
-    isFilterAtDefault.citedByItemId(filters.citedByItemId) &&
-    isFilterAtDefault.relatedToItemId(filters.relatedToItemId) &&
-    isFilterAtDefault.reviewFilter(filters.reviewFilter)
-  );
-}
-
-/**
- * Count the number of active (non-default) filters
- */
-export function countActiveFilters(filters: SearchFilters): number {
-  let count = 0;
-  if (filters.searchField !== DEFAULT_FILTERS.field) count++;
-  if (filters.sortBy !== DEFAULT_FILTERS.sortBy) count++;
-  if (isDateFilterActive(filters.dateRange, filters.yearRange, filters.filterType, filters.isYearRangeEnabled)) count++;
-  if (isRatingFilterActive(filters.ratingRange, filters.onlyRatedPapers)) count++;
-  if (isCountryFilterActive(filters.selectedRegions)) count++;
-  if (isCountryFocusActive(filters.selectedCountryFocus)) count++;
-  if (isCitesFilterActive(filters.citesItemId)) count++;
-  if (isCitedByFilterActive(filters.citedByItemId)) count++;
-  if (isRelatedToFilterActive(filters.relatedToItemId)) count++;
-  if (isReviewFilterActive(filters.reviewFilter)) count++;
-  return count;
-}
-
 // Utility functions to check if filters are at default values
 export const isFilterAtDefault = {
   yearRange: (range?: [number, number]) => {
@@ -683,32 +642,6 @@ export function getCurrentSearchField<T>(pathname: string | null, field: string,
 }
 
 /**
- * Helper functions to get specific search state values with proper defaults
- */
-export function getCurrentSearchFormState(pathname: string | null) {
-  const defaultYearRange = DEFAULT_FILTERS.yearRange();
-  
-  return {
-    currentSearchField: getCurrentSearchField(pathname, 'field', DEFAULT_FILTERS.field),
-    dateRange: getCurrentSearchField(pathname, 'dateRange', DEFAULT_FILTERS.dateRange),
-    sortBy: getCurrentSearchField(pathname, 'sortBy', DEFAULT_FILTERS.sortBy),
-    filterType: getCurrentSearchField(pathname, 'filterType', DEFAULT_FILTERS.filterType),
-    yearRange: getCurrentSearchField(pathname, 'yearRange', defaultYearRange),
-    isYearRangeEnabled: getCurrentSearchField(pathname, 'isYearRangeEnabled', DEFAULT_FILTERS.isYearRangeEnabled),
-    yearFromInput: getCurrentSearchField(pathname, 'yearRange', defaultYearRange)[0]?.toString() || defaultYearRange[0].toString(),
-    yearToInput: getCurrentSearchField(pathname, 'yearRange', defaultYearRange)[1]?.toString() || defaultYearRange[1].toString(),
-    ratingRange: getCurrentSearchField(pathname, 'ratingRange', DEFAULT_FILTERS.ratingRange),
-    onlyRatedPapers: getCurrentSearchField(pathname, 'onlyRatedPapers', DEFAULT_FILTERS.onlyRatedPapers),
-    selectedRegions: getCurrentSearchField(pathname, 'selectedRegions', DEFAULT_FILTERS.selectedRegions),
-    selectedCountryFocus: getCurrentSearchField(pathname, 'selectedCountryFocus', DEFAULT_FILTERS.selectedCountryFocus),
-    citesItemId: getCurrentSearchField(pathname, 'citesItemId', DEFAULT_FILTERS.citesItemId),
-    citedByItemId: getCurrentSearchField(pathname, 'citedByItemId', DEFAULT_FILTERS.citedByItemId),
-    relatedToItemId: getCurrentSearchField(pathname, 'relatedToItemId', DEFAULT_FILTERS.relatedToItemId),
-    reviewFilter: getCurrentSearchField(pathname, 'reviewFilter', DEFAULT_FILTERS.reviewFilter),
-  };
-}
-
-/**
  * Parses a boolean search query and returns formatted parts with operator highlighting
  */
 export interface BooleanQueryPart {
@@ -819,21 +752,4 @@ function extractParenthesesContent(query: string, startIndex: number): { content
     content: query.slice(startIndex),
     endIndex: query.length - 1
   };
-}
-
-/**
- * Formats a boolean query with syntax highlighting for display
- */
-export function formatBooleanQueryForDisplay(query: string): string {
-  const parts = parseBooleanQuery(query);
-  return parts.map(part => {
-    switch (part.type) {
-      case 'operator':
-        return `<span class="font-semibold text-blue-600 dark:text-blue-400">${part.text}</span>`;
-      case 'parenthesis':
-        return `<span class="font-medium text-gray-500 dark:text-gray-400">${part.text}</span>`;
-      default:
-        return part.text;
-    }
-  }).join(' ');
 }

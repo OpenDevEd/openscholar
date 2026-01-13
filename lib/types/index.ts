@@ -38,19 +38,3 @@ export type {
 } from './search.types';
 
 export { SEARCH_FIELDS } from './search.types';
-
-// Common Types
-export type {
-  ReviewStatus,
-  ReviewStep,
-  SearchTerm,
-  SearchTermData,
-} from './common.types';
-
-export {
-  isSearchTermObject,
-  isSearchTermString,
-  normalizeSearchTerms,
-  createSearchTerm,
-  validateSearchTerm,
-} from './common.types';

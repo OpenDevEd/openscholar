@@ -5,19 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
-    "worker": "tsx app/actions/worker.ts",
-    "worker:dev": "tsx --watch app/actions/worker.ts",
-    "worker:prod": "NODE_ENV=production tsx app/actions/worker.ts",
-    "worker:pm2": "pm2 start ecosystem.config.js",
-    "worker:pm2:dev": "pm2 start ecosystem.config.js --env development",
-    "worker:pm2:prod": "pm2 start ecosystem.config.js --env production",
-    "worker:pm2:stop": "pm2 stop ecosystem.config.js",
-    "worker:pm2:restart": "pm2 restart ecosystem.config.js",
-    "worker:pm2:delete": "pm2 delete ecosystem.config.js",
-    "worker:pm2:logs": "pm2 logs openalex-worker",
-    "worker:pm2:monit": "pm2 monit",
-    "dev:full": "concurrently \"npm run dev\" \"npm run worker:dev\""
+    "start": "next start"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.9",
@@ -46,7 +34,6 @@
     "@tanstack/react-table": "^8.21.3",
     "ai": "^6.0.28",
     "babel-plugin-react-compiler": "^19.1.0-rc.2",
-    "bullmq": "^5.58.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -81,11 +68,8 @@
     "@types/pg": "^8.15.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "concurrently": "^8.2.2",
     "drizzle-kit": "^0.31.4",
-    "pm2": "^5.4.2",
     "tailwindcss": "^4",
-    "tsx": "^4.20.5",
     "typescript": "^5"
   },
   "overrides": {

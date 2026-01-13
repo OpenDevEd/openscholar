@@ -57,8 +57,8 @@ export default function ResultsPageContent({ searchId }: ResultsPageContentProps
       <TwoColumnLayout
         leftColumn={<SearchSidebar mode="panel" />}
         rightColumn={
-          <PageWrapper removeOverflow={false} className="h-full flex flex-col">
-            <div className="flex-1 min-h-0 overflow-y-auto py-6 px-4 md:px-6">
+          <PageWrapper className="h-full">
+            <div className="py-6 px-4 md:px-6">
               <main className="w-full">
                 <ResultsList
                   onDownloadItem={(item, format) => downloadItem(item, format, searchState)}

@@ -7,16 +7,15 @@ import { Footer } from "@/components/ui/footer";
 interface PageWrapperProps {
   children: React.ReactNode;
   className?: string;
-  removeOverflow?: boolean;
 }
 
-export function PageWrapper({ children, className, removeOverflow = false }: PageWrapperProps) {
+export function PageWrapper({ children, className }: PageWrapperProps) {
   return (
-    <div className={cn("flex flex-col min-h-0", className)}>
-      <div className={cn("flex-1 min-h-0 flex flex-col", !removeOverflow && "overflow-y-auto")}>
+    <div className={cn("flex-1 flex flex-col min-h-0 overflow-y-auto", className)}>
+      <div className="flex-1">
         {children}
-        <Footer />
       </div>
+      <Footer />
     </div>
   );
 }

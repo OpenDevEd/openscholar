@@ -1,9 +1,5 @@
 
 import { generateObject } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import type { AIProvider, ScreeningDocument, ScreeningQuestion, ScreeningResult } from '@/lib/types';
 import { 
@@ -16,6 +12,7 @@ import { downloadPDFFromURL } from './pdf-download';
 import { buildZoteroHeaders, isZoteroFileUrl } from '@/lib/zotero-utils';
 import { getZoteroFullText } from './zotero';
 import { assertWithinBudget, addCostFromUsage } from '@/lib/ai-cost';
+import { createAIModel } from '@/lib/ai-utils';
 
 // Centralized PDF download with local-first fallback
 async function downloadPDFWithFallback(url: string, documentId: string, document?: ScreeningDocument, zoteroAuth?: { apiKey: string; groupId: string }): Promise<{ success: boolean; data?: ArrayBuffer; error?: string }> {
@@ -155,26 +152,6 @@ function createScreeningSchema(questions: ScreeningQuestion[]) {
   });
 }
 
-// Create AI model instance based on provider
-function createModel(provider: AIProvider, apiKey: string, modelId: string) {
-  switch (provider) {
-    case 'openai':
-      const openai = createOpenAI({ apiKey });
-      return openai(modelId);
-    case 'google':
-      const google = createGoogleGenerativeAI({ apiKey });
-      return google(modelId);
-    case 'anthropic':
-      const anthropic = createAnthropic({ apiKey });
-      return anthropic(modelId);
-    case 'openrouter':
-      const openrouter = createOpenRouter({ apiKey });
-      return openrouter(modelId);
-    default:
-      throw new Error(`Unsupported AI provider: ${provider}`);
-  }
-}
-
 
 
 // Screen a single document
@@ -194,7 +171,7 @@ async function screenDocument(
     apiKey,
     modelId,
   });
-  const model = createModel(provider, apiKey, modelId);
+  const model = createAIModel(provider, apiKey, modelId);
 
   // ---- budget guard ----------------------------------------------
   assertWithinBudget();

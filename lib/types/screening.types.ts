@@ -22,22 +22,18 @@ export interface ScreeningQuestion {
 }
 
 /**
+ * Data extraction question - alias for ScreeningQuestion
+ * (Same structure, different semantic meaning)
+ */
+export type DataExtractionQuestion = ScreeningQuestion;
+
+/**
  * A simplified screening question entry for search history
  * @deprecated Use ScreeningQuestion instead when possible
  */
 export interface ScreeningQuestionEntry {
   question: string;
   locked: boolean;
-}
-
-/**
- * Data extraction question (same structure as screening question)
- */
-export interface DataExtractionQuestion {
-  id: string;
-  key: string;
-  type: ScreeningQuestionType;
-  question: string;
 }
 
 /**
@@ -105,13 +101,17 @@ export type ScreeningResponses = Record<string, Record<string, boolean | null>>;
 
 /**
  * Factory function to create a screening question
+ * @param question - The question text
+ * @param type - The answer type (default: 'boolean')
+ * @param prefix - ID prefix (default: 'q' for screening, use 'deq' for data extraction)
  */
 export function createScreeningQuestion(
   question: string,
-  type: ScreeningQuestionType = 'boolean'
+  type: ScreeningQuestionType = 'boolean',
+  prefix: string = 'q'
 ): ScreeningQuestion {
   return {
-    id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     key: question.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_'),
     type,
     question: question.trim()
@@ -120,21 +120,17 @@ export function createScreeningQuestion(
 
 /**
  * Factory function to create a data extraction question
+ * Wrapper around createScreeningQuestion with 'deq' prefix
  */
 export function createDataExtractionQuestion(
   question: string,
   type: ScreeningQuestionType = 'boolean'
 ): DataExtractionQuestion {
-  return {
-    id: `deq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    key: question.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_'),
-    type,
-    question: question.trim()
-  };
+  return createScreeningQuestion(question, type, 'deq');
 }
 
 /**
- * Validate a screening question
+ * Validate a screening or data extraction question
  */
 export function validateScreeningQuestion(question: ScreeningQuestion): boolean {
   return !!(
@@ -147,12 +143,6 @@ export function validateScreeningQuestion(question: ScreeningQuestion): boolean 
 
 /**
  * Validate a data extraction question
+ * Alias for validateScreeningQuestion (same structure)
  */
-export function validateDataExtractionQuestion(question: DataExtractionQuestion): boolean {
-  return !!(
-    question.id &&
-    question.key &&
-    question.question &&
-    ['boolean', 'string', 'number', 'array'].includes(question.type)
-  );
-}
+export const validateDataExtractionQuestion = validateScreeningQuestion;

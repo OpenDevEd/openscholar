@@ -9,10 +9,12 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
-import { SearchField } from "@/lib/types/search.types";
+import { SearchField, QueryHistoryEntry, QuestionHistoryEntry } from "@/lib/types/search.types";
+import { ScreeningQuestionEntry, ScreeningResponses } from "@/lib/types/screening.types";
 import { DateRange } from "react-day-picker";
 import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
+import { countActiveFilters } from "@/lib/filters";
 
 // Spring animation config consistent with sidebar
 const springConfig = {
@@ -30,6 +32,7 @@ const layoutConfig = {
 };
 
 interface SearchHistoryTabProps {
+  id: string;
   searchId: string;
   query: string;
   count: number;
@@ -43,6 +46,7 @@ interface SearchHistoryTabProps {
   selectedCountryFocus?: string[];
   language?: string;
   createdAt: string;
+  updatedAt: string;
   isActive: boolean;
   isCollapsed: boolean;
   reviewFilter?: boolean;
@@ -51,11 +55,16 @@ interface SearchHistoryTabProps {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  queryHistory?: QueryHistoryEntry[];
+  questionHistory?: QuestionHistoryEntry[];
+  screeningQuestions?: ScreeningQuestionEntry[];
+  screeningResponses?: ScreeningResponses;
   onClick?: () => void;
   index?: number;
 }
 
 export function SearchHistoryTab({
+  id,
   searchId,
   query,
   count,
@@ -69,6 +78,7 @@ export function SearchHistoryTab({
   selectedCountryFocus,
   language,
   createdAt,
+  updatedAt,
   isActive,
   isCollapsed,
   reviewFilter,
@@ -77,6 +87,10 @@ export function SearchHistoryTab({
   citesItemId,
   citedByItemId,
   relatedToItemId,
+  queryHistory,
+  questionHistory,
+  screeningQuestions,
+  screeningResponses,
   onClick,
   index = 0,
 }: SearchHistoryTabProps) {
@@ -84,25 +98,24 @@ export function SearchHistoryTab({
   const timeAgo = formatTimeAgo(createdAt);
   const truncatedQuery = query.length > 40 ? query.slice(0, 40) + "..." : query;
 
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (field && field !== 'title_and_abstract') count++;
-    if (sortBy && sortBy !== 'relevance_score') count++;
-    if (filterType === 'year' && isYearRangeEnabled && yearRange) count++;
-    if (filterType === 'date' && dateRange?.from) count++;
-    if (selectedRegions && selectedRegions.length > 0) count++;
-    if (selectedCountryFocus && selectedCountryFocus.length > 0) count++;
-    if (language) count++;
-    if (reviewFilter) count++;
-    if (ratingRange && (ratingRange[0] !== 0 || ratingRange[1] !== 5)) count++;
-    if (onlyRatedPapers) count++;
-    if (citesItemId) count++;
-    if (citedByItemId) count++;
-    if (relatedToItemId) count++;
-    return count;
-  };
-
-  const totalCount = getActiveFilterCount();
+  // Use shared filter counting logic
+  const totalCount = countActiveFilters({
+    field,
+    sortBy,
+    yearRange,
+    dateRange,
+    filterType,
+    isYearRangeEnabled,
+    selectedRegions,
+    selectedCountryFocus,
+    language,
+    reviewFilter,
+    ratingRange,
+    onlyRatedPapers,
+    citesItemId,
+    citedByItemId,
+    relatedToItemId,
+  });
 
   const buttonContent = (
     <motion.div
@@ -212,9 +225,11 @@ export function SearchHistoryTab({
       <TooltipContent side="right" className="w-80 bg-background text-foreground border shadow-lg p-0 max-h-96 overflow-y-auto">
         <div className="p-3">
           <SearchTooltipContent
+            id={id || searchId}
             query={query}
             count={count}
             createdAt={createdAt}
+            updatedAt={updatedAt || createdAt}
             field={field}
             sortBy={sortBy}
             yearRange={yearRange}
@@ -230,6 +245,7 @@ export function SearchHistoryTab({
             citesItemId={citesItemId}
             citedByItemId={citedByItemId}
             relatedToItemId={relatedToItemId}
+            queryHistory={queryHistory}
           />
         </div>
       </TooltipContent>
