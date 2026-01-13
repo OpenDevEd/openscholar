@@ -305,7 +305,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 <Separator className="my-4 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
               </motion.div>
               <motion.div 
-                className="space-y-1"
+                className="space-y-1 overflow-hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, delay: 0.2 }}

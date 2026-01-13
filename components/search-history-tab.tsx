@@ -96,7 +96,6 @@ export function SearchHistoryTab({
 }: SearchHistoryTabProps) {
   const idColor = getIdColor(searchId);
   const timeAgo = formatTimeAgo(createdAt);
-  const truncatedQuery = query.length > 40 ? query.slice(0, 40) + "..." : query;
 
   // Use shared filter counting logic
   const totalCount = countActiveFilters({
@@ -119,6 +118,7 @@ export function SearchHistoryTab({
 
   const buttonContent = (
     <motion.div
+      className="w-full overflow-hidden"
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{
@@ -171,15 +171,15 @@ export function SearchHistoryTab({
           </div>
         ) : (
           <motion.div 
-            className="flex items-center w-full gap-1.5 min-w-0 text-left relative z-10"
+            className="flex items-center w-full gap-1.5 min-w-0 overflow-hidden text-left relative z-10"
             whileHover={{ x: 2 }}
             whileTap={{ x: 1, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
           >
             <span 
-              className="truncate text-xs font-medium text-sidebar-foreground flex-1 min-w-0 text-left transition-colors duration-200"
+              className="truncate text-xs font-medium text-sidebar-foreground flex-1 w-0 min-w-0 text-left transition-colors duration-200"
             >
-              {truncatedQuery}
+              {query}
             </span>
             <AnimatePresence>
               {totalCount > 0 && (
