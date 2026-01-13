@@ -104,9 +104,10 @@ export function QueryEvolution({
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="mt-1.5 ml-1.5 pl-2 border-l border-border/40 space-y-1.5">
+            <div className="mt-1.5 ml-1.5 pl-4 space-y-1.5">
               {sortedHistory.map((entry, idx) => {
                 const isCurrent = entry.query === currentQuery;
+                const isLast = idx === sortedHistory.length - 1;
                 
                 return (
                   <motion.div
@@ -116,13 +117,18 @@ export function QueryEvolution({
                     transition={{ delay: idx * 0.03 }}
                     className={cn(
                       "relative flex items-start gap-2",
-                      "before:absolute before:-left-[9px] before:top-1.5",
-                      "before:w-1.5 before:h-1.5 before:rounded-full",
+                      // Dot - centered at -8px from item edge
+                      "before:absolute before:-left-2 before:top-1.5",
+                      "before:w-1.5 before:h-1.5 before:-translate-x-1/2 before:rounded-full",
                       isCurrent
-                        ? "before:bg-foreground/60"
-                        : "before:bg-muted-foreground/30"
+                        ? "before:bg-foreground"
+                        : "before:bg-muted-foreground"
                     )}
                   >
+                    {/* Connecting line to next dot - starts at current dot center, ends at next dot center */}
+                    {!isLast && (
+                      <div className="absolute -left-2 top-[9px] bottom-[-15px] w-px bg-border/40 -translate-x-1/2" />
+                    )}
                     <div className="flex-1 min-w-0">
                       <QueryText 
                         query={entry.query}
@@ -131,7 +137,7 @@ export function QueryEvolution({
                           isCurrent && "font-medium"
                         )}
                       />
-                      <span className="text-[9px] text-muted-foreground/50">
+                      <span className="text-[9px] pl-2 text-muted-foreground/50">
                         {formatTimeAgo(entry.timestamp)}
                       </span>
                     </div>
