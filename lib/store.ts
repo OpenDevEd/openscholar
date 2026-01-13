@@ -84,13 +84,8 @@ interface UIState {
 }
 
 interface ResultsState {
-  currentPage: number
   expandedAbstracts: Record<string, boolean>
-  resultsFilter: string
-  setCurrentPage: (page: number) => void
   toggleAbstract: (paperId: string) => void
-  setResultsFilter: (filter: string) => void
-  clearResults: () => void
 }
 
 interface FocusModeSettingsState {
@@ -546,22 +541,13 @@ export const useUIStore = create<UIState>()(
 )
 
 export const useResultsStore = create<ResultsState>((set) => ({
-  currentPage: 1,
   expandedAbstracts: {},
-  resultsFilter: "",
-  setCurrentPage: (page) => set({ currentPage: page }),
   toggleAbstract: (paperId) => set((state) => ({
     expandedAbstracts: {
       ...state.expandedAbstracts,
       [paperId]: !state.expandedAbstracts[paperId]
     }
   })),
-  setResultsFilter: (filter) => set({ resultsFilter: filter, currentPage: 1 }),
-  clearResults: () => set({ 
-    currentPage: 1,
-    expandedAbstracts: {},
-    resultsFilter: ""
-  }),
 }))
 
 export const useFocusModeSettingsStore = create<FocusModeSettingsState>()(

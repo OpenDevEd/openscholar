@@ -150,7 +150,7 @@ Please enhance this academic search query according to the user's specific instr
   };
 
   return (
-    <div className="px-4 py-3 space-y-3">
+    <div className="p-4 space-y-4">
       {/* AI Enhancement Input */}
       <form onSubmit={handleAiEnhancement}>
         <FloatingInput

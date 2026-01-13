@@ -163,7 +163,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   };
 
   return (
-    <div className="px-4 py-5 space-y-4">
+    <div className="p-4 space-y-4">
       {/* Research Question Input */}
       <form onSubmit={handleQuestionSubmit}>
         <FloatingInput

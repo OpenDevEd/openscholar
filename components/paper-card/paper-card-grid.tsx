@@ -69,9 +69,12 @@ export function PaperCardGrid({
 
   return (
     <CardContainer className="overflow-hidden h-full flex flex-col">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => openFocusMode(isMobile, resultIndex)}
-        className="flex-1 w-full text-left flex flex-col"
+        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex)}
+        className="flex-1 w-full text-left flex flex-col cursor-pointer"
       >
         <div className={cn("flex flex-col h-full", isCompact ? "p-3" : "p-4")}>
           {/* Header: Year badge and quick actions */}
@@ -193,7 +196,7 @@ export function PaperCardGrid({
             </div>
           </div>
         </div>
-      </button>
+      </div>
     </CardContainer>
   );
 }

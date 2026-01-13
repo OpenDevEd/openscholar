@@ -170,13 +170,16 @@ export function OpenAccessBadge({
 
   if (compact) {
     return (
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => window.open(oaUrl, "_blank")}
-        className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors"
+        onKeyDown={(e) => e.key === "Enter" && window.open(oaUrl, "_blank")}
+        className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
         title="Open Access PDF"
       >
         <FileText className="h-4 w-4" />
-      </button>
+      </div>
     );
   }
 
@@ -214,13 +217,16 @@ export function DOIBadge({
 
   if (compact) {
     return (
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => window.open(doiUrl, "_blank")}
-        className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+        onKeyDown={(e) => e.key === "Enter" && window.open(doiUrl, "_blank")}
+        className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
         title={`DOI: ${shortDoi}`}
       >
         <ExternalLink className="h-4 w-4" />
-      </button>
+      </div>
     );
   }
 

@@ -19,7 +19,6 @@ import {
 import { cn, isRatingFilterActive, getEffectiveSearchId } from "@/lib/utils";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import {
-  useResultsStore,
   useRatingsStore,
   useSearchHistoryStore,
   useUIStore,
@@ -41,7 +40,6 @@ interface PapersListProps {
   results: any[];
   filteredResults: any[];
   paginatedResults: any[];
-  resultsFilter: string;
   ratingRange: [number, number];
   onlyRatedPapers: boolean;
   currentPage: number;
@@ -85,7 +83,6 @@ function PapersList({
   results,
   filteredResults,
   paginatedResults,
-  resultsFilter,
   ratingRange,
   onlyRatedPapers,
   currentPage,
@@ -214,15 +211,13 @@ function PapersList({
         {paginatedResults.length === 0 && (
           <div className="text-center py-12">
             <p className="text-lg text-muted-foreground">
-              {resultsFilter ||
-              isRatingFilterActive(ratingRange, onlyRatedPapers)
+              {isRatingFilterActive(ratingRange, onlyRatedPapers)
                 ? "No results match your filters"
                 : "No results found"}
             </p>
-            {(resultsFilter ||
-              isRatingFilterActive(ratingRange, onlyRatedPapers)) && (
+            {isRatingFilterActive(ratingRange, onlyRatedPapers) && (
               <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your search terms or filter settings
+                Try adjusting your filter settings
               </p>
             )}
           </div>
@@ -361,8 +356,6 @@ export function ResultsList({
   currentQuery,
   onBackToHome,
 }: ResultsListProps) {
-  const { resultsFilter } = useResultsStore();
-
   // Use the new search context
   const search = useSearch();
   const results = search.results;
@@ -426,25 +419,8 @@ export function ResultsList({
   // Get query from URL params
   const urlQuery = search.params.q;
 
-  // Filter results based on search term and rating filter
+  // Filter results based on rating filter
   const filteredResults = results.filter((result: any) => {
-    // Text search filter
-    if (resultsFilter.trim()) {
-      const searchTerm = resultsFilter.toLowerCase();
-      const matchesText =
-        result.title?.toLowerCase().includes(searchTerm) ||
-        result.abstract?.toLowerCase().includes(searchTerm) ||
-        result.authorships?.some((authorship: any) =>
-          authorship.author?.display_name?.toLowerCase().includes(searchTerm)
-        ) ||
-        result.primary_topic?.display_name?.toLowerCase().includes(searchTerm) ||
-        result.primary_topic?.subfield?.display_name?.toLowerCase().includes(searchTerm) ||
-        result.primary_topic?.field?.display_name?.toLowerCase().includes(searchTerm) ||
-        result.primary_topic?.domain?.display_name?.toLowerCase().includes(searchTerm);
-
-      if (!matchesText) return false;
-    }
-
     // Rating filter
     if (isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
@@ -598,7 +574,6 @@ export function ResultsList({
           results={results}
           filteredResults={filteredResults}
           paginatedResults={paginatedResults}
-          resultsFilter={resultsFilter}
           ratingRange={ratingRange}
           onlyRatedPapers={onlyRatedPapers}
           currentPage={currentPage}
