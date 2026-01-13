@@ -13,10 +13,10 @@ interface PageWrapperProps {
 export function PageWrapper({ children, className, removeOverflow = false }: PageWrapperProps) {
   return (
     <div className={cn("flex flex-col min-h-0", className)}>
-      <div className={cn("flex-1 min-h-0", !removeOverflow && "overflow-y-auto")}>
+      <div className={cn("flex-1 min-h-0 flex flex-col", !removeOverflow && "overflow-y-auto")}>
         {children}
+        <Footer />
       </div>
-      <Footer />
     </div>
   );
 }

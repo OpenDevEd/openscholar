@@ -125,7 +125,7 @@ function PageContent() {
   };
 
   return (
-    <div className="flex flex items-center justify-center px-4 py-12 md:py-20 h-full">
+    <div className="flex flex-col items-center justify-center px-4 py-12 md:py-20 flex-1">
       <div className="w-full max-w-2xl space-y-8">
         {/* Logo & Tagline */}
         <div className="text-center space-y-4">
