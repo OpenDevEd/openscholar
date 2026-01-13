@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { SEARCH_FIELDS } from "@/lib/types/search.types";
 import { COUNTRIES } from "@/lib/constants";
 import {
+  DEFAULT_FILTERS,
   isDateFilterActive,
   isCountryFilterActive,
   isCountryFocusActive,
@@ -154,14 +155,14 @@ function createFilterItem(
 export function buildFilterData(params: FilterParams): FilterSection[] {
   const sections: FilterSection[] = [];
 
-  // Search section (field + sort)
+  // Search section (field + sort) - only include when different from defaults
   const searchItems: FilterItem[] = [];
-  if (params.field) {
+  if (params.field && params.field !== DEFAULT_FILTERS.field) {
     searchItems.push(
       createFilterItem("field", "field", getFieldLabel(params.field), "Field")
     );
   }
-  if (params.sortBy) {
+  if (params.sortBy && params.sortBy !== DEFAULT_FILTERS.sortBy) {
     searchItems.push(
       createFilterItem("sort", "sort", getSortLabel(params.sortBy), "Sort")
     );
@@ -230,18 +231,8 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
     sections.push(createSection("geographic", geoItems));
   }
 
-  // Content section (language + review filter)
+  // Content section (review filter only - language is shown separately in history cards)
   const contentItems: FilterItem[] = [];
-  if (params.language) {
-    contentItems.push(
-      createFilterItem(
-        "language",
-        "language",
-        params.language.toUpperCase(),
-        "Language"
-      )
-    );
-  }
   if (isReviewFilterActive(params.reviewFilter)) {
     contentItems.push(
       createFilterItem("review", "review", "Reviews only", "Reviews only")

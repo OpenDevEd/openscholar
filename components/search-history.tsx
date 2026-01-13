@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, ArrowRight, Languages } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
@@ -24,6 +24,39 @@ import { showConfirmation } from "@/lib/confirmation";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
+import { languageOptions } from "@/components/language-selector";
+
+// Helper functions for display labels
+function getFieldLabel(field?: string): string {
+  const labels: Record<string, string> = {
+    'title': 'Title',
+    'abstract': 'Abstract',
+    'title_and_abstract': 'Title + Abstract',
+    'fulltext': 'Full Text',
+    'raw': 'Raw Query'
+  };
+  return labels[field || ''] || 'All Fields';
+}
+
+function getSortLabel(sortBy?: string): string {
+  const option = sortOptions.find(o => o.value === sortBy);
+  return option?.label || '';
+}
+
+function hasActiveFilters(result: any): boolean {
+  return !!(
+    result.yearRange ||
+    result.dateRange ||
+    (result.selectedRegions?.length > 0) ||
+    (result.selectedCountryFocus?.length > 0) ||
+    result.citesItemId ||
+    result.citedByItemId ||
+    result.relatedToItemId ||
+    result.ratingRange ||
+    result.reviewFilter ||
+    result.onlyRatedPapers
+  );
+}
 
 interface SearchHistoryProps {
   onSearchResults: (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], filterType?: "date" | "year", index?: number) => void;
@@ -536,6 +569,9 @@ function ActionButtons({
     variant?: 'compact' | 'full' 
   }) => {
     const isCurrentSearch = currentSearchId && result.id === currentSearchId;
+    const idColor = getIdColor(result.id);
+    const [isQueryHistoryExpanded, setIsQueryHistoryExpanded] = useState(false);
+    const queryHistoryCount = result.queryHistory?.length || 0;
     
     return (
       <div
@@ -552,106 +588,229 @@ function ActionButtons({
               )
         )}
       >
-      {/* Header with filters and actions */}
-      <div className={cn(
-        "flex items-center justify-between pb-2",
-        variant === 'compact' ? 'px-4 pt-4' : 'px-5 pt-5'
-      )}>
-        {/* Filters section with horizontal scroll */}
-        <div className="flex-1 overflow-x-auto scrollbar-hover">
-          <HistoryFilterBadges result={result} variant={variant} />
-        </div>
-        
-        {/* Actions - Always visible */}
-        <div className="flex items-center gap-1 ml-2 shrink-0">
-          <ActionButtons
-            query={result.query}
-            searchId={result.id}
-            index={actualIndex}
-            variant={variant}
-            isLoading={loadingResultIndex === actualIndex}
-            canDelete={true}
-            onCopy={handleCopyQuery}
-            onBookmark={handleBookmarkClick}
-            onSearch={(query) => onSearchResults(query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex)}
-            onDelete={handleDeleteItem}
-          />
-        </div>
-      </div>
-
-      {/* Main content */}
-        <div className={cn(
-        variant === 'compact' ? 'px-4 pb-4' : 'px-5 pb-5'
-      )}>
-        <div className="space-y-3">
-          {bookmarkingIndex === actualIndex ? (
-            <BookmarkForm
-              query={result.query}
-              onSubmit={() => setBookmarkingIndex(null)}
-              onCancel={handleBookmarkCancel}
-              variant="full"
-            />
-          ) : (
-            /* Normal content */
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <p className={cn(
-                "text-foreground break-words leading-relaxed",
-                variant === 'compact' ? 'font-medium text-sm md:text-base' : 'font-semibold text-lg'
-              )} title={result.query}>
-                <span className={cn(
-                  "inline-flex items-center gap-1 py-0.5 rounded mr-2 font-medium",
-                  variant === 'compact' ? 'text-xs px-1.5' : 'text-sm px-2'
+        <div className={cn(variant === 'compact' ? 'p-4' : 'p-5')}>
+          
+          {/* === HERO SECTION: Result Count + Info Rows === */}
+          <div className={cn(
+            "flex gap-3 items-stretch",
+            variant === 'compact' ? 'flex-col sm:flex-row' : 'flex-row'
+          )}>
+            
+            {/* Result Count Block - stretches to fill height */}
+            <div 
+              className={cn(
+                "flex-shrink-0 rounded-lg flex flex-col items-center justify-center",
+                variant === 'compact' 
+                  ? 'px-3 py-2 min-w-[72px]' 
+                  : 'px-4 py-2 min-w-[88px]'
+              )}
+              style={{ 
+                backgroundColor: idColor.bg,
+                border: `1px solid ${idColor.border}` 
+              }}
+            >
+              <div 
+                className={cn(
+                  "font-bold leading-none",
+                  variant === 'compact' ? 'text-lg' : 'text-xl'
                 )}
-                style={{
-                  backgroundColor: getIdColor(result.id).bg,
-                  color: getIdColor(result.id).text,
-                  border: `1px solid ${getIdColor(result.id).border}`
-                }}>
-                  <Search className={cn(
-                    variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
-                  )} />
-                  {formatNumber(result.count)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatTimeAgo(result.createdAt)}
-                </span>
-                {result.query}
+                style={{ color: idColor.text }}
+              >
+                {formatNumber(result.count)}
+              </div>
+              <div 
+                className="text-[10px] opacity-70 leading-none mt-0.5"
+                style={{ color: idColor.text }}
+              >
+                results
+              </div>
+            </div>
+            
+            {/* Info Rows - tight line height, equal gaps */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+              {/* Row 1: Query Text */}
+              <p className={cn(
+                "break-words leading-tight",
+                variant === 'compact' ? 'text-sm font-medium' : 'text-base font-semibold'
+              )}>
+                {result.query ? (
+                  <span className="text-foreground">{result.query}</span>
+                ) : (
+                  <span className="text-muted-foreground italic">No query</span>
+                )}
               </p>
+              
+              {/* Row 2: Research Question (if available) */}
+              {result.questionHistory?.length > 0 && (
+                <p className="text-xs text-muted-foreground leading-tight truncate" title={result.questionHistory[result.questionHistory.length - 1]?.question}>
+                  <span className="opacity-60">Q:</span> {result.questionHistory[result.questionHistory.length - 1]?.question}
+                </p>
+              )}
+              
+              {/* Row 3: Metadata */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-tight">
+                <span>{formatTimeAgo(result.createdAt)}</span>
+                <span className="opacity-50">•</span>
+                <span>{getFieldLabel(result.field)}</span>
+                {result.sortBy && getSortLabel(result.sortBy) && (
+                  <>
+                    <span className="opacity-50">•</span>
+                    <span>{getSortLabel(result.sortBy)}</span>
+                  </>
+                )}
+              </div>
+              
+              {/* Row 4: Language */}
+              <div className="flex items-center gap-1.5 text-xs leading-tight">
+                {result.language ? (() => {
+                  const lang = languageOptions.find(l => l.code === result.language);
+                  return lang ? (
+                    <>
+                      <img 
+                        src={lang.flagUrl}
+                        alt={lang.name}
+                        className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
+                      />
+                      <span className="text-foreground">{lang.name}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Languages className="h-3 w-3" />
+                      <span className="italic">Language not set</span>
+                    </span>
+                  );
+                })() : (
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Languages className="h-3 w-3" />
+                    <span className="italic">Language not set</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* === BOOKMARK FORM (inline, when active) === */}
+          {bookmarkingIndex === actualIndex && (
+            <div className="mt-4">
+              <BookmarkForm
+                query={result.query}
+                onSubmit={() => setBookmarkingIndex(null)}
+                onCancel={handleBookmarkCancel}
+                variant="full"
+              />
             </div>
           )}
           
-          {/* Query History Display - show for all search items */}
-          <QueryHistoryDisplay 
-            queryHistory={result.queryHistory} 
-            currentQuery={result.query}
-            searchId={result.id}
-            onQuerySelect={onQuerySelect}
-            onCopyQuery={handleCopyQuery}
-            onDeleteQueryEntry={handleQueryDelete}
-          />
+          {/* === FILTERS SECTION (only if filters exist) === */}
+          {hasActiveFilters(result) && (
+            <div className="mt-3 pt-2 border-t border-border/50 overflow-x-auto scrollbar-hover">
+              <HistoryFilterBadges result={result} variant={variant} />
+            </div>
+          )}
+          
+          {/* === FOOTER: Query History Toggle + Actions === */}
+          <div className={cn(
+            "flex items-center justify-between",
+            hasActiveFilters(result) 
+              ? 'mt-2' 
+              : 'mt-3 pt-2 border-t border-border/50'
+          )}>
+            {/* Query History Toggle */}
+            <QueryHistoryToggle 
+              count={queryHistoryCount}
+              isExpanded={isQueryHistoryExpanded}
+              onToggle={() => setIsQueryHistoryExpanded(!isQueryHistoryExpanded)}
+              variant={variant}
+            />
+            
+            {/* Action Buttons */}
+            <ActionButtons
+              query={result.query}
+              searchId={result.id}
+              index={actualIndex}
+              variant={variant}
+              isLoading={loadingResultIndex === actualIndex}
+              canDelete={true}
+              onCopy={handleCopyQuery}
+              onBookmark={handleBookmarkClick}
+              onSearch={(query) => onSearchResults(query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex)}
+              onDelete={handleDeleteItem}
+            />
+          </div>
+          
+          {/* === EXPANDED QUERY HISTORY === */}
+          {isQueryHistoryExpanded && queryHistoryCount > 1 && (
+            <div className="mt-3">
+              <QueryHistoryDisplay 
+                queryHistory={result.queryHistory} 
+                currentQuery={result.query}
+                searchId={result.id}
+                onQuerySelect={onQuerySelect}
+                onCopyQuery={handleCopyQuery}
+                onDeleteQueryEntry={handleQueryDelete}
+                initiallyExpanded={true}
+              />
+            </div>
+          )}
+          
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-// New component to display query history for a search item
+// Toggle button for query history section
+function QueryHistoryToggle({ 
+  count, 
+  isExpanded, 
+  onToggle,
+  variant = 'compact'
+}: { 
+  count: number; 
+  isExpanded: boolean; 
+  onToggle: () => void;
+  variant?: 'compact' | 'full';
+}) {
+  if (count <= 1) {
+    return <div />; // Empty spacer for flex layout
+  }
+  
+  return (
+    <button
+      onClick={onToggle}
+      className={cn(
+        "flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors",
+        variant === 'compact' ? 'text-xs' : 'text-sm'
+      )}
+    >
+      {isExpanded ? (
+        <ChevronUp className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+      ) : (
+        <ChevronDown className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
+      )}
+      <span>Query History ({count})</span>
+    </button>
+  );
+}
+
+// Component to display query history for a search item
 function QueryHistoryDisplay({ 
   queryHistory, 
   currentQuery, 
   searchId, 
   onQuerySelect,
   onCopyQuery,
-  onDeleteQueryEntry
+  onDeleteQueryEntry,
+  initiallyExpanded = false
 }: { 
   queryHistory: any[], 
   currentQuery: string,
   searchId?: string,
   onQuerySelect?: (searchId: string, query: string) => void,
   onCopyQuery?: (query: string) => void,
-  onDeleteQueryEntry?: (searchId: string, queryIndex: number) => void
+  onDeleteQueryEntry?: (searchId: string, queryIndex: number) => void,
+  initiallyExpanded?: boolean
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [bookmarkingQueryIndex, setBookmarkingQueryIndex] = useState<number | null>(null);
   
   if (!queryHistory || queryHistory.length <= 1) {
@@ -671,6 +830,180 @@ function QueryHistoryDisplay({
   const handleQueryBookmarkCancel = () => {
     setBookmarkingQueryIndex(null);
   };
+
+  // If controlled by parent (initiallyExpanded), skip the toggle and show content directly
+  if (initiallyExpanded) {
+    return (
+      <div className="space-y-2 max-h-64 overflow-y-auto">
+        {queryHistory.slice().reverse().map((entry, index) => {
+          const isMostRecent = index === 0;
+          const originalIndex = queryHistory.length - 1 - index;
+          const date = new Date(entry.timestamp);
+          const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+          const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
+          const canDelete = !isMostRecent;
+          
+          return (
+            <div
+              key={index}
+              className={cn(
+                "rounded-lg border overflow-hidden",
+                isMostRecent 
+                  ? "bg-primary/5 border-primary/30" 
+                  : "bg-card border-border/60"
+              )}
+            >
+              {/* Current indicator */}
+              {isMostRecent && (
+                <div className="h-1 bg-primary" />
+              )}
+              
+              {bookmarkingQueryIndex === originalIndex ? (
+                <div className="p-3">
+                  <BookmarkForm
+                    query={entry.query}
+                    onSubmit={() => setBookmarkingQueryIndex(null)}
+                    onCancel={handleQueryBookmarkCancel}
+                    variant="compact"
+                  />
+                </div>
+              ) : (
+                <div>
+                  {/* Main content */}
+                  <div className="p-3">
+                    <div className="flex items-start gap-2">
+                      <Search className={cn(
+                        "h-4 w-4 mt-0.5 flex-shrink-0",
+                        isMostRecent ? "text-primary" : "text-muted-foreground"
+                      )} />
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="mb-1">
+                          <p className={cn(
+                            "text-sm font-mono break-all",
+                            isMostRecent ? "text-primary font-medium" : "text-foreground"
+                          )}>
+                            {entry.query}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{timeAgo}</span>
+                          <span>•</span>
+                          <span>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Desktop action buttons */}
+                      <div className="hidden md:flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => onCopyQuery?.(entry.query)}
+                          title="Copy query"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleQueryBookmarkClick(originalIndex)}
+                          title="Save as bookmark"
+                        >
+                          <BookmarkPlus className="h-3 w-3" />
+                        </Button>
+                        
+                        {isClickable && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleQueryClick(entry.query)}
+                            title="Switch to this query"
+                          >
+                            <Search className="h-3 w-3" />
+                          </Button>
+                        )}
+                        
+                        {canDelete && onDeleteQueryEntry && searchId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
+                            title="Remove from history"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Mobile action buttons */}
+                  <div className="md:hidden border-t bg-muted/30 px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => onCopyQuery?.(entry.query)}
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => handleQueryBookmarkClick(originalIndex)}
+                        >
+                          <BookmarkPlus className="h-3 w-3 mr-1" />
+                          Save
+                        </Button>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        {isClickable && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-xs"
+                            onClick={() => handleQueryClick(entry.query)}
+                          >
+                            <Search className="h-3 w-3 mr-1" />
+                            Switch
+                          </Button>
+                        )}
+                        
+                        {canDelete && onDeleteQueryEntry && searchId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-xs text-destructive hover:text-destructive"
+                            onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="mt-2 border-t pt-2">

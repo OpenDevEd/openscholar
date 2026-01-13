@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSidebar } from "./sidebar-provider";
@@ -28,11 +28,12 @@ import {
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { SearchHistoryTab } from "./search-history-tab";
+import { AISettingsDialog } from "./ai-settings-dialog";
 import {
   Home,
   BookOpen,
   Clock,
-  Settings,
+  Sparkles,
   PanelLeftClose,
   PanelLeft,
   ChevronLeft,
@@ -212,6 +213,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { searchHistory } = useSearchHistoryStore();
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
   const effectiveSearchId = useEffectiveSearchId();
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
 
   const itemsPerPage = 10;
   const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
@@ -461,27 +463,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   </Button>
                 </motion.div>
               )}
-
-              {!isCollapsed && !isMobile && searchHistory.length > itemsPerPage && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.3 }}
-                >
-                  <Link
-                    href="/history"
-                    onClick={handleNavClick}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-sidebar-accent/60 rounded-lg"
-                  >
-                    <motion.span
-                      whileHover={{ x: 2 }}
-                      transition={hoverSpring}
-                    >
-                      Show all {searchHistory.length}
-                    </motion.span>
-                  </Link>
-                </motion.div>
-              )}
             </>
           )}
         </ScrollArea>
@@ -510,18 +491,18 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   variant="ghost" 
                   size="icon" 
                   className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
-                  disabled
+                  onClick={() => setAiSettingsOpen(true)}
                 >
                   <motion.div
-                    whileHover={{ rotate: 90 }}
-                    transition={{ duration: 0.3 }}
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <Settings className="h-5 w-5" />
+                    <Sparkles className="h-5 w-5" />
                   </motion.div>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
-                Settings (coming soon)
+                AI Settings
               </TooltipContent>
             </Tooltip>
           </motion.div>
@@ -534,23 +515,25 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   variant="ghost" 
                   size="icon" 
                   className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
-                  disabled
+                  onClick={() => setAiSettingsOpen(true)}
                 >
                   <motion.div
-                    whileHover={{ rotate: 90 }}
-                    transition={{ duration: 0.3 }}
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <Settings className="h-5 w-5" />
+                    <Sparkles className="h-5 w-5" />
                   </motion.div>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                Settings (coming soon)
+                AI Settings
               </TooltipContent>
             </Tooltip>
           </>
         )}
       </motion.div>
+
+      <AISettingsDialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen} />
     </div>
   );
 }

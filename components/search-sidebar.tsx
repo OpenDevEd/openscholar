@@ -31,13 +31,13 @@ import {
   isDateFilterActive,
   isRatingFilterActive,
   isCountryFilterActive,
-  isCountryFocusActive,
   isCitesFilterActive,
   isCitedByFilterActive,
   isRelatedToFilterActive,
   isReviewFilterActive,
   DEFAULT_FILTERS,
 } from "@/lib/utils";
+import { countActiveFilters } from "@/lib/filters";
 import type { SearchField } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
@@ -64,7 +64,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PanelLeftClose, PanelLeft } from "lucide-react";
+
 import { useFilterSidebarOptional } from "./filter-sidebar-provider";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -687,20 +687,11 @@ export function SearchSidebar({
 
   const updateFilter = useUpdateSearchFilter();
 
-  // Computed filter active states using utility functions
-  const isDateActive = isDateFilterActive(
-    dateRange,
-    yearRange,
-    filterType,
-    isYearRangeEnabled
-  );
-  const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
-  const isCountryActive = isCountryFilterActive(selectedRegions);
-  const isCountryFocusFilterActive = isCountryFocusActive(selectedCountryFocus);
+  // Only compute filter states needed for conditional UI rendering
+  // Other filter states are computed inside their respective filter panel components
   const isCitesActive = isCitesFilterActive(citesItemId);
   const isCitedByActive = isCitedByFilterActive(citedByItemId);
   const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
-  const isReviewActive = isReviewFilterActive(reviewFilter);
 
   const handleClearAllFilters = async () => {
     const defaultYearRange = DEFAULT_FILTERS.yearRange();
@@ -722,22 +713,23 @@ export function SearchSidebar({
     // Only for the server-side filters
   };
 
-  const getActiveFiltersCount = () => {
-    let count = 0;
-    if (isDateActive) count++;
-    if (isRatingActive) count++;
-    if (isCountryActive) count++;
-    if (isCountryFocusFilterActive) count++;
-    if (isCitesActive) count++;
-    if (isCitedByActive) count++;
-    if (isRelatedToActive) count++;
-    if (isReviewActive) count++;
-    if (currentSearchField !== DEFAULT_FILTERS.field) count++;
-    if (sortBy !== DEFAULT_FILTERS.sortBy) count++;
-    return count;
-  };
-
-  const activeFiltersCount = getActiveFiltersCount();
+  // Use shared filter counting logic (single source of truth)
+  const activeFiltersCount = countActiveFilters({
+    field: currentSearchField,
+    sortBy,
+    yearRange,
+    dateRange,
+    filterType,
+    isYearRangeEnabled,
+    selectedRegions,
+    selectedCountryFocus,
+    ratingRange,
+    onlyRatedPapers,
+    citesItemId,
+    citedByItemId,
+    relatedToItemId,
+    reviewFilter,
+  });
 
   const SidebarContent = ({ hideHeader = false }: { hideHeader?: boolean }) => (
     <div className="space-y-6">
@@ -862,7 +854,7 @@ export function SearchSidebar({
                       whileHover={{ rotate: 90 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <PanelLeft className="h-4 w-4" />
+                      <Filter className="h-4 w-4" />
                     </motion.div>
                   </Button>
                 </motion.div>
@@ -979,7 +971,7 @@ export function SearchSidebar({
                     whileHover={{ rotate: -90 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <PanelLeftClose className="h-4 w-4" />
+                    <Filter className="h-4 w-4" />
                   </motion.div>
                 </Button>
               </motion.div>
