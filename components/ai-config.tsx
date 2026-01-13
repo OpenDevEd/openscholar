@@ -11,20 +11,27 @@ import { fetchOpenRouterModels } from "@/app/actions/openrouter"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { AIModel, AIProvider } from "@/lib/types/ai.types"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ArrowLeft, Check, ChevronRight, Search } from "lucide-react"
 
 interface AIConfigProps {
   variant?: 'card' | 'plain'
+  onViewChange?: (view: 'config' | 'model-select') => void
 }
 
-export function AIConfig({ variant = 'card' }: AIConfigProps) {
+type View = 'config' | 'model-select'
+
+export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
   const { provider, model, setProvider, setModel, apiKey, setApiKey, budget, setBudget, dollarsUsed } = useAIConfigStore()
 
-  const [openModels, setOpenModels] = useState(false)
+  const [view, setViewState] = useState<View>('config')
   const [models, setModels] = useState<AIModel[]>([])
   const [modelSearch, setModelSearch] = useState("")
   const [loadingModels, setLoadingModels] = useState(false)
+
+  const setView = (newView: View) => {
+    setViewState(newView)
+    onViewChange?.(newView)
+  }
 
   const providerConfig = getProviderConfig(provider)
   const ProviderIcon = getProviderIcon(provider)
@@ -41,7 +48,8 @@ export function AIConfig({ variant = 'card' }: AIConfigProps) {
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel)
-    setOpenModels(false)
+    setView('config')
+    setModelSearch("")
     toast.success("Model Updated", {
       description: `AI model set to ${newModel}`,
     })
@@ -90,29 +98,125 @@ export function AIConfig({ variant = 'card' }: AIConfigProps) {
 
   const selectedModel = models.find((m) => m.id === model)
 
-  const groupedModels: Record<string, AIModel[]> = {}
-  models.forEach((model) => {
-    if (provider === 'openrouter') {
-      const category = model.category || 'Other'
-      if (!groupedModels[category]) {
-        groupedModels[category] = []
-      }
-      groupedModels[category].push(model)
-    } else {
-      if (!groupedModels['All']) {
-        groupedModels['All'] = []
-      }
-      groupedModels['All'].push(model)
-    }
-  })
-
   const filteredModels = models.filter((model) =>
     model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
     model.id.toLowerCase().includes(modelSearch.toLowerCase())
   )
 
+  // Group filtered models by category
+  const filteredGroupedModels: Record<string, AIModel[]> = {}
+  filteredModels.forEach((m) => {
+    if (provider === 'openrouter') {
+      const category = m.category || 'Other'
+      if (!filteredGroupedModels[category]) {
+        filteredGroupedModels[category] = []
+      }
+      filteredGroupedModels[category].push(m)
+    } else {
+      if (!filteredGroupedModels['All']) {
+        filteredGroupedModels['All'] = []
+      }
+      filteredGroupedModels['All'].push(m)
+    }
+  })
+
+  // Model Selection View
+  const modelSelectView = (
+    <div className="p-6 pt-0">
+      {/* Sticky Header + Search */}
+      <div className="flex-shrink-0 sticky top-0 bg-background pt-6">
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-4 border-b">
+          <button
+            type="button"
+            onClick={() => {
+              setView('config')
+              setModelSearch("")
+            }}
+            className="p-1.5 rounded-md hover:bg-accent transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h3 className="font-semibold">Select Model</h3>
+            <p className="text-xs text-muted-foreground">{providerConfig.name}</p>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative py-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search models..."
+            value={modelSearch}
+            onChange={(e) => setModelSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {/* Model List - Scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+        {loadingModels ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-2" />
+            Loading models...
+          </div>
+        ) : filteredModels.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No models found
+          </div>
+        ) : (
+          <div className="space-y-4 pb-4">
+            {Object.entries(filteredGroupedModels).map(([category, categoryModels]) => (
+              <div key={category}>
+                {provider === 'openrouter' && (
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    {category}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {categoryModels.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => handleModelChange(m.id)}
+                      className={cn(
+                        "w-full flex flex-col items-start gap-1 p-3 rounded-lg text-left transition-colors",
+                        m.id === model
+                          ? "bg-primary/10 border border-primary/20"
+                          : "hover:bg-accent border border-transparent"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                        <span className="font-medium truncate min-w-0 flex-1">{m.name}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            ${m.pricing.input.toFixed(2)}/${m.pricing.output.toFixed(2)}
+                          </span>
+                          {m.id === model && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                      {m.description && (
+                        <span className="text-xs text-muted-foreground line-clamp-1 w-full">
+                          {m.description}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
   const content = (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Provider Selection */}
       <div className="space-y-3">
         <Label className="text-sm font-medium">AI Provider</Label>
@@ -210,73 +314,24 @@ export function AIConfig({ variant = 'card' }: AIConfigProps) {
       {/* Model Selection */}
       <div className="space-y-2">
         <Label>Model</Label>
-        <Popover open={openModels} onOpenChange={setOpenModels}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "w-full flex items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                !selectedModel && "text-muted-foreground"
-              )}
-            >
-              <span className="truncate">
-                {selectedModel ? selectedModel.name : `Select ${providerConfig.name} model...`}
-              </span>
-              {loadingModels && (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-            <Command shouldFilter={false}>
-              <CommandInput
-                placeholder="Search models..."
-                value={modelSearch}
-                onValueChange={setModelSearch}
-                className="border-0 focus:ring-0"
-              />
-              <CommandList>
-                {loadingModels ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    Loading models...
-                  </div>
-                ) : filteredModels.length === 0 ? (
-                  <CommandEmpty>No models found</CommandEmpty>
-                ) : (
-                  Object.entries(groupedModels).map(([category, categoryModels]) => (
-                    <CommandGroup key={category} heading={category}>
-                      {categoryModels
-                        .filter((model) =>
-                          model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
-                          model.id.toLowerCase().includes(modelSearch.toLowerCase())
-                        )
-                        .map((model) => (
-                          <CommandItem
-                            key={model.id}
-                            value={model.id}
-                            onSelect={handleModelChange}
-                            className="flex flex-col items-start gap-1"
-                          >
-                            <div className="flex items-center justify-between w-full gap-2">
-                              <span className="font-medium truncate min-w-0 flex-1">{model.name}</span>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
-                                ${model.pricing.input.toFixed(2)}/${model.pricing.output.toFixed(2)}
-                              </span>
-                            </div>
-                            {model.description && (
-                              <span className="text-xs text-muted-foreground line-clamp-1">
-                                {model.description}
-                              </span>
-                            )}
-                          </CommandItem>
-                        ))}
-                    </CommandGroup>
-                  ))
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        <button
+          type="button"
+          onClick={() => setView('model-select')}
+          className={cn(
+            "w-full flex items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent/50 transition-colors",
+            !selectedModel && "text-muted-foreground"
+          )}
+        >
+          <span className="truncate">
+            {selectedModel ? selectedModel.name : `Select ${providerConfig.name} model...`}
+          </span>
+          <div className="flex items-center gap-2">
+            {loadingModels && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            )}
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </button>
       </div>
 
       {/* API Key Input */}
@@ -321,6 +376,9 @@ export function AIConfig({ variant = 'card' }: AIConfigProps) {
   )
 
   if (variant === 'plain') {
+    if (view === 'model-select') {
+      return modelSelectView
+    }
     return content
   }
 
@@ -333,7 +391,7 @@ export function AIConfig({ variant = 'card' }: AIConfigProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {content}
+        {view === 'model-select' ? modelSelectView : content}
       </CardContent>
     </Card>
   )
