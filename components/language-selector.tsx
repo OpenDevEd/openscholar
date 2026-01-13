@@ -77,7 +77,8 @@ export function LanguageSelector({
       <TooltipTrigger asChild>
         <Select value={value} onValueChange={onValueChange} disabled={disabled}>
           <SelectTrigger
-            className={cn("w-auto min-w-[120px] h-9 flex-1", className)}
+          size="sm"
+            className={cn("w-auto min-w-[120px] flex-1", className)}
           >
             <div className="flex items-center gap-2">
               {selectedLanguage ? (

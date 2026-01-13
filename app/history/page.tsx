@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { SearchHistory } from '@/components/search-history';
 import { useUIStore, useSearchHistoryStore } from '@/lib/store';
@@ -8,10 +8,10 @@ import { useCurrentSearchFormState, useIsMobile } from '@/lib/hooks';
 import { restoreFromHistory } from '@/lib/search/actions';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
-import { History } from 'lucide-react';
+import { History, Loader2 } from 'lucide-react';
 import { PageWrapper } from '@/components/PageWrapper';
 
-export default function HistoryPage() {
+function HistoryPageContent() {
   const router = useRouter();
   const { currentSearchField } = useCurrentSearchFormState();
   const { loadingResultIndex } = useUIStore();
@@ -76,4 +76,24 @@ export default function HistoryPage() {
       </div>
     </PageWrapper>
   );
-} 
+}
+
+function HistoryPageFallback() {
+  return (
+    <PageWrapper>
+      <div className="container mx-auto p-4 sm:p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    </PageWrapper>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={<HistoryPageFallback />}>
+      <HistoryPageContent />
+    </Suspense>
+  );
+}
