@@ -68,15 +68,19 @@ interface SearchHistoryState {
   importSearchHistory: (data: any[]) => number
 }
 
+export type ViewMode = 'list-simple' | 'list-detail' | 'grid-2' | 'grid-3'
+
 interface UIState {
   isDialogOpen: boolean
   loadingResultIndex: number | null
   isFocusModeOpen: boolean
   focusModeIndex: number
+  viewMode: ViewMode
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
   setFocusModeIndex: (index: number) => void
+  setViewMode: (mode: ViewMode) => void
 }
 
 interface ResultsState {
@@ -520,16 +524,26 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
   )
 )
 
-export const useUIStore = create<UIState>((set) => ({
-  isDialogOpen: false,
-  loadingResultIndex: null,
-  isFocusModeOpen: false,
-  focusModeIndex: 0,
-  setIsDialogOpen: (open) => set({ isDialogOpen: open }),
-  setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
-  setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
-  setFocusModeIndex: (index) => set({ focusModeIndex: index }),
-}))
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      isDialogOpen: false,
+      loadingResultIndex: null,
+      isFocusModeOpen: false,
+      focusModeIndex: 0,
+      viewMode: 'list-detail',
+      setIsDialogOpen: (open) => set({ isDialogOpen: open }),
+      setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
+      setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
+      setFocusModeIndex: (index) => set({ focusModeIndex: index }),
+      setViewMode: (mode) => set({ viewMode: mode }),
+    }),
+    {
+      name: 'ui-store',
+      partialize: (state) => ({ viewMode: state.viewMode }),
+    }
+  )
+)
 
 export const useResultsStore = create<ResultsState>((set) => ({
   currentPage: 1,

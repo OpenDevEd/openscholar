@@ -23,8 +23,9 @@ import {
   useRatingsStore,
   useSearchHistoryStore,
   useUIStore,
+  ViewMode,
 } from "@/lib/store";
-import { PaperCard } from "./paper-card";
+import { PaperCard } from "./paper-card/index";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 import { Loader2, Search } from "lucide-react";
@@ -34,6 +35,7 @@ import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-uti
 import { ScreeningResponses } from "@/lib/types";
 import { FocusMode } from "./ui/focus-mode";
 import { downloadEssentialItem, downloadItem } from "@/lib/search-actions";
+import { useIsTablet } from "@/lib/hooks";
 
 interface PapersListProps {
   results: any[];
@@ -52,6 +54,7 @@ interface PapersListProps {
   onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
   onPageChange: (page: number) => void;
   resultsContainerRef: React.RefObject<HTMLDivElement | null>;
+  viewMode: ViewMode;
 }
 
 interface ResultsListProps {
@@ -95,6 +98,7 @@ function PapersList({
   onDownloadEssentialItem,
   onPageChange,
   resultsContainerRef,
+  viewMode,
 }: PapersListProps) {
   const [showInitialLoading, setShowInitialLoading] = React.useState(true);
 
@@ -178,9 +182,17 @@ function PapersList({
     );
   }
 
+  // Determine grid layout classes based on view mode
+  const gridClasses = {
+    "list-simple": "flex flex-col gap-2",
+    "list-detail": "flex flex-col gap-4",
+    "grid-2": "grid grid-cols-2 gap-4",
+    "grid-3": "grid grid-cols-3 gap-3",
+  };
+
   return (
     <div ref={resultsContainerRef}>
-      <div className="space-y-6">
+      <div className={cn(gridClasses[viewMode])}>
         {paginatedResults.map((result: any, index: number) => {
           // Calculate the global index in the filtered results
           const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
@@ -195,6 +207,7 @@ function PapersList({
               resultIndex={originalIndex}
               onDownloadItem={onDownloadItem}
               onDownloadEssentialItem={onDownloadEssentialItem}
+              viewMode={viewMode}
             />
           );
         })}
@@ -385,7 +398,11 @@ export function ResultsList({
 
   const pathname = usePathname();
 
-  const { isFocusModeOpen, focusModeIndex } = useUIStore();
+  const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
+  const isMobile = useIsTablet();
+  
+  // Force list-detail on mobile
+  const effectiveViewMode: ViewMode = isMobile ? "list-detail" : viewMode;
 
   useEffect(() => {
     setTimeout(() => {
@@ -591,6 +608,7 @@ export function ResultsList({
           onDownloadEssentialItem={onDownloadEssentialItem}
           onPageChange={handlePageChange}
           resultsContainerRef={resultsContainerRef}
+          viewMode={effectiveViewMode}
         />
       </div>
     </ScreeningContext.Provider>

@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
+import { ViewModeToggleCompact } from "@/components/view-mode-toggle";
+import { useIsTablet } from "@/lib/hooks";
 import type { CommandCenterMode } from "./index";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +44,7 @@ export function SearchCommandHeader({
   const [isCopied, setIsCopied] = useState(false);
   const search = useSearchOptional();
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
+  const isMobile = useIsTablet();
 
   const hasDownloadHandlers =
     onDownloadAllJSON ||
@@ -74,7 +77,10 @@ export function SearchCommandHeader({
       <ModeTabs mode={mode} onChange={onModeChange} disabled={isLoading} />
 
       {/* Global actions */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
+        {/* View mode toggle - desktop only */}
+        {!isMobile && <ViewModeToggleCompact />}
+
         {/* Download dropdown */}
         {hasDownloadHandlers && (
           <DropdownMenu>
