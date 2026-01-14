@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider } from "@/components/sidebar-provider";
 import { FilterSidebarProvider } from "@/components/filter-sidebar-provider";
 import { AppSidebar } from "@/components/app-sidebar";
+import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
@@ -48,6 +49,9 @@ export default function RootLayout({
                       
                       {/* Main Content Area */}
                       <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                        {/* Mobile Navbar */}
+                        <MobileNavbar />
+                        
                         {children}
                       </div>
                     </div>

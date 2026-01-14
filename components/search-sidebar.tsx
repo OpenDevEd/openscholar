@@ -585,6 +585,7 @@ const ReviewFilterPanel = React.memo(function ReviewFilterPanel() {
 // Sidebar Content Component - extracted and memoized
 interface SidebarContentProps {
   hideHeader?: boolean;
+  isMobileSheet?: boolean;
   activeFiltersCount: number;
   isCitesActive: boolean;
   isCitedByActive: boolean;
@@ -594,6 +595,7 @@ interface SidebarContentProps {
 
 const SidebarContent = React.memo(function SidebarContent({
   hideHeader = false,
+  isMobileSheet = false,
   activeFiltersCount,
   isCitesActive,
   isCitedByActive,
@@ -601,7 +603,7 @@ const SidebarContent = React.memo(function SidebarContent({
   onClearAllFilters,
 }: SidebarContentProps) {
   return (
-    <div className="space-y-4 p-4 pt-15">
+    <div className={cn("space-y-4", isMobileSheet ? "p-4" : "p-4 pt-15")}>
       {/* Simple Header - hidden when using panel mode with external header */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
@@ -732,11 +734,13 @@ export function SearchSidebar({
           side="right"
           className="w-80 p-0 bg-background border-r overflow-hidden flex flex-col"
         >
-          <SheetHeader className="px-6 py-4 border-b bg-background">
+          <SheetHeader className="px-4 py-3 border-b bg-background">
             <SheetTitle>Search Filters</SheetTitle>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="flex-1 overflow-y-auto">
             <SidebarContent
+              hideHeader
+              isMobileSheet
               activeFiltersCount={activeFiltersCount}
               isCitesActive={isCitesActive}
               isCitedByActive={isCitedByActive}

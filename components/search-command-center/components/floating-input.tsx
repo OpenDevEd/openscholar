@@ -37,7 +37,7 @@ export function FloatingInput({
       {/* Input container */}
       <div
         className={cn(
-          "flex items-center gap-2",
+          "flex flex-wrap items-center gap-2",
           "border rounded-xl px-4 py-3",
           "bg-background/50",
           "transition-all duration-200",
@@ -55,7 +55,7 @@ export function FloatingInput({
 
         <input
           className={cn(
-            "flex-1 bg-transparent outline-none",
+            "flex-1 min-w-[200px] bg-transparent outline-none",
             "text-sm placeholder:text-muted-foreground/60",
             className
           )}
