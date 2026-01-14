@@ -69,6 +69,7 @@ interface SearchHistoryState {
 }
 
 export type ViewMode = 'list-simple' | 'list-detail' | 'grid-2' | 'grid-3'
+export type HistorySortBy = 'recent' | 'oldest' | 'most' | 'least'
 
 interface UIState {
   isDialogOpen: boolean
@@ -76,11 +77,15 @@ interface UIState {
   isFocusModeOpen: boolean
   focusModeIndex: number
   viewMode: ViewMode
+  historyViewMode: ViewMode
+  historySortBy: HistorySortBy
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
   setFocusModeIndex: (index: number) => void
   setViewMode: (mode: ViewMode) => void
+  setHistoryViewMode: (mode: ViewMode) => void
+  setHistorySortBy: (sort: HistorySortBy) => void
 }
 
 interface ResultsState {
@@ -527,15 +532,23 @@ export const useUIStore = create<UIState>()(
       isFocusModeOpen: false,
       focusModeIndex: 0,
       viewMode: 'list-detail',
+      historyViewMode: 'list-detail',
+      historySortBy: 'recent',
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
       setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
       setFocusModeIndex: (index) => set({ focusModeIndex: index }),
       setViewMode: (mode) => set({ viewMode: mode }),
+      setHistoryViewMode: (mode) => set({ historyViewMode: mode }),
+      setHistorySortBy: (sort) => set({ historySortBy: sort }),
     }),
     {
       name: 'ui-store',
-      partialize: (state) => ({ viewMode: state.viewMode }),
+      partialize: (state) => ({ 
+        viewMode: state.viewMode,
+        historyViewMode: state.historyViewMode,
+        historySortBy: state.historySortBy,
+      }),
     }
   )
 )

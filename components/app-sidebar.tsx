@@ -587,7 +587,8 @@ export function AppSidebar() {
     >
       <div className={cn(
         "relative flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
-        isCollapsed ? "justify-center" : "justify-between"
+        "relative justify-center",
+        !isCollapsed && "justify-end"
       )}>
         {/* Logo - only visible when expanded */}
         <AnimatePresence initial={false} mode="sync">
@@ -598,7 +599,7 @@ export function AppSidebar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25, delay: 0.1 }}
-              className="shrink-0"
+              className="shrink-0 absolute left-4"
             >
               <Logo size="sm" context="navbar" />
             </motion.div>
