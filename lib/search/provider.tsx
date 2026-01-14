@@ -170,17 +170,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
       keepPreviousData: true,
       errorRetryCount: 2,
       errorRetryInterval: 1000,
-      onSuccess: (data) => {
-        // Update history entry with result count (only if entry already exists)
-        // The SearchInitializer is responsible for creating entries
-        if (data?.results?.meta?.count !== undefined && searchId) {
-          const existing = getSearchResult(searchId);
-          if (existing) {
-            updateSearchResult(searchId, { count: data.results.meta.count });
-          }
-          // If entry doesn't exist, don't create it here - let SearchInitializer handle it
-        }
-      },
       onError: (err) => {
         console.error('Search failed:', err);
         const message = err?.message || '';
@@ -202,6 +191,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
     }
   );
   
+  // Sync count to store whenever data changes (handles both fresh and cached data)
+  useEffect(() => {
+    if (data?.results?.meta?.count !== undefined && searchId) {
+      const existing = getSearchResult(searchId);
+      if (existing && existing.count !== data.results.meta.count) {
+        updateSearchResult(searchId, { count: data.results.meta.count });
+      }
+    }
+  }, [data, searchId, getSearchResult, updateSearchResult]);
+
   // Sync suggestedQuery whenever the URL query changes
   // This runs on mount and whenever urlParams.q changes (including cached data scenarios)
   useEffect(() => {
