@@ -39,7 +39,7 @@ export function SearchCommandFooter({
   const currentLanguage = search?.params?.lang ?? "";
 
   // Show buttons conditionally
-  const showBroadenButton = totalCount < 10 && totalCount > 0 && effectiveQuery.trim();
+  const showBroadenButton = totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
   const showNarrowButton = totalCount > 1000 && effectiveQuery.trim();
 
   const handleBroadenQuery = async () => {
