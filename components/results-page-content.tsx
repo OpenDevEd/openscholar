@@ -105,14 +105,14 @@ export default function ResultsPageContent({
           <TabsList className="w-full rounded-none border-b bg-background h-12 p-0">
             <TabsTrigger 
               value="results" 
-              className="flex-1 h-full rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="flex-1 h-full rounded-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground"
             >
               <FileText className="h-4 w-4 mr-2" />
               Results
             </TabsTrigger>
             <TabsTrigger 
               value="filters" 
-              className="flex-1 h-full rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="flex-1 h-full rounded-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground"
             >
               <ListFilter className="h-4 w-4 mr-2" />
               Filters
