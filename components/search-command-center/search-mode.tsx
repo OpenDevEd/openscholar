@@ -10,6 +10,7 @@ import {
   useSearchHistoryStore,
   useCurrentQuestionStore,
   useAIConfigStore,
+  useCurrentQueryStore,
 } from "@/lib/store";
 import { useQueryChangeHandler, useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -32,7 +33,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const { provider, model, apiKey } = useAIConfigStore();
   const [isEnhancing, setIsEnhancing] = useState(false);
 
-  // Keyword search state
+  // Keyword search state - also sync with global store for real-time tooltip updates
+  const { setCurrentQuery } = useCurrentQueryStore();
   const [localInputValue, setLocalInputValue] = useState(search?.params?.q ?? "");
   const [isTranslating, setIsTranslating] = useState(false);
 
@@ -44,7 +46,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Sync local input when URL query changes
   useEffect(() => {
     setLocalInputValue(urlQuery);
-  }, [urlQuery]);
+    setCurrentQuery(urlQuery);
+  }, [urlQuery, setCurrentQuery]);
 
   // Sync question from history when search changes
   useEffect(() => {
@@ -63,7 +66,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Handle keyword input change
   const handleQueryChange = useCallback((value: string) => {
     setLocalInputValue(value);
-  }, []);
+    setCurrentQuery(value); // Update global store for real-time tooltip updates
+  }, [setCurrentQuery]);
 
   // Handle keyword search submit
   const handleSearchSubmit = useCallback(
