@@ -10,37 +10,34 @@ interface QuerySyncProviderProps {
 }
 
 /**
- * QuerySyncProvider - Simple query synchronization
+ * QuerySyncProvider - Simple query synchronization for HOME PAGE ONLY
  * 
- * When query changes → update suggestedQuery (with keyword expansion)
- * This keeps the AI enhancement and bookmarks pages in sync with the main search query
+ * On home page (no SearchProvider): syncs storeQuery → suggestedQuery
+ * On results pages: suggestedQuery is set by useSWR onSuccess in SearchProvider
  * 
- * Priority:
- * 1. URL params (on results pages) - source of truth
- * 2. currentQueryStore (on home page) - fallback
+ * This separation ensures suggestedQuery is always tied to actual search execution.
  */
 export function QuerySyncProvider({ children }: QuerySyncProviderProps) {
-  // URL-based query (source of truth on results pages)
+  // Check if we're on a results page (has SearchProvider)
   const search = useSearchOptional()
-  const urlQuery = search?.params?.q ?? null
+  const isOnResultsPage = search !== undefined
 
   // Store-based query (for home page)
   const { currentQuery: storeQuery } = useCurrentQueryStore()
   
   const { setSuggestedQuery } = useKeywordExpansionDialogStore()
 
-  // Determine which query to use: URL if on results page, store otherwise
-  const effectiveQuery = urlQuery !== null ? urlQuery : storeQuery
-
-  // When effectiveQuery changes, update suggestedQuery with expansion
+  // Only sync on home page - results pages handle this in useSWR onSuccess
   useEffect(() => {
-    if (effectiveQuery) {
-      const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery)
+    if (isOnResultsPage) return // Let SearchProvider handle it
+
+    if (storeQuery) {
+      const { expandedQuery } = validateAndExpandKeywordsSilently(storeQuery)
       setSuggestedQuery(expandedQuery)
     } else {
       setSuggestedQuery('')
     }
-  }, [effectiveQuery, setSuggestedQuery])
+  }, [storeQuery, isOnResultsPage, setSuggestedQuery])
 
   return <>{children}</>
 } 

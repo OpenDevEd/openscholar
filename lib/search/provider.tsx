@@ -11,7 +11,7 @@
  * NO useEffects for syncing - URL is truth, SWR handles caching.
  */
 
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
@@ -20,7 +20,8 @@ import { toast } from 'sonner';
 
 import { searchParamsParsers, serializeSearchParams } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
-import { useSearchHistoryStore } from '../store';
+import { useSearchHistoryStore, useKeywordExpansionDialogStore } from '../store';
+import { validateAndExpandKeywordsSilently } from '../keyword-validation';
 import { useDebounceValue } from '@/hooks/use-debounce-value';
 import type { SearchFilters, SearchField } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData } from './types';
@@ -49,6 +50,9 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
   const getSearchResult = useSearchHistoryStore((state) => state.getSearchResult);
   const addQueryToHistory = useSearchHistoryStore((state) => state.addQueryToHistory);
+  
+  // Get setter for suggestedQuery - unified source of truth on results pages
+  const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
   
   // Helper to sync filter changes to store for history persistence
   // This ensures that when users change filters, the changes persist when navigating
@@ -197,6 +201,14 @@ export function SearchProvider({ children }: SearchProviderProps) {
       },
     }
   );
+  
+  // Sync suggestedQuery whenever the URL query changes
+  // This runs on mount and whenever urlParams.q changes (including cached data scenarios)
+  useEffect(() => {
+    const query = urlParams.q || '';
+    const { expandedQuery } = validateAndExpandKeywordsSilently(query);
+    setSuggestedQuery(expandedQuery);
+  }, [urlParams.q, setSuggestedQuery]);
   
   // Param setters - just update URL, SWR auto-refetches
   const setQuery = useCallback((q: string, options?: { skipHistory?: boolean }) => {
