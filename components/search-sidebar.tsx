@@ -13,9 +13,6 @@ import {
   CalendarIcon,
   Filter,
   SortAsc,
-  Settings,
-  Sparkles,
-  Zap,
   Clock,
   Target,
   Star,
@@ -23,6 +20,7 @@ import {
   Quote,
   Network,
   FileText,
+  Focus,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -54,7 +52,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DateRange } from "react-day-picker";
 import { RelatedToFilter } from "./related-to-filter";
 import { ReviewFilter } from "./review-filter";
@@ -68,11 +72,11 @@ import {
 import { useFilterSidebarOptional } from "./filter-sidebar-provider";
 import { motion, AnimatePresence } from "motion/react";
 
-// Spring animation config for sidebar - matches main sidebar exactly
+// Spring animation config for sidebar - bouncier version
 const sidebarSpring = {
   type: "spring" as const,
-  stiffness: 500,
-  damping: 35,
+  stiffness: 300,
+  damping: 25,
   mass: 0.8,
 };
 
@@ -90,79 +94,90 @@ interface SearchSidebarProps {
   mode?: "sidebar" | "sheet" | "page" | "panel";
 }
 
-// Filter wrapper component for consistent styling
-interface FilterWrapperProps {
+// Stagger delay removed - using initial={false} pattern instead
+
+// Filter section component for consistent styling - matches main sidebar design
+interface FilterSectionProps {
   title: string;
   icon: React.ElementType;
-  colorScheme: "purple" | "orange" | "emerald" | "blue" | "green" | "pink";
   isActive: boolean;
   children: React.ReactNode;
+  onClear?: () => void;
 }
 
-function FilterWrapper({
+const FilterSection = React.memo(function FilterSection({
   title,
   icon: Icon,
-  colorScheme,
   isActive,
   children,
-}: FilterWrapperProps) {
-  const colorClasses = {
-    purple: {
-      icon: "text-purple-500",
-      badge: "border-purple-500 text-purple-600 dark:text-purple-400",
-      border: "border-purple-500 bg-purple-50 dark:bg-purple-950/50 shadow-lg",
-    },
-    orange: {
-      icon: "text-orange-500",
-      badge: "border-orange-500 text-orange-600 dark:text-orange-400",
-      border: "border-orange-500 bg-orange-50 dark:bg-orange-950/50 shadow-lg",
-    },
-    emerald: {
-      icon: "text-emerald-500",
-      badge: "border-emerald-500 text-emerald-600 dark:text-emerald-400",
-      border:
-        "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 shadow-lg",
-    },
-    blue: {
-      icon: "text-blue-500",
-      badge: "border-blue-500 text-blue-600 dark:text-blue-400",
-      border: "border-blue-500 bg-blue-50 dark:bg-blue-950/50 shadow-lg",
-    },
-    green: {
-      icon: "text-green-500",
-      badge: "border-green-500 text-green-600 dark:text-green-400",
-      border: "border-green-500 bg-green-50 dark:bg-green-950/50 shadow-lg",
-    },
-    pink: {
-      icon: "text-pink-500",
-      badge: "border-pink-500 text-pink-600 dark:text-pink-400",
-      border: "border-pink-500 bg-pink-50 dark:bg-pink-950/50 shadow-lg",
-    },
-  };
-
-  const colors = colorClasses[colorScheme];
-
+  onClear,
+}: FilterSectionProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Icon className={cn("h-4 w-4", colors.icon)} />
-        {title}
+    <motion.div
+      initial={false}
+      animate={{ opacity: 1, x: 0 }}
+      className={cn(
+        "relative rounded-xl overflow-hidden transition-all duration-200",
+        "border",
+        isActive
+          ? "bg-sidebar-accent/80 border-border/60"
+          : "bg-card/50 dark:bg-card/40 border-border/40 hover:border-border/60"
+      )}
+    >
+      {/* Active indicator - left gradient bar */}
+      {isActive && (
+        <motion.div
+          initial={false}
+          animate={{ scaleY: 1 }}
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-sm bg-gradient-to-b from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)]"
+        />
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <div className="flex items-center gap-2">
+          <Icon
+            className={cn(
+              "h-4 w-4 transition-colors duration-200",
+              isActive ? "text-sidebar-primary" : "text-muted-foreground"
+            )}
+          />
+          <span
+            className={cn(
+              "text-sm font-medium transition-colors duration-200",
+              isActive ? "text-sidebar-primary" : "text-foreground"
+            )}
+          >
+            {title}
+          </span>
+        </div>
+        {isActive && onClear && (
+          <motion.div
+            initial={false}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onClear}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Clear
+            </Button>
+          </motion.div>
+        )}
       </div>
 
-      <div
-        className={cn(
-          "rounded-2xl border-2 p-4 transition-all duration-300",
-          isActive ? colors.border : "border-border bg-background"
-        )}
-      >
-        {children}
-      </div>
-    </div>
+      {/* Content */}
+      <div className="px-4 pb-4">{children}</div>
+    </motion.div>
   );
-}
+});
 
 // Date Filter Component
-function DateFilterPanel() {
+const DateFilterPanel = React.memo(function DateFilterPanel() {
   const { dateRange, filterType, isYearRangeEnabled, yearRange } =
     useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -184,30 +199,30 @@ function DateFilterPanel() {
     isYearRangeEnabled
   );
 
-  const handleFilterTypeChange = async (type: "date" | "year") => {
+  const handleFilterTypeChange = React.useCallback(async (type: "date" | "year") => {
     updateFilter({ filterType: type });
-  };
+  }, [updateFilter]);
 
   // Commit the selected range to the global store (and server) only once – when
   // the popover closes or the user explicitly clears the filter.
-  const commitDateRange = async (range: DateRange | undefined) => {
+  const commitDateRange = React.useCallback(async (range: DateRange | undefined) => {
     updateFilter({ dateRange: range });
-  };
+  }, [updateFilter]);
 
-  const handleClearDateRange = async () => {
+  const handleClearDateRange = React.useCallback(async () => {
     setTempDateRange(undefined);
     await commitDateRange(undefined);
-  };
+  }, [commitDateRange]);
 
-  const handleClearYearRange = async () => {
+  const handleClearYearRange = React.useCallback(async () => {
     const defaultRange = DEFAULT_FILTERS.yearRange();
     updateFilter({
       yearRange: defaultRange,
       isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
     });
-  };
+  }, [updateFilter]);
 
-  const handlePopoverOpenChange = async (open: boolean) => {
+  const handlePopoverOpenChange = React.useCallback(async (open: boolean) => {
     if (open) {
       // Reset local state to reflect current global value whenever the popover opens
       setTempDateRange(dateRange);
@@ -216,16 +231,24 @@ function DateFilterPanel() {
       await commitDateRange(tempDateRange);
     }
     setIsDatePickerOpen(open);
-  };
+  }, [dateRange, tempDateRange, commitDateRange, setIsDatePickerOpen]);
+
+  const handleClearFilter = React.useCallback(() => {
+    if (filterType === "date") {
+      handleClearDateRange();
+    } else {
+      handleClearYearRange();
+    }
+  }, [filterType, handleClearDateRange, handleClearYearRange]);
 
   return (
-    <FilterWrapper
+    <FilterSection
       title="Publication timeframe"
       icon={Clock}
-      colorScheme="purple"
       isActive={isDateActive}
+      onClear={isDateActive ? handleClearFilter : undefined}
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Filter Type Toggle */}
         <div className="flex rounded-lg bg-muted p-1">
           <button
@@ -254,413 +277,385 @@ function DateFilterPanel() {
 
         {/* Filter Content */}
         {filterType === "date" ? (
-          <div className="space-y-3">
-            <Popover
-              open={isDatePickerOpen}
-              onOpenChange={handlePopoverOpenChange}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full h-11 justify-start text-left font-normal border-2",
-                    isDateActive && dateRange?.from
-                      ? "border-purple-300 bg-purple-50 dark:bg-purple-950/30"
-                      : "border-dashed border-muted-foreground/30"
-                  )}
-                >
-                  <CalendarIcon className="mr-3 h-4 w-4" />
-                  {isDateActive && dateRange?.from ? (
-                    dateRange.to ? (
-                      <span className="truncate">
-                        {format(dateRange.from, "MMM dd, yyyy")} →{" "}
-                        {format(dateRange.to, "MMM dd, yyyy")}
-                      </span>
-                    ) : (
-                      <span className="truncate">
-                        From {format(dateRange.from, "MMM dd, yyyy")}
-                      </span>
-                    )
-                  ) : (
-                    <span className="text-muted-foreground">
-                      Choose date range
+          <Popover
+            open={isDatePickerOpen}
+            onOpenChange={handlePopoverOpenChange}
+          >
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full h-10 justify-start text-left font-normal",
+                  isDateActive && dateRange?.from
+                    ? "border-sidebar-primary/50"
+                    : "border-dashed border-muted-foreground/30"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                {isDateActive && dateRange?.from ? (
+                  dateRange.to ? (
+                    <span className="truncate text-sm">
+                      {format(dateRange.from, "MMM dd, yyyy")} →{" "}
+                      {format(dateRange.to, "MMM dd, yyyy")}
                     </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={tempDateRange}
-                  onSelect={(range) => {
-                    setTempDateRange(range);
-                  }}
-                  numberOfMonths={2}
-                  captionLayout="dropdown"
-                />
-              </PopoverContent>
-            </Popover>
-
-            {isDateActive && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClearDateRange}
-                className="w-full h-9 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-100 dark:text-purple-400 dark:hover:bg-purple-950/50"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Clear date filter
+                  ) : (
+                    <span className="truncate text-sm">
+                      From {format(dateRange.from, "MMM dd, yyyy")}
+                    </span>
+                  )
+                ) : (
+                  <span className="text-muted-foreground text-sm">
+                    Choose date range
+                  </span>
+                )}
               </Button>
-            )}
-          </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={tempDateRange}
+                onSelect={(range) => {
+                  setTempDateRange(range);
+                }}
+                numberOfMonths={2}
+                captionLayout="dropdown"
+              />
+            </PopoverContent>
+          </Popover>
         ) : (
-          <div className="space-y-3">
-            <YearRangePicker />
-            {isDateActive && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClearYearRange}
-                className="w-full h-9 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-100 dark:text-purple-400 dark:hover:bg-purple-950/50"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Clear year filter
-              </Button>
-            )}
-          </div>
+          <YearRangePicker />
         )}
       </div>
-    </FilterWrapper>
+    </FilterSection>
   );
-}
+});
 
 // Rating Filter Component
-function RatingFilterPanel() {
+const RatingFilterPanel = React.memo(function RatingFilterPanel() {
   const { ratingRange, onlyRatedPapers } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
 
-  const handleClearRatingFilter = () => {
+  const handleClearRatingFilter = React.useCallback(() => {
     updateFilter({
       ratingRange: DEFAULT_FILTERS.ratingRange,
       onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
     });
-  };
+  }, [updateFilter]);
 
   return (
-    <FilterWrapper
+    <FilterSection
       title="Rating filter"
       icon={Star}
-      colorScheme="orange"
       isActive={isRatingActive}
+      onClear={isRatingActive ? handleClearRatingFilter : undefined}
     >
-      <div className="space-y-4">
-        <RatingRangePicker />
-        {isRatingActive && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleClearRatingFilter}
-            className="w-full h-9 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-950/50"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Clear rating filter
-          </Button>
-        )}
-      </div>
-    </FilterWrapper>
+      <RatingRangePicker />
+    </FilterSection>
   );
-}
+});
 
 // Institution Location Filter Component
-function InstitutionLocationFilterPanel() {
+const InstitutionLocationFilterPanel = React.memo(function InstitutionLocationFilterPanel() {
   const { selectedRegions } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
   const isCountryActive = isCountryFilterActive(selectedRegions);
 
+  const handleClearFilter = React.useCallback(() => {
+    updateFilter({ selectedRegions: DEFAULT_FILTERS.selectedRegions });
+  }, [updateFilter]);
+
   return (
-    <FilterWrapper
+    <FilterSection
       title="Institution location"
       icon={Globe}
-      colorScheme="emerald"
       isActive={isCountryActive}
+      onClear={isCountryActive ? handleClearFilter : undefined}
     >
       <CountryRegionPicker />
-    </FilterWrapper>
+    </FilterSection>
   );
-}
+});
 
-// Search Field Component
-function SearchFieldPanel() {
+// Country Focus Filter Component
+const CountryFocusFilterPanel = React.memo(function CountryFocusFilterPanel() {
+  const { selectedCountryFocus } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  
+  // Check if country focus is active (using the same utility pattern)
+  const isCountryFocusFilterActive = selectedCountryFocus && selectedCountryFocus.length > 0;
+
+  const handleClearFilter = React.useCallback(() => {
+    updateFilter({ selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus });
+  }, [updateFilter]);
+
+  return (
+    <FilterSection
+      title="Country focus"
+      icon={Focus}
+      isActive={isCountryFocusFilterActive}
+      onClear={isCountryFocusFilterActive ? handleClearFilter : undefined}
+    >
+      <CountryFocusPicker />
+    </FilterSection>
+  );
+});
+
+// Search Field Component - now a dropdown select
+const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   const { currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
-  const handleSearchFieldChange = async (field: SearchField) => {
-    updateFilter({ currentSearchField: field });
-  };
+  const handleSearchFieldChange = React.useCallback((field: string) => {
+    updateFilter({ currentSearchField: field as SearchField });
+  }, [updateFilter]);
 
-  const fieldIcons = {
-    title_and_abstract: Target,
-    title: Zap,
-    abstract: Filter,
-    fulltext: Sparkles,
-    display_name: Settings,
-  };
+  const handleClearFilter = React.useCallback(() => {
+    updateFilter({ currentSearchField: DEFAULT_FILTERS.field });
+  }, [updateFilter]);
+
+  // Find current field label
+  const currentFieldLabel =
+    fields.find((f) => f.value === currentSearchField)?.label ||
+    "Title & Abstract";
+
+  // Check if search field is not at default
+  const isSearchFieldActive = currentSearchField !== DEFAULT_FILTERS.field;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <Target className="h-4 w-4 text-blue-500" />
-        Search scope
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        {fields.map((field) => {
-          const Icon =
-            fieldIcons[field.value as keyof typeof fieldIcons] || Filter;
-          const isSelected = currentSearchField === field.value;
-          return (
-            <button
-              key={field.value}
-              onClick={() =>
-                handleSearchFieldChange(field.value as SearchField)
-              }
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left",
-                isSelected
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 shadow-md"
-                  : "border-border hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/20"
-              )}
-            >
-              <div
-                className={cn(
-                  "p-1.5 rounded-lg",
-                  isSelected
-                    ? "bg-blue-500 text-white"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </div>
-              <div className="flex-1">
-                <div
-                  className={cn(
-                    "font-medium text-sm",
-                    isSelected
-                      ? "text-blue-700 dark:text-blue-300"
-                      : "text-foreground"
-                  )}
-                >
-                  {field.label}
-                </div>
-              </div>
-              {isSelected && (
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <FilterSection
+      title="Search scope"
+      icon={Target}
+      isActive={isSearchFieldActive}
+      onClear={isSearchFieldActive ? handleClearFilter : undefined}
+    >
+      <Select value={currentSearchField} onValueChange={handleSearchFieldChange}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Select search scope">
+            {currentFieldLabel}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {fields.map((field) => (
+            <SelectItem key={field.value} value={field.value}>
+              {field.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FilterSection>
   );
-}
+});
 
-// Sort Options Component
-function SortOptionsPanel() {
+// Sort Options Component - now a dropdown select
+const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const { sortBy } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
-  const handleSortChange = async (sort: string) => {
+  const handleSortChange = React.useCallback((sort: string) => {
     updateFilter({ sortBy: sort });
-  };
+  }, [updateFilter]);
+
+  const handleClearFilter = React.useCallback(() => {
+    updateFilter({ sortBy: DEFAULT_FILTERS.sortBy });
+  }, [updateFilter]);
+
+  // Find current sort label
+  const currentSortLabel =
+    sortOptions.find((o) => o.value === sortBy)?.label || "Relevance";
+
+  // Check if sort is not at default
+  const isSortActive = sortBy !== DEFAULT_FILTERS.sortBy;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-        <SortAsc className="h-4 w-4 text-green-500" />
-        Sort results by
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        {sortOptions.map((option) => {
-          const isSelected = sortBy === option.value;
-          return (
-            <button
-              key={option.value}
-              onClick={() => handleSortChange(option.value)}
-              className={cn(
-                "flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200 text-left",
-                isSelected
-                  ? "border-green-500 bg-green-50 dark:bg-green-950/50 shadow-md"
-                  : "border-border hover:border-green-300 hover:bg-green-50/50 dark:hover:bg-green-950/20"
-              )}
-            >
-              <div
-                className={cn(
-                  "font-medium text-sm",
-                  isSelected
-                    ? "text-green-700 dark:text-green-300"
-                    : "text-foreground"
-                )}
-              >
-                {option.label}
-              </div>
-              {isSelected && (
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <FilterSection
+      title="Sort results by"
+      icon={SortAsc}
+      isActive={isSortActive}
+      onClear={isSortActive ? handleClearFilter : undefined}
+    >
+      <Select value={sortBy} onValueChange={handleSortChange}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Select sort order">
+            {currentSortLabel}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {sortOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FilterSection>
   );
-}
+});
 
 // Cites Filter Component
-function CitesFilterPanel() {
+const CitesFilterPanel = React.memo(function CitesFilterPanel() {
   const { citesItemId } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isCitesActive = isCitesFilterActive(citesItemId);
 
-  const handleClearCitesFilter = async () => {
+  const handleClearCitesFilter = React.useCallback(() => {
     updateFilter({ citesItemId: DEFAULT_FILTERS.citesItemId });
-  };
+  }, [updateFilter]);
 
   return (
-    <FilterWrapper
+    <FilterSection
       title="Citation filter"
       icon={Quote}
-      colorScheme="orange"
       isActive={isCitesActive}
+      onClear={isCitesActive ? handleClearCitesFilter : undefined}
     >
-      <div className="space-y-4">
-        <CitesFilter />
-        {isCitesActive && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleClearCitesFilter}
-            className="w-full h-9 text-sm text-orange-600 hover:text-orange-700 hover:bg-orange-100 dark:text-orange-400 dark:hover:bg-orange-950/50"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Clear citation filter
-          </Button>
-        )}
-      </div>
-    </FilterWrapper>
+      <CitesFilter />
+    </FilterSection>
   );
-}
+});
 
 // Cited By Filter Component
-function CitedByFilterPanel() {
+const CitedByFilterPanel = React.memo(function CitedByFilterPanel() {
   const { citedByItemId } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isCitedByActive = isCitedByFilterActive(citedByItemId);
 
-  const handleClearCitedByFilter = async () => {
+  const handleClearCitedByFilter = React.useCallback(() => {
     updateFilter({ citedByItemId: DEFAULT_FILTERS.citedByItemId });
-  };
+  }, [updateFilter]);
 
   return (
-    <FilterWrapper
+    <FilterSection
       title="Cited by filter"
       icon={Quote}
-      colorScheme="green"
       isActive={isCitedByActive}
+      onClear={isCitedByActive ? handleClearCitedByFilter : undefined}
     >
-      <div className="space-y-4">
-        <CitedByFilter />
-        {isCitedByActive && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleClearCitedByFilter}
-            className="w-full h-9 text-sm text-green-600 hover:text-green-700 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-950/50"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Clear cited by filter
-          </Button>
-        )}
-      </div>
-    </FilterWrapper>
+      <CitedByFilter />
+    </FilterSection>
   );
-}
+});
 
 // Related To Filter Component
-function RelatedToFilterPanel() {
+const RelatedToFilterPanel = React.memo(function RelatedToFilterPanel() {
   const { relatedToItemId } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
 
-  const handleClearRelatedToFilter = async () => {
+  const handleClearRelatedToFilter = React.useCallback(() => {
     updateFilter({ relatedToItemId: DEFAULT_FILTERS.relatedToItemId });
-  };
+  }, [updateFilter]);
 
   return (
-    <FilterWrapper
+    <FilterSection
       title="Related works filter"
       icon={Network}
-      colorScheme="blue"
       isActive={isRelatedToActive}
+      onClear={isRelatedToActive ? handleClearRelatedToFilter : undefined}
     >
-      <div className="space-y-4">
-        <RelatedToFilter />
-        {isRelatedToActive && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleClearRelatedToFilter}
-            className="w-full h-9 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-950/50"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Clear related works filter
-          </Button>
-        )}
-      </div>
-    </FilterWrapper>
+      <RelatedToFilter />
+    </FilterSection>
   );
-}
+});
 
 // Review Filter Component
-function ReviewFilterPanel() {
+const ReviewFilterPanel = React.memo(function ReviewFilterPanel() {
   const { reviewFilter } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isReviewActive = isReviewFilterActive(reviewFilter);
 
-  const handleClearReviewFilter = async () => {
+  const handleClearReviewFilter = React.useCallback(() => {
     updateFilter({ reviewFilter: DEFAULT_FILTERS.reviewFilter });
-  };
+  }, [updateFilter]);
 
   return (
-    <FilterWrapper
+    <FilterSection
       title="Review filter"
       icon={FileText}
-      colorScheme="pink"
       isActive={isReviewActive}
+      onClear={isReviewActive ? handleClearReviewFilter : undefined}
     >
-      <div className="space-y-4">
-        <ReviewFilter />
-        {isReviewActive && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleClearReviewFilter}
-            className="w-full h-9 text-sm text-pink-600 hover:text-pink-700 hover:bg-pink-100 dark:text-pink-400 dark:hover:bg-pink-950/50"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Clear review filter
-          </Button>
-        )}
-      </div>
-    </FilterWrapper>
+      <ReviewFilter />
+    </FilterSection>
   );
+});
+
+// Sidebar Content Component - extracted and memoized
+interface SidebarContentProps {
+  hideHeader?: boolean;
+  activeFiltersCount: number;
+  isCitesActive: boolean;
+  isCitedByActive: boolean;
+  isRelatedToActive: boolean;
+  onClearAllFilters: () => void;
 }
+
+const SidebarContent = React.memo(function SidebarContent({
+  hideHeader = false,
+  activeFiltersCount,
+  isCitesActive,
+  isCitedByActive,
+  isRelatedToActive,
+  onClearAllFilters,
+}: SidebarContentProps) {
+  return (
+    <div className="space-y-4 p-4 pt-15">
+      {/* Simple Header - hidden when using panel mode with external header */}
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+          {activeFiltersCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearAllFilters}
+              className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
+            >
+              Clear all ({activeFiltersCount})
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* ID Filters - Show at top when active */}
+      {isCitesActive && <CitesFilterPanel />}
+      {isCitedByActive && <CitedByFilterPanel />}
+      {isRelatedToActive && <RelatedToFilterPanel />}
+
+      {/* Date Filter */}
+      <DateFilterPanel />
+
+      {/* Rating Filter */}
+      <RatingFilterPanel />
+
+      {/* Institution Location Filter */}
+      <InstitutionLocationFilterPanel />
+
+      {/* Country focus Filter */}
+      <CountryFocusFilterPanel />
+
+      {/* Search Field - Dropdown */}
+      <SearchFieldPanel />
+
+      {/* Sort Options - Dropdown */}
+      <SortOptionsPanel />
+
+      {/* Review Filter */}
+      <ReviewFilterPanel />
+
+      {/* Cites Filter (when not active) */}
+      {!isCitesActive && <CitesFilterPanel />}
+
+      {/* Cited By Filter (when not active) */}
+      {!isCitedByActive && <CitedByFilterPanel />}
+
+      {/* Related To Filter (when not active) */}
+      {!isRelatedToActive && <RelatedToFilterPanel />}
+    </div>
+  );
+});
 
 export function SearchSidebar({
   isOpen,
@@ -693,7 +688,7 @@ export function SearchSidebar({
   const isCitedByActive = isCitedByFilterActive(citedByItemId);
   const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
 
-  const handleClearAllFilters = async () => {
+  const handleClearAllFilters = React.useCallback(() => {
     const defaultYearRange = DEFAULT_FILTERS.yearRange();
     updateFilter({
       currentSearchField: DEFAULT_FILTERS.field,
@@ -710,8 +705,7 @@ export function SearchSidebar({
       relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
       reviewFilter: DEFAULT_FILTERS.reviewFilter,
     });
-    // Only for the server-side filters
-  };
+  }, [updateFilter]);
 
   // Use shared filter counting logic (single source of truth)
   const activeFiltersCount = countActiveFilters({
@@ -731,62 +725,6 @@ export function SearchSidebar({
     reviewFilter,
   });
 
-  const SidebarContent = ({ hideHeader = false }: { hideHeader?: boolean }) => (
-    <div className="space-y-6 p-6">
-      {/* Simple Header - hidden when using panel mode with external header */}
-      {!hideHeader && (
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
-          {activeFiltersCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearAllFilters}
-              className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
-            >
-              Clear all ({activeFiltersCount})
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* ID Filters - Show at top when active */}
-      {isCitesActive && <CitesFilterPanel />}
-      {isCitedByActive && <CitedByFilterPanel />}
-      {isRelatedToActive && <RelatedToFilterPanel />}
-
-      {/* Date Filter - Floating Panel */}
-      <DateFilterPanel />
-
-      {/* Rating Filter - Floating Panel */}
-      <RatingFilterPanel />
-
-      {/* Institution Location Filter - Floating Panel */}
-      <InstitutionLocationFilterPanel />
-
-      {/* Country focus Filter - Floating Panel */}
-      <CountryFocusPicker />
-
-      {/* Search Field - Chip Style */}
-      <SearchFieldPanel />
-
-      {/* Sort Options - Visual Cards */}
-      <SortOptionsPanel />
-
-      {/* Review Filter - Floating Panel */}
-      <ReviewFilterPanel />
-
-      {/* Cites Filter - Floating Panel (when not active) */}
-      {!isCitesActive && <CitesFilterPanel />}
-
-      {/* Cited By Filter - Floating Panel (when not active) */}
-      {!isCitedByActive && <CitedByFilterPanel />}
-
-      {/* Related To Filter - Floating Panel (when not active) */}
-      {!isRelatedToActive && <RelatedToFilterPanel />}
-    </div>
-  );
-
   if (mode === "sheet") {
     return (
       <Sheet open={isOpen} onOpenChange={onClose}>
@@ -798,7 +736,13 @@ export function SearchSidebar({
             <SheetTitle>Search Filters</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            <SidebarContent />
+            <SidebarContent
+              activeFiltersCount={activeFiltersCount}
+              isCitesActive={isCitesActive}
+              isCitedByActive={isCitedByActive}
+              isRelatedToActive={isRelatedToActive}
+              onClearAllFilters={handleClearAllFilters}
+            />
           </div>
         </SheetContent>
       </Sheet>
@@ -808,7 +752,13 @@ export function SearchSidebar({
   if (mode === "page") {
     return (
       <div className="w-full max-w-2xl mx-auto">
-        <SidebarContent />
+        <SidebarContent
+          activeFiltersCount={activeFiltersCount}
+          isCitesActive={isCitesActive}
+          isCitedByActive={isCitedByActive}
+          isRelatedToActive={isRelatedToActive}
+          onClearAllFilters={handleClearAllFilters}
+        />
       </div>
     );
   }
@@ -820,23 +770,74 @@ export function SearchSidebar({
     // If no provider or on mobile, don't render the panel
     if (!filterSidebar || filterSidebar.isMobile) return null;
 
-    const { isCollapsed, toggle, currentWidth } = filterSidebar;
+    const { isCollapsed, toggle, expandedWidth, collapsedWidth } = filterSidebar;
 
-    if (isCollapsed) {
-      // Collapsed state - matches main sidebar structure exactly
-      return (
+    // Calculate translateX - when collapsed, slide left so only collapsedWidth is visible
+    const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
+
+    // Wrapper that controls width for layout
+    return (
+      <div 
+        className="h-full relative"
+        style={{ 
+          width: isCollapsed ? collapsedWidth : expandedWidth,
+          transition: `width ${sidebarSpring.stiffness}ms ease-out`
+        }}
+      >
+        {/* Sidebar that translates */}
         <motion.aside
-          className="h-full w-full glass-sidebar flex flex-col items-center pt-3"
+          className={cn(
+            "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
+            "bg-background/80 dark:bg-background/60",
+            "backdrop-blur-xl backdrop-saturate-150",
+            "border-l border-border/50"
+          )}
           initial={false}
-          animate={{ width: "100%" }}
+          animate={{ x: translateX }}
           transition={sidebarSpring}
+          style={{ width: expandedWidth }}
         >
-          {/* Floating toggle button */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={sidebarSpring}
-          >
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+
+          {/* Floating controls in top-right corner */}
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-background/60 backdrop-blur-sm rounded-lg p-1 border border-border/30">
+            <AnimatePresence>
+              {activeFiltersCount > 0 && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1"
+                >
+                  <span className="flex items-center justify-center h-7 min-w-7 px-2 text-xs font-medium rounded-md bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white badge-glow">
+                    {activeFiltersCount}
+                  </span>
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={hoverSpring}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleClearAllFilters}
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </motion.div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      Clear all filters
+                    </TooltipContent>
+                  </Tooltip>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <motion.div
@@ -848,10 +849,11 @@ export function SearchSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={toggle}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
                   >
                     <motion.div
-                      whileHover={{ rotate: 90 }}
+                      animate={{ rotate: 0 }}
+                      whileHover={{ rotate: isCollapsed ? 90 : -90 }}
                       transition={{ duration: 0.3 }}
                     >
                       <Filter className="h-4 w-4" />
@@ -859,140 +861,122 @@ export function SearchSidebar({
                   </Button>
                 </motion.div>
               </TooltipTrigger>
-              <TooltipContent side="left" className="flex items-center gap-2">
-                Expand filters (Ctrl+Shift+F)
-                {activeFiltersCount > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {activeFiltersCount}
-                  </Badge>
-                )}
+              <TooltipContent side="left">
+                {isCollapsed ? "Expand" : "Collapse"} filters (Ctrl+Shift+F)
               </TooltipContent>
             </Tooltip>
-          </motion.div>
+          </div>
 
-          {/* Clear all button when filters are active */}
-          <AnimatePresence>
-            {activeFiltersCount > 0 && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={sidebarSpring}
-                className="pt-2"
-              >
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={hoverSpring}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClearAllFilters}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </motion.div>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    Clear all ({activeFiltersCount})
-                  </TooltipContent>
-                </Tooltip>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Scrollable content with hidden scrollbar */}
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <SidebarContent
+              hideHeader
+              activeFiltersCount={activeFiltersCount}
+              isCitesActive={isCitesActive}
+              isCitedByActive={isCitedByActive}
+              isRelatedToActive={isRelatedToActive}
+              onClearAllFilters={handleClearAllFilters}
+            />
+          </div>
         </motion.aside>
-      );
-    }
 
-    // Expanded state - full filters panel matching main sidebar structure
-    return (
-      <motion.aside
-        className="h-full w-full glass-sidebar flex flex-col overflow-hidden"
-        initial={false}
-        animate={{ width: "100%" }}
-        transition={sidebarSpring}
-      >
-        {/* Floating toggle button in top-right corner */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-sidebar/80 backdrop-blur-sm rounded-lg p-1">
-          <AnimatePresence>
-            {activeFiltersCount > 0 && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={sidebarSpring}
-                className="flex items-center gap-1"
-              >
-                <Badge variant="secondary" className="text-xs size-8">
-                  {activeFiltersCount}
-                </Badge>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={hoverSpring}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleClearAllFilters}
-                        className="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </motion.div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    Clear all ({activeFiltersCount})
-                  </TooltipContent>
-                </Tooltip>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                transition={hoverSpring}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggle}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
-                >
+        {/* Fixed controls that stay visible when collapsed */}
+        <AnimatePresence>
+          {isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-4 right-0 z-20 flex flex-col items-center gap-2"
+            >
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
                   <motion.div
-                    whileHover={{ rotate: -90 }}
-                    transition={{ duration: 0.3 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={hoverSpring}
                   >
-                    <Filter className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggle}
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                    >
+                      <motion.div
+                        animate={{ rotate: 0 }}
+                        whileHover={{ rotate: 90 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Filter className="h-4 w-4" />
+                      </motion.div>
+                    </Button>
                   </motion.div>
-                </Button>
-              </motion.div>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              Collapse filters (Ctrl+Shift+F)
-            </TooltipContent>
-          </Tooltip>
-        </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  Expand filters (Ctrl+Shift+F)
+                </TooltipContent>
+              </Tooltip>
 
-        {/* Scrollable content with ScrollArea */}
-        <ScrollArea className="flex-1 min-h-0 p-0 sidebar-scrollbar">
-          <SidebarContent hideHeader />
-        </ScrollArea>
-      </motion.aside>
+              {/* Filter count badge and clear button */}
+              {activeFiltersCount > 0 && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.15, delay: 0.1 }}
+                  className="flex flex-col items-center gap-2"
+                >
+                  <span className="flex items-center justify-center h-7 w-7 text-xs font-medium rounded-md bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white badge-glow">
+                    {activeFiltersCount}
+                  </span>
+                  <Tooltip delayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={hoverSpring}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleClearAllFilters}
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </motion.div>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      Clear all filters
+                    </TooltipContent>
+                  </Tooltip>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     );
   }
 
   return (
-    <div className="w-80 p-6 bg-gradient-to-b from-background via-background to-muted/20 rounded-2xl border border-border/50 shadow-xl backdrop-blur-sm">
-      <SidebarContent />
+    <div
+      className={cn(
+        "w-80 rounded-2xl overflow-hidden",
+        "bg-background/80 dark:bg-background/60",
+        "backdrop-blur-xl backdrop-saturate-150",
+        "border border-border/50",
+        "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
+      )}
+    >
+      <SidebarContent
+        activeFiltersCount={activeFiltersCount}
+        isCitesActive={isCitesActive}
+        isCitedByActive={isCitedByActive}
+        isRelatedToActive={isRelatedToActive}
+        onClearAllFilters={handleClearAllFilters}
+      />
     </div>
   );
 }

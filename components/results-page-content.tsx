@@ -50,11 +50,6 @@ export default function ResultsPageContent({
     router.push("/");
   };
 
-  const filterSidebar = useFilterSidebarOptional();
-  const isFilterSidebarVisible =
-    filterSidebar && !filterSidebar.isMobile && !filterSidebar.isCollapsed;
-  const filterSidebarWidth = `${filterSidebar?.currentWidth || 320}px`;
-
   return (
     <div className="flex flex-col flex-1 w-full">
       <TwoColumnLayout
@@ -91,7 +86,6 @@ export default function ResultsPageContent({
             </div>
           </PageWrapper>
         }
-        leftColumnWidth={filterSidebarWidth}
       />
     </div>
   );
