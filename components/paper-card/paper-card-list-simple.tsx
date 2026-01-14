@@ -73,9 +73,12 @@ export function PaperCardListSimple({
 
   return (
     <CardContainer className="overflow-hidden">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => openFocusMode(isMobile, resultIndex)}
-        className="w-full text-left"
+        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex)}
+        className="w-full text-left cursor-pointer"
       >
         <div className="flex items-center gap-3 p-3 @sm/card:p-4">
           {/* Rating - always visible */}
@@ -132,17 +135,25 @@ export function PaperCardListSimple({
               className="hidden @sm/card:flex items-center gap-1 flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleFilteredSearch("cites");
                 }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.stopPropagation();
+                    handleFilteredSearch("cites");
+                  }
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
                 title={`Cited by ${result.cited_by_count || 0}`}
               >
                 <Quote className="h-3 w-3" />
                 <span>{result.cited_by_count || 0}</span>
-              </button>
+              </div>
             </div>
 
             {/* Quick actions */}
@@ -168,7 +179,7 @@ export function PaperCardListSimple({
             <span className="font-medium">{result.cited_by_count || 0}</span>
           </div>
         </div>
-      </button>
+      </div>
     </CardContainer>
   );
 }

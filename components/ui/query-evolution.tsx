@@ -48,7 +48,7 @@ export function QueryEvolution({
 
   // Get queries in reverse chronological order (newest first)
   const sortedHistory = [...queryHistory].reverse();
-  const previewQueries = sortedHistory.slice(0, 2);
+  const previewQueries = sortedHistory.slice(1, 3);
   const remainingCount = sortedHistory.length - 2;
 
   return (
@@ -81,7 +81,7 @@ export function QueryEvolution({
                   "{truncateQuery(entry.query, 15)}"
                 </span>
                 {idx < previewQueries.length - 1 && (
-                  <span className="text-muted-foreground/40 shrink-0">→</span>
+                  <span className="text-muted-foreground/40 shrink-0 rotate-180">→</span>
                 )}
               </React.Fragment>
             ))}
@@ -119,7 +119,7 @@ export function QueryEvolution({
                       "relative flex items-start gap-2",
                       // Dot - centered at -8px from item edge
                       "before:absolute before:-left-2 before:top-1.5",
-                      "before:w-1.5 before:h-1.5 before:-translate-x-1/2 before:rounded-full",
+                      "before:w-1.5 before:h-1.5 before:-translate-x-1/2 before:rounded-full before:z-10",
                       isCurrent
                         ? "before:bg-foreground"
                         : "before:bg-muted-foreground"

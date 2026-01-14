@@ -34,7 +34,6 @@ import {
   BookOpen,
   Clock,
   Sparkles,
-  PanelLeftClose,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -257,55 +256,60 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className={cn("h-full py-4 sidebar-scrollbar", isCollapsed && !isMobile ? "px-2" : "px-3")}>
-          <motion.div 
-            className="space-y-1"
+      {/* Navigation - fixed, not scrollable */}
+      <div className={cn("py-4", isCollapsed && !isMobile ? "px-2" : "px-3")}>
+        <motion.div 
+          className="space-y-1"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <NavItem
+            href="/"
+            icon={Home}
+            label="Home"
+            isActive={currentPageValue === "home"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={0}
+          />
+
+          <NavItem
+            href="/bookmarks"
+            icon={BookOpen}
+            label="Bookmarks"
+            isActive={currentPageValue === "bookmarks"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={1}
+          />
+
+          <NavItem
+            href="/history"
+            icon={Clock}
+            label="History"
+            isActive={currentPageValue === "history"}
+            isCollapsed={isCollapsed && !isMobile}
+            badge={searchHistory.length}
+            onClick={handleNavClick}
+            index={2}
+          />
+        </motion.div>
+      </div>
+
+      {/* Search history - scrollable */}
+      {searchHistory.length > 0 && (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className={cn("shrink-0", isCollapsed && !isMobile ? "px-2" : "px-3")}
           >
-            <NavItem
-              href="/"
-              icon={Home}
-              label="Home"
-              isActive={currentPageValue === "home"}
-              isCollapsed={isCollapsed && !isMobile}
-              onClick={handleNavClick}
-              index={0}
-            />
-
-            <NavItem
-              href="/bookmarks"
-              icon={BookOpen}
-              label="Bookmarks"
-              isActive={currentPageValue === "bookmarks"}
-              isCollapsed={isCollapsed && !isMobile}
-              onClick={handleNavClick}
-              index={1}
-            />
-
-            <NavItem
-              href="/history"
-              icon={Clock}
-              label="History"
-              isActive={currentPageValue === "history"}
-              isCollapsed={isCollapsed && !isMobile}
-              badge={searchHistory.length}
-              onClick={handleNavClick}
-              index={2}
-            />
+            <Separator className="bg-gradient-to-r from-transparent via-border/60 to-transparent" />
           </motion.div>
-
-          {searchHistory.length > 0 && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.15 }}
-              >
-                <Separator className="my-4 bg-gradient-to-r from-transparent via-border/60 to-transparent" />
-              </motion.div>
+          <ScrollArea className="h-full sidebar-scrollbar">
+            <div className={cn("py-4", isCollapsed && !isMobile ? "px-2" : "px-3")}>
               <motion.div 
                 className="space-y-1 overflow-hidden"
                 initial={{ opacity: 0 }}
@@ -463,10 +467,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   </Button>
                 </motion.div>
               )}
-            </>
-          )}
-        </ScrollArea>
-      </div>
+            </div>
+          </ScrollArea>
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -582,86 +586,53 @@ export function AppSidebar() {
       transition={sidebarSpring}
     >
       <div className={cn(
-        "flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent transition-all duration-300",
-        isCollapsed && !isMobile ? "px-2" : "px-3 pl-4",
+        "relative flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
         isCollapsed ? "justify-center" : "justify-between"
       )}>
-        <AnimatePresence mode="wait">
-          {!isCollapsed ? (
+        {/* Logo - only visible when expanded */}
+        <AnimatePresence initial={false} mode="sync">
+          {!isCollapsed && (
             <motion.div
-              key="expanded-header"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-              className="flex items-center justify-between w-full h-full"
+              key="logo"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, delay: 0.1 }}
+              className="shrink-0"
             >
               <Logo size="sm" context="navbar" />
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={hoverSpring}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggle}
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
-                    >
-                      <motion.div
-                        whileHover={{ rotate: -90 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <PanelLeftClose className="h-4 w-4" />
-                      </motion.div>
-                    </Button>
-                  </motion.div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  Collapse sidebar (Ctrl+B)
-                </TooltipContent>
-              </Tooltip>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="collapsed-header"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={sidebarSpring}
-              className="h-full flex items-center"
-            >
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={hoverSpring}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={toggle}
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
-                    >
-                      <motion.div
-                        whileHover={{ rotate: 90 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <PanelLeft className="h-4 w-4" />
-                      </motion.div>
-                    </Button>
-                  </motion.div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  Expand sidebar (Ctrl+B)
-                </TooltipContent>
-              </Tooltip>
             </motion.div>
           )}
         </AnimatePresence>
+        
+        {/* Toggle button - always visible, animates rotation */}
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={hoverSpring}
+              className="shrink-0"
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggle}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+              >
+                <motion.div
+                  animate={{ rotate: isCollapsed ? 0 : 180 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                >
+                  <PanelLeft className="h-4 w-4" />
+                </motion.div>
+              </Button>
+            </motion.div>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {isCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="flex-1 overflow-hidden">

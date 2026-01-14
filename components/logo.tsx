@@ -34,7 +34,7 @@ export function Logo({
   // Orange branded academic icon
   const LogoIcon = ({ className: iconClassName }: { className?: string }) => (
     <div className={cn(
-      'relative flex items-center justify-center',
+      'relative flex items-center justify-center shrink-0',
       iconClassName
     )}>
       <img
@@ -52,10 +52,10 @@ export function Logo({
   );
 
   const logoContent = (
-    <div className={cn('flex items-center gap-2 sm:gap-3', className)}>
+    <div className={cn('flex items-center gap-2 sm:gap-3 shrink-0', className)}>
       <LogoIcon />
       {!shouldShowIconOnly && (
-        <div className="flex items-baseline min-w-0">
+        <div className="flex items-baseline shrink-0">
           <span className={cn(
             'font-bold text-foreground leading-tight whitespace-nowrap',
             sizeClasses[size]
