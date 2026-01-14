@@ -257,17 +257,22 @@ export function HistoryToolbar({
               variant="ghost"
               size="icon"
               className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              disabled={totalCount === 0}
             >
               <Download className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleDownloadJSON}>
+            <DropdownMenuItem 
+              onClick={handleDownloadJSON}
+              disabled={totalCount === 0}
+            >
               <Download className="h-4 w-4 mr-2" />
               Download as JSON
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadCSV}>
+            <DropdownMenuItem 
+              onClick={handleDownloadCSV}
+              disabled={totalCount === 0}
+            >
               <Download className="h-4 w-4 mr-2" />
               Download as CSV
             </DropdownMenuItem>

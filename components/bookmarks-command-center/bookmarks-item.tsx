@@ -151,12 +151,7 @@ export function BookmarksItem({
               </span>
 
               {/* Actions */}
-              <div
-                className={cn(
-                  "flex items-center gap-0.5 shrink-0",
-                  "sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                )}
-              >
+              <div className="flex items-center gap-0.5 shrink-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

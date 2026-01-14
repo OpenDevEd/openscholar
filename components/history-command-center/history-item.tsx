@@ -186,13 +186,8 @@ export function HistoryItem({
             {formatTimeAgo(item.createdAt)}
           </span>
 
-          {/* Actions - show on hover on desktop, always on mobile */}
-          <div
-            className={cn(
-              "flex items-center gap-0.5 shrink-0",
-              "sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-            )}
-          >
+          {/* Actions - always visible */}
+          <div className="flex items-center gap-0.5 shrink-0">
             {queryHistoryCount > 1 && (
               <Tooltip>
                 <TooltipTrigger asChild>
