@@ -70,6 +70,13 @@ interface SearchHistoryState {
 
 export type ViewMode = 'list-simple' | 'list-detail' | 'grid-2' | 'grid-3'
 export type HistorySortBy = 'recent' | 'oldest' | 'most' | 'least'
+export type BookmarkSortBy = 'recent' | 'oldest' | 'alpha' | 'alpha-desc'
+
+// Bookmark data structure
+export interface BookmarkData {
+  expansion: string
+  createdAt: number
+}
 
 interface UIState {
   isDialogOpen: boolean
@@ -79,6 +86,8 @@ interface UIState {
   viewMode: ViewMode
   historyViewMode: ViewMode
   historySortBy: HistorySortBy
+  bookmarkViewMode: ViewMode
+  bookmarkSortBy: BookmarkSortBy
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
@@ -86,6 +95,8 @@ interface UIState {
   setViewMode: (mode: ViewMode) => void
   setHistoryViewMode: (mode: ViewMode) => void
   setHistorySortBy: (sort: HistorySortBy) => void
+  setBookmarkViewMode: (mode: ViewMode) => void
+  setBookmarkSortBy: (sort: BookmarkSortBy) => void
 }
 
 interface ResultsState {
@@ -108,12 +119,13 @@ interface FocusModeSettingsState {
 }
 
 interface KeywordExpansionState {
-  keywords: Record<string, string>
+  keywords: Record<string, BookmarkData>
   addKeyword: (shorthand: string, expansion: string) => void
   updateKeyword: (shorthand: string, expansion: string) => void
   removeKeyword: (shorthand: string) => void
   clearKeywords: () => void
   expandQuery: (query: string) => { expandedQuery: string; warnings: string[] }
+  importKeywords: (data: any[]) => number
 }
 
 interface AIConfigState {
@@ -534,6 +546,8 @@ export const useUIStore = create<UIState>()(
       viewMode: 'list-detail',
       historyViewMode: 'list-detail',
       historySortBy: 'recent',
+      bookmarkViewMode: 'list-detail',
+      bookmarkSortBy: 'recent',
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
       setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
@@ -541,6 +555,8 @@ export const useUIStore = create<UIState>()(
       setViewMode: (mode) => set({ viewMode: mode }),
       setHistoryViewMode: (mode) => set({ historyViewMode: mode }),
       setHistorySortBy: (sort) => set({ historySortBy: sort }),
+      setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
+      setBookmarkSortBy: (sort) => set({ bookmarkSortBy: sort }),
     }),
     {
       name: 'ui-store',
@@ -548,6 +564,8 @@ export const useUIStore = create<UIState>()(
         viewMode: state.viewMode,
         historyViewMode: state.historyViewMode,
         historySortBy: state.historySortBy,
+        bookmarkViewMode: state.bookmarkViewMode,
+        bookmarkSortBy: state.bookmarkSortBy,
       }),
     }
   )
@@ -596,14 +614,17 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
       keywords: {},
       addKeyword: (shorthand, expansion) => set((state) => ({
         keywords: {
-          [shorthand]: expansion,
+          [shorthand]: { expansion, createdAt: Date.now() },
           ...state.keywords,
         },
       })),
       updateKeyword: (shorthand, expansion) => set((state) => ({
         keywords: {
           ...state.keywords,
-          [shorthand]: expansion,
+          [shorthand]: { 
+            ...state.keywords[shorthand],
+            expansion,
+          },
         },
       })),
       removeKeyword: (shorthand) => set((state) => {
@@ -615,9 +636,9 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
         const { keywords } = get();
         const warnings: string[] = [];
         const expandedQuery = query.replace(/(\w[\w-]*)\.\.\./g, (match, keyword) => {
-          const expansion = keywords[keyword];
-          if (expansion) {
-            return expansion;
+          const bookmarkData = keywords[keyword];
+          if (bookmarkData?.expansion) {
+            return bookmarkData.expansion;
           } else {
             warnings.push(`Bookmark "${keyword}" not found`);
             return match;
@@ -625,9 +646,57 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
         });
         return { expandedQuery, warnings };
       },
+      importKeywords: (data) => {
+        let importedCount = 0;
+        const validItems: Record<string, BookmarkData> = {};
+        
+        data.forEach((item) => {
+          // Support both old format (name, expansion) and new format (name, expansion, createdAt)
+          const name = item.name || item.shorthand || '';
+          const expansion = item.expansion || '';
+          const createdAt = item.createdAt || Date.now();
+          
+          // Skip items without required fields
+          if (!name || !expansion) {
+            return;
+          }
+          
+          validItems[name] = { expansion, createdAt };
+          importedCount++;
+        });
+        
+        if (Object.keys(validItems).length > 0) {
+          set((state) => ({
+            keywords: { ...validItems, ...state.keywords },
+          }));
+        }
+        
+        return importedCount;
+      },
     }),
     {
       name: 'keyword-expansion-store',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        // Migration from version 0 (old format) to version 1 (new format with timestamps)
+        if (version === 0 && persistedState.keywords) {
+          const oldKeywords = persistedState.keywords as Record<string, string | BookmarkData>;
+          const newKeywords: Record<string, BookmarkData> = {};
+          
+          Object.entries(oldKeywords).forEach(([key, value]) => {
+            if (typeof value === 'string') {
+              // Old format: string value
+              newKeywords[key] = { expansion: value, createdAt: Date.now() };
+            } else if (value && typeof value === 'object' && 'expansion' in value) {
+              // Already new format
+              newKeywords[key] = value as BookmarkData;
+            }
+          });
+          
+          return { ...persistedState, keywords: newKeywords };
+        }
+        return persistedState;
+      },
     }
   )
 )
