@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 
 import { searchParamsParsers, serializeSearchParams } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
-import { useSearchHistoryStore, useKeywordExpansionDialogStore } from '../store';
+import { useSearchHistoryStore, useKeywordExpansionDialogStore, useKeywordExpansionStore } from '../store';
 import { validateAndExpandKeywordsSilently } from '../keyword-validation';
 import { useDebounceValue } from '@/hooks/use-debounce-value';
 import type { SearchFilters, SearchField } from '../types';
@@ -53,6 +53,9 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Get setter for suggestedQuery - unified source of truth on results pages
   const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
+  
+  // Get expandQuery function for keyword expansion in shareable links
+  const expandQuery = useKeywordExpansionStore((state) => state.expandQuery);
   
   // Helper to sync filter changes to store for history persistence
   // This ensures that when users change filters, the changes persist when navigating
@@ -393,11 +396,22 @@ export function SearchProvider({ children }: SearchProviderProps) {
   }, [setUrlParams, syncToStore]);
   
   // Get shareable URL - pass base URL to serializer to avoid double ?
+  // Expands keyword bookmarks before generating the URL so shared links work for everyone
   const getShareableUrl = useCallback(() => {
     if (typeof window === 'undefined') return '';
+    
+    // Expand keywords in the query (e.g., ml... → "machine learning" OR AI)
+    const { expandedQuery } = expandQuery(urlParams.q || '');
+    
+    // Create params with expanded query
+    const expandedParams = {
+      ...urlParams,
+      q: expandedQuery
+    };
+    
     const baseUrl = `${window.location.origin}/results/${searchId}`;
-    return serializeSearchParams(baseUrl, urlParams);
-  }, [searchId, urlParams]);
+    return serializeSearchParams(baseUrl, expandedParams);
+  }, [searchId, urlParams, expandQuery]);
   
   // Convert URL params to SearchFilters for external use
   const toSearchFilters = useCallback((): SearchFilters => ({
