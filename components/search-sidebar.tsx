@@ -740,7 +740,7 @@ export function SearchSidebar({
           <div className="flex-1 overflow-y-auto">
             <SidebarContent
               hideHeader
-              isMobileSheet
+              isMobileSheet={isMobile}
               activeFiltersCount={activeFiltersCount}
               isCitesActive={isCitesActive}
               isCitedByActive={isCitedByActive}
@@ -757,6 +757,8 @@ export function SearchSidebar({
     return (
       <div className="w-full max-w-2xl mx-auto">
         <SidebarContent
+          hideHeader={true}
+          isMobileSheet={isMobile}
           activeFiltersCount={activeFiltersCount}
           isCitesActive={isCitesActive}
           isCitedByActive={isCitedByActive}

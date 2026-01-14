@@ -1,17 +1,11 @@
 "use client";
 
 import { MobileSidebarTrigger } from "./app-sidebar";
-import { FilterSidebarTrigger } from "./filter-sidebar-trigger";
 import { useIsMobile } from "@/lib/hooks";
 import { Logo } from "./logo";
-import { usePathname } from "next/navigation";
 
 export function MobileNavbar() {
   const isMobile = useIsMobile();
-  const pathname = usePathname();
-  
-  // Check if we're on a results page
-  const isResultsPage = pathname?.startsWith('/results');
   
   if (!isMobile) return null;
   
@@ -21,7 +15,6 @@ export function MobileNavbar() {
         <MobileSidebarTrigger />
         <Logo size="sm" context="general" clickable={true} />
       </div>
-      {isResultsPage && <FilterSidebarTrigger />}
     </header>
   );
 }
