@@ -238,7 +238,7 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
               )} />
               <div>
                 <div className="text-sm font-medium">OpenAI</div>
-                <div className="text-xs text-muted-foreground">GPT-4o, o1</div>
+                <div className="text-xs text-muted-foreground">GPT</div>
               </div>
             </div>
           </button>
