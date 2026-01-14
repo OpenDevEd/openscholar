@@ -42,6 +42,7 @@
     "eventsource-parser": "^3.0.2",
     "json-2-csv": "^5.5.9",
     "json-csv": "^4.0.18",
+    "jsonrepair": "^3.13.1",
     "lucide-react": "^0.487.0",
     "motion": "^12.23.12",
     "nanoid": "^5.1.5",

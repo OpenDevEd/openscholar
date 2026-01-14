@@ -4,6 +4,91 @@ import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
 import { createAIModel } from "@/lib/ai-utils";
 import { languageOptions } from "@/components/language-selector";
 import type { AIProvider } from "@/lib/types";
+import { jsonrepair } from "jsonrepair";
+
+// ============================================================================
+// JSON Repair Helpers
+// ============================================================================
+
+/**
+ * Generic JSON repair function for AI responses
+ * Handles cases where AI returns plain text instead of JSON
+ */
+async function repairJSON(text: string, error: any): Promise<string | null> {
+  try {
+    console.log('Attempting to repair text:', text);
+    console.log('Parse error:', error);
+    
+    // If the text looks like a plain response (not JSON), wrap it in proper JSON
+    if (!text.trim().startsWith('{')) {
+      console.log('Wrapped plain text as JSON');
+      return text.trim();
+    }
+    
+    // Otherwise, try to repair malformed JSON
+    const repaired = jsonrepair(text);
+    console.log('Repaired JSON:', repaired);
+    return repaired;
+  } catch (repairError) {
+    console.error('JSON repair failed:', repairError);
+    
+    // Last resort: if we have plain text, return it unwrapped
+    if (typeof text === 'string' && text.trim().length > 0 && !text.trim().startsWith('{')) {
+      return text.trim();
+    }
+    
+    return null; // Cannot repair
+  }
+}
+
+/**
+ * Repair function for single-field responses (e.g., enhancedQuery, translatedQuery)
+ */
+async function repairSingleField(text: string, error: any, fieldName: string): Promise<string | null> {
+  const result = await repairJSON(text, error);
+  if (result === null) return null;
+  
+  // If we got plain text back, wrap it in the expected JSON structure
+  if (!result.startsWith('{')) {
+    return JSON.stringify({ [fieldName]: result });
+  }
+  
+  return result;
+}
+
+/**
+ * Standard provider options to disable thinking/reasoning for faster responses
+ */
+const STANDARD_PROVIDER_OPTIONS = {
+  google: {
+    thinkingConfig: {
+      thinkingBudget: 0,
+    },
+  },
+  openai: {
+    reasoningEffort: "minimal" as const,
+  },
+};
+
+/**
+ * Enhanced error logging for AI failures
+ */
+function logAIError(context: string, error: unknown): void {
+  console.error(`Error in ${context}:`, error);
+  
+  if (error && typeof error === 'object') {
+    if ('cause' in error) {
+      console.error("Error cause:", error.cause);
+    }
+    if ('text' in error) {
+      console.error("Model output text:", error.text);
+    }
+  }
+}
+
+// ============================================================================
+// Schema Definitions
+// ============================================================================
 
 // Define schema with strict validation requirements
 const queryEnhancementSchema = z.object({
@@ -92,18 +177,17 @@ export async function enhanceSearchQuery(
         const { object, usage } = await generateObject({
           model,
           schema: queryEnhancementSchema,
-          providerOptions: {
-            google: {
-              thinkingConfig: {
-                thinkingBudget: 0,
-              },
-            },
-            openai: {
-              reasoningEffort: "minimal",
-            },
-          },
+          experimental_repairText: async ({ text, error }) => 
+            repairSingleField(text, error, 'enhancedQuery'),
+          providerOptions: STANDARD_PROVIDER_OPTIONS,
           temperature: 1,
           system: `You are an Elasticsearch Query String Query optimization expert for academic search.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "enhancedQuery": "your query here"
+}
+
 You may receive either:
 1. An existing Boolean query.
 2. A natural-language research question.
@@ -200,9 +284,9 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
     throw lastError || new Error("Failed to enhance query after all retries");
 
   } catch (error) {
-    console.error("Error enhancing query:", error);
+    logAIError("enhanceSearchQuery", error);
     throw new Error(
-      "Failed to enhance query. Please try again."
+      `Failed to enhance query. ${error instanceof Error ? error.message : 'Please try again or try a different AI model.'}`
     );
   }
 }
@@ -230,18 +314,15 @@ export async function generateScreeningQuestions(
     const { object, usage } = await generateObject({
       model,
       schema: screeningQuestionsSchema,
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-        openai: {
-          reasoningEffort: "minimal",
-        },
-      },
+      experimental_repairText: async ({ text, error }) => repairJSON(text, error),
+      providerOptions: STANDARD_PROVIDER_OPTIONS,
       temperature: 0.7,
       system: `You are an expert systematic review researcher specializing in screening question development for literature reviews.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "questions": ["question 1", "question 2", "question 3"]
+}
 
 Your task is to generate high-quality screening questions that help determine if academic papers meet inclusion criteria for a systematic review.
 
@@ -303,7 +384,7 @@ ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
     };
 
   } catch (error) {
-    console.error("Error generating screening questions:", error);
+    logAIError("generateScreeningQuestions", error);
     throw new Error(
       "Failed to generate screening questions. Please check your API key and try again."
     );
@@ -339,16 +420,9 @@ export async function translateQuery(
       schema: z.object({
         translatedQuery: z.string().describe("The query translated to the target language, maintaining the same meaning and structure"),
       }),
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-        openai: {
-          reasoningEffort: "minimal",
-        },
-      },
+      experimental_repairText: async ({ text, error }) => 
+        repairSingleField(text, error, 'translatedQuery'),
+      providerOptions: STANDARD_PROVIDER_OPTIONS,
       temperature: 0.3,
       system: `You are a professional translator specializing in academic search queries. Your task is to translate the given query to the specified language while maintaining:
 
@@ -373,7 +447,7 @@ Provide only the translated query without any additional explanation or formatti
 
     return object.translatedQuery;
   } catch (error) {
-    console.error('Translation failed:', error);
+    logAIError("translateQuery", error);
     throw new Error(
       error instanceof Error
         ? `Translation failed: ${error.message}`
@@ -412,20 +486,19 @@ export async function translatePaperContent(
       schema: z.object({
         translatedTitle: z.string().describe("The paper title translated to English"),
         translatedAbstract: z.string().describe("The paper abstract translated to English"),
-        // isAlreadyInEnglish: z.boolean().describe("Whether the paper title and abstract are already in English"),
       }),
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-        openai: {
-          reasoningEffort: "minimal",
-        },
-      },
+      experimental_repairText: async ({ text, error }) => repairJSON(text, error),
+      providerOptions: STANDARD_PROVIDER_OPTIONS,
       temperature: 0.3,
-      system: `You are a professional translator specializing in academic content. Your task is to translate academic paper titles and abstracts FROM the specified language TO English while maintaining:
+      system: `You are a professional translator specializing in academic content.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "translatedTitle": "translated title here",
+  "translatedAbstract": "translated abstract here"
+}
+
+Your task is to translate academic paper titles and abstracts FROM the specified language TO English while maintaining:
 
 1. Academic terminology and precision
 2. The same meaning and scientific accuracy
@@ -452,7 +525,7 @@ Provide the English translation of the title and abstract, maintaining academic 
       isAlreadyInEnglish: false,
     };
   } catch (error) {
-    console.error('Paper translation failed:', error);
+    logAIError("translatePaperContent", error);
     throw new Error(
       error instanceof Error
         ? `Translation failed: ${error.message}`
@@ -492,18 +565,12 @@ export async function generateScreeningResponses(
     const { object, usage } = await generateObject({
       model,
       schema,
-      providerOptions: {
-        google: {
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-        openai: {
-          reasoningEffort: "minimal",
-        },
-      },
+      experimental_repairText: async ({ text, error }) => repairJSON(text, error),
+      providerOptions: STANDARD_PROVIDER_OPTIONS,
       temperature: 0.1, // Lower temperature for more consistent screening decisions
       system: `You are an expert systematic review researcher conducting literature screening.
+
+CRITICAL: You MUST respond with valid JSON matching the required schema with "responses" object and "confidence" number.
 
 Your task is to carefully analyze academic papers and provide YES/NO answers to specific screening questions based on the paper's content.
 
@@ -544,7 +611,7 @@ Provide your screening decisions:`,
     };
 
   } catch (error) {
-    console.error("Error generating screening responses:", error);
+    logAIError("generateScreeningResponses", error);
     throw new Error(
       "Failed to generate screening responses. Please check your API key and try again."
     );
