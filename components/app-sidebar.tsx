@@ -268,10 +268,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const effectiveSearchId = useEffectiveSearchId();
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
 
-  // Determine active query based on current page
-  const activeQuery = pathname === "/" 
-    ? currentQuery 
-    : searchParams.get("q") ?? "";
+  // Determine active query - now uses store for real-time updates on all pages
+  // Fallback to URL params if store is empty (shouldn't happen but safety first)
+  const activeQuery = currentQuery || searchParams.get("q") || "";
 
   // Calculate expandable keywords count
   const getExpandableCount = (query: string) => {
