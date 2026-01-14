@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebar } from "./sidebar-provider";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
@@ -24,11 +24,14 @@ import { cn } from "@/lib/utils";
 import {
   useSearchHistoryStore,
   useSearchHistoryUIStore,
+  useCurrentQueryStore,
+  useKeywordExpansionStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { SearchHistoryTab } from "./search-history-tab";
 import { AISettingsDialog } from "./ai-settings-dialog";
+import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import {
   Home,
   BookOpen,
@@ -65,6 +68,7 @@ interface NavItemProps {
   badge?: number;
   onClick?: () => void;
   index?: number;
+  customTooltipContent?: React.ReactNode;
 }
 
 function NavItem({
@@ -75,7 +79,8 @@ function NavItem({
   isCollapsed,
   badge,
   onClick,
-  index = 0
+  index = 0,
+  customTooltipContent
 }: NavItemProps) {
   const content = (
     <motion.div
@@ -114,6 +119,16 @@ function NavItem({
               ? "text-sidebar-primary drop-shadow-sm" 
               : "text-muted-foreground group-hover:text-sidebar-foreground"
           )} />
+          {/* Badge overlay when collapsed */}
+          {isCollapsed && badge !== undefined && badge > 0 && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
+            >
+              {badge > 9 ? '9+' : badge}
+            </motion.span>
+          )}
         </motion.div>
         
         <AnimatePresence mode="wait">
@@ -178,17 +193,53 @@ function NavItem({
             {content}
           </motion.div>
         </TooltipTrigger>
-        <TooltipContent side="right" className="flex items-center gap-2">
-          {label}
-          {badge !== undefined && badge > 0 && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
-            >
-              {badge}
-            </motion.span>
+        <TooltipContent 
+          side="right" 
+          className={customTooltipContent ? "w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto" : "flex items-center gap-2"}
+        >
+          {customTooltipContent ? (
+            <div className="p-3">
+              {customTooltipContent}
+            </div>
+          ) : (
+            <>
+              {label}
+              {badge !== undefined && badge > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
+                >
+                  {badge}
+                </motion.span>
+              )}
+            </>
           )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // When expanded with custom tooltip, show tooltip on hover
+  if (customTooltipContent) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <motion.div
+            whileHover={{ x: 4 }}
+            whileTap={{ x: 2, scale: 0.98 }}
+            transition={hoverSpring}
+          >
+            {content}
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="right" 
+          className="w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
+        >
+          <div className="p-3">
+            {customTooltipContent}
+          </div>
         </TooltipContent>
       </Tooltip>
     );
@@ -208,11 +259,35 @@ function NavItem({
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isCollapsed, isMobile } = useSidebar();
   const { searchHistory } = useSearchHistoryStore();
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const { currentQuery } = useCurrentQueryStore();
+  const { keywords } = useKeywordExpansionStore();
   const effectiveSearchId = useEffectiveSearchId();
   const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+
+  // Determine active query based on current page
+  const activeQuery = pathname === "/" 
+    ? currentQuery 
+    : searchParams.get("q") ?? "";
+
+  // Calculate expandable keywords count
+  const getExpandableCount = (query: string) => {
+    const keywordMatches = [...query.matchAll(/(\w[\w-]*)\.\.\./g)];
+    let count = 0;
+    keywordMatches.forEach(match => {
+      const keyword = match[1];
+      if (keywords[keyword]) {
+        count++;
+      }
+    });
+    return count;
+  };
+
+  const expandableCount = getExpandableCount(activeQuery);
+  const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
 
   const itemsPerPage = 10;
   const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
@@ -282,6 +357,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
             index={1}
+            badge={expandableCount > 0 ? expandableCount : undefined}
+            customTooltipContent={hasBookmarkSyntax ? <KeywordExpansionPreview query={activeQuery} /> : undefined}
           />
 
           <NavItem
@@ -290,7 +367,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             label="History"
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
-            badge={searchHistory.length}
             onClick={handleNavClick}
             index={2}
           />
@@ -563,7 +639,9 @@ export function AppSidebar() {
               </SheetTitle>
             </SheetHeader>
             <div className="flex-1 overflow-hidden">
-              <SidebarContent onClose={() => setOpen(false)} />
+              <Suspense fallback={null}>
+                <SidebarContent onClose={() => setOpen(false)} />
+              </Suspense>
             </div>
           </motion.div>
         </SheetContent>
@@ -637,7 +715,9 @@ export function AppSidebar() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <SidebarContent />
+        <Suspense fallback={null}>
+          <SidebarContent />
+        </Suspense>
       </div>
     </motion.aside>
   );

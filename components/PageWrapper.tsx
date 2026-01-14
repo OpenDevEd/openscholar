@@ -12,7 +12,7 @@ interface PageWrapperProps {
 export function PageWrapper({ children, className }: PageWrapperProps) {
   return (
     <div className={cn("flex-1 flex flex-col", className)}>
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col">
         {children}
       </div>
       <Footer />

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   useUIStore,
-  useSearchHistoryStore,
   useCurrentQueryStore,
 } from "@/lib/store";
 import { toast } from "sonner";
@@ -13,23 +12,24 @@ import {
   useCreateSearchFilters,
 } from "@/lib/hooks";
 import { submitNewSearch } from "@/lib/search";
-import { selectQueryFromHistory } from "@/lib/search-actions";
-import { serializeSearchParams, type ParsedSearchParams } from "@/lib/search-params";
-import { Logo } from "@/components/logo";
-import { Search, Loader2, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Search, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
+
 import React from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { useAIConfigStore } from "@/lib/store";
+import Image from "next/image";
+
+// Spring animation config matching history/bookmarks command centers
+const subtleSpring = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+  mass: 0.6,
+};
 
 function PageContent() {
   const router = useRouter();
@@ -125,113 +125,134 @@ function PageContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-12 md:py-20 flex-1">
-      <div className="w-full max-w-2xl space-y-8">
-        {/* Logo & Tagline */}
-        <div className="text-center space-y-4">
-          <div className="flex justify-center">
-            <Logo
-              size="xl"
-              className="hidden sm:flex"
-              context="home"
-              clickable={false}
-            />
-            <Logo
-              size="lg"
-              className="sm:hidden"
-              context="home"
-              clickable={false}
-            />
-          </div>
-          <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto">
-            Search millions of academic papers and research articles
-          </p>
-        </div>
+    <div className="flex-1 flex items-center justify-center px-4 py-8 md:py-12">
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={subtleSpring}
+          className={cn(
+            "relative rounded-2xl overflow-hidden",
+            "bg-background/80 dark:bg-background/60",
+            "backdrop-blur-xl backdrop-saturate-150",
+            "border border-border/50",
+            "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
+          )}
+        >
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
-        {/* AI Enhancement Loading */}
-        <AnimatePresence>
-          {isEnhancingQuestion && (
+          {/* Header */}
+          <div className={cn("relative px-4 md:px-6 py-6", "border-b border-border/40")}>
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className="text-center"
+              transition={{ ...subtleSpring, delay: 0.05 }}
+              className="flex flex-col items-center text-center gap-3"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 dark:bg-orange-950/30 dark:border-orange-800">
-                <Loader2 className="h-4 w-4 animate-spin text-orange-600 dark:text-orange-400" />
-                <span className="text-sm text-orange-700 dark:text-orange-300">
-                  Converting research question to search query...
-                </span>
+              {/* Logo SVG */}
+              <div className="relative">
+                <Image
+                  src="/icon.svg"
+                  alt="OpenScholar"
+                  width={64}
+                  height={64}
+                  className="w-14 h-14 md:w-16 md:h-16"
+                  priority
+                />
+                {/* Subtle glow effect */}
+                <div className="absolute inset-0 bg-primary/20 blur-2xl -z-10 scale-150" />
+              </div>
+
+              {/* Title + Description */}
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-baseline justify-center">
+                  OpenScholar
+                  <span className="text-base md:text-lg font-medium text-muted-foreground">.ai</span>
+                </h1>
+                <p className="text-sm md:text-base text-muted-foreground mt-1">
+                  Search millions of academic papers and research articles
+                </p>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
 
-        {/* Search Form - Glass Card */}
-        <form onSubmit={handleSubmit} className="w-full">
-          <div className="glass-card rounded-2xl p-4 md:p-6 space-y-4">
-            {/* Search Input */}
-            <div className="relative">
-              <Textarea
-                name="query"
-                value={currentQuery}
-                placeholder="Search for papers, topics... or ask a research question ending with ?"
-                className="w-full border-0 bg-transparent resize-none min-h-[80px] max-h-40 focus-visible:ring-0 focus-visible:ring-offset-0 text-base md:text-lg placeholder:text-muted-foreground/60"
-                disabled={isFormDisabled}
-                onChange={(e) => handleQueryChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    const form = e.currentTarget.form;
-                    if (form) {
-                      form.requestSubmit();
+          {/* Search Form */}
+          <div className="relative p-4 md:p-6">
+            {/* AI Enhancement Loading */}
+            <AnimatePresence>
+              {isEnhancingQuestion && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-4"
+                >
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 dark:bg-orange-950/30 dark:border-orange-800">
+                    <Loader2 className="h-4 w-4 animate-spin text-orange-600 dark:text-orange-400" />
+                    <span className="text-sm text-orange-700 dark:text-orange-300">
+                      Converting research question to search query...
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Search Input */}
+              <div className="relative">
+                <Textarea
+                  name="query"
+                  value={currentQuery}
+                  placeholder="Search for papers, topics... or ask a research question ending with ?"
+                  className="w-full border border-border/50 bg-background/50 rounded-xl resize-none min-h-[100px] max-h-40 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 text-base md:text-lg placeholder:text-muted-foreground/60 p-4"
+                  disabled={isFormDisabled}
+                  onChange={(e) => handleQueryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      const form = e.currentTarget.form;
+                      if (form) {
+                        form.requestSubmit();
+                      }
                     }
-                  }
-                }}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-between gap-3 pt-2 border-t border-border/50">
-              <div className="flex items-center gap-2">
-                <KeywordExpansionTooltip
-                  query={currentQuery}
-                  side="top"
-                  variant="ghost"
-                  buttonClassName="h-10 px-3"
-                  asLink
-                  href="/bookmarks"
+                  }}
                 />
               </div>
 
-              <Button
-                type="submit"
-                disabled={isFormDisabled || !currentQuery.trim()}
-                size="lg"
-                className="rounded-full px-6 gap-2 btn-hover"
-              >
-                {isEnhancingQuestion ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-4 w-4" />
-                    <span>Search</span>
-                  </>
-                )}
-              </Button>
-            </div>
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3">
+                <Button
+                  type="submit"
+                  disabled={isFormDisabled || !currentQuery.trim()}
+                  size="lg"
+                  className="rounded-full px-6 gap-2 btn-hover"
+                >
+                  {isEnhancingQuestion ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4" />
+                      <span>Search</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
-        </form>
 
-        {/* Keyboard Shortcut Hint */}
-        <p className="text-center text-xs text-muted-foreground">
-          Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to search,
-          <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono ml-1">Shift+Enter</kbd> for new line
-        </p>
+          {/* Footer - Keyboard Hints */}
+          <div className={cn("relative px-4 md:px-6 py-3", "border-t border-border/40", "bg-muted/20")}>
+            <p className="text-center text-xs text-muted-foreground">
+              Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to search,{" "}
+              <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Shift+Enter</kbd> for new line
+            </p>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
