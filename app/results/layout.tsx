@@ -1,23 +1,10 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { Navbar } from "@/components/navbar";
-import { useUIStore } from "@/lib/store";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
 
 interface ResultsLayoutProps {
   children: React.ReactNode;
-}
-
-function ResultsLayoutContent({ children }: ResultsLayoutProps) {
-  const { loadingResultIndex } = useUIStore();
-
-  return (
-    <div className="bg-background">
-      <Navbar loadingResultIndex={loadingResultIndex} />
-      {children}
-    </div>
-  );
 }
 
 export default function ResultsLayout({ children }: ResultsLayoutProps) {
@@ -31,7 +18,7 @@ export default function ResultsLayout({ children }: ResultsLayoutProps) {
     >
       <SearchInitializer>
         <SearchProvider>
-          <ResultsLayoutContent>{children}</ResultsLayoutContent>
+          {children}
         </SearchProvider>
       </SearchInitializer>
     </Suspense>

@@ -8,30 +8,63 @@
  */
 
 import { format, parseISO } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
 
 /**
- * Convert URL params to a partial SearchResult
- * Used when creating a new history entry from shared URL
+ * Type for what addSearchResult expects (required fields for new history entries)
+ * Uses DateRange from react-day-picker for compatibility with SearchResult
  */
-export function paramsToSearchResult(params: ParsedSearchParams): Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'questionHistory' | 'screeningQuestions' | 'screeningResponses'> {
+export type NewSearchResultData = {
+  query: string;
+  field: SearchField;
+  count: number;
+  sortBy?: string;
+  yearRange?: [number, number];
+  isYearRangeEnabled?: boolean;
+  dateRange?: DateRange;
+  filterType?: 'date' | 'year';
+  ratingRange?: [number, number];
+  onlyRatedPapers?: boolean;
+  selectedRegions?: string[];
+  selectedCountryFocus?: string[];
+  citesItemId?: string;
+  citedByItemId?: string;
+  relatedToItemId?: string;
+  reviewFilter?: boolean;
+  language?: string;
+  page?: number;
+};
+
+/**
+ * Convert URL params to SearchResult data
+ * Used when creating a new history entry from shared URL
+ * Returns object with required fields (query, field, count) always defined
+ */
+export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResultData {
+  // Build date range only if we have at least one date
+  let dateRange: DateRange | undefined;
+  if (params.df || params.dt) {
+    dateRange = {
+      from: params.df ? parseISO(params.df) : undefined,
+      to: params.dt ? parseISO(params.dt) : undefined,
+    };
+  }
+
   return {
-    query: params.q,
-    field: params.field as SearchField,
-    sortBy: params.sort,
+    query: params.q ?? '',
+    field: (params.field ?? 'title_and_abstract') as SearchField,
     count: 0, // Will be updated after search
+    sortBy: params.sort,
     
     // Year range
     yearRange: params.yf && params.yt ? [params.yf, params.yt] : undefined,
     isYearRangeEnabled: !!(params.yf || params.yt),
     
     // Date range
-    dateRange: params.df || params.dt ? {
-      from: params.df ? parseISO(params.df) : undefined,
-      to: params.dt ? parseISO(params.dt) : undefined,
-    } : undefined,
+    dateRange,
     filterType: params.ft as 'date' | 'year',
     
     // Rating
@@ -52,6 +85,9 @@ export function paramsToSearchResult(params: ParsedSearchParams): Omit<SearchRes
     
     // Language
     language: params.lang || undefined,
+    
+    // Pagination
+    page: params.page,
   };
 }
 
@@ -59,9 +95,9 @@ export function paramsToSearchResult(params: ParsedSearchParams): Omit<SearchRes
  * Convert a SearchResult to URL params
  * Used when syncing stored state to URL
  */
-export function searchResultToParams(result: SearchResult): Partial<ParsedSearchParams> {
+export function searchResultToParams(result: Partial<SearchResult>): Partial<ParsedSearchParams> {
   const params: Partial<ParsedSearchParams> = {
-    q: result.query,
+    q: result.query || '',
     field: result.field,
     sort: result.sortBy || DEFAULT_SEARCH_PARAMS.sort,
     ft: result.filterType || 'year',
@@ -121,6 +157,11 @@ export function searchResultToParams(result: SearchResult): Partial<ParsedSearch
     params.lang = result.language;
   }
   
+  // Pagination - only include if not on first page
+  if (result.page && result.page > 1) {
+    params.page = result.page;
+  }
+  
   return params;
 }
 
@@ -153,6 +194,18 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     
     reviewFilter: params.review,
   };
+}
+
+/**
+ * Helper to compare arrays
+ */
+function arraysEqual(a: string[] | undefined, b: string[] | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, idx) => val === sortedB[idx]);
 }
 
 /**
@@ -206,16 +259,6 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (params.lang !== (state.language || null)) return false;
   
   return true;
-}
-
-/**
- * Helper to compare arrays
- */
-function arraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const sortedA = [...a].sort();
-  const sortedB = [...b].sort();
-  return sortedA.every((val, idx) => val === sortedB[idx]);
 }
 
 /**

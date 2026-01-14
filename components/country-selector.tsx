@@ -370,15 +370,6 @@ export function CountrySelector({
             <span className="text-sm font-medium">
               Selected {showCountryNames ? 'countries' : 'regions'}:
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearFilter}
-              className="h-7 px-2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3 w-3 mr-1" />
-              Clear all
-            </Button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {selectedRegions.map((regionId, index) => {

@@ -47,14 +47,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { workToCoins, cn, getEffectiveSearchId } from "@/lib/utils";
+import { workToCoins, cn } from "@/lib/utils";
 import {
   useRatingsStore,
   useFocusModeSettingsStore,
   useUIStore,
   useTranslationStore,
-  useSearchHistoryStore,
 } from "@/lib/store";
+import { useSearchOptional } from "@/lib/search";
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from "next-themes";
 import { RatingSelector } from "../rating-selector";
@@ -90,16 +90,10 @@ export function FocusMode({
   const pathname = usePathname();
 
   const currentPaper = papers[currentIndex];
-  console.log(currentPaper);
 
-  // Get selected language for translation
-  const selectedLanguage = useSearchHistoryStore((state) => {
-    const searchId = getEffectiveSearchId(pathname, undefined);
-    const currentResult = searchId
-      ? state.searchHistory.find((item) => item.id === searchId)
-      : null;
-    return currentResult?.language || "";
-  });
+  // Get language from URL params (source of truth on results page)
+  const search = useSearchOptional();
+  const selectedLanguage = search?.params?.lang ?? '';
 
   // Swipe threshold for triggering navigation - made more restrictive
   const swipeThreshold = 120; // Increased from 50

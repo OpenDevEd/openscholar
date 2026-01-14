@@ -35,6 +35,8 @@ export { SearchInitializer } from './initializer';
 // Actions
 export { submitNewSearch, restoreFromHistory, createCitationSearch } from './actions';
 
-// Types
+// Types (interfaces only - no duplicate constants/functions)
 export type { SearchParams, SearchContextValue, SearchResultData } from './types';
-export { hasActiveFilters, hasSearchParams, DEFAULT_SEARCH_PARAMS } from './types';
+
+// Re-export from canonical location (lib/search-params) to avoid duplication
+export { hasActiveFilters, DEFAULT_SEARCH_PARAMS } from '../search-params';

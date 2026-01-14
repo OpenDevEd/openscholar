@@ -8,15 +8,16 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useCurrentQueryStore, useSearchHistoryStore } from "@/lib/store"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useSearchHistoryStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { useEffectiveQuery, useCurrentSearchFormState, useCreateSearchFilters, useEffectiveSearchId } from "@/lib/hooks"
+import { useEffectiveSearchId } from "@/lib/hooks"
+import { useSearchOptional } from "@/lib/search"
+import { buildResultsUrl, searchResultToParams } from "@/lib/search-params"
 import { PageHeader } from "@/components/ui/page-header"
 import { AIConfig } from "@/components/ai-config"
 import { cn, isDateFilterActive } from "@/lib/utils"
-import { updateCurrentSearch } from "@/lib/search-actions"
 
 interface AIEnhancementPageProps {
   /** Whether to show back navigation */
@@ -36,13 +37,11 @@ export function AIEnhancementPage({
   const { provider, model, apiKey } = useAIConfigStore()
   const { isEnhancing, enhancedPreview, setIsEnhancing, setEnhancedPreview } = useAIConfigDialogStore()
   const { suggestedQuery, setSuggestedQuery } = useKeywordExpansionDialogStore()
-  const createSearchFilters = useCreateSearchFilters()
   const currentSearchId = useEffectiveSearchId();
 
-  // Get current search result to access language setting
-  const currentSearchResult = useSearchHistoryStore((state) =>
-    currentSearchId ? state.searchHistory.find((item) => item.id === currentSearchId) : null
-  );
+  // Get language from URL params (source of truth on results page)
+  const search = useSearchOptional();
+  const currentLanguage = search?.params?.lang ?? '';
 
   const handleEnhanceQuery = async () => {
     if (!apiKey) {
@@ -63,7 +62,7 @@ export function AIEnhancementPage({
       setIsEnhancing(true)
 
       // Send the expanded query to AI enhancement
-      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, model, currentSearchResult?.language)
+      const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, model, currentLanguage || undefined)
       setEnhancedPreview(result)
     } catch (error) {
       toast.error("Enhancement Failed", {
@@ -76,21 +75,27 @@ export function AIEnhancementPage({
 
   const handleUseEnhancedQuery = async () => {
     if (enhancedPreview) {
-      // Just set the enhanced query in the current query store
-      const { setCurrentQuery } = useCurrentQueryStore.getState();
-      setCurrentQuery(enhancedPreview.enhancedQuery);
-
       toast.success("Enhanced Query Applied", {
-        description: "Query set in search field. Ready to search!",
+        description: "Navigating to results with enhanced query",
       })
       
-      // Navigate back based on context
+      // Navigate with enhanced query in URL params (URL is source of truth)
       if (currentSearchId) {
-        // If we have a search ID, go back to that results page
-        router.push(`/results/${currentSearchId}`)
+        const { getSearchResult } = useSearchHistoryStore.getState();
+        const entry = getSearchResult(currentSearchId);
+        if (entry) {
+          // Create params with enhanced query
+          const params = searchResultToParams({
+            ...entry,
+            query: enhancedPreview.enhancedQuery, // Override with enhanced query
+          });
+          router.push(buildResultsUrl(currentSearchId, params));
+        } else {
+          router.push('/');
+        }
       } else {
         // Otherwise go to home page
-        router.push('/')
+        router.push('/');
       }
     }
   }
@@ -104,8 +109,9 @@ export function AIEnhancementPage({
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <PageHeader
+    <div className="flex-1 overflow-y-auto">
+      <div className="container mx-auto p-6">
+        <PageHeader
         title="AI Query Enhancement"
         description="Enhance your search queries with AI-powered synonyms, operators, and semantic improvements"
         icon={Brain}
@@ -290,6 +296,7 @@ export function AIEnhancementPage({
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   )

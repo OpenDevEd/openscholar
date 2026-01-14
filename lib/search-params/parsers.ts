@@ -113,8 +113,11 @@ export type ParsedSearchParams = {
 
 /**
  * Create URL serializer for building shareable URLs
+ * clearOnDefault: false ensures empty searches still produce valid query strings
  */
-export const serializeSearchParams = createSerializer(searchParamsParsers);
+export const serializeSearchParams = createSerializer(searchParamsParsers, {
+  clearOnDefault: false
+});
 
 /**
  * Default values matching the parsers

@@ -1,5 +1,10 @@
 import PageContent from '@/components/PageContent';
+import { PageWrapper } from '@/components/PageWrapper';
 
 export default function Home() {
-  return <PageContent />;
+  return (
+    <PageWrapper>
+      <PageContent />
+    </PageWrapper>
+  );
 }

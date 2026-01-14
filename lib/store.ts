@@ -68,25 +68,40 @@ interface SearchHistoryState {
   importSearchHistory: (data: any[]) => number
 }
 
+export type ViewMode = 'list-simple' | 'list-detail' | 'grid-2' | 'grid-3'
+export type HistorySortBy = 'recent' | 'oldest' | 'most' | 'least'
+export type BookmarkSortBy = 'recent' | 'oldest' | 'alpha' | 'alpha-desc'
+
+// Bookmark data structure
+export interface BookmarkData {
+  expansion: string
+  createdAt: number
+}
+
 interface UIState {
   isDialogOpen: boolean
   loadingResultIndex: number | null
   isFocusModeOpen: boolean
   focusModeIndex: number
+  viewMode: ViewMode
+  historyViewMode: ViewMode
+  historySortBy: HistorySortBy
+  bookmarkViewMode: ViewMode
+  bookmarkSortBy: BookmarkSortBy
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
   setFocusModeIndex: (index: number) => void
+  setViewMode: (mode: ViewMode) => void
+  setHistoryViewMode: (mode: ViewMode) => void
+  setHistorySortBy: (sort: HistorySortBy) => void
+  setBookmarkViewMode: (mode: ViewMode) => void
+  setBookmarkSortBy: (sort: BookmarkSortBy) => void
 }
 
 interface ResultsState {
-  currentPage: number
   expandedAbstracts: Record<string, boolean>
-  resultsFilter: string
-  setCurrentPage: (page: number) => void
   toggleAbstract: (paperId: string) => void
-  setResultsFilter: (filter: string) => void
-  clearResults: () => void
 }
 
 interface FocusModeSettingsState {
@@ -104,12 +119,13 @@ interface FocusModeSettingsState {
 }
 
 interface KeywordExpansionState {
-  keywords: Record<string, string>
+  keywords: Record<string, BookmarkData>
   addKeyword: (shorthand: string, expansion: string) => void
   updateKeyword: (shorthand: string, expansion: string) => void
   removeKeyword: (shorthand: string) => void
   clearKeywords: () => void
   expandQuery: (query: string) => { expandedQuery: string; warnings: string[] }
+  importKeywords: (data: any[]) => number
 }
 
 interface AIConfigState {
@@ -520,34 +536,49 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
   )
 )
 
-export const useUIStore = create<UIState>((set) => ({
-  isDialogOpen: false,
-  loadingResultIndex: null,
-  isFocusModeOpen: false,
-  focusModeIndex: 0,
-  setIsDialogOpen: (open) => set({ isDialogOpen: open }),
-  setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
-  setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
-  setFocusModeIndex: (index) => set({ focusModeIndex: index }),
-}))
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      isDialogOpen: false,
+      loadingResultIndex: null,
+      isFocusModeOpen: false,
+      focusModeIndex: 0,
+      viewMode: 'list-detail',
+      historyViewMode: 'list-detail',
+      historySortBy: 'recent',
+      bookmarkViewMode: 'list-detail',
+      bookmarkSortBy: 'recent',
+      setIsDialogOpen: (open) => set({ isDialogOpen: open }),
+      setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
+      setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
+      setFocusModeIndex: (index) => set({ focusModeIndex: index }),
+      setViewMode: (mode) => set({ viewMode: mode }),
+      setHistoryViewMode: (mode) => set({ historyViewMode: mode }),
+      setHistorySortBy: (sort) => set({ historySortBy: sort }),
+      setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
+      setBookmarkSortBy: (sort) => set({ bookmarkSortBy: sort }),
+    }),
+    {
+      name: 'ui-store',
+      partialize: (state) => ({ 
+        viewMode: state.viewMode,
+        historyViewMode: state.historyViewMode,
+        historySortBy: state.historySortBy,
+        bookmarkViewMode: state.bookmarkViewMode,
+        bookmarkSortBy: state.bookmarkSortBy,
+      }),
+    }
+  )
+)
 
 export const useResultsStore = create<ResultsState>((set) => ({
-  currentPage: 1,
   expandedAbstracts: {},
-  resultsFilter: "",
-  setCurrentPage: (page) => set({ currentPage: page }),
   toggleAbstract: (paperId) => set((state) => ({
     expandedAbstracts: {
       ...state.expandedAbstracts,
       [paperId]: !state.expandedAbstracts[paperId]
     }
   })),
-  setResultsFilter: (filter) => set({ resultsFilter: filter, currentPage: 1 }),
-  clearResults: () => set({ 
-    currentPage: 1,
-    expandedAbstracts: {},
-    resultsFilter: ""
-  }),
 }))
 
 export const useFocusModeSettingsStore = create<FocusModeSettingsState>()(
@@ -583,14 +614,17 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
       keywords: {},
       addKeyword: (shorthand, expansion) => set((state) => ({
         keywords: {
-          [shorthand]: expansion,
+          [shorthand]: { expansion, createdAt: Date.now() },
           ...state.keywords,
         },
       })),
       updateKeyword: (shorthand, expansion) => set((state) => ({
         keywords: {
           ...state.keywords,
-          [shorthand]: expansion,
+          [shorthand]: { 
+            ...state.keywords[shorthand],
+            expansion,
+          },
         },
       })),
       removeKeyword: (shorthand) => set((state) => {
@@ -602,9 +636,9 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
         const { keywords } = get();
         const warnings: string[] = [];
         const expandedQuery = query.replace(/(\w[\w-]*)\.\.\./g, (match, keyword) => {
-          const expansion = keywords[keyword];
-          if (expansion) {
-            return expansion;
+          const bookmarkData = keywords[keyword];
+          if (bookmarkData?.expansion) {
+            return bookmarkData.expansion;
           } else {
             warnings.push(`Bookmark "${keyword}" not found`);
             return match;
@@ -612,9 +646,57 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
         });
         return { expandedQuery, warnings };
       },
+      importKeywords: (data) => {
+        let importedCount = 0;
+        const validItems: Record<string, BookmarkData> = {};
+        
+        data.forEach((item) => {
+          // Support both old format (name, expansion) and new format (name, expansion, createdAt)
+          const name = item.name || item.shorthand || '';
+          const expansion = item.expansion || '';
+          const createdAt = item.createdAt || Date.now();
+          
+          // Skip items without required fields
+          if (!name || !expansion) {
+            return;
+          }
+          
+          validItems[name] = { expansion, createdAt };
+          importedCount++;
+        });
+        
+        if (Object.keys(validItems).length > 0) {
+          set((state) => ({
+            keywords: { ...validItems, ...state.keywords },
+          }));
+        }
+        
+        return importedCount;
+      },
     }),
     {
       name: 'keyword-expansion-store',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        // Migration from version 0 (old format) to version 1 (new format with timestamps)
+        if (version === 0 && persistedState.keywords) {
+          const oldKeywords = persistedState.keywords as Record<string, string | BookmarkData>;
+          const newKeywords: Record<string, BookmarkData> = {};
+          
+          Object.entries(oldKeywords).forEach(([key, value]) => {
+            if (typeof value === 'string') {
+              // Old format: string value
+              newKeywords[key] = { expansion: value, createdAt: Date.now() };
+            } else if (value && typeof value === 'object' && 'expansion' in value) {
+              // Already new format
+              newKeywords[key] = value as BookmarkData;
+            }
+          });
+          
+          return { ...persistedState, keywords: newKeywords };
+        }
+        return persistedState;
+      },
     }
   )
 )
@@ -699,16 +781,6 @@ interface SearchHistoryUIState {
 
 // Removed NavbarState - using currentQuery from ResultsStore as single source of truth
 // Removed PageContentState - using currentQuery from ResultsStore as single source of truth
-
-interface ResultsPageContentState {
-  isSidebarOpen: boolean
-  setIsSidebarOpen: (open: boolean) => void
-}
-
-interface AIEnhanceState {
-  isDialogOpen: boolean
-  setIsDialogOpen: (open: boolean) => void
-}
 
 interface AIConfigDialogState {
   isEnhancing: boolean
@@ -824,11 +896,6 @@ export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({
 
 // Removed useNavbarStore - using currentQuery from ResultsStore as single source of truth
 // Removed usePageContentStore - using currentQuery from ResultsStore as single source of truth
-
-export const useResultsPageContentStore = create<ResultsPageContentState>((set) => ({
-  isSidebarOpen: false,
-  setIsSidebarOpen: (open) => set({ isSidebarOpen: open }),
-}))
 
 export const useScreeningStore = create<ScreeningState>()(
   persist(
@@ -1062,11 +1129,6 @@ export const useScreeningStore = create<ScreeningState>()(
   )
 )
 
-export const useAIEnhanceStore = create<AIEnhanceState>((set) => ({
-  isDialogOpen: false,
-  setIsDialogOpen: (open) => set({ isDialogOpen: open }),
-}))
-
 export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
   isEnhancing: false,
   enhancedPreview: null,
@@ -1104,30 +1166,6 @@ export const useZoteroConfigStore = create<ZoteroConfigState>()(
     {
       name: 'zotero-config-storage',
       version: 1,
-    }
-  )
-);
-
-// Review store for managing review workflow steps
-interface ReviewStoreState {
-  step: number;
-  setStep: (step: number) => void;
-  nextStep: () => void;
-  previousStep: () => void;
-  resetStep: () => void;
-}
-
-export const useReviewStore = create<ReviewStoreState>()(
-  persist(
-    (set, get) => ({
-      step: 1,
-      setStep: (step) => set({ step }),
-      nextStep: () => set((state) => ({ step: state.step + 1 })),
-      previousStep: () => set((state) => ({ step: Math.max(1, state.step - 1) })),
-      resetStep: () => set({ step: 1 }),
-    }),
-    {
-      name: 'review-store',
     }
   )
 );

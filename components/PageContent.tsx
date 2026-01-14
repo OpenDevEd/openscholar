@@ -2,10 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { SearchHistory } from "@/components/search-history";
 import {
   useUIStore,
-  useSearchHistoryStore,
   useCurrentQueryStore,
 } from "@/lib/store";
 import { toast } from "sonner";
@@ -13,26 +11,25 @@ import {
   useQueryChangeHandler,
   useCreateSearchFilters,
 } from "@/lib/hooks";
-import { submitNewSearch, restoreFromHistory } from "@/lib/search";
-import { selectQueryFromHistory } from "@/lib/search-actions";
-import { serializeSearchParams, type ParsedSearchParams } from "@/lib/search-params";
-import { Logo } from "@/components/logo";
+import { submitNewSearch } from "@/lib/search";
+import { cn } from "@/lib/utils";
 import { Search, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import { BookOpen, Sparkles } from "lucide-react";
-import { KeywordExpansionTooltip } from "@/components/keyword-expansion-tooltip";
+
 import React from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { useAIConfigStore } from "@/lib/store";
-import { FooterBanner } from "./ui/footer";
+import Image from "next/image";
+
+// Spring animation config matching history/bookmarks command centers
+const subtleSpring = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+  mass: 0.6,
+};
 
 function PageContent() {
   const router = useRouter();
@@ -122,103 +119,66 @@ function PageContent() {
     // Submit new search and get the URL to navigate to
     const researchQuestion = originalQuery.trim().endsWith('?') ? originalQuery : undefined;
     const { url } = submitNewSearch(searchQuery, filters, researchQuestion);
-    
+
     // Navigate to the results page with search params
     router.push(url);
   };
 
-  const handleSearchHistoryClick = async (
-    query: string,
-    searchField: any,
-    dateRange?: any,
-    sortBy?: string,
-    yearRange?: [number, number],
-    filterType?: "date" | "year",
-    index?: number
-  ) => {
-    // With SWR, we just need to navigate to the search result
-    // The data will be automatically loaded by the SWR hook
-    const { searchHistory } = useSearchHistoryStore.getState();
-    const searchResult = searchHistory[index || 0];
-
-    if (searchResult?.id) {
-      // Build URL params from the stored search result
-      const urlParams: Partial<ParsedSearchParams> = {
-        q: searchResult.query,
-        field: searchResult.field,
-        sort: searchResult.sortBy || 'relevance_score:desc',
-        ft: searchResult.filterType || 'year',
-      };
-      
-      // Add optional filters
-      if (searchResult.isYearRangeEnabled && searchResult.yearRange) {
-        urlParams.yf = searchResult.yearRange[0];
-        urlParams.yt = searchResult.yearRange[1];
-      }
-      if (searchResult.filterType === 'date' && searchResult.dateRange) {
-        if (searchResult.dateRange.from) {
-          urlParams.df = new Date(searchResult.dateRange.from).toISOString().split('T')[0];
-        }
-        if (searchResult.dateRange.to) {
-          urlParams.dt = new Date(searchResult.dateRange.to).toISOString().split('T')[0];
-        }
-      }
-      if (searchResult.selectedRegions && searchResult.selectedRegions.length > 0) {
-        urlParams.reg = searchResult.selectedRegions;
-      }
-      if (searchResult.selectedCountryFocus && searchResult.selectedCountryFocus.length > 0) {
-        urlParams.focus = searchResult.selectedCountryFocus;
-      }
-      if (searchResult.citesItemId) {
-        urlParams.cites = searchResult.citesItemId;
-      }
-      if (searchResult.citedByItemId) {
-        urlParams.citedBy = searchResult.citedByItemId;
-      }
-      if (searchResult.relatedToItemId) {
-        urlParams.rel = searchResult.relatedToItemId;
-      }
-      if (searchResult.reviewFilter) {
-        urlParams.review = true;
-      }
-      
-      const queryString = serializeSearchParams(urlParams as ParsedSearchParams);
-      router.push(`/results/${searchResult.id}?${queryString}`);
-    } else {
-      toast.error("Search not found", {
-        description: "The requested search could not be found in your history.",
-      });
-    }
-  };
-
-  const handleQuerySelect = async (searchId: string, selectedQuery: string) => {
-    await selectQueryFromHistory(searchId, selectedQuery, router);
-  };
-
   return (
-    <main className="w-full h-screen bg-background">
-      {/* Full screen container */}
-      <div className="relative w-full h-full">
-        {/* Centered logo + search bar container */}
-        <div className="absolute inset-0 flex items-center justify-center px-4">
-          <div className="relative w-full max-w-2xl space-y-6 md:space-y-8">
-            {/* Logo */}
-            <div className="text-center">
-              <Logo
-                size="lg"
-                className="justify-center mb-4 md:mb-6 lg:mb-8 sm:hidden"
-                context="home"
-              />
-              <Logo
-                size="xl"
-                className="justify-center mb-4 md:mb-6 lg:mb-8 hidden sm:flex"
-                context="home"
-              />
-              <p className="text-muted-foreground text-sm sm:text-base md:text-lg px-4">
-                Search millions of academic papers and research articles
-              </p>
-            </div>
+    <div className="flex-1 flex items-center justify-center px-4 py-8 md:py-12">
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={subtleSpring}
+          className={cn(
+            "relative rounded-2xl overflow-hidden",
+            "bg-background/80 dark:bg-background/60",
+            "backdrop-blur-xl backdrop-saturate-150",
+            "border border-border/50",
+            "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
+          )}
+        >
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
+          {/* Header */}
+          <div className={cn("relative px-4 md:px-6 py-6", "border-b border-border/40")}>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...subtleSpring, delay: 0.05 }}
+              className="flex flex-col items-center text-center gap-3"
+            >
+              {/* Logo SVG */}
+              <div className="relative">
+                <Image
+                  src="/icon.svg"
+                  alt="OpenScholar"
+                  width={64}
+                  height={64}
+                  className="w-14 h-14 md:w-16 md:h-16"
+                  priority
+                />
+                {/* Subtle glow effect */}
+                <div className="absolute inset-0 bg-primary/20 blur-2xl -z-10 scale-150" />
+              </div>
+
+              {/* Title + Description */}
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-baseline justify-center">
+                  OpenScholar
+                  <span className="text-base md:text-lg font-medium text-muted-foreground">.ai</span>
+                </h1>
+                <p className="text-sm md:text-base text-muted-foreground mt-1">
+                  Search millions of academic papers and research articles
+                </p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Search Form */}
+          <div className="relative p-4 md:p-6">
             {/* AI Enhancement Loading */}
             <AnimatePresence>
               {isEnhancingQuestion && (
@@ -227,11 +187,11 @@ function PageContent() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.3 }}
-                  className="text-center"
+                  className="mb-4"
                 >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 dark:bg-orange-950/30 dark:border-orange-800">
+                    <Loader2 className="h-4 w-4 animate-spin text-orange-600 dark:text-orange-400" />
+                    <span className="text-sm text-orange-700 dark:text-orange-300">
                       Converting research question to search query...
                     </span>
                   </div>
@@ -239,99 +199,62 @@ function PageContent() {
               )}
             </AnimatePresence>
 
-            {/* Search Form */}
-            <form onSubmit={handleSubmit} className="w-full px-2 md:px-0">
-              <div className="relative space-y-3 md:space-y-0">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Search Input */}
+              <div className="relative">
+                <Textarea
+                  name="query"
+                  value={currentQuery}
+                  placeholder="Search for papers, topics... or ask a research question ending with ?"
+                  className="w-full border border-border/50 bg-background/50 rounded-xl resize-none min-h-[100px] max-h-40 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 text-base md:text-lg placeholder:text-muted-foreground/60 p-4"
+                  disabled={isFormDisabled}
+                  onChange={(e) => handleQueryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      const form = e.currentTarget.form;
+                      if (form) {
+                        form.requestSubmit();
+                      }
+                    }
+                  }}
+                />
+              </div>
 
-                <div className="space-y-3">
-                  {/* Search input area */}
-                  <div className="flex w-full flex-col gap-2 items-center space-x-2 p-2 border rounded-xl shadow-lg hover:shadow-xl transition-shadow bg-background">
-                    {/* <Search className="h-5 w-5 text-muted-foreground mx-4 ml-2" /> */}
-                    <Textarea
-                      name="query"
-                      value={currentQuery}
-                      placeholder="Search for papers, topics... or ask a research question ending with ?"
-                      className="flex-1 border-0 bg-transparent resize-none min-h-[48px] max-h-32 mr-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
-                      disabled={isFormDisabled}
-                      onChange={(e) => handleQueryChange(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          const form = e.currentTarget.form;
-                          if (form) {
-                            form.requestSubmit();
-                          }
-                        }
-                      }}
-                    />
-                     <div className="flex items-center justify-center gap-3">
-                    <KeywordExpansionTooltip
-                      query={currentQuery}
-                      side="top"
-                      variant="outline"
-                      buttonClassName="rounded-full h-12 w-12"
-                      asLink
-                      href="/bookmarks"
-                      iconOnly
-                    />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          asChild
-                          size="icon"
-                          variant="outline"
-                          className="rounded-full h-12 w-12"
-                        >
-                          <Link href="/ai-enhancement">
-                            <Sparkles className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p>AI Enhancement</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Button
-                      type="submit"
-                      disabled={isFormDisabled}
-                      className="rounded-full h-12 w-12"
-                      size="icon"
-                    >
-                      {isEnhancingQuestion ? (
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <Search className="h-5 w-5" />
-                      )}
-                    </Button>
-                  </div>
-                  </div>
-
-                  {/* Buttons row */}
-                 
-                </div>
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3">
+                <Button
+                  type="submit"
+                  disabled={isFormDisabled || !currentQuery.trim()}
+                  size="lg"
+                  className="rounded-full px-6 gap-2 btn-hover"
+                >
+                  {isEnhancingQuestion ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4" />
+                      <span>Search</span>
+                    </>
+                  )}
+                </Button>
               </div>
             </form>
-
-            {/* Search History - absolutely positioned directly under this container */}
-            <div className="absolute top-full left-0 right-0 pt-8 md:pt-12 pb-8 md:pb-16">
-              <SearchHistory
-                onSearchResults={handleSearchHistoryClick}
-                loadingResultIndex={loadingResultIndex}
-                currentSearchField="title_and_abstract"
-                compact={true}
-                currentSearchId={undefined}
-                onQuerySelect={handleQuerySelect}
-              />
-
-              {/* Footer */}
-              <div className="text-center mt-12 pt-6">
-                <FooterBanner />
-              </div>
-            </div>
           </div>
-        </div>
+
+          {/* Footer - Keyboard Hints */}
+          <div className={cn("relative px-4 md:px-6 py-3", "border-t border-border/40", "bg-muted/20")}>
+            <p className="text-center text-xs text-muted-foreground">
+              Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to search,{" "}
+              <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Shift+Enter</kbd> for new line
+            </p>
+          </div>
+        </motion.div>
       </div>
-    </main>
+    </div>
   );
 }
 

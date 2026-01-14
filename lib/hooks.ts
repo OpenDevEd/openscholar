@@ -137,7 +137,7 @@ export function useCurrentSearchFormState() {
 
 /**
  * Internal hook that uses URL-based state via useSearch context
- * Only use this on pages with results (or wrapped in Suspense)
+ * Only use this on pages with results
  */
 function useCurrentSearchFormStateFromUrl() {
   const search = useSearchOptional();
@@ -152,6 +152,8 @@ function useCurrentSearchFormStateFromUrl() {
   // Map from URL-based state to the old API format
   return {
     currentSearchField: search.params.field as SearchField,
+    currentQuery: search.params.q,
+    currentLanguage: search.params.lang ?? '',
     dateRange: search.params.df || search.params.dt ? {
       from: search.params.df ? new Date(search.params.df) : undefined,
       to: search.params.dt ? new Date(search.params.dt) : undefined,
@@ -187,6 +189,8 @@ function useCurrentSearchFormStateFromStore() {
   
   return {
     currentSearchField: (searchResult?.field || 'title_and_abstract') as SearchField,
+    currentQuery: searchResult?.query ?? '',
+    currentLanguage: searchResult?.language ?? '',
     dateRange: searchResult?.dateRange || DEFAULT_FILTERS.dateRange,
     sortBy: searchResult?.sortBy || 'relevance_score:desc',
     filterType: (searchResult?.filterType || 'year') as 'date' | 'year',
@@ -208,9 +212,7 @@ function useCurrentSearchFormStateFromStore() {
 /**
  * Custom hook to update search filters via URL params
  * Updated to use URL as source of truth
- * 
- * NOTE: This hook uses useSearchState() which requires being on a results page
- * or being wrapped in a Suspense boundary.
+ * Only works on results pages where SearchProvider is available.
  */
 export function useUpdateSearchFilter() {
   const pathname = usePathname();

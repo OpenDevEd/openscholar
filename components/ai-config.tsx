@@ -11,17 +11,27 @@ import { fetchOpenRouterModels } from "@/app/actions/openrouter"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { AIModel, AIProvider } from "@/lib/types/ai.types"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Check, ChevronRight, Search } from "lucide-react"
 
-export function AIConfig() {
+interface AIConfigProps {
+  variant?: 'card' | 'plain'
+  onViewChange?: (view: 'config' | 'model-select') => void
+}
+
+type View = 'config' | 'model-select'
+
+export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
   const { provider, model, setProvider, setModel, apiKey, setApiKey, budget, setBudget, dollarsUsed } = useAIConfigStore()
 
-  const [openModels, setOpenModels] = useState(false)
+  const [view, setViewState] = useState<View>('config')
   const [models, setModels] = useState<AIModel[]>([])
   const [modelSearch, setModelSearch] = useState("")
   const [loadingModels, setLoadingModels] = useState(false)
+
+  const setView = (newView: View) => {
+    setViewState(newView)
+    onViewChange?.(newView)
+  }
 
   const providerConfig = getProviderConfig(provider)
   const ProviderIcon = getProviderIcon(provider)
@@ -38,7 +48,8 @@ export function AIConfig() {
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel)
-    setOpenModels(false)
+    setView('config')
+    setModelSearch("")
     toast.success("Model Updated", {
       description: `AI model set to ${newModel}`,
     })
@@ -87,26 +98,289 @@ export function AIConfig() {
 
   const selectedModel = models.find((m) => m.id === model)
 
-  const groupedModels: Record<string, AIModel[]> = {}
-  models.forEach((model) => {
-    if (provider === 'openrouter') {
-      const category = model.category || 'Other'
-      if (!groupedModels[category]) {
-        groupedModels[category] = []
-      }
-      groupedModels[category].push(model)
-    } else {
-      if (!groupedModels['All']) {
-        groupedModels['All'] = []
-      }
-      groupedModels['All'].push(model)
-    }
-  })
-
   const filteredModels = models.filter((model) =>
     model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
     model.id.toLowerCase().includes(modelSearch.toLowerCase())
   )
+
+  // Group filtered models by category
+  const filteredGroupedModels: Record<string, AIModel[]> = {}
+  filteredModels.forEach((m) => {
+    if (provider === 'openrouter') {
+      const category = m.category || 'Other'
+      if (!filteredGroupedModels[category]) {
+        filteredGroupedModels[category] = []
+      }
+      filteredGroupedModels[category].push(m)
+    } else {
+      if (!filteredGroupedModels['All']) {
+        filteredGroupedModels['All'] = []
+      }
+      filteredGroupedModels['All'].push(m)
+    }
+  })
+
+  // Model Selection View
+  const modelSelectView = (
+    <div className="p-6 pt-0">
+      {/* Sticky Header + Search */}
+      <div className="flex-shrink-0 sticky top-0 bg-background pt-6">
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-4 border-b">
+          <button
+            type="button"
+            onClick={() => {
+              setView('config')
+              setModelSearch("")
+            }}
+            className="p-1.5 rounded-md hover:bg-accent transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <h3 className="font-semibold">Select Model</h3>
+            <p className="text-xs text-muted-foreground">{providerConfig.name}</p>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative py-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search models..."
+            value={modelSearch}
+            onChange={(e) => setModelSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {/* Model List - Scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+        {loadingModels ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-2" />
+            Loading models...
+          </div>
+        ) : filteredModels.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No models found
+          </div>
+        ) : (
+          <div className="space-y-4 pb-4">
+            {Object.entries(filteredGroupedModels).map(([category, categoryModels]) => (
+              <div key={category}>
+                {provider === 'openrouter' && (
+                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    {category}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {categoryModels.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => handleModelChange(m.id)}
+                      className={cn(
+                        "w-full flex flex-col items-start gap-1 p-3 rounded-lg text-left transition-colors",
+                        m.id === model
+                          ? "bg-primary/10 border border-primary/20"
+                          : "hover:bg-accent border border-transparent"
+                      )}
+                    >
+                      <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                        <span className="font-medium truncate min-w-0 flex-1">{m.name}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            ${m.pricing.input.toFixed(2)}/${m.pricing.output.toFixed(2)}
+                          </span>
+                          {m.id === model && (
+                            <Check className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                      </div>
+                      {m.description && (
+                        <span className="text-xs text-muted-foreground line-clamp-1 w-full">
+                          {m.description}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const content = (
+    <div className="space-y-6 p-6">
+      {/* Provider Selection */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">AI Provider</Label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => handleProviderChange('openai')}
+            className={cn(
+              "p-4 rounded-xl border-2 transition-all duration-200",
+              provider === 'openai'
+                ? 'border-green-500 bg-green-50 dark:bg-green-950/50'
+                : 'border-border hover:border-border/80'
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-center">
+              <OpenAIIcon className={cn(
+                "h-10 w-10",
+                provider === 'openai' ? 'text-green-500' : 'text-muted-foreground'
+              )} />
+              <div>
+                <div className="text-sm font-medium">OpenAI</div>
+                <div className="text-xs text-muted-foreground">GPT</div>
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleProviderChange('google')}
+            className={cn(
+              "p-4 rounded-xl border-2 transition-all duration-200",
+              provider === 'google'
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
+                : 'border-border hover:border-border/80'
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-center">
+              <GoogleIcon className={cn(
+                "h-10 w-10",
+                provider === 'google' ? 'text-blue-500' : 'text-muted-foreground'
+              )} />
+              <div>
+                <div className="text-sm font-medium">Google</div>
+                <div className="text-xs text-muted-foreground">Gemini</div>
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleProviderChange('anthropic')}
+            className={cn(
+              "p-4 rounded-xl border-2 transition-all duration-200",
+              provider === 'anthropic'
+                ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/50'
+                : 'border-border hover:border-border/80'
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-center">
+              <AnthropicIcon className={cn(
+                "h-10 w-10",
+                provider === 'anthropic' ? 'text-orange-500' : 'text-muted-foreground'
+              )} />
+              <div>
+                <div className="text-sm font-medium">Anthropic</div>
+                <div className="text-xs text-muted-foreground">Claude</div>
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleProviderChange('openrouter')}
+            className={cn(
+              "p-4 rounded-xl border-2 transition-all duration-200",
+              provider === 'openrouter'
+                ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/50'
+                : 'border-border hover:border-border/80'
+            )}
+          >
+            <div className="flex flex-col items-center gap-2 text-center">
+              <OpenRouterIcon className={cn(
+                "h-10 w-10",
+                provider === 'openrouter' ? 'text-purple-500' : 'text-muted-foreground'
+              )} />
+              <div>
+                <div className="text-sm font-medium">OpenRouter</div>
+                <div className="text-xs text-muted-foreground">300+ Models</div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Model Selection */}
+      <div className="space-y-2">
+        <Label>Model</Label>
+        <button
+          type="button"
+          onClick={() => setView('model-select')}
+          className={cn(
+            "w-full flex items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent/50 transition-colors",
+            !selectedModel && "text-muted-foreground"
+          )}
+        >
+          <span className="truncate">
+            {selectedModel ? selectedModel.name : `Select ${providerConfig.name} model...`}
+          </span>
+          <div className="flex items-center gap-2">
+            {loadingModels && (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            )}
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </button>
+      </div>
+
+      {/* API Key Input */}
+      <div className="space-y-2">
+        <Label htmlFor="ai-config-api-key">API Key</Label>
+        <Input
+          id="ai-config-api-key"
+          type="password"
+          placeholder={providerConfig.apiKeyPlaceholder}
+          value={apiKey}
+          onChange={(e) => handleApiKeyChange(e.target.value)}
+        />
+        <div className="flex items-center justify-between">
+          <a
+            href={providerConfig.apiKeyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Get your {providerConfig.name} API key →
+          </a>
+        </div>
+      </div>
+
+      {/* Budget Input */}
+      <div className="space-y-2">
+        <Label htmlFor="ai-config-budget">Budget (USD)</Label>
+        <Input
+          id="ai-config-budget"
+          type="number"
+          min={0}
+          step={0.01}
+          value={budget === 0 ? "" : budget.toString()}
+          placeholder="Unlimited"
+          onChange={(e) => handleBudgetChange(e.target.value)}
+        />
+        <p className="text-xs text-muted-foreground">
+          {`Leave empty or 0 for no limit. Current spent: $${dollarsUsed.toFixed(2)}`}
+        </p>
+      </div>
+    </div>
+  )
+
+  if (variant === 'plain') {
+    if (view === 'model-select') {
+      return modelSelectView
+    }
+    return content
+  }
 
   return (
     <Card>
@@ -116,223 +390,8 @@ export function AIConfig() {
           AI Configuration
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Provider Selection */}
-        <div className="space-y-3">
-          <Label className="text-sm font-medium">AI Provider</Label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => handleProviderChange('openai')}
-              className={cn(
-                "p-4 rounded-xl border-2 transition-all duration-200",
-                provider === 'openai'
-                  ? 'border-green-500 bg-green-50 dark:bg-green-950/50'
-                  : 'border-border hover:border-border/80'
-              )}
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <OpenAIIcon className={cn(
-                  "h-10 w-10",
-                  provider === 'openai' ? 'text-green-500' : 'text-muted-foreground'
-                )} />
-                <div>
-                  <div className="text-sm font-medium">OpenAI</div>
-                  <div className="text-xs text-muted-foreground">GPT-4o, o1</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleProviderChange('google')}
-              className={cn(
-                "p-4 rounded-xl border-2 transition-all duration-200",
-                provider === 'google'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
-                  : 'border-border hover:border-border/80'
-              )}
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <GoogleIcon className={cn(
-                  "h-10 w-10",
-                  provider === 'google' ? 'text-blue-500' : 'text-muted-foreground'
-                )} />
-                <div>
-                  <div className="text-sm font-medium">Google</div>
-                  <div className="text-xs text-muted-foreground">Gemini</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleProviderChange('anthropic')}
-              className={cn(
-                "p-4 rounded-xl border-2 transition-all duration-200",
-                provider === 'anthropic'
-                  ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/50'
-                  : 'border-border hover:border-border/80'
-              )}
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <AnthropicIcon className={cn(
-                  "h-10 w-10",
-                  provider === 'anthropic' ? 'text-orange-500' : 'text-muted-foreground'
-                )} />
-                <div>
-                  <div className="text-sm font-medium">Anthropic</div>
-                  <div className="text-xs text-muted-foreground">Claude</div>
-                </div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleProviderChange('openrouter')}
-              className={cn(
-                "p-4 rounded-xl border-2 transition-all duration-200",
-                provider === 'openrouter'
-                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/50'
-                  : 'border-border hover:border-border/80'
-              )}
-            >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <OpenRouterIcon className={cn(
-                  "h-10 w-10",
-                  provider === 'openrouter' ? 'text-purple-500' : 'text-muted-foreground'
-                )} />
-                <div>
-                  <div className="text-sm font-medium">OpenRouter</div>
-                  <div className="text-xs text-muted-foreground">300+ Models</div>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Model Selection */}
-        <div className="space-y-2">
-          <Label>Model</Label>
-          <Popover open={openModels} onOpenChange={setOpenModels}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  "w-full flex items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                  !selectedModel && "text-muted-foreground"
-                )}
-              >
-                <span className="truncate">
-                  {selectedModel ? selectedModel.name : `Select ${providerConfig.name} model...`}
-                </span>
-                {loadingModels && (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                )}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-              <Command shouldFilter={false}>
-                <CommandInput
-                  placeholder="Search models..."
-                  value={modelSearch}
-                  onValueChange={setModelSearch}
-                  className="border-0 focus:ring-0"
-                />
-                <CommandList>
-                  {loadingModels ? (
-                    <div className="py-6 text-center text-sm text-muted-foreground">
-                      Loading models...
-                    </div>
-                  ) : filteredModels.length === 0 ? (
-                    <CommandEmpty>No models found</CommandEmpty>
-                  ) : (
-                    Object.entries(groupedModels).map(([category, categoryModels]) => (
-                      <CommandGroup key={category} heading={category}>
-                        {categoryModels
-                          .filter((model) =>
-                            model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
-                            model.id.toLowerCase().includes(modelSearch.toLowerCase())
-                          )
-                          .map((model) => (
-                            <CommandItem
-                              key={model.id}
-                              value={model.id}
-                              onSelect={handleModelChange}
-                            >
-                              <div className="flex flex-col gap-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium">{model.name}</span>
-                                  {provider === 'openrouter' && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {model.category}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {model.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {model.description}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span>
-                                  ${model.pricing.input.toFixed(2)}/M input
-                                </span>
-                                <span>•</span>
-                                <span>
-                                  ${model.pricing.output.toFixed(2)}/M output
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                      </CommandGroup>
-                    ))
-                  )}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* API Key Input */}
-        <div className="space-y-2">
-          <Label htmlFor="ai-config-api-key">API Key</Label>
-          <Input
-            id="ai-config-api-key"
-            type="password"
-            placeholder={providerConfig.apiKeyPlaceholder}
-            value={apiKey}
-            onChange={(e) => handleApiKeyChange(e.target.value)}
-          />
-          <div className="flex items-center justify-between">
-            <a
-              href={providerConfig.apiKeyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Get your {providerConfig.name} API key →
-            </a>
-          </div>
-        </div>
-
-        {/* Budget Input */}
-        <div className="space-y-2">
-          <Label htmlFor="ai-config-budget">Budget (USD)</Label>
-          <Input
-            id="ai-config-budget"
-            type="number"
-            min={0}
-            step={0.01}
-            value={budget === 0 ? "" : budget.toString()}
-            placeholder="Unlimited"
-            onChange={(e) => handleBudgetChange(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">
-            {`Leave empty or 0 for no limit. Current spent: $${dollarsUsed.toFixed(2)}`}
-          </p>
-        </div>
+      <CardContent>
+        {view === 'model-select' ? modelSelectView : content}
       </CardContent>
     </Card>
   )

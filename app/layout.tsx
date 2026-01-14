@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Outfit, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { ConditionalFooter } from "@/components/ui/conditional-footer";
+import { SidebarProvider } from "@/components/sidebar-provider";
+import { FilterSidebarProvider } from "@/components/filter-sidebar-provider";
+import { AppSidebar } from "@/components/app-sidebar";
+import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -31,19 +35,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(geistSans.variable, geistMono.variable, "antialiased")}
-      >
+    <html lang="en" suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
+      <body>
         <ConfigProvider>
           <ThemeProvider>
             <NuqsAdapter>
               <QuerySyncProvider>
-                <div className="min-h-screen flex flex-col">
-                  <div className="flex-1">{children}</div>
-                  <ConditionalFooter />
-                </div>
-                <Toaster />
+                <SidebarProvider>
+                  <FilterSidebarProvider>
+                    <div className="flex min-h-screen">
+                      {/* Sidebar */}
+                      <AppSidebar />
+                      
+                      {/* Main Content Area */}
+                      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                        {/* Mobile Navbar */}
+                        <MobileNavbar />
+                        
+                        {children}
+                      </div>
+                    </div>
+                    <Toaster />
+                  </FilterSidebarProvider>
+                </SidebarProvider>
               </QuerySyncProvider>
             </NuqsAdapter>
           </ThemeProvider>

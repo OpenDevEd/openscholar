@@ -31,38 +31,31 @@ export function Logo({
     xl: 'text-6xl'
   };
 
-  // Beautiful academic icon with proper aspect ratio
+  // Orange branded academic icon
   const LogoIcon = ({ className: iconClassName }: { className?: string }) => (
     <div className={cn(
-      'relative rounded-lg bg-gradient-to-r from-slate-100 via-slate-200 to-slate-300 text-slate-700 flex items-center justify-center shadow-sm',
-      size === 'sm' && 'w-8 h-8',
-      size === 'md' && 'w-10 h-10',
-      size === 'lg' && 'w-12 h-12',
-      size === 'xl' && 'w-16 h-16',
+      'relative flex items-center justify-center shrink-0',
       iconClassName
     )}>
-      {/* Academic/Scholar icon with proper aspect ratio */}
-      <svg 
+      <img
+        src="/icon.svg"
+        alt="OpenScholar.ai"
         className={cn(
-          'text-slate-700',
-          size === 'sm' && 'w-4 h-4',
-          size === 'md' && 'w-5 h-5',
-          size === 'lg' && 'w-6 h-6',
-          size === 'xl' && 'w-8 h-8'
-        )} 
-        viewBox="0 0 24 24" 
-        fill="currentColor"
-      >
-        <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/>
-      </svg>
+          'object-contain flex',
+          size === 'sm' && 'w-8 h-8',
+          size === 'md' && 'w-10 h-10',
+          size === 'lg' && 'w-12 h-12',
+          size === 'xl' && 'w-16 h-16'
+        )}
+      />
     </div>
   );
 
   const logoContent = (
-    <div className={cn('flex items-center gap-2 sm:gap-3', className)}>
+    <div className={cn('flex items-center gap-2 sm:gap-3 shrink-0', className)}>
       <LogoIcon />
       {!shouldShowIconOnly && (
-        <div className="flex flex-col min-w-0">
+        <div className="flex items-baseline shrink-0">
           <span className={cn(
             'font-bold text-foreground leading-tight whitespace-nowrap',
             sizeClasses[size]
@@ -70,13 +63,13 @@ export function Logo({
             OpenScholar
           </span>
           <span className={cn(
-            'font-medium text-muted-foreground leading-tight -mt-1 whitespace-nowrap',
+            'font-medium text-muted-foreground leading-tight whitespace-nowrap',
             size === 'sm' && 'text-xs',
             size === 'md' && 'text-sm',
             size === 'lg' && 'text-base',
             size === 'xl' && 'text-lg'
           )}>
-            openscholar.ai
+            .ai
           </span>
         </div>
       )}

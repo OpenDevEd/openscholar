@@ -11,7 +11,7 @@
  * NO useEffects for syncing - URL is truth, SWR handles caching.
  */
 
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
@@ -20,11 +20,11 @@ import { toast } from 'sonner';
 
 import { searchParamsParsers, serializeSearchParams } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
-import { useSearchHistoryStore } from '../store';
+import { useSearchHistoryStore, useKeywordExpansionDialogStore } from '../store';
+import { validateAndExpandKeywordsSilently } from '../keyword-validation';
 import { useDebounceValue } from '@/hooks/use-debounce-value';
 import type { SearchFilters, SearchField } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData } from './types';
-import { hasActiveFilters } from './types';
 
 // Create context with undefined default (must be used within provider)
 const SearchContext = createContext<SearchContextValue | undefined>(undefined);
@@ -48,6 +48,20 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Get store methods for updating history entry
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
+  const getSearchResult = useSearchHistoryStore((state) => state.getSearchResult);
+  const addQueryToHistory = useSearchHistoryStore((state) => state.addQueryToHistory);
+  
+  // Get setter for suggestedQuery - unified source of truth on results pages
+  const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
+  
+  // Helper to sync filter changes to store for history persistence
+  // This ensures that when users change filters, the changes persist when navigating
+  // between history entries. Each setter updates both URL (nuqs) and store (Zustand).
+  const syncToStore = useCallback((storeUpdates: Record<string, unknown>) => {
+    if (searchId) {
+      updateSearchResult(searchId, storeUpdates);
+    }
+  }, [searchId, updateSearchResult]);
   
   // Create stable params object for debouncing
   // We serialize to string first to get stable reference
@@ -100,11 +114,8 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const swrKey = useMemo(() => {
     if (!debouncedParams) return null;
     
-    // Need either a query or active filters to fetch
-    const hasQuery = debouncedParams.q && debouncedParams.q.trim() !== '';
-    if (!hasQuery && !hasActiveFilters(debouncedParams)) return null;
-    
-    // Return a stable array key
+    // Empty searches are valid - always return a key when we have params
+    // This will fetch all works when no query or filters are applied
     return ['search', debouncedKey] as const;
   }, [debouncedParams, debouncedKey]);
   
@@ -159,12 +170,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
       keepPreviousData: true,
       errorRetryCount: 2,
       errorRetryInterval: 1000,
-      onSuccess: (data) => {
-        // Update history entry with result count
-        if (data?.results?.meta?.count !== undefined && searchId) {
-          updateSearchResult(searchId, { count: data.results.meta.count });
-        }
-      },
       onError: (err) => {
         console.error('Search failed:', err);
         const message = err?.message || '';
@@ -186,68 +191,169 @@ export function SearchProvider({ children }: SearchProviderProps) {
     }
   );
   
+  // Sync count to store whenever data changes (handles both fresh and cached data)
+  useEffect(() => {
+    if (data?.results?.meta?.count !== undefined && searchId) {
+      const existing = getSearchResult(searchId);
+      if (existing && existing.count !== data.results.meta.count) {
+        updateSearchResult(searchId, { count: data.results.meta.count });
+      }
+    }
+  }, [data, searchId, getSearchResult, updateSearchResult]);
+
+  // Sync suggestedQuery whenever the URL query changes
+  // This runs on mount and whenever urlParams.q changes (including cached data scenarios)
+  useEffect(() => {
+    const query = urlParams.q || '';
+    const { expandedQuery } = validateAndExpandKeywordsSilently(query);
+    setSuggestedQuery(expandedQuery);
+  }, [urlParams.q, setSuggestedQuery]);
+  
   // Param setters - just update URL, SWR auto-refetches
-  const setQuery = useCallback((q: string) => setUrlParams({ q }), [setUrlParams]);
-  const setField = useCallback((field: SearchField) => setUrlParams({ field }), [setUrlParams]);
-  const setSort = useCallback((sort: string) => setUrlParams({ sort }), [setUrlParams]);
-  const setPage = useCallback((page: number) => setUrlParams({ page }), [setUrlParams]);
+  const setQuery = useCallback((q: string, options?: { skipHistory?: boolean }) => {
+    // Get current query from store to check if it changed
+    const existing = getSearchResult(searchId);
+    const currentQuery = existing?.query ?? '';
+    
+    // Update URL (source of truth for filtering)
+    setUrlParams({ q });
+    
+    // Track in history if query actually changed and we have a valid searchId
+    // Skip history tracking when navigating through history (preview mode)
+    if (searchId && q !== currentQuery && !options?.skipHistory) {
+      addQueryToHistory(searchId, q);
+    }
+  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory]);
+  
+  const setField = useCallback((field: SearchField) => {
+    setUrlParams({ field });
+    syncToStore({ field });
+  }, [setUrlParams, syncToStore]);
+  
+  const setSort = useCallback((sort: string) => {
+    setUrlParams({ sort });
+    syncToStore({ sortBy: sort });
+  }, [setUrlParams, syncToStore]);
+  
+  const setPage = useCallback((page: number) => {
+    setUrlParams({ page }, { scroll: true });
+    syncToStore({ page });
+  }, [setUrlParams, syncToStore]);
   
   const setYearRange = useCallback((from: number | null, to: number | null) => {
-    setUrlParams({ yf: from, yt: to, ft: 'year' });
-  }, [setUrlParams]);
+    setUrlParams({ yf: from, yt: to, ft: 'year', page: 1 });
+    syncToStore({
+      yearRange: from !== null && to !== null ? [from, to] : undefined,
+      isYearRangeEnabled: from !== null || to !== null,
+      filterType: 'year',
+      page: 1,
+    });
+  }, [setUrlParams, syncToStore]);
   
   const setDateRange = useCallback((from: Date | null, to: Date | null) => {
     setUrlParams({
       df: from ? format(from, 'yyyy-MM-dd') : null,
       dt: to ? format(to, 'yyyy-MM-dd') : null,
       ft: 'date',
+      page: 1,
     });
-  }, [setUrlParams]);
+    syncToStore({
+      dateRange: from || to ? { from: from ?? undefined, to: to ?? undefined } : undefined,
+      filterType: 'date',
+      page: 1,
+    });
+  }, [setUrlParams, syncToStore]);
   
   const setFilterType = useCallback((type: 'year' | 'date') => {
     setUrlParams({ ft: type });
-  }, [setUrlParams]);
+    syncToStore({ filterType: type });
+  }, [setUrlParams, syncToStore]);
   
   const setRatingRange = useCallback((min: number, max: number) => {
-    setUrlParams({ rmin: min, rmax: max });
-  }, [setUrlParams]);
+    setUrlParams({ rmin: min, rmax: max, page: 1 });
+    syncToStore({ ratingRange: [min, max], page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setOnlyRated = useCallback((value: boolean) => {
-    setUrlParams({ rated: value });
-  }, [setUrlParams]);
+    setUrlParams({ rated: value, page: 1 });
+    syncToStore({ onlyRatedPapers: value, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setRegions = useCallback((regions: string[]) => {
-    setUrlParams({ reg: regions });
-  }, [setUrlParams]);
+    setUrlParams({ reg: regions, page: 1 });
+    syncToStore({ selectedRegions: regions, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setCountryFocus = useCallback((countries: string[]) => {
-    setUrlParams({ focus: countries });
-  }, [setUrlParams]);
+    setUrlParams({ focus: countries, page: 1 });
+    syncToStore({ selectedCountryFocus: countries, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setCites = useCallback((id: string) => {
-    setUrlParams({ cites: id });
-  }, [setUrlParams]);
+    setUrlParams({ cites: id, page: 1 });
+    syncToStore({ citesItemId: id, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setCitedBy = useCallback((id: string) => {
-    setUrlParams({ citedBy: id });
-  }, [setUrlParams]);
+    setUrlParams({ citedBy: id, page: 1 });
+    syncToStore({ citedByItemId: id, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setRelatedTo = useCallback((id: string) => {
-    setUrlParams({ rel: id });
-  }, [setUrlParams]);
+    setUrlParams({ rel: id, page: 1 });
+    syncToStore({ relatedToItemId: id, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setReviewOnly = useCallback((value: boolean) => {
-    setUrlParams({ review: value });
-  }, [setUrlParams]);
+    setUrlParams({ review: value, page: 1 });
+    syncToStore({ reviewFilter: value, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   const setLanguage = useCallback((lang: string | null) => {
-    setUrlParams({ lang });
-  }, [setUrlParams]);
+    setUrlParams({ lang, page: 1 });
+    syncToStore({ language: lang || undefined, page: 1 });
+  }, [setUrlParams, syncToStore]);
   
   // Bulk update
   const updateParams = useCallback((updates: Partial<SearchParams>) => {
     setUrlParams(updates as any);
-  }, [setUrlParams]);
+    // Convert URL param keys to store field names and sync
+    const storeUpdates: Record<string, unknown> = {};
+    if ('field' in updates) storeUpdates.field = updates.field;
+    if ('sort' in updates) storeUpdates.sortBy = updates.sort;
+    if ('yf' in updates || 'yt' in updates) {
+      const yf = 'yf' in updates ? updates.yf : urlParams.yf;
+      const yt = 'yt' in updates ? updates.yt : urlParams.yt;
+      storeUpdates.yearRange = yf !== null && yt !== null ? [yf, yt] : undefined;
+      storeUpdates.isYearRangeEnabled = yf !== null || yt !== null;
+    }
+    if ('df' in updates || 'dt' in updates) {
+      const df = 'df' in updates ? updates.df : urlParams.df;
+      const dt = 'dt' in updates ? updates.dt : urlParams.dt;
+      storeUpdates.dateRange = df || dt ? {
+        from: df ? new Date(df) : undefined,
+        to: dt ? new Date(dt) : undefined,
+      } : undefined;
+    }
+    if ('ft' in updates) storeUpdates.filterType = updates.ft;
+    if ('rmin' in updates || 'rmax' in updates) {
+      const rmin = 'rmin' in updates ? updates.rmin : urlParams.rmin;
+      const rmax = 'rmax' in updates ? updates.rmax : urlParams.rmax;
+      storeUpdates.ratingRange = [rmin, rmax];
+    }
+    if ('rated' in updates) storeUpdates.onlyRatedPapers = updates.rated;
+    if ('reg' in updates) storeUpdates.selectedRegions = updates.reg;
+    if ('focus' in updates) storeUpdates.selectedCountryFocus = updates.focus;
+    if ('cites' in updates) storeUpdates.citesItemId = updates.cites;
+    if ('citedBy' in updates) storeUpdates.citedByItemId = updates.citedBy;
+    if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
+    if ('review' in updates) storeUpdates.reviewFilter = updates.review;
+    if ('lang' in updates) storeUpdates.language = updates.lang || undefined;
+    
+    if (Object.keys(storeUpdates).length > 0) {
+      syncToStore(storeUpdates);
+    }
+  }, [setUrlParams, syncToStore, urlParams]);
   
   // Reset filters to defaults
   const resetFilters = useCallback(() => {
@@ -266,8 +372,25 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedBy: '',
       rel: '',
       review: false,
+      page: 1,
     });
-  }, [setUrlParams]);
+    // Also reset in store
+    syncToStore({
+      yearRange: undefined,
+      isYearRangeEnabled: false,
+      dateRange: undefined,
+      filterType: 'year',
+      ratingRange: [0, 5],
+      onlyRatedPapers: false,
+      selectedRegions: [],
+      selectedCountryFocus: [],
+      citesItemId: '',
+      citedByItemId: '',
+      relatedToItemId: '',
+      reviewFilter: false,
+      page: 1,
+    });
+  }, [setUrlParams, syncToStore]);
   
   // Get shareable URL - pass base URL to serializer to avoid double ?
   const getShareableUrl = useCallback(() => {

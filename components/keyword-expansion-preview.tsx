@@ -54,9 +54,9 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
     }
     
     // Add the expansion or original if not found
-    const expansion = keywords[keyword]
-    if (expansion) {
-      parts.push({ text: expansion, isExpanded: true, originalKeyword: keyword })
+    const bookmarkData = keywords[keyword]
+    if (bookmarkData?.expansion) {
+      parts.push({ text: bookmarkData.expansion, isExpanded: true, originalKeyword: keyword })
     } else {
       parts.push({ text: match, isExpanded: false })
     }

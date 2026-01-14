@@ -78,10 +78,10 @@ export function YearRangePicker() {
         <Button
           variant="outline"
           className={cn(
-            "w-full h-11 justify-start text-left font-normal border-2 transition-all duration-200",
+            "w-full h-10 justify-start text-left font-normal transition-all duration-200",
             isFilterActive
-              ? "border-purple-300 bg-purple-50 dark:bg-purple-950/30"
-              : "border-dashed border-muted-foreground/30 hover:border-purple-300"
+              ? "border-sidebar-primary/50"
+              : "border-dashed border-muted-foreground/30"
           )}
         >
           <CalendarIcon className="mr-3 h-4 w-4" />
