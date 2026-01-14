@@ -88,6 +88,7 @@ interface UIState {
   historySortBy: HistorySortBy
   bookmarkViewMode: ViewMode
   bookmarkSortBy: BookmarkSortBy
+  expandedScreeningDetails: Record<string, boolean>
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
@@ -97,6 +98,8 @@ interface UIState {
   setHistorySortBy: (sort: HistorySortBy) => void
   setBookmarkViewMode: (mode: ViewMode) => void
   setBookmarkSortBy: (sort: BookmarkSortBy) => void
+  setScreeningDetailExpanded: (paperId: string, expanded: boolean) => void
+  getScreeningDetailExpanded: (paperId: string) => boolean
 }
 
 interface ResultsState {
@@ -538,7 +541,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isDialogOpen: false,
       loadingResultIndex: null,
       isFocusModeOpen: false,
@@ -548,6 +551,7 @@ export const useUIStore = create<UIState>()(
       historySortBy: 'recent',
       bookmarkViewMode: 'list-detail',
       bookmarkSortBy: 'recent',
+      expandedScreeningDetails: {},
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
       setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
@@ -557,6 +561,13 @@ export const useUIStore = create<UIState>()(
       setHistorySortBy: (sort) => set({ historySortBy: sort }),
       setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
       setBookmarkSortBy: (sort) => set({ bookmarkSortBy: sort }),
+      setScreeningDetailExpanded: (paperId, expanded) => set((state) => ({
+        expandedScreeningDetails: {
+          ...state.expandedScreeningDetails,
+          [paperId]: expanded,
+        },
+      })),
+      getScreeningDetailExpanded: (paperId) => get().expandedScreeningDetails[paperId] || false,
     }),
     {
       name: 'ui-store',
@@ -566,6 +577,7 @@ export const useUIStore = create<UIState>()(
         historySortBy: state.historySortBy,
         bookmarkViewMode: state.bookmarkViewMode,
         bookmarkSortBy: state.bookmarkSortBy,
+        expandedScreeningDetails: state.expandedScreeningDetails,
       }),
     }
   )

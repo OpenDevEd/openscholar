@@ -32,7 +32,7 @@ import {
   Network,
   BookOpen,
 } from "lucide-react";
-import { ScreeningResponses, useTranslate } from "@/components/paper-card.legacy";
+import { useTranslate } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -42,6 +42,7 @@ import {
   CitationBadge,
   OpenAccessBadge,
   DOIBadge,
+  ScreeningResponses,
 } from "./shared";
 
 export function PaperCardListDetail({
@@ -92,7 +93,7 @@ export function PaperCardListDetail({
         )}
 
         {/* Screening Questions */}
-        <ScreeningResponses data={result} />
+        <ScreeningResponses data={result} expandShortcut="e" />
 
         {/* Title Section */}
         <div className="mb-4">

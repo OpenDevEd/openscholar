@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { DownloadMenu } from "@/components/download-menu";
 import {
   Quote,
   Network,
@@ -12,8 +13,12 @@ import {
   Minus,
   Users,
   BookOpen,
+  Table,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useScreening } from "./hooks";
+import { useUIStore } from "@/lib/store";
 
 // ==================== Types ====================
 
@@ -30,6 +35,15 @@ export interface ScreeningBadgeProps {
   index: number;
   question: string;
   variant?: "default" | "icon-only";
+}
+
+export interface TranslationToggleProps {
+  isTranslating: boolean;
+  translatedContent: any;
+  showTranslated: boolean;
+  selectedLanguage: string;
+  setShowTranslated: (show: boolean) => void;
+  variant?: "full" | "compact";
 }
 
 // ==================== Utility Functions ====================
@@ -70,7 +84,296 @@ export function getFirstAuthor(
   return first;
 }
 
+export function finalState(
+  isQuestionAnswered: boolean | null,
+  isQuestionLoading: boolean,
+  isQuestionMissing: boolean
+): "checked" | "crossed" | "unchecked" | "loading" {
+  if (isQuestionLoading) return "loading";
+  if (isQuestionMissing) return "unchecked";
+  if (isQuestionAnswered != null)
+    return isQuestionAnswered === true
+      ? "checked"
+      : isQuestionAnswered === false
+      ? "crossed"
+      : "unchecked";
+  return "unchecked";
+}
+
 // ==================== Shared Components ====================
+
+export function TranslationToggle({
+  isTranslating,
+  translatedContent,
+  showTranslated,
+  selectedLanguage,
+  setShowTranslated,
+  variant = "full",
+}: TranslationToggleProps) {
+  if (!selectedLanguage || selectedLanguage === "en") return null;
+  if (translatedContent && translatedContent.isAlreadyInEnglish) return null;
+
+  if (variant === "compact") {
+    // Icon-only version for compact layouts
+    if (!translatedContent || translatedContent.sourceLanguage !== selectedLanguage) {
+      if (isTranslating) {
+        return (
+          <div className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30" title="Translating...">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          </div>
+        );
+      }
+      return null;
+    }
+
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowTranslated(!showTranslated);
+        }}
+        className={cn(
+          "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
+          showTranslated
+            ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+            : "bg-muted text-muted-foreground hover:bg-muted/80"
+        )}
+        title={showTranslated ? "Show Original" : "Show English"}
+      >
+        {showTranslated ? "EN" : "原"}
+      </button>
+    );
+  }
+
+  // Full version for detailed layouts
+  return (
+    <div className="flex items-center gap-2 mb-2">
+      {isTranslating && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+          <span>Translating...</span>
+        </div>
+      )}
+
+      {translatedContent &&
+        translatedContent.sourceLanguage === selectedLanguage &&
+        !translatedContent.isAlreadyInEnglish && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowTranslated(!showTranslated);
+            }}
+            className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+          >
+            {showTranslated ? "Show Original" : "Show English"}
+          </button>
+        )}
+    </div>
+  );
+}
+
+export function ScreeningResponses({
+  data,
+  expandShortcut,
+  variant,
+}: {
+  data: { id: string; title: string; abstract: string };
+  expandShortcut?: string;
+  variant?: "default" | "mobile" | "icons-only";
+}) {
+  const {
+    screeningQuestions,
+    myExistingResponses,
+    myLoadingResponses,
+    myMissingResponses,
+  } = useScreening(data);
+
+  const { getScreeningDetailExpanded, setScreeningDetailExpanded } = useUIStore();
+  const showExpandedView = getScreeningDetailExpanded(data.id);
+
+  useEffect(() => {
+    if (!expandShortcut) return;
+
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (
+        event.key === expandShortcut &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.metaKey
+      ) {
+        setScreeningDetailExpanded(data.id, !showExpandedView);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [expandShortcut, data.id, showExpandedView, setScreeningDetailExpanded]);
+
+  if (screeningQuestions.length === 0) return null;
+
+  // Icons-only variant for compact layouts
+  if (variant === "icons-only") {
+    return (
+      <div className="flex items-center gap-1 flex-wrap">
+        {screeningQuestions.map((question, index) => {
+          const isQuestionAnswered = myExistingResponses[question.question];
+          const isQuestionLoading = myLoadingResponses[question.question];
+          const isQuestionMissing = myMissingResponses.includes(question.question);
+          const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
+
+          return (
+            <ScreeningBadge
+              key={index}
+              displayState={displayState}
+              index={index}
+              question={question.question}
+              variant="icon-only"
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Full variant with expandable table
+  return (
+    <div className="mb-3">
+      <div className="flex flex-wrap gap-2 items-center">
+        {screeningQuestions.map((question, index) => {
+          const isQuestionAnswered = myExistingResponses[question.question];
+          const isQuestionLoading = myLoadingResponses[question.question];
+          const isQuestionMissing = myMissingResponses.includes(question.question);
+          const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
+
+          return (
+            <button
+              key={index}
+              disabled={displayState === "loading"}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors",
+                displayState === "checked"
+                  ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400"
+                  : displayState === "crossed"
+                  ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
+                  : displayState === "loading"
+                  ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
+              )}
+              title={`Question ${index + 1}: ${question.question}`}
+            >
+              {displayState === "checked" && <Check className="h-3 w-3" />}
+              {displayState === "crossed" && <X className="h-3 w-3" />}
+              {displayState === "unchecked" && <Minus className="h-3 w-3" />}
+              {displayState === "loading" && (
+                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+              )}
+              <span className="font-mono">{index + 1}</span>
+            </button>
+          );
+        })}
+
+        {/* Expand Button */}
+        <button
+          onClick={() => setScreeningDetailExpanded(data.id, !showExpandedView)}
+          className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+          title={`Show detailed screening responses${
+            expandShortcut ? ` (${expandShortcut.toUpperCase()})` : ""
+          }`}
+        >
+          <Table className="h-3 w-3" />
+          {showExpandedView ? "Hide" : "Details"}
+          {expandShortcut && (
+            <span className="text-xs bg-black/10 dark:bg-white/10 px-1 rounded hidden md:inline">
+              {expandShortcut.toUpperCase()}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Expanded Table View */}
+      {showExpandedView && (
+        <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
+          <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+            <Table className="h-4 w-4" />
+            Screening Responses
+          </h4>
+
+          <div className={variant === "mobile" ? "overflow-hidden" : "overflow-x-auto"}>
+            <table className={variant === "mobile" ? "w-full text-xs" : "w-full text-xs min-w-full"}>
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-8">
+                    #
+                  </th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                    Question
+                  </th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">
+                    Response
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {screeningQuestions.map((question, index) => {
+                  const isQuestionAnswered = myExistingResponses[question.question];
+                  const isQuestionLoading = myLoadingResponses[question.question];
+                  const isQuestionMissing = myMissingResponses.includes(question.question);
+                  const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
+                  const statusText =
+                    isQuestionAnswered === true
+                      ? "Yes"
+                      : isQuestionAnswered === false
+                      ? "No"
+                      : isQuestionLoading
+                      ? "Loading..."
+                      : "?";
+
+                  return (
+                    <tr
+                      key={index}
+                      className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="py-2 px-2 font-mono text-muted-foreground w-8 align-top">
+                        {index + 1}
+                      </td>
+                      <td className="py-2 px-2 text-foreground">
+                        <div className={variant === "mobile" ? "break-words whitespace-normal" : "truncate max-w-xs"} title={question.question}>
+                          {question.question}
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 w-16 align-top">
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded text-xs",
+                            displayState === "checked"
+                              ? "bg-green-100 text-green-800 border border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800"
+                              : displayState === "crossed"
+                              ? "bg-red-100 text-red-800 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800"
+                              : displayState === "loading"
+                              ? "bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                              : "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-muted/50 dark:text-muted-foreground dark:border-border"
+                          )}
+                        >
+                          {displayState === "checked" && <Check className="h-3 w-3" />}
+                          {displayState === "crossed" && <X className="h-3 w-3" />}
+                          {displayState === "unchecked" && <Minus className="h-3 w-3" />}
+                          {displayState === "loading" && (
+                            <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                          )}
+                          {statusText}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ScreeningBadge({
   displayState,
@@ -175,6 +478,12 @@ export function OpenAccessBadge({
         tabIndex={0}
         onClick={() => window.open(oaUrl, "_blank")}
         onKeyDown={(e) => e.key === "Enter" && window.open(oaUrl, "_blank")}
+        onMouseDown={(e) => {
+          if (e.button === 1) {
+            e.preventDefault();
+            window.open(oaUrl, "_blank");
+          }
+        }}
         className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
         title="Open Access PDF"
       >
@@ -222,6 +531,12 @@ export function DOIBadge({
         tabIndex={0}
         onClick={() => window.open(doiUrl, "_blank")}
         onKeyDown={(e) => e.key === "Enter" && window.open(doiUrl, "_blank")}
+        onMouseDown={(e) => {
+          if (e.button === 1) {
+            e.preventDefault();
+            window.open(doiUrl, "_blank");
+          }
+        }}
         className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
         title={`DOI: ${shortDoi}`}
       >
@@ -249,6 +564,29 @@ export function DOIBadge({
     </Button>
   );
 }
+
+export function DownloadMenuCompact({
+  onDownloadJSON,
+  onDownloadCSV,
+  onDownloadEssentialJSON,
+  onDownloadEssentialCSV,
+}: {
+  onDownloadJSON: () => void;
+  onDownloadCSV: () => void;
+  onDownloadEssentialJSON: () => void;
+  onDownloadEssentialCSV: () => void;
+}) {
+  return (
+    <DownloadMenu
+      variant="icon"
+      onDownloadJSON={onDownloadJSON}
+      onDownloadCSV={onDownloadCSV}
+      onDownloadEssentialJSON={onDownloadEssentialJSON}
+      onDownloadEssentialCSV={onDownloadEssentialCSV}
+    />
+  );
+}
+
 
 export function AuthorsLine({
   authorships,

@@ -7,8 +7,9 @@ import { PaperCardGrid } from "./paper-card-grid";
 import type { PaperCardProps } from "./shared";
 import type { ViewMode } from "@/lib/store";
 
-// Re-export types and components from legacy for backwards compatibility
-export { useTranslate, useScreening, ScreeningResponses } from "@/components/paper-card.legacy";
+// Re-export hooks and components for backwards compatibility
+export { useTranslate, useScreening, useCitationHandlers, usePaperCardData } from "./hooks";
+export { ScreeningResponses, TranslationToggle } from "./shared";
 export type { PaperCardProps } from "./shared";
 
 interface PaperCardWithModeProps extends PaperCardProps {

@@ -2,6 +2,7 @@
 
 import React, { useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { workToCoins } from "@/lib/utils";
 import { useUIStore, useSearchHistoryStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
@@ -9,7 +10,7 @@ import { openFocusMode } from "@/lib/search-actions";
 import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
 import { Quote, Network } from "lucide-react";
-import { useTranslate, useScreening } from "@/components/paper-card.legacy";
+import { useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -17,26 +18,10 @@ import {
   OpenAccessBadge,
   DOIBadge,
   truncateAuthors,
-  ScreeningBadge,
+  DownloadMenuCompact,
+  TranslationToggle,
+  ScreeningResponses,
 } from "./shared";
-import { ScreeningContext } from "@/components/results-list";
-
-function finalState(
-  isQuestionAnswered: boolean | null,
-  isQuestionLoading: boolean,
-  isQuestionMissing: boolean
-): "checked" | "crossed" | "unchecked" | "loading" {
-  if (isQuestionLoading) return "loading";
-  if (isQuestionMissing) return "unchecked";
-  if (isQuestionAnswered != null)
-    return isQuestionAnswered === true
-      ? "checked"
-      : isQuestionAnswered === false
-        ? "crossed"
-        : "unchecked";
-  return "unchecked";
-}
-
 export function PaperCardListSimple({
   result,
   resultIndex,
@@ -45,21 +30,18 @@ export function PaperCardListSimple({
 }: PaperCardProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
-  const handleFilteredSearch = (filterType: "cites" | "citedBy" | "related") => {
-    const { url } = createCitationSearch(result.id, filterType);
-    router.push(url);
-  };
+  const { handleCitesSearch } = useCitationHandlers(result.id);
 
-  const { translatedContent, showTranslated } = useTranslate(result);
-
-  const {
-    screeningQuestions,
-    myExistingResponses,
-    myLoadingResponses,
-    myMissingResponses,
-  } = useScreening(result);
+  const { 
+    translatedContent, 
+    showTranslated, 
+    isTranslating, 
+    setShowTranslated,
+    selectedLanguage 
+  } = useTranslate(result);
 
   const displayTitle = showTranslated && translatedContent
     ? translatedContent.translatedTitle
@@ -73,6 +55,15 @@ export function PaperCardListSimple({
 
   return (
     <CardContainer className="overflow-hidden">
+      {/* COINS metadata span */}
+      {!isFocusModeOpen && (
+        <span
+          className="Z3988"
+          title={workToCoins(result)}
+          style={{ display: "none" }}
+        />
+      )}
+      
       <div
         role="button"
         tabIndex={0}
@@ -106,29 +97,12 @@ export function PaperCardListSimple({
             </div>
 
             {/* Screening badges - icon only */}
-            {screeningQuestions.length > 0 && (
-              <div 
-                className="hidden @md/card:flex items-center gap-1 flex-wrap flex-shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {screeningQuestions.map((question, index) => {
-                  const isQuestionAnswered = myExistingResponses[question.question];
-                  const isQuestionLoading = myLoadingResponses[question.question];
-                  const isQuestionMissing = myMissingResponses.includes(question.question);
-                  const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
-
-                  return (
-                    <ScreeningBadge
-                      key={index}
-                      displayState={displayState}
-                      index={index}
-                      question={question.question}
-                      variant="icon-only"
-                    />
-                  );
-                })}
-              </div>
-            )}
+            <div 
+              className="hidden @md/card:flex items-center gap-1 flex-wrap flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ScreeningResponses data={result} variant="icons-only" />
+            </div>
 
             {/* Citation count badge */}
             <div 
@@ -140,12 +114,12 @@ export function PaperCardListSimple({
                 tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleFilteredSearch("cites");
+                  handleCitesSearch();
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.stopPropagation();
-                    handleFilteredSearch("cites");
+                    handleCitesSearch();
                   }
                 }}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
@@ -161,12 +135,26 @@ export function PaperCardListSimple({
               className="hidden @md/card:flex items-center gap-1 flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
+              <TranslationToggle
+                isTranslating={isTranslating}
+                translatedContent={translatedContent}
+                showTranslated={showTranslated}
+                selectedLanguage={selectedLanguage}
+                setShowTranslated={setShowTranslated}
+                variant="compact"
+              />
               <OpenAccessBadge
                 isOA={result.open_access?.is_oa}
                 oaUrl={result.open_access?.oa_url}
                 compact
               />
               <DOIBadge doi={result.doi} compact />
+              <DownloadMenuCompact
+                onDownloadJSON={() => onDownloadItem(result, "json")}
+                onDownloadCSV={() => onDownloadItem(result, "csv")}
+                onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
+                onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
+              />
             </div>
           </div>
 

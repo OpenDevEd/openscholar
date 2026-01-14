@@ -2,12 +2,14 @@
 
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { workToCoins } from "@/lib/utils";
+import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
 import { Quote, Network, Users, BookOpen } from "lucide-react";
-import { useTranslate, useScreening } from "@/components/paper-card.legacy";
+import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -16,23 +18,10 @@ import {
   DOIBadge,
   getFirstAuthor,
   ScreeningBadge,
+  finalState,
+  DownloadMenuCompact,
+  TranslationToggle,
 } from "./shared";
-
-function finalState(
-  isQuestionAnswered: boolean | null,
-  isQuestionLoading: boolean,
-  isQuestionMissing: boolean
-): "checked" | "crossed" | "unchecked" | "loading" {
-  if (isQuestionLoading) return "loading";
-  if (isQuestionMissing) return "unchecked";
-  if (isQuestionAnswered != null)
-    return isQuestionAnswered === true
-      ? "checked"
-      : isQuestionAnswered === false
-        ? "crossed"
-        : "unchecked";
-  return "unchecked";
-}
 
 export function PaperCardGrid({
   result,
@@ -42,14 +31,18 @@ export function PaperCardGrid({
   viewMode = "grid-2",
 }: PaperCardProps) {
   const router = useRouter();
+  const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
-  const handleFilteredSearch = (filterType: "cites" | "citedBy" | "related") => {
-    const { url } = createCitationSearch(result.id, filterType);
-    router.push(url);
-  };
+  const { handleCitesSearch, handleRelatedSearch } = useCitationHandlers(result.id);
 
-  const { translatedContent, showTranslated } = useTranslate(result);
+  const { 
+    translatedContent, 
+    showTranslated, 
+    isTranslating, 
+    setShowTranslated,
+    selectedLanguage 
+  } = useTranslate(result);
 
   const {
     screeningQuestions,
@@ -69,6 +62,15 @@ export function PaperCardGrid({
 
   return (
     <CardContainer className="overflow-hidden h-full flex flex-col">
+      {/* COINS metadata span */}
+      {!isFocusModeOpen && (
+        <span
+          className="Z3988"
+          title={workToCoins(result)}
+          style={{ display: "none" }}
+        />
+      )}
+      
       <div
         role="button"
         tabIndex={0}
@@ -90,12 +92,26 @@ export function PaperCardGrid({
               className="flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
+              <TranslationToggle
+                isTranslating={isTranslating}
+                translatedContent={translatedContent}
+                showTranslated={showTranslated}
+                selectedLanguage={selectedLanguage}
+                setShowTranslated={setShowTranslated}
+                variant="compact"
+              />
               <OpenAccessBadge
                 isOA={result.open_access?.is_oa}
                 oaUrl={result.open_access?.oa_url}
                 compact
               />
               <DOIBadge doi={result.doi} compact />
+              <DownloadMenuCompact
+                onDownloadJSON={() => onDownloadItem(result, "json")}
+                onDownloadCSV={() => onDownloadItem(result, "csv")}
+                onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
+                onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
+              />
             </div>
           </div>
 
@@ -166,7 +182,7 @@ export function PaperCardGrid({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleFilteredSearch("cites");
+                  handleCitesSearch();
                 }}
                 className={cn(
                   "flex items-center gap-1 rounded-lg font-medium transition-colors",
@@ -184,7 +200,7 @@ export function PaperCardGrid({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleFilteredSearch("related");
+                    handleRelatedSearch();
                   }}
                   className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
                   title={`Related: ${result.related_works?.length || 0}`}
