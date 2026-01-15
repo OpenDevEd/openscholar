@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { DateRange } from "react-day-picker";
 import type { 
   SearchField, 
   QueryHistoryEntry, 
@@ -774,17 +773,6 @@ interface KeywordExpansionDialogState {
   resetForm: () => void
 }
 
-interface CountryRegionPickerState {
-  isOpen: boolean
-  expandedNodes: Set<string>
-  searchQuery: string
-  setIsOpen: (open: boolean) => void
-  setExpandedNodes: (nodes: Set<string>) => void
-  setSearchQuery: (query: string) => void
-  toggleNode: (nodeId: string) => void
-  resetPicker: () => void
-}
-
 interface SearchHistoryUIState {
   currentPage: number
   setCurrentPage: (page: number) => void
@@ -875,29 +863,6 @@ export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState
   setCurrentKeyword: (keyword) => set({ currentKeyword: keyword }),
   setSuggestedQuery: (query) => set({ suggestedQuery: query }),
   resetForm: () => set({ newShorthand: '', newExpansion: '', currentKeyword: '', suggestedQuery: '' }),
-}))
-
-export const useCountryRegionPickerStore = create<CountryRegionPickerState>((set) => ({
-  isOpen: false,
-  expandedNodes: new Set(['world']),
-  searchQuery: '',
-  setIsOpen: (open) => set({ isOpen: open }),
-  setExpandedNodes: (nodes) => set({ expandedNodes: nodes }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  toggleNode: (nodeId) => set((state) => {
-    const newExpanded = new Set(state.expandedNodes);
-    if (newExpanded.has(nodeId)) {
-      newExpanded.delete(nodeId);
-    } else {
-      newExpanded.add(nodeId);
-    }
-    return { expandedNodes: newExpanded };
-  }),
-  resetPicker: () => set({ 
-    isOpen: false, 
-    expandedNodes: new Set(['world']), 
-    searchQuery: '' 
-  }),
 }))
 
 export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({

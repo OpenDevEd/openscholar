@@ -103,28 +103,3 @@ export async function downloadPDFFromURL(url: string, filename?: string): Promis
     };
   }
 }
-
-/**
- * Batch download multiple PDFs from URLs
- */
-export async function downloadMultiplePDFs(urls: string[]): Promise<(PDFDownloadResult & { url: string })[]> {
-  const results = await Promise.allSettled(
-    urls.map(async (url) => await downloadPDFFromURL(url))
-  );
-
-  return results.map((result, index) => {
-    const url = urls[index];
-    if (result.status === 'fulfilled') {
-      return {
-        ...result.value,
-        url,
-      };
-    } else {
-      return {
-        success: false,
-        error: result.reason instanceof Error ? result.reason.message : 'Failed to download PDF',
-        url,
-      };
-    }
-  });
-}

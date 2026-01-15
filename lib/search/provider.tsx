@@ -11,7 +11,7 @@
  * NO useEffects for syncing - URL is truth, SWR handles caching.
  */
 
-import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
@@ -20,8 +20,7 @@ import { toast } from 'sonner';
 
 import { searchParamsParsers, serializeSearchParams } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
-import { useSearchHistoryStore, useKeywordExpansionDialogStore, useKeywordExpansionStore } from '../store';
-import { validateAndExpandKeywordsSilently } from '../keyword-validation';
+import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import type { SearchFilters, SearchField } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData } from './types';
 

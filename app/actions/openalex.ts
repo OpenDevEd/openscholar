@@ -31,12 +31,6 @@ async function callOpenAlexSDK(
   }
 }
 
-export async function startSearch(formData: FormData, filters: SearchFilters, expandedQuery?: string) {
-  const query = expandedQuery || formData.get('query') as string;
-  const results = await callOpenAlexSDK(query, filters);
-  return results.meta.count;
-}
-
 export async function getSearchResults(query: string, filters: SearchFilters, expandedQuery?: string, effectiveCitesItemId?: string, effectiveRelatedToItemId?: string) {
   console.log("searchField", filters.searchField);
   const actualQuery = expandedQuery || query;
