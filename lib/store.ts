@@ -1159,29 +1159,6 @@ export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (ope
   setIsOpen: (open) => set({ isOpen: open }),
 })) 
 
-// Zotero configuration store
-interface ZoteroConfigState {
-  zoteroApiKey: string;
-  zoteroGroupId: string;
-  setZoteroApiKey: (key: string) => void;
-  setZoteroGroupId: (id: string) => void;
-}
-
-export const useZoteroConfigStore = create<ZoteroConfigState>()(
-  persist(
-    (set) => ({
-      zoteroApiKey: '',
-      zoteroGroupId: '',
-      setZoteroApiKey: (key) => set({ zoteroApiKey: key }),
-      setZoteroGroupId: (id) => set({ zoteroGroupId: id }),
-    }),
-    {
-      name: 'zotero-config-storage',
-      version: 1,
-    }
-  )
-);
-
 // Translation Store - for storing translation data by paper ID
 interface TranslationData {
   translatedTitle: string;
