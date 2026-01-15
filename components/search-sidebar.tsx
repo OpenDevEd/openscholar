@@ -44,8 +44,7 @@ import { useDateRangePickerStore } from "@/lib/store";
 import { RatingRangePicker } from "./rating-range-picker";
 import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
-import { CitesFilter } from "./cites-filter";
-import { CitedByFilter } from "./cited-by-filter";
+import { WorkIdFilter } from "./work-id-filter";
 import {
   Sheet,
   SheetContent,
@@ -60,7 +59,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateRange } from "react-day-picker";
-import { RelatedToFilter } from "./related-to-filter";
 import { ReviewFilter } from "./review-filter";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -511,7 +509,7 @@ const CitesFilterPanel = React.memo(function CitesFilterPanel() {
       isActive={isCitesActive}
       onClear={isCitesActive ? handleClearCitesFilter : undefined}
     >
-      <CitesFilter />
+      <WorkIdFilter type="cites" />
     </FilterSection>
   );
 });
@@ -533,7 +531,7 @@ const CitedByFilterPanel = React.memo(function CitedByFilterPanel() {
       isActive={isCitedByActive}
       onClear={isCitedByActive ? handleClearCitedByFilter : undefined}
     >
-      <CitedByFilter />
+      <WorkIdFilter type="cited_by" />
     </FilterSection>
   );
 });
@@ -555,7 +553,7 @@ const RelatedToFilterPanel = React.memo(function RelatedToFilterPanel() {
       isActive={isRelatedToActive}
       onClear={isRelatedToActive ? handleClearRelatedToFilter : undefined}
     >
-      <RelatedToFilter />
+      <WorkIdFilter type="related" />
     </FilterSection>
   );
 });

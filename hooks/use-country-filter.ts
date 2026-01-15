@@ -1,7 +1,6 @@
 "use client";
 
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { DEFAULT_FILTERS } from "@/lib/utils";
 
 type CountryFilterField = 'selectedRegions' | 'selectedCountryFocus';
@@ -16,14 +15,12 @@ export function useCountryFilter(fieldName: CountryFilterField) {
 
   const selectedValues = state[fieldName];
 
-  const handleSelectionChange = async (regions: string[]) => {
+  const handleSelectionChange = (regions: string[]) => {
     updateFilter({ [fieldName]: regions });
-    await updateCurrentSearchFilters();
   };
 
-  const handleClearFilter = async () => {
+  const handleClearFilter = () => {
     updateFilter({ [fieldName]: DEFAULT_FILTERS[fieldName] });
-    await updateCurrentSearchFilters();
   };
 
   return {

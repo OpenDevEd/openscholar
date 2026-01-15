@@ -6,16 +6,6 @@ import { createSearchParameters, generateFilename, downloadWithMetadata, getRati
 import { validateAndExpandKeywordsSilently } from './keyword-validation';
 import type { SearchField, SearchFilters } from './types';
 
-// Update current search with new filters and refresh results
-// NOTE: With URL-based state, this is now mostly a no-op since
-// SWR automatically refetches when URL params change.
-// Kept for backwards compatibility.
-export const updateCurrentSearchFilters = async () => {
-  // URL params now handle state - SWR auto-refetches on param change
-  // This function is kept for backwards compatibility but does nothing
-  return;
-};
-
 export const createSearchMetadata = (
   query: string,
   searchField: SearchField,

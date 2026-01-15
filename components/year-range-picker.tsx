@@ -15,7 +15,6 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { isDateFilterActive } from "@/lib/utils";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { useYearRangePickerStore } from "@/lib/store";
 
 export function YearRangePicker() {
@@ -37,9 +36,8 @@ export function YearRangePicker() {
     updateFilter({ yearRange: range });
   };
 
-  const setIsYearRangeEnabled = async (enabled: boolean) => {
+  const setIsYearRangeEnabled = (enabled: boolean) => {
     updateFilter({ isYearRangeEnabled: enabled });
-    await updateCurrentSearchFilters();
   };
 
   const currentYear = new Date().getFullYear();

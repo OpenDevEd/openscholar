@@ -4,11 +4,10 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Quote, Network, ExternalLink, LucideIcon } from "lucide-react";
-import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
-import { toast } from 'sonner';
+import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
+import { toast } from "sonner";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { Quote, Network, ExternalLink, X, type LucideIcon } from "lucide-react";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'cited_by' | 'related';
@@ -135,7 +134,7 @@ export function WorkIdFilter({
   
   const currentConfig = config[type];
   
-  const handleApplyFilter = async () => {
+  const handleApplyFilter = () => {
     if (!inputValue.trim()) {
       toast.error('Please enter a work ID');
       return;
@@ -161,34 +160,16 @@ export function WorkIdFilter({
     // Update the filter in the store
     setItemId(validatedId);
     
-    // Trigger search update with the new filter
-    try {
-      await updateCurrentSearchFilters();
-      toast.success(currentConfig.successMessage, {
-        description: currentConfig.successDescription(validatedId)
-      });
-    } catch (error) {
-      console.error('Error updating search with filter:', error);
-      toast.error('Failed to apply filter', {
-        description: 'Could not update search results with the new filter. Please try again.'
-      });
-    }
+    toast.success(currentConfig.successMessage, {
+      description: currentConfig.successDescription(validatedId)
+    });
   };
   
-  const handleClearFilter = async () => {
+  const handleClearFilter = () => {
     setInputValue('');
     clearFilter();
     
-    // Trigger search update after clearing the filter
-    try {
-      await updateCurrentSearchFilters();
-      toast.success(currentConfig.clearMessage);
-    } catch (error) {
-      console.error('Error updating search after clearing filter:', error);
-      toast.error('Failed to clear filter', {
-        description: 'Could not update search results after clearing the filter. Please try again.'
-      });
-    }
+    toast.success(currentConfig.clearMessage);
   };
   
   const handleInputChange = (value: string) => {
