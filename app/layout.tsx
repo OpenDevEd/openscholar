@@ -24,9 +24,36 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://openscholar.ai"),
   title: "OpenScholar - Academic Paper Search",
   description:
     "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
+  appleWebApp: {
+    title: "OpenScholar.ai",
+  },
+  openGraph: {
+    title: "OpenScholar - Academic Paper Search",
+    description:
+      "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
+    url: "https://openscholar.ai",
+    siteName: "OpenScholar",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "OpenScholar - Academic Paper Search",
+    description:
+      "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
+    creator: "@OpenScholarAI",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function RootLayout({

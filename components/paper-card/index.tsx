@@ -5,7 +5,7 @@ import { PaperCardListDetail } from "./paper-card-list-detail";
 import { PaperCardListSimple } from "./paper-card-list-simple";
 import { PaperCardGrid } from "./paper-card-grid";
 import type { PaperCardProps } from "./shared";
-import type { ViewMode } from "@/lib/store";
+import type { ViewMode } from "@/lib/types";
 
 // Re-export hooks and components for backwards compatibility
 export { useTranslate, useScreening, useCitationHandlers, usePaperCardData } from "./hooks";

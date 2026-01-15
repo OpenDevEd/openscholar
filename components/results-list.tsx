@@ -22,8 +22,8 @@ import {
   useRatingsStore,
   useSearchHistoryStore,
   useUIStore,
-  ViewMode,
 } from "@/lib/store";
+import { ViewMode } from "@/lib/types";
 import { PaperCard } from "./paper-card/index";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";

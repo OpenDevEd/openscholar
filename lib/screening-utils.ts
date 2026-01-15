@@ -1,5 +1,4 @@
-import type { ScreeningDocument, ScreeningQuestion } from '@/lib/store';
-import { ScreeningQuestionEntry, ScreeningResponses } from './types';
+import type { ScreeningDocument, ScreeningQuestion, ScreeningQuestionEntry, ScreeningResponses } from '@/lib/types';
 
 // Batch processing configuration
 export const DEFAULT_BATCH_SIZE = 5; // Process 5 documents at a time

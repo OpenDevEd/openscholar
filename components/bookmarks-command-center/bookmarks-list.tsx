@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { BookOpen, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ViewMode } from "@/lib/store";
+import { ViewMode } from "@/lib/types";
 import { BookmarksItem } from "./bookmarks-item";
 import { subtleSpring, type BookmarkEntry } from "./index";
 

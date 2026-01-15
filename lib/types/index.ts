@@ -35,6 +35,10 @@ export type {
   SearchFilters,
   SearchResult,
   SearchUrlParams,
+  ViewMode,
+  HistorySortBy,
+  BookmarkSortBy,
+  BookmarkData,
 } from './search.types';
 
 export { SEARCH_FIELDS } from './search.types';

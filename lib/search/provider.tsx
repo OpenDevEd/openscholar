@@ -158,7 +158,9 @@ export function SearchProvider({ children }: SearchProviderProps) {
       filters,
     };
     
-    return getSearchResultsWithFilters(searchParams);
+    const result = await getSearchResultsWithFilters(searchParams);
+    // Attach the paramsKey to the result so we can verify if it matches the current request
+    return { ...result, paramsKey: paramsJson };
   }, []);
   
   // Single SWR instance
@@ -196,13 +198,15 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Sync count to store whenever data changes (handles both fresh and cached data)
   useEffect(() => {
-    if (data?.results?.meta?.count !== undefined && searchId) {
+    // Only update if we have data and it matches the current search params
+    // This prevents stale data (from keepPreviousData: true) from overwriting correct counts
+    if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === debouncedKey) {
       const existing = getSearchResult(searchId);
       if (existing && existing.count !== data.results.meta.count) {
         updateSearchResult(searchId, { count: data.results.meta.count });
       }
     }
-  }, [data, searchId, getSearchResult, updateSearchResult]);
+  }, [data, searchId, getSearchResult, updateSearchResult, debouncedKey]);
 
   // Sync suggestedQuery whenever the URL query changes
   // This runs on mount and whenever urlParams.q changes (including cached data scenarios)

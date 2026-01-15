@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Clock, Search, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ViewMode } from "@/lib/store";
+import { ViewMode } from "@/lib/types";
 import { HistoryItem } from "./history-item";
 import { subtleSpring } from "./index";
 import type { SearchResult } from "@/lib/types";

@@ -13,6 +13,10 @@ import type {
   ScreeningDocument,
   ScreeningResult,
   SearchResult,
+  ViewMode,
+  HistorySortBy,
+  BookmarkSortBy,
+  BookmarkData,
 } from './types';
 import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
 
@@ -24,6 +28,10 @@ export type {
   ScreeningDocument, 
   ScreeningResult,
   SearchResult,
+  ViewMode,
+  HistorySortBy,
+  BookmarkSortBy,
+  BookmarkData,
 } from './types';
 
 // Fallback UUID generator for mobile compatibility
@@ -68,18 +76,9 @@ interface SearchHistoryState {
   importSearchHistory: (data: any[]) => number
 }
 
-export type ViewMode = 'list-simple' | 'list-detail' | 'grid-2' | 'grid-3'
-export type HistorySortBy = 'recent' | 'oldest' | 'most' | 'least'
-export type BookmarkSortBy = 'recent' | 'oldest' | 'alpha' | 'alpha-desc'
-
-// Bookmark data structure
-export interface BookmarkData {
-  expansion: string
-  createdAt: number
-}
-
 interface UIState {
   isDialogOpen: boolean
+
   loadingResultIndex: number | null
   isFocusModeOpen: boolean
   focusModeIndex: number

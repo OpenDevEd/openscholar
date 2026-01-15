@@ -20,6 +20,7 @@ export interface EnhancedSearchResult {
     warnings: string[];
   };
   results: any;
+  paramsKey?: string;
 }
 
 /**
