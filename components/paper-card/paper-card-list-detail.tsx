@@ -93,7 +93,7 @@ export function PaperCardListDetail({
         )}
 
         {/* Screening Questions */}
-        <ScreeningResponses data={result} expandShortcut="e" />
+        <ScreeningResponses data={result} />
 
         {/* Title Section */}
         <div className="mb-4">

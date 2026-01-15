@@ -188,8 +188,8 @@ export function ScreeningResponses({
     myMissingResponses,
   } = useScreening(data);
 
-  const { getScreeningDetailExpanded, setScreeningDetailExpanded } = useUIStore();
-  const showExpandedView = getScreeningDetailExpanded(data.id);
+  const showExpandedView = useUIStore((state) => state.expandedScreeningDetails[data.id] || false);
+  const setScreeningDetailExpanded = useUIStore((state) => state.setScreeningDetailExpanded);
 
   useEffect(() => {
     if (!expandShortcut) return;
@@ -274,7 +274,12 @@ export function ScreeningResponses({
 
         {/* Expand Button */}
         <button
-          onClick={() => setScreeningDetailExpanded(data.id, !showExpandedView)}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setScreeningDetailExpanded(data.id, !showExpandedView);
+          }}
           className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
           title={`Show detailed screening responses${
             expandShortcut ? ` (${expandShortcut.toUpperCase()})` : ""
