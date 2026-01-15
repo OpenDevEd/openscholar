@@ -324,7 +324,3 @@ export function getModelPricing(provider: AIProvider, modelId: string): { input:
   }
   return model.pricing
 }
-
-export function getAllProviderConfigs(): AIProviderConfig[] {
-  return Object.values(PROVIDER_CONFIGS)
-}

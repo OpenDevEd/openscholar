@@ -163,44 +163,6 @@ export function generateScreeningCsv(rows: any[], questions: ScreeningQuestion[]
 }
 
 /**
- * Generate all missing screening combinations for current page results
- * @param currentPagePapers - Array of papers on the current page
- * @param screeningQuestions - Array of screening questions
- * @param existingResponses - Existing screening responses object
- * @returns Array of objects with { paperId, question } for missing combinations
- */
-export function generateMissingScreeningCombinations(
-  currentPagePapers: { id: string }[],
-  screeningQuestions: ScreeningQuestionEntry[],
-  existingResponses: ScreeningResponses
-): { paperId: string; question: string }[] {
-  const missingCombinations: { paperId: string; question: string }[] = [];
-
-  // Iterate through each paper on the current page
-  for (const paper of currentPagePapers) {
-    const paperId = paper.id;
-
-    // Get existing responses for this paper (if any)
-    const paperResponses = existingResponses[paperId] || {};
-
-    // Check each question for this paper
-    for (const questionEntry of screeningQuestions) {
-      const question = questionEntry.question;
-
-      // If this combination doesn't have a response yet, add it to missing
-      if (!(question in paperResponses)) {
-        missingCombinations.push({
-          paperId,
-          question
-        });
-      }
-    }
-  }
-
-  return missingCombinations;
-}
-
-/**
  * Generate missing combinations grouped by paper
  * @param currentPagePapers - Array of papers on the current page
  * @param screeningQuestions - Array of screening questions

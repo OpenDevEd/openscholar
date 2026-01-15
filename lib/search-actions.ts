@@ -2,82 +2,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { useUIStore, useSearchHistoryStore, useRatingsStore } from './store';
-import { getEffectiveSearchId, createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
-import { createSearchStateFromStore } from './search-utils';
-import { validateAndExpandKeywords, validateAndExpandKeywordsSilently } from './keyword-validation';
+import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
+import { validateAndExpandKeywordsSilently } from './keyword-validation';
 import type { SearchField, SearchFilters } from './types';
-import { searchResultToParams, buildResultsUrl } from './search-params';
-
-// Utility function to extract query from FormData
-const extractQueryFromFormData = (formData: FormData): string => {
-  return formData.get('query') as string || '';
-};
-
-// Update current search with new query (SWR will handle data fetching)
-export const updateCurrentSearch = async (
-  formData: FormData,
-  filters: SearchFilters,
-) => {
-  const { updateSearchResult, getSearchResult, addQueryToHistory } = useSearchHistoryStore.getState();
-  
-  // Get effective search ID from URL
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : null;
-  const effectiveSearchId = getEffectiveSearchId(pathname, undefined);
-  
-  if (!effectiveSearchId) {
-    toast.error('No active search', {
-      description: 'Please perform a search before updating.'
-    });
-    throw new Error('No current search ID to update');
-  }
-  
-  // Get current search to preserve the existing count
-  const currentSearch = getSearchResult(effectiveSearchId);
-  const existingCount = currentSearch?.count || 0;
-
-  const normalizedQuery = extractQueryFromFormData(formData);
-  
-  // Validate query only - don't perform search
-  const validation = validateAndExpandKeywords(normalizedQuery);
-  
-  // If validation failed, don't update history item
-  if (!validation.isValid) {
-    return { searchId: effectiveSearchId };
-  }
-  
-  // Check if the query has actually changed
-  const currentQuery = currentSearch?.query || '';
-  const hasQueryChanged = normalizedQuery !== currentQuery;
-  
-  if (hasQueryChanged) {
-    // Add the new query to the history and update the current query
-    addQueryToHistory(effectiveSearchId, normalizedQuery);
-
-    // Update other filters if they've changed
-    const searchState = createSearchStateFromStore(
-      normalizedQuery,
-      filters,
-      existingCount, // Preserve existing count instead of setting to 0
-      undefined // No research question when updating existing search
-    );
-
-         // Update only the non-query fields (the query was already updated by addQueryToHistory)
-     const { query, ...otherUpdates } = searchState;
-     updateSearchResult(effectiveSearchId, otherUpdates);
-  } else {
-    // Query hasn't changed, just update other fields
-    const searchState = createSearchStateFromStore(
-      normalizedQuery,
-      filters,
-      existingCount, // Preserve existing count instead of setting to 0
-      undefined // No research question when updating existing search
-    );
-    
-    updateSearchResult(effectiveSearchId, searchState);
-  }
-
-  return { searchId: effectiveSearchId };
-};
 
 // Update current search with new filters and refresh results
 // NOTE: With URL-based state, this is now mostly a no-op since
@@ -242,48 +169,4 @@ export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
   }
   setFocusModeIndex(initialIndex);
   setIsFocusModeOpen(true);
-};
-
-/**
- * Selects a query from history and navigates to results page
- * Updates the search history if the query is different from current
- * Can be used from home page or results page
- */
-export const selectQueryFromHistory = async (
-  searchId: string,
-  selectedQuery: string,
-  router: any // Next.js router
-) => {
-  const { getSearchResult, addQueryToHistory } = useSearchHistoryStore.getState();
-  
-  // Get the current search result
-  const currentSearch = getSearchResult(searchId);
-  if (!currentSearch) {
-    toast.error('Search not found', {
-      description: 'The requested search could not be found in your history.'
-    });
-    return;
-  }
-  
-  const currentQuery = currentSearch.query;
-  
-  // Check if the selected query is different from current
-  if (selectedQuery !== currentQuery) {
-    // Add the selected query to history and update current query
-    addQueryToHistory(searchId, selectedQuery);
-    
-    toast.success('Query updated', {
-      description: `Switched to: "${selectedQuery}"`
-    });
-  }
-  
-  // Build URL params from the search result (with the new query if changed)
-  const searchResultWithQuery = selectedQuery !== currentQuery 
-    ? { ...currentSearch, query: selectedQuery }
-    : currentSearch;
-  
-  const urlParams = searchResultToParams(searchResultWithQuery);
-  
-  // Navigate to the results page with the search ID and URL params
-  router.push(buildResultsUrl(searchId, urlParams));
 }; 
