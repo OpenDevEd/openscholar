@@ -22,13 +22,14 @@ import {
   useRatingsStore,
   useSearchHistoryStore,
   useUIStore,
-  ViewMode,
 } from "@/lib/store";
+import { ViewMode } from "@/lib/types";
 import { PaperCard } from "./paper-card/index";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
-import { Loader2, Search } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NoResults, LoadingResults } from "@/components/no-results";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningResponses } from "@/lib/types";
@@ -115,67 +116,16 @@ function PapersList({
     ((isLoading || isValidating) && results.length === 0) ||
     (results.length === 0 && showInitialLoading && !isLoading && !isValidating)
   ) {
-    return (
-      <div className="text-center py-12">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Loading Results</h2>
-            <p className="text-muted-foreground">
-              Searching through millions of academic papers...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingResults />;
   }
 
-  // Show no results when there are no results but there is a query (only after initial 5 seconds)
-  if (results.length === 0 && currentQuery && !showInitialLoading) {
-    return (
-      <div className="text-center py-12">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold mb-2">No Results Found</h2>
-            <p className="text-muted-foreground mb-4">
-              No papers found for "{currentQuery}". Try adjusting your search
-              terms or filters.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button variant="outline" onClick={onBackToHome}>
-                Try New Search
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show default no results when there are no results and no query (only after initial 5 seconds)
+  // Show no results when there are no results (only after initial 5 seconds)
   if (results.length === 0 && !showInitialLoading) {
     return (
-      <div className="text-center py-12">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold mb-2">No Results Found</h2>
-            <p className="text-muted-foreground mb-4">
-              No papers found. Try adjusting your search terms or filters.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 justify-center">
-              <Button variant="outline" onClick={onBackToHome}>
-                Try New Search
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <NoResults
+        query={currentQuery}
+        onTryNewSearch={onBackToHome}
+      />
     );
   }
 

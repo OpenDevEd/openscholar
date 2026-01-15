@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { getEffectiveSearchId, DEFAULT_FILTERS } from "@/lib/utils";
 import { useSearchHistoryStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
@@ -71,47 +71,6 @@ export function useEffectiveSearchId(): string | undefined {
   const pathname = usePathname();
   
   return getEffectiveSearchId(pathname, undefined);
-}
-
-/**
- * Custom hook to get the current effective query from any context.
- * This works across all pages and provides the most relevant query:
- * 1. From URL search params (if present)
- * 2. From current search results (if on results page)
- * 3. From the most recent search in history (fallback)
- * 4. Empty string (if no context available)
- */
-export function useEffectiveQuery(): string {
-  const pathname = usePathname();
-  let searchParams = null;
-  
-  // Try to get search params, but handle SSR gracefully
-  try {
-    searchParams = useSearchParams();
-  } catch (error) {
-    // During SSR, useSearchParams might not be available
-    searchParams = null;
-  }
-  
-  const { searchHistory } = useSearchHistoryStore();
-  const effectiveSearchId = useEffectiveSearchId();
-  
-  // Priority 1: URL search params (client-side only)
-  const urlQuery = searchParams?.get('q');
-  if (urlQuery) {
-    return urlQuery;
-  }
-  
-  // Priority 2: Query from search history if we have a search ID
-  if (effectiveSearchId && searchHistory.length > 0) {
-    const searchResult = searchHistory.find(result => result.id === effectiveSearchId);
-    if (searchResult?.query) {
-      return searchResult.query;
-    }
-  }
-  
-  // Priority 3: Empty string
-  return '';
 }
 
 /**

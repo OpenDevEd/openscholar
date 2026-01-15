@@ -25,7 +25,6 @@ import {
 import { format } from "date-fns";
 import {
   cn,
-  fields,
   isDateFilterActive,
   isRatingFilterActive,
   isCountryFilterActive,
@@ -37,6 +36,7 @@ import {
 } from "@/lib/utils";
 import { countActiveFilters } from "@/lib/filters";
 import type { SearchField } from "@/lib/types";
+import { SEARCH_FIELDS } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { YearRangePicker } from "./year-range-picker";
@@ -418,7 +418,7 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
 
   // Find current field label
   const currentFieldLabel =
-    fields.find((f) => f.value === currentSearchField)?.label ||
+    SEARCH_FIELDS.find((f) => f.value === currentSearchField)?.label ||
     "Title & Abstract";
 
   // Check if search field is not at default
@@ -438,7 +438,7 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {fields.map((field) => (
+          {SEARCH_FIELDS.map((field) => (
             <SelectItem key={field.value} value={field.value}>
               {field.label}
             </SelectItem>

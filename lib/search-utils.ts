@@ -1,8 +1,7 @@
 import { DateRange } from 'react-day-picker';
 import { getSearchResults } from '@/app/actions/openalex';
-import { getCurrentSearchState, getEffectiveSearchId, isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
+import { isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, MIN_YEAR } from './constants';
-import { useSearchHistoryStore } from './store';
 import { validateAndExpandKeywords } from './keyword-validation';
 import type { SearchFilters, SearchField } from './types';
 
@@ -21,6 +20,7 @@ export interface EnhancedSearchResult {
     warnings: string[];
   };
   results: any;
+  paramsKey?: string;
 }
 
 /**

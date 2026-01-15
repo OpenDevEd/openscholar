@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useKeywordExpansionStore, useKeywordExpansionDialogStore, useUIStore, type BookmarkData } from "@/lib/store";
+import { useKeywordExpansionStore, useKeywordExpansionDialogStore, useUIStore } from "@/lib/store";
+import { BookmarkData } from "@/lib/types";
 import { BookmarksHeader } from "./bookmarks-header";
 import { BookmarksToolbar } from "./bookmarks-toolbar";
 import { BookmarksList } from "./bookmarks-list";

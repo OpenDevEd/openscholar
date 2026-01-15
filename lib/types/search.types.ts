@@ -148,3 +148,26 @@ export interface SearchUrlParams {
   review: boolean;
   lang?: string;
 }
+
+/**
+ * UI View Modes
+ */
+export type ViewMode = 'list-simple' | 'list-detail' | 'grid-2' | 'grid-3';
+
+/**
+ * Sort options for history
+ */
+export type HistorySortBy = 'recent' | 'oldest' | 'most' | 'least';
+
+/**
+ * Sort options for bookmarks
+ */
+export type BookmarkSortBy = 'recent' | 'oldest' | 'alpha' | 'alpha-desc';
+
+/**
+ * Bookmark data structure
+ */
+export interface BookmarkData {
+  expansion: string;
+  createdAt: number;
+}

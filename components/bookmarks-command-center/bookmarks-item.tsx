@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, createDefaultFilters } from "@/lib/utils";
 import { getIdColor } from "@/lib/format";
-import { ViewMode } from "@/lib/store";
+import { ViewMode } from "@/lib/types";
 import { toast } from "sonner";
 import { submitNewSearch } from "@/lib/search/actions";
 import { subtleSpring, type BookmarkEntry } from "./index";

@@ -23,8 +23,6 @@
  */
 
 import { serializeSearchParams, type ParsedSearchParams } from './parsers';
-import { searchResultToParams } from './converters';
-import type { SearchResult } from '../types';
 
 // Parsers and serialization
 export {
@@ -62,14 +60,4 @@ export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchPa
   return serializeSearchParams(`/results/${searchId}`, params);
 }
 
-/**
- * Build a results page URL from a SearchResult entry
- * Convenience wrapper that converts SearchResult to params first
- * 
- * @param entry - The SearchResult entry from history
- * @returns Full URL path like "/results/abc-123?q=test&field=title"
- */
-export function buildResultsUrlFromEntry(entry: SearchResult): string {
-  const params = searchResultToParams(entry);
-  return buildResultsUrl(entry.id, params);
-}
+

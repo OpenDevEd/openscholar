@@ -26,7 +26,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useUIStore, useKeywordExpansionStore, BookmarkSortBy, ViewMode } from "@/lib/store";
+import { useUIStore, useKeywordExpansionStore } from "@/lib/store";
+import { BookmarkSortBy, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { toast } from "sonner";
 import { jsonToCSV, downloadAsFile, triggerFileUpload, uploadFile } from "@/lib/utils";

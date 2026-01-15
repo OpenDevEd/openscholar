@@ -22,7 +22,6 @@ import { searchParamsParsers, serializeSearchParams } from '../search-params/par
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionDialogStore, useKeywordExpansionStore } from '../store';
 import { validateAndExpandKeywordsSilently } from '../keyword-validation';
-import { useDebounceValue } from '@/hooks/use-debounce-value';
 import type { SearchFilters, SearchField } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData } from './types';
 
@@ -50,9 +49,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
   const getSearchResult = useSearchHistoryStore((state) => state.getSearchResult);
   const addQueryToHistory = useSearchHistoryStore((state) => state.addQueryToHistory);
-  
-  // Get setter for suggestedQuery - unified source of truth on results pages
-  const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
   
   // Get expandQuery function for keyword expansion in shareable links
   const expandQuery = useKeywordExpansionStore((state) => state.expandQuery);
@@ -100,27 +96,12 @@ export function SearchProvider({ children }: SearchProviderProps) {
     urlParams.review,
   ]);
   
-  // Debounce the params key to avoid rapid API calls
-  const debouncedKey = useDebounceValue(paramsKey, 300);
-  
-  // Parse debounced params
-  const debouncedParams = useMemo(() => {
-    if (!debouncedKey) return null;
-    try {
-      return JSON.parse(debouncedKey);
-    } catch {
-      return null;
-    }
-  }, [debouncedKey]);
-  
   // Build SWR key - null means don't fetch
   const swrKey = useMemo(() => {
-    if (!debouncedParams) return null;
+    if (!paramsKey) return null;
     
-    // Empty searches are valid - always return a key when we have params
-    // This will fetch all works when no query or filters are applied
-    return ['search', debouncedKey] as const;
-  }, [debouncedParams, debouncedKey]);
+    return ['search', paramsKey] as const;
+  }, [paramsKey]);
   
   // Single SWR fetcher - all data comes from the key
   const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
@@ -158,7 +139,9 @@ export function SearchProvider({ children }: SearchProviderProps) {
       filters,
     };
     
-    return getSearchResultsWithFilters(searchParams);
+    const result = await getSearchResultsWithFilters(searchParams);
+    // Attach the paramsKey to the result so we can verify if it matches the current request
+    return { ...result, paramsKey: paramsJson };
   }, []);
   
   // Single SWR instance
@@ -170,9 +153,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
       revalidateOnReconnect: false,
       revalidateIfStale: false,
       dedupingInterval: 5000,
-      keepPreviousData: true,
       errorRetryCount: 2,
       errorRetryInterval: 1000,
+      onSuccess: (data) => {
+        if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
+          const existing = getSearchResult(searchId);
+          if (existing && existing.count !== data.results.meta.count) {
+            updateSearchResult(searchId, { count: data.results.meta.count });
+          }
+        }
+      },
       onError: (err) => {
         console.error('Search failed:', err);
         const message = err?.message || '';
@@ -193,24 +183,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
       },
     }
   );
-  
-  // Sync count to store whenever data changes (handles both fresh and cached data)
-  useEffect(() => {
-    if (data?.results?.meta?.count !== undefined && searchId) {
-      const existing = getSearchResult(searchId);
-      if (existing && existing.count !== data.results.meta.count) {
-        updateSearchResult(searchId, { count: data.results.meta.count });
-      }
-    }
-  }, [data, searchId, getSearchResult, updateSearchResult]);
-
-  // Sync suggestedQuery whenever the URL query changes
-  // This runs on mount and whenever urlParams.q changes (including cached data scenarios)
-  useEffect(() => {
-    const query = urlParams.q || '';
-    const { expandedQuery } = validateAndExpandKeywordsSilently(query);
-    setSuggestedQuery(expandedQuery);
-  }, [urlParams.q, setSuggestedQuery]);
   
   // Param setters - just update URL, SWR auto-refetches
   const setQuery = useCallback((q: string, options?: { skipHistory?: boolean }) => {

@@ -4,14 +4,7 @@ import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
-import { SEARCH_FIELDS } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
-
-// Re-export SEARCH_FIELDS as 'fields' for backwards compatibility
-export { SEARCH_FIELDS as fields } from './types';
-
-// Also create a local alias for use within this file
-const fields = SEARCH_FIELDS;
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -493,21 +486,6 @@ export function workToCoins(work: Work): string {
   return coinsString
 }
 
-export const formatDateRange = (dateRange?: DateRange, yearRange?: [number, number]): string | undefined => {
-  if (dateRange?.from && dateRange?.to) {
-    return `${format(dateRange.from, "MMM dd, yyyy")} - ${format(dateRange.to, "MMM dd, yyyy")}`;
-  } else if (dateRange?.from) {
-    return `From ${format(dateRange.from, "MMM dd, yyyy")}`;
-  } else if (yearRange) {
-    return `${yearRange[0]} - ${yearRange[1]}`;
-  }
-  return undefined;
-};
-
-export const getFieldLabel = (searchField: SearchField): string => {
-  return fields.find(f => f.value === searchField)?.label || searchField;
-};
-
 /**
  * Helper function to handle file upload and parsing
  */
@@ -607,149 +585,4 @@ export function getEffectiveSearchId(pathname: string | null, currentSearchId?: 
   }
   
   return undefined;
-}
-
-/**
- * Gets current search state from search history based on URL pathname
- * This replaces useSearchFormStore functionality
- */
-export function getCurrentSearchState(pathname: string | null) {
-  if (typeof window === 'undefined') return null;
-  
-  // Import here to avoid circular dependencies
-  const { useSearchHistoryStore } = require('./store');
-  const { getSearchResult } = useSearchHistoryStore.getState();
-  
-  // Extract search ID from URL
-  const searchId = getEffectiveSearchId(pathname, undefined);
-  if (!searchId) return null;
-  
-  // Get search result from history
-  const searchResult = getSearchResult(searchId);
-  if (!searchResult) return null;
-  
-  return searchResult;
-}
-
-/**
- * Gets a specific field from current search state with fallback
- */
-export function getCurrentSearchField<T>(pathname: string | null, field: string, fallback: T): T {
-  const searchState = getCurrentSearchState(pathname);
-  if (!searchState) return fallback;
-  
-  return (searchState as any)[field] ?? fallback;
-}
-
-/**
- * Parses a boolean search query and returns formatted parts with operator highlighting
- */
-export interface BooleanQueryPart {
-  text: string;
-  type: 'operator' | 'term' | 'parenthesis' | 'parenthesis_content';
-  nestingLevel?: number;
-  originalPosition?: number;
-}
-
-export function parseBooleanQuery(query: string, nestingLevel: number = 0): BooleanQueryPart[] {
-  if (!query || typeof query !== 'string') {
-    return [{ text: query || '', type: 'term', nestingLevel: 0, originalPosition: 0 }];
-  }
-
-  const parts: BooleanQueryPart[] = [];
-  let i = 0;
-  
-  while (i < query.length) {
-    const char = query[i];
-    
-    // Handle quoted strings
-    if (char === '"') {
-      const endQuote = query.indexOf('"', i + 1);
-      if (endQuote !== -1) {
-        parts.push({ text: query.slice(i, endQuote + 1), type: 'term', nestingLevel, originalPosition: i });
-        i = endQuote + 1;
-        continue;
-      }
-    }
-    
-    // Handle parentheses and their content
-    if (char === '(') {
-      const { content, endIndex } = extractParenthesesContent(query, i);
-      // Parse the content inside parentheses recursively
-      const innerContent = content.slice(1, -1); // Remove outer parentheses
-      if (innerContent.trim()) {
-        parts.push({ text: '(', type: 'parenthesis', nestingLevel, originalPosition: i });
-        const innerParts = parseBooleanQuery(innerContent, nestingLevel + 1);
-        parts.push(...innerParts.map(part => ({ 
-          ...part, 
-          type: part.type === 'term' ? 'parenthesis_content' as const : part.type,
-          nestingLevel: part.type === 'term' ? nestingLevel : part.nestingLevel
-        })));
-        parts.push({ text: ')', type: 'parenthesis', nestingLevel, originalPosition: endIndex });
-      } else {
-        parts.push({ text: content, type: 'parenthesis', nestingLevel, originalPosition: i });
-      }
-      i = endIndex + 1;
-      continue;
-    }
-    
-    // Handle operators
-    const remaining = query.slice(i);
-    const operatorMatch = remaining.match(/^(\bAND\b|\bOR\b|\bNOT\b)/i);
-    if (operatorMatch) {
-      parts.push({ text: operatorMatch[0], type: 'operator', nestingLevel, originalPosition: i });
-      i += operatorMatch[0].length;
-      continue;
-    }
-    
-    // Handle regular text
-    let textEnd = i;
-    while (textEnd < query.length && 
-           query[textEnd] !== '(' && 
-           query[textEnd] !== ')' && 
-           query[textEnd] !== '"' &&
-           !query.slice(textEnd).match(/^(\bAND\b|\bOR\b|\bNOT\b)/i)) {
-      textEnd++;
-    }
-    
-    if (textEnd > i) {
-      const text = query.slice(i, textEnd).trim();
-      if (text) {
-        parts.push({ text, type: 'term', nestingLevel, originalPosition: i });
-      }
-      i = textEnd;
-    } else {
-      i++;
-    }
-  }
-  
-  return parts.length > 0 ? parts : [{ text: query, type: 'term', nestingLevel: 0, originalPosition: 0 }];
-}
-
-// Helper function to extract content within parentheses, handling nesting
-function extractParenthesesContent(query: string, startIndex: number): { content: string; endIndex: number } {
-  let depth = 0;
-  let i = startIndex;
-  
-  while (i < query.length) {
-    const char = query[i];
-    if (char === '(') {
-      depth++;
-    } else if (char === ')') {
-      depth--;
-      if (depth === 0) {
-        return {
-          content: query.slice(startIndex, i + 1),
-          endIndex: i
-        };
-      }
-    }
-    i++;
-  }
-  
-  // If no matching closing parenthesis found, return the rest of the string
-  return {
-    content: query.slice(startIndex),
-    endIndex: query.length - 1
-  };
 }

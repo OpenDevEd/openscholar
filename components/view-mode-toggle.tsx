@@ -3,7 +3,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
-import { useUIStore, ViewMode } from "@/lib/store";
+import { useUIStore } from "@/lib/store";
+import { ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface ViewModeOption {
