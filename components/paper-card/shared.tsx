@@ -342,7 +342,7 @@ export function ScreeningResponses({
                         {index + 1}
                       </td>
                       <td className="py-2 px-2 text-foreground">
-                        <div className={variant === "mobile" ? "break-words whitespace-normal" : "truncate max-w-xs"} title={question.question}>
+                        <div className="break-words whitespace-normal">
                           {question.question}
                         </div>
                       </td>

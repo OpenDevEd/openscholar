@@ -11,6 +11,7 @@ import {
   useCurrentQuestionStore,
   useAIConfigStore,
   useCurrentQueryStore,
+  useKeywordExpansionDialogStore,
 } from "@/lib/store";
 import { useQueryChangeHandler, useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -32,7 +33,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const { addQuestionToHistory, getSearchResult } = useSearchHistoryStore();
   const { provider, model, apiKey } = useAIConfigStore();
   const [isEnhancing, setIsEnhancing] = useState(false);
-
+  const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
   // Keyword search state - also sync with global store for real-time tooltip updates
   const { setCurrentQuery } = useCurrentQueryStore();
   const [localInputValue, setLocalInputValue] = useState(search?.params?.q ?? "");
@@ -67,7 +68,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const handleQueryChange = useCallback((value: string) => {
     setLocalInputValue(value);
     setCurrentQuery(value); // Update global store for real-time tooltip updates
-  }, [setCurrentQuery]);
+    setSuggestedQuery(validateAndExpandKeywordsSilently(value).expandedQuery);
+  }, [setCurrentQuery, setSuggestedQuery]);
 
   // Handle keyword search submit
   const handleSearchSubmit = useCallback(
