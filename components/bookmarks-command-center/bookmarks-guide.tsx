@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksGuide() {
   const [isOpen, setIsOpen] = useState(false);

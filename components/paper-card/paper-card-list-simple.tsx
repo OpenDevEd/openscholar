@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useContext } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import React from "react";
+import { usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
-import { useUIStore, useSearchHistoryStore } from "@/lib/store";
+import { useUIStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
-import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
-import { Quote, Network } from "lucide-react";
+import { Quote } from "lucide-react";
 import { useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -28,7 +27,6 @@ export function PaperCardListSimple({
   onDownloadItem,
   onDownloadEssentialItem,
 }: PaperCardProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();

@@ -3,8 +3,6 @@
  * Single source of truth for screening-related type definitions
  */
 
-import type { AIProvider } from './ai.types';
-
 /**
  * Types of answers a screening question can accept
  */

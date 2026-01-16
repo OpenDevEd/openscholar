@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore } from "@/lib/store";
 import { toast } from "sonner";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksAddForm() {
   const [name, setName] = useState("");

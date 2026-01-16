@@ -12,14 +12,6 @@
 
 import { COUNTRIES } from '../constants';
 
-const CODE_TO_CONTINENT: Record<string, string> = {
-  'AF': 'Africa',
-  'AM': 'Americas',
-  'AS': 'Asia',
-  'EU': 'Europe',
-  'OC': 'Oceania',
-};
-
 /**
  * Map from internal region IDs (lowercase with underscores) to URL codes
  * Used for compact URL encoding

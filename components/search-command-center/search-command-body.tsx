@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SearchMode } from "./search-mode";
 import { AdjustMode } from "./adjust-mode";
 import type { CommandCenterMode } from "./index";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 interface SearchCommandBodyProps {
   mode: CommandCenterMode;

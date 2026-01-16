@@ -31,7 +31,7 @@ import { BookmarkSortBy, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { toast } from "sonner";
 import { jsonToCSV, downloadAsFile, triggerFileUpload, uploadFile } from "@/lib/utils";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
 
 interface ViewModeOption {

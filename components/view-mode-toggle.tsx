@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
 import { useUIStore } from "@/lib/store";
 import { ViewMode } from "@/lib/types";
@@ -40,13 +39,6 @@ const viewModeOptions: ViewModeOption[] = [
     shortLabel: "3×3",
   },
 ];
-
-const tabSpring = {
-  type: "spring" as const,
-  stiffness: 500,
-  damping: 30,
-  mass: 0.8,
-};
 
 // Compact version for tight spaces
 export function ViewModeToggleCompact() {

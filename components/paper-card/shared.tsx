@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { DownloadMenu } from "@/components/download-menu";
 import {
@@ -14,7 +14,6 @@ import {
   Users,
   BookOpen,
   Table,
-  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScreening } from "./hooks";
@@ -66,11 +65,6 @@ export function truncateAuthors(
   }
   
   return result;
-}
-
-export function truncateText(text: string, maxLength: number): string {
-  if (!text || text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength)}...`;
 }
 
 export function getFirstAuthor(

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { cn } from "@/lib/utils";
+import { subtleSpring } from "@/lib/animation-config";
 import { useSearchHistoryStore, useUIStore } from "@/lib/store";
 import { restoreFromHistory } from "@/lib/search/actions";
 import { HistoryHeader } from "./history-header";
@@ -12,21 +13,6 @@ import { HistoryToolbar } from "./history-toolbar";
 import { HistoryList } from "./history-list";
 import { HistoryPagination } from "./history-pagination";
 import type { SearchResult } from "@/lib/types";
-
-// Spring animation configs matching sidebar/search-command-center
-export const commandCenterSpring = {
-  type: "spring" as const,
-  stiffness: 500,
-  damping: 35,
-  mass: 0.8,
-};
-
-export const subtleSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
-  mass: 0.6,
-};
 
 const ITEMS_PER_PAGE = 12;
 

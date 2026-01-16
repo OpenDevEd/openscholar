@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 interface BookmarksHeaderProps {
   count: number;

@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
-import { useUIStore, useSearchHistoryStore, useRatingsStore } from './store';
+import { useUIStore, useRatingsStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { validateAndExpandKeywordsSilently } from './keyword-validation';
 import type { SearchField, SearchFilters } from './types';

@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
-import { commandCenterSpring } from "./index";
+import { commandCenterSpring } from "@/lib/animation-config";
 
 interface ScreeningExpansionProps {
   isOpen: boolean;

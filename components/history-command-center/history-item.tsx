@@ -31,7 +31,7 @@ import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 import type { SearchResult } from "@/lib/types";
 import { getFieldLabel, hasActiveFiltersFromResult } from "@/lib/filters";
 

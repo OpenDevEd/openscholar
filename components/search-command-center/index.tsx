@@ -3,25 +3,11 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { subtleSpring } from "@/lib/animation-config";
 import { SearchCommandHeader } from "./search-command-header";
 import { SearchCommandBody } from "./search-command-body";
 import { SearchCommandFooter } from "./search-command-footer";
 import { ScreeningExpansion } from "./screening-expansion";
-
-// Spring animation configs matching sidebar
-export const commandCenterSpring = {
-  type: "spring" as const,
-  stiffness: 500,
-  damping: 35,
-  mass: 0.8,
-};
-
-export const subtleSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
-  mass: 0.6,
-};
 
 export type CommandCenterMode = "search" | "adjust";
 

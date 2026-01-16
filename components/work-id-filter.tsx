@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { toast } from "sonner";
-import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 import { Quote, Network, ExternalLink, X, type LucideIcon } from "lucide-react";
 
 interface WorkIdFilterProps {

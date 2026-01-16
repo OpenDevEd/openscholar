@@ -13,7 +13,7 @@ import {
   useCurrentQueryStore,
   useKeywordExpansionDialogStore,
 } from "@/lib/store";
-import { useQueryChangeHandler, useEffectiveSearchId } from "@/lib/hooks";
+import { useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
 import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";

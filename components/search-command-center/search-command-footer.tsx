@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 interface SearchCommandFooterProps {
   totalCount: number;

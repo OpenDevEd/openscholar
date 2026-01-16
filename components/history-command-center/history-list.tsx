@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ViewMode } from "@/lib/types";
 import { HistoryItem } from "./history-item";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 import type { SearchResult } from "@/lib/types";
 import Link from "next/link";
 

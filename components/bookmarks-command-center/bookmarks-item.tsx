@@ -17,7 +17,8 @@ import { getIdColor } from "@/lib/format";
 import { ViewMode } from "@/lib/types";
 import { toast } from "sonner";
 import { submitNewSearch } from "@/lib/search/actions";
-import { subtleSpring, type BookmarkEntry } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
+import { type BookmarkEntry } from "./index";
 
 interface BookmarksItemProps {
   bookmark: BookmarkEntry;

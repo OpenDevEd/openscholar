@@ -153,41 +153,6 @@ function UnifiedBadge({ item, colorClass, baseClass, variant }: UnifiedBadgeProp
 
 // ============ Shared Display Components ============
 
-interface CountryFlagsDisplayProps {
-  codes: string[];
-  max?: number;
-  className?: string;
-}
-
-/**
- * Renders country flags with overflow indicator
- */
-export function CountryFlagsDisplay({
-  codes,
-  max = 3,
-  className,
-}: CountryFlagsDisplayProps) {
-  const displayCodes = codes.slice(0, max);
-  const remaining = codes.length - max;
-
-  return (
-    <div className={cn("flex items-center gap-1.5", className)}>
-      <div className="flex -space-x-1">
-        {displayCodes.map((code) => (
-          <CountryFlag
-            key={code}
-            countryCode={code}
-            className="w-5 h-4 rounded-sm border border-border/50"
-          />
-        ))}
-      </div>
-      {remaining > 0 && (
-        <span className="text-xs text-muted-foreground">+{remaining}</span>
-      )}
-    </div>
-  );
-}
-
 interface RatingStarsDisplayProps {
   range: [number, number];
   size?: "sm" | "md";

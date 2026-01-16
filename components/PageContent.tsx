@@ -22,14 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
-
-// Spring animation config matching history/bookmarks command centers
-const subtleSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
-  mass: 0.6,
-};
+import { subtleSpring } from "@/lib/animation-config";
 
 function PageContent() {
   const router = useRouter();

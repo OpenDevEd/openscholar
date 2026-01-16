@@ -32,7 +32,7 @@ import { showConfirmation } from "@/lib/confirmation";
 import { toast } from "sonner";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 // View mode toggle - adapted for history (reusing same icons as ViewModeToggleCompact)
 import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";

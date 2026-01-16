@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import React, { useEffect, useState } from "react";
+
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -20,20 +20,9 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
-  X,
   Star,
-  Users,
-  Quote,
-  TrendingUp,
   BookOpen,
-  BarChart3,
   Award,
-  Target,
-  Layers,
-  Building,
-  Leaf,
-  Unlock,
-  Lock,
   Globe,
   ExternalLink,
   FileText,
@@ -52,14 +41,13 @@ import {
   useRatingsStore,
   useFocusModeSettingsStore,
   useUIStore,
-  useTranslationStore,
 } from "@/lib/store";
 import { useSearchOptional } from "@/lib/search";
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from "next-themes";
 import { RatingSelector } from "../rating-selector";
 import { useIsMobile } from "@/lib/hooks";
-import { writeFile, writeFileSync } from "fs";
+
 import { ScreeningResponses, useTranslate } from "../paper-card";
 
 interface FocusModeProps {
@@ -87,7 +75,6 @@ export function FocusMode({
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
-  const pathname = usePathname();
 
   const currentPaper = papers[currentIndex];
 

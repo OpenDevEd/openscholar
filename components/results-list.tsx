@@ -28,7 +28,7 @@ import { PaperCard } from "./paper-card/index";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { NoResults, LoadingResults } from "@/components/no-results";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { subtleSpring } from "@/lib/animation-config";
 import { useKeywordExpansionStore, useKeywordExpansionDialogStore, useUIStore } from "@/lib/store";
 import { BookmarkData } from "@/lib/types";
 import { BookmarksHeader } from "./bookmarks-header";
@@ -11,21 +12,6 @@ import { BookmarksList } from "./bookmarks-list";
 import { BookmarksAddForm } from "./bookmarks-add-form";
 import { BookmarksSaveBanner } from "./bookmarks-save-banner";
 import { BookmarksGuide } from "./bookmarks-guide";
-
-// Spring animation configs matching sidebar/search-command-center
-export const commandCenterSpring = {
-  type: "spring" as const,
-  stiffness: 500,
-  damping: 35,
-  mass: 0.8,
-};
-
-export const subtleSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
-  mass: 0.6,
-};
 
 export interface BookmarkEntry {
   name: string;

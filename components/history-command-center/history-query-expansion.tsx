@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import { toast } from "sonner";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 import type { QueryHistoryEntry } from "@/lib/types";
 
 interface HistoryQueryExpansionProps {

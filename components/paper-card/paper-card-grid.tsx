@@ -1,12 +1,11 @@
 "use client";
 
 import React from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
 import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
-import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
 import { Quote, Network, Users, BookOpen } from "lucide-react";
 import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
@@ -30,7 +29,7 @@ export function PaperCardGrid({
   onDownloadEssentialItem,
   viewMode = "grid-2",
 }: PaperCardProps) {
-  const router = useRouter();
+  const pathname = usePathname();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 

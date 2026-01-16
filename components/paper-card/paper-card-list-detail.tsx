@@ -6,8 +6,6 @@ import { workToCoins } from "@/lib/utils";
 import {
   useResultsStore,
   useUIStore,
-  useAIConfigStore,
-  useTranslationStore,
 } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ViewMode } from "@/lib/types";
 import { BookmarksItem } from "./bookmarks-item";
-import { subtleSpring, type BookmarkEntry } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
+import { type BookmarkEntry } from "./index";
 
 interface BookmarksListProps {
   items: BookmarkEntry[];

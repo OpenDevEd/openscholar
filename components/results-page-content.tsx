@@ -16,14 +16,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListFilter, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-
-// Animation configs matching the search command center
-const subtleSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 30,
-  mass: 0.6,
-};
+import { subtleSpring } from "@/lib/animation-config";
 
 type Direction = 1 | -1;
 

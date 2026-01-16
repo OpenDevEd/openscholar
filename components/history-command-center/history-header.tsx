@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 interface HistoryHeaderProps {
   count: number;

@@ -64,7 +64,6 @@ export function useTranslate(
   const {
     getTranslation,
     setTranslation,
-    clearTranslation,
     getShowTranslated,
     setShowTranslated: setShowTranslatedStore,
   } = useTranslationStore();

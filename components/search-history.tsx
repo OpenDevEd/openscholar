@@ -3,8 +3,8 @@ import { parseAsInteger, useQueryState } from 'nuqs';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, X, Trash2, ExternalLink, Download, Copy, Clock, ChevronLeft, ChevronRight, History, Upload, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, ArrowRight, Languages } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { Search, Loader2, Trash2, Copy, Clock, ChevronLeft, ChevronRight, History, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, Languages } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
-import { useIsMobile } from "@/lib/hooks";
+
 import { toast } from "sonner";
 import { showConfirmation } from "@/lib/confirmation";
 import { CountryFlag } from "@/components/ui/country-flag";
@@ -43,7 +43,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
   const { keywords, addKeyword } = useKeywordExpansionStore();
-  const isMobile = useIsMobile();
   const itemsPerPage = compact ? 5 : 10;
   
   // State for bookmark creation

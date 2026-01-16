@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore, useKeywordExpansionDialogStore } from "@/lib/store";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { toast } from "sonner";
-import { subtleSpring } from "./index";
+import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksSaveBanner() {
   const [name, setName] = useState("");
