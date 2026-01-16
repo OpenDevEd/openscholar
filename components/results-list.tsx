@@ -468,27 +468,29 @@ export function ResultsList({
           downloadEssentialItem(item, format, searchState)
         }
       />
-      <div className="space-y-6">
+      <div className="flex flex-col">
         {/* New Search Command Center */}
-        <SearchCommandCenter
-          searchId={searchId || ""}
-          totalCount={totalCount}
-          currentQuery={urlQuery}
-          isLoading={isLoading}
-          isValidating={isValidating}
-          onDownloadAllJSON={onDownloadAllJSON}
-          onDownloadAllCSV={onDownloadAllCSV}
-          onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}
-          onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
-        />
+        <div className="mb-6">
+          <SearchCommandCenter
+            searchId={searchId || ""}
+            totalCount={totalCount}
+            currentQuery={urlQuery}
+            isLoading={isLoading}
+            isValidating={isValidating}
+            onDownloadAllJSON={onDownloadAllJSON}
+            onDownloadAllCSV={onDownloadAllCSV}
+            onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}
+            onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
+          />
+        </div>
 
         {/* Updating Results Animation */}
         <AnimatePresence>
           {isValidating && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
               transition={{
                 type: "spring",
                 stiffness: 400,

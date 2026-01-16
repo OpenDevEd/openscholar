@@ -151,6 +151,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       revalidateIfStale: false,
+      keepPreviousData: true,
       dedupingInterval: 5000,
       errorRetryCount: 2,
       errorRetryInterval: 1000,
