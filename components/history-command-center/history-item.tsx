@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
-import { useSearchHistoryStore, useKeywordExpansionStore, ViewMode } from "@/lib/store";
+import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
+import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { toast } from "sonner";
 import { QueryText } from "@/components/ui/query-text";
@@ -32,33 +33,7 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
 import { subtleSpring } from "./index";
 import type { SearchResult } from "@/lib/types";
-
-// Helper functions
-function getFieldLabel(field?: string): string {
-  const labels: Record<string, string> = {
-    title: "Title",
-    abstract: "Abstract",
-    title_and_abstract: "Title + Abstract",
-    fulltext: "Full Text",
-    raw: "Raw Query",
-  };
-  return labels[field || ""] || "All Fields";
-}
-
-function hasActiveFilters(result: SearchResult): boolean {
-  return !!(
-    result.yearRange ||
-    result.dateRange ||
-    (result.selectedRegions && result.selectedRegions.length > 0) ||
-    (result.selectedCountryFocus && result.selectedCountryFocus.length > 0) ||
-    result.citesItemId ||
-    result.citedByItemId ||
-    result.relatedToItemId ||
-    result.ratingRange ||
-    result.reviewFilter ||
-    result.onlyRatedPapers
-  );
-}
+import { getFieldLabel, hasActiveFiltersFromResult } from "@/lib/filters";
 
 interface HistoryItemProps {
   item: SearchResult;
@@ -641,7 +616,7 @@ export function HistoryItem({
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/40">
           {/* Left: Filters */}
           <div className="flex-1 overflow-x-auto scrollbar-hover">
-            {hasActiveFilters(item) && (
+            {hasActiveFiltersFromResult(item) && (
               <HistoryFilterBadges result={item} variant="compact" />
             )}
           </div>

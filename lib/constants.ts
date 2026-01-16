@@ -27,7 +27,7 @@ export const getYearRangePresets = (): YearRangePreset[] => {
   ];
 }; 
 
-export type Entry = {
+type Entry = {
 	label: string;
 	children?: Entry[];
 }
@@ -689,7 +689,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 /**
  * Recursively extract all country codes from a region entry
  */
-export function getCountriesFromRegion(entry: Entry): string[] {
+function getCountriesFromRegion(entry: Entry): string[] {
   const countries: string[] = [];
   
   if (entry.children) {
@@ -707,7 +707,7 @@ export function getCountriesFromRegion(entry: Entry): string[] {
 /**
  * Create a mapping from region IDs to their country codes
  */
-export function createRegionToCountriesMap(): Record<string, string[]> {
+function createRegionToCountriesMap(): Record<string, string[]> {
   const map: Record<string, string[]> = {};
   
   function processEntry(entry: Entry, path: string[] = []) {
@@ -731,7 +731,7 @@ export function createRegionToCountriesMap(): Record<string, string[]> {
 }
 
 // Pre-compute the region to countries mapping
-export const REGION_TO_COUNTRIES_MAP = createRegionToCountriesMap();
+const REGION_TO_COUNTRIES_MAP = createRegionToCountriesMap();
 
 /**
  * Get country codes for multiple regions and individual countries, handling overlaps properly

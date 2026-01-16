@@ -4,16 +4,14 @@ import React from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCurrentSearchFormState, useUpdateSearchFilter } from '@/lib/hooks';
-import { updateCurrentSearchFilters } from '@/lib/search-actions';
 import { toast } from 'sonner';
 
 export function ReviewFilter() {
   const { reviewFilter } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
-  const handleToggle = async (checked: boolean) => {
+  const handleToggle = (checked: boolean) => {
     updateFilter({ reviewFilter: checked });
-    await updateCurrentSearchFilters();
     toast.success(checked ? "Review filter applied" : "Review filter removed");
   };
 

@@ -48,45 +48,6 @@ const tabSpring = {
   mass: 0.8,
 };
 
-export function ViewModeToggle() {
-  const { viewMode, setViewMode } = useUIStore();
-
-  return (
-    <div className="flex items-center">
-      <div className="relative flex items-center gap-0.5 p-1 bg-muted/50 dark:bg-muted/30 rounded-xl border border-border/60">
-        {viewModeOptions.map((option) => {
-          const isActive = viewMode === option.mode;
-          
-          return (
-            <button
-              key={option.mode}
-              onClick={() => setViewMode(option.mode)}
-              className={cn(
-                "relative z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              title={option.label}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="viewModeIndicator"
-                  className="absolute inset-0 bg-background dark:bg-background/80 rounded-lg shadow-sm border border-border/50"
-                  transition={tabSpring}
-                  style={{ zIndex: -1 }}
-                />
-              )}
-              {option.icon}
-              <span className="hidden @lg:inline">{option.shortLabel}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // Compact version for tight spaces
 export function ViewModeToggleCompact() {
   const { viewMode, setViewMode } = useUIStore();

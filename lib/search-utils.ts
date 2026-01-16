@@ -1,7 +1,6 @@
-import { DateRange } from 'react-day-picker';
 import { getSearchResults } from '@/app/actions/openalex';
-import { isCountryFilterActive, isCountryFocusActive, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive, isDateFilterActive, isFilterAtDefault } from './utils';
-import { getCountryCodesForRegions, COUNTRIES, MIN_YEAR } from './constants';
+import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
+import { getCountryCodesForRegions, COUNTRIES } from './constants';
 import { validateAndExpandKeywords } from './keyword-validation';
 import type { SearchFilters, SearchField } from './types';
 
@@ -137,75 +136,5 @@ export async function getSearchResultsWithFilters(
     countryNames,
     validation,
     results
-  };
-}
-
-/**
- * Helper function to create search state object for saving to history
- */
-export function createSearchStateFromStore(
-  query: string,
-  filters: SearchFilters,
-  resultsCount?: number,
-  researchQuestion?: string
-) {
-  return {
-    query,
-    field: filters.searchField,
-    count: resultsCount || 0,
-    dateRange: filters.dateRange,
-    yearRange: filters.yearRange,
-    filterType: filters.filterType,
-    isYearRangeEnabled: filters.isYearRangeEnabled,
-    sortBy: filters.sortBy,
-    selectedRegions: filters.selectedRegions,
-    selectedCountryFocus: filters.selectedCountryFocus,
-    // Only include rating fields if they're not at default values
-    ...(filters.ratingRange && !isFilterAtDefault.ratingRange(filters.ratingRange) ? { ratingRange: filters.ratingRange } : {}),
-    ...(filters.onlyRatedPapers !== undefined && !isFilterAtDefault.onlyRatedPapers(filters.onlyRatedPapers) ? { onlyRatedPapers: filters.onlyRatedPapers } : {}),
-    citesItemId: filters.citesItemId,
-    citedByItemId: filters.citedByItemId,
-    relatedToItemId: filters.relatedToItemId,
-    reviewFilter: filters.reviewFilter,
-    // Include questionHistory if research question is provided
-    ...(researchQuestion ? {
-      questionHistory: [{
-        question: researchQuestion,
-        timestamp: new Date().toISOString()
-      }]
-    } : {})
-  };
-}
-
-/**
- * Helper function to convert a search result to SearchFilters
- */
-export function searchResultToFilters(searchResult: any): SearchFilters {
-  // Migration logic: if isYearRangeEnabled is undefined, determine it from yearRange
-  let isYearRangeEnabled = searchResult.isYearRangeEnabled;
-  if (isYearRangeEnabled === undefined && searchResult.yearRange) {
-    const currentYear = new Date().getFullYear();
-    const [fromYear, toYear] = searchResult.yearRange;
-    const defaultYearRange = [MIN_YEAR, currentYear];
-    isYearRangeEnabled = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
-  } else if (isYearRangeEnabled === undefined) {
-    isYearRangeEnabled = false;
-  }
-
-  return {
-    searchField: searchResult.field || 'title_and_abstract',
-    sortBy: searchResult.sortBy || 'relevance_score:desc',
-    filterType: searchResult.filterType || 'year',
-    dateRange: searchResult.dateRange,
-    yearRange: searchResult.yearRange,
-    isYearRangeEnabled,
-    ratingRange: searchResult.ratingRange,
-    onlyRatedPapers: searchResult.onlyRatedPapers,
-    selectedRegions: searchResult.selectedRegions || [],
-    selectedCountryFocus: searchResult.selectedCountryFocus || [],
-    citesItemId: searchResult.citesItemId || '',
-    citedByItemId: searchResult.citedByItemId || '',
-    relatedToItemId: searchResult.relatedToItemId || '',
-    reviewFilter: searchResult.reviewFilter || false
   };
 } 

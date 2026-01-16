@@ -112,6 +112,36 @@ export function formatRatingSummary(
   return parts.length > 0 ? parts.join(", ") : "filtered";
 }
 
+/**
+ * Check if a SearchResult has any active filters
+ * Used by history components to show filter indicators
+ */
+export function hasActiveFiltersFromResult(result: {
+  yearRange?: [number, number];
+  dateRange?: { from?: Date; to?: Date };
+  selectedRegions?: string[];
+  selectedCountryFocus?: string[];
+  citesItemId?: string;
+  citedByItemId?: string;
+  relatedToItemId?: string;
+  ratingRange?: [number, number];
+  reviewFilter?: boolean;
+  onlyRatedPapers?: boolean;
+}): boolean {
+  return !!(
+    result.yearRange ||
+    result.dateRange ||
+    (result.selectedRegions && result.selectedRegions.length > 0) ||
+    (result.selectedCountryFocus && result.selectedCountryFocus.length > 0) ||
+    result.citesItemId ||
+    result.citedByItemId ||
+    result.relatedToItemId ||
+    result.ratingRange ||
+    result.reviewFilter ||
+    result.onlyRatedPapers
+  );
+}
+
 // ============ Section Builder Helpers ============
 
 function createSection(

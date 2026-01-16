@@ -158,19 +158,6 @@ export function FocusMode({
     setShowSettings(false);
   }, [isOpen]);
 
-  // Notify Zotero when current paper changes or focus mode opens/closes
-  // This is handled in results-list.tsx to avoid duplicate events
-  // useEffect(() => {
-  //   if (isOpen && currentPaper) {
-  //     document.dispatchEvent(
-  //       new Event("ZoteroItemUpdated", {
-  //         bubbles: true,
-  //         cancelable: true,
-  //       })
-  //     );
-  //   }
-  // }, [currentPaper, isOpen]);
-
   // Reset scroll position when paper changes
   useEffect(() => {
     if (isOpen && !showSettings) {

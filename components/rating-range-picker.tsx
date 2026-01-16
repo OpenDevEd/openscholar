@@ -6,7 +6,6 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Star, X } from "lucide-react";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
-import { updateCurrentSearchFilters } from "@/lib/search-actions";
 import { cn, isRatingFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 
 export function RatingRangePicker() {

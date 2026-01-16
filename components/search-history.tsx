@@ -27,38 +27,7 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { QueryText } from "@/components/ui/query-text";
-
-// Helper functions for display labels
-function getFieldLabel(field?: string): string {
-  const labels: Record<string, string> = {
-    'title': 'Title',
-    'abstract': 'Abstract',
-    'title_and_abstract': 'Title + Abstract',
-    'fulltext': 'Full Text',
-    'raw': 'Raw Query'
-  };
-  return labels[field || ''] || 'All Fields';
-}
-
-function getSortLabel(sortBy?: string): string {
-  const option = sortOptions.find(o => o.value === sortBy);
-  return option?.label || '';
-}
-
-function hasActiveFilters(result: any): boolean {
-  return !!(
-    result.yearRange ||
-    result.dateRange ||
-    (result.selectedRegions?.length > 0) ||
-    (result.selectedCountryFocus?.length > 0) ||
-    result.citesItemId ||
-    result.citedByItemId ||
-    result.relatedToItemId ||
-    result.ratingRange ||
-    result.reviewFilter ||
-    result.onlyRatedPapers
-  );
-}
+import { getFieldLabel, getSortLabel, hasActiveFiltersFromResult } from "@/lib/filters";
 
 interface SearchHistoryProps {
   onSearchResults: (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], filterType?: "date" | "year", index?: number) => void;
@@ -703,7 +672,7 @@ function ActionButtons({
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
             {/* Left: Filters (scrollable) */}
             <div className="flex-1 overflow-x-auto scrollbar-hover">
-              {hasActiveFilters(result) && (
+              {hasActiveFiltersFromResult(result) && (
                 <HistoryFilterBadges result={result} variant={variant} />
               )}
             </div>

@@ -47,7 +47,7 @@ export function createDefaultFilters(): SearchFilters {
 }
 
 // Utility functions to check if filters are at default values
-export const isFilterAtDefault = {
+const isFilterAtDefault = {
   yearRange: (range?: [number, number]) => {
     if (!range) return true;
     const defaultRange = DEFAULT_FILTERS.yearRange();
