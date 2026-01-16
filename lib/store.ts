@@ -13,17 +13,7 @@ import type {
   BookmarkSortBy,
   BookmarkData,
 } from './types';
-import { DEFAULT_YEAR_RANGE, MIN_YEAR } from './constants';
-
-// Re-export types for backwards compatibility
-export type { 
-  AIProvider, 
-  SearchResult,
-  ViewMode,
-  HistorySortBy,
-  BookmarkSortBy,
-  BookmarkData,
-} from './types';
+import { MIN_YEAR } from './constants';
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {

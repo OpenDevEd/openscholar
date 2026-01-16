@@ -17,7 +17,6 @@ export {
   SECTION_CONFIG,
   FILTER_ICONS,
   FILTER_EMOJIS,
-  FILTER_ICON_COLORS,
   SORT_OPTIONS,
   SIDEBAR_BADGE_COLORS,
   HISTORY_BADGE_COLORS,
@@ -35,4 +34,5 @@ export {
   formatGeoSummary,
   formatRatingRange,
   formatRatingSummary,
+  hasActiveFiltersFromResult,
 } from "./filter-builder";

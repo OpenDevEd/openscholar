@@ -101,25 +101,6 @@ export const FILTER_EMOJIS: Record<FilterType, string> = {
 };
 
 /**
- * Icon color mapping for tooltip display
- */
-export const FILTER_ICON_COLORS: Record<FilterType, string> = {
-  field: "text-orange-500",
-  sort: "text-orange-500",
-  year: "text-purple-500",
-  date: "text-purple-500",
-  regions: "text-emerald-500",
-  countryFocus: "text-emerald-500",
-  language: "text-blue-500",
-  review: "text-blue-500",
-  rating: "text-green-500",
-  onlyRated: "text-green-500",
-  cites: "text-pink-500",
-  citedBy: "text-pink-500",
-  relatedTo: "text-pink-500",
-};
-
-/**
  * Sort options configuration
  */
 export const SORT_OPTIONS = [
