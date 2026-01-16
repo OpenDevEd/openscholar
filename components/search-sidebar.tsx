@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -67,7 +67,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-import { useFilterSidebarOptional } from "./filter-sidebar-provider";
+import { useFilterSidebarStore, getFilterSidebarDimensions } from "@/lib/store";
+import { useIsMobile } from "@/lib/hooks";
 import { motion, AnimatePresence } from "motion/react";
 
 // Spring animation config for sidebar - bouncier version
@@ -663,6 +664,21 @@ export function SearchSidebar({
   isMobile = false,
   mode = "sidebar",
 }: SearchSidebarProps) {
+  const toggle = useFilterSidebarStore((s) => s.toggle);
+
+  // Keyboard shortcut: Ctrl+Shift+F to toggle filter sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggle();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggle]);
+
   const {
     currentSearchField,
     sortBy,
@@ -769,12 +785,13 @@ export function SearchSidebar({
 
   if (mode === "panel") {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const filterSidebar = useFilterSidebarOptional();
+    const isMobile = useIsMobile();
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { isCollapsed, toggle, _hasHydrated } = useFilterSidebarStore();
+    const { expandedWidth, collapsedWidth } = getFilterSidebarDimensions(isCollapsed);
 
-    // If no provider or on mobile, don't render the panel
-    if (!filterSidebar || filterSidebar.isMobile) return null;
-
-    const { isCollapsed, toggle, expandedWidth, collapsedWidth } = filterSidebar;
+    // Don't render until hydrated or on mobile
+    if (!_hasHydrated || isMobile) return null;
 
     // Calculate translateX - when collapsed, slide left so only collapsedWidth is visible
     const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;

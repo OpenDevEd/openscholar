@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { 
   SearchField, 
   QueryHistoryEntry, 
@@ -892,6 +892,94 @@ export const useTranslationStore = create<TranslationState>()(
     },
   })
 ); 
+
+// Sidebar Store - Main navigation sidebar
+const SIDEBAR_WIDTH_EXPANDED = 280;
+const SIDEBAR_WIDTH_COLLAPSED = 72;
+
+interface SidebarState {
+  isOpen: boolean;
+  isCollapsed: boolean;
+  _hasHydrated: boolean;
+  setOpen: (open: boolean) => void;
+  setCollapsed: (collapsed: boolean) => void;
+  toggle: (isMobile: boolean) => void;
+  setHasHydrated: (state: boolean) => void;
+}
+
+export const useSidebarStore = create<SidebarState>()(
+  persist(
+    (set, get) => ({
+      isOpen: false,
+      isCollapsed: false,
+      _hasHydrated: false,
+      setOpen: (open) => set({ isOpen: open }),
+      setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
+      toggle: (isMobile) => {
+        if (isMobile) {
+          set((state) => ({ isOpen: !state.isOpen }));
+        } else {
+          set((state) => ({ isCollapsed: !state.isCollapsed }));
+        }
+      },
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
+    }),
+    {
+      name: 'openalex-sidebar',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ isCollapsed: state.isCollapsed }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);
+
+// Derived values for sidebar dimensions
+export const getSidebarDimensions = (isCollapsed: boolean) => ({
+  expandedWidth: SIDEBAR_WIDTH_EXPANDED,
+  collapsedWidth: SIDEBAR_WIDTH_COLLAPSED,
+  currentWidth: isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
+});
+
+// Filter Sidebar Store - Search filters sidebar
+const FILTER_SIDEBAR_WIDTH_EXPANDED = 320;
+const FILTER_SIDEBAR_WIDTH_COLLAPSED = 48;
+
+interface FilterSidebarState {
+  isCollapsed: boolean;
+  _hasHydrated: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+  toggle: () => void;
+  setHasHydrated: (state: boolean) => void;
+}
+
+export const useFilterSidebarStore = create<FilterSidebarState>()(
+  persist(
+    (set) => ({
+      isCollapsed: false,
+      _hasHydrated: false,
+      setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
+      toggle: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
+    }),
+    {
+      name: 'openalex-filter-sidebar',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ isCollapsed: state.isCollapsed }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);
+
+// Derived values for filter sidebar dimensions
+export const getFilterSidebarDimensions = (isCollapsed: boolean) => ({
+  expandedWidth: FILTER_SIDEBAR_WIDTH_EXPANDED,
+  collapsedWidth: FILTER_SIDEBAR_WIDTH_COLLAPSED,
+  currentWidth: isCollapsed ? FILTER_SIDEBAR_WIDTH_COLLAPSED : FILTER_SIDEBAR_WIDTH_EXPANDED,
+});
 
 export const useTransientScreeningStore = create<{
   calledFor: Record<string, boolean>;

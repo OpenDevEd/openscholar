@@ -4,8 +4,6 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { SidebarProvider } from "@/components/sidebar-provider";
-import { FilterSidebarProvider } from "@/components/filter-sidebar-provider";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
@@ -68,23 +66,19 @@ export default function RootLayout({
           <ThemeProvider>
             <NuqsAdapter>
               <QuerySyncProvider>
-                <SidebarProvider>
-                  <FilterSidebarProvider>
-                    <div className="flex min-h-screen">
-                      {/* Sidebar */}
-                      <AppSidebar />
-                      
-                      {/* Main Content Area */}
-                      <div className="flex-1 flex flex-col min-w-0 min-h-0">
-                        {/* Mobile Navbar */}
-                        <MobileNavbar />
-                        
-                        {children}
-                      </div>
-                    </div>
-                    <Toaster />
-                  </FilterSidebarProvider>
-                </SidebarProvider>
+                <div className="flex min-h-screen">
+                  {/* Sidebar */}
+                  <AppSidebar />
+                  
+                  {/* Main Content Area */}
+                  <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                    {/* Mobile Navbar */}
+                    <MobileNavbar />
+                    
+                    {children}
+                  </div>
+                </div>
+                <Toaster />
               </QuerySyncProvider>
             </NuqsAdapter>
           </ThemeProvider>

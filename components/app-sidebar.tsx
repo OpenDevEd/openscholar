@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useSidebar } from "./sidebar-provider";
+import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
+import { useIsMobile } from "@/lib/hooks";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -260,7 +261,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isCollapsed, isMobile } = useSidebar();
+  const isMobile = useIsMobile();
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
   const { searchHistory } = useSearchHistoryStore();
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
   const { currentQuery } = useCurrentQueryStore();
@@ -621,7 +623,44 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 }
 
 export function AppSidebar() {
-  const { isOpen, setOpen, isCollapsed, toggle, isMobile, currentWidth } = useSidebar();
+  const isMobile = useIsMobile();
+  const { isOpen, setOpen, isCollapsed, toggle, setCollapsed, _hasHydrated } = useSidebarStore();
+  const { currentWidth } = getSidebarDimensions(isCollapsed);
+
+  // Keyboard shortcut: Cmd/Ctrl + B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        toggle(isMobile);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggle, isMobile]);
+
+  // Close mobile sheet when resizing to desktop
+  useEffect(() => {
+    if (!isMobile && isOpen) {
+      setOpen(false);
+    }
+  }, [isMobile, isOpen, setOpen]);
+
+  // Auto-collapse on lg breakpoint (1024-1279px) on initial hydration
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    
+    const width = window.innerWidth;
+    if (width >= 1024 && width < 1280) {
+      setCollapsed(true);
+    }
+  }, [_hasHydrated, setCollapsed]);
+
+  // Don't render until hydrated to prevent flash
+  if (!_hasHydrated) {
+    return null;
+  }
 
   if (isMobile) {
     return (
@@ -699,7 +738,7 @@ export function AppSidebar() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={toggle}
+                onClick={() => toggle(isMobile)}
                 className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
               >
                 <motion.div
@@ -727,7 +766,8 @@ export function AppSidebar() {
 }
 
 export function MobileSidebarTrigger() {
-  const { toggle, isMobile } = useSidebar();
+  const isMobile = useIsMobile();
+  const toggle = useSidebarStore((s) => s.toggle);
 
   if (!isMobile) return null;
 
@@ -740,7 +780,7 @@ export function MobileSidebarTrigger() {
       <Button
         variant="ghost"
         size="icon"
-        onClick={toggle}
+        onClick={() => toggle(true)}
         className="lg:hidden"
       >
         <PanelLeft className="h-5 w-5" />
