@@ -33,6 +33,7 @@ import { restoreFromHistory } from "@/lib/search";
 import { SearchHistoryTab } from "./search-history-tab";
 import { AISettingsDialog } from "./ai-settings-dialog";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
+import { AuthButton } from "./auth-button";
 import {
   Home,
   BookOpen,
@@ -563,12 +564,15 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       >
         {(!isCollapsed || isMobile) ? (
           <motion.div 
-            className="flex items-center justify-between w-full"
+            className="flex items-center justify-between w-full gap-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <ThemeToggle />
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <ThemeToggle />
+              <AuthButton isCollapsed={false} />
+            </div>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <Button 
@@ -593,6 +597,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         ) : (
           <>
             <ThemeToggle />
+            <AuthButton isCollapsed={true} />
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <Button 

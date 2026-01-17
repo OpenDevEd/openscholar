@@ -1,0 +1,106 @@
+import { internalMutation } from "../_generated/server";
+import { v } from "convex/values";
+
+/**
+ * Sync a new organization from WorkOS webhook
+ */
+export const syncOrgFromWorkos = internalMutation({
+  args: {
+    workosId: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Check if org already exists
+    const existing = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workosId", args.workosId))
+      .unique();
+
+    if (existing) return existing._id;
+
+    const now = Date.now();
+
+    // Create new organization
+    const orgId = await ctx.db.insert("organizations", {
+      workosId: args.workosId,
+      name: args.name,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Initialize credits for new org
+    await ctx.db.insert("credits", {
+      ownerId: orgId,
+      ownerType: "organization",
+      balance: 0,
+      lifetimeUsed: 0,
+      lastUpdatedAt: now,
+    });
+
+    return orgId;
+  },
+});
+
+/**
+ * Update existing organization from WorkOS webhook
+ */
+export const updateOrgFromWorkos = internalMutation({
+  args: {
+    workosId: v.string(),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workosId", args.workosId))
+      .unique();
+
+    if (!org) return;
+
+    await ctx.db.patch(org._id, {
+      name: args.name,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Link Stripe customer to organization
+ */
+export const linkStripeCustomer = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    stripeCustomerId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.organizationId, {
+      stripeCustomerId: args.stripeCustomerId,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Update organization settings
+ */
+export const updateSettings = internalMutation({
+  args: {
+    organizationId: v.id("organizations"),
+    settings: v.object({
+      allowByok: v.optional(v.boolean()),
+      creditPooling: v.optional(v.boolean()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found");
+
+    await ctx.db.patch(args.organizationId, {
+      settings: {
+        ...org.settings,
+        ...args.settings,
+      },
+      updatedAt: Date.now(),
+    });
+  },
+});

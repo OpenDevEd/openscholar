@@ -9,6 +9,7 @@ import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
+import { ConvexClientProvider } from "@/components/providers/convex-provider";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -62,27 +63,29 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
       <body>
-        <ConfigProvider>
-          <ThemeProvider>
-            <NuqsAdapter>
-              <QuerySyncProvider>
-                <div className="flex min-h-screen">
-                  {/* Sidebar */}
-                  <AppSidebar />
-                  
-                  {/* Main Content Area */}
-                  <div className="flex-1 flex flex-col min-w-0 min-h-0">
-                    {/* Mobile Navbar */}
-                    <MobileNavbar />
+        <ConvexClientProvider>
+          <ConfigProvider>
+            <ThemeProvider>
+              <NuqsAdapter>
+                <QuerySyncProvider>
+                  <div className="flex min-h-screen">
+                    {/* Sidebar */}
+                    <AppSidebar />
                     
-                    {children}
+                    {/* Main Content Area */}
+                    <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                      {/* Mobile Navbar */}
+                      <MobileNavbar />
+                      
+                      {children}
+                    </div>
                   </div>
-                </div>
-                <Toaster />
-              </QuerySyncProvider>
-            </NuqsAdapter>
-          </ThemeProvider>
-        </ConfigProvider>
+                  <Toaster />
+                </QuerySyncProvider>
+              </NuqsAdapter>
+            </ThemeProvider>
+          </ConfigProvider>
+        </ConvexClientProvider>
       </body>
     </html>
   );
