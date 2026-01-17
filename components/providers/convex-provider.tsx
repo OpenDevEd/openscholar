@@ -7,7 +7,9 @@ import {
   useAuth,
   useAccessToken,
 } from "@workos-inc/authkit-nextjs/components";
-import { ReactNode, useCallback, useRef } from "react";
+import { ReactNode, useCallback, useRef, useEffect } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -52,8 +54,22 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
     <AuthKitProvider>
       <ConvexProviderWithAuth client={convex} useAuth={useAuthFromAuthKit}>
-        {children}
+        <UserSync>{children}</UserSync>
       </ConvexProviderWithAuth>
     </AuthKitProvider>
   );
+}
+
+function UserSync({ children }: { children: ReactNode }) {
+  // Sync user with Convex on load
+  const { isAuthenticated } = useAuthFromAuthKit();
+  const ensureUser = useMutation(api.users.mutations.ensureUser);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      ensureUser({});
+    }
+  }, [isAuthenticated, ensureUser]);
+
+  return <>{children}</>;
 }

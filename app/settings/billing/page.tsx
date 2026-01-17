@@ -1,0 +1,257 @@
+"use client";
+
+import { useQuery, useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Loader2, Zap, CreditCard, Calendar, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { Progress } from "@/components/ui/progress";
+
+export default function BillingPage() {
+  const subscription = useQuery(api.subscriptions.queries.getMy);
+  const createPortalSession = useAction(
+    api.subscriptions.actions.createPortalSession,
+  );
+  const getSubscriptionDetails = useAction(
+    api.subscriptions.actions.getSubscriptionDetails,
+  );
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [details, setDetails] = useState<{
+    amount: number;
+    currency: string;
+    interval: string;
+    currentPeriodEnd: number;
+    status: string;
+    cancelAtPeriodEnd: boolean;
+    cardBrand?: string;
+    cardLast4?: string;
+  } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+
+  // Fetch detailed info from Stripe on mount if user has a paid plan
+  useEffect(() => {
+    if (subscription && subscription.plan !== "free") {
+      setIsFetchingDetails(true);
+      getSubscriptionDetails({})
+        .then((result) => {
+          if (result.status === "success" && result.data) {
+            setDetails(result.data);
+            setErrorMsg(null);
+          } else {
+            console.error("Stripe fetch error:", result.error);
+            setErrorMsg(result.error || "Failed to load details");
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch details", err);
+          setErrorMsg("Network error fetching details");
+        })
+        .finally(() => setIsFetchingDetails(false));
+    }
+  }, [subscription]); // Intentional dependency for 'getSubscriptionDetails' omission to avoid loops if reference unstable
+
+  const handleManageSubscription = async () => {
+    try {
+      setIsLoading(true);
+      const { url } = await createPortalSession({});
+      if (url) window.location.href = url;
+    } catch (error) {
+      toast.error("Failed to redirect to billing portal");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (subscription === undefined) {
+    return (
+      <div className="p-8 flex items-center justify-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        <span>Loading details...</span>
+      </div>
+    );
+  }
+
+  const currentPlan = subscription?.plan || "free";
+  const status = subscription?.status || "inactive";
+  const creditsPerMonth = subscription?.creditsPerMonth || 0;
+  const seats = subscription?.seats || 1;
+  const isFree = currentPlan === "free";
+
+  // Format currency
+  const formatPrice = (amount: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(amount / 100);
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-border/40 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Billing & Plans
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Manage your subscription and usage.
+          </p>
+        </div>
+        <Button
+          variant={isFree ? "default" : "outline"}
+          onClick={handleManageSubscription}
+          disabled={isLoading}
+          size="sm"
+        >
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isFree ? "Upgrade Plan" : "Manage Subscription"}
+        </Button>
+      </div>
+
+      {/* Content */}
+      <div className="p-6 space-y-8 max-w-2xl">
+        {/* Plan Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <CreditCard className="w-4 h-4" />
+            <span>Subscription</span>
+          </div>
+
+          <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
+            <div className="p-4 flex items-center justify-between border-b border-border/40 min-h-[80px]">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-bold capitalize">
+                  {currentPlan} Plan
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${status === "active" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}
+                >
+                  {status}
+                </span>
+              </div>
+              {isFetchingDetails ? (
+                <div className="text-right space-y-2">
+                  <div className="h-6 w-24 bg-muted animate-pulse rounded" />
+                  <div className="h-3 w-16 bg-muted animate-pulse rounded ml-auto" />
+                </div>
+              ) : (
+                details && (
+                  <div className="text-right">
+                    <div className="text-lg font-bold">
+                      {formatPrice(details.amount, details.currency)}
+                    </div>
+                    <div className="text-xs text-muted-foreground uppercase">
+                      / {details.interval}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Error State */}
+            {errorMsg && !isFree && (
+              <div className="bg-red-500/10 p-3 text-red-600 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {/* Detailed Info (Only for Paid Plans) */}
+            {!isFree && (
+              <div className="bg-background/50 p-4 min-h-[60px]">
+                {isFetchingDetails ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-muted animate-pulse" />
+                      <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-muted animate-pulse" />
+                      <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                    </div>
+                  </div>
+                ) : (
+                  details && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {details.cancelAtPeriodEnd
+                            ? "Expires on"
+                            : "Renews on"}
+                        </span>
+                        <span className="font-medium">
+                          {new Date(
+                            details.currentPeriodEnd,
+                          ).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {details.cardLast4 && (
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-muted-foreground" />
+                          <span className="capitalize text-muted-foreground">
+                            {details.cardBrand}
+                          </span>
+                          <span className="font-medium">
+                            •••• {details.cardLast4}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* Free Plan Empty State */}
+            {isFree && (
+              <div className="bg-background/50 p-4 text-sm text-muted-foreground flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Upgrade to Pro to unlock higher limits and features.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Usage Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            <Zap className="w-4 h-4" />
+            <span>Usage</span>
+          </div>
+
+          <div className="space-y-6 rounded-xl border border-border/50 bg-muted/30 p-5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium flex items-center gap-2">
+                  Monthly Credits
+                </span>
+                <span className="text-muted-foreground font-mono">
+                  0 / {creditsPerMonth.toLocaleString()}
+                </span>
+              </div>
+              <Progress value={0} className="h-2 bg-background" />
+            </div>
+
+            {seats > 1 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">Seats Used</span>
+                  <span className="text-muted-foreground font-mono">
+                    {seats} / {seats}
+                  </span>
+                </div>
+                <Progress value={100} className="h-2 bg-background" />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

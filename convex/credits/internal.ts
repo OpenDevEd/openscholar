@@ -9,8 +9,24 @@ export const handleCreditPurchase = internalMutation({
     stripeCustomerId: v.string(),
     amountPaid: v.number(),
     metadata: v.any(),
+    stripeInvoiceId: v.optional(v.string()), // e.g. Payment Intent ID or Invoice ID
   },
   handler: async (ctx, args) => {
+    // Idempotency check
+    if (args.stripeInvoiceId) {
+       const existing = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_stripe_invoice", (q) =>
+          q.eq("stripeInvoiceId", args.stripeInvoiceId)
+        )
+        .unique();
+      
+      if (existing) {
+        console.log("Duplicate purchase processed, skipping:", args.stripeInvoiceId);
+        return;
+      }
+    }
+
     // Find subscription by Stripe customer ID to get owner
     const subscription = await ctx.db
       .query("subscriptions")
@@ -57,6 +73,7 @@ export const handleCreditPurchase = internalMutation({
       balanceAfter: newBalance,
       description: `Purchased ${creditsToAdd} credits`,
       metadata: args.metadata,
+      stripeInvoiceId: args.stripeInvoiceId,
       createdAt: now,
     });
   },
@@ -68,8 +85,24 @@ export const handleCreditPurchase = internalMutation({
 export const grantMonthlyCredits = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
+    stripeInvoiceId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Idempotency check
+    if (args.stripeInvoiceId) {
+      const existing = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_stripe_invoice", (q) =>
+          q.eq("stripeInvoiceId", args.stripeInvoiceId)
+        )
+        .unique();
+      
+      if (existing) {
+        console.log("Duplicate invoice processed, skipping credits:", args.stripeInvoiceId);
+        return;
+      }
+    }
+
     const subscription = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) =>
@@ -102,6 +135,7 @@ export const grantMonthlyCredits = internalMutation({
       amount: subscription.creditsPerMonth,
       balanceAfter: newBalance,
       description: `Monthly credit grant (${subscription.plan} plan)`,
+      stripeInvoiceId: args.stripeInvoiceId,
       createdAt: now,
     });
   },

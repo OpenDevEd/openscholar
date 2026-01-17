@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
+import { PLAN_CONFIG } from "../lib/constants";
 
 /**
  * Update current user's profile
@@ -71,6 +72,8 @@ export const ensureUser = mutation({
       ownerType: "user",
       plan: "free",
       status: "active",
+      creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,
+      seats: 1,
       createdAt: now,
       updatedAt: now,
     });

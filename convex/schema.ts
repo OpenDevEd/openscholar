@@ -87,10 +87,12 @@ export default defineSchema({
     amount: v.number(),
     balanceAfter: v.number(),
     description: v.optional(v.string()),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.any()), // Store webhook metadata
+    stripeInvoiceId: v.optional(v.string()), // For idempotency
     createdAt: v.number(),
   })
     .index("by_credits", ["creditsId"])
+    .index("by_stripe_invoice", ["stripeInvoiceId"]) // Index for idempotency checks
     .index("by_user", ["userId"])
     .index("by_type_date", ["type", "createdAt"]),
 
@@ -104,6 +106,7 @@ export default defineSchema({
     stripeCustomerId: v.optional(v.string()),
     plan: v.union(
       v.literal("free"),
+      v.literal("go"),
       v.literal("pro"),
       v.literal("enterprise")
     ),
@@ -117,6 +120,7 @@ export default defineSchema({
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
     creditsPerMonth: v.optional(v.number()),
+    seats: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

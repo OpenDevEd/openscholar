@@ -1,0 +1,62 @@
+"use client";
+
+import { SidebarNav } from "@/components/settings/sidebar-nav";
+import { PageWrapper } from "@/components/PageWrapper";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { Settings } from "lucide-react";
+
+const sidebarNavItems = [
+  {
+    title: "General",
+    href: "/settings",
+  },
+  {
+    title: "Billing",
+    href: "/settings/billing",
+  },
+];
+
+export default function SettingsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <PageWrapper>
+      <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className={cn(
+            "relative rounded-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]",
+            "bg-background/80 dark:bg-background/60",
+            "backdrop-blur-xl backdrop-saturate-150",
+            "border border-border/50",
+            "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
+          )}
+        >
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+
+          {/* Sidebar */}
+          <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border/40 bg-muted/20 md:bg-transparent">
+            <div className="p-6 border-b border-border/40 md:border-none">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm">
+                  <Settings className="w-5 h-5 text-primary" />
+                </div>
+                <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+              </div>
+              <SidebarNav items={sidebarNavItems} />
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 min-w-0">{children}</div>
+        </motion.div>
+      </div>
+    </PageWrapper>
+  );
+}

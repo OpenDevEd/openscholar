@@ -42,6 +42,7 @@ import {
   PanelLeft,
   ChevronLeft,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -82,7 +83,7 @@ function NavItem({
   badge,
   onClick,
   index = 0,
-  customTooltipContent
+  customTooltipContent,
 }: NavItemProps) {
   const content = (
     <motion.div
@@ -91,7 +92,7 @@ function NavItem({
       transition={{
         duration: 0.2,
         delay: index * staggerDelay,
-        ease: [0.32, 0.72, 0, 1]
+        ease: [0.32, 0.72, 0, 1],
       }}
     >
       <Link
@@ -100,13 +101,15 @@ function NavItem({
         className={cn(
           "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto",
           "group relative overflow-hidden",
-          isActive 
-            ? "bg-sidebar-accent/80 backdrop-blur-sm" 
+          isActive
+            ? "bg-sidebar-accent/80 backdrop-blur-sm"
             : "hover:bg-sidebar-accent/60 backdrop-blur-sm",
-          isActive ? "text-sidebar-primary font-medium" : "text-sidebar-foreground",
+          isActive
+            ? "text-sidebar-primary font-medium"
+            : "text-sidebar-foreground",
           isCollapsed && "justify-center",
           "transition-all duration-200 ease-out",
-          isActive && "nav-active"
+          isActive && "nav-active",
         )}
       >
         <motion.div
@@ -115,12 +118,14 @@ function NavItem({
           transition={hoverSpring}
           className="relative z-10"
         >
-          <Icon className={cn(
-            "h-5 w-5 flex-shrink-0 transition-colors duration-200",
-            isActive 
-              ? "text-sidebar-primary drop-shadow-sm" 
-              : "text-muted-foreground group-hover:text-sidebar-foreground"
-          )} />
+          <Icon
+            className={cn(
+              "h-5 w-5 flex-shrink-0 transition-colors duration-200",
+              isActive
+                ? "text-sidebar-primary drop-shadow-sm"
+                : "text-muted-foreground group-hover:text-sidebar-foreground",
+            )}
+          />
           {/* Badge overlay when collapsed */}
           {isCollapsed && badge !== undefined && badge > 0 && (
             <motion.span
@@ -128,11 +133,11 @@ function NavItem({
               animate={{ scale: 1 }}
               className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
             >
-              {badge > 9 ? '9+' : badge}
+              {badge > 9 ? "9+" : badge}
             </motion.span>
           )}
         </motion.div>
-        
+
         <AnimatePresence mode="wait">
           {!isCollapsed && (
             <motion.div
@@ -142,7 +147,7 @@ function NavItem({
               transition={{
                 duration: 0.2,
                 delay: index * staggerDelay,
-                ease: [0.32, 0.72, 0, 1]
+                ease: [0.32, 0.72, 0, 1],
               }}
               className="flex-1 flex items-center gap-2 relative z-10"
             >
@@ -152,17 +157,17 @@ function NavItem({
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   whileHover={{ scale: 1.1 }}
-                  transition={{ 
+                  transition={{
                     delay: 0.1 + index * staggerDelay,
                     type: "spring",
                     stiffness: 400,
-                    damping: 20
+                    damping: 20,
                   }}
                   className={cn(
                     "text-xs px-2 py-0.5 rounded-full font-medium badge-glow",
                     isActive
                       ? "bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white shadow-md"
-                      : "bg-muted text-muted-foreground"
+                      : "bg-muted text-muted-foreground",
                   )}
                 >
                   {badge}
@@ -171,7 +176,7 @@ function NavItem({
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         {isActive && !isCollapsed && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -195,14 +200,16 @@ function NavItem({
             {content}
           </motion.div>
         </TooltipTrigger>
-        <TooltipContent 
-          side="right" 
-          className={customTooltipContent ? "w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto" : "flex items-center gap-2"}
+        <TooltipContent
+          side="right"
+          className={
+            customTooltipContent
+              ? "w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
+              : "flex items-center gap-2"
+          }
         >
           {customTooltipContent ? (
-            <div className="p-3">
-              {customTooltipContent}
-            </div>
+            <div className="p-3">{customTooltipContent}</div>
           ) : (
             <>
               {label}
@@ -235,13 +242,11 @@ function NavItem({
             {content}
           </motion.div>
         </TooltipTrigger>
-        <TooltipContent 
-          side="right" 
+        <TooltipContent
+          side="right"
           className="w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
         >
-          <div className="p-3">
-            {customTooltipContent}
-          </div>
+          <div className="p-3">{customTooltipContent}</div>
         </TooltipContent>
       </Tooltip>
     );
@@ -279,7 +284,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const getExpandableCount = (query: string) => {
     const keywordMatches = [...query.matchAll(/(\w[\w-]*)\.\.\./g)];
     let count = 0;
-    keywordMatches.forEach(match => {
+    keywordMatches.forEach((match) => {
       const keyword = match[1];
       if (keywords[keyword]) {
         count++;
@@ -295,7 +300,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
   const displayItems = searchHistory.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   const getCurrentPage = () => {
@@ -322,7 +327,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   };
 
   const handleSearchHistoryClick = (searchId: string) => {
-    const entry = searchHistory.find(s => s.id === searchId);
+    const entry = searchHistory.find((s) => s.id === searchId);
     if (entry) {
       router.push(restoreFromHistory(entry));
     } else {
@@ -335,7 +340,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     <div className="flex flex-col h-full">
       {/* Navigation - fixed, not scrollable */}
       <div className={cn("py-4", isCollapsed && !isMobile ? "px-2" : "px-3")}>
-        <motion.div 
+        <motion.div
           className="space-y-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -360,7 +365,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             onClick={handleNavClick}
             index={1}
             badge={expandableCount > 0 ? expandableCount : undefined}
-            customTooltipContent={hasBookmarkSyntax ? <KeywordExpansionPreview query={activeQuery} /> : undefined}
+            customTooltipContent={
+              hasBookmarkSyntax ? (
+                <KeywordExpansionPreview query={activeQuery} />
+              ) : undefined
+            }
           />
 
           <NavItem
@@ -369,7 +378,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             label="History"
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
-            onClick={handleNavClick}
             index={2}
           />
         </motion.div>
@@ -383,13 +391,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.15 }}
-              className={cn("shrink-0", isCollapsed && !isMobile ? "px-2" : "px-3")}
+              className={cn(
+                "shrink-0",
+                isCollapsed && !isMobile ? "px-2" : "px-3",
+              )}
             >
               <Separator className="bg-gradient-to-r from-transparent via-border/60 to-transparent" />
             </motion.div>
             <ScrollArea className="h-full sidebar-scrollbar">
-              <div className={cn("py-4", isCollapsed && !isMobile ? "px-2" : "px-3")}>
-                <motion.div 
+              <div
+                className={cn(
+                  "py-4",
+                  isCollapsed && !isMobile ? "px-2" : "px-3",
+                )}
+              >
+                <motion.div
                   className="space-y-1 overflow-hidden"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -438,7 +454,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     transition={{ duration: 0.3, delay: 0.25 }}
                     className={cn(
                       "flex items-center justify-center gap-1 pt-2",
-                      isCollapsed && !isMobile && "flex-col gap-2"
+                      isCollapsed && !isMobile && "flex-col gap-2",
                     )}
                   >
                     <Button
@@ -449,9 +465,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       className={cn(
                         "h-7 w-7 transition-all duration-200",
                         isCollapsed && !isMobile ? "h-8 w-8" : "",
-                        currentPage > 1 && "hover:bg-sidebar-accent/80"
+                        currentPage > 1 && "hover:bg-sidebar-accent/80",
                       )}
-                      title={isCollapsed && !isMobile ? "Previous page" : undefined}
+                      title={
+                        isCollapsed && !isMobile ? "Previous page" : undefined
+                      }
                     >
                       <motion.div
                         whileHover={{ scale: 1.1 }}
@@ -470,25 +488,32 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                         ) : (
                           <>
                             <ChevronLeft className="h-4 w-4" />
-                            {!isCollapsed || isMobile && (
-                              <span className="sr-only">Previous</span>
-                            )}
+                            {!isCollapsed ||
+                              (isMobile && (
+                                <span className="sr-only">Previous</span>
+                              ))}
                           </>
                         )}
                       </motion.div>
                     </Button>
 
                     {totalPages > 2 && (
-                      <div className={cn(
-                        "flex items-center justify-center transition-all duration-200",
-                        isCollapsed && !isMobile ? "text-xs" : ""
-                      )}>
+                      <div
+                        className={cn(
+                          "flex items-center justify-center transition-all duration-200",
+                          isCollapsed && !isMobile ? "text-xs" : "",
+                        )}
+                      >
                         {!isCollapsed || isMobile ? (
                           <motion.span
                             key={`page-${currentPage}`}
                             initial={{ scale: 0.8, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 300,
+                              damping: 20,
+                            }}
                             className="text-xs text-muted-foreground px-2 font-medium"
                           >
                             {currentPage} / {totalPages}
@@ -516,7 +541,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       className={cn(
                         "h-7 w-7 transition-all duration-200",
                         isCollapsed && !isMobile ? "h-8 w-8" : "",
-                        currentPage < totalPages && "hover:bg-sidebar-accent/80"
+                        currentPage < totalPages &&
+                          "hover:bg-sidebar-accent/80",
                       )}
                       title={isCollapsed && !isMobile ? "Next page" : undefined}
                     >
@@ -537,9 +563,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                         ) : (
                           <>
                             <ChevronRight className="h-4 w-4" />
-                            {!isCollapsed || isMobile && (
-                              <span className="sr-only">Next</span>
-                            )}
+                            {!isCollapsed ||
+                              (isMobile && (
+                                <span className="sr-only">Next</span>
+                              ))}
                           </>
                         )}
                       </motion.div>
@@ -558,12 +585,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         transition={{ duration: 0.3, delay: 0.35 }}
         className={cn(
           "mt-auto border-t border-sidebar-border py-4",
-          isMobile ? "bg-sidebar" : "bg-gradient-to-t from-sidebar to-transparent",
-          isCollapsed && !isMobile ? "px-2 flex flex-col items-center gap-2" : "px-3"
+          isMobile
+            ? "bg-sidebar"
+            : "bg-gradient-to-t from-sidebar to-transparent",
+          isCollapsed && !isMobile
+            ? "px-2 flex flex-col items-center gap-2"
+            : "px-3",
         )}
       >
-        {(!isCollapsed || isMobile) ? (
-          <motion.div 
+        {!isCollapsed || isMobile ? (
+          <motion.div
             className="flex items-center justify-between w-full gap-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -575,9 +606,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             </div>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
                   onClick={() => setAiSettingsOpen(true)}
                 >
@@ -589,9 +620,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   </motion.div>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">
-                AI Settings
-              </TooltipContent>
+              <TooltipContent side="top">AI Settings</TooltipContent>
             </Tooltip>
           </motion.div>
         ) : (
@@ -600,9 +629,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <AuthButton isCollapsed={true} />
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
                   onClick={() => setAiSettingsOpen(true)}
                 >
@@ -614,22 +643,24 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                   </motion.div>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">
-                AI Settings
-              </TooltipContent>
+              <TooltipContent side="right">AI Settings</TooltipContent>
             </Tooltip>
           </>
         )}
       </motion.div>
 
-      <AISettingsDialog open={aiSettingsOpen} onOpenChange={setAiSettingsOpen} />
+      <AISettingsDialog
+        open={aiSettingsOpen}
+        onOpenChange={setAiSettingsOpen}
+      />
     </div>
   );
 }
 
 export function AppSidebar() {
   const isMobile = useIsMobile();
-  const { isOpen, setOpen, isCollapsed, toggle, setCollapsed, _hasHydrated } = useSidebarStore();
+  const { isOpen, setOpen, isCollapsed, toggle, setCollapsed, _hasHydrated } =
+    useSidebarStore();
   const { currentWidth } = getSidebarDimensions(isCollapsed);
 
   // Keyboard shortcut: Cmd/Ctrl + B to toggle sidebar
@@ -655,7 +686,7 @@ export function AppSidebar() {
   // Auto-collapse on lg breakpoint (1024-1279px) on initial hydration
   useEffect(() => {
     if (!_hasHydrated) return;
-    
+
     const width = window.innerWidth;
     if (width >= 1024 && width < 1280) {
       setCollapsed(true);
@@ -670,8 +701,8 @@ export function AppSidebar() {
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setOpen}>
-        <SheetContent 
-          side="left" 
+        <SheetContent
+          side="left"
           className="w-[280px] p-0 flex flex-col bg-sidebar"
         >
           <motion.div
@@ -701,20 +732,22 @@ export function AppSidebar() {
       className={cn(
         "h-screen glass-sidebar flex flex-col",
         "sticky top-0 left-0 z-40 transition-shadow duration-300",
-        "hover:shadow-lg"
+        "hover:shadow-lg",
       )}
       initial={false}
-      animate={{ 
+      animate={{
         width: currentWidth,
-        boxShadow: isCollapsed ? 'none' : '0 0 40px oklch(0 0 0 / 0.05)'
+        boxShadow: isCollapsed ? "none" : "0 0 40px oklch(0 0 0 / 0.05)",
       }}
       transition={sidebarSpring}
     >
-      <div className={cn(
-        "relative flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
-        "relative justify-center",
-        !isCollapsed && "justify-end"
-      )}>
+      <div
+        className={cn(
+          "relative flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
+          "relative justify-center",
+          !isCollapsed && "justify-end",
+        )}
+      >
         {/* Logo - only visible when expanded */}
         <AnimatePresence initial={false} mode="sync">
           {!isCollapsed && (
@@ -730,7 +763,7 @@ export function AppSidebar() {
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         {/* Toggle button - always visible, animates rotation */}
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -756,7 +789,9 @@ export function AppSidebar() {
             </motion.div>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {isCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+            {isCollapsed
+              ? "Expand sidebar (Ctrl+B)"
+              : "Collapse sidebar (Ctrl+B)"}
           </TooltipContent>
         </Tooltip>
       </div>

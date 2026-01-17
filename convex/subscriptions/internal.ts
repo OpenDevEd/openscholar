@@ -1,12 +1,6 @@
 import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-
-// Plan configurations
-const PLAN_CONFIG = {
-  free: { creditsPerMonth: 0 },
-  pro: { creditsPerMonth: 1000 },
-  enterprise: { creditsPerMonth: 10000 },
-} as const;
+import { PLAN_CONFIG, GO_PRICE_ID, PRO_PRICE_ID } from "../lib/constants";
 
 /**
  * Get subscription by owner (user or organization)
@@ -88,9 +82,11 @@ export const syncSubscription = internalMutation({
     currentPeriodEnd: v.number(),
     cancelAtPeriodEnd: v.boolean(),
     priceId: v.optional(v.string()),
+    quantity: v.optional(v.number()),
+    metadata: v.optional(v.any()), // New arg
   },
   handler: async (ctx, args) => {
-    const subscription = await ctx.db
+    let subscription = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) =>
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
@@ -105,22 +101,43 @@ export const syncSubscription = internalMutation({
           q.eq("stripeCustomerId", args.stripeCustomerId)
         )
         .first();
-
+      
       if (byCustomer) {
-        await ctx.db.patch(byCustomer._id, {
-          stripeSubscriptionId: args.stripeSubscriptionId,
-          status: args.status,
-          currentPeriodStart: args.currentPeriodStart,
-          currentPeriodEnd: args.currentPeriodEnd,
-          cancelAtPeriodEnd: args.cancelAtPeriodEnd,
-          updatedAt: Date.now(),
-        });
+        subscription = byCustomer;
+      } else if (args.metadata?.userId) {
+         // Fallback: Find by user ID from metadata (Race condition fix)
+         const byUser = await ctx.db
+          .query("subscriptions")
+          .withIndex("by_owner", (q) => 
+            q.eq("ownerId", args.metadata.userId).eq("ownerType", "user")
+          )
+          .unique();
+          
+          if (byUser) subscription = byUser;
       }
-      return;
+
+      if (subscription) {
+        // We found it (either by customer or user ID), so link it now
+        await ctx.db.patch(subscription._id, {
+          stripeSubscriptionId: args.stripeSubscriptionId,
+          stripeCustomerId: args.stripeCustomerId,
+          status: args.status, // We will update status below anyway, but safe here
+        });
+      } else {
+         // If we STILL can't find it, then it's a real failure (or user doesn't exist)
+        throw new Error("Subscription not found for sync. Retrying...");
+      }
     }
 
-    // Determine plan from price ID (you'd map this to your actual Stripe prices)
+    // Determine plan from price ID
     const plan = determinePlan(args.priceId);
+    
+    // Calculate credits based on seats if enterprise, otherwise flat rate or per seat depending on logic
+    // Assuming pro/enterprise are per seat for simplicity or just enterprise
+    const quantity = args.quantity ?? 1;
+    const baseCredits = PLAN_CONFIG[plan].creditsPerMonth;
+    // If you want credits to multiply by seats:
+    const totalCredits = baseCredits * quantity;
 
     await ctx.db.patch(subscription._id, {
       status: args.status,
@@ -128,7 +145,8 @@ export const syncSubscription = internalMutation({
       currentPeriodStart: args.currentPeriodStart,
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
-      creditsPerMonth: PLAN_CONFIG[plan].creditsPerMonth,
+      seats: quantity,
+      creditsPerMonth: totalCredits,
       updatedAt: Date.now(),
     });
   },
@@ -185,11 +203,13 @@ export const handlePaymentFailed = internalMutation({
 });
 
 // Helper to determine plan from Stripe price ID
-function determinePlan(priceId?: string): "free" | "pro" | "enterprise" {
+function determinePlan(priceId?: string): "free" | "go" | "pro" | "enterprise" {
   if (!priceId) return "free";
 
-  // Map your Stripe price IDs here
-  // e.g., price_xxx_pro -> "pro"
+  if (priceId === GO_PRICE_ID) return "go";
+  if (priceId === PRO_PRICE_ID) return "pro";
+  
+  // Fallback for testing or if alternate IDs are used (careful with partial matches in prod)
   if (priceId.includes("enterprise")) return "enterprise";
   if (priceId.includes("pro")) return "pro";
 

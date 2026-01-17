@@ -24,9 +24,20 @@ export async function getCurrentUser(
  * Require authenticated user
  * Throws if not authenticated or account is not active
  */
-export async function requireAuth(ctx: AuthContext): Promise<Doc<"users">> {
+export async function requireAuth(ctx: AuthContext, allowSyncing?: boolean): Promise<Doc<"users">> {
   const user = await getCurrentUser(ctx);
-  if (!user) throw new Error("Unauthenticated");
+  
+  if (!user) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity && allowSyncing) {
+      // User is authenticated but not yet in DB (race condition)
+      // Return a temporary mock or throw a specific error the client can handle?
+      // Actually, safest is to throw a specific error or strict null check
+       throw new Error("Unauthenticated"); // Keep behavior for now, modify getCurrentUser?
+    }
+    throw new Error("Unauthenticated");
+  }
+
   if (user.state !== "active") throw new Error("Account suspended");
   return user;
 }

@@ -23,6 +23,7 @@ export const stripeWebhook = httpAction(async (ctx, req) => {
 
   const eventType = result.type;
   const eventData = result.data;
+  console.log(`Stripe Webhook Received: ${eventType} (${eventData.id})`);
 
   try {
     switch (eventType) {
@@ -45,6 +46,7 @@ export const stripeWebhook = httpAction(async (ctx, req) => {
             stripeCustomerId: eventData.customer as string,
             amountPaid: (eventData.amount_total as number) ?? 0,
             metadata: (eventData.metadata as Record<string, string>) ?? {},
+            stripeInvoiceId: (eventData.invoice as string) || (eventData.id as string), // Use invoice ID or event ID (for checkout sessions)
           });
         }
         break;
@@ -55,7 +57,7 @@ export const stripeWebhook = httpAction(async (ctx, req) => {
       case "customer.subscription.updated": {
         const currentPeriodStart = (eventData.current_period_start as number) ?? Math.floor(Date.now() / 1000);
         const currentPeriodEnd = (eventData.current_period_end as number) ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
-        const items = eventData.items as { data?: Array<{ price?: { id?: string } }> };
+        const items = eventData.items as { data?: Array<{ price?: { id?: string }; quantity?: number }> };
 
         await ctx.runMutation(internal.subscriptions.internal.syncSubscription, {
           stripeSubscriptionId: eventData.id as string,
@@ -65,6 +67,8 @@ export const stripeWebhook = httpAction(async (ctx, req) => {
           currentPeriodEnd: currentPeriodEnd * 1000,
           cancelAtPeriodEnd: (eventData.cancel_at_period_end as boolean) ?? false,
           priceId: items.data?.[0]?.price?.id,
+          quantity: items.data?.[0]?.quantity,
+          metadata: eventData.metadata as Record<string, string>,
         });
         break;
       }
@@ -86,6 +90,7 @@ export const stripeWebhook = httpAction(async (ctx, req) => {
           // Monthly credit grant for subscription
           await ctx.runMutation(internal.credits.internal.grantMonthlyCredits, {
             stripeSubscriptionId: subscriptionId,
+            stripeInvoiceId: eventData.id as string, // Should be the invoice ID
           });
         }
         break;

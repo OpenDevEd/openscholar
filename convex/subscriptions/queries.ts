@@ -8,7 +8,18 @@ import { requireAuth, requireOrgMember } from "../lib/auth";
 export const getMy = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireAuth(ctx);
+
+    // Determine user identity without throwing "Unauthenticated" immediately
+    // to avoid race conditions during first login sync
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
+      .unique();
+
+    if (!user) return null;
 
     return await ctx.db
       .query("subscriptions")
