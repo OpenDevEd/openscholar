@@ -31,14 +31,12 @@ import {
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { SearchHistoryTab } from "./search-history-tab";
-import { AISettingsDialog } from "./ai-settings-dialog";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
 import {
   Home,
   BookOpen,
   Clock,
-  Sparkles,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -274,7 +272,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
   const effectiveSearchId = useEffectiveSearchId();
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
 
   // Determine active query - now uses store for real-time updates on all pages
   // Fallback to URL params if store is empty (shouldn't happen but safety first)
@@ -600,59 +597,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <ThemeToggle />
-              <AuthButton isCollapsed={false} />
-            </div>
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
-                  onClick={() => setAiSettingsOpen(true)}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sparkles className="h-5 w-5" />
-                  </motion.div>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">AI Settings</TooltipContent>
-            </Tooltip>
+            <ThemeToggle />
+            <AuthButton isCollapsed={false} />
           </motion.div>
         ) : (
           <>
             <ThemeToggle />
             <AuthButton isCollapsed={true} />
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
-                  onClick={() => setAiSettingsOpen(true)}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sparkles className="h-5 w-5" />
-                  </motion.div>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">AI Settings</TooltipContent>
-            </Tooltip>
           </>
         )}
       </motion.div>
-
-      <AISettingsDialog
-        open={aiSettingsOpen}
-        onOpenChange={setAiSettingsOpen}
-      />
     </div>
   );
 }
