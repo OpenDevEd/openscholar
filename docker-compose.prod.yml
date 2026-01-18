@@ -1,0 +1,163 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nextjs-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_CONVEX_URL=${CONVEX_CLOUD_ORIGIN}
+      - CONVEX_SELF_HOSTED_URL=${CONVEX_CLOUD_ORIGIN}
+      - CONVEX_SELF_HOSTED_ADMIN_KEY=${CONVEX_SELF_HOSTED_ADMIN_KEY}
+      - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID}
+      - WORKOS_API_KEY=${WORKOS_API_KEY}
+      - WORKOS_REDIRECT_URI=${WORKOS_REDIRECT_URI}
+      - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  backend:
+    image: ghcr.io/get-convex/convex-backend:latest
+    container_name: convex-backend
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    restart: always
+    ports:
+      - "${CONVEX_PORT:-3210}:3210"
+      - "${CONVEX_SITE_PORT:-3211}:3211"
+    volumes:
+      - convex_data:/convex/data
+      - ./data/admin_key.txt:/data/admin_key.txt:ro
+    environment:
+      - CONVEX_CLOUD_ORIGIN=${CONVEX_CLOUD_ORIGIN}
+      - CONVEX_SITE_ORIGIN=${CONVEX_SITE_ORIGIN}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - INSTANCE_SECRET=${INSTANCE_SECRET}
+      - INSTANCE_NAME=${INSTANCE_NAME}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - DO_NOT_REQUIRE_SSL=1
+      - RUST_LOG=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3210/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+  dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    container_name: convex-dashboard
+    stop_grace_period: 10s
+    stop_signal: SIGINT
+    restart: always
+    ports:
+      - "${DASHBOARD_PORT:-6791}:6791"
+    environment:
+      - NEXT_PUBLIC_DEPLOYMENT_URL=${CONVEX_CLOUD_ORIGIN}
+      - NEXT_PUBLIC_LOAD_MONACO_INTERNALLY=1
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    depends_on:
+      - app
+      - backend
+      - postgres
+      - convex-exporter
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/convex-metrics.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+
+  convex-exporter:
+    build:
+      context: ./convex-exporter
+      dockerfile: Dockerfile
+    container_name: convex-exporter
+    restart: always
+    ports:
+      - "9101:9101"
+    environment:
+      - CONVEX_BACKEND_URL=http://backend:3210
+      - CONVEX_ADMIN_KEY_PATH=${CONVEX_EXPORTER_ADMIN_KEY_PATH}
+      - SCRAPE_INTERVAL=30
+    volumes:
+      - ./data/admin_key.txt:/data/admin_key.txt:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  convex_data:
+  prometheus_data:
+  grafana_data:
