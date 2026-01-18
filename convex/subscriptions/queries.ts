@@ -24,8 +24,7 @@ export const getMy = query({
 
     if (!user) return null;
 
-    // Get most recent active subscription (not canceled)
-    // Order by creation time DESC so we find the most recent active plan
+    // Get all subscriptions ordered by creation time DESC
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
@@ -34,9 +33,31 @@ export const getMy = query({
       .order("desc")
       .collect();
 
-    const result = subscriptions.find(s => s.status !== "canceled") ?? subscriptions[0] ?? null;
+    // Filter to active subscriptions only
+    const activeSubscriptions = subscriptions.filter(s => s.status !== "canceled");
     
-    console.log("[getMy] Returning:", { plan: result?.plan, status: result?.status, totalSubs: subscriptions.length });
+    // Prefer active subscriptions with stripeSubscriptionId (real paid subscriptions)
+    const paidSubscription = activeSubscriptions.find(s => s.stripeSubscriptionId);
+    if (paidSubscription) {
+      console.log("[getMy] Returning paid subscription:", { 
+        id: paidSubscription._id,
+        plan: paidSubscription.plan, 
+        status: paidSubscription.status,
+        stripeSubId: paidSubscription.stripeSubscriptionId,
+        totalSubs: subscriptions.length 
+      });
+      return paidSubscription;
+    }
+
+    // Otherwise, return most recent active subscription (free plan stub)
+    const result = activeSubscriptions[0] ?? subscriptions[0] ?? null;
+    console.log("[getMy] Returning:", { 
+      id: result?._id,
+      plan: result?.plan, 
+      status: result?.status,
+      stripeSubId: result?.stripeSubscriptionId,
+      totalSubs: subscriptions.length 
+    });
     
     return result;
   },
@@ -51,7 +72,7 @@ export const getOrg = query({
   handler: async (ctx, { organizationId }) => {
     await requireOrgMember(ctx, organizationId);
 
-    // Get most recent active subscription (not canceled)
+    // Get all subscriptions ordered by creation time DESC
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
@@ -60,9 +81,31 @@ export const getOrg = query({
       .order("desc")
       .collect();
 
-    const result = subscriptions.find(s => s.status !== "canceled") ?? subscriptions[0] ?? null;
+    // Filter to active subscriptions only
+    const activeSubscriptions = subscriptions.filter(s => s.status !== "canceled");
     
-    console.log("[getOrg] Returning:", { plan: result?.plan, status: result?.status, totalSubs: subscriptions.length });
+    // Prefer active subscriptions with stripeSubscriptionId (real paid subscriptions)
+    const paidSubscription = activeSubscriptions.find(s => s.stripeSubscriptionId);
+    if (paidSubscription) {
+      console.log("[getOrg] Returning paid subscription:", { 
+        id: paidSubscription._id,
+        plan: paidSubscription.plan, 
+        status: paidSubscription.status,
+        stripeSubId: paidSubscription.stripeSubscriptionId,
+        totalSubs: subscriptions.length 
+      });
+      return paidSubscription;
+    }
+
+    // Otherwise, return most recent active subscription (free plan stub)
+    const result = activeSubscriptions[0] ?? subscriptions[0] ?? null;
+    console.log("[getOrg] Returning:", { 
+      id: result?._id,
+      plan: result?.plan, 
+      status: result?.status,
+      stripeSubId: result?.stripeSubscriptionId,
+      totalSubs: subscriptions.length 
+    });
     
     return result;
   },

@@ -1,23 +1,33 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useAction, useConvexAuth } from "convex/react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Check, Loader2, Building2, Zap, Rocket } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  Building2,
+  Zap,
+  Rocket,
+  CreditCard,
+  BookOpen,
+} from "lucide-react";
 import { toast } from "sonner";
 import useSWR from "swr";
-
-
+import { cn } from "@/lib/utils";
+import { subtleSpring } from "@/lib/animation-config";
+import { getPlanTier } from "@/convex/lib/constants";
 
 const FEATURES = {
-  go: ["Basic Search", "100 Queries/mo", "Standard Support"],
+  free: ["10,000 free credits", "Basic search", "Limited queries"],
+  go: ["100 Queries/mo", "Basic Search", "Standard Support"],
   pro: [
-    "Advanced Search",
     "Unlimited Queries",
+    "Advanced Search",
     "Priority Support",
     "AI Analysis",
   ],
@@ -39,30 +49,80 @@ type PlanPrice = {
   plan: "free" | "go" | "pro" | "enterprise";
 };
 
+type PlanConfig = {
+  id: "free" | "go" | "pro" | "enterprise";
+  name: string;
+  icon: typeof BookOpen;
+  description: string;
+  features: string[];
+  tier: number;
+  popular?: boolean;
+};
 
-export function Pricing({ initialPrices = [] }: { initialPrices?: PlanPrice[] }) {
+const PLANS: PlanConfig[] = [
+  {
+    id: "free",
+    name: "Free",
+    icon: BookOpen,
+    description: "Try OpenScholar",
+    features: FEATURES.free,
+    tier: 0,
+  },
+  {
+    id: "go",
+    name: "Go",
+    icon: Rocket,
+    description: "Perfect for getting started",
+    features: FEATURES.go,
+    tier: 10,
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    icon: Zap,
+    description: "For power users who need more",
+    features: FEATURES.pro,
+    tier: 20,
+    popular: true,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    icon: Building2,
+    description: "Scaling your entire organization",
+    features: FEATURES.enterprise,
+    tier: 30,
+  },
+];
+
+export function Pricing() {
   const getPlans = useAction(api.subscriptions.actions.getPlans);
   const createCheckoutSession = useAction(
     api.subscriptions.actions.createCheckoutSession,
   );
+  const createPortalSession = useAction(
+    api.subscriptions.actions.createPortalSession,
+  );
 
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
-  const [seatCount, setSeatCount] = useState(5);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Fetch prices using SWR (best practice as per rules)
+  // Fetch current subscription
+  const subscription = useQuery(api.subscriptions.queries.getMy);
+  const currentPlan = subscription?.plan || "free";
+  const currentTier = getPlanTier(currentPlan);
+
+  // Fetch prices using SWR
   const {
     data: prices,
     error,
-    isLoading,
+    isLoading: isPricesLoading,
   } = useSWR<PlanPrice[]>(
     "stripe-prices",
     async () => {
-      // If we have initial prices and they match what we need, we might strictly rely on them
-      // but SWR allows revalidation.
       return await getPlans({});
     },
     {
-      fallbackData: initialPrices,
       revalidateOnFocus: false,
       revalidateOnMount: true, // Always fetch real Stripe prices on mount
     },
@@ -77,13 +137,32 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: PlanPrice[] })
     }
   }, [error]);
 
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const { user } = useAuth();
   const router = useRouter();
 
-  const handleSubscribe = async (
-    planType: "go" | "pro" | "enterprise",
-  ) => {
+  // Reorder plans for mobile (PRO first)
+  const orderedPlans = useMemo(() => {
+    if (isMobile) {
+      return [
+        PLANS.find((p) => p.id === "pro")!,
+        PLANS.find((p) => p.id === "go")!,
+        PLANS.find((p) => p.id === "free")!,
+        PLANS.find((p) => p.id === "enterprise")!,
+      ];
+    }
+    return PLANS;
+  }, [isMobile]);
+
+  const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
     if (isAuthLoading) return;
 
     // If not logged in at all, sign in
@@ -112,12 +191,10 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: PlanPrice[] })
     try {
       setLoadingPriceId(priceId);
 
-      const quantity = planType === "enterprise" ? seatCount : 1;
-
       const { url } = await createCheckoutSession({
         priceId,
         mode: "subscription",
-        quantity,
+        quantity: 1,
       });
 
       if (url) {
@@ -135,33 +212,27 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: PlanPrice[] })
     }
   };
 
-  const containerVariants: any = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants: any = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 10,
-      },
-    },
+  const handleOpenPortal = async () => {
+    try {
+      setLoadingPriceId("portal");
+      const { url } = await createPortalSession({});
+      if (url) {
+        window.location.href = url;
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to open billing portal");
+    } finally {
+      setLoadingPriceId(null);
+    }
   };
 
   const getPriceDisplay = (planType: "go" | "pro") => {
-    if (isLoading || !prices) return <Loader2 className="h-4 w-4 animate-spin" />;
+    if (isPricesLoading || !prices)
+      return <Loader2 className="h-4 w-4 animate-spin" />;
     const price = prices?.find((p) => p.plan === planType);
-    if (!price || !price.amount) return <Loader2 className="h-4 w-4 animate-spin" />;
+    if (!price || !price.amount)
+      return <Loader2 className="h-4 w-4 animate-spin" />;
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: price.currency,
@@ -169,197 +240,222 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: PlanPrice[] })
     }).format(price.amount / 100);
   };
 
+  const getButtonConfig = (plan: PlanConfig) => {
+    const isLoading = subscription === undefined;
+    const isCurrent = currentPlan === plan.id;
+    const isUpgrade = plan.tier > currentTier;
+    const isDowngrade = plan.tier < currentTier;
+    const planPriceId = prices?.find((p) => p.plan === plan.id)?.id;
+
+    if (isLoading) {
+      return {
+        disabled: true,
+        label: "Loading...",
+        variant: "outline" as const,
+        onClick: () => {},
+      };
+    }
+
+    if (!user) {
+      return {
+        disabled: false,
+        label: "Sign in to Subscribe",
+        variant: "default" as const,
+        onClick: () => router.push("/auth/signin"),
+      };
+    }
+
+    if (isCurrent) {
+      return {
+        disabled: true,
+        label: "Current Plan",
+        variant: "outline" as const,
+        onClick: () => {},
+      };
+    }
+
+    if (plan.id === "enterprise") {
+      return {
+        disabled: false,
+        label: "Contact Support",
+        variant: "outline" as const,
+        onClick: handleOpenPortal,
+      };
+    }
+
+    if (isUpgrade) {
+      return {
+        disabled: false,
+        label: `Upgrade to ${plan.name}`,
+        variant: "default" as const,
+        onClick: () => handleSubscribe(plan.id as "go" | "pro"),
+      };
+    }
+
+    // Downgrades not allowed - disable button
+    if (isDowngrade) {
+      return {
+        disabled: true,
+        label: "Not Available",
+        variant: "outline" as const,
+        onClick: () => {},
+      };
+    }
+
+    // Fallback (shouldn't reach here)
+    return {
+      disabled: true,
+      label: "Not Available",
+      variant: "outline" as const,
+      onClick: () => {},
+    };
+  };
+
   return (
-    <div className="w-full py-24 px-4 bg-background text-foreground overflow-hidden">
-      <div className="max-w-7xl mx-auto">
+    <div className="space-y-8 min-h-screen">
+      {/* Header Section */}
+      <div>
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-20"
+          transition={subtleSpring}
+          className="text-center py-8 md:py-12"
         >
-          <h2 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60">
-            Unleash Your Potential
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Choose the plan that fits your ambition. From individual researchers
-            to global organizations.
+          {/* Icon with dramatic glow */}
+          <div className="relative inline-block mb-4">
+            <div
+              className={cn(
+                "w-16 h-16 md:w-20 md:h-20 rounded-2xl mx-auto",
+                "bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10",
+                "flex items-center justify-center",
+                "shadow-lg",
+              )}
+            >
+              <CreditCard className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+            </div>
+            <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-2xl -z-10 scale-150" />
+          </div>
+
+          {/* Title with gradient */}
+          <h1
+            className={cn(
+              "text-3xl md:text-5xl font-bold mb-2",
+              "bg-gradient-to-r from-foreground via-foreground to-muted-foreground",
+              "bg-clip-text text-transparent",
+            )}
+          >
+            Choose Your Plan
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-sm md:text-lg text-muted-foreground max-w-xl mx-auto">
+            Scale from free to enterprise with transparent pricing
           </p>
         </motion.div>
+      </div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
-        >
-          {/* GO PLAN */}
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ y: -10 }}
-            className="group relative p-8 rounded-[2rem] border border-border/50 bg-background/50 backdrop-blur-sm hover:border-primary/50 transition-colors duration-500"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      {/* Plans Grid */}
+      <div
+        className={cn(
+          "grid gap-6",
+          "grid-cols-1",
+          "md:grid-cols-2",
+          "lg:grid-cols-4",
+        )}
+      >
+        {orderedPlans.map((plan, index) => {
+          const isCurrent = currentPlan === plan.id;
+          const buttonConfig = getButtonConfig(plan);
+          const planPriceId = prices?.find((p) => p.plan === plan.id)?.id;
+          const Icon = plan.icon;
 
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-6">
-                  <Rocket className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">Go</h3>
-                <div className="text-4xl font-bold tracking-tight mb-1">
-                  {getPriceDisplay("go")}
-                  <span className="text-lg font-medium text-muted-foreground">
-                    /mo
+          return (
+            <motion.div
+              key={plan.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...subtleSpring, delay: index * 0.1 }}
+              className={cn(
+                "relative rounded-xl overflow-hidden flex flex-col",
+                "bg-background/50 backdrop-blur-sm",
+                "border",
+                isCurrent && "border-primary/50 bg-primary/[0.02]",
+                !isCurrent && "border-border/50",
+              )}
+            >
+              {/* Current Plan Badge */}
+              {isCurrent && (
+                <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">
+                    Current Plan
                   </span>
                 </div>
-                <p className="text-muted-foreground">
-                  Perfect for getting started.
-                </p>
-              </div>
+              )}
 
-              <ul className="flex-1 space-y-4 mb-8">
-                {FEATURES.go.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                onClick={() => handleSubscribe("go")}
-                disabled={!!loadingPriceId || isAuthLoading}
-                className="w-full h-12 rounded-xl text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
-              >
-                {loadingPriceId === (prices?.find((price) => price.plan === "go")?.id ?? null) ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Get Started"
-                )}
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* PRO PLAN */}
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ y: -10 }}
-            className="group relative p-8 rounded-[2rem] border border-primary/50 bg-primary/[0.02] backdrop-blur-sm hover:border-primary transition-colors duration-500"
-          >
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
-              Most Popular
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
-                  <Zap className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                <div className="text-4xl font-bold tracking-tight mb-1">
-                  {getPriceDisplay("pro")}
-                  <span className="text-lg font-medium text-muted-foreground">
-                    /mo
+              {/* Popular Badge */}
+              {plan.popular && !isCurrent && (
+                <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                    Most Popular
                   </span>
                 </div>
-                <p className="text-muted-foreground">
-                  For power users who need more.
-                </p>
-              </div>
+              )}
 
-              <ul className="flex-1 space-y-4 mb-8">
-                {FEATURES.pro.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <div className="p-0.5 rounded-full bg-primary/20">
-                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                    </div>
-                    <span className="text-sm font-medium">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                onClick={() => handleSubscribe("pro")}
-                disabled={!!loadingPriceId || isAuthLoading}
-                className="w-full h-12 rounded-xl text-base font-semibold shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
-              >
-                {loadingPriceId === (prices?.find((price) => price.plan === "pro")?.id ?? null) ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Upgrade to Pro"
-                )}
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* ENTERPRISE PLAN */}
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ y: -10 }}
-            className="group relative p-8 rounded-[2rem] border border-border/50 bg-background/50 backdrop-blur-sm hover:border-orange-500/50 transition-colors duration-500"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="mb-8">
-                <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center mb-6">
-                  <Building2 className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">Enterprise</h3>
-                <div className="text-4xl font-bold tracking-tight mb-1">
-                  Custom
-                  <span className="text-lg font-medium text-muted-foreground">
-                    /seat
-                  </span>
-                </div>
-                <p className="text-muted-foreground">
-                  Scaling your entire organization.
-                </p>
-              </div>
-
-              <ul className="flex-1 space-y-4 mb-8">
-                {FEATURES.enterprise.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-auto space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Number of Seats</label>
-                  <input
-                    type="number"
-                    min="5"
-                    value={seatCount}
-                    onChange={(e) =>
-                      setSeatCount(Math.max(5, parseInt(e.target.value) || 0))
-                    }
-                    className="w-full px-4 py-2 rounded-lg border border-border bg-background/50 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Minimum 5 seats required
-                  </p>
+              {/* Header */}
+              <div className="p-6 border-b border-border/40">
+                <div className="flex items-center gap-3 mb-4">
+                  <Icon className="w-8 h-8 text-primary" />
+                  <h3 className="text-2xl font-bold">{plan.name}</h3>
                 </div>
 
-                <Button
-                  onClick={() => handleSubscribe("enterprise")}
-                  disabled={!!loadingPriceId || isAuthLoading}
-                  variant="outline"
-                  className="w-full h-12 rounded-xl text-base font-semibold border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400"
-                >
-                  {loadingPriceId === (prices?.find((price) => price.plan === "enterprise")?.id ?? null) ? (
-                    <Loader2 className="animate-spin" />
+                {/* Price Display */}
+                <div className="mb-2">
+                  {plan.id === "free" ? (
+                    <div className="text-4xl font-bold">Free</div>
+                  ) : plan.id === "enterprise" ? (
+                    <div className="text-4xl font-bold">Custom</div>
                   ) : (
-                    "Contact Sales / Select"
+                    <div className="text-4xl font-bold">
+                      {getPriceDisplay(plan.id as "go" | "pro")}
+                      <span className="text-lg text-muted-foreground">/mo</span>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  {plan.description}
+                </p>
+              </div>
+
+              {/* Features */}
+              <div className="p-6 space-y-3 flex-1">
+                {plan.features.map((feature, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <div className="p-6 pt-0 mt-auto">
+                <Button
+                  className="w-full"
+                  variant={buttonConfig.variant}
+                  disabled={buttonConfig.disabled || loadingPriceId !== null}
+                  onClick={buttonConfig.onClick}
+                >
+                  {loadingPriceId === planPriceId ||
+                  loadingPriceId === "portal" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    buttonConfig.label
                   )}
                 </Button>
               </div>
-            </div>
-          </motion.div>
-        </motion.div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

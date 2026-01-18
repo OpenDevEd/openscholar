@@ -2,7 +2,7 @@
 
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, User, Crown } from "lucide-react";
+import { LogIn, LogOut, User, Crown, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -21,6 +21,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useState } from "react";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
@@ -30,6 +31,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const { user, loading } = useAuth();
   const { isAuthenticated } = useConvexAuth();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
 
   // Fetch user subscription (will be undefined if not logged in or loading)
   // We strictly skip this query if Convex is not fully authenticated to avoid "Unauthenticated" errors
@@ -128,7 +130,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   );
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       {isCollapsed ? (
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
@@ -182,7 +184,10 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             <Button
               size="sm"
               className="w-full h-8 text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0"
-              onClick={() => router.push("/pricing")}
+              onClick={() => {
+                setOpen(false);
+                router.push("/pricing");
+              }}
             >
               Upgrade to Pro
             </Button>
@@ -192,7 +197,21 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
-          onClick={() => router.push("/settings/billing")}
+          onClick={() => {
+            setOpen(false);
+            router.push("/pricing");
+          }}
+          className="cursor-pointer"
+        >
+          <CreditCard className="h-4 w-4 mr-2" />
+          Plans
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => {
+            setOpen(false);
+            router.push("/settings/billing");
+          }}
           className="cursor-pointer"
         >
           <User className="h-4 w-4 mr-2" />
@@ -201,7 +220,10 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
 
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => router.push("/auth/signout")}
+          onClick={() => {
+            setOpen(false);
+            router.push("/auth/signout");
+          }}
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="h-4 w-4 mr-2" />

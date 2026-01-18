@@ -20,23 +20,21 @@ registerRoutes(http, components.stripe, {
   events: {
     "checkout.session.completed": async (ctx, event) => {
       const session = event.data.object as any;
+      console.log(`[Webhook] checkout.session.completed - Mode: ${session.mode}, Customer: ${session.customer}`);
+      
       if (session.mode === "payment") {
         // One-time credit purchase
+        console.log(`[Webhook] Processing one-time payment: ${session.id}`);
         await ctx.runMutation(internal.credits.internal.handleCreditPurchase, {
           stripeCustomerId: session.customer as string,
           amountPaid: session.amount_total ?? 0,
           metadata: session.metadata ?? {},
           stripeInvoiceId: session.id,
         });
-      } else if (session.mode === "subscription") {
-        // 1. Link subscription immediately
-        await ctx.runMutation(internal.subscriptions.internal.handleCheckoutComplete, {
-          stripeCustomerId: session.customer as string,
-          stripeSubscriptionId: session.subscription as string,
-          metadata: session.metadata as Record<string, string> ?? {},
-        });
-
       }
+      // NOTE: For subscription mode, we rely on customer.subscription.created/updated events
+      // This follows Stripe's best practice of using subscription events as the source of truth
+      // checkout.session.completed is only used for one-time payments
     },
     
     "invoice.paid": async (ctx, event) => {
@@ -86,6 +84,8 @@ registerRoutes(http, components.stripe, {
       const currentPeriodEnd = (subscription.current_period_end as number) ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
       const items = subscription.items as { data?: Array<{ price?: { id?: string }; quantity?: number }> };
 
+      console.log(`[Webhook] customer.subscription.created - ID: ${subscription.id}, Customer: ${subscription.customer}, Status: ${subscription.status}, Price: ${items.data?.[0]?.price?.id}`);
+
       await ctx.runMutation(internal.subscriptions.internal.syncSubscription, {
         stripeSubscriptionId: subscription.id,
         stripeCustomerId: subscription.customer as string,
@@ -105,6 +105,8 @@ registerRoutes(http, components.stripe, {
       const currentPeriodEnd = (subscription.current_period_end as number) ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
       const items = subscription.items as { data?: Array<{ price?: { id?: string }; quantity?: number }> };
 
+      console.log(`[Webhook] customer.subscription.updated - ID: ${subscription.id}, Status: ${subscription.status}, Price: ${items.data?.[0]?.price?.id}, CancelAtPeriodEnd: ${subscription.cancel_at_period_end}`);
+
       await ctx.runMutation(internal.subscriptions.internal.syncSubscription, {
         stripeSubscriptionId: subscription.id,
         stripeCustomerId: subscription.customer as string,
@@ -120,6 +122,7 @@ registerRoutes(http, components.stripe, {
 
     "customer.subscription.deleted": async (ctx, event) => {
       const subscription = event.data.object as any;
+      console.log(`[Webhook] customer.subscription.deleted - ID: ${subscription.id}`);
       await ctx.runMutation(internal.subscriptions.internal.handleSubscriptionCanceled, {
         stripeSubscriptionId: subscription.id,
       });

@@ -10,6 +10,7 @@ import {
   assertPlanPriceConfig,
   getPlanFromPriceId,
   getPlanPriceIds,
+  getPlanTier,
   getPlanTypeFromMetadata,
   isAllowedPriceId,
 } from "../lib/constants";
@@ -321,6 +322,103 @@ export const getSubscriptionDetails = action({
       }
 
       return { status: "error", error: error.message || "Stripe API failed" };
+    }
+  },
+});
+
+/**
+ * Schedule a downgrade to a lower tier plan
+ * Cancels current subscription at period end and schedules new subscription
+ */
+export const scheduleDowngrade = action({
+  args: {
+    targetPriceId: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    effectiveDate: v.optional(v.number()),
+  }),
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    message: string;
+    effectiveDate?: number;
+  }> => {
+    await requireActionAuth(ctx);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+
+    if (args.organizationId) {
+      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
+        userId: user._id,
+        organizationId: args.organizationId,
+        requiredRole: "admin",
+      });
+    }
+
+    // Verify target price ID is valid
+    if (!isAllowedPriceId(args.targetPriceId)) {
+      return { success: false, message: "Invalid target price ID" };
+    }
+
+    const ownerId = args.organizationId ?? user._id;
+    const ownerType = args.organizationId ? "organization" : "user";
+
+    // Get current subscription
+    const subscription = await ctx.runQuery(
+      internal.subscriptions.internal.getSubscriptionByOwner,
+      {
+        ownerId,
+        ownerType,
+      }
+    );
+
+    if (!subscription || !subscription.stripeSubscriptionId) {
+      return { success: false, message: "No active subscription found" };
+    }
+
+    // Verify this is actually a downgrade
+    const currentTier = getPlanTier(subscription.plan);
+    const targetPlan = getPlanFromPriceId(args.targetPriceId);
+    const targetTier = getPlanTier(targetPlan);
+
+    if (targetTier >= currentTier) {
+      return { success: false, message: "Target plan is not a downgrade. Use upgrade flow instead." };
+    }
+
+    try {
+      // Get current Stripe subscription to access metadata and period end
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        subscription.stripeSubscriptionId
+      );
+
+      // Update Stripe subscription to cancel at period end
+      const updatedSubscription = await stripe.subscriptions.update(
+        subscription.stripeSubscriptionId,
+        {
+          cancel_at_period_end: true,
+          metadata: {
+            ...(stripeSubscription.metadata || {}),
+            pendingDowngrade: "true",
+            targetPriceId: args.targetPriceId,
+            targetPlan: targetPlan,
+          },
+        }
+      );
+
+      const effectiveDate = ((updatedSubscription as any).current_period_end || 0) * 1000;
+
+      return {
+        success: true,
+        message: `Downgrade scheduled. Your ${targetPlan} plan will begin on ${new Date(effectiveDate).toLocaleDateString()}`,
+        effectiveDate,
+      };
+    } catch (error: any) {
+      console.error("Failed to schedule downgrade:", error);
+      return {
+        success: false,
+        message: error.message || "Failed to schedule downgrade",
+      };
     }
   },
 });

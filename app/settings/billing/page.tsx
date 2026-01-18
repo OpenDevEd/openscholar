@@ -7,8 +7,10 @@ import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
+import { useRouter } from "next/navigation";
 
 export default function BillingPage() {
+  const router = useRouter();
   const subscription = useQuery(api.subscriptions.queries.getMy);
   const creditBalance = useQuery(api.credits.queries.getMyBalance);
   const createPortalSession = useAction(
@@ -52,10 +54,22 @@ export default function BillingPage() {
           setErrorMsg("Network error fetching details");
         })
         .finally(() => setIsFetchingDetails(false));
+    } else if (subscription && subscription.plan === "free") {
+      // Clear details when subscription becomes free (after cancellation)
+      setDetails(null);
+      setErrorMsg(null);
+      setIsFetchingDetails(false);
     }
   }, [subscription]); // Intentional dependency for 'getSubscriptionDetails' omission to avoid loops if reference unstable
 
   const handleManageSubscription = async () => {
+    // If user is on free plan, redirect to pricing page
+    if (isFree) {
+      router.push("/pricing");
+      return;
+    }
+
+    // Otherwise, open the portal
     try {
       setIsLoading(true);
       const { url } = await createPortalSession({});
@@ -74,8 +88,13 @@ export default function BillingPage() {
     try {
       setIsLoading(true);
       await cancelImmediately({});
+      
+      // Clear Stripe details immediately for better UX
+      setDetails(null);
+      setErrorMsg(null);
+      
       toast.success("Subscription cancelled immediately");
-      // Refresh page or state update happens automatically via Convex reactivity
+      // Full state update happens automatically via Convex reactivity
     } catch (error) {
       toast.error("Failed to cancel subscription");
       console.error(error);

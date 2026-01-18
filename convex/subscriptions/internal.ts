@@ -78,6 +78,7 @@ async function getSubscriptionByStripeOrMetadata(
 
 /**
  * Get subscription by owner (user or organization)
+ * Uses same logic as getMy/getOrg queries - prefers paid subscriptions
  */
 export const getSubscriptionByOwner = internalQuery({
   args: {
@@ -94,66 +95,24 @@ export const getSubscriptionByOwner = internalQuery({
       .order("desc")
       .collect();
 
-    // Return active subscription, or most recent if none active
-    return subscriptions.find(s => s.status !== "canceled") ?? subscriptions[0] ?? null;
-  },
-});
-
-/**
- * Handle checkout completion from Stripe
- */
-export const handleCheckoutComplete = internalMutation({
-  args: {
-    stripeCustomerId: v.string(),
-    stripeSubscriptionId: v.string(),
-    metadata: v.record(v.string(), v.string()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const metadata = args.metadata as StripeMetadata;
-    const { userId, organizationId } = metadata;
-
-    if (!userId && !organizationId) {
-      console.warn("No user or org ID in checkout metadata");
-      return;
+    // Filter to active subscriptions only
+    const activeSubscriptions = subscriptions.filter(s => s.status !== "canceled");
+    
+    // Prefer active subscriptions with stripeSubscriptionId (real paid subscriptions)
+    const paidSubscription = activeSubscriptions.find(s => s.stripeSubscriptionId);
+    if (paidSubscription) {
+      return paidSubscription;
     }
 
-    const ownerId = organizationId ?? userId!;
-    const ownerType = organizationId ? "organization" : "user";
-
-    // Find the active subscription record (there may be multiple due to soft-delete)
-    const subscriptions = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_owner", (q) =>
-        q.eq("ownerId", ownerId).eq("ownerType", ownerType)
-      )
-      .order("desc")
-      .collect();
-
-    // Get the most recent non-canceled subscription (should be the "free" one)
-    const existing = subscriptions.find(s => s.status !== "canceled");
-
-    const now = Date.now();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        stripeSubscriptionId: args.stripeSubscriptionId,
-        stripeCustomerId: args.stripeCustomerId,
-        status: "active",
-        updatedAt: now,
-      });
-    } else {
-      // If it doesn't exist, we should probably create it or log error?
-      // Usually getOrCreateUser/Org should have created a free sub.
-      console.error("Subscription record not found for owner during checkout complete", { ownerId, ownerType });
-    }
-
-    return null;
+    // Otherwise, return most recent active subscription (free plan stub)
+    return activeSubscriptions[0] ?? subscriptions[0] ?? null;
   },
 });
 
 /**
  * Sync subscription from Stripe webhook
+ * This is the single source of truth for subscription state from Stripe
+ * Idempotent - safe to call multiple times with same data
  */
 export const syncSubscription = internalMutation({
   args: {
@@ -174,41 +133,68 @@ export const syncSubscription = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const subscription = await getSubscriptionByStripeOrMetadata(ctx, {
+    // 1. Find subscription by Stripe ID → Customer ID → Metadata
+    let subscription = await getSubscriptionByStripeOrMetadata(ctx, {
       stripeSubscriptionId: args.stripeSubscriptionId,
       stripeCustomerId: args.stripeCustomerId,
       metadata: args.metadata as StripeMetadata,
     });
 
-    if (!subscription) {
-      throw new ConvexError({ code: "NOT_FOUND", message: "Subscription not found for sync" });
+    // 2. Extract owner info
+    const metadata = args.metadata as StripeMetadata;
+    const ownerId = metadata?.organizationId ?? metadata?.userId ?? subscription?.ownerId;
+    const ownerType = metadata?.organizationId ? "organization" : "user";
+
+    if (!ownerId) {
+      console.error("[syncSubscription] No owner ID found in metadata or existing subscription");
+      throw new ConvexError({ 
+        code: "INVALID_DATA", 
+        message: "Cannot sync subscription: no owner identifier" 
+      });
     }
 
-    // Link it now if it wasn"t linked (e.g. found by metadata)
-    if (subscription.stripeSubscriptionId !== args.stripeSubscriptionId) {
-         await ctx.db.patch(subscription._id, {
-          stripeSubscriptionId: args.stripeSubscriptionId,
-          stripeCustomerId: args.stripeCustomerId,
-        });
-    }
-
-    // Determine plan from price ID
+    // 3. Determine plan from price ID
     const plan = getPlanFromPriceId(args.priceId);
-    
-    // Calculate credits based on seats if enterprise, otherwise flat rate or per seat depending on logic
     const quantity = args.quantity ?? 1;
     const baseCredits = PLAN_CONFIG[plan].creditsPerMonth;
     const totalCredits = baseCredits * quantity;
 
+    const now = Date.now();
+
+    // 4. Create if not exists (rare case - usually created during user/org creation)
+    if (!subscription) {
+      console.log(`[syncSubscription] Creating new subscription for ${ownerType} ${ownerId} - plan:${plan}, credits:${totalCredits}`);
+      await ctx.db.insert("subscriptions", {
+        ownerId,
+        ownerType,
+        stripeSubscriptionId: args.stripeSubscriptionId,
+        stripeCustomerId: args.stripeCustomerId,
+        plan,
+        status: args.status,
+        currentPeriodStart: args.currentPeriodStart,
+        currentPeriodEnd: args.currentPeriodEnd,
+        cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+        seats: quantity,
+        creditsPerMonth: totalCredits,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return null;
+    }
+
+    // 5. Update existing subscription with ALL fields in one atomic operation
+    console.log(`[syncSubscription] Updating ${subscription._id} → plan:${plan}, credits:${totalCredits}, status:${args.status}`);
     await ctx.db.patch(subscription._id, {
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      stripeCustomerId: args.stripeCustomerId,
+      plan, // KEY FIX: Always update plan from Stripe data
       status: args.status,
-      plan,
       currentPeriodStart: args.currentPeriodStart,
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
       seats: quantity,
       creditsPerMonth: totalCredits,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
 
     return null;
@@ -233,18 +219,27 @@ export const handleSubscriptionCanceled = internalMutation({
       .collect();
     const subscription = subscriptions.find((sub) => sub.status !== "canceled") ?? subscriptions[0] ?? null;
 
-    if (!subscription) return null;
+    if (!subscription) {
+      console.log(`[handleSubscriptionCanceled] No subscription found for Stripe ID: ${args.stripeSubscriptionId}`);
+      return null;
+    }
 
     const now = Date.now();
 
-    // 1. Mark current subscription as canceled (preserve history)
+    console.log(`[handleSubscriptionCanceled] Canceling subscription ${subscription._id} (plan: ${subscription.plan})`);
+
+    // 1. Mark current subscription as canceled and clear Stripe IDs
+    // Clearing stripeSubscriptionId prevents queries from returning canceled paid subs
     await ctx.db.patch(subscription._id, {
       status: "canceled",
       canceledAt: now,
       updatedAt: now,
+      stripeSubscriptionId: undefined, // Clear so queries don't prefer canceled paid sub
+      stripeCustomerId: undefined, // Clear for consistency
     });
 
     // 2. Create new "free" subscription for the owner
+    console.log(`[handleSubscriptionCanceled] Creating free subscription for ${subscription.ownerType} ${subscription.ownerId}`);
     await ctx.db.insert("subscriptions", {
       ownerId: subscription.ownerId,
       ownerType: subscription.ownerType,
