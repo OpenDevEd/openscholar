@@ -112,23 +112,20 @@ interface KeywordExpansionState {
 }
 
 interface AIConfigState {
-  provider: AIProvider;
-  model: string;
-  apiKey: string;
-  /** cumulative USD spent on AI calls (client-side estimate) */
-  dollarsUsed: number;
-  /** optional spending limit; 0 means unlimited */
-  budget: number;
-  /** update / set a new budget */
-  setBudget: (budget: number) => void;
-  /** increment the running cost tracker */
-  addDollarsUsed: (amount: number) => void;
-  /** reset the tracker back to zero */
-  resetDollarsUsed: () => void;
-  setProvider: (provider: AIProvider) => void;
-  setModel: (model: string) => void;
-  setApiKey: (apiKey: string) => void;
-  clearConfig: () => void;
+  provider: 'openai' | 'google' | 'anthropic' | 'openrouter'
+  model: string
+  apiKey: string
+  dollarsUsed: number
+  budget: number
+  apiKeyMode: 'local' | 'credits'
+  setBudget: (budget: number) => void
+  addDollarsUsed: (amount: number) => void
+  resetDollarsUsed: () => void
+  setProvider: (provider: AIProvider) => void
+  setModel: (model: string) => void
+  setApiKey: (apiKey: string) => void
+  setApiKeyMode: (mode: 'local' | 'credits') => void
+  clearConfig: () => void
 }
 
 export const useRatingsStore = create<RatingsState>()(
@@ -701,22 +698,30 @@ export const useAIConfigStore = create<AIConfigState>()(
       apiKey: '',
       dollarsUsed: 0,
       budget: 0,
+      apiKeyMode: 'local',
       setBudget: (budget) => set({ budget }),
       addDollarsUsed: (amount) => set((state) => ({ dollarsUsed: state.dollarsUsed + amount })),
       resetDollarsUsed: () => set({ dollarsUsed: 0 }),
       setProvider: (provider) => set({ provider }),
       setModel: (model) => set({ model }),
       setApiKey: (apiKey) => set({ apiKey }),
-      clearConfig: () => set({ provider: 'openai', model: 'o4-mini-2025-04-16', apiKey: '', dollarsUsed: 0, budget: 0 }),
+      setApiKeyMode: (apiKeyMode) => set({ apiKeyMode }),
+      clearConfig: () => set({ provider: 'openai', model: 'o4-mini-2025-04-16', apiKey: '', dollarsUsed: 0, budget: 0, apiKeyMode: 'local' }),
     }),
     {
       name: 'ai-config-storage',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {
           return {
             ...persistedState,
             model: persistedState.provider === 'openai' ? 'o4-mini-2025-04-16' : persistedState.provider === 'google' ? 'gemini-2.5-flash' : undefined,
+          };
+        }
+        if (version === 1 || version === 2) {
+          return {
+            ...persistedState,
+            apiKeyMode: 'local',
           };
         }
         return persistedState;

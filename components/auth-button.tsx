@@ -40,6 +40,12 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     isAuthenticated ? {} : "skip",
   );
 
+  // Fetch user credits
+  const credits = useQuery(
+    api.credits.queries.getMyBalance,
+    isAuthenticated ? {} : "skip",
+  );
+
   // Loading state
   if (loading) {
     return (
@@ -179,6 +185,18 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
               {planLabel}
             </div>
           </div>
+
+          {/* Credits display */}
+          {credits && credits.total > 0 && (
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Credits
+              </span>
+              <span className="text-sm font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {credits.total}
+              </span>
+            </div>
+          )}
 
           {showUpgrade && (
             <Button
