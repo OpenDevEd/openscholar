@@ -3,7 +3,6 @@
 import { useCallback, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
-  useAIConfigStore,
   useTranslationStore,
   useSearchHistoryStore,
   useTransientScreeningStore,
@@ -11,7 +10,7 @@ import {
 import { useSearchOptional } from "@/lib/search";
 import { createCitationSearch } from "@/lib/search";
 import { getEffectiveSearchId } from "@/lib/utils";
-import { translatePaperContent, generateScreeningResponses } from "@/app/actions/ai-enhance";
+import { useTranslatePaperContent, useGenerateScreeningResponses } from "@/lib/ai/client/router";
 import { toast } from "sonner";
 import useSWRImmutable from "swr/immutable";
 import { ScreeningContext } from "@/components/results-list";
@@ -59,7 +58,8 @@ export function useTranslate(
   const search = useSearchOptional();
   const selectedLanguage = search?.params?.lang ?? '';
 
-  const { provider, model, apiKey } = useAIConfigStore();
+  // Use the new router hook
+  const { execute: translateContent, isConfigured } = useTranslatePaperContent();
 
   const {
     getTranslation,
@@ -87,19 +87,16 @@ export function useTranslate(
       (!translatedContent ||
         translatedContent.sourceLanguage !== selectedLanguage);
 
-    if (!apiKey || !provider || !data?.id || !needsTranslation) {
+    if (!isConfigured || !data?.id || !needsTranslation) {
       return;
     }
 
     try {
-      const translation = await translatePaperContent(
-        data.title,
-        data.abstract || "",
-        selectedLanguage,
-        provider,
-        apiKey,
-        model
-      );
+      const translation = await translateContent({
+        title: data.title,
+        abstract: data.abstract || "",
+        sourceLanguage: selectedLanguage,
+      });
 
       setTranslation(data?.id, translation);
       if (autoSet) {
@@ -108,7 +105,7 @@ export function useTranslate(
     } catch (error) {
       console.error("Translation error:", error);
     }
-  }, [data?.id, data?.title, data?.abstract, translatedContent, selectedLanguage, apiKey, provider, model, setTranslation, autoSet, setShowTranslated]);
+  }, [data?.id, data?.title, data?.abstract, translatedContent, selectedLanguage, isConfigured, translateContent, setTranslation, autoSet, setShowTranslated]);
 
   const { isLoading: isTranslating } = useSWRImmutable(
     data?.id ? `translation-${data.id}` : null,
@@ -158,40 +155,34 @@ export function useScreening(data: {
   const screeningQuestions = searchResult?.screeningQuestions || [];
   const screeningResponses = searchResult?.screeningResponses || {};
 
-  const { provider, model, apiKey, budget, dollarsUsed } = useAIConfigStore();
+  // Use the new router hook
+  const { execute: generateResponses, isConfigured } = useGenerateScreeningResponses();
 
   const startScreening = useCallback(async (): Promise<
     | { responses: Record<string, boolean | null>; confidence: number }
     | undefined
   > => {
-    if (provider && apiKey && myMissingResponses.length > 0) {
-      if (budget > 0 && dollarsUsed >= budget) {
-        return;
-      }
-
+    if (isConfigured && myMissingResponses.length > 0) {
       try {
-        const screeningResponses = await generateScreeningResponses(
-          data.title,
-          data.abstract,
-          myMissingResponses,
-          provider,
-          apiKey,
-          model
-        );
+        const result = await generateResponses({
+          title: data.title,
+          abstract: data.abstract,
+          questions: myMissingResponses,
+        });
 
         if (setScreeningResponses) {
-          setScreeningResponses(data.id, screeningResponses.responses);
+          setScreeningResponses(data.id, result.responses);
         }
 
-        return screeningResponses;
+        return result;
       } catch (error) {
         console.error("Error generating screening responses:", error);
         toast.error(
-          "Failed to generate screening responses. Please check your API key and try again."
+          "Failed to generate screening responses. Please check your configuration and try again."
         );
       }
     }
-  }, [data.title, data.abstract, myMissingResponses, provider, apiKey, model, budget, dollarsUsed, setScreeningResponses, data.id]);
+  }, [data.title, data.abstract, myMissingResponses, isConfigured, generateResponses, setScreeningResponses, data.id]);
 
   const { isLoading: isScreening } = useSWRImmutable(
     data.id && canStartScreening

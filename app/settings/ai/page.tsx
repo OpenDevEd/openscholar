@@ -38,9 +38,6 @@ export default function AISettingsPage() {
     setModel,
     apiKey,
     setApiKey,
-    budget,
-    setBudget,
-    dollarsUsed,
     apiKeyMode,
     setApiKeyMode,
   } = useAIConfigStore();
@@ -77,19 +74,6 @@ export default function AISettingsPage() {
     if (value) {
       toast.success("API Key Updated", {
         description: "Your API key has been saved securely",
-      });
-    }
-  };
-
-  const handleBudgetChange = (value: string) => {
-    const num = parseFloat(value);
-    if (!isNaN(num) && num >= 0) {
-      setBudget(num);
-      toast.success("Budget Updated", {
-        description:
-          num === 0
-            ? "Unlimited budget set"
-            : `Budget set to $${num.toFixed(2)}`,
       });
     }
   };
@@ -527,27 +511,6 @@ export default function AISettingsPage() {
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
-            </div>
-
-            {/* Budget */}
-            <div className="space-y-2">
-              <Label htmlFor="budget" className="text-sm font-medium">
-                Budget (USD)
-              </Label>
-              <Input
-                id="budget"
-                type="number"
-                min={0}
-                step={0.01}
-                value={budget === 0 ? "" : budget.toString()}
-                placeholder="Unlimited"
-                disabled={isDisabled}
-                onChange={(e) => handleBudgetChange(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave empty or 0 for no limit. Current spent: $
-                {dollarsUsed.toFixed(2)}
-              </p>
             </div>
           </div>
         </div>

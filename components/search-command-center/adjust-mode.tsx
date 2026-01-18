@@ -5,11 +5,11 @@ import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
-import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
+import { useSearchHistoryStore } from "@/lib/store";
 import { toast } from "sonner";
-import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
+import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { languageOptions } from "@/components/language-selector";
+import { languageOptions } from "@/lib/ai/core/languages";
 import { cn } from "@/lib/utils";
 
 interface AdjustModeProps {
@@ -20,7 +20,9 @@ interface AdjustModeProps {
 
 export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
   const search = useSearch();
-  const { provider, model, apiKey } = useAIConfigStore();
+
+  // Use the new router hook
+  const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
 
   // Get query from URL params
   const urlQuery = search.params.q;
@@ -98,9 +100,13 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
 
     if (!aiInstructions.trim() || !urlQuery.trim()) return;
 
-    if (!apiKey || !provider) {
+    if (!isConfigured) {
       toast.error("Configuration Required", {
         description: "Please configure your AI API key in settings.",
+        action: {
+          label: "Configure",
+          onClick: () => window.location.href = "/settings/ai",
+        },
       });
       return;
     }
@@ -121,13 +127,10 @@ Please enhance this academic search query according to the user's specific instr
           : ""
       }`;
 
-      const response = await enhanceSearchQuery(
-        enhancedPrompt,
-        provider,
-        apiKey,
-        model,
-        urlLanguage || undefined
-      );
+      const response = await enhanceQuery({
+        query: enhancedPrompt,
+        language: urlLanguage || undefined,
+      });
 
       search.setQuery(response.enhancedQuery);
 
@@ -140,10 +143,21 @@ Please enhance this academic search query according to the user's specific instr
       });
 
       setAiInstructions("");
-    } catch {
-      toast.error("Enhancement failed", {
-        description: "Please check your API key and try again.",
-      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Enhancement failed";
+      if (message === "API_KEY_REQUIRED") {
+        toast.error("API Key Required", {
+          description: "Please configure your AI API key.",
+          action: {
+            label: "Configure",
+            onClick: () => window.location.href = "/settings/ai",
+          },
+        });
+      } else {
+        toast.error("Enhancement failed", {
+          description: "Please check your configuration and try again.",
+        });
+      }
     } finally {
       setIsEnhancing(false);
     }

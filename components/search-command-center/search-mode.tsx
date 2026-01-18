@@ -15,7 +15,7 @@ import {
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
-import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
+import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
 
@@ -31,13 +31,17 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   // Research question state
   const { currentQuestion, setCurrentQuestion } = useCurrentQuestionStore();
   const { addQuestionToHistory, getSearchResult } = useSearchHistoryStore();
-  const { provider, model, apiKey } = useAIConfigStore();
+  const { apiKeyMode } = useAIConfigStore();
   const [isEnhancing, setIsEnhancing] = useState(false);
   const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
   // Keyword search state - also sync with global store for real-time tooltip updates
   const { setCurrentQuery } = useCurrentQueryStore();
   const [localInputValue, setLocalInputValue] = useState(search?.params?.q ?? "");
   const [isTranslating, setIsTranslating] = useState(false);
+
+  // Use the new router hooks
+  const { execute: enhanceQuery, isConfigured: isEnhanceConfigured } = useEnhanceSearchQuery();
+  const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
 
   const urlQuery = search?.params?.q ?? "";
   const selectedLanguage = search?.params?.lang ?? "";
@@ -93,6 +97,17 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       return;
     }
 
+    if (!isEnhanceConfigured) {
+      toast.error("AI Not Configured", {
+        description: "Please configure your AI settings first.",
+        action: {
+          label: "Configure",
+          onClick: () => window.location.href = "/settings/ai",
+        },
+      });
+      return;
+    }
+
     const questionToProcess = currentQuestion.trim();
     if (questionToProcess) {
       addQuestionToHistory(effectiveSearchId, questionToProcess);
@@ -103,13 +118,10 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     try {
       setIsEnhancing(true);
       const currentSearchResult = getSearchResult(effectiveSearchId);
-      const result = await enhanceSearchQuery(
-        questionToProcess,
-        provider,
-        apiKey,
-        model,
-        currentSearchResult?.language
-      );
+      const result = await enhanceQuery({
+        query: questionToProcess,
+        language: currentSearchResult?.language,
+      });
 
       if (search) {
         search.setQuery(result.enhancedQuery);
@@ -119,9 +131,26 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         description: `Searching for: "${result.enhancedQuery}"`,
       });
     } catch (error) {
-      toast.error("Enhancement Failed", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
+      const message = error instanceof Error ? error.message : "Unknown error";
+      if (message === "API_KEY_REQUIRED") {
+        toast.error("API Key Required", {
+          description: "Please configure your AI API key.",
+          action: {
+            label: "Configure",
+            onClick: () => window.location.href = "/settings/ai",
+          },
+        });
+      } else if (message.includes("Insufficient credits")) {
+        toast.error("Insufficient Credits", {
+          description: "Please add more credits to continue.",
+          action: {
+            label: "Add Credits",
+            onClick: () => window.location.href = "/settings/credits",
+          },
+        });
+      } else {
+        toast.error("Enhancement Failed", { description: message });
+      }
     } finally {
       setIsEnhancing(false);
     }
@@ -134,9 +163,13 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     search.setLanguage(language || null);
 
     if (localInputValue.trim() && language) {
-      if (!apiKey || !provider) {
-        toast.error("API Key Required", {
+      if (!isTranslateConfigured) {
+        toast.error("AI Not Configured", {
           description: "Please configure your AI settings to translate queries.",
+          action: {
+            label: "Configure",
+            onClick: () => window.location.href = "/settings/ai",
+          },
         });
         return;
       }
@@ -146,22 +179,30 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
       try {
         const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
-        const translatedQuery = await translateQuery(
-          expandedQuery,
-          language,
-          provider,
-          apiKey,
-          model
-        );
+        const result = await translateQueryFn({
+          query: expandedQuery,
+          targetLanguage: language,
+        });
 
-        search.setQuery(translatedQuery);
+        search.setQuery(result.translatedQuery);
         toast.dismiss(loadingToast);
         toast.success("Query translated", {
           description: `Translated to ${language}`,
         });
-      } catch {
+      } catch (error) {
         toast.dismiss(loadingToast);
-        toast.error("Translation failed");
+        const message = error instanceof Error ? error.message : "Translation failed";
+        if (message === "API_KEY_REQUIRED") {
+          toast.error("API Key Required", {
+            description: "Please configure your AI API key.",
+            action: {
+              label: "Configure",
+              onClick: () => window.location.href = "/settings/ai",
+            },
+          });
+        } else {
+          toast.error("Translation failed");
+        }
       } finally {
         setIsTranslating(false);
       }

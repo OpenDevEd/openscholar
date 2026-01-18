@@ -19,10 +19,10 @@ import { Button } from "@/components/ui/button";
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
+import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 
 function PageContent() {
   const router = useRouter();
@@ -40,7 +40,10 @@ function PageContent() {
   const handleQueryChange = useQueryChangeHandler(setCurrentQuery);
 
   // AI configuration and research question state
-  const { provider, model, apiKey } = useAIConfigStore();
+  const { apiKeyMode } = useAIConfigStore();
+
+  // Use the new router hook that respects apiKeyMode
+  const { execute: enhanceQuery, isConfigured: isAIConfigured } = useEnhanceSearchQuery();
 
   const createSearchFilters = useCreateSearchFilters();
 
@@ -57,26 +60,12 @@ function PageContent() {
     // Check if the query ends with a question mark (indicating a research question)
     if (originalQuery.trim().endsWith('?')) {
       try {
-        // Check if AI configuration is available
-        if (!apiKey) {
-          toast.error("Configuration Required", {
-            description: "Please configure your AI API key in the settings first.",
-          });
-          return;
-        }
-
-        if (!provider) {
-          toast.error("Configuration Required", {
-            description: "Please select an AI provider in the settings first.",
-          });
-          return;
-        }
-
         // Start AI enhancement loading state
         setIsEnhancingQuestion(true);
 
         // Convert research question to search query using AI
-        const result = await enhanceSearchQuery(originalQuery, provider, apiKey, model);
+        // The router hook respects apiKeyMode - local mode uses store's API key, credits mode uses Convex
+        const result = await enhanceQuery({ query: originalQuery });
 
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;

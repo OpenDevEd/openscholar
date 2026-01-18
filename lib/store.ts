@@ -115,12 +115,7 @@ interface AIConfigState {
   provider: 'openai' | 'google' | 'anthropic' | 'openrouter'
   model: string
   apiKey: string
-  dollarsUsed: number
-  budget: number
   apiKeyMode: 'local' | 'credits'
-  setBudget: (budget: number) => void
-  addDollarsUsed: (amount: number) => void
-  resetDollarsUsed: () => void
   setProvider: (provider: AIProvider) => void
   setModel: (model: string) => void
   setApiKey: (apiKey: string) => void
@@ -696,21 +691,16 @@ export const useAIConfigStore = create<AIConfigState>()(
       provider: 'openai',
       model: 'o4-mini-2025-04-16',
       apiKey: '',
-      dollarsUsed: 0,
-      budget: 0,
       apiKeyMode: 'local',
-      setBudget: (budget) => set({ budget }),
-      addDollarsUsed: (amount) => set((state) => ({ dollarsUsed: state.dollarsUsed + amount })),
-      resetDollarsUsed: () => set({ dollarsUsed: 0 }),
       setProvider: (provider) => set({ provider }),
       setModel: (model) => set({ model }),
       setApiKey: (apiKey) => set({ apiKey }),
       setApiKeyMode: (apiKeyMode) => set({ apiKeyMode }),
-      clearConfig: () => set({ provider: 'openai', model: 'o4-mini-2025-04-16', apiKey: '', dollarsUsed: 0, budget: 0, apiKeyMode: 'local' }),
+      clearConfig: () => set({ provider: 'openai', model: 'o4-mini-2025-04-16', apiKey: '', apiKeyMode: 'local' }),
     }),
     {
       name: 'ai-config-storage',
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {
           return {
@@ -723,6 +713,11 @@ export const useAIConfigStore = create<AIConfigState>()(
             ...persistedState,
             apiKeyMode: 'local',
           };
+        }
+        if (version === 3) {
+          // Remove budget tracking fields
+          const { dollarsUsed, budget, ...rest } = persistedState;
+          return rest;
         }
         return persistedState;
       },

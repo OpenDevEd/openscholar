@@ -9,17 +9,21 @@ import {
   queryEnhancementSchema,
   screeningQuestionsSchema,
   createScreeningResponsesSchema,
-  STANDARD_PROVIDER_OPTIONS,
-} from "@/lib/ai/core/schemas";
-import {
+  translateQuerySchema,
+  translatePaperContentSchema,
   buildEnhanceQueryPrompts,
   buildScreeningQuestionsPrompts,
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
-} from "@/lib/ai/core/prompts";
-import { validateQuery, repairSingleField, repairJSON, logAIError } from "@/lib/ai/core/validate";
-import { calculateCostInDollars, dollarsToCredits, DEEPSEEK_PRICING } from "@/lib/ai/core/cost";
+  validateQuery,
+  executeAIOperation,
+  calculateCostInDollars,
+  dollarsToCredits,
+  DEEPSEEK_PRICING,
+  AIUnauthenticatedError,
+  AIInsufficientCreditsError,
+} from "@/lib/ai/core";
 import { z } from "zod";
 import { SERVER_AI_CONFIG } from "./config";
 
@@ -34,66 +38,50 @@ export const enhanceSearchQuery = action({
   }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    if (!user) throw new Error("Unauthenticated");
+    if (!user) throw new AIUnauthenticatedError();
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
     if (!balance || balance.total <= 0) {
-      throw new Error("Insufficient credits");
+      throw new AIInsufficientCreditsError();
     }
 
     const deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY! });
-    const prompts = buildEnhanceQueryPrompts(args, 0);
 
-    const maxRetries = 10;
-    let retryCount = 0;
-    let lastError: Error | null = null;
+    const { output, usage } = await executeAIOperation({
+      model: deepseek(SERVER_AI_CONFIG.model),
+      schema: queryEnhancementSchema,
+      buildPrompts: (input, retryCount) => buildEnhanceQueryPrompts(input, retryCount),
+      input: args,
+      repairStrategy: { type: 'single-field', fieldName: 'enhancedQuery' },
+      temperature: 1,
+      retryConfig: {
+        maxRetries: 10,
+        shouldRetry: (error, attempt) =>
+          error.message.includes('unbalanced parentheses') ||
+          error.message.includes('incomplete operator'),
+        onRetry: (error, attempt) => {
+          console.warn(`Query validation failed (attempt ${attempt}/10):`, error);
+        },
+      },
+      validator: (output) => ({
+        ...output,
+        enhancedQuery: validateQuery(output.enhancedQuery),
+      }),
+    });
 
-    while (retryCount < maxRetries) {
-      try {
-        const { object, usage } = await generateObject({
-          model: deepseek(SERVER_AI_CONFIG.model),
-          schema: queryEnhancementSchema,
-          experimental_repairText: async ({ text, error }) =>
-            repairSingleField(text, error, 'enhancedQuery'),
-          providerOptions: STANDARD_PROVIDER_OPTIONS,
-          temperature: 1,
-          system: prompts.system,
-          prompt: prompts.prompt,
-        });
+    const costDollars = calculateCostInDollars(usage, DEEPSEEK_PRICING);
+    const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
 
-        const validatedQuery = validateQuery(object.enhancedQuery);
+    await ctx.runMutation(internal.credits.internal.deductCredits, {
+      userId: user._id,
+      amount: creditsToDeduct,
+      description: "AI: Enhance search query",
+    });
 
-        const costDollars = calculateCostInDollars(usage, DEEPSEEK_PRICING);
-        const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
-
-        await ctx.runMutation(internal.credits.internal.deductCredits, {
-          userId: user._id,
-          amount: creditsToDeduct,
-          description: "AI: Enhance search query",
-        });
-
-        return {
-          enhancedQuery: validatedQuery,
-          explanation: "",
-        };
-
-      } catch (validationError) {
-        lastError = validationError as Error;
-        console.warn(`Query validation failed (attempt ${retryCount + 1}/${maxRetries}):`, validationError);
-
-        if (lastError.message.includes("unbalanced parentheses") || lastError.message.includes("incomplete operator")) {
-          retryCount++;
-          if (retryCount >= maxRetries) {
-            throw new Error(`Failed to generate valid query after ${maxRetries} attempts`);
-          }
-          continue;
-        } else {
-          throw validationError;
-        }
-      }
-    }
-
-    throw lastError || new Error("Failed to enhance query after all retries");
+    return {
+      enhancedQuery: output.enhancedQuery,
+      explanation: "",
+    };
   },
 });
 
@@ -107,34 +95,36 @@ export const generateScreeningQuestions = action({
   }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    if (!user) throw new Error("Unauthenticated");
+    if (!user) throw new AIUnauthenticatedError();
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
     if (!balance || balance.total <= 0) {
-      throw new Error("Insufficient credits");
+      throw new AIInsufficientCreditsError();
     }
 
     const deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY! });
-    const prompts = buildScreeningQuestionsPrompts(args);
 
-    const { object, usage } = await generateObject({
+    const { output, usage } = await executeAIOperation({
       model: deepseek(SERVER_AI_CONFIG.model),
       schema: screeningQuestionsSchema,
-      experimental_repairText: async ({ text, error }) => repairJSON(text, error),
-      providerOptions: STANDARD_PROVIDER_OPTIONS,
+      buildPrompts: (input, retryCount) => buildScreeningQuestionsPrompts(input),
+      input: args,
+      repairStrategy: { type: 'full-json' },
       temperature: 0.7,
-      system: prompts.system,
-      prompt: prompts.prompt,
-    });
-
-    const newQuestions = object.questions.filter((newQuestion: string) => {
-      const normalizedNew = newQuestion.toLowerCase().trim();
-      return !args.existingQuestions.some((existingQuestion: string) => {
-        const normalizedExisting = existingQuestion.toLowerCase().trim();
-        return normalizedExisting === normalizedNew ||
-               normalizedExisting.includes(normalizedNew) ||
-               normalizedNew.includes(normalizedExisting);
-      });
+      postProcess: (output, input) => {
+        const newQuestions = output.questions.filter((newQuestion: string) => {
+          const normalizedNew = newQuestion.toLowerCase().trim();
+          return !input.existingQuestions.some((existingQuestion: string) => {
+            const normalizedExisting = existingQuestion.toLowerCase().trim();
+            return (
+              normalizedExisting === normalizedNew ||
+              normalizedExisting.includes(normalizedNew) ||
+              normalizedNew.includes(normalizedExisting)
+            );
+          });
+        });
+        return { questions: newQuestions };
+      },
     });
 
     const costDollars = calculateCostInDollars(usage, DEEPSEEK_PRICING);
@@ -147,7 +137,7 @@ export const generateScreeningQuestions = action({
     });
 
     return {
-      questions: newQuestions,
+      questions: output.questions,
     };
   },
 });
@@ -162,27 +152,22 @@ export const translateQuery = action({
   }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    if (!user) throw new Error("Unauthenticated");
+    if (!user) throw new AIUnauthenticatedError();
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
     if (!balance || balance.total <= 0) {
-      throw new Error("Insufficient credits");
+      throw new AIInsufficientCreditsError();
     }
 
     const deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY! });
-    const prompts = buildTranslateQueryPrompts(args);
 
-    const { object, usage } = await generateObject({
+    const { output, usage } = await executeAIOperation({
       model: deepseek(SERVER_AI_CONFIG.model),
-      schema: z.object({
-        translatedQuery: z.string().describe("The query translated to the target language, maintaining the same meaning and structure"),
-      }),
-      experimental_repairText: async ({ text, error }) =>
-        repairSingleField(text, error, 'translatedQuery'),
-      providerOptions: STANDARD_PROVIDER_OPTIONS,
+      schema: translateQuerySchema,
+      buildPrompts: (input, retryCount) => buildTranslateQueryPrompts(input),
+      input: args,
+      repairStrategy: { type: 'single-field', fieldName: 'translatedQuery' },
       temperature: 0.3,
-      system: prompts.system,
-      prompt: prompts.prompt,
     });
 
     const costDollars = calculateCostInDollars(usage, DEEPSEEK_PRICING);
@@ -195,7 +180,7 @@ export const translateQuery = action({
     });
 
     return {
-      translatedQuery: object.translatedQuery,
+      translatedQuery: output.translatedQuery,
     };
   },
 });
@@ -214,27 +199,22 @@ export const translatePaperContent = action({
   }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    if (!user) throw new Error("Unauthenticated");
+    if (!user) throw new AIUnauthenticatedError();
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
     if (!balance || balance.total <= 0) {
-      throw new Error("Insufficient credits");
+      throw new AIInsufficientCreditsError();
     }
 
     const deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY! });
-    const prompts = buildTranslatePaperContentPrompts(args);
 
-    const { object, usage } = await generateObject({
+    const { output, usage } = await executeAIOperation({
       model: deepseek(SERVER_AI_CONFIG.model),
-      schema: z.object({
-        translatedTitle: z.string().describe("The paper title translated to English"),
-        translatedAbstract: z.string().describe("The paper abstract translated to English"),
-      }),
-      experimental_repairText: async ({ text, error }) => repairJSON(text, error),
-      providerOptions: STANDARD_PROVIDER_OPTIONS,
+      schema: translatePaperContentSchema,
+      buildPrompts: (input, retryCount) => buildTranslatePaperContentPrompts(input),
+      input: args,
+      repairStrategy: { type: 'full-json' },
       temperature: 0.3,
-      system: prompts.system,
-      prompt: prompts.prompt,
     });
 
     const costDollars = calculateCostInDollars(usage, DEEPSEEK_PRICING);
@@ -247,8 +227,8 @@ export const translatePaperContent = action({
     });
 
     return {
-      translatedTitle: object.translatedTitle,
-      translatedAbstract: object.translatedAbstract,
+      translatedTitle: output.translatedTitle,
+      translatedAbstract: output.translatedAbstract,
       sourceLanguage: args.sourceLanguage,
       isAlreadyInEnglish: false,
     };
@@ -267,25 +247,23 @@ export const generateScreeningResponses = action({
   }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    if (!user) throw new Error("Unauthenticated");
+    if (!user) throw new AIUnauthenticatedError();
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
     if (!balance || balance.total <= 0) {
-      throw new Error("Insufficient credits");
+      throw new AIInsufficientCreditsError();
     }
 
     const deepseek = createDeepSeek({ apiKey: process.env.DEEPSEEK_API_KEY! });
     const schema = createScreeningResponsesSchema(args.questions);
-    const prompts = buildScreeningResponsesPrompts(args);
 
-    const { object, usage } = await generateObject({
+    const { output, usage } = await executeAIOperation({
       model: deepseek(SERVER_AI_CONFIG.model),
       schema,
-      experimental_repairText: async ({ text, error }) => repairJSON(text, error),
-      providerOptions: STANDARD_PROVIDER_OPTIONS,
+      buildPrompts: (input, retryCount) => buildScreeningResponsesPrompts(input),
+      input: args,
+      repairStrategy: { type: 'full-json' },
       temperature: 0.1,
-      system: prompts.system,
-      prompt: prompts.prompt,
     });
 
     const costDollars = calculateCostInDollars(usage, DEEPSEEK_PRICING);
@@ -298,8 +276,8 @@ export const generateScreeningResponses = action({
     });
 
     return {
-      responses: object.responses as Record<string, boolean | null>,
-      confidence: object.confidence,
+      responses: output.responses as Record<string, boolean | null>,
+      confidence: output.confidence,
     };
   },
 });

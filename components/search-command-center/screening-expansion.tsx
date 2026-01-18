@@ -12,9 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompactQuestionList } from "./components/compact-question-list";
-import { useSearchHistoryStore, useAIConfigStore, useTransientScreeningStore } from "@/lib/store";
+import { useSearchHistoryStore, useTransientScreeningStore } from "@/lib/store";
 import { toast } from "sonner";
-import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
+import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
 import { commandCenterSpring } from "@/lib/animation-config";
@@ -36,8 +36,10 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
     clearScreeningQuestions,
     removeScreeningQuestionFromAllPapers,
   } = useSearchHistoryStore();
-  const { provider, model, apiKey } = useAIConfigStore();
   const { incrementTestIndexPerQuestion } = useTransientScreeningStore();
+
+  // Use the new router hook
+  const { execute: generateQuestions, isConfigured } = useGenerateScreeningQuestions();
 
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
@@ -112,8 +114,14 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   };
 
   const handleGenerateWithAI = async () => {
-    if (!apiKey) {
-      toast.error("Please configure your AI API key first");
+    if (!isConfigured) {
+      toast.error("AI Not Configured", {
+        description: "Please configure your AI API key first.",
+        action: {
+          label: "Configure",
+          onClick: () => window.location.href = "/settings/ai",
+        },
+      });
       return;
     }
 
@@ -124,13 +132,10 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
     setIsGenerating(true);
     try {
-      const result = await generateScreeningQuestions(
+      const result = await generateQuestions({
         researchQuestion,
-        screeningQuestions.map((q) => q.question),
-        provider,
-        apiKey,
-        model
-      );
+        existingQuestions: screeningQuestions.map((q) => q.question),
+      });
 
       let addedCount = 0;
       for (const question of result.questions) {
@@ -147,8 +152,23 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       } else {
         toast.warning("No new questions generated");
       }
-    } catch {
-      toast.error("Failed to generate questions");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate questions";
+      if (message === "API_KEY_REQUIRED") {
+        toast.error("API Key Required", {
+          description: "Please configure your AI API key.",
+          action: {
+            label: "Configure",
+            onClick: () => window.location.href = "/settings/ai",
+          },
+        });
+      } else if (message.includes("Insufficient credits")) {
+        toast.error("Insufficient Credits", {
+          description: "Please add more credits to continue.",
+        });
+      } else {
+        toast.error("Failed to generate questions");
+      }
     } finally {
       setIsGenerating(false);
     }

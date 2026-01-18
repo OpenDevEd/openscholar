@@ -6,9 +6,9 @@ import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
-import { useAIConfigStore, useCurrentQuestionStore } from "@/lib/store";
+import { useCurrentQuestionStore } from "@/lib/store";
 import { toast } from "sonner";
-import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
+import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
@@ -29,11 +29,13 @@ export function SearchCommandFooter({
   isLoading,
 }: SearchCommandFooterProps) {
   const search = useSearchOptional();
-  const { provider, model, apiKey } = useAIConfigStore();
   const { currentQuestion } = useCurrentQuestionStore();
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
+
+  // Use the new router hook
+  const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
 
   const effectiveQuery = currentQuery || search?.params?.q || "";
   const currentLanguage = search?.params?.lang ?? "";
@@ -43,7 +45,18 @@ export function SearchCommandFooter({
   const showNarrowButton = totalCount > 1000 && effectiveQuery.trim();
 
   const handleBroadenQuery = async () => {
-    if (!effectiveQuery.trim() || !apiKey || !provider) return;
+    if (!effectiveQuery.trim()) return;
+
+    if (!isConfigured) {
+      toast.error("AI Not Configured", {
+        description: "Please configure your AI settings first.",
+        action: {
+          label: "Configure",
+          onClick: () => window.location.href = "/settings/ai",
+        },
+      });
+      return;
+    }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
@@ -63,7 +76,7 @@ This query is returning fewer than 10 results. Please broaden the search by:
 
 Return a more inclusive version of this query.`;
 
-      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, model, currentLanguage);
+      const result = await enhanceQuery({ query: broadenPrompt, language: currentLanguage || undefined });
 
       if (search) {
         search.setQuery(result.enhancedQuery);
@@ -82,7 +95,18 @@ Return a more inclusive version of this query.`;
   };
 
   const handleNarrowQuery = async () => {
-    if (!effectiveQuery.trim() || !apiKey || !provider) return;
+    if (!effectiveQuery.trim()) return;
+
+    if (!isConfigured) {
+      toast.error("AI Not Configured", {
+        description: "Please configure your AI settings first.",
+        action: {
+          label: "Configure",
+          onClick: () => window.location.href = "/settings/ai",
+        },
+      });
+      return;
+    }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
@@ -103,7 +127,7 @@ This query is returning too many results. Please make it more specific by:
 
 Return a more targeted version of this query.`;
 
-      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, model, currentLanguage);
+      const result = await enhanceQuery({ query: narrowPrompt, language: currentLanguage || undefined });
 
       if (search) {
         search.setQuery(result.enhancedQuery);

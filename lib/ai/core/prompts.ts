@@ -1,9 +1,9 @@
 import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
-import { languageOptions } from '@/components/language-selector'
+import { getLanguageName } from './languages'
 
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
   const language = input.language
-  const languageName = language ? languageOptions.find(option => option.code === language)?.name : null
+  const languageName = language ? getLanguageName(language) : null
 
   return {
     system: `You are an Elasticsearch Query String Query optimization expert for academic search.
@@ -139,7 +139,7 @@ export function buildTranslateQueryPrompts(input: TranslateQueryInput) {
 CRITICAL RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as "AND", "OR", and "NOT" in English, even when translating the rest of the query to another language. These are syntax keywords that must remain unchanged.
 
 Translate naturally and fluently, using the most appropriate academic terms in the target language, but preserve the Boolean operators in their original English form.`,
-    prompt: `Translate this academic search query to ${languageOptions.find(option => option.code === input.targetLanguage)?.name}:
+    prompt: `Translate this academic search query to ${getLanguageName(input.targetLanguage)}:
 
 Original query: "${input.query}"
 
@@ -167,7 +167,7 @@ Your task is to translate academic paper titles and abstracts FROM the specified
 4. Natural and fluent English translation
 
 Translate professionally and accurately, preserving the scientific content and academic tone.`,
-    prompt: `Translate this academic paper content FROM ${languageOptions.find(option => option.code === input.sourceLanguage)?.name} TO English:
+    prompt: `Translate this academic paper content FROM ${getLanguageName(input.sourceLanguage)} TO English:
 
 Title: "${input.title}"
 
