@@ -1,14 +1,25 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth, requireOrgMember } from "../lib/auth";
+import { creditBalanceValidator } from "../lib/validators";
 
 /**
- * Get current user's credit balance
+ * Get current user's credit balance (free + paid)
  */
 export const getMyBalance = query({
   args: {},
+  returns: v.union(creditBalanceValidator, v.null()),
   handler: async (ctx) => {
-    const user = await requireAuth(ctx);
+    // Handle unauthenticated gracefully to avoid race conditions
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
+      .unique();
+
+    if (!user) return null;
 
     const credits = await ctx.db
       .query("credits")
@@ -17,7 +28,15 @@ export const getMyBalance = query({
       )
       .unique();
 
-    return credits?.balance ?? 0;
+    if (!credits) {
+      return { free: 0, paid: 0, total: 0 };
+    }
+
+    return {
+      free: credits.freeBalance,
+      paid: credits.paidBalance,
+      total: credits.freeBalance + credits.paidBalance,
+    };
   },
 });
 
@@ -26,6 +45,7 @@ export const getMyBalance = query({
  */
 export const getOrgBalance = query({
   args: { organizationId: v.id("organizations") },
+  returns: creditBalanceValidator,
   handler: async (ctx, { organizationId }) => {
     await requireOrgMember(ctx, organizationId);
 
@@ -36,7 +56,15 @@ export const getOrgBalance = query({
       )
       .unique();
 
-    return credits?.balance ?? 0;
+    if (!credits) {
+      return { free: 0, paid: 0, total: 0 };
+    }
+
+    return {
+      free: credits.freeBalance,
+      paid: credits.paidBalance,
+      total: credits.freeBalance + credits.paidBalance,
+    };
   },
 });
 
@@ -48,6 +76,7 @@ export const getTransactions = query({
     organizationId: v.optional(v.id("organizations")),
     limit: v.optional(v.number()),
   },
+  returns: v.array(v.any()), // Transaction shape is complex, using any for now
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 

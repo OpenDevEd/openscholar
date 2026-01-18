@@ -1,4 +1,5 @@
 import { internalMutation } from "../_generated/server";
+import { v } from "convex/values";
 
 // Retention period for deleted users (30 days)
 const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -8,6 +9,7 @@ const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
  */
 export const cleanupDeletedUsers = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const cutoff = Date.now() - DELETED_USER_RETENTION_MS;
 
@@ -59,6 +61,7 @@ export const cleanupDeletedUsers = internalMutation({
  */
 export const aggregateUsage = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     // Placeholder for usage aggregation logic
     // You would aggregate usageLogs into summary tables here
@@ -71,6 +74,7 @@ export const aggregateUsage = internalMutation({
  */
 export const checkCreditExpiry = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     // Placeholder for credit expiry logic
     // If you have expiring credits, handle them here
@@ -83,6 +87,7 @@ export const checkCreditExpiry = internalMutation({
  */
 export const checkSubscriptionStatus = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
 

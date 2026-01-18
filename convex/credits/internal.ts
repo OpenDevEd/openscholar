@@ -1,16 +1,20 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { FREE_CREDIT_CAP } from "../lib/constants";
+import { ConvexError } from "convex/values";
 
 /**
  * Handle credit purchase from Stripe webhook
+ * Purchased credits go to paidBalance (no cap)
  */
 export const handleCreditPurchase = internalMutation({
   args: {
     stripeCustomerId: v.string(),
     amountPaid: v.number(),
-    metadata: v.any(),
+    metadata: v.record(v.string(), v.string()),
     stripeInvoiceId: v.optional(v.string()), // e.g. Payment Intent ID or Invoice ID
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     // Idempotency check
     if (args.stripeInvoiceId) {
@@ -57,11 +61,11 @@ export const handleCreditPurchase = internalMutation({
     }
 
     const now = Date.now();
-    const newBalance = credits.balance + creditsToAdd;
+    const newPaidBalance = credits.paidBalance + creditsToAdd;
 
-    // Update balance
+    // Update paid balance
     await ctx.db.patch(credits._id, {
-      balance: newBalance,
+      paidBalance: newPaidBalance,
       lastUpdatedAt: now,
     });
 
@@ -69,8 +73,9 @@ export const handleCreditPurchase = internalMutation({
     await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       type: "purchase",
+      creditType: "paid",
       amount: creditsToAdd,
-      balanceAfter: newBalance,
+      balanceAfter: newPaidBalance,
       description: `Purchased ${creditsToAdd} credits`,
       metadata: args.metadata,
       stripeInvoiceId: args.stripeInvoiceId,
@@ -81,12 +86,15 @@ export const handleCreditPurchase = internalMutation({
 
 /**
  * Grant monthly credits for subscription
+ * Free credits are capped at FREE_CREDIT_CAP (10k)
+ * Uses "add up to cap" logic: if user has 8k and plan grants 1k, they get 9k total
  */
 export const grantMonthlyCredits = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
     stripeInvoiceId: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     // Idempotency check
     if (args.stripeInvoiceId) {
@@ -122,27 +130,39 @@ export const grantMonthlyCredits = internalMutation({
     if (!credits) return;
 
     const now = Date.now();
-    const newBalance = credits.balance + subscription.creditsPerMonth;
+    const currentFree = credits.freeBalance;
+    const creditsToGrant = subscription.creditsPerMonth;
+    
+    // Add up to cap logic: add credits but don't exceed the cap
+    const newFreeBalance = Math.min(currentFree + creditsToGrant, FREE_CREDIT_CAP);
+    const actualGranted = newFreeBalance - currentFree;
 
-    await ctx.db.patch(credits._id, {
-      balance: newBalance,
-      lastUpdatedAt: now,
-    });
+    // Only update if we actually granted credits
+    if (actualGranted > 0) {
+      await ctx.db.patch(credits._id, {
+        freeBalance: newFreeBalance,
+        lastUpdatedAt: now,
+      });
 
-    await ctx.db.insert("creditTransactions", {
-      creditsId: credits._id,
-      type: "grant",
-      amount: subscription.creditsPerMonth,
-      balanceAfter: newBalance,
-      description: `Monthly credit grant (${subscription.plan} plan)`,
-      stripeInvoiceId: args.stripeInvoiceId,
-      createdAt: now,
-    });
+      await ctx.db.insert("creditTransactions", {
+        creditsId: credits._id,
+        type: "grant",
+        creditType: "free",
+        amount: actualGranted,
+        balanceAfter: newFreeBalance,
+        description: `Monthly credit grant (${subscription.plan} plan) - ${actualGranted}/${creditsToGrant} credits granted`,
+        stripeInvoiceId: args.stripeInvoiceId,
+        createdAt: now,
+      });
+    } else {
+      console.log(`Free balance already at cap (${FREE_CREDIT_CAP}), skipping grant`);
+    }
   },
 });
 
 /**
  * Deduct credits for usage
+ * Consumes free credits first, then paid credits
  */
 export const deductCredits = internalMutation({
   args: {
@@ -150,8 +170,9 @@ export const deductCredits = internalMutation({
     organizationId: v.optional(v.id("organizations")),
     amount: v.number(),
     description: v.optional(v.string()),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.record(v.string(), v.string())),
   },
+  returns: v.number(),
   handler: async (ctx, args) => {
     const ownerId = args.organizationId ?? args.userId;
     const ownerType = args.organizationId ? "organization" : "user";
@@ -163,30 +184,82 @@ export const deductCredits = internalMutation({
       )
       .unique();
 
-    if (!credits) throw new Error("Credits record not found");
-    if (credits.balance < args.amount) throw new Error("Insufficient credits");
+    if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
+    
+    const totalAvailable = credits.freeBalance + credits.paidBalance;
+    if (totalAvailable < args.amount) {
+      throw new ConvexError({ 
+        code: "INSUFFICIENT_CREDITS", 
+        message: `Insufficient credits: need ${args.amount}, have ${totalAvailable}` 
+      });
+    }
 
     const now = Date.now();
-    const newBalance = credits.balance - args.amount;
+    let amountToDeduct = args.amount;
+    let newFreeBalance = credits.freeBalance;
+    let newPaidBalance = credits.paidBalance;
 
+    // Deduct from free balance first
+    if (newFreeBalance >= amountToDeduct) {
+      newFreeBalance -= amountToDeduct;
+      
+      // Record free credit transaction
+      await ctx.db.insert("creditTransactions", {
+        creditsId: credits._id,
+        userId: args.userId,
+        type: "usage",
+        creditType: "free",
+        amount: -amountToDeduct,
+        balanceAfter: newFreeBalance,
+        description: args.description,
+        metadata: args.metadata,
+        createdAt: now,
+      });
+    } else {
+      // Deduct all free credits first
+      const freeUsed = newFreeBalance;
+      newFreeBalance = 0;
+      
+      if (freeUsed > 0) {
+        await ctx.db.insert("creditTransactions", {
+          creditsId: credits._id,
+          userId: args.userId,
+          type: "usage",
+          creditType: "free",
+          amount: -freeUsed,
+          balanceAfter: 0,
+          description: args.description,
+          metadata: args.metadata,
+          createdAt: now,
+        });
+      }
+
+      // Deduct remaining from paid
+      const paidNeeded = amountToDeduct - freeUsed;
+      newPaidBalance -= paidNeeded;
+      
+      await ctx.db.insert("creditTransactions", {
+        creditsId: credits._id,
+        userId: args.userId,
+        type: "usage",
+        creditType: "paid",
+        amount: -paidNeeded,
+        balanceAfter: newPaidBalance,
+        description: args.description,
+        metadata: args.metadata,
+        createdAt: now,
+      });
+    }
+
+    // Update balances
     await ctx.db.patch(credits._id, {
-      balance: newBalance,
+      freeBalance: newFreeBalance,
+      paidBalance: newPaidBalance,
       lifetimeUsed: credits.lifetimeUsed + args.amount,
       lastUpdatedAt: now,
     });
 
-    await ctx.db.insert("creditTransactions", {
-      creditsId: credits._id,
-      userId: args.userId,
-      type: "usage",
-      amount: -args.amount,
-      balanceAfter: newBalance,
-      description: args.description,
-      metadata: args.metadata,
-      createdAt: now,
-    });
-
-    return newBalance;
+    return totalAvailable - args.amount; // Return new total
   },
 });
 
@@ -199,8 +272,10 @@ export const addCredits = internalMutation({
     ownerType: v.union(v.literal("user"), v.literal("organization")),
     amount: v.number(),
     type: v.union(v.literal("grant"), v.literal("refund")),
+    creditType: v.union(v.literal("free"), v.literal("paid")),
     description: v.optional(v.string()),
   },
+  returns: v.number(),
   handler: async (ctx, args) => {
     const credits = await ctx.db
       .query("credits")
@@ -209,25 +284,38 @@ export const addCredits = internalMutation({
       )
       .unique();
 
-    if (!credits) throw new Error("Credits record not found");
+    if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
 
     const now = Date.now();
-    const newBalance = credits.balance + args.amount;
+    let newFreeBalance = credits.freeBalance;
+    let newPaidBalance = credits.paidBalance;
+    let actualAdded = args.amount;
+
+    if (args.creditType === "free") {
+      // Cap free credits
+      newFreeBalance = Math.min(newFreeBalance + args.amount, FREE_CREDIT_CAP);
+      actualAdded = newFreeBalance - credits.freeBalance;
+    } else {
+      // No cap on paid credits
+      newPaidBalance += args.amount;
+    }
 
     await ctx.db.patch(credits._id, {
-      balance: newBalance,
+      freeBalance: newFreeBalance,
+      paidBalance: newPaidBalance,
       lastUpdatedAt: now,
     });
 
     await ctx.db.insert("creditTransactions", {
       creditsId: credits._id,
       type: args.type,
-      amount: args.amount,
-      balanceAfter: newBalance,
+      creditType: args.creditType,
+      amount: actualAdded,
+      balanceAfter: args.creditType === "free" ? newFreeBalance : newPaidBalance,
       description: args.description,
       createdAt: now,
     });
 
-    return newBalance;
+    return args.creditType === "free" ? newFreeBalance : newPaidBalance;
   },
 });

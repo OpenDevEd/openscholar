@@ -1,12 +1,14 @@
 import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
+import { userValidator } from "../lib/validators";
 
 /**
  * Get current user (for use in actions)
  */
 export const getCurrentUser = internalQuery({
   args: {},
+  returns: userValidator,
   handler: async (ctx) => {
     return await requireAuth(ctx);
   },
@@ -23,6 +25,7 @@ export const syncUserFromWorkos = internalMutation({
     lastName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
   },
+  returns: v.id("users"),
   handler: async (ctx, args) => {
     // Check if user already exists
     const existing = await ctx.db
@@ -50,7 +53,8 @@ export const syncUserFromWorkos = internalMutation({
     await ctx.db.insert("credits", {
       ownerId: userId,
       ownerType: "user",
-      balance: 0,
+      freeBalance: 0,
+      paidBalance: 0,
       lifetimeUsed: 0,
       lastUpdatedAt: now,
     });
@@ -80,6 +84,7 @@ export const updateUserFromWorkos = internalMutation({
     lastName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -95,6 +100,8 @@ export const updateUserFromWorkos = internalMutation({
       avatarUrl: args.avatarUrl,
       updatedAt: Date.now(),
     });
+
+    return null;
   },
 });
 
@@ -103,6 +110,7 @@ export const updateUserFromWorkos = internalMutation({
  */
 export const markUserDeleted = internalMutation({
   args: { workosId: v.string() },
+  returns: v.null(),
   handler: async (ctx, { workosId }) => {
     const user = await ctx.db
       .query("users")
@@ -115,6 +123,8 @@ export const markUserDeleted = internalMutation({
       state: "deleted",
       updatedAt: Date.now(),
     });
+
+    return null;
   },
 });
 
@@ -123,6 +133,7 @@ export const markUserDeleted = internalMutation({
  */
 export const updateLastLogin = internalMutation({
   args: { workosId: v.string() },
+  returns: v.null(),
   handler: async (ctx, { workosId }) => {
     const user = await ctx.db
       .query("users")
@@ -134,5 +145,7 @@ export const updateLastLogin = internalMutation({
     await ctx.db.patch(user._id, {
       lastLoginAt: Date.now(),
     });
+
+    return null;
   },
 });

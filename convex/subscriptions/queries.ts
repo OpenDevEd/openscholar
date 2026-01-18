@@ -1,12 +1,15 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth, requireOrgMember } from "../lib/auth";
+import { getPlanTier } from "../lib/constants";
+import { subscriptionValidator } from "../lib/validators";
 
 /**
  * Get current user's subscription
  */
 export const getMy = query({
   args: {},
+  returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx) => {
 
     // Determine user identity without throwing "Unauthenticated" immediately
@@ -35,6 +38,7 @@ export const getMy = query({
  */
 export const getOrg = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx, { organizationId }) => {
     await requireOrgMember(ctx, organizationId);
 
@@ -48,10 +52,12 @@ export const getOrg = query({
 });
 
 /**
- * Check if user/org has an active paid subscription
+ * Get subscription tier for user/org
+ * Returns tier number: 0 (free), 10 (go), 20 (pro), 30 (enterprise)
  */
-export const isPaid = query({
+export const getTier = query({
   args: { organizationId: v.optional(v.id("organizations")) },
+  returns: v.number(),
   handler: async (ctx, { organizationId }) => {
     const user = await requireAuth(ctx);
 
@@ -69,11 +75,8 @@ export const isPaid = query({
       )
       .unique();
 
-    if (!subscription) return false;
+    if (!subscription) return 0;
 
-    return (
-      subscription.status === "active" &&
-      (subscription.plan === "pro" || subscription.plan === "enterprise")
-    );
+    return getPlanTier(subscription.plan);
   },
 });

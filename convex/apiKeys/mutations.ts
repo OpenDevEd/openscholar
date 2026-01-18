@@ -1,21 +1,18 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
+import { apiKeyProviderValidator } from "../lib/validators";
 
 /**
  * Save an encrypted API key
  */
 export const save = mutation({
   args: {
-    provider: v.union(
-      v.literal("openai"),
-      v.literal("anthropic"),
-      v.literal("google"),
-      v.literal("openrouter")
-    ),
+    provider: apiKeyProviderValidator,
     encryptedKey: v.string(),
     keyPrefix: v.string(),
   },
+  returns: v.id("apiKeys"),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
@@ -46,13 +43,9 @@ export const save = mutation({
  */
 export const remove = mutation({
   args: {
-    provider: v.union(
-      v.literal("openai"),
-      v.literal("anthropic"),
-      v.literal("google"),
-      v.literal("openrouter")
-    ),
+    provider: apiKeyProviderValidator,
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
@@ -66,6 +59,8 @@ export const remove = mutation({
     if (existing) {
       await ctx.db.delete(existing._id);
     }
+
+    return null;
   },
 });
 
@@ -74,13 +69,9 @@ export const remove = mutation({
  */
 export const markUsed = mutation({
   args: {
-    provider: v.union(
-      v.literal("openai"),
-      v.literal("anthropic"),
-      v.literal("google"),
-      v.literal("openrouter")
-    ),
+    provider: apiKeyProviderValidator,
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
@@ -94,5 +85,8 @@ export const markUsed = mutation({
     if (key) {
       await ctx.db.patch(key._id, { lastUsedAt: Date.now() });
     }
+
+    return null;
   },
 });
+

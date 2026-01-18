@@ -1,5 +1,6 @@
 import { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
+import { ConvexError } from "convex/values";
 
 export type AuthContext = QueryCtx | MutationCtx;
 export type ActionAuthContext = ActionCtx;
@@ -33,12 +34,14 @@ export async function requireAuth(ctx: AuthContext, allowSyncing?: boolean): Pro
       // User is authenticated but not yet in DB (race condition)
       // Return a temporary mock or throw a specific error the client can handle?
       // Actually, safest is to throw a specific error or strict null check
-       throw new Error("Unauthenticated"); // Keep behavior for now, modify getCurrentUser?
+       throw new ConvexError({ code: "UNAUTHENTICATED", message: "User not synced yet" });
     }
-    throw new Error("Unauthenticated");
+    throw new ConvexError({ code: "UNAUTHENTICATED", message: "Authentication required" });
   }
 
-  if (user.state !== "active") throw new Error("Account suspended");
+  if (user.state !== "active") {
+    throw new ConvexError({ code: "FORBIDDEN", message: "Account suspended" });
+  }
   return user;
 }
 
@@ -58,7 +61,7 @@ export async function requireOrgMember(
     )
     .unique();
 
-  if (!membership) throw new Error("Not a member of this organization");
+  if (!membership) throw new ConvexError({ code: "FORBIDDEN", message: "Not a member of this organization" });
   return { user, membership };
 }
 
@@ -72,7 +75,7 @@ export async function requireOrgAdmin(
   const { user, membership } = await requireOrgMember(ctx, organizationId);
 
   if (membership.role !== "owner" && membership.role !== "admin") {
-    throw new Error("Admin access required");
+    throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
   }
   return { user, membership };
 }
@@ -87,7 +90,7 @@ export async function requireOrgOwner(
   const { user, membership } = await requireOrgMember(ctx, organizationId);
 
   if (membership.role !== "owner") {
-    throw new Error("Owner access required");
+    throw new ConvexError({ code: "FORBIDDEN", message: "Owner access required" });
   }
   return { user, membership };
 }
@@ -99,7 +102,7 @@ export async function getOrCreateUserFromIdentity(
   ctx: MutationCtx
 ): Promise<Doc<"users">> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthenticated");
+  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Authentication required" });
 
   const existing = await ctx.db
     .query("users")
@@ -130,7 +133,8 @@ export async function getOrCreateUserFromIdentity(
   await ctx.db.insert("credits", {
     ownerId: userId,
     ownerType: "user",
-    balance: 0,
+    freeBalance: 0,
+    paidBalance: 0,
     lifetimeUsed: 0,
     lastUpdatedAt: now,
   });
@@ -184,6 +188,6 @@ export async function getOrgCredits(
  */
 export async function requireActionAuth(ctx: ActionAuthContext) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthenticated");
+  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Authentication required" });
   return identity;
 }

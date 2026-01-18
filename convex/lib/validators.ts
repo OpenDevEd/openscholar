@@ -53,3 +53,53 @@ export const keySourceValidator = v.union(
   v.literal("platform"),
   v.literal("byok")
 );
+
+// Full object validators for return types
+export const userValidator = v.object({
+  _id: v.id("users"),
+  _creationTime: v.number(),
+  workosId: v.string(),
+  email: v.string(),
+  firstName: v.optional(v.string()),
+  lastName: v.optional(v.string()),
+  avatarUrl: v.optional(v.string()),
+  state: userStateValidator,
+  lastLoginAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
+export const creditsValidator = v.object({
+  _id: v.id("credits"),
+  _creationTime: v.number(),
+  ownerId: v.string(),
+  ownerType: ownerTypeValidator,
+  freeBalance: v.number(),
+  paidBalance: v.number(),
+  lifetimeUsed: v.number(),
+  lastUpdatedAt: v.number(),
+});
+
+export const creditBalanceValidator = v.object({
+  free: v.number(),
+  paid: v.number(),
+  total: v.number(),
+});
+
+export const subscriptionValidator = v.object({
+  _id: v.id("subscriptions"),
+  _creationTime: v.number(),
+  ownerId: v.string(),
+  ownerType: ownerTypeValidator,
+  stripeSubscriptionId: v.optional(v.string()),
+  stripeCustomerId: v.optional(v.string()),
+  plan: v.union(planValidator, v.literal("go")), // Include go plan
+  status: subscriptionStatusValidator,
+  currentPeriodStart: v.optional(v.number()),
+  currentPeriodEnd: v.optional(v.number()),
+  cancelAtPeriodEnd: v.optional(v.boolean()),
+  creditsPerMonth: v.optional(v.number()),
+  seats: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});

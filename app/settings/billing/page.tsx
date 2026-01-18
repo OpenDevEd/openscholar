@@ -3,13 +3,14 @@
 import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap, CreditCard, Calendar, AlertCircle } from "lucide-react";
+import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
+import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 
 export default function BillingPage() {
   const subscription = useQuery(api.subscriptions.queries.getMy);
+  const creditBalance = useQuery(api.credits.queries.getMyBalance);
   const createPortalSession = useAction(
     api.subscriptions.actions.createPortalSession,
   );
@@ -218,39 +219,15 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Usage Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <Zap className="w-4 h-4" />
-            <span>Usage</span>
-          </div>
-
-          <div className="space-y-6 rounded-xl border border-border/50 bg-muted/30 p-5">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium flex items-center gap-2">
-                  Monthly Credits
-                </span>
-                <span className="text-muted-foreground font-mono">
-                  0 / {creditsPerMonth.toLocaleString()}
-                </span>
-              </div>
-              <Progress value={0} className="h-2 bg-background" />
-            </div>
-
-            {seats > 1 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">Seats Used</span>
-                  <span className="text-muted-foreground font-mono">
-                    {seats} / {seats}
-                  </span>
-                </div>
-                <Progress value={100} className="h-2 bg-background" />
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Credits Section */}
+        {creditBalance && (
+          <CreditBalanceCard
+            freeBalance={creditBalance.free}
+            paidBalance={creditBalance.paid}
+            totalBalance={creditBalance.total}
+            creditsPerMonth={creditsPerMonth}
+          />
+        )}
       </div>
     </div>
   );

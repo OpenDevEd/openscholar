@@ -61,12 +61,15 @@ export default defineSchema({
     .index("by_user_org", ["userId", "organizationId"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // CREDITS - per-user or per-org credit balance
+  // CREDITS - per-user or per-org credit balance (dual system)
+  // Free credits: from subscriptions, capped at 10k
+  // Paid credits: from purchases, no cap
   // ═══════════════════════════════════════════════════════════════
   credits: defineTable({
     ownerId: v.string(), // Store as string for flexibility
     ownerType: v.union(v.literal("user"), v.literal("organization")),
-    balance: v.number(),
+    freeBalance: v.number(), // From subscriptions, capped at 10k
+    paidBalance: v.number(), // From purchases, no cap
     lifetimeUsed: v.number(),
     lastUpdatedAt: v.number(),
   }).index("by_owner", ["ownerId", "ownerType"]),
@@ -84,10 +87,11 @@ export default defineSchema({
       v.literal("refund"),
       v.literal("expiry")
     ),
+    creditType: v.union(v.literal("free"), v.literal("paid")), // Which pool was affected
     amount: v.number(),
     balanceAfter: v.number(),
     description: v.optional(v.string()),
-    metadata: v.optional(v.any()), // Store webhook metadata
+    metadata: v.optional(v.record(v.string(), v.string())), // Use specific validator instead of any
     stripeInvoiceId: v.optional(v.string()), // For idempotency
     createdAt: v.number(),
   })

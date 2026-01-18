@@ -1,5 +1,6 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { ConvexError } from "convex/values";
 
 /**
  * Sync a new organization from WorkOS webhook
@@ -9,6 +10,7 @@ export const syncOrgFromWorkos = internalMutation({
     workosId: v.string(),
     name: v.string(),
   },
+  returns: v.id("organizations"),
   handler: async (ctx, args) => {
     // Check if org already exists
     const existing = await ctx.db
@@ -32,7 +34,8 @@ export const syncOrgFromWorkos = internalMutation({
     await ctx.db.insert("credits", {
       ownerId: orgId,
       ownerType: "organization",
-      balance: 0,
+      freeBalance: 0,
+      paidBalance: 0,
       lifetimeUsed: 0,
       lastUpdatedAt: now,
     });
@@ -49,6 +52,7 @@ export const updateOrgFromWorkos = internalMutation({
     workosId: v.string(),
     name: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const org = await ctx.db
       .query("organizations")
@@ -72,6 +76,7 @@ export const linkStripeCustomer = internalMutation({
     organizationId: v.id("organizations"),
     stripeCustomerId: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch(args.organizationId, {
       stripeCustomerId: args.stripeCustomerId,
@@ -91,9 +96,10 @@ export const updateSettings = internalMutation({
       creditPooling: v.optional(v.boolean()),
     }),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const org = await ctx.db.get(args.organizationId);
-    if (!org) throw new Error("Organization not found");
+    if (!org) throw new ConvexError({ code: "NOT_FOUND", message: "Organization not found" });
 
     await ctx.db.patch(args.organizationId, {
       settings: {

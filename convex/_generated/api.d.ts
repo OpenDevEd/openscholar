@@ -19,6 +19,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as maintenance_internal from "../maintenance/internal.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/constants": typeof lib_constants;
   "lib/crypto": typeof lib_crypto;
+  "lib/helpers": typeof lib_helpers;
   "lib/permissions": typeof lib_permissions;
   "lib/validators": typeof lib_validators;
   "maintenance/internal": typeof maintenance_internal;

@@ -22,6 +22,9 @@ export const createCheckoutSession = action({
     organizationId: v.optional(v.id("organizations")),
     quantity: v.optional(v.number()),
   },
+  returns: v.object({
+    url: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args): Promise<{ url: string | null }> => {
     // 1. Verify authenticated
     await requireActionAuth(ctx);
@@ -38,7 +41,19 @@ export const createCheckoutSession = action({
       metadata.organizationId = args.organizationId;
     }
 
-    const session = await stripe.checkout.sessions.create({
+    // 3. Check for existing Stripe customer to prevent duplicates
+    const ownerId = args.organizationId ?? user._id;
+    const ownerType = args.organizationId ? "organization" : "user";
+    
+    const existingSubscription: any = await ctx.runQuery(
+      internal.subscriptions.internal.getSubscriptionByOwner,
+      { ownerId, ownerType }
+    );
+    
+    const existingCustomerId = existingSubscription?.stripeCustomerId;
+
+    // 4. Create checkout session
+    const sessionConfig: any = {
       line_items: [
         {
           price: args.priceId,
@@ -49,12 +64,22 @@ export const createCheckoutSession = action({
       success_url: `${DOMAIN}/settings/billing?success=true`,
       cancel_url: `${DOMAIN}/settings/billing?canceled=true`,
       metadata,
-      ...(user.email && user.email.length > 0 ? { customer_email: user.email } : {}),
       allow_promotion_codes: true,
-      subscription_data: {
-        metadata,
-      },
-    });
+    };
+
+    // Use existing customer if available, otherwise provide email
+    if (existingCustomerId) {
+      sessionConfig.customer = existingCustomerId;
+    } else if (user.email && user.email.length > 0) {
+      sessionConfig.customer_email = user.email;
+    }
+
+    // Only include subscription_data for subscription mode
+    if (args.mode === "subscription") {
+      sessionConfig.subscription_data = { metadata };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     return { url: session.url };
   },
@@ -64,6 +89,19 @@ export const getPlans = action({
   args: {
     priceIds: v.array(v.string()),
   },
+  returns: v.array(
+    v.union(
+      v.object({
+        id: v.string(),
+        amount: v.union(v.number(), v.null()),
+        currency: v.string(),
+        interval: v.optional(v.string()),
+        nickname: v.union(v.string(), v.null()),
+        metadata: v.any(),
+      }),
+      v.null()
+    )
+  ),
   handler: async (ctx, args) => {
     const prices = await Promise.all(
       args.priceIds.map(async (id) => {
@@ -95,6 +133,9 @@ export const createPortalSession = action({
   args: {
     organizationId: v.optional(v.id("organizations")),
   },
+  returns: v.object({
+    url: v.string(),
+  }),
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -126,6 +167,22 @@ export const createPortalSession = action({
  */
 export const getSubscriptionDetails = action({
   args: {},
+  returns: v.object({
+    status: v.union(v.literal("success"), v.literal("error")),
+    data: v.optional(
+      v.object({
+        amount: v.number(),
+        currency: v.string(),
+        interval: v.string(),
+        currentPeriodEnd: v.number(),
+        status: v.string(),
+        cancelAtPeriodEnd: v.boolean(),
+        cardBrand: v.optional(v.string()),
+        cardLast4: v.optional(v.string()),
+      })
+    ),
+    error: v.optional(v.string()),
+  }),
   handler: async (ctx): Promise<{
     status: "success" | "error";
     data?: {
@@ -194,6 +251,18 @@ export const getSubscriptionDetails = action({
       };
     } catch (error: any) {
       console.error("Failed to fetch Stripe subscription:", error);
+      
+      // Handle specific Stripe error types
+      if (error instanceof Stripe.errors.StripeInvalidRequestError) {
+        return { status: "error", error: "Subscription not found or invalid." };
+      } else if (error instanceof Stripe.errors.StripeAuthenticationError) {
+        return { status: "error", error: "Stripe authentication failed. Please contact support." };
+      } else if (error instanceof Stripe.errors.StripeConnectionError) {
+        return { status: "error", error: "Network error. Please try again." };
+      } else if (error instanceof Stripe.errors.StripeRateLimitError) {
+        return { status: "error", error: "Too many requests. Please try again later." };
+      }
+      
       return { status: "error", error: error.message || "Stripe API failed" };
     }
   },

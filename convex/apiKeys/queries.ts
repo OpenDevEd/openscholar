@@ -1,12 +1,23 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
+import { apiKeyProviderValidator } from "../lib/validators";
 
 /**
  * Get user's saved API keys (metadata only, not the actual keys)
  */
 export const getMy = query({
   args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("apiKeys"),
+      provider: apiKeyProviderValidator,
+      keyPrefix: v.string(),
+      lastUsedAt: v.optional(v.number()),
+      isValid: v.optional(v.boolean()),
+      createdAt: v.number(),
+    })
+  ),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
@@ -30,22 +41,23 @@ export const getMy = query({
 /**
  * Get encrypted key for a provider (used internally by actions)
  */
-export const getEncryptedKey = query({
+export const getEncryptedKey = internalQuery({
   args: {
-    provider: v.union(
-      v.literal("openai"),
-      v.literal("anthropic"),
-      v.literal("google"),
-      v.literal("openrouter")
-    ),
+    userId: v.id("users"),
+    provider: apiKeyProviderValidator,
   },
+  returns: v.union(
+    v.object({
+      encryptedKey: v.string(),
+      provider: apiKeyProviderValidator,
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-
     const key = await ctx.db
       .query("apiKeys")
       .withIndex("by_user_provider", (q) =>
-        q.eq("userId", user._id).eq("provider", args.provider)
+        q.eq("userId", args.userId).eq("provider", args.provider)
       )
       .unique();
 

@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth, requireOrgOwner } from "../lib/auth";
+import { ConvexError } from "convex/values";
 
 /**
  * Link Stripe customer ID to subscription
@@ -10,6 +11,7 @@ export const linkStripeCustomer = mutation({
     organizationId: v.optional(v.id("organizations")),
     stripeCustomerId: v.string(),
   },
+  returns: v.id("subscriptions"),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
@@ -27,7 +29,7 @@ export const linkStripeCustomer = mutation({
       )
       .unique();
 
-    if (!subscription) throw new Error("Subscription not found");
+    if (!subscription) throw new ConvexError({ code: "NOT_FOUND", message: "Subscription not found" });
 
     await ctx.db.patch(subscription._id, {
       stripeCustomerId: args.stripeCustomerId,
@@ -37,3 +39,4 @@ export const linkStripeCustomer = mutation({
     return subscription._id;
   },
 });
+

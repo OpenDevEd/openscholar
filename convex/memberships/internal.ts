@@ -1,5 +1,6 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { ConvexError } from "convex/values";
 
 /**
  * Sync membership from WorkOS webhook
@@ -10,6 +11,7 @@ export const syncMembershipFromWorkos = internalMutation({
     orgWorkosId: v.string(),
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
   },
+  returns: v.id("memberships"),
   handler: async (ctx, args) => {
     // Find user
     const user = await ctx.db
@@ -24,11 +26,11 @@ export const syncMembershipFromWorkos = internalMutation({
       .unique();
 
     if (!user || !org) {
-      console.warn("User or org not found for membership sync", {
-        userWorkosId: args.userWorkosId,
-        orgWorkosId: args.orgWorkosId,
+      // Throw to trigger WorkOS retry instead of silent failure
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: `User or org not found for membership sync: userWorkosId=${args.userWorkosId}, orgWorkosId=${args.orgWorkosId}`,
       });
-      return;
     }
 
     // Check if membership already exists
@@ -67,6 +69,7 @@ export const updateMembershipFromWorkos = internalMutation({
     orgWorkosId: v.string(),
     role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -101,6 +104,7 @@ export const removeMembership = internalMutation({
     userWorkosId: v.string(),
     orgWorkosId: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")

@@ -10,6 +10,14 @@ export const checkBalance = mutation({
     organizationId: v.optional(v.id("organizations")),
     requiredAmount: v.number(),
   },
+  returns: v.object({
+    hasEnough: v.boolean(),
+    free: v.number(),
+    paid: v.number(),
+    total: v.number(),
+    required: v.number(),
+    deficit: v.number(),
+  }),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
@@ -23,13 +31,17 @@ export const checkBalance = mutation({
       )
       .unique();
 
-    const balance = credits?.balance ?? 0;
+    const free = credits?.freeBalance ?? 0;
+    const paid = credits?.paidBalance ?? 0;
+    const total = free + paid;
 
     return {
-      hasEnough: balance >= args.requiredAmount,
-      balance,
+      hasEnough: total >= args.requiredAmount,
+      free,
+      paid,
+      total,
       required: args.requiredAmount,
-      deficit: Math.max(0, args.requiredAmount - balance),
+      deficit: Math.max(0, args.requiredAmount - total),
     };
   },
 });

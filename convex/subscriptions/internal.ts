@@ -1,6 +1,69 @@
-import { internalMutation, internalQuery } from "../_generated/server";
+import { internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { PLAN_CONFIG, GO_PRICE_ID, PRO_PRICE_ID } from "../lib/constants";
+import { Doc } from "../_generated/dataModel";
+import { ConvexError } from "convex/values";
+import { subscriptionValidator } from "../lib/validators";
+
+type StripeMetadata = {
+  userId?: string;
+  organizationId?: string;
+};
+
+/**
+ * Helper to find a subscription by Stripe ID, Customer ID, or Metadata (User/Org ID)
+ */
+async function getSubscriptionByStripeOrMetadata(
+  ctx: MutationCtx,
+  args: {
+    stripeSubscriptionId?: string;
+    stripeCustomerId?: string;
+    metadata?: StripeMetadata;
+  }
+): Promise<Doc<"subscriptions"> | null> {
+  // 1. Try by Stripe Subscription ID
+  if (args.stripeSubscriptionId) {
+    const bySub = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_stripe_sub", (q) =>
+        q.eq("stripeSubscriptionId", args.stripeSubscriptionId!)
+      )
+      .unique();
+    if (bySub) return bySub;
+  }
+
+  // 2. Try by Stripe Customer ID
+  if (args.stripeCustomerId) {
+    const byCustomer = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_stripe_customer", (q) =>
+        q.eq("stripeCustomerId", args.stripeCustomerId!)
+      )
+      .first();
+    if (byCustomer) return byCustomer;
+  }
+
+  // 3. Try by Metadata (User ID or Org ID)
+  if (args.metadata?.userId) {
+    return await ctx.db
+      .query("subscriptions")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerId", args.metadata!.userId!).eq("ownerType", "user")
+      )
+      .unique();
+  }
+  
+  if (args.metadata?.organizationId) {
+    return await ctx.db
+        .query("subscriptions")
+        .withIndex("by_owner", (q) =>
+            q.eq("ownerId", args.metadata!.organizationId!).eq("ownerType", "organization")
+        )
+        .unique();
+  }
+
+  return null;
+}
 
 /**
  * Get subscription by owner (user or organization)
@@ -10,6 +73,7 @@ export const getSubscriptionByOwner = internalQuery({
     ownerId: v.string(),
     ownerType: v.union(v.literal("user"), v.literal("organization")),
   },
+  returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db
       .query("subscriptions")
@@ -27,14 +91,12 @@ export const handleCheckoutComplete = internalMutation({
   args: {
     stripeCustomerId: v.string(),
     stripeSubscriptionId: v.string(),
-    metadata: v.any(),
+    metadata: v.record(v.string(), v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
-    // Get owner info from metadata
-    const { userId, organizationId } = args.metadata as {
-      userId?: string;
-      organizationId?: string;
-    };
+    const metadata = args.metadata as StripeMetadata;
+    const { userId, organizationId } = metadata;
 
     if (!userId && !organizationId) {
       console.warn("No user or org ID in checkout metadata");
@@ -45,6 +107,7 @@ export const handleCheckoutComplete = internalMutation({
     const ownerType = organizationId ? "organization" : "user";
 
     // Find or create subscription record
+    // We check by owner here directly because we expect this to be the initial link
     const existing = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
@@ -61,7 +124,13 @@ export const handleCheckoutComplete = internalMutation({
         status: "active",
         updatedAt: now,
       });
+    } else {
+        // If it doesn't exist, we should probably create it or log error?
+        // Usually getOrCreateUser/Org should have created a free sub.
+        console.error("Subscription record not found for owner during checkout complete", { ownerId, ownerType });
     }
+
+    return null;
   },
 });
 
@@ -83,60 +152,34 @@ export const syncSubscription = internalMutation({
     cancelAtPeriodEnd: v.boolean(),
     priceId: v.optional(v.string()),
     quantity: v.optional(v.number()),
-    metadata: v.optional(v.any()), // New arg
+    metadata: v.optional(v.record(v.string(), v.string())),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
-    let subscription = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_stripe_sub", (q) =>
-        q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
-      )
-      .unique();
+    const subscription = await getSubscriptionByStripeOrMetadata(ctx, {
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      stripeCustomerId: args.stripeCustomerId,
+      metadata: args.metadata as StripeMetadata,
+    });
 
     if (!subscription) {
-      // Try to find by customer ID
-      const byCustomer = await ctx.db
-        .query("subscriptions")
-        .withIndex("by_stripe_customer", (q) =>
-          q.eq("stripeCustomerId", args.stripeCustomerId)
-        )
-        .first();
-      
-      if (byCustomer) {
-        subscription = byCustomer;
-      } else if (args.metadata?.userId) {
-         // Fallback: Find by user ID from metadata (Race condition fix)
-         const byUser = await ctx.db
-          .query("subscriptions")
-          .withIndex("by_owner", (q) => 
-            q.eq("ownerId", args.metadata.userId).eq("ownerType", "user")
-          )
-          .unique();
-          
-          if (byUser) subscription = byUser;
-      }
+      throw new ConvexError({ code: "NOT_FOUND", message: "Subscription not found for sync" });
+    }
 
-      if (subscription) {
-        // We found it (either by customer or user ID), so link it now
-        await ctx.db.patch(subscription._id, {
+    // Link it now if it wasn"t linked (e.g. found by metadata)
+    if (subscription.stripeSubscriptionId !== args.stripeSubscriptionId) {
+         await ctx.db.patch(subscription._id, {
           stripeSubscriptionId: args.stripeSubscriptionId,
           stripeCustomerId: args.stripeCustomerId,
-          status: args.status, // We will update status below anyway, but safe here
         });
-      } else {
-         // If we STILL can't find it, then it's a real failure (or user doesn't exist)
-        throw new Error("Subscription not found for sync. Retrying...");
-      }
     }
 
     // Determine plan from price ID
     const plan = determinePlan(args.priceId);
     
     // Calculate credits based on seats if enterprise, otherwise flat rate or per seat depending on logic
-    // Assuming pro/enterprise are per seat for simplicity or just enterprise
     const quantity = args.quantity ?? 1;
     const baseCredits = PLAN_CONFIG[plan].creditsPerMonth;
-    // If you want credits to multiply by seats:
     const totalCredits = baseCredits * quantity;
 
     await ctx.db.patch(subscription._id, {
@@ -149,6 +192,8 @@ export const syncSubscription = internalMutation({
       creditsPerMonth: totalCredits,
       updatedAt: Date.now(),
     });
+
+    return null;
   },
 });
 
@@ -159,6 +204,7 @@ export const handleSubscriptionCanceled = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const subscription = await ctx.db
       .query("subscriptions")
@@ -167,7 +213,7 @@ export const handleSubscriptionCanceled = internalMutation({
       )
       .unique();
 
-    if (!subscription) return;
+    if (!subscription) return null;
 
     await ctx.db.patch(subscription._id, {
       status: "canceled",
@@ -175,6 +221,8 @@ export const handleSubscriptionCanceled = internalMutation({
       creditsPerMonth: 0,
       updatedAt: Date.now(),
     });
+
+    return null;
   },
 });
 
@@ -185,6 +233,7 @@ export const handlePaymentFailed = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const subscription = await ctx.db
       .query("subscriptions")
@@ -193,12 +242,14 @@ export const handlePaymentFailed = internalMutation({
       )
       .unique();
 
-    if (!subscription) return;
+    if (!subscription) return null;
 
     await ctx.db.patch(subscription._id, {
       status: "past_due",
       updatedAt: Date.now(),
     });
+
+    return null;
   },
 });
 
@@ -209,7 +260,7 @@ function determinePlan(priceId?: string): "free" | "go" | "pro" | "enterprise" {
   if (priceId === GO_PRICE_ID) return "go";
   if (priceId === PRO_PRICE_ID) return "pro";
   
-  // Fallback for testing or if alternate IDs are used (careful with partial matches in prod)
+  // Fallback for testing or if alternate IDs are used
   if (priceId.includes("enterprise")) return "enterprise";
   if (priceId.includes("pro")) return "pro";
 

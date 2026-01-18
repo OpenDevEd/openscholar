@@ -1,6 +1,24 @@
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { api } from "../_generated/api";
+
+type WorkOSUser = {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture_url?: string;
+};
+
+type WorkOSOrg = {
+  id: string;
+  name: string;
+};
+
+type WorkOSMembership = {
+  user_id: string;
+  organization_id: string;
+  role: { slug: string };
+};
 
 export const workosWebhook = httpAction(async (ctx, req) => {
   const payloadText = await req.text();
@@ -11,7 +29,7 @@ export const workosWebhook = httpAction(async (ctx, req) => {
   }
 
   // Verify signature using Node.js action
-  const result = await ctx.runAction(api.webhooks.actions.verifyWorkosWebhook, {
+  const result = await ctx.runAction(internal.webhooks.actions.verifyWorkosWebhook, {
     payloadText,
     signature: sigHeader,
   });
@@ -21,76 +39,78 @@ export const workosWebhook = httpAction(async (ctx, req) => {
     return new Response("Invalid signature", { status: 401 });
   }
 
-  const event = result.event;
-  const data = result.data;
+  const { event, data } = result;
 
   try {
     switch (event) {
       // ── User Events ──────────────────────────────────────────────
       case "user.created":
-        await ctx.runMutation(internal.users.internal.syncUserFromWorkos, {
-          workosId: data.id as string,
-          email: data.email as string,
-          firstName: (data.first_name as string) ?? undefined,
-          lastName: (data.last_name as string) ?? undefined,
-          avatarUrl: (data.profile_picture_url as string) ?? undefined,
+      case "user.updated": {
+        const user = data as unknown as WorkOSUser;
+        const mutation =
+          event === "user.created"
+            ? internal.users.internal.syncUserFromWorkos
+            : internal.users.internal.updateUserFromWorkos;
+
+        await ctx.runMutation(mutation, {
+          workosId: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          avatarUrl: user.profile_picture_url,
         });
         break;
+      }
 
-      case "user.updated":
-        await ctx.runMutation(internal.users.internal.updateUserFromWorkos, {
-          workosId: data.id as string,
-          email: data.email as string,
-          firstName: (data.first_name as string) ?? undefined,
-          lastName: (data.last_name as string) ?? undefined,
-          avatarUrl: (data.profile_picture_url as string) ?? undefined,
-        });
-        break;
-
-      case "user.deleted":
+      case "user.deleted": {
+        const user = data as unknown as WorkOSUser;
         await ctx.runMutation(internal.users.internal.markUserDeleted, {
-          workosId: data.id as string,
+          workosId: user.id,
         });
         break;
+      }
 
       // ── Organization Events ──────────────────────────────────────
       case "organization.created":
-        await ctx.runMutation(internal.organizations.internal.syncOrgFromWorkos, {
-          workosId: data.id as string,
-          name: data.name as string,
-        });
-        break;
+      case "organization.updated": {
+        const org = data as unknown as WorkOSOrg;
+        const mutation =
+          event === "organization.created"
+            ? internal.organizations.internal.syncOrgFromWorkos
+            : internal.organizations.internal.updateOrgFromWorkos;
 
-      case "organization.updated":
-        await ctx.runMutation(internal.organizations.internal.updateOrgFromWorkos, {
-          workosId: data.id as string,
-          name: data.name as string,
+        await ctx.runMutation(mutation, {
+          workosId: org.id,
+          name: org.name,
         });
         break;
+      }
 
       // ── Membership Events ────────────────────────────────────────
       case "organization_membership.created":
-        await ctx.runMutation(internal.memberships.internal.syncMembershipFromWorkos, {
-          userWorkosId: data.user_id as string,
-          orgWorkosId: data.organization_id as string,
-          role: mapWorkosRole((data.role as { slug?: string })?.slug),
+      case "organization_membership.updated": {
+        const membership = data as unknown as WorkOSMembership;
+        const mutation =
+          event === "organization_membership.created"
+            ? internal.memberships.internal.syncMembershipFromWorkos
+            : internal.memberships.internal.updateMembershipFromWorkos;
+
+        await ctx.runMutation(mutation, {
+          userWorkosId: membership.user_id,
+          orgWorkosId: membership.organization_id,
+          role: mapWorkosRole(membership.role?.slug),
         });
         break;
+      }
 
-      case "organization_membership.updated":
-        await ctx.runMutation(internal.memberships.internal.updateMembershipFromWorkos, {
-          userWorkosId: data.user_id as string,
-          orgWorkosId: data.organization_id as string,
-          role: mapWorkosRole((data.role as { slug?: string })?.slug),
-        });
-        break;
-
-      case "organization_membership.deleted":
+      case "organization_membership.deleted": {
+        const membership = data as unknown as WorkOSMembership;
         await ctx.runMutation(internal.memberships.internal.removeMembership, {
-          userWorkosId: data.user_id as string,
-          orgWorkosId: data.organization_id as string,
+          userWorkosId: membership.user_id,
+          orgWorkosId: membership.organization_id,
         });
         break;
+      }
 
       default:
         console.log(`Unhandled WorkOS event: ${event}`);

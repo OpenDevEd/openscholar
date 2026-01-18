@@ -1,6 +1,5 @@
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { api } from "../_generated/api";
 
 export const stripeWebhook = httpAction(async (ctx, req) => {
   const payload = await req.text();
@@ -11,7 +10,7 @@ export const stripeWebhook = httpAction(async (ctx, req) => {
   }
 
   // Verify signature using Node.js action
-  const result = await ctx.runAction(api.webhooks.actions.verifyStripeWebhook, {
+  const result = await ctx.runAction(internal.webhooks.actions.verifyStripeWebhook, {
     payload,
     signature: sigHeader,
   });

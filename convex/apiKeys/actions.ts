@@ -1,6 +1,7 @@
 "use node";
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { api } from "../_generated/api";
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
@@ -95,6 +96,10 @@ export const encryptAndSave = action({
     ),
     plainKey: v.string(),
   },
+  returns: v.object({
+    success: v.boolean(),
+    keyPrefix: v.string(),
+  }),
   handler: async (ctx, args) => {
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
@@ -123,7 +128,7 @@ export const encryptAndSave = action({
  * Get a decrypted API key for use in actions
  * This should only be called from other actions, never exposed to client
  */
-export const getDecrypted: any = action({
+export const getDecrypted = action({
   args: {
     provider: v.union(
       v.literal("openai"),
@@ -132,14 +137,22 @@ export const getDecrypted: any = action({
       v.literal("openrouter")
     ),
   },
+  returns: v.union(v.string(), v.null()),
   handler: async (ctx, args): Promise<string | null> => {
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
       throw new Error("Encryption key not configured");
     }
 
+    // Get authenticated user
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) {
+      throw new Error("Unauthenticated");
+    }
+
     // Get the encrypted key from internal query
-    const keyData: any = await ctx.runQuery(api.apiKeys.queries.getEncryptedKey, {
+    const keyData = await ctx.runQuery(internal.apiKeys.queries.getEncryptedKey, {
+      userId: user._id,
       provider: args.provider,
     });
 

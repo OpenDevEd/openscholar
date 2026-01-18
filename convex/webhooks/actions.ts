@@ -1,5 +1,5 @@
 "use node";
-import { action } from "../_generated/server";
+import { internalAction } from "../_generated/server";
 import { WorkOS } from "@workos-inc/node";
 import Stripe from "stripe";
 import { v } from "convex/values";
@@ -8,11 +8,22 @@ import { v } from "convex/values";
  * Verifies WorkOS webhook signature and returns parsed event.
  * Must run in Node.js runtime to use WorkOS SDK.
  */
-export const verifyWorkosWebhook = action({
+export const verifyWorkosWebhook = internalAction({
   args: {
     payloadText: v.string(),
     signature: v.string(),
   },
+  returns: v.union(
+    v.object({
+      success: v.literal(true),
+      event: v.string(),
+      data: v.any(),
+    }),
+    v.object({
+      success: v.literal(false),
+      error: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const workos = new WorkOS(process.env.WORKOS_API_KEY!);
 
@@ -44,11 +55,22 @@ export const verifyWorkosWebhook = action({
  * Verifies Stripe webhook signature and returns parsed event.
  * Must run in Node.js runtime to use Stripe SDK.
  */
-export const verifyStripeWebhook = action({
+export const verifyStripeWebhook = internalAction({
   args: {
     payload: v.string(),
     signature: v.string(),
   },
+  returns: v.union(
+    v.object({
+      success: v.literal(true),
+      type: v.string(),
+      data: v.any(),
+    }),
+    v.object({
+      success: v.literal(false),
+      error: v.string(),
+    })
+  ),
   handler: async (ctx, args) => {
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 

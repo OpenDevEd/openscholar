@@ -11,6 +11,7 @@ export const updateProfile = mutation({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
   },
+  returns: v.id("users"),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
@@ -28,6 +29,7 @@ export const updateProfile = mutation({
  */
 export const ensureUser = mutation({
   args: {},
+  returns: v.id("users"),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthenticated");
@@ -61,7 +63,8 @@ export const ensureUser = mutation({
     await ctx.db.insert("credits", {
       ownerId: userId,
       ownerType: "user",
-      balance: 0,
+      freeBalance: 0,
+      paidBalance: 0,
       lifetimeUsed: 0,
       lastUpdatedAt: now,
     });
