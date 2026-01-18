@@ -1,7 +1,6 @@
 "use node";
 import { internalAction } from "../_generated/server";
 import { WorkOS } from "@workos-inc/node";
-import Stripe from "stripe";
 import { v } from "convex/values";
 
 /**
@@ -51,47 +50,3 @@ export const verifyWorkosWebhook = internalAction({
   },
 });
 
-/**
- * Verifies Stripe webhook signature and returns parsed event.
- * Must run in Node.js runtime to use Stripe SDK.
- */
-export const verifyStripeWebhook = internalAction({
-  args: {
-    payload: v.string(),
-    signature: v.string(),
-  },
-  returns: v.union(
-    v.object({
-      success: v.literal(true),
-      type: v.string(),
-      data: v.any(),
-    }),
-    v.object({
-      success: v.literal(false),
-      error: v.string(),
-    })
-  ),
-  handler: async (ctx, args) => {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-    try {
-      const event = stripe.webhooks.constructEvent(
-        args.payload,
-        args.signature,
-        process.env.STRIPE_WEBHOOK_SECRET!
-      );
-
-      return {
-        success: true as const,
-        type: event.type,
-        data: event.data.object as unknown as Record<string, unknown>,
-      };
-    } catch (err) {
-      console.error("Stripe webhook verification failed:", err);
-      return {
-        success: false as const,
-        error: err instanceof Error ? err.message : "Unknown error",
-      };
-    }
-  },
-});

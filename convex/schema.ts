@@ -123,6 +123,7 @@ export default defineSchema({
     currentPeriodStart: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
+    canceledAt: v.optional(v.number()),
     creditsPerMonth: v.optional(v.number()),
     seats: v.optional(v.number()),
     createdAt: v.number(),

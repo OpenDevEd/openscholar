@@ -1,5 +1,6 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 
 // Retention period for deleted users (30 days)
 const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -12,12 +13,13 @@ export const cleanupDeletedUsers = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     const cutoff = Date.now() - DELETED_USER_RETENTION_MS;
+    const BATCH_SIZE = 50;
 
     // Find deleted users past retention period
     const deletedUsers = await ctx.db
       .query("users")
       .withIndex("by_state", (q) => q.eq("state", "deleted"))
-      .collect();
+      .take(BATCH_SIZE);
 
     let cleanedCount = 0;
 
@@ -43,11 +45,19 @@ export const cleanupDeletedUsers = internalMutation({
           await ctx.db.delete(membership._id);
         }
 
+        // Hard delete the user to prevent re-processing
+        await ctx.db.delete(user._id);
+
         // Note: We keep credits, subscriptions, and usage logs for audit purposes
         // but you could clean those up too if needed
 
         cleanedCount++;
       }
+    }
+
+    // If we fetched a full batch, there might be more to process
+    if (deletedUsers.length === BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.maintenance.internal.cleanupDeletedUsers, {});
     }
 
     if (cleanedCount > 0) {
@@ -66,19 +76,6 @@ export const aggregateUsage = internalMutation({
     // Placeholder for usage aggregation logic
     // You would aggregate usageLogs into summary tables here
     console.log("Usage aggregation completed");
-  },
-});
-
-/**
- * Check for and handle expired credits
- */
-export const checkCreditExpiry = internalMutation({
-  args: {},
-  returns: v.null(),
-  handler: async (ctx) => {
-    // Placeholder for credit expiry logic
-    // If you have expiring credits, handle them here
-    console.log("Credit expiry check completed");
   },
 });
 

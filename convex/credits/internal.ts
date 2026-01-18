@@ -2,6 +2,8 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { FREE_CREDIT_CAP } from "../lib/constants";
 import { ConvexError } from "convex/values";
+import { createError } from "../lib/errors";
+
 
 /**
  * Handle credit purchase from Stripe webhook
@@ -56,7 +58,7 @@ export const handleCreditPurchase = internalMutation({
       .unique();
 
     if (!credits) {
-      console.warn("No credits record found for owner:", subscription.ownerId);
+      console.error(`[Credits] Critical: No credits record found for owner ${subscription.ownerId} (Type: ${subscription.ownerType})`);
       return;
     }
 
@@ -84,16 +86,19 @@ export const handleCreditPurchase = internalMutation({
   },
 });
 
-/**
- * Grant monthly credits for subscription
- * Free credits are capped at FREE_CREDIT_CAP (10k)
- * Uses "add up to cap" logic: if user has 8k and plan grants 1k, they get 9k total
- */
-export const grantMonthlyCredits = internalMutation({
-  args: {
-    stripeSubscriptionId: v.string(),
-    stripeInvoiceId: v.optional(v.string()),
-  },
+  /**
+   * Grant monthly credits for subscription
+   * Free credits are capped at FREE_CREDIT_CAP (10k)
+   * Uses "add up to cap" logic: if user has 8k and plan grants 1k, they get 9k total
+   */
+  export const grantMonthlyCredits = internalMutation({
+    args: {
+      stripeSubscriptionId: v.optional(v.string()),
+      stripeCustomerId: v.optional(v.string()),
+      stripeInvoiceId: v.optional(v.string()),
+      amountPaid: v.optional(v.number()),
+    },
+
   returns: v.null(),
   handler: async (ctx, args) => {
     // Idempotency check
@@ -111,14 +116,48 @@ export const grantMonthlyCredits = internalMutation({
       }
     }
 
-    const subscription = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_stripe_sub", (q) =>
-        q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
-      )
-      .unique();
+    let subscription = null;
 
-    if (!subscription || !subscription.creditsPerMonth) return;
+    if (args.stripeSubscriptionId) {
+      const subs = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_stripe_sub", (q) =>
+          q.eq("stripeSubscriptionId", args.stripeSubscriptionId!)
+        )
+        .order("desc")
+        .collect();
+      subscription = subs.find((sub) => sub.status !== "canceled") ?? subs[0] ?? null;
+    }
+
+    if (!subscription && args.stripeCustomerId) {
+      const subs = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_stripe_customer", (q) =>
+          q.eq("stripeCustomerId", args.stripeCustomerId!)
+        )
+        .order("desc")
+        .collect();
+      subscription = subs.find((sub) => sub.status !== "canceled") ?? subs[0] ?? null;
+    }
+
+    if (!subscription) {
+      const target = args.stripeSubscriptionId ?? args.stripeCustomerId ?? "unknown";
+      console.warn(`[Credits] Subscription not found for Stripe reference: ${target}. Will be granted on next invoice.paid.`);
+      return null;
+    }
+
+    // If plan is still "free" but we have no creditsPerMonth configured,
+    // the subscription.created event hasn't been processed yet.
+    // Since invoice.paid is the sole credit trigger now, we can safely skip.
+    if (subscription.plan === "free" && !subscription.creditsPerMonth) {
+      console.warn(`[Credits] Subscription ${subscription._id} still on free plan. Skipping grant.`);
+      return null;
+    }
+
+    if (!subscription.creditsPerMonth) {
+      console.log(`[Credits] Subscription ${subscription._id} has 0 credits/month configured. Plan: ${subscription.plan}`);
+      return;
+    }
 
     const credits = await ctx.db
       .query("credits")
@@ -127,7 +166,10 @@ export const grantMonthlyCredits = internalMutation({
       )
       .unique();
 
-    if (!credits) return;
+    if (!credits) {
+      console.error(`[Credits] Critical: No credits record found for owner ${subscription.ownerId} (Type: ${subscription.ownerType})`);
+      return;
+    }
 
     const now = Date.now();
     const currentFree = credits.freeBalance;
@@ -139,6 +181,7 @@ export const grantMonthlyCredits = internalMutation({
 
     // Only update if we actually granted credits
     if (actualGranted > 0) {
+      console.log(`[Credits] Granting ${actualGranted} credits to ${credits.ownerId} (Plan: ${subscription.plan})`);
       await ctx.db.patch(credits._id, {
         freeBalance: newFreeBalance,
         lastUpdatedAt: now,
@@ -155,7 +198,7 @@ export const grantMonthlyCredits = internalMutation({
         createdAt: now,
       });
     } else {
-      console.log(`Free balance already at cap (${FREE_CREDIT_CAP}), skipping grant`);
+      console.log(`[Credits] Free balance already at cap (${FREE_CREDIT_CAP}), skipping grant. Current: ${currentFree}`);
     }
   },
 });

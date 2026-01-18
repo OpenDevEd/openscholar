@@ -17,6 +17,7 @@ export default function BillingPage() {
   const getSubscriptionDetails = useAction(
     api.subscriptions.actions.getSubscriptionDetails,
   );
+  const cancelImmediately = useAction(api.subscriptions.actions.cancelImmediately);
 
   const [isLoading, setIsLoading] = useState(false);
   const [details, setDetails] = useState<{
@@ -61,6 +62,22 @@ export default function BillingPage() {
       if (url) window.location.href = url;
     } catch (error) {
       toast.error("Failed to redirect to billing portal");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelImmediately = async () => {
+    if (!confirm("Are you sure you want to cancel immediately? You will lose access to paid features instantly.")) return;
+    
+    try {
+      setIsLoading(true);
+      await cancelImmediately({});
+      toast.success("Subscription cancelled immediately");
+      // Refresh page or state update happens automatically via Convex reactivity
+    } catch (error) {
+      toast.error("Failed to cancel subscription");
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -227,6 +244,33 @@ export default function BillingPage() {
             totalBalance={creditBalance.total}
             creditsPerMonth={creditsPerMonth}
           />
+        )}
+
+        {/* Danger Zone */}
+        {!isFree && (
+          <div className="pt-8 border-t border-border/40 space-y-4">
+            <h3 className="text-sm font-medium text-red-600 uppercase tracking-wider">
+              Danger Zone
+            </h3>
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <div className="font-medium text-red-900 dark:text-red-200">
+                  Cancel Subscription Immediately
+                </div>
+                <div className="text-sm text-red-700/80 dark:text-red-300/70 mt-1">
+                  This will immediately end your subscription and downgrade you to the Free plan.
+                </div>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleCancelImmediately}
+                disabled={isLoading}
+              >
+                Cancel Immediately
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     </div>

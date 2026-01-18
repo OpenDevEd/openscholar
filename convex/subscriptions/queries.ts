@@ -24,12 +24,21 @@ export const getMy = query({
 
     if (!user) return null;
 
-    return await ctx.db
+    // Get most recent active subscription (not canceled)
+    // Order by creation time DESC so we find the most recent active plan
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", user._id).eq("ownerType", "user")
       )
-      .unique();
+      .order("desc")
+      .collect();
+
+    const result = subscriptions.find(s => s.status !== "canceled") ?? subscriptions[0] ?? null;
+    
+    console.log("[getMy] Returning:", { plan: result?.plan, status: result?.status, totalSubs: subscriptions.length });
+    
+    return result;
   },
 });
 
@@ -42,12 +51,20 @@ export const getOrg = query({
   handler: async (ctx, { organizationId }) => {
     await requireOrgMember(ctx, organizationId);
 
-    return await ctx.db
+    // Get most recent active subscription (not canceled)
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", organizationId).eq("ownerType", "organization")
       )
-      .unique();
+      .order("desc")
+      .collect();
+
+    const result = subscriptions.find(s => s.status !== "canceled") ?? subscriptions[0] ?? null;
+    
+    console.log("[getOrg] Returning:", { plan: result?.plan, status: result?.status, totalSubs: subscriptions.length });
+    
+    return result;
   },
 });
 
@@ -68,12 +85,15 @@ export const getTier = query({
       await requireOrgMember(ctx, organizationId);
     }
 
-    const subscription = await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", ownerId).eq("ownerType", ownerType)
       )
-      .unique();
+      .order("desc")
+      .collect();
+
+    const subscription = subscriptions.find((sub) => sub.status !== "canceled") ?? subscriptions[0] ?? null;
 
     if (!subscription) return 0;
 

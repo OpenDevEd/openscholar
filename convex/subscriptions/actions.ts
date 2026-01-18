@@ -4,6 +4,16 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { requireActionAuth } from "../lib/auth";
 import { internal } from "../_generated/api";
+import { components } from "../_generated/api";
+import { stripeClient } from "../stripe";
+import {
+  assertPlanPriceConfig,
+  getPlanFromPriceId,
+  getPlanPriceIds,
+  getPlanTypeFromMetadata,
+  isAllowedPriceId,
+} from "../lib/constants";
+import { planValidator } from "../lib/validators";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -26,60 +36,48 @@ export const createCheckoutSession = action({
     url: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args): Promise<{ url: string | null }> => {
-    // 1. Verify authenticated
-    await requireActionAuth(ctx);
-    
-    // 2. Get full user doc via internal query
+    const identity = await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    
-    // Determine metadata
+
+    assertPlanPriceConfig();
+
+    if (args.organizationId) {
+      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
+        userId: user._id,
+        organizationId: args.organizationId,
+        requiredRole: "admin",
+      });
+    }
+
+    const customer = await stripeClient.getOrCreateCustomer(ctx, {
+      userId: args.organizationId ?? user._id,
+      email: identity.email,
+      name: identity.name,
+    });
+
     const metadata: Record<string, string> = {
       userId: user._id,
     };
-    
+
     if (args.organizationId) {
       metadata.organizationId = args.organizationId;
     }
 
-    // 3. Check for existing Stripe customer to prevent duplicates
-    const ownerId = args.organizationId ?? user._id;
-    const ownerType = args.organizationId ? "organization" : "user";
-    
-    const existingSubscription: any = await ctx.runQuery(
-      internal.subscriptions.internal.getSubscriptionByOwner,
-      { ownerId, ownerType }
-    );
-    
-    const existingCustomerId = existingSubscription?.stripeCustomerId;
+    if (!isAllowedPriceId(args.priceId)) {
+      throw new Error("Invalid price ID");
+    }
 
-    // 4. Create checkout session
-    const sessionConfig: any = {
-      line_items: [
-        {
-          price: args.priceId,
-          quantity: args.quantity ?? 1,
-        },
-      ],
+    const session = await stripeClient.createCheckoutSession(ctx, {
+      priceId: args.priceId,
+      customerId: customer.customerId,
       mode: args.mode,
-      success_url: `${DOMAIN}/settings/billing?success=true`,
-      cancel_url: `${DOMAIN}/settings/billing?canceled=true`,
+      quantity: args.quantity ?? 1,
+      successUrl: `${DOMAIN}/settings/billing?success=true`,
+      cancelUrl: `${DOMAIN}/settings/billing?canceled=true`,
       metadata,
-      allow_promotion_codes: true,
-    };
-
-    // Use existing customer if available, otherwise provide email
-    if (existingCustomerId) {
-      sessionConfig.customer = existingCustomerId;
-    } else if (user.email && user.email.length > 0) {
-      sessionConfig.customer_email = user.email;
-    }
-
-    // Only include subscription_data for subscription mode
-    if (args.mode === "subscription") {
-      sessionConfig.subscription_data = { metadata };
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+      subscriptionMetadata: args.mode === "subscription" ? metadata : undefined,
+      paymentIntentMetadata: args.mode === "payment" ? metadata : undefined,
+    });
 
     return { url: session.url };
   },
@@ -87,33 +85,44 @@ export const createCheckoutSession = action({
 
 export const getPlans = action({
   args: {
-    priceIds: v.array(v.string()),
+    priceIds: v.optional(v.array(v.string())),
   },
   returns: v.array(
-    v.union(
-      v.object({
-        id: v.string(),
-        amount: v.union(v.number(), v.null()),
-        currency: v.string(),
-        interval: v.optional(v.string()),
-        nickname: v.union(v.string(), v.null()),
-        metadata: v.any(),
-      }),
-      v.null()
-    )
+    v.object({
+      id: v.string(),
+      amount: v.union(v.number(), v.null()),
+      currency: v.string(),
+      interval: v.optional(v.string()),
+      nickname: v.union(v.string(), v.null()),
+      metadata: v.record(v.string(), v.string()),
+      plan: planValidator,
+    })
   ),
   handler: async (ctx, args) => {
+    const defaultPriceIds = Object.values(getPlanPriceIds()).filter((id) =>
+      isAllowedPriceId(id)
+    );
+    const priceIds = args.priceIds && args.priceIds.length > 0
+      ? args.priceIds.filter((id) => isAllowedPriceId(id))
+      : defaultPriceIds;
+
+    if (priceIds.length === 0) {
+      return [];
+    }
+
     const prices = await Promise.all(
-      args.priceIds.map(async (id) => {
+      priceIds.map(async (id) => {
         try {
           const price = await stripe.prices.retrieve(id);
+          const metadata = price.metadata as Record<string, string>;
           return {
             id: price.id,
             amount: price.unit_amount,
             currency: price.currency,
             interval: price.recurring?.interval,
             nickname: price.nickname,
-            metadata: price.metadata,
+            metadata,
+            plan: getPlanTypeFromMetadata(metadata) ?? getPlanFromPriceId(price.id),
           };
         } catch (error) {
           console.error(`Failed to fetch price ${id}:`, error);
@@ -122,7 +131,7 @@ export const getPlans = action({
       })
     );
 
-    return prices.filter((p) => p !== null);
+    return prices.filter((price): price is Exclude<typeof price, null> => price !== null);
   },
 });
 
@@ -139,32 +148,78 @@ export const createPortalSession = action({
   handler: async (ctx, args): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    
+
+    if (args.organizationId) {
+      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
+        userId: user._id,
+        organizationId: args.organizationId,
+        requiredRole: "member",
+      });
+    }
+
     const ownerId = args.organizationId ?? user._id;
-    const ownerType = args.organizationId ? "organization" : "user";
-    
-    // Get subscription to find Stripe Customer ID
-    const subscription = await ctx.runQuery(internal.subscriptions.internal.getSubscriptionByOwner, {
-      ownerId,
-      ownerType,
-    });
-    
-    if (!subscription || !subscription.stripeCustomerId) {
+
+    const subscriptions = await ctx.runQuery(
+      components.stripe.public.listSubscriptionsByUserId,
+      { userId: ownerId }
+    );
+
+    if (subscriptions.length === 0) {
       throw new Error("No subscription found");
     }
-    
-    const session = await stripe.billingPortal.sessions.create({
-      customer: subscription.stripeCustomerId,
-      return_url: `${DOMAIN}/settings/billing`,
+
+    const portal = await stripeClient.createCustomerPortalSession(ctx, {
+      customerId: subscriptions[0].stripeCustomerId,
+      returnUrl: `${DOMAIN}/settings/billing`,
     });
-    
-    return { url: session.url };
+
+    return { url: portal.url };
   },
 });
 
 /**
- * Fetch detailed subscription info safely from Stripe
+ * Cancel subscription immediately
  */
+export const cancelImmediately = action({
+  args: {
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireActionAuth(ctx);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+
+    if (args.organizationId) {
+      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
+        userId: user._id,
+        organizationId: args.organizationId,
+        requiredRole: "admin",
+      });
+    }
+
+    const ownerId = args.organizationId ?? user._id;
+    const ownerType = args.organizationId ? "organization" : "user";
+
+    const subscription = await ctx.runQuery(
+      internal.subscriptions.internal.getSubscriptionByOwner,
+      {
+        ownerId,
+        ownerType,
+      }
+    );
+
+    if (!subscription || !subscription.stripeSubscriptionId) {
+      throw new Error("No active subscription found to cancel");
+    }
+
+    await stripe.subscriptions.cancel(subscription.stripeSubscriptionId, {
+      prorate: true,
+    });
+
+    return null;
+  },
+});
+
 export const getSubscriptionDetails = action({
   args: {},
   returns: v.object({
@@ -199,12 +254,14 @@ export const getSubscriptionDetails = action({
   }> => {
     await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    
-    // Get subscription to find Stripe ID
-    const subscription = await ctx.runQuery(internal.subscriptions.internal.getSubscriptionByOwner, {
-      ownerId: user._id,
-      ownerType: "user",
-    });
+
+    const subscription = await ctx.runQuery(
+      internal.subscriptions.internal.getSubscriptionByOwner,
+      {
+        ownerId: user._id,
+        ownerType: "user",
+      }
+    );
 
     if (!subscription || !subscription.stripeSubscriptionId) {
       console.error("No stripeSubscriptionId found for user", user._id);
@@ -219,21 +276,16 @@ export const getSubscriptionDetails = action({
         }
       );
 
-      // Log the object to debug structure
-      console.log("Stripe Sub Object:", JSON.stringify(stripeSub, null, 2));
-
-      // Force type assertion if needed, though usually not required
-      const sub = stripeSub as any; // Cast to any to debug structure access
+      const sub = stripeSub as any;
 
       if (!sub.items?.data?.[0]?.price) {
-          console.error("Missing price data structure", sub);
-          return { status: "error", error: "No price data in subscription." };
+        console.error("Missing price data structure", sub);
+        return { status: "error", error: "No price data in subscription." };
       }
 
       const price = sub.items.data[0].price;
       const paymentMethod = sub.default_payment_method as Stripe.PaymentMethod | null;
-      
-      // Handle potential missing top-level field in newer API versions
+
       const currentPeriodEnd = sub.current_period_end || sub.items.data[0].current_period_end;
 
       return {
@@ -247,22 +299,27 @@ export const getSubscriptionDetails = action({
           cancelAtPeriodEnd: sub.cancel_at_period_end,
           cardBrand: paymentMethod?.card?.brand,
           cardLast4: paymentMethod?.card?.last4,
-        }
+        },
       };
     } catch (error: any) {
       console.error("Failed to fetch Stripe subscription:", error);
-      
-      // Handle specific Stripe error types
+
       if (error instanceof Stripe.errors.StripeInvalidRequestError) {
         return { status: "error", error: "Subscription not found or invalid." };
-      } else if (error instanceof Stripe.errors.StripeAuthenticationError) {
-        return { status: "error", error: "Stripe authentication failed. Please contact support." };
-      } else if (error instanceof Stripe.errors.StripeConnectionError) {
+      }
+      if (error instanceof Stripe.errors.StripeAuthenticationError) {
+        return {
+          status: "error",
+          error: "Stripe authentication failed. Please contact support.",
+        };
+      }
+      if (error instanceof Stripe.errors.StripeConnectionError) {
         return { status: "error", error: "Network error. Please try again." };
-      } else if (error instanceof Stripe.errors.StripeRateLimitError) {
+      }
+      if (error instanceof Stripe.errors.StripeRateLimitError) {
         return { status: "error", error: "Too many requests. Please try again later." };
       }
-      
+
       return { status: "error", error: error.message || "Stripe API failed" };
     }
   },

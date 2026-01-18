@@ -1,8 +1,7 @@
 "use node";
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { api } from "../_generated/api";
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
 // ============================================
@@ -114,7 +113,7 @@ export const encryptAndSave = action({
     const encryptedKey = encrypt(args.plainKey, encryptionKey);
     const keyPrefix = getKeyPrefix(args.plainKey);
 
-    await ctx.runMutation(api.apiKeys.mutations.save, {
+    await ctx.runMutation(internal.apiKeys.mutations.save, {
       provider: args.provider,
       encryptedKey,
       keyPrefix,
@@ -128,7 +127,7 @@ export const encryptAndSave = action({
  * Get a decrypted API key for use in actions
  * This should only be called from other actions, never exposed to client
  */
-export const getDecrypted = action({
+export const getDecrypted = internalAction({
   args: {
     provider: v.union(
       v.literal("openai"),

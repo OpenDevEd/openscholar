@@ -1,6 +1,8 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
+import { PLAN_CONFIG } from "../lib/constants";
+
 
 /**
  * Sync a new organization from WorkOS webhook
@@ -38,6 +40,18 @@ export const syncOrgFromWorkos = internalMutation({
       paidBalance: 0,
       lifetimeUsed: 0,
       lastUpdatedAt: now,
+    });
+
+    // Initialize free subscription
+    await ctx.db.insert("subscriptions", {
+      ownerId: orgId,
+      ownerType: "organization",
+      plan: "free",
+      status: "active",
+      creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,
+      seats: 1,
+      createdAt: now,
+      updatedAt: now,
     });
 
     return orgId;

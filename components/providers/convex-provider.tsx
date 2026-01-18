@@ -64,10 +64,16 @@ function UserSync({ children }: { children: ReactNode }) {
   // Sync user with Convex on load
   const { isAuthenticated } = useAuthFromAuthKit();
   const ensureUser = useMutation(api.users.mutations.ensureUser);
+  const hasSynced = useRef(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !hasSynced.current) {
+      hasSynced.current = true;
       ensureUser({});
+    }
+    // Reset on logout
+    if (!isAuthenticated) {
+      hasSynced.current = false;
     }
   }, [isAuthenticated, ensureUser]);
 

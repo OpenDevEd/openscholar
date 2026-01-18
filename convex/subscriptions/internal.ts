@@ -1,6 +1,9 @@
 import { internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { PLAN_CONFIG, GO_PRICE_ID, PRO_PRICE_ID } from "../lib/constants";
+import {
+  PLAN_CONFIG,
+  getPlanFromPriceId,
+} from "../lib/constants";
 import { Doc } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
 import { subscriptionValidator } from "../lib/validators";
@@ -28,8 +31,10 @@ async function getSubscriptionByStripeOrMetadata(
       .withIndex("by_stripe_sub", (q) =>
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId!)
       )
-      .unique();
-    if (bySub) return bySub;
+      .order("desc")
+      .collect();
+    const active = bySub.find((sub) => sub.status !== "canceled") ?? bySub[0];
+    if (active) return active;
   }
 
   // 2. Try by Stripe Customer ID
@@ -39,27 +44,33 @@ async function getSubscriptionByStripeOrMetadata(
       .withIndex("by_stripe_customer", (q) =>
         q.eq("stripeCustomerId", args.stripeCustomerId!)
       )
-      .first();
-    if (byCustomer) return byCustomer;
+      .order("desc")
+      .collect();
+    const active = byCustomer.find((sub) => sub.status !== "canceled") ?? byCustomer[0];
+    if (active) return active;
   }
 
-  // 3. Try by Metadata (User ID or Org ID)
+  // 3. Try by Metadata (User ID or Org ID) - get active subscription
   if (args.metadata?.userId) {
-    return await ctx.db
+    const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", args.metadata!.userId!).eq("ownerType", "user")
       )
-      .unique();
+      .order("desc")
+      .collect();
+    return subs.find(s => s.status !== "canceled") ?? subs[0] ?? null;
   }
   
   if (args.metadata?.organizationId) {
-    return await ctx.db
-        .query("subscriptions")
-        .withIndex("by_owner", (q) =>
-            q.eq("ownerId", args.metadata!.organizationId!).eq("ownerType", "organization")
-        )
-        .unique();
+    const subs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerId", args.metadata!.organizationId!).eq("ownerType", "organization")
+      )
+      .order("desc")
+      .collect();
+    return subs.find(s => s.status !== "canceled") ?? subs[0] ?? null;
   }
 
   return null;
@@ -75,12 +86,16 @@ export const getSubscriptionByOwner = internalQuery({
   },
   returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx, args) => {
-    return await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", args.ownerId).eq("ownerType", args.ownerType)
       )
-      .unique();
+      .order("desc")
+      .collect();
+
+    // Return active subscription, or most recent if none active
+    return subscriptions.find(s => s.status !== "canceled") ?? subscriptions[0] ?? null;
   },
 });
 
@@ -106,14 +121,17 @@ export const handleCheckoutComplete = internalMutation({
     const ownerId = organizationId ?? userId!;
     const ownerType = organizationId ? "organization" : "user";
 
-    // Find or create subscription record
-    // We check by owner here directly because we expect this to be the initial link
-    const existing = await ctx.db
+    // Find the active subscription record (there may be multiple due to soft-delete)
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", ownerId).eq("ownerType", ownerType)
       )
-      .unique();
+      .order("desc")
+      .collect();
+
+    // Get the most recent non-canceled subscription (should be the "free" one)
+    const existing = subscriptions.find(s => s.status !== "canceled");
 
     const now = Date.now();
 
@@ -125,9 +143,9 @@ export const handleCheckoutComplete = internalMutation({
         updatedAt: now,
       });
     } else {
-        // If it doesn't exist, we should probably create it or log error?
-        // Usually getOrCreateUser/Org should have created a free sub.
-        console.error("Subscription record not found for owner during checkout complete", { ownerId, ownerType });
+      // If it doesn't exist, we should probably create it or log error?
+      // Usually getOrCreateUser/Org should have created a free sub.
+      console.error("Subscription record not found for owner during checkout complete", { ownerId, ownerType });
     }
 
     return null;
@@ -175,7 +193,7 @@ export const syncSubscription = internalMutation({
     }
 
     // Determine plan from price ID
-    const plan = determinePlan(args.priceId);
+    const plan = getPlanFromPriceId(args.priceId);
     
     // Calculate credits based on seats if enterprise, otherwise flat rate or per seat depending on logic
     const quantity = args.quantity ?? 1;
@@ -206,20 +224,36 @@ export const handleSubscriptionCanceled = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const subscription = await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) =>
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
       )
-      .unique();
+      .order("desc")
+      .collect();
+    const subscription = subscriptions.find((sub) => sub.status !== "canceled") ?? subscriptions[0] ?? null;
 
     if (!subscription) return null;
 
+    const now = Date.now();
+
+    // 1. Mark current subscription as canceled (preserve history)
     await ctx.db.patch(subscription._id, {
       status: "canceled",
+      canceledAt: now,
+      updatedAt: now,
+    });
+
+    // 2. Create new "free" subscription for the owner
+    await ctx.db.insert("subscriptions", {
+      ownerId: subscription.ownerId,
+      ownerType: subscription.ownerType,
       plan: "free",
+      status: "active",
       creditsPerMonth: 0,
-      updatedAt: Date.now(),
+      seats: 1,
+      createdAt: now,
+      updatedAt: now,
     });
 
     return null;
@@ -235,12 +269,14 @@ export const handlePaymentFailed = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const subscription = await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) =>
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
       )
-      .unique();
+      .order("desc")
+      .collect();
+    const subscription = subscriptions.find((sub) => sub.status !== "canceled") ?? subscriptions[0] ?? null;
 
     if (!subscription) return null;
 
@@ -253,16 +289,3 @@ export const handlePaymentFailed = internalMutation({
   },
 });
 
-// Helper to determine plan from Stripe price ID
-function determinePlan(priceId?: string): "free" | "go" | "pro" | "enterprise" {
-  if (!priceId) return "free";
-
-  if (priceId === GO_PRICE_ID) return "go";
-  if (priceId === PRO_PRICE_ID) return "pro";
-  
-  // Fallback for testing or if alternate IDs are used
-  if (priceId.includes("enterprise")) return "enterprise";
-  if (priceId.includes("pro")) return "pro";
-
-  return "free";
-}

@@ -1,4 +1,4 @@
-import { internalMutation } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 
@@ -57,6 +57,50 @@ export const syncMembershipFromWorkos = internalMutation({
       permissions: [],
       joinedAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Get membership for user/org (used by billing checks)
+ */
+export const getMembershipForUser = internalQuery({
+  args: {
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    requiredRole: v.optional(v.union(
+      v.literal("member"),
+      v.literal("admin"),
+      v.literal("owner")
+    )),
+  },
+  returns: v.union(v.id("memberships"), v.null()),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId)
+      )
+      .unique();
+
+    if (!membership) {
+      throw new ConvexError({
+        code: "FORBIDDEN",
+        message: "Not a member of this organization",
+      });
+    }
+
+    if (args.requiredRole) {
+      const roleRank = { member: 0, admin: 1, owner: 2 } as const;
+      const requiredRank = roleRank[args.requiredRole];
+      if (roleRank[membership.role] < requiredRank) {
+        throw new ConvexError({
+          code: "FORBIDDEN",
+          message: "Admin access required",
+        });
+      }
+    }
+
+    return membership._id;
   },
 });
 

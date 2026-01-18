@@ -17,13 +17,6 @@ crons.interval(
   internal.maintenance.internal.aggregateUsage
 );
 
-// Monthly credit expiry check (1st of each month at midnight)
-crons.cron(
-  "check credit expiry",
-  "0 0 1 * *",
-  internal.maintenance.internal.checkCreditExpiry
-);
-
 // Daily subscription status check
 crons.interval(
   "check subscription status",

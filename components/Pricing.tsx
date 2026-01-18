@@ -1,25 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
-import { useAction, useQuery, useConvexAuth } from "convex/react";
+import React, { useEffect, useState } from "react";
+import { useAction, useConvexAuth } from "convex/react";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Check, Loader2, Sparkles, Building2, Zap, Rocket } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Check, Loader2, Building2, Zap, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
-const PLAN_IDS = {
-  go: "price_1SqNyJHXajH1NDoWsIPm9mCw",
-  pro: "price_1SqNyhHXajH1NDoWzHFCV3xM",
-  // Placeholder for Enterprise, user didn't provide one but we need it for the logic
-  // We'll use a dummy ID or the Pro one for testing if not available, but logic should be ready.
-  // Assuming a hypothetical enterprise price ID for seat based billing.
-  enterprise: "price_enterprise_seats_placeholder",
-};
+
 
 const FEATURES = {
   go: ["Basic Search", "100 Queries/mo", "Standard Support"],
@@ -37,7 +29,18 @@ const FEATURES = {
   ],
 };
 
-export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
+type PlanPrice = {
+  id: string;
+  amount: number | null;
+  currency: string;
+  interval: "day" | "week" | "month" | "year" | undefined;
+  nickname: string | null;
+  metadata: Record<string, string>;
+  plan: "free" | "go" | "pro" | "enterprise";
+};
+
+
+export function Pricing({ initialPrices = [] }: { initialPrices?: PlanPrice[] }) {
   const getPlans = useAction(api.subscriptions.actions.getPlans);
   const createCheckoutSession = useAction(
     api.subscriptions.actions.createCheckoutSession,
@@ -51,26 +54,34 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
     data: prices,
     error,
     isLoading,
-  } = useSWR(
+  } = useSWR<PlanPrice[]>(
     "stripe-prices",
     async () => {
       // If we have initial prices and they match what we need, we might strictly rely on them
       // but SWR allows revalidation.
-      return await getPlans({ priceIds: [PLAN_IDS.go, PLAN_IDS.pro] });
+      return await getPlans({});
     },
     {
       fallbackData: initialPrices,
       revalidateOnFocus: false,
-      revalidateOnMount: false, // Don't refetch immediately if we have data
+      revalidateOnMount: true, // Always fetch real Stripe prices on mount
     },
   );
+
+  useEffect(() => {
+    if (error) {
+      console.error("Failed to load Stripe prices", error);
+      toast.error("Failed to load pricing", {
+        description: "Please refresh and try again.",
+      });
+    }
+  }, [error]);
 
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const { user } = useAuth();
   const router = useRouter();
 
   const handleSubscribe = async (
-    priceId: string,
     planType: "go" | "pro" | "enterprise",
   ) => {
     if (isAuthLoading) return;
@@ -89,12 +100,19 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
       return;
     }
 
+    const priceId = prices?.find((price) => price.plan === planType)?.id;
+
+    if (!priceId) {
+      toast.error("Plan unavailable", {
+        description: "Pricing is not configured for this plan.",
+      });
+      return;
+    }
+
     try {
       setLoadingPriceId(priceId);
 
       const quantity = planType === "enterprise" ? seatCount : 1;
-      // For enterprise, if we don't have a real price ID, we might need a contact flow.
-      // But assuming we want to test the checkout flow:
 
       const { url } = await createCheckoutSession({
         priceId,
@@ -140,10 +158,10 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
     },
   };
 
-  const getPriceDisplay = (id: string, fallback: string) => {
-    if (isLoading) return <Loader2 className="h-4 w-4 animate-spin" />;
-    const price = prices?.find((p) => p.id === id);
-    if (!price || !price.amount) return fallback;
+  const getPriceDisplay = (planType: "go" | "pro") => {
+    if (isLoading || !prices) return <Loader2 className="h-4 w-4 animate-spin" />;
+    const price = prices?.find((p) => p.plan === planType);
+    if (!price || !price.amount) return <Loader2 className="h-4 w-4 animate-spin" />;
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: price.currency,
@@ -189,7 +207,7 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
                 </div>
                 <h3 className="text-2xl font-bold mb-2">Go</h3>
                 <div className="text-4xl font-bold tracking-tight mb-1">
-                  {getPriceDisplay(PLAN_IDS.go, "$9")}
+                  {getPriceDisplay("go")}
                   <span className="text-lg font-medium text-muted-foreground">
                     /mo
                   </span>
@@ -209,11 +227,11 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
               </ul>
 
               <Button
-                onClick={() => handleSubscribe(PLAN_IDS.go, "go")}
+                onClick={() => handleSubscribe("go")}
                 disabled={!!loadingPriceId || isAuthLoading}
                 className="w-full h-12 rounded-xl text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
               >
-                {loadingPriceId === PLAN_IDS.go ? (
+                {loadingPriceId === (prices?.find((price) => price.plan === "go")?.id ?? null) ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   "Get Started"
@@ -240,7 +258,7 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
                 </div>
                 <h3 className="text-2xl font-bold mb-2">Pro</h3>
                 <div className="text-4xl font-bold tracking-tight mb-1">
-                  {getPriceDisplay(PLAN_IDS.pro, "$29")}
+                  {getPriceDisplay("pro")}
                   <span className="text-lg font-medium text-muted-foreground">
                     /mo
                   </span>
@@ -262,11 +280,11 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
               </ul>
 
               <Button
-                onClick={() => handleSubscribe(PLAN_IDS.pro, "pro")}
+                onClick={() => handleSubscribe("pro")}
                 disabled={!!loadingPriceId || isAuthLoading}
                 className="w-full h-12 rounded-xl text-base font-semibold shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
               >
-                {loadingPriceId === PLAN_IDS.pro ? (
+                {loadingPriceId === (prices?.find((price) => price.plan === "pro")?.id ?? null) ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   "Upgrade to Pro"
@@ -327,14 +345,12 @@ export function Pricing({ initialPrices = [] }: { initialPrices?: any[] }) {
                 </div>
 
                 <Button
-                  onClick={() =>
-                    handleSubscribe(PLAN_IDS.enterprise, "enterprise")
-                  }
+                  onClick={() => handleSubscribe("enterprise")}
                   disabled={!!loadingPriceId || isAuthLoading}
                   variant="outline"
                   className="w-full h-12 rounded-xl text-base font-semibold border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400"
                 >
-                  {loadingPriceId === PLAN_IDS.enterprise ? (
+                  {loadingPriceId === (prices?.find((price) => price.plan === "enterprise")?.id ?? null) ? (
                     <Loader2 className="animate-spin" />
                   ) : (
                     "Contact Sales / Select"

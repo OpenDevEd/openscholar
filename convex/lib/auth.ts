@@ -1,6 +1,9 @@
 import { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
+import { createUserWithDefaults } from "./userCreation";
+import { createError } from "./errors";
+
 
 export type AuthContext = QueryCtx | MutationCtx;
 export type ActionAuthContext = ActionCtx;
@@ -11,6 +14,23 @@ export type ActionAuthContext = ActionCtx;
  */
 export async function getCurrentUser(
   ctx: AuthContext
+): Promise<Doc<"users"> | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+
+  return await ctx.db
+    .query("users")
+    .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
+    .unique();
+}
+
+/**
+ * Get current user without throwing - returns null if not authenticated or not synced
+ * Use this for queries that need graceful handling during first-login sync
+ * This is an alias to getCurrentUser for consistency, as getCurrentUser already returns null safely
+ */
+export async function getCurrentUserSafe(
+  ctx: QueryCtx
 ): Promise<Doc<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
@@ -34,13 +54,13 @@ export async function requireAuth(ctx: AuthContext, allowSyncing?: boolean): Pro
       // User is authenticated but not yet in DB (race condition)
       // Return a temporary mock or throw a specific error the client can handle?
       // Actually, safest is to throw a specific error or strict null check
-       throw new ConvexError({ code: "UNAUTHENTICATED", message: "User not synced yet" });
+       throw createError("UNAUTHENTICATED", "User not synced yet");
     }
-    throw new ConvexError({ code: "UNAUTHENTICATED", message: "Authentication required" });
+    throw createError("UNAUTHENTICATED", "Authentication required");
   }
 
   if (user.state !== "active") {
-    throw new ConvexError({ code: "FORBIDDEN", message: "Account suspended" });
+    throw createError("FORBIDDEN", "Account suspended");
   }
   return user;
 }
@@ -61,7 +81,7 @@ export async function requireOrgMember(
     )
     .unique();
 
-  if (!membership) throw new ConvexError({ code: "FORBIDDEN", message: "Not a member of this organization" });
+  if (!membership) throw createError("FORBIDDEN", "Not a member of this organization");
   return { user, membership };
 }
 
@@ -75,7 +95,7 @@ export async function requireOrgAdmin(
   const { user, membership } = await requireOrgMember(ctx, organizationId);
 
   if (membership.role !== "owner" && membership.role !== "admin") {
-    throw new ConvexError({ code: "FORBIDDEN", message: "Admin access required" });
+    throw createError("FORBIDDEN", "Admin access required");
   }
   return { user, membership };
 }
@@ -90,7 +110,7 @@ export async function requireOrgOwner(
   const { user, membership } = await requireOrgMember(ctx, organizationId);
 
   if (membership.role !== "owner") {
-    throw new ConvexError({ code: "FORBIDDEN", message: "Owner access required" });
+    throw createError("FORBIDDEN", "Owner access required");
   }
   return { user, membership };
 }
@@ -102,7 +122,7 @@ export async function getOrCreateUserFromIdentity(
   ctx: MutationCtx
 ): Promise<Doc<"users">> {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Authentication required" });
+  if (!identity) throw createError("UNAUTHENTICATED", "Authentication required");
 
   const existing = await ctx.db
     .query("users")
@@ -116,37 +136,12 @@ export async function getOrCreateUserFromIdentity(
   }
 
   // Create new user from JWT claims
-  const now = Date.now();
-  const userId = await ctx.db.insert("users", {
+  const userId = await createUserWithDefaults(ctx, {
     workosId: identity.subject,
     email: identity.email ?? "",
     firstName: identity.givenName,
     lastName: identity.familyName,
     avatarUrl: identity.pictureUrl,
-    state: "active",
-    lastLoginAt: now,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  // Initialize credits for new user
-  await ctx.db.insert("credits", {
-    ownerId: userId,
-    ownerType: "user",
-    freeBalance: 0,
-    paidBalance: 0,
-    lifetimeUsed: 0,
-    lastUpdatedAt: now,
-  });
-
-  // Initialize free subscription
-  await ctx.db.insert("subscriptions", {
-    ownerId: userId,
-    ownerType: "user",
-    plan: "free",
-    status: "active",
-    createdAt: now,
-    updatedAt: now,
   });
 
   return (await ctx.db.get(userId))!;
@@ -188,6 +183,6 @@ export async function getOrgCredits(
  */
 export async function requireActionAuth(ctx: ActionAuthContext) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Authentication required" });
+  if (!identity) throw createError("UNAUTHENTICATED", "Authentication required");
   return identity;
 }

@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { apiKeyProviderValidator } from "../lib/validators";
@@ -6,7 +6,7 @@ import { apiKeyProviderValidator } from "../lib/validators";
 /**
  * Save an encrypted API key
  */
-export const save = mutation({
+export const save = internalMutation({
   args: {
     provider: apiKeyProviderValidator,
     encryptedKey: v.string(),

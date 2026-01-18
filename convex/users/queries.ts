@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser, requireAuth } from "../lib/auth";
-import { userValidator, subscriptionValidator, creditsValidator } from "../lib/validators";
+import { userValidator, subscriptionValidator, creditsValidator, orgWithMembershipValidator } from "../lib/validators";
 
 /**
  * Get the current authenticated user
@@ -16,13 +16,38 @@ export const me = query({
 
 /**
  * Get user by ID (requires authentication)
+ * Only accessible for own profile or org members
  */
 export const getById = query({
   args: { userId: v.id("users") },
   returns: v.union(userValidator, v.null()),
   handler: async (ctx, { userId }) => {
-    // Require authentication to prevent unauthorized access
-    await requireAuth(ctx);
+    const currentUser = await requireAuth(ctx);
+    
+    // Allow fetching own profile
+    if (currentUser._id === userId) {
+      return currentUser;
+    }
+    
+    // Check if target user shares an organization with current user
+    const currentUserMemberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_user", (q) => q.eq("userId", currentUser._id))
+      .collect();
+    
+    const currentUserOrgIds = new Set(currentUserMemberships.map(m => m.organizationId));
+    
+    const targetUserMemberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    
+    const sharesOrg = targetUserMemberships.some(m => currentUserOrgIds.has(m.organizationId));
+    
+    if (!sharesOrg) {
+      return null; // Don't reveal user exists
+    }
+    
     return await ctx.db.get(userId);
   },
 });
@@ -32,7 +57,7 @@ export const getById = query({
  */
 export const getMyOrganizations = query({
   args: {},
-  returns: v.array(v.any()), // Complex nested type, using any for now
+  returns: v.array(orgWithMembershipValidator),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
@@ -48,7 +73,7 @@ export const getMyOrganizations = query({
       })
     );
 
-    return organizations.filter(Boolean);
+    return organizations.filter((org) => org !== null) as any;
   },
 });
 

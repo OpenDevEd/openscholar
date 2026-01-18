@@ -17,6 +17,7 @@ export const roleValidator = v.union(
 
 export const planValidator = v.union(
   v.literal("free"),
+  v.literal("go"),
   v.literal("pro"),
   v.literal("enterprise")
 );
@@ -53,6 +54,42 @@ export const keySourceValidator = v.union(
   v.literal("platform"),
   v.literal("byok")
 );
+
+const organizationFields = {
+  _id: v.id("organizations"),
+  _creationTime: v.number(),
+  workosId: v.string(),
+  name: v.string(),
+  slug: v.optional(v.string()),
+  logoUrl: v.optional(v.string()),
+  stripeCustomerId: v.optional(v.string()),
+  settings: v.optional(
+    v.object({
+      allowByok: v.optional(v.boolean()),
+      creditPooling: v.optional(v.boolean()),
+    })
+  ),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+export const organizationValidator = v.object(organizationFields);
+
+export const membershipValidator = v.object({
+  _id: v.id("memberships"),
+  _creationTime: v.number(),
+  userId: v.id("users"),
+  organizationId: v.id("organizations"),
+  role: roleValidator,
+  permissions: v.array(v.string()),
+  joinedAt: v.number(),
+});
+
+export const orgWithMembershipValidator = v.object({
+  ...organizationFields,
+  role: roleValidator,
+  membership: membershipValidator,
+});
 
 // Full object validators for return types
 export const userValidator = v.object({
@@ -93,13 +130,29 @@ export const subscriptionValidator = v.object({
   ownerType: ownerTypeValidator,
   stripeSubscriptionId: v.optional(v.string()),
   stripeCustomerId: v.optional(v.string()),
-  plan: v.union(planValidator, v.literal("go")), // Include go plan
+  plan: planValidator,
   status: subscriptionStatusValidator,
   currentPeriodStart: v.optional(v.number()),
   currentPeriodEnd: v.optional(v.number()),
   cancelAtPeriodEnd: v.optional(v.boolean()),
+  canceledAt: v.optional(v.number()),
   creditsPerMonth: v.optional(v.number()),
   seats: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
+});
+
+export const creditTransactionValidator = v.object({
+  _id: v.id("creditTransactions"),
+  _creationTime: v.number(),
+  creditsId: v.id("credits"),
+  userId: v.optional(v.id("users")),
+  type: creditTransactionTypeValidator,
+  creditType: v.union(v.literal("free"), v.literal("paid")),
+  amount: v.number(),
+  balanceAfter: v.number(),
+  description: v.optional(v.string()),
+  metadata: v.optional(v.record(v.string(), v.string())),
+  stripeInvoiceId: v.optional(v.string()),
+  createdAt: v.number(),
 });

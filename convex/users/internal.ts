@@ -2,6 +2,7 @@ import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";
+import { createUserWithDefaults } from "../lib/userCreation";
 
 /**
  * Get current user (for use in actions)
@@ -35,41 +36,14 @@ export const syncUserFromWorkos = internalMutation({
 
     if (existing) return existing._id;
 
-    const now = Date.now();
-
-    // Create new user
-    const userId = await ctx.db.insert("users", {
+    // Create new user using helper
+    return await createUserWithDefaults(ctx, {
       workosId: args.workosId,
       email: args.email,
       firstName: args.firstName,
       lastName: args.lastName,
       avatarUrl: args.avatarUrl,
-      state: "active",
-      createdAt: now,
-      updatedAt: now,
     });
-
-    // Initialize credits for new user
-    await ctx.db.insert("credits", {
-      ownerId: userId,
-      ownerType: "user",
-      freeBalance: 0,
-      paidBalance: 0,
-      lifetimeUsed: 0,
-      lastUpdatedAt: now,
-    });
-
-    // Initialize free subscription
-    await ctx.db.insert("subscriptions", {
-      ownerId: userId,
-      ownerType: "user",
-      plan: "free",
-      status: "active",
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return userId;
   },
 });
 
