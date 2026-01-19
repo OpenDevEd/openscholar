@@ -14,6 +14,7 @@ import { useTranslatePaperContent, useGenerateScreeningResponses } from "@/lib/a
 import { toast } from "sonner";
 import useSWRImmutable from "swr/immutable";
 import { ScreeningContext } from "@/components/results-list";
+import { NO_ABSTRACT, NO_TITLE } from "@/lib/constants";
 
 // ==================== Types ====================
 
@@ -93,8 +94,8 @@ export function useTranslate(
 
     try {
       const translation = await translateContent({
-        title: data.title,
-        abstract: data.abstract || "",
+        title: data.title || NO_TITLE,
+        abstract: data.abstract || NO_ABSTRACT,
         sourceLanguage: selectedLanguage,
       });
 
@@ -165,8 +166,8 @@ export function useScreening(data: {
     if (isConfigured && myMissingResponses.length > 0) {
       try {
         const result = await generateResponses({
-          title: data.title,
-          abstract: data.abstract,
+          title: data.title || NO_TITLE,
+          abstract: data.abstract || NO_ABSTRACT,
           questions: myMissingResponses,
         });
 
@@ -223,28 +224,5 @@ export function useCitationHandlers(paperId: string) {
     handleCitesSearch: () => handleFilteredSearch("cites"),
     handleCitedBySearch: () => handleFilteredSearch("citedBy"),
     handleRelatedSearch: () => handleFilteredSearch("related"),
-  };
-}
-
-// ==================== usePaperCardData ====================
-
-export function usePaperCardData(result: PaperData, translatedContent: TranslationContent | null, showTranslated: boolean) {
-  return {
-    displayTitle: showTranslated && translatedContent
-      ? translatedContent.translatedTitle
-      : result.title,
-    displayAbstract: showTranslated && translatedContent
-      ? translatedContent.translatedAbstract
-      : result.abstract,
-    authors: result.authorships
-      ? result.authorships.map((a) => a.author.display_name)
-      : [],
-    journal: result.primary_location?.source?.display_name || "",
-    citedByCount: result.cited_by_count || 0,
-    citesCount: result.referenced_works_count || 0,
-    relatedCount: result.related_works?.length || 0,
-    isOA: result.open_access?.is_oa || false,
-    oaUrl: result.open_access?.oa_url,
-    doi: result.doi,
   };
 }

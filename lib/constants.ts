@@ -2,6 +2,9 @@ import { YearRangePreset } from "./types";
 
 export const ITEMS_PER_PAGE = 20;
 
+export const NO_TITLE = "No Title";
+export const NO_ABSTRACT = "No Abstract";
+
 export const sortOptions = [
   { value: "relevance_score:desc", label: "Relevance (Most Relevant)" },
   { value: "cited_by_count:desc", label: "Citations (Most Cited)" },

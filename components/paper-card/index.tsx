@@ -8,7 +8,7 @@ import type { PaperCardProps } from "./shared";
 import type { ViewMode } from "@/lib/types";
 
 // Re-export hooks and components for backwards compatibility
-export { useTranslate, useScreening, useCitationHandlers, usePaperCardData } from "./hooks";
+export { useTranslate, useScreening, useCitationHandlers } from "./hooks";
 export { ScreeningResponses, TranslationToggle } from "./shared";
 export type { PaperCardProps } from "./shared";
 
