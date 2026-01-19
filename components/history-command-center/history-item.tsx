@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   Copy,
   Search,
@@ -9,12 +9,10 @@ import {
   BookmarkPlus,
   History,
   Languages,
-  Check,
   X,
   ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
@@ -25,7 +23,8 @@ import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
-import { toast } from "sonner";
+import { toasts } from "@/lib/toast-utils";
+import { BookmarkForm } from "@/components/command-center";
 import { QueryText } from "@/components/ui/query-text";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
@@ -66,9 +65,9 @@ export function HistoryItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(item.query);
-      toast.success("Query copied to clipboard");
+      toasts.clipboard.queryCopied();
     } catch {
-      toast.success("Query copied to clipboard");
+      toasts.clipboard.queryCopied();
     }
   };
 
@@ -81,38 +80,35 @@ export function HistoryItem({
       confirmText: "Delete",
       onConfirm: () => {
         removeSearchResult(actualIndex);
-        toast.success("Search entry deleted");
+        toasts.history.deleted();
       },
     });
   };
 
   const handleBookmarkSubmit = () => {
     if (!bookmarkName.trim()) {
-      toast.error("Bookmark name is required");
+      toasts.bookmark.nameRequired();
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      toast.error("Only letters, numbers, and dashes allowed");
+      toasts.bookmark.invalidChars();
       return;
     }
     if (keywords[bookmarkName]) {
-      toast.error(`Bookmark "${bookmarkName}" already exists`);
+      toasts.bookmark.exists(bookmarkName);
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    toast.success(`Saved as bookmark "${bookmarkName}"`);
+    toasts.bookmark.saved(bookmarkName);
     setIsBookmarking(false);
     setBookmarkName("");
   };
 
-  const handleBookmarkKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleBookmarkSubmit();
-    if (e.key === "Escape") {
-      setIsBookmarking(false);
-      setBookmarkName("");
-    }
+  const handleBookmarkCancel = () => {
+    setIsBookmarking(false);
+    setBookmarkName("");
   };
 
   // Get language info
@@ -244,15 +240,12 @@ export function HistoryItem({
         {isBookmarking && (
           <div className="px-3 pb-3">
             <BookmarkForm
+              variant="inline"
               bookmarkName={bookmarkName}
-              setBookmarkName={setBookmarkName}
+              onNameChange={setBookmarkName}
               query={item.query}
               onSubmit={handleBookmarkSubmit}
-              onCancel={() => {
-                setIsBookmarking(false);
-                setBookmarkName("");
-              }}
-              onKeyDown={handleBookmarkKeyDown}
+              onCancel={handleBookmarkCancel}
             />
           </div>
         )}
@@ -487,16 +480,13 @@ export function HistoryItem({
 
         {/* Bookmark form overlay */}
         {isBookmarking && (
-          <BookmarkOverlay
+          <BookmarkForm
+            variant="overlay"
             bookmarkName={bookmarkName}
-            setBookmarkName={setBookmarkName}
+            onNameChange={setBookmarkName}
             query={item.query}
             onSubmit={handleBookmarkSubmit}
-            onCancel={() => {
-              setIsBookmarking(false);
-              setBookmarkName("");
-            }}
-            onKeyDown={handleBookmarkKeyDown}
+            onCancel={handleBookmarkCancel}
           />
         )}
       </motion.div>
@@ -599,15 +589,12 @@ export function HistoryItem({
         {isBookmarking && (
           <div className="mt-4">
             <BookmarkForm
+              variant="inline"
               bookmarkName={bookmarkName}
-              setBookmarkName={setBookmarkName}
+              onNameChange={setBookmarkName}
               query={item.query}
               onSubmit={handleBookmarkSubmit}
-              onCancel={() => {
-                setIsBookmarking(false);
-                setBookmarkName("");
-              }}
-              onKeyDown={handleBookmarkKeyDown}
+              onCancel={handleBookmarkCancel}
             />
           </div>
         )}
@@ -703,158 +690,4 @@ export function HistoryItem({
   );
 }
 
-// Bookmark form component for list-detail view
-function BookmarkForm({
-  bookmarkName,
-  setBookmarkName,
-  query,
-  onSubmit,
-  onCancel,
-  onKeyDown,
-}: {
-  bookmarkName: string;
-  setBookmarkName: (name: string) => void;
-  query: string;
-  onSubmit: () => void;
-  onCancel: () => void;
-  onKeyDown: (e: React.KeyboardEvent) => void;
-}) {
-  const { expandedQuery } = validateAndExpandKeywordsSilently(query);
 
-  return (
-    <div className="space-y-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-      <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-        <BookmarkPlus className="h-4 w-4" />
-        <span className="text-sm font-medium">Save as Bookmark</span>
-      </div>
-
-      <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-        Use the format &quot;bookmark...&quot; in your search to expand automatically.
-      </p>
-
-      <div className="text-xs text-amber-700 dark:text-amber-300 font-mono break-all p-2 rounded border border-amber-200 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/50">
-        &quot;{expandedQuery}&quot;
-      </div>
-
-      <Input
-        placeholder="Enter bookmark name (e.g., ai-research)"
-        value={bookmarkName}
-        onChange={(e) => setBookmarkName(e.target.value)}
-        onKeyDown={onKeyDown}
-        autoFocus
-        className="text-sm bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400"
-      />
-
-      <p className="text-xs text-amber-600 dark:text-amber-400">
-        Letters, numbers, and dashes only. No spaces.
-      </p>
-
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          onClick={onSubmit}
-          disabled={!bookmarkName.trim()}
-          className="bg-amber-600 hover:bg-amber-700 text-white"
-        >
-          <Check className="h-3 w-3 mr-1" />
-          Save
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onCancel}
-          className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Bookmark overlay for grid views
-function BookmarkOverlay({
-  bookmarkName,
-  setBookmarkName,
-  query,
-  onSubmit,
-  onCancel,
-  onKeyDown,
-}: {
-  bookmarkName: string;
-  setBookmarkName: (name: string) => void;
-  query: string;
-  onSubmit: () => void;
-  onCancel: () => void;
-  onKeyDown: (e: React.KeyboardEvent) => void;
-}) {
-  const { expandedQuery } = validateAndExpandKeywordsSilently(query);
-
-  return (
-    <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col p-3 z-10 overflow-y-auto">
-      <div className="flex-1 flex flex-col space-y-2.5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-amber-600">
-            <BookmarkPlus className="h-4 w-4" />
-            <span className="text-sm font-medium">Save as Bookmark</span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
-            onClick={onCancel}
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-
-        {/* Explanation */}
-        <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-          Use &quot;bookmark...&quot; in search to expand automatically.
-        </p>
-
-        {/* Expanded query preview */}
-        <div className="text-xs text-amber-700 dark:text-amber-300 font-mono break-all p-2 rounded border border-amber-200 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/50 max-h-20 overflow-y-auto">
-          &quot;{expandedQuery}&quot;
-        </div>
-
-        {/* Input */}
-        <Input
-          placeholder="Enter bookmark name (e.g., ai-research)"
-          value={bookmarkName}
-          onChange={(e) => setBookmarkName(e.target.value)}
-          onKeyDown={onKeyDown}
-          autoFocus
-          className="text-sm h-8 bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400"
-        />
-
-        {/* Validation hint */}
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          Letters, numbers, and dashes only. No spaces.
-        </p>
-
-        {/* Actions */}
-        <div className="flex gap-2 pt-1">
-          <Button
-            size="sm"
-            onClick={onSubmit}
-            disabled={!bookmarkName.trim()}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
-          >
-            <Check className="h-3 w-3 mr-1" />
-            Save
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onCancel}
-            className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
-          >
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

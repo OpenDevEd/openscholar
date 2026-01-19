@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { SearchMode } from "./search-mode";
 import { AdjustMode } from "./adjust-mode";
 import type { CommandCenterMode } from "./index";

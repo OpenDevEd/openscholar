@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   Search,
   X,
@@ -26,130 +26,61 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useUIStore, useKeywordExpansionStore } from "@/lib/store";
-import { BookmarkSortBy, ViewMode } from "@/lib/types";
-import { showConfirmation } from "@/lib/confirmation";
-import { toast } from "sonner";
-import { jsonToCSV, downloadAsFile, triggerFileUpload, uploadFile } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
-import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
+import { VIEW_MODE_OPTIONS } from "@/lib/constants/view-modes";
+import type { ViewMode } from "@/lib/types";
 
-interface ViewModeOption {
-  mode: ViewMode;
-  icon: React.ReactNode;
+interface SortOption<T extends string> {
+  value: T;
   label: string;
 }
 
-const viewModeOptions: ViewModeOption[] = [
-  { mode: "list-simple", icon: <List className="h-4 w-4" />, label: "Simple List" },
-  { mode: "list-detail", icon: <LayoutList className="h-4 w-4" />, label: "Detailed List" },
-  { mode: "grid-2", icon: <LayoutGrid className="h-4 w-4" />, label: "2 Column Grid" },
-  { mode: "grid-3", icon: <Grid3X3 className="h-4 w-4" />, label: "3 Column Grid" },
-];
-
-const sortOptions: { value: BookmarkSortBy; label: string }[] = [
-  { value: "recent", label: "Recent" },
-  { value: "oldest", label: "Oldest" },
-  { value: "alpha", label: "A → Z" },
-  { value: "alpha-desc", label: "Z → A" },
-];
-
-interface BookmarksToolbarProps {
+interface CommandCenterToolbarProps<TSort extends string> {
+  // View mode
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  // Sort
+  sortOptions: SortOption<TSort>[];
+  currentSort: TSort;
+  onSortChange: (sort: TSort) => void;
+  // Search
   searchFilter: string;
   onSearchChange: (value: string) => void;
+  placeholder: string;
+  // Download/Upload handlers
+  onDownloadJSON: () => void;
+  onDownloadCSV: () => Promise<void>;
+  onUploadJSON: () => Promise<void>;
+  onUploadCSV: () => Promise<void>;
+  // Clear
+  onClearAll: () => void;
+  clearTooltip: string;
+  // State
   totalCount: number;
 }
 
-export function BookmarksToolbar({
+/**
+ * Shared toolbar component for command centers.
+ * Includes view mode toggle, search input, sort dropdown, download/upload, and clear button.
+ */
+export function CommandCenterToolbar<TSort extends string>({
+  viewMode,
+  onViewModeChange,
+  sortOptions,
+  currentSort,
+  onSortChange,
   searchFilter,
   onSearchChange,
+  placeholder,
+  onDownloadJSON,
+  onDownloadCSV,
+  onUploadJSON,
+  onUploadCSV,
+  onClearAll,
+  clearTooltip,
   totalCount,
-}: BookmarksToolbarProps) {
-  const {
-    bookmarkViewMode,
-    setBookmarkViewMode,
-    bookmarkSortBy,
-    setBookmarkSortBy,
-  } = useUIStore();
-  const { keywords, clearKeywords, importKeywords } = useKeywordExpansionStore();
-
-  const currentSort = sortOptions.find((o) => o.value === bookmarkSortBy);
-
-  // Download handlers
-  const handleDownloadJSON = () => {
-    try {
-      const data = Object.entries(keywords).map(([name, bookmark]) => ({
-        name,
-        expansion: bookmark.expansion,
-        createdAt: bookmark.createdAt,
-      }));
-      downloadAsFile(JSON.stringify(data, null, 2), "bookmarks.json", "json");
-      toast.success(`Downloaded ${data.length} bookmarks as JSON`);
-    } catch {
-      toast.error("Failed to download JSON file");
-    }
-  };
-
-  const handleDownloadCSV = async () => {
-    try {
-      const data = Object.entries(keywords).map(([name, bookmark]) => ({
-        name,
-        expansion: bookmark.expansion,
-        createdAt: new Date(bookmark.createdAt).toISOString(),
-      }));
-      const csv = await jsonToCSV(data);
-      downloadAsFile(csv, "bookmarks.csv", "csv");
-      toast.success(`Downloaded ${data.length} bookmarks as CSV`);
-    } catch {
-      toast.error("Failed to download CSV file");
-    }
-  };
-
-  const handleUploadJSON = async () => {
-    try {
-      const file = await triggerFileUpload(".json");
-      const data = await uploadFile(file);
-      const importedCount = importKeywords(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} bookmarks`);
-      } else {
-        toast.warning("No valid bookmarks found in the file");
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload JSON file"
-      );
-    }
-  };
-
-  const handleUploadCSV = async () => {
-    try {
-      const file = await triggerFileUpload(".csv");
-      const data = await uploadFile(file);
-      const importedCount = importKeywords(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} bookmarks`);
-      } else {
-        toast.warning("No valid bookmarks found in the file");
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload CSV file"
-      );
-    }
-  };
-
-  const handleClearAll = () => {
-    showConfirmation({
-      title: "Clear All Bookmarks",
-      message: `Are you sure you want to delete all ${Object.keys(keywords).length} bookmarks? This action cannot be undone.`,
-      confirmText: "Clear All",
-      onConfirm: () => {
-        clearKeywords();
-        toast.success("All bookmarks cleared");
-      },
-    });
-  };
+}: CommandCenterToolbarProps<TSort>) {
+  const currentSortOption = sortOptions.find((o) => o.value === currentSort);
 
   return (
     <motion.div
@@ -165,12 +96,13 @@ export function BookmarksToolbar({
       {/* Left: View mode toggle */}
       <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
-          {viewModeOptions.map((option) => {
-            const isActive = bookmarkViewMode === option.mode;
+          {VIEW_MODE_OPTIONS.map((option) => {
+            const isActive = viewMode === option.mode;
+            const Icon = option.icon;
             return (
               <button
                 key={option.mode}
-                onClick={() => setBookmarkViewMode(option.mode)}
+                onClick={() => onViewModeChange(option.mode)}
                 className={cn(
                   "relative z-10 flex items-center justify-center p-1.5 rounded-md transition-colors",
                   isActive
@@ -179,7 +111,7 @@ export function BookmarksToolbar({
                 )}
                 title={option.label}
               >
-                {option.icon}
+                <Icon className="h-4 w-4" />
               </button>
             );
           })}
@@ -191,7 +123,7 @@ export function BookmarksToolbar({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <Input
           type="text"
-          placeholder="Search bookmarks..."
+          placeholder={placeholder}
           value={searchFilter}
           onChange={(e) => onSearchChange(e.target.value)}
           className={cn(
@@ -222,7 +154,7 @@ export function BookmarksToolbar({
               className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
             >
               <ArrowUpDown className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{currentSort?.label}</span>
+              <span className="hidden sm:inline">{currentSortOption?.label}</span>
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
@@ -230,10 +162,8 @@ export function BookmarksToolbar({
             {sortOptions.map((option) => (
               <DropdownMenuItem
                 key={option.value}
-                onClick={() => setBookmarkSortBy(option.value)}
-                className={cn(
-                  bookmarkSortBy === option.value && "bg-muted"
-                )}
+                onClick={() => onSortChange(option.value)}
+                className={cn(currentSort === option.value && "bg-muted")}
               >
                 {option.label}
               </DropdownMenuItem>
@@ -253,26 +183,26 @@ export function BookmarksToolbar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={handleDownloadJSON}
+            <DropdownMenuItem
+              onClick={onDownloadJSON}
               disabled={totalCount === 0}
             >
               <Download className="h-4 w-4 mr-2" />
               Download as JSON
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={handleDownloadCSV}
+            <DropdownMenuItem
+              onClick={onDownloadCSV}
               disabled={totalCount === 0}
             >
               <Download className="h-4 w-4 mr-2" />
               Download as CSV
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleUploadJSON}>
+            <DropdownMenuItem onClick={onUploadJSON}>
               <Upload className="h-4 w-4 mr-2" />
               Upload JSON
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleUploadCSV}>
+            <DropdownMenuItem onClick={onUploadCSV}>
               <Upload className="h-4 w-4 mr-2" />
               Upload CSV
             </DropdownMenuItem>
@@ -285,14 +215,14 @@ export function BookmarksToolbar({
             <Button
               variant="ghost"
               size="icon"
-              onClick={handleClearAll}
+              onClick={onClearAll}
               disabled={totalCount === 0}
               className="h-9 w-9 text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Clear all bookmarks</TooltipContent>
+          <TooltipContent>{clearTooltip}</TooltipContent>
         </Tooltip>
       </div>
     </motion.div>

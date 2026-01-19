@@ -3,7 +3,7 @@
 import { SidebarNav } from "@/components/settings/sidebar-nav";
 import { PageWrapper } from "@/components/PageWrapper";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
 
 const sidebarNavItems = [

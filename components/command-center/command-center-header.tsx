@@ -1,16 +1,32 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { BookOpen } from "lucide-react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
+import type { LucideIcon } from "lucide-react";
 
-interface BookmarksHeaderProps {
+interface CommandCenterHeaderProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
   count: number;
+  singular: string;
+  plural: string;
 }
 
-export function BookmarksHeader({ count }: BookmarksHeaderProps) {
+/**
+ * Shared header component for command centers.
+ * Displays icon, title, description, and count badge.
+ */
+export function CommandCenterHeader({
+  icon: Icon,
+  title,
+  description,
+  count,
+  singular,
+  plural,
+}: CommandCenterHeaderProps) {
   return (
     <div
       className={cn(
@@ -36,7 +52,7 @@ export function BookmarksHeader({ count }: BookmarksHeaderProps) {
                 "shadow-sm"
               )}
             >
-              <BookOpen className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+              <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
             </div>
             {/* Subtle glow effect */}
             <div className="absolute inset-0 rounded-xl bg-primary/10 blur-xl -z-10" />
@@ -45,10 +61,10 @@ export function BookmarksHeader({ count }: BookmarksHeaderProps) {
           {/* Title + Description */}
           <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-foreground">
-              Bookmarks
+              {title}
             </h1>
             <p className="text-sm text-muted-foreground hidden sm:block">
-              Create shortcuts for commonly used search terms
+              {description}
             </p>
           </div>
         </motion.div>
@@ -77,7 +93,7 @@ export function BookmarksHeader({ count }: BookmarksHeaderProps) {
               {count}
             </motion.span>
             <span className="text-sm text-muted-foreground">
-              {count === 1 ? "bookmark" : "bookmarks"}
+              {count === 1 ? singular : plural}
             </span>
           </div>
         </motion.div>

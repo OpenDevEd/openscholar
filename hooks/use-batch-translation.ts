@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useBatchTranslations } from "@/lib/ai/client/router";
 import { useTranslationStore } from "@/lib/store";
+import { useBatchOperation } from "./use-batch-operation";
 
 interface Paper {
   id: string;
@@ -31,13 +32,7 @@ interface UseBatchTranslationOptions {
 
 /**
  * Hook that manages batch translation for a set of papers.
- * 
- * Key safeguards:
- * 1. Uses a stable batchKey derived from paper IDs + selectedLanguage
- * 2. Tracks fetched keys in a ref to prevent duplicate fetches
- * 3. Clears the ref on searchId change
- * 4. Uses languageAtFetchRef to prevent race conditions when language changes mid-flight
- * 5. Exposes errors for UI feedback
+ * Uses the generic useBatchOperation factory for common batch processing logic.
  */
 export function useBatchTranslation({
   searchId,
@@ -47,38 +42,48 @@ export function useBatchTranslation({
 }: UseBatchTranslationOptions) {
   const { execute, isConfigured } = useBatchTranslations();
   const { getTranslation, setTranslation, setShowTranslated } = useTranslationStore();
-  
-  const [loadingPaperIds, setLoadingPaperIds] = useState<Set<string>>(new Set());
-  const [errors, setErrors] = useState<TranslationError[]>([]);
-  const fetchedKeysRef = useRef<Set<string>>(new Set());
-  const isFetchingRef = useRef(false);
-  // Track the language at the time of fetch to prevent race conditions
-  const languageAtFetchRef = useRef<string | null>(null);
 
-  // Find papers that need translation
-  const papersNeedingTranslation = useMemo(() => {
-    if (!selectedLanguage || selectedLanguage === "en") return [];
-    
-    return papers.filter((paper) => {
-      const existing = getTranslation(paper.id);
-      // Needs translation if no translation exists or it's for a different language
-      return !existing || existing.sourceLanguage !== selectedLanguage;
-    });
-  }, [papers, selectedLanguage, getTranslation]);
+  // Filter papers that need translation
+  const filterItemsNeedingProcessing = useCallback(
+    (allPapers: Paper[], context: { selectedLanguage: string }) => {
+      if (!context.selectedLanguage || context.selectedLanguage === "en") return [];
 
-  // Create a stable key for deduplication
-  const batchKey = useMemo(() => {
-    if (papersNeedingTranslation.length === 0) return null;
-    
-    const paperIds = papersNeedingTranslation.map((p) => p.id).sort();
-    return `${selectedLanguage}:${paperIds.join(",")}`;
-  }, [papersNeedingTranslation, selectedLanguage]);
+      return allPapers.filter((paper) => {
+        const existing = getTranslation(paper.id);
+        return !existing || existing.sourceLanguage !== context.selectedLanguage;
+      });
+    },
+    [getTranslation]
+  );
 
-  // Stable callback for results - checks language hasn't changed
-  const handleResults = useCallback(
-    (paperId: string, translation: TranslationData, expectedLanguage: string) => {
-      // Only store if the language hasn't changed since we started the fetch
-      if (expectedLanguage === selectedLanguage) {
+  // Compute batch key for deduplication
+  const computeBatchKey = useCallback(
+    (papersToProcess: Paper[], context: { selectedLanguage: string }) => {
+      if (papersToProcess.length === 0) return null;
+
+      const paperIds = papersToProcess.map((p) => p.id).sort();
+      return `${context.selectedLanguage}:${paperIds.join(",")}`;
+    },
+    []
+  );
+
+  // Build the input for execute
+  const buildExecuteInput = useCallback(
+    (papersToFetch: Paper[], context: { selectedLanguage: string }) => ({
+      papers: papersToFetch.map((p) => ({
+        id: p.id,
+        title: p.title || "",
+        abstract: p.abstract || "",
+      })),
+      sourceLanguage: context.selectedLanguage,
+    }),
+    []
+  );
+
+  // Handle results
+  const handleResult = useCallback(
+    (paperId: string, translation: TranslationData, context: { selectedLanguage: string }) => {
+      if (context.selectedLanguage === selectedLanguage) {
         setTranslation(paperId, translation);
         setShowTranslated(paperId, true);
       }
@@ -86,77 +91,44 @@ export function useBatchTranslation({
     [setTranslation, setShowTranslated, selectedLanguage]
   );
 
-  // Reset fetched keys and errors when searchId or language changes
-  useEffect(() => {
-    fetchedKeysRef.current.clear();
-    setLoadingPaperIds(new Set());
-    setErrors([]);
-    languageAtFetchRef.current = null;
-  }, [searchId, selectedLanguage]);
+  // Create loading state
+  const createLoadingState = useCallback(
+    (papersToProcess: Paper[]) => new Set(papersToProcess.map((p) => p.id)),
+    []
+  );
 
-  // Main effect to trigger batch translation
-  useEffect(() => {
-    // Guard conditions
-    if (!canStart || !isConfigured || !batchKey) return;
-    if (!selectedLanguage || selectedLanguage === "en") return;
-    if (fetchedKeysRef.current.has(batchKey)) return;
-    if (isFetchingRef.current) return;
-    if (papersNeedingTranslation.length === 0) return;
+  const clearLoadingState = useCallback(() => new Set<string>(), []);
 
-    // Capture the language at fetch time to detect race conditions
-    const languageAtFetch = selectedLanguage;
-    languageAtFetchRef.current = languageAtFetch;
+  const context = useMemo(
+    () => ({ selectedLanguage }),
+    [selectedLanguage]
+  );
 
-    // Mark as fetching
-    fetchedKeysRef.current.add(batchKey);
-    isFetchingRef.current = true;
-    setLoadingPaperIds(new Set(papersNeedingTranslation.map((p) => p.id)));
-    setErrors([]);
+  const effectiveCanStart = canStart && !!selectedLanguage && selectedLanguage !== "en";
 
-    // Execute batch translation
-    execute({
-      papers: papersNeedingTranslation.map((p) => ({
-        id: p.id,
-        title: p.title || "",
-        abstract: p.abstract || "",
-      })),
-      sourceLanguage: selectedLanguage,
-    })
-      .then(({ results, errors: batchErrors }) => {
-        // Check if language changed while we were fetching
-        if (languageAtFetchRef.current !== languageAtFetch) {
-          console.warn("Language changed during fetch, discarding results");
-          return;
-        }
-
-        // Process results
-        Object.entries(results).forEach(([paperId, data]) => {
-          handleResults(paperId, data, languageAtFetch);
-        });
-
-        // Store errors for UI feedback
-        if (batchErrors.length > 0) {
-          console.warn("Batch translation had partial failures:", batchErrors);
-          setErrors(batchErrors);
-        }
-      })
-      .catch((error) => {
-        console.error("Batch translation failed:", error);
-        // Remove from fetched so it can be retried
-        fetchedKeysRef.current.delete(batchKey);
-        setErrors([{ paperId: "batch", error: error.message || String(error) }]);
-      })
-      .finally(() => {
-        isFetchingRef.current = false;
-        setLoadingPaperIds(new Set());
-      });
-  }, [
-    batchKey,
-    canStart,
-    isConfigured,
+  const { loadingState, errors } = useBatchOperation<
+    { papers: { id: string; title: string; abstract: string }[]; sourceLanguage: string },
+    TranslationData,
+    { selectedLanguage: string },
+    Set<string>
+  >({
     execute,
-    handleResults,
-  ]);
+    isConfigured,
+    computeBatchKey,
+    filterItemsNeedingProcessing,
+    buildExecuteInput,
+    handleResult,
+    resetDeps: [searchId, selectedLanguage],
+    context,
+    canStart: effectiveCanStart,
+    papers,
+    createLoadingState,
+    clearLoadingState,
+  });
 
-  return { loadingPaperIds, errors, isConfigured };
+  return {
+    loadingPaperIds: loadingState,
+    errors: errors as TranslationError[],
+    isConfigured,
+  };
 }

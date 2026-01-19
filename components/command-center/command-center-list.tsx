@@ -1,31 +1,46 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { Clock, Search, ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ViewMode } from "@/lib/types";
-import { HistoryItem } from "./history-item";
 import { subtleSpring } from "@/lib/animation-config";
-import type { SearchResult } from "@/lib/types";
-import Link from "next/link";
+import { GRID_CLASSES } from "@/lib/constants/view-modes";
+import type { ViewMode } from "@/lib/types";
+import type { LucideIcon } from "lucide-react";
 
-interface HistoryListProps {
-  items: SearchResult[];
+interface CommandCenterListProps<T> {
+  items: T[];
   viewMode: ViewMode;
-  onSearchClick: (item: SearchResult) => void;
+  renderItem: (item: T, index: number) => React.ReactNode;
+  keyExtractor: (item: T) => string;
+  // Empty state
+  emptyIcon: LucideIcon;
+  emptyTitle: string;
+  emptyDescription: string;
+  emptyAction?: React.ReactNode;
+  // Filter state
   hasFilter: boolean;
   onClearFilter: () => void;
 }
 
-export function HistoryList({
+/**
+ * Shared list component for command centers.
+ * Handles grid layout based on view mode and empty state rendering.
+ */
+export function CommandCenterList<T>({
   items,
   viewMode,
-  onSearchClick,
+  renderItem,
+  keyExtractor,
+  emptyIcon: EmptyIcon,
+  emptyTitle,
+  emptyDescription,
+  emptyAction,
   hasFilter,
   onClearFilter,
-}: HistoryListProps) {
+}: CommandCenterListProps<T>) {
   // Empty state
   if (items.length === 0) {
     return (
@@ -46,18 +61,18 @@ export function HistoryList({
           {hasFilter ? (
             <Search className="h-7 w-7 text-muted-foreground" />
           ) : (
-            <Clock className="h-7 w-7 text-muted-foreground" />
+            <EmptyIcon className="h-7 w-7 text-muted-foreground" />
           )}
         </div>
 
         <h3 className="text-lg font-semibold text-foreground mb-2">
-          {hasFilter ? "No matches found" : "No search history yet"}
+          {hasFilter ? "No matches found" : emptyTitle}
         </h3>
 
         <p className="text-sm text-muted-foreground text-center max-w-sm mb-6">
           {hasFilter
             ? "Try adjusting your search filter to find what you're looking for."
-            : "Start searching for academic papers and your search history will appear here."}
+            : emptyDescription}
         </p>
 
         {hasFilter ? (
@@ -65,36 +80,18 @@ export function HistoryList({
             Clear Filter
           </Button>
         ) : (
-          <Button asChild className="gap-2">
-            <Link href="/">
-              <Search className="h-4 w-4" />
-              Start a Search
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          emptyAction
         )}
       </motion.div>
     );
   }
 
-  // Grid layout classes based on view mode
-  const gridClasses: Record<ViewMode, string> = {
-    "list-simple": "flex flex-col gap-2",
-    "list-detail": "flex flex-col gap-4",
-    "grid-2": "grid grid-cols-1 md:grid-cols-2 gap-4",
-    "grid-3": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3",
-  };
-
   return (
-    <div className={cn(gridClasses[viewMode])}>
+    <div className={cn(GRID_CLASSES[viewMode])}>
       {items.map((item, index) => (
-        <HistoryItem
-          key={item.id}
-          item={item}
-          index={index}
-          viewMode={viewMode}
-          onSearchClick={onSearchClick}
-        />
+        <React.Fragment key={keyExtractor(item)}>
+          {renderItem(item, index)}
+        </React.Fragment>
       ))}
     </div>
   );

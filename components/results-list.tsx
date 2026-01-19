@@ -31,7 +31,7 @@ import { SearchCommandCenter } from "./search-command-center";
 import { Loader2 } from "lucide-react";
 
 import { NoResults, LoadingResults } from "@/components/no-results";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningResponses } from "@/lib/types";
 import { FocusMode } from "./ui/focus-mode";

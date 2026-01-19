@@ -5,21 +5,27 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface HistoryPaginationProps {
+interface CommandCenterPaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   totalItems: number;
   itemsPerPage: number;
+  itemLabel: string;
 }
 
-export function HistoryPagination({
+/**
+ * Shared pagination component for command centers.
+ * Shows page info, page numbers, and prev/next buttons.
+ */
+export function CommandCenterPagination({
   currentPage,
   totalPages,
   onPageChange,
   totalItems,
   itemsPerPage,
-}: HistoryPaginationProps) {
+  itemLabel,
+}: CommandCenterPaginationProps) {
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -72,7 +78,7 @@ export function HistoryPagination({
           {startItem}-{endItem}
         </span>{" "}
         of <span className="font-medium text-foreground">{totalItems}</span>{" "}
-        searches
+        {itemLabel}
       </p>
 
       {/* Pagination controls */}
