@@ -31,8 +31,8 @@ interface UseBatchOperationConfig<TInput, TResult, TContext> {
   buildExecuteInput: (papers: Paper[], context: TContext) => TInput;
   /** Handle a single result */
   handleResult: (paperId: string, result: TResult, context: TContext) => void;
-  /** Dependencies that should trigger a reset of the fetched keys */
-  resetDeps: any[];
+  /** Stable context ID for comparison (avoids JSON.stringify on every render) */
+  contextId: string;
   /** Current context value for race condition detection */
   context: TContext;
   /** Whether we can start processing */
@@ -56,8 +56,8 @@ interface UseBatchOperationReturn<TLoadingState> {
  * Key safeguards:
  * 1. Uses a stable batchKey for deduplication
  * 2. Tracks fetched keys in a ref to prevent duplicate fetches
- * 3. Clears the ref when reset dependencies change
- * 4. Uses contextRef to prevent race conditions when context changes mid-flight
+ * 3. Clears the ref when contextId changes
+ * 4. Uses contextId for O(1) comparison instead of JSON.stringify
  * 5. Exposes errors for UI feedback
  */
 export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
@@ -67,7 +67,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   filterItemsNeedingProcessing,
   buildExecuteInput,
   handleResult,
-  resetDeps,
+  contextId,
   context,
   canStart,
   papers,
@@ -83,7 +83,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   const [errors, setErrors] = useState<BatchError[]>([]);
   const fetchedKeysRef = useRef<Set<string>>(new Set());
   const isFetchingRef = useRef(false);
-  const contextAtFetchRef = useRef<TContext | null>(null);
+  const contextIdAtFetchRef = useRef<string | null>(null);
 
   // Get papers that need processing
   const papersNeedingProcessing = useMemo(
@@ -97,24 +97,23 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     [papersNeedingProcessing, context, computeBatchKey]
   );
 
-  // Stable callback for results - checks context hasn't changed
+  // Stable callback for results - checks context hasn't changed using contextId
   const handleResults = useCallback(
-    (paperId: string, result: TResult, expectedContext: TContext) => {
-      if (JSON.stringify(expectedContext) === JSON.stringify(context)) {
-        handleResult(paperId, result, expectedContext);
+    (paperId: string, result: TResult, expectedContextId: string) => {
+      if (expectedContextId === contextId) {
+        handleResult(paperId, result, context);
       }
     },
-    [handleResult, context]
+    [handleResult, context, contextId]
   );
 
-  // Reset fetched keys and errors when reset dependencies change
+  // Reset fetched keys and errors when contextId changes
   useEffect(() => {
     fetchedKeysRef.current.clear();
     setLoadingState(clearLoadingState());
     setErrors([]);
-    contextAtFetchRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, resetDeps);
+    contextIdAtFetchRef.current = null;
+  }, [contextId, clearLoadingState]);
 
   // Main effect to trigger batch operation
   useEffect(() => {
@@ -124,9 +123,9 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     if (isFetchingRef.current) return;
     if (papersNeedingProcessing.length === 0) return;
 
-    // Capture the context at fetch time to detect race conditions
-    const contextAtFetch = context;
-    contextAtFetchRef.current = contextAtFetch;
+    // Capture the contextId at fetch time to detect race conditions
+    const contextIdAtFetch = contextId;
+    contextIdAtFetchRef.current = contextIdAtFetch;
 
     // Mark as fetching
     fetchedKeysRef.current.add(batchKey);
@@ -135,29 +134,26 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     setLoadingState(createLoadingState(papersNeedingProcessing));
 
     // Build input and execute
-    const input = buildExecuteInput(papersNeedingProcessing, contextAtFetch);
+    const input = buildExecuteInput(papersNeedingProcessing, context);
 
     execute(input)
       .then(({ results, errors: batchErrors }) => {
-        // Check if context changed while we were fetching
-        if (JSON.stringify(contextAtFetchRef.current) !== JSON.stringify(contextAtFetch)) {
-          console.warn("Context changed during fetch, discarding results");
+        // Check if context changed while we were fetching (O(1) string comparison)
+        if (contextIdAtFetchRef.current !== contextIdAtFetch) {
           return;
         }
 
         // Process results
         Object.entries(results).forEach(([paperId, data]) => {
-          handleResults(paperId, data, contextAtFetch);
+          handleResults(paperId, data, contextIdAtFetch);
         });
 
         // Store errors for UI feedback
         if (batchErrors.length > 0) {
-          console.warn("Batch operation had partial failures:", batchErrors);
           setErrors(batchErrors);
         }
       })
       .catch((error) => {
-        console.error("Batch operation failed:", error);
         // Remove from fetched so it can be retried
         fetchedKeysRef.current.delete(batchKey);
         setErrors([{ paperId: "batch", error: error.message || String(error) }]);
@@ -174,6 +170,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     handleResults,
     papersNeedingProcessing,
     context,
+    contextId,
     buildExecuteInput,
     createLoadingState,
     clearLoadingState,

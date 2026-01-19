@@ -115,6 +115,9 @@ export function useBatchScreening({
 
   const context = useMemo(() => ({ searchId }), [searchId]);
 
+  // Stable context ID for O(1) comparison in batch operation
+  const contextId = searchId;
+
   const { loadingState, errors } = useBatchOperation<
     { papers: { id: string; title: string; abstract: string }[]; questions: string[] },
     { responses: Record<string, boolean | null> },
@@ -127,7 +130,7 @@ export function useBatchScreening({
     filterItemsNeedingProcessing,
     buildExecuteInput,
     handleResult,
-    resetDeps: [searchId],
+    contextId,
     context,
     canStart,
     papers,

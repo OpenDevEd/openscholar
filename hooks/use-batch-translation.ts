@@ -104,6 +104,9 @@ export function useBatchTranslation({
     [selectedLanguage]
   );
 
+  // Stable context ID for O(1) comparison in batch operation
+  const contextId = `${searchId}:${selectedLanguage}`;
+
   const effectiveCanStart = canStart && !!selectedLanguage && selectedLanguage !== "en";
 
   const { loadingState, errors } = useBatchOperation<
@@ -118,7 +121,7 @@ export function useBatchTranslation({
     filterItemsNeedingProcessing,
     buildExecuteInput,
     handleResult,
-    resetDeps: [searchId, selectedLanguage],
+    contextId,
     context,
     canStart: effectiveCanStart,
     papers,

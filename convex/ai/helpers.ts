@@ -27,21 +27,6 @@ export async function getModel() {
 }
 
 /**
- * Aggregates multiple Usage objects into a single total.
- */
-export function aggregateUsage(usages: Usage[]): Usage {
-  return usages.reduce(
-    (acc, usage) => ({
-      promptTokens: (acc.promptTokens || 0) + (usage.promptTokens || 0),
-      inputTokens: (acc.inputTokens || 0) + (usage.inputTokens || 0),
-      completionTokens: (acc.completionTokens || 0) + (usage.completionTokens || 0),
-      outputTokens: (acc.outputTokens || 0) + (usage.outputTokens || 0),
-    }),
-    { promptTokens: 0, inputTokens: 0, completionTokens: 0, outputTokens: 0 } as Usage
-  );
-}
-
-/**
  * Batch-aware auth and credits wrapper.
  * Checks auth/credits once, runs the batch handler, then deducts credits based on total usage.
  */
@@ -99,12 +84,14 @@ export async function withAuthAndCredits<T>(
   return result;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createAIAction<
   Args extends PropertyValidators,
   Output,
   AIOutput
 >(
   argsValidator: Args,
+  // Using 'any' for Convex validator due to complex internal type inference
   returnsValidator: any,
   description: string,
   configFactory: (args: ObjectType<Args>) => OperationConfig<ObjectType<Args>, AIOutput>,
@@ -113,7 +100,7 @@ export function createAIAction<
   return action({
     args: argsValidator,
     returns: returnsValidator,
-    handler: async (ctx, args: any) => {
+    handler: async (ctx, args: ObjectType<Args>) => {
       return withAuthAndCredits(ctx, description, async () => {
         const model = await getModel();
         const config = configFactory(args);

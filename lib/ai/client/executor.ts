@@ -2,6 +2,8 @@ import { getProviderModel } from './providers'
 import {
   executeAIOperation,
   AIApiKeyRequiredError,
+  processScreeningBatch,
+  processTranslationBatch,
 } from '../core'
 import {
   getEnhanceQueryConfig,
@@ -19,19 +21,17 @@ import type {
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
 } from '../core/types'
+import type {
+  BatchPaper,
+  BatchScreeningResult,
+  BatchTranslationResult,
+} from '../core/batch-types'
 
 export interface AIConfig {
   provider: AIProvider
   apiKey: string
   model: string
 }
-
-// Re-export input types for backward compatibility or direct use
-export type EnhanceSearchQueryParams = EnhanceSearchQueryInput
-export type GenerateScreeningQuestionsParams = GenerateScreeningQuestionsInput
-export type TranslateQueryParams = TranslateQueryInput
-export type TranslatePaperContentParams = TranslatePaperContentInput
-export type GenerateScreeningResponsesParams = GenerateScreeningResponsesInput
 
 export function createClientExecutor<TParams, TOutput, TResult>(
   configFactory: (params: TParams) => OperationConfig<TParams, TOutput>,
@@ -93,37 +93,17 @@ export const generateScreeningResponses = createClientExecutor(
   })
 )
 
-// Batch screening types
-export interface BatchScreeningPaper {
-  id: string
-  title: string
-  abstract: string
-}
+// ═══════════════════════════════════════════════════════════════
+// BATCH OPERATIONS
+// ═══════════════════════════════════════════════════════════════
 
-export interface GenerateBatchScreeningResponsesParams {
-  papers: BatchScreeningPaper[]
+export interface BatchScreeningParams {
+  papers: BatchPaper[]
   questions: string[]
 }
 
-export interface BatchScreeningResult {
-  results: Record<string, { responses: Record<string, boolean | null>; confidence: number }>
-  errors: Array<{ paperId: string; error: string }>
-}
-
-/**
- * Client-side batch screening executor.
- * Processes multiple papers in parallel using Promise.allSettled for fail-soft behavior.
- * 
- * NOTE: This logic is intentionally duplicated with the server-side action in
- * /convex/ai/actions.ts:generateBatchScreeningResponses. The duplication serves
- * different execution modes:
- * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
- * - Server action: Used when apiKeyMode === 'credits' (platform credits)
- * 
- * If changing batch processing logic, update both locations.
- */
 export async function generateBatchScreeningResponses(
-  params: GenerateBatchScreeningResponsesParams,
+  params: BatchScreeningParams,
   config: AIConfig
 ): Promise<BatchScreeningResult> {
   const { papers, questions } = params
@@ -137,87 +117,23 @@ export async function generateBatchScreeningResponses(
   }
 
   const model = await getProviderModel(config.provider, config.apiKey, config.model)
-  const results: Record<string, { responses: Record<string, boolean | null>; confidence: number }> = {}
-  const errors: Array<{ paperId: string; error: string }> = []
-
-  // Process all papers in parallel
-  const promises = papers.map(async (paper) => {
-    const operationConfig = getScreeningResponsesConfig({
-      title: paper.title,
-      abstract: paper.abstract,
-      questions,
-    })
-
-    const { output } = await executeAIOperation({
-      model,
-      ...operationConfig,
-    })
-
-    return {
-      paperId: paper.id,
-      responses: output.responses as Record<string, boolean | null>,
-      confidence: output.confidence,
-    }
+  
+  const { results, errors } = await processScreeningBatch({
+    model,
+    papers,
+    questions,
   })
-
-  const settledResults = await Promise.allSettled(promises)
-
-  for (let i = 0; i < settledResults.length; i++) {
-    const result = settledResults[i]
-    if (result.status === 'fulfilled') {
-      const { paperId, responses, confidence } = result.value
-      results[paperId] = { responses, confidence }
-    } else {
-      const paperId = papers[i]?.id || 'unknown'
-      const errorMessage = result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-      errors.push({ paperId, error: errorMessage })
-      console.error(`Batch screening error for paper ${paperId}:`, result.reason)
-    }
-  }
 
   return { results, errors }
 }
 
-// Batch translation types
-export interface BatchTranslationPaper {
-  id: string
-  title: string
-  abstract: string
-}
-
-export interface GenerateBatchTranslationsParams {
-  papers: BatchTranslationPaper[]
+export interface BatchTranslationParams {
+  papers: BatchPaper[]
   sourceLanguage: string
 }
 
-export interface TranslationData {
-  translatedTitle: string
-  translatedAbstract: string
-  sourceLanguage: string
-  isAlreadyInEnglish: boolean
-}
-
-export interface BatchTranslationResult {
-  results: Record<string, TranslationData>
-  errors: Array<{ paperId: string; error: string }>
-}
-
-/**
- * Client-side batch translation executor.
- * Processes multiple papers in parallel using Promise.allSettled for fail-soft behavior.
- * 
- * NOTE: This logic is intentionally duplicated with the server-side action in
- * /convex/ai/actions.ts:generateBatchTranslations. The duplication serves
- * different execution modes:
- * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
- * - Server action: Used when apiKeyMode === 'credits' (platform credits)
- * 
- * If changing batch processing logic, update both locations.
- */
 export async function generateBatchTranslations(
-  params: GenerateBatchTranslationsParams,
+  params: BatchTranslationParams,
   config: AIConfig
 ): Promise<BatchTranslationResult> {
   const { papers, sourceLanguage } = params
@@ -231,46 +147,12 @@ export async function generateBatchTranslations(
   }
 
   const model = await getProviderModel(config.provider, config.apiKey, config.model)
-  const results: Record<string, TranslationData> = {}
-  const errors: Array<{ paperId: string; error: string }> = []
-
-  const promises = papers.map(async (paper) => {
-    const operationConfig = getTranslatePaperContentConfig({
-      title: paper.title,
-      abstract: paper.abstract,
-      sourceLanguage,
-    })
-
-    const { output } = await executeAIOperation({
-      model,
-      ...operationConfig,
-    })
-
-    return {
-      paperId: paper.id,
-      translatedTitle: output.translatedTitle,
-      translatedAbstract: output.translatedAbstract,
-      sourceLanguage,
-      isAlreadyInEnglish: false,
-    }
+  
+  const { results, errors } = await processTranslationBatch({
+    model,
+    papers,
+    sourceLanguage,
   })
-
-  const settledResults = await Promise.allSettled(promises)
-
-  for (let i = 0; i < settledResults.length; i++) {
-    const result = settledResults[i]
-    if (result.status === 'fulfilled') {
-      const { paperId, translatedTitle, translatedAbstract, sourceLanguage, isAlreadyInEnglish } = result.value
-      results[paperId] = { translatedTitle, translatedAbstract, sourceLanguage, isAlreadyInEnglish }
-    } else {
-      const paperId = papers[i]?.id || 'unknown'
-      const errorMessage = result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-      errors.push({ paperId, error: errorMessage })
-      console.error(`Batch translation error for paper ${paperId}:`, result.reason)
-    }
-  }
 
   return { results, errors }
 }

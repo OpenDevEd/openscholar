@@ -9,8 +9,12 @@ import {
   getTranslatePaperContentConfig,
   getScreeningResponsesConfig,
 } from "@/lib/ai/core/configs";
-import { executeAIOperation, type Usage } from "@/lib/ai/core";
-import { createAIAction, getModel, aggregateUsage, withAuthAndCreditsBatch } from "./helpers";
+import { 
+  processScreeningBatch, 
+  processTranslationBatch,
+  aggregateUsage,
+} from "@/lib/ai/core";
+import { createAIAction, getModel, withAuthAndCreditsBatch } from "./helpers";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -101,15 +105,7 @@ export const generateScreeningResponses = createAIAction(
 
 /**
  * Batch translation action - processes multiple papers in a single action call.
- * Uses Promise.allSettled for fail-soft behavior (partial results on errors).
- * 
- * NOTE: This logic is intentionally duplicated with the client-side executor in
- * /lib/ai/client/executor.ts:generateBatchTranslations. The duplication serves
- * different execution modes:
- * - Server action: Used when apiKeyMode === 'credits' (platform credits)
- * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
- * 
- * If changing batch processing logic, update both locations.
+ * Uses the shared batch processor factory for consistent behavior with client-side.
  */
 export const generateBatchTranslations = action({
   args: {
@@ -151,49 +147,12 @@ export const generateBatchTranslations = action({
       `Batch translation (${papers.length} papers)`,
       async () => {
         const model = await getModel();
-        const usages: Usage[] = [];
-        const results: Record<string, { translatedTitle: string; translatedAbstract: string; sourceLanguage: string; isAlreadyInEnglish: boolean }> = {};
-        const errors: Array<{ paperId: string; error: string }> = [];
-
-        const promises = papers.map(async (paper) => {
-          const config = getTranslatePaperContentConfig({
-            title: paper.title,
-            abstract: paper.abstract,
-            sourceLanguage,
-          });
-
-          const { output, usage } = await executeAIOperation({
-            model,
-            ...config,
-          });
-
-          return {
-            paperId: paper.id,
-            translatedTitle: output.translatedTitle,
-            translatedAbstract: output.translatedAbstract,
-            sourceLanguage,
-            isAlreadyInEnglish: false,
-            usage,
-          };
+        
+        const { results, errors, usages } = await processTranslationBatch({
+          model,
+          papers,
+          sourceLanguage,
         });
-
-        const settledResults = await Promise.allSettled(promises);
-
-        for (let i = 0; i < settledResults.length; i++) {
-          const result = settledResults[i];
-          if (result.status === "fulfilled") {
-            const { paperId, translatedTitle, translatedAbstract, sourceLanguage, isAlreadyInEnglish, usage } = result.value;
-            results[paperId] = { translatedTitle, translatedAbstract, sourceLanguage, isAlreadyInEnglish };
-            usages.push(usage);
-          } else {
-            const paperId = papers[i]?.id || "unknown";
-            const errorMessage = result.reason instanceof Error 
-              ? result.reason.message 
-              : String(result.reason);
-            errors.push({ paperId, error: errorMessage });
-            console.error(`Batch translation error for paper ${paperId}:`, result.reason);
-          }
-        }
 
         return {
           result: { results, errors },
@@ -206,15 +165,7 @@ export const generateBatchTranslations = action({
 
 /**
  * Batch screening action - processes multiple papers in a single action call.
- * Uses Promise.allSettled for fail-soft behavior (partial results on errors).
- * 
- * NOTE: This logic is intentionally duplicated with the client-side executor in
- * /lib/ai/client/executor.ts:generateBatchScreeningResponses. The duplication serves
- * different execution modes:
- * - Server action: Used when apiKeyMode === 'credits' (platform credits)
- * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
- * 
- * If changing batch processing logic, update both locations.
+ * Uses the shared batch processor factory for consistent behavior with client-side.
  */
 export const generateBatchScreeningResponses = action({
   args: {
@@ -255,48 +206,12 @@ export const generateBatchScreeningResponses = action({
       `Batch screening (${papers.length} papers)`,
       async () => {
         const model = await getModel();
-        const usages: Usage[] = [];
-        const results: Record<string, { responses: Record<string, boolean | null>; confidence: number }> = {};
-        const errors: Array<{ paperId: string; error: string }> = [];
-
-        // Process all papers in parallel using Promise.allSettled for fail-soft behavior
-        const promises = papers.map(async (paper) => {
-          const config = getScreeningResponsesConfig({
-            title: paper.title,
-            abstract: paper.abstract,
-            questions,
-          });
-
-          const { output, usage } = await executeAIOperation({
-            model,
-            ...config,
-          });
-
-          return {
-            paperId: paper.id,
-            responses: output.responses as Record<string, boolean | null>,
-            confidence: output.confidence,
-            usage,
-          };
+        
+        const { results, errors, usages } = await processScreeningBatch({
+          model,
+          papers,
+          questions,
         });
-
-        const settledResults = await Promise.allSettled(promises);
-
-        for (let i = 0; i < settledResults.length; i++) {
-          const result = settledResults[i];
-          if (result.status === "fulfilled") {
-            const { paperId, responses, confidence, usage } = result.value;
-            results[paperId] = { responses, confidence };
-            usages.push(usage);
-          } else {
-            const paperId = papers[i]?.id || "unknown";
-            const errorMessage = result.reason instanceof Error 
-              ? result.reason.message 
-              : String(result.reason);
-            errors.push({ paperId, error: errorMessage });
-            console.error(`Batch screening error for paper ${paperId}:`, result.reason);
-          }
-        }
 
         return {
           result: { results, errors },

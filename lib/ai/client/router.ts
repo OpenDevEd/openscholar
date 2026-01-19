@@ -3,30 +3,33 @@
 import { api } from '@/convex/_generated/api'
 import * as clientExecutor from './executor'
 import { createAIHook } from './hook-factory'
+
+// Import types from their canonical locations
 import type {
-  EnhanceSearchQueryParams,
-  GenerateScreeningQuestionsParams,
-  TranslateQueryParams,
-  TranslatePaperContentParams,
-  GenerateScreeningResponsesParams,
-  GenerateBatchScreeningResponsesParams,
+  EnhanceSearchQueryInput,
+  GenerateScreeningQuestionsInput,
+  TranslateQueryInput,
+  TranslatePaperContentInput,
+  GenerateScreeningResponsesInput,
+} from '../core/types'
+import type {
   BatchScreeningResult,
-  GenerateBatchTranslationsParams,
   BatchTranslationResult,
+} from '../core/batch-types'
+import type {
+  BatchScreeningParams,
+  BatchTranslationParams,
 } from './executor'
 
-// Re-export param types for convenience
-export type {
-  EnhanceSearchQueryParams,
-  GenerateScreeningQuestionsParams,
-  TranslateQueryParams,
-  TranslatePaperContentParams,
-  GenerateScreeningResponsesParams,
-  GenerateBatchScreeningResponsesParams,
-  BatchScreeningResult,
-  GenerateBatchTranslationsParams,
-  BatchTranslationResult,
-}
+// Export types for external consumers
+export type EnhanceSearchQueryParams = EnhanceSearchQueryInput
+export type GenerateScreeningQuestionsParams = GenerateScreeningQuestionsInput
+export type TranslateQueryParams = TranslateQueryInput
+export type TranslatePaperContentParams = TranslatePaperContentInput
+export type GenerateScreeningResponsesParams = GenerateScreeningResponsesInput
+export type GenerateBatchScreeningResponsesParams = BatchScreeningParams
+export type GenerateBatchTranslationsParams = BatchTranslationParams
+export type { BatchScreeningResult, BatchTranslationResult }
 
 export type AIKeyMode = 'local' | 'credits'
 
