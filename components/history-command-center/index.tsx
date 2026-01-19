@@ -8,7 +8,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useSearchHistoryStore, useUIStore } from "@/lib/store";
 import { restoreFromHistory } from "@/lib/search/actions";
-import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
+import {
+  jsonToCSV,
+  downloadAsFile,
+  uploadFile,
+  triggerFileUpload,
+} from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
 import { toasts } from "@/lib/toast-utils";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -35,11 +40,17 @@ export function HistoryCommandCenter() {
   const [searchFilter, setSearchFilter] = useState("");
   const [currentPage, setCurrentPage] = useQueryState(
     "page",
-    parseAsInteger.withDefault(1)
+    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
   );
 
-  const { searchHistory, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
-  const { historyViewMode, setHistoryViewMode, historySortBy, setHistorySortBy } = useUIStore();
+  const { searchHistory, clearSearchHistory, importSearchHistory } =
+    useSearchHistoryStore();
+  const {
+    historyViewMode,
+    setHistoryViewMode,
+    historySortBy,
+    setHistorySortBy,
+  } = useUIStore();
 
   // Filter history
   const filteredHistory = useMemo(() => {
@@ -48,7 +59,7 @@ export function HistoryCommandCenter() {
     return searchHistory.filter((item) => {
       const matchesQuery = item.query?.toLowerCase().includes(query);
       const matchesQuestion = item.questionHistory?.some((q) =>
-        q.question?.toLowerCase().includes(query)
+        q.question?.toLowerCase().includes(query),
       );
       return matchesQuery || matchesQuestion;
     });
@@ -61,7 +72,7 @@ export function HistoryCommandCenter() {
       case "oldest":
         return sorted.sort(
           (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
       case "most":
         return sorted.sort((a, b) => (b.count || 0) - (a.count || 0));
@@ -71,13 +82,15 @@ export function HistoryCommandCenter() {
       default:
         return sorted.sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
     }
   }, [filteredHistory, historySortBy]);
 
   // Pagination
-  const totalPages = Math.ceil(sortedHistory.length / COMMAND_CENTER_ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(
+    sortedHistory.length / COMMAND_CENTER_ITEMS_PER_PAGE,
+  );
   const paginatedHistory = useMemo(() => {
     const start = (currentPage - 1) * COMMAND_CENTER_ITEMS_PER_PAGE;
     return sortedHistory.slice(start, start + COMMAND_CENTER_ITEMS_PER_PAGE);
@@ -106,7 +119,11 @@ export function HistoryCommandCenter() {
           field: item.field,
         };
       });
-      downloadAsFile(JSON.stringify(data, null, 2), "search_history.json", "json");
+      downloadAsFile(
+        JSON.stringify(data, null, 2),
+        "search_history.json",
+        "json",
+      );
       toasts.download.success(data.length, "search entries", "JSON");
     } catch {
       toasts.download.error("JSON");

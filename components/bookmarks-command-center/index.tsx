@@ -3,8 +3,17 @@
 import React, { useState, useMemo } from "react";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { BookOpen } from "lucide-react";
-import { useKeywordExpansionStore, useKeywordExpansionDialogStore, useUIStore } from "@/lib/store";
-import { jsonToCSV, downloadAsFile, triggerFileUpload, uploadFile } from "@/lib/utils";
+import {
+  useKeywordExpansionStore,
+  useKeywordExpansionDialogStore,
+  useUIStore,
+} from "@/lib/store";
+import {
+  jsonToCSV,
+  downloadAsFile,
+  triggerFileUpload,
+  uploadFile,
+} from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
 import { toasts } from "@/lib/toast-utils";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
@@ -39,12 +48,23 @@ export function BookmarksCommandCenter() {
   const [editingBookmark, setEditingBookmark] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useQueryState(
     "page",
-    parseAsInteger.withDefault(1)
+    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
   );
 
-  const { keywords, updateKeyword, removeKeyword, clearKeywords, importKeywords } = useKeywordExpansionStore();
+  const {
+    keywords,
+    updateKeyword,
+    removeKeyword,
+    clearKeywords,
+    importKeywords,
+  } = useKeywordExpansionStore();
   const { suggestedQuery } = useKeywordExpansionDialogStore();
-  const { bookmarkViewMode, setBookmarkViewMode, bookmarkSortBy, setBookmarkSortBy } = useUIStore();
+  const {
+    bookmarkViewMode,
+    setBookmarkViewMode,
+    bookmarkSortBy,
+    setBookmarkSortBy,
+  } = useUIStore();
 
   // Convert keywords object to array
   const bookmarksArray: BookmarkEntry[] = useMemo(() => {
@@ -83,7 +103,9 @@ export function BookmarksCommandCenter() {
   }, [filteredBookmarks, bookmarkSortBy]);
 
   // Pagination
-  const totalPages = Math.ceil(sortedBookmarks.length / COMMAND_CENTER_ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(
+    sortedBookmarks.length / COMMAND_CENTER_ITEMS_PER_PAGE,
+  );
   const paginatedBookmarks = useMemo(() => {
     const start = (currentPage - 1) * COMMAND_CENTER_ITEMS_PER_PAGE;
     return sortedBookmarks.slice(start, start + COMMAND_CENTER_ITEMS_PER_PAGE);
@@ -235,7 +257,9 @@ export function BookmarksCommandCenter() {
               viewMode={bookmarkViewMode}
               isEditing={editingBookmark === bookmark.name}
               onEdit={() => handleEdit(bookmark.name)}
-              onSaveEdit={(newExpansion) => handleSaveEdit(bookmark.name, newExpansion)}
+              onSaveEdit={(newExpansion) =>
+                handleSaveEdit(bookmark.name, newExpansion)
+              }
               onCancelEdit={handleCancelEdit}
               onDelete={() => handleDelete(bookmark.name)}
             />
