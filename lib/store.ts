@@ -112,7 +112,7 @@ interface KeywordExpansionState {
 }
 
 interface AIConfigState {
-  provider: 'openai' | 'google' | 'anthropic' | 'openrouter'
+  provider: AIProvider
   model: string
   apiKey: string
   apiKeyMode: 'local' | 'credits'

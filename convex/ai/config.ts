@@ -1,4 +1,4 @@
 export const SERVER_AI_CONFIG = {
-  provider: 'deepseek' as const,
-  model: 'deepseek-chat',
+  provider: (process.env.AI_PROVIDER || 'deepseek') as 'deepseek' | 'openai' | 'anthropic',
+  model: process.env.AI_MODEL || 'deepseek-chat',
 } as const

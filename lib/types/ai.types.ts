@@ -6,7 +6,7 @@
 /**
  * Supported AI providers for query enhancement and screening
  */
-export type AIProvider = 'openai' | 'google' | 'anthropic' | 'openrouter';
+export type AIProvider = 'openai' | 'google' | 'anthropic' | 'openrouter' | 'deepseek';
 
 /**
  * AI model definition

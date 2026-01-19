@@ -277,6 +277,29 @@ const PROVIDER_CONFIGS: Record<AIProvider, AIProviderConfig> = {
     apiKeyPlaceholder: 'Enter your Anthropic API key',
     apiKeyUrl: 'https://console.anthropic.com/settings/keys',
   },
+  deepseek: {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    description: 'Access DeepSeek\'s models',
+    models: [
+      {
+        id: 'deepseek-chat',
+        name: 'DeepSeek Chat',
+        provider: 'deepseek',
+        description: 'DeepSeek Chat model',
+        pricing: { input: 0.14, output: 0.28 },
+      },
+      {
+        id: 'deepseek-coder',
+        name: 'DeepSeek Coder',
+        provider: 'deepseek',
+        description: 'DeepSeek Coder model',
+        pricing: { input: 0.14, output: 0.28 },
+      }
+    ],
+    apiKeyPlaceholder: 'Enter your DeepSeek API key',
+    apiKeyUrl: 'https://platform.deepseek.com/api_keys',
+  },
   openrouter: {
     id: 'openrouter',
     name: 'OpenRouter',
@@ -291,6 +314,7 @@ const DEFAULT_MODELS: Record<AIProvider, string> = {
   openai: 'gpt-5.2',
   google: 'gemini-3-flash-preview',
   anthropic: 'claude-sonnet-4-5',
+  deepseek: 'deepseek-chat',
   openrouter: 'anthropic/claude-sonnet-4-5',
 }
 
