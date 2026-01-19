@@ -4,20 +4,23 @@ import { SidebarNav } from "@/components/settings/sidebar-nav";
 import { PageWrapper } from "@/components/PageWrapper";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Settings } from "lucide-react";
+import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
 
 const sidebarNavItems = [
   {
     title: "General",
     href: "/settings",
+    icon: Settings2,
   },
   {
     title: "AI",
     href: "/settings/ai",
+    icon: Bot,
   },
   {
     title: "Billing",
     href: "/settings/billing",
+    icon: CreditCard,
   },
 ];
 

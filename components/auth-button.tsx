@@ -172,8 +172,8 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
 
         <DropdownMenuSeparator />
 
-        <div className="px-2 py-1.5">
-          <div className="flex items-center justify-between mb-2">
+        <div className="px-2 py-1.5 space-y-2">
+          <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">
               Plan
             </span>
@@ -188,7 +188,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
 
           {/* Credits display */}
           {credits && credits.total > 0 && (
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
                 Credits
               </span>
