@@ -100,12 +100,16 @@ export const generateScreeningResponses = createAIAction(
 );
 
 /**
- * Batch screening action - processes multiple papers in a single action call.
- * Uses Promise.allSettled for fail-soft behavior (partial results on errors).
- */
-/**
  * Batch translation action - processes multiple papers in a single action call.
  * Uses Promise.allSettled for fail-soft behavior (partial results on errors).
+ * 
+ * NOTE: This logic is intentionally duplicated with the client-side executor in
+ * /lib/ai/client/executor.ts:generateBatchTranslations. The duplication serves
+ * different execution modes:
+ * - Server action: Used when apiKeyMode === 'credits' (platform credits)
+ * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
+ * 
+ * If changing batch processing logic, update both locations.
  */
 export const generateBatchTranslations = action({
   args: {
@@ -203,6 +207,14 @@ export const generateBatchTranslations = action({
 /**
  * Batch screening action - processes multiple papers in a single action call.
  * Uses Promise.allSettled for fail-soft behavior (partial results on errors).
+ * 
+ * NOTE: This logic is intentionally duplicated with the client-side executor in
+ * /lib/ai/client/executor.ts:generateBatchScreeningResponses. The duplication serves
+ * different execution modes:
+ * - Server action: Used when apiKeyMode === 'credits' (platform credits)
+ * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
+ * 
+ * If changing batch processing logic, update both locations.
  */
 export const generateBatchScreeningResponses = action({
   args: {
@@ -270,16 +282,14 @@ export const generateBatchScreeningResponses = action({
 
         const settledResults = await Promise.allSettled(promises);
 
-        for (const result of settledResults) {
+        for (let i = 0; i < settledResults.length; i++) {
+          const result = settledResults[i];
           if (result.status === "fulfilled") {
             const { paperId, responses, confidence, usage } = result.value;
             results[paperId] = { responses, confidence };
             usages.push(usage);
           } else {
-            // Extract paperId from the error context if possible
-            // Since we're iterating in order, we can match by index
-            const index = settledResults.indexOf(result);
-            const paperId = papers[index]?.id || "unknown";
+            const paperId = papers[i]?.id || "unknown";
             const errorMessage = result.reason instanceof Error 
               ? result.reason.message 
               : String(result.reason);

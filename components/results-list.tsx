@@ -78,6 +78,7 @@ export const ScreeningContext = createContext<{
   missingResponses?: Record<string, string[]>;
   loadingQuestions?: Record<string, Set<string>>;  // paperId -> Set<questionText>
   existingResponses?: ScreeningResponses;
+  errors?: Array<{ paperId: string; error: string }>;
   setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
   setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
   canStartScreening?: boolean;
@@ -85,6 +86,7 @@ export const ScreeningContext = createContext<{
 
 export const TranslationContext = createContext<{
   loadingPaperIds?: Set<string>;
+  errors?: Array<{ paperId: string; error: string }>;
 }>({});
 
 function PapersList({
@@ -440,10 +442,9 @@ export function ResultsList({
   );
 
   // Use batch screening hook
-  const { loadingQuestions } = useBatchScreening({
+  const { loadingQuestions, errors: screeningErrors } = useBatchScreening({
     searchId: searchId || "",
     papers: papersForBatchScreening,
-    screeningQuestions: (currentSearchResult?.screeningQuestions || []).map(q => q.question),
     missingResponses,
     canStart: canStartScreening && !!searchId,
     onResults: handleBatchResults,
@@ -453,7 +454,7 @@ export function ResultsList({
   const selectedLanguage = search.params.lang ?? "";
 
   // Use batch translation hook
-  const { loadingPaperIds: translationLoadingPaperIds } = useBatchTranslation({
+  const { loadingPaperIds: translationLoadingPaperIds, errors: translationErrors } = useBatchTranslation({
     searchId: searchId || "",
     papers: papersForBatchScreening,
     selectedLanguage,
@@ -481,12 +482,13 @@ export function ResultsList({
   };
 
   return (
-    <TranslationContext.Provider value={{ loadingPaperIds: translationLoadingPaperIds }}>
+    <TranslationContext.Provider value={{ loadingPaperIds: translationLoadingPaperIds, errors: translationErrors }}>
     <ScreeningContext.Provider
       value={{
         missingResponses,
         loadingQuestions,
         existingResponses: currentSearchResult?.screeningResponses || {},
+        errors: screeningErrors,
         setScreeningResponse: (paperId, question, response) => {
           setScreeningResponse(searchId || "", paperId, question, response);
         },

@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:stripe": "stripe listen --forward-to http://127.0.0.1:3211/webhooks/stripe",
+    "dev:convex": "convex dev",
+    "dev:all": "pm2 start ecosystem.config.js",
     "build": "next build",
     "start": "next start"
   },

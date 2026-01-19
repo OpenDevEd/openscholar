@@ -113,6 +113,14 @@ export interface BatchScreeningResult {
 /**
  * Client-side batch screening executor.
  * Processes multiple papers in parallel using Promise.allSettled for fail-soft behavior.
+ * 
+ * NOTE: This logic is intentionally duplicated with the server-side action in
+ * /convex/ai/actions.ts:generateBatchScreeningResponses. The duplication serves
+ * different execution modes:
+ * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
+ * - Server action: Used when apiKeyMode === 'credits' (platform credits)
+ * 
+ * If changing batch processing logic, update both locations.
  */
 export async function generateBatchScreeningResponses(
   params: GenerateBatchScreeningResponsesParams,
@@ -199,6 +207,14 @@ export interface BatchTranslationResult {
 /**
  * Client-side batch translation executor.
  * Processes multiple papers in parallel using Promise.allSettled for fail-soft behavior.
+ * 
+ * NOTE: This logic is intentionally duplicated with the server-side action in
+ * /convex/ai/actions.ts:generateBatchTranslations. The duplication serves
+ * different execution modes:
+ * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
+ * - Server action: Used when apiKeyMode === 'credits' (platform credits)
+ * 
+ * If changing batch processing logic, update both locations.
  */
 export async function generateBatchTranslations(
   params: GenerateBatchTranslationsParams,
