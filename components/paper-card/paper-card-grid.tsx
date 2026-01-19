@@ -46,7 +46,7 @@ export function PaperCardGrid({
   const {
     screeningQuestions,
     myExistingResponses,
-    myLoadingResponses,
+    myLoadingQuestions,
     myMissingResponses,
   } = useScreening(result);
 
@@ -149,7 +149,7 @@ export function PaperCardGrid({
             >
               {screeningQuestions.map((question, index) => {
                 const isQuestionAnswered = myExistingResponses[question.question];
-                const isQuestionLoading = myLoadingResponses[question.question];
+                const isQuestionLoading = myLoadingQuestions.has(question.question);
                 const isQuestionMissing = myMissingResponses.includes(question.question);
                 const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
 

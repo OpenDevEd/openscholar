@@ -2,7 +2,7 @@
 
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, User, Crown, CreditCard } from "lucide-react";
+import { LogIn, LogOut, User, Crown, CreditCard, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -232,7 +232,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           }}
           className="cursor-pointer"
         >
-          <User className="h-4 w-4 mr-2" />
+          <Settings className="h-4 w-4 mr-2" />
           Settings
         </DropdownMenuItem>
 

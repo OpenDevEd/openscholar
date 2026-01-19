@@ -23,7 +23,10 @@ function useIsConfigured(): boolean {
 
 function useLocalConfig(): AIConfig {
   const { provider, apiKey, model } = useAIConfigStore()
-  return { provider, apiKey, model }
+  return useMemo(
+    () => ({ provider, apiKey, model }),
+    [provider, apiKey, model]
+  )
 }
 
 export function createAIHook<TParams extends Record<string, any>, TResult>(

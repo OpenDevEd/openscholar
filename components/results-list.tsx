@@ -6,6 +6,7 @@ import React, {
   useState,
   useMemo,
   createContext,
+  useCallback,
 } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -36,6 +37,8 @@ import { ScreeningResponses } from "@/lib/types";
 import { FocusMode } from "./ui/focus-mode";
 import { downloadEssentialItem, downloadItem } from "@/lib/search-actions";
 import { useIsTablet } from "@/lib/hooks";
+import { useBatchScreening } from "@/hooks/use-batch-screening";
+import { useBatchTranslation } from "@/hooks/use-batch-translation";
 
 interface PapersListProps {
   results: any[];
@@ -73,11 +76,15 @@ interface ResultsListProps {
 
 export const ScreeningContext = createContext<{
   missingResponses?: Record<string, string[]>;
-  loadingResponses?: Record<string, Record<string, boolean>>;
+  loadingQuestions?: Record<string, Set<string>>;  // paperId -> Set<questionText>
   existingResponses?: ScreeningResponses;
   setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
   setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
   canStartScreening?: boolean;
+}>({});
+
+export const TranslationContext = createContext<{
+  loadingPaperIds?: Set<string>;
 }>({});
 
 function PapersList({
@@ -337,9 +344,6 @@ export function ResultsList({
 
   const { ratings } = useRatingsStore();
   const resultsContainerRef = useRef<HTMLDivElement>(null);
-  const [combinationLoading, setCombinationLoading] = useState<
-    Record<string, Record<string, boolean>>
-  >({});
   const [canStartScreening, setCanStartScreening] = useState(false);
 
   const pathname = usePathname();
@@ -400,29 +404,61 @@ export function ResultsList({
     [filteredResults, currentPage]
   );
 
-  const missingResponses = useMemo(() => {
-    let resultsToCheck = paginatedResults;
+  // Calculate which papers to batch screen
+  // In focus mode: batch the group of 20 containing the focused paper
+  // In normal mode: batch the current page
+  const papersForBatchScreening = useMemo(() => {
     if (isFocusModeOpen) {
-      const currentlyFocusedPaper = filteredResults[focusModeIndex];
-      if (
-        paginatedResults.some((result: any) => result.id !== currentlyFocusedPaper.id)
-      ) {
-        resultsToCheck = [currentlyFocusedPaper];
-      }
+      // Batch in groups of 20 based on focus index
+      const batchStart = Math.floor(focusModeIndex / ITEMS_PER_PAGE) * ITEMS_PER_PAGE;
+      const batchEnd = Math.min(batchStart + ITEMS_PER_PAGE, filteredResults.length);
+      return filteredResults.slice(batchStart, batchEnd);
     }
+    return paginatedResults;
+  }, [isFocusModeOpen, focusModeIndex, filteredResults, paginatedResults]);
+
+  const missingResponses = useMemo(() => {
     return generateMissingScreeningCombinationsByPaper(
-      resultsToCheck,
+      papersForBatchScreening,
       currentSearchResult?.screeningQuestions || [],
       currentSearchResult?.screeningResponses || {}
     );
   }, [
-    paginatedResults,
+    papersForBatchScreening,
     currentSearchResult?.screeningQuestions,
     currentSearchResult?.screeningResponses,
-    isFocusModeOpen,
-    focusModeIndex,
-    filteredResults,
   ]);
+
+  // Stable callback for batch screening results
+  const handleBatchResults = useCallback(
+    (paperId: string, responses: Record<string, boolean | null>) => {
+      if (searchId) {
+        setScreeningResponses(searchId, paperId, responses);
+      }
+    },
+    [searchId, setScreeningResponses]
+  );
+
+  // Use batch screening hook
+  const { loadingQuestions } = useBatchScreening({
+    searchId: searchId || "",
+    papers: papersForBatchScreening,
+    screeningQuestions: (currentSearchResult?.screeningQuestions || []).map(q => q.question),
+    missingResponses,
+    canStart: canStartScreening && !!searchId,
+    onResults: handleBatchResults,
+  });
+
+  // Get selected language from URL params
+  const selectedLanguage = search.params.lang ?? "";
+
+  // Use batch translation hook
+  const { loadingPaperIds: translationLoadingPaperIds } = useBatchTranslation({
+    searchId: searchId || "",
+    papers: papersForBatchScreening,
+    selectedLanguage,
+    canStart: canStartScreening && !!searchId,
+  });
 
   // Notify Zotero when results change
   useEffect(() => {
@@ -445,10 +481,11 @@ export function ResultsList({
   };
 
   return (
+    <TranslationContext.Provider value={{ loadingPaperIds: translationLoadingPaperIds }}>
     <ScreeningContext.Provider
       value={{
         missingResponses,
-        loadingResponses: combinationLoading,
+        loadingQuestions,
         existingResponses: currentSearchResult?.screeningResponses || {},
         setScreeningResponse: (paperId, question, response) => {
           setScreeningResponse(searchId || "", paperId, question, response);
@@ -540,5 +577,6 @@ export function ResultsList({
         />
       </div>
     </ScreeningContext.Provider>
+    </TranslationContext.Provider>
   );
 }

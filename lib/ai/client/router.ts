@@ -9,6 +9,10 @@ import type {
   TranslateQueryParams,
   TranslatePaperContentParams,
   GenerateScreeningResponsesParams,
+  GenerateBatchScreeningResponsesParams,
+  BatchScreeningResult,
+  GenerateBatchTranslationsParams,
+  BatchTranslationResult,
 } from './executor'
 
 // Re-export param types for convenience
@@ -18,6 +22,10 @@ export type {
   TranslateQueryParams,
   TranslatePaperContentParams,
   GenerateScreeningResponsesParams,
+  GenerateBatchScreeningResponsesParams,
+  BatchScreeningResult,
+  GenerateBatchTranslationsParams,
+  BatchTranslationResult,
 }
 
 export type AIKeyMode = 'local' | 'credits'
@@ -45,4 +53,14 @@ export const useTranslatePaperContent = createAIHook(
 export const useGenerateScreeningResponses = createAIHook(
   api.ai.actions.generateScreeningResponses,
   clientExecutor.generateScreeningResponses
+)
+
+export const useBatchScreeningResponses = createAIHook(
+  api.ai.actions.generateBatchScreeningResponses,
+  clientExecutor.generateBatchScreeningResponses
+)
+
+export const useBatchTranslations = createAIHook(
+  api.ai.actions.generateBatchTranslations,
+  clientExecutor.generateBatchTranslations
 )

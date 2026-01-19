@@ -83,14 +83,16 @@ export function finalState(
   isQuestionLoading: boolean,
   isQuestionMissing: boolean
 ): "checked" | "crossed" | "unchecked" | "loading" {
-  if (isQuestionLoading) return "loading";
-  if (isQuestionMissing) return "unchecked";
+  // Priority: answered > loading > missing
+  // Questions with answers should never show spinner
   if (isQuestionAnswered != null)
     return isQuestionAnswered === true
       ? "checked"
       : isQuestionAnswered === false
       ? "crossed"
       : "unchecked";
+  if (isQuestionLoading) return "loading";
+  if (isQuestionMissing) return "unchecked";
   return "unchecked";
 }
 
@@ -178,7 +180,7 @@ export function ScreeningResponses({
   const {
     screeningQuestions,
     myExistingResponses,
-    myLoadingResponses,
+    myLoadingQuestions,
     myMissingResponses,
   } = useScreening(data);
 
@@ -211,7 +213,7 @@ export function ScreeningResponses({
       <div className="flex items-center gap-1 flex-wrap">
         {screeningQuestions.map((question, index) => {
           const isQuestionAnswered = myExistingResponses[question.question];
-          const isQuestionLoading = myLoadingResponses[question.question];
+          const isQuestionLoading = myLoadingQuestions.has(question.question);
           const isQuestionMissing = myMissingResponses.includes(question.question);
           const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
 
@@ -235,7 +237,7 @@ export function ScreeningResponses({
       <div className="flex flex-wrap gap-2 items-center">
         {screeningQuestions.map((question, index) => {
           const isQuestionAnswered = myExistingResponses[question.question];
-          const isQuestionLoading = myLoadingResponses[question.question];
+          const isQuestionLoading = myLoadingQuestions.has(question.question);
           const isQuestionMissing = myMissingResponses.includes(question.question);
           const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
 
@@ -315,7 +317,7 @@ export function ScreeningResponses({
               <tbody>
                 {screeningQuestions.map((question, index) => {
                   const isQuestionAnswered = myExistingResponses[question.question];
-                  const isQuestionLoading = myLoadingResponses[question.question];
+                  const isQuestionLoading = myLoadingQuestions.has(question.question);
                   const isQuestionMissing = myMissingResponses.includes(question.question);
                   const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
                   const statusText =

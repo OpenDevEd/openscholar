@@ -5,16 +5,11 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   useTranslationStore,
   useSearchHistoryStore,
-  useTransientScreeningStore,
 } from "@/lib/store";
 import { useSearchOptional } from "@/lib/search";
 import { createCitationSearch } from "@/lib/search";
 import { getEffectiveSearchId } from "@/lib/utils";
-import { useTranslatePaperContent, useGenerateScreeningResponses } from "@/lib/ai/client/router";
-import { toast } from "sonner";
-import useSWRImmutable from "swr/immutable";
-import { ScreeningContext } from "@/components/results-list";
-import { NO_ABSTRACT, NO_TITLE } from "@/lib/constants";
+import { ScreeningContext, TranslationContext } from "@/components/results-list";
 
 // ==================== Types ====================
 
@@ -52,25 +47,31 @@ export interface TranslationContent {
 
 // ==================== useTranslate ====================
 
+/**
+ * Hook for reading translation state from the store and context.
+ * Translation is triggered by useBatchTranslation in results-list.tsx.
+ * This hook is now a pure "reader" - it doesn't trigger translations.
+ */
 export function useTranslate(
   data: { id: string; title: string; abstract: string } | undefined,
-  autoSet: boolean = true
+  _autoSet: boolean = true
 ) {
   const search = useSearchOptional();
   const selectedLanguage = search?.params?.lang ?? '';
 
-  // Use the new router hook
-  const { execute: translateContent, isConfigured } = useTranslatePaperContent();
+  // Use selectors to subscribe to specific translation data
+  const translatedContent = useTranslationStore(
+    (state) => (data?.id ? state.translations[data.id] || null : null)
+  );
+  const showTranslated = useTranslationStore(
+    (state) => (data?.id ? state.showTranslations[data.id] || false : false)
+  );
+  const setShowTranslatedStore = useTranslationStore((state) => state.setShowTranslated);
 
-  const {
-    getTranslation,
-    setTranslation,
-    getShowTranslated,
-    setShowTranslated: setShowTranslatedStore,
-  } = useTranslationStore();
+  // Get loading state from context (provided by useBatchTranslation)
+  const { loadingPaperIds } = useContext(TranslationContext);
 
-  const translatedContent = data?.id ? getTranslation(data.id) : null;
-  const showTranslated = data?.id ? getShowTranslated(data.id) : false;
+  const isTranslating = data?.id ? (loadingPaperIds?.has(data.id) ?? false) : false;
 
   const setShowTranslated = useCallback(
     (show: boolean) => {
@@ -79,38 +80,6 @@ export function useTranslate(
       }
     },
     [data?.id, setShowTranslatedStore]
-  );
-
-  const handleTranslateContent = useCallback(async () => {
-    const needsTranslation =
-      !!selectedLanguage &&
-      selectedLanguage !== "en" &&
-      (!translatedContent ||
-        translatedContent.sourceLanguage !== selectedLanguage);
-
-    if (!isConfigured || !data?.id || !needsTranslation) {
-      return;
-    }
-
-    try {
-      const translation = await translateContent({
-        title: data.title || NO_TITLE,
-        abstract: data.abstract || NO_ABSTRACT,
-        sourceLanguage: selectedLanguage,
-      });
-
-      setTranslation(data?.id, translation);
-      if (autoSet) {
-        setShowTranslated(true);
-      }
-    } catch (error) {
-      console.error("Translation error:", error);
-    }
-  }, [data?.id, data?.title, data?.abstract, translatedContent, selectedLanguage, isConfigured, translateContent, setTranslation, autoSet, setShowTranslated]);
-
-  const { isLoading: isTranslating } = useSWRImmutable(
-    data?.id ? `translation-${data.id}` : null,
-    () => handleTranslateContent()
   );
 
   return {
@@ -138,74 +107,26 @@ export function useScreening(data: {
   const {
     missingResponses,
     existingResponses,
-    setScreeningResponses,
-    canStartScreening,
+    loadingQuestions,
   } = useContext(ScreeningContext);
 
   const myExistingResponses = existingResponses?.[data.id] || {};
   const myMissingResponses = missingResponses?.[data.id] || [];
-
-  const { testIndexPerQuestion } = useTransientScreeningStore();
-
-  const stableMyMissingResponses = JSON.stringify(
-    myMissingResponses.map(
-      (question) => question + "#" + (testIndexPerQuestion[question] || 0)
-    )
-  );
+  // Get the set of loading questions for this paper (or empty set)
+  const myLoadingQuestions = loadingQuestions?.[data.id] ?? new Set<string>();
 
   const screeningQuestions = searchResult?.screeningQuestions || [];
   const screeningResponses = searchResult?.screeningResponses || {};
-
-  // Use the new router hook
-  const { execute: generateResponses, isConfigured } = useGenerateScreeningResponses();
-
-  const startScreening = useCallback(async (): Promise<
-    | { responses: Record<string, boolean | null>; confidence: number }
-    | undefined
-  > => {
-    if (isConfigured && myMissingResponses.length > 0) {
-      try {
-        const result = await generateResponses({
-          title: data.title || NO_TITLE,
-          abstract: data.abstract || NO_ABSTRACT,
-          questions: myMissingResponses,
-        });
-
-        if (setScreeningResponses) {
-          setScreeningResponses(data.id, result.responses);
-        }
-
-        return result;
-      } catch (error) {
-        console.error("Error generating screening responses:", error);
-        toast.error(
-          "Failed to generate screening responses. Please check your configuration and try again."
-        );
-      }
-    }
-  }, [data.title, data.abstract, myMissingResponses, isConfigured, generateResponses, setScreeningResponses, data.id]);
-
-  const { isLoading: isScreening } = useSWRImmutable(
-    data.id && canStartScreening
-      ? ["screening", data.id, stableMyMissingResponses]
-      : null,
-    () => startScreening(),
-    {}
-  );
 
   return {
     screeningQuestions,
     screeningResponses,
     myExistingResponses,
-    myLoadingResponses: (isScreening
-      ? myMissingResponses.reduce(
-          (acc, question) => ({ ...acc, [question]: true }),
-          {}
-        )
-      : {}) as Record<string, boolean>,
+    myLoadingQuestions,
     myMissingResponses,
   };
 }
+
 
 // ==================== useCitationHandlers ====================
 

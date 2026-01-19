@@ -982,24 +982,12 @@ export const getFilterSidebarDimensions = (isCollapsed: boolean) => ({
 });
 
 export const useTransientScreeningStore = create<{
-  calledFor: Record<string, boolean>;
-  setCalledFor: (key: string, value: boolean) => void;
-  myLoadingResponses: Record<string, Record<string, boolean>>;
-  getMyLoadingResponses: (key: string) => Record<string, boolean>;
-  setMyLoadingResponses: (key: string, value: Record<string, boolean>) => void;
-  clearMyLoadingResponses: (key: string) => void;
   testIndexPerQuestion: Record<string, number>;
   setTestIndexPerQuestion: (key: string, value: number) => void;
   incrementTestIndexPerQuestion: (key: string) => void;
 }>()(
   persist(
     (set, get) => ({
-      calledFor: {},
-      setCalledFor: (key, value) => set((state) => ({ calledFor: { ...state.calledFor, [key]: value } })),
-      myLoadingResponses: {},
-      getMyLoadingResponses: (key) => get().myLoadingResponses[key] || false,
-      setMyLoadingResponses: (key, value) => set((state) => ({ myLoadingResponses: { ...state.myLoadingResponses, [key]: value } })),
-      clearMyLoadingResponses: (key) => set((state) => ({ myLoadingResponses: { ...state.myLoadingResponses, [key]: {} } })),
       testIndexPerQuestion: {},
       setTestIndexPerQuestion: (key, value) => set((state) => ({ testIndexPerQuestion: { ...state.testIndexPerQuestion, [key]: value } })),
       incrementTestIndexPerQuestion: (key) => set((state) => ({ testIndexPerQuestion: { ...state.testIndexPerQuestion, [key]: (state.testIndexPerQuestion[key] || 0) + 1 } })),
