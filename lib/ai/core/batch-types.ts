@@ -58,3 +58,29 @@ export interface TranslationResultData {
 }
 
 export type BatchTranslationResult = BatchResult<TranslationResultData>
+
+// ═══════════════════════════════════════════════════════════════
+// EXTRACTION BATCH TYPES
+// ═══════════════════════════════════════════════════════════════
+
+export interface ExtractionItem {
+  documentId: string
+  resultId: string
+  title: string
+  abstract: string
+  questionId: string
+  question: string
+  type: 'text' | 'number' | 'boolean'
+}
+
+export interface ExtractionResultData {
+  value: string | number | boolean | null
+  confidence: number
+  reasoning: string
+}
+
+export interface BatchExtractionParams {
+  items: ExtractionItem[]
+}
+
+export type BatchExtractionResult = BatchResult<ExtractionResultData>

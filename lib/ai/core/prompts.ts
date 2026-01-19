@@ -1,4 +1,4 @@
-import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
+import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, ExtractDataInput, ExtractionQuestionType } from './types'
 import { getLanguageName } from './languages'
 
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
@@ -212,5 +212,43 @@ INSTRUCTIONS:
 - If the information needed to answer a question is not present, use null
 
 Provide your screening decisions:`,
+  }
+}
+
+export function buildExtractDataPrompts(input: ExtractDataInput) {
+  const typeInstructions: Record<ExtractionQuestionType, string> = {
+    text: 'Respond with a concise text string (1-3 sentences max). Use null if not found.',
+    number: 'Respond with a numeric value only. Use null if not found or not applicable.',
+    boolean: 'Respond with true or false only. Use null if unclear from the text.',
+  }
+
+  return {
+    system: `You are an expert at extracting structured data from academic papers.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "value": <extracted value matching the expected type>,
+  "confidence": <number 0-1>,
+  "reasoning": "<brief explanation>"
+}
+
+Rules:
+1. Extract ONLY from the provided title and abstract
+2. Be conservative - use null if information is not explicitly stated
+3. Do not infer or assume beyond what is written
+4. Keep reasoning brief (1 sentence)
+5. Confidence should reflect how clearly the answer is stated in the text`,
+    prompt: `Extract the following from this academic paper:
+
+TITLE: "${input.title}"
+
+ABSTRACT: "${input.abstract || 'No abstract available'}"
+
+QUESTION: "${input.question}"
+EXPECTED TYPE: ${input.type}
+
+${typeInstructions[input.type]}
+
+Provide your extraction:`,
   }
 }

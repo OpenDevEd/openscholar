@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenScholar
+
+OpenScholar is an academic search engine built on top of OpenAlex. It combines a 250M+ paper database with AI tools to help researchers find, screen, and organize literature.
+
+It's designed for systematic reviews and complex queries, not just keyword matching.
+
+## Features
+
+### Search & Discovery
+
+- **Smart Querying:** Write natural language questions or use strict Boolean syntax (AND/OR/NOT).
+- **AI Enhancement:** Automatically converts research questions into optimized Boolean queries.
+- **Multi-language:** Translate queries and results on the fly without losing precision.
+- **Deep Filters:** Filter by year, region, language, document type, and citation count.
+- **Citation Graph:** Traverse research by checking who cited a paper and what it cites.
+
+### Systematic Review
+
+- **Automated Screening:** Define screening questions (e.g., "Does this study use a randomized controlled trial?") and let AI screen papers for you.
+- **Tracking:** Keep track of included/excluded papers per search.
+
+### Organization
+
+- **Bookmarks:** Create shorthand keywords (e.g., `ai-med`) that expand into complex query strings.
+- **History:** Track how your search queries evolve over time.
+- **Export:** Download results as JSON/CSV or sync directly to Zotero.
+
+### AI Configuration
+
+- **Provider Choice:** Support for OpenAI, Anthropic, Google, and OpenRouter (300+ models).
+- **Flexible Usage:** Bring your own API keys (BYOK) or use the built-in credit system.
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **Database:** Convex (Real-time)
+- **Auth:** WorkOS
+- **Billing:** Stripe
+- **Styling:** Tailwind CSS 4, Radix UI, Motion
+- **State:** Zustand, SWR
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the repo**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+   ```bash
+   git clone https://github.com/yourusername/openalex-count.git
+   cd openalex-count
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Install dependencies**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   npm install
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Environment Setup**
+   Copy `.env.example` to `.env.local`:
 
-## Learn More
+   ```bash
+   cp .env.example .env.local
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+   You'll need credentials for:
+   - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
+   - **WorkOS:** Client ID, API Key, Redirect URI
+   - **Stripe:** Publishable Key (optional, for billing)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Run the development server**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npm run dev
+   ```
 
-## Deploy on Vercel
+   This starts the Next.js app and the Convex dev server.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/app` - Next.js App Router pages and layouts
+- `/components` - React components (shadcn/ui, custom)
+- `/convex` - Backend functions, schema, and cron jobs
+- `/lib` - Utilities, stores (Zustand), and types

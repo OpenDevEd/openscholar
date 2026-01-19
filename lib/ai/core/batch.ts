@@ -143,8 +143,8 @@ export async function processScreeningBatch(
 // ═══════════════════════════════════════════════════════════════
 
 import { getTranslatePaperContentConfig } from './configs'
-import type { TranslationResultData } from './batch-types'
-import type { TranslatePaperContentInput } from './types'
+import type { TranslationResultData, ExtractionItem, ExtractionResultData } from './batch-types'
+import type { TranslatePaperContentInput, ExtractDataInput } from './types'
 
 export interface TranslationBatchConfig {
   model: LanguageModel
@@ -179,6 +179,49 @@ export async function processTranslationBatch(
         isAlreadyInEnglish: false,
       }),
       getItemId: (paper) => paper.id,
+    }
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXTRACTION BATCH PROCESSOR
+// ═══════════════════════════════════════════════════════════════
+
+import { getExtractDataConfig } from './configs'
+
+export interface ExtractionBatchConfig {
+  model: LanguageModel
+  items: ExtractionItem[]
+}
+
+export async function processExtractionBatch(
+  config: ExtractionBatchConfig
+): Promise<BatchProcessorResult<ExtractionResultData & { resultId: string }>> {
+  const { model, items } = config
+
+  return processBatch<
+    ExtractionItem,
+    ExtractDataInput,
+    { value: string | number | boolean | null; confidence: number; reasoning: string },
+    ExtractionResultData & { resultId: string }
+  >(
+    items,
+    {
+      model,
+      toConfigInput: (item) => ({
+        title: item.title,
+        abstract: item.abstract,
+        question: item.question,
+        type: item.type,
+      }),
+      getOperationConfig: getExtractDataConfig,
+      formatResult: (output, item) => ({
+        value: output.value,
+        confidence: output.confidence,
+        reasoning: output.reasoning,
+        resultId: item.resultId,
+      }),
+      getItemId: (item) => item.resultId,
     }
   )
 }

@@ -173,4 +173,107 @@ export default defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_user_date", ["userId", "createdAt"])
     .index("by_org_date", ["organizationId", "createdAt"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // DATA EXTRACTION - Analyses, sources, documents, results
+  // ═══════════════════════════════════════════════════════════════
+
+  analyses: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    extractionQuestions: v.array(
+      v.object({
+        id: v.string(),
+        key: v.string(),
+        question: v.string(),
+        type: v.union(
+          v.literal("text"),
+          v.literal("number"),
+          v.literal("boolean")
+        ),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"]),
+
+  analysisSources: defineTable({
+    analysisId: v.id("analyses"),
+    sourceType: v.union(
+      v.literal("search_history"),
+      v.literal("zotero"),
+      v.literal("upload"),
+      v.literal("manual")
+    ),
+    sourceRef: v.string(),
+    sourceMeta: v.optional(
+      v.object({
+        query: v.optional(v.string()),
+        count: v.optional(v.number()),
+        name: v.optional(v.string()),
+      })
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("importing"),
+      v.literal("ready"),
+      v.literal("error")
+    ),
+    errorMessage: v.optional(v.string()),
+    documentCount: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_analysis", ["analysisId"])
+    .index("by_status", ["status"]),
+
+  documents: defineTable({
+    analysisId: v.id("analyses"),
+    sourceId: v.id("analysisSources"),
+    externalId: v.string(),
+    title: v.string(),
+    abstract: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
+    year: v.optional(v.number()),
+    doi: v.optional(v.string()),
+    pdfStorageId: v.optional(v.id("_storage")),
+    fullText: v.optional(v.string()),
+    processingStatus: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("error")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_analysis", ["analysisId"])
+    .index("by_source", ["sourceId"])
+    .index("by_external_id", ["externalId"]),
+
+  extractionResults: defineTable({
+    documentId: v.id("documents"),
+    analysisId: v.id("analyses"),
+    questionId: v.string(),
+    value: v.union(v.string(), v.number(), v.boolean(), v.null()),
+    confidence: v.optional(v.number()),
+    reasoning: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("error")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_document", ["documentId"])
+    .index("by_analysis", ["analysisId"])
+    .index("by_analysis_question", ["analysisId", "questionId"]),
 });

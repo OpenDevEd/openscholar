@@ -49,6 +49,12 @@ export const translatePaperContentSchema = z.object({
   translatedAbstract: z.string().describe('The paper abstract translated to English'),
 })
 
+export const extractDataSchema = z.object({
+  value: z.union([z.string(), z.number(), z.boolean(), z.null()]).describe('The extracted value'),
+  confidence: z.number().min(0).max(1).describe('Confidence in the extraction (0-1)'),
+  reasoning: z.string().describe('Brief explanation for the extraction'),
+})
+
 export const STANDARD_PROVIDER_OPTIONS = {
   google: {
     thinkingConfig: {

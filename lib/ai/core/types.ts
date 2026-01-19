@@ -4,6 +4,7 @@ export type AIOperationType =
   | 'translateQuery'
   | 'translatePaperContent'
   | 'generateScreeningResponses'
+  | 'extractData'
 
 export interface EnhanceSearchQueryInput {
   query: string
@@ -73,4 +74,20 @@ export interface Usage {
   inputTokens?: number
   completionTokens?: number
   outputTokens?: number
+}
+
+// Data Extraction types
+export type ExtractionQuestionType = 'text' | 'number' | 'boolean'
+
+export interface ExtractDataInput {
+  title: string
+  abstract: string
+  question: string
+  type: ExtractionQuestionType
+}
+
+export interface ExtractDataOutput {
+  value: string | number | boolean | null
+  confidence: number
+  reasoning: string
 }
