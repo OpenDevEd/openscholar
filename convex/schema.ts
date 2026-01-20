@@ -244,8 +244,12 @@ export default defineSchema({
     authors: v.optional(v.array(v.string())),
     year: v.optional(v.number()),
     doi: v.optional(v.string()),
+    openAccessUrl: v.optional(v.string()), // URL to open access PDF
     pdfStorageId: v.optional(v.id("_storage")),
     fullText: v.optional(v.string()),
+    // RAG indexing
+    ragEntryId: v.optional(v.string()), // RAG component entry ID
+    ragIndexedAt: v.optional(v.number()), // When content was indexed
     processingStatus: v.union(
       v.literal("pending"),
       v.literal("processing"),
@@ -276,4 +280,62 @@ export default defineSchema({
     .index("by_document", ["documentId"])
     .index("by_analysis", ["analysisId"])
     .index("by_analysis_question", ["analysisId", "questionId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // ZOTERO INTEGRATION - OAuth connections
+  // ═══════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════
+  // PDF DOWNLOAD JOBS - background job tracking for open access PDFs
+  // ═══════════════════════════════════════════════════════════════
+
+  pdfDownloadJobs: defineTable({
+    analysisId: v.id("analyses"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    totalDocuments: v.number(),
+    processed: v.number(),
+    success: v.number(),
+    failed: v.number(),
+    skipped: v.optional(v.number()), // HTML pages, invalid URLs
+    // Parallel processing
+    concurrencyLimit: v.optional(v.number()), // Max parallel workers
+    activeWorkers: v.optional(v.number()), // Current active workers
+    nextIndex: v.optional(v.number()), // Next document index to process
+    // Tracking
+    currentDocumentId: v.optional(v.id("documents")),
+    errors: v.array(v.string()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_analysis", ["analysisId"])
+    .index("by_status", ["status"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // ZOTERO INTEGRATION - OAuth connections
+  // ═══════════════════════════════════════════════════════════════
+
+  zoteroConnections: defineTable({
+    userId: v.id("users"),
+    zoteroUserId: v.string(),
+    apiKey: v.string(),
+    username: v.optional(v.string()),
+    connectedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_zotero_user", ["zoteroUserId"]),
+
+  // Temporary storage for OAuth request tokens (short-lived)
+  zoteroOAuthTokens: defineTable({
+    token: v.string(),
+    tokenSecret: v.string(),
+    userId: v.id("users"),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
 });

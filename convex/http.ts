@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
-import { components, internal } from "./_generated/api";
+import { httpAction } from "./_generated/server";
+import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { workosWebhook } from "./webhooks/workos";
 
@@ -10,6 +11,48 @@ http.route({
   path: "/webhooks/workos",
   method: "POST",
   handler: workosWebhook,
+});
+
+// Zotero OAuth callback
+http.route({
+  path: "/api/zotero/callback",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const url = new URL(request.url);
+    const oauthToken = url.searchParams.get("oauth_token");
+    const oauthVerifier = url.searchParams.get("oauth_verifier");
+
+    if (!oauthToken || !oauthVerifier) {
+      return new Response("Missing OAuth parameters", { status: 400 });
+    }
+
+    try {
+      const result = await ctx.runAction(api.zotero.actions.completeOAuth, {
+        oauthToken,
+        oauthVerifier,
+      });
+
+      if (!result.success) {
+        // Redirect to error page
+        const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        return Response.redirect(
+          `${frontendUrl}/extraction?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
+          302
+        );
+      }
+
+      // Redirect to success page
+      const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      return Response.redirect(`${frontendUrl}/extraction?zotero_connected=true`, 302);
+    } catch (error) {
+      console.error("Zotero OAuth callback error:", error);
+      const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      return Response.redirect(
+        `${frontendUrl}/extraction?zotero_error=${encodeURIComponent("OAuth failed")}`,
+        302
+      );
+    }
+  }),
 });
 
 // Stripe webhook via component

@@ -84,6 +84,8 @@ export interface ExtractDataInput {
   abstract: string
   question: string
   type: ExtractionQuestionType
+  // RAG-enhanced context from full-text search (optional)
+  ragContext?: string
 }
 
 export interface ExtractDataOutput {

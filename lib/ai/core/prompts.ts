@@ -222,8 +222,27 @@ export function buildExtractDataPrompts(input: ExtractDataInput) {
     boolean: 'Respond with true or false only. Use null if unclear from the text.',
   }
 
-  return {
-    system: `You are an expert at extracting structured data from academic papers.
+  // Build content section based on available context
+  const hasRagContext = input.ragContext && input.ragContext.trim().length > 0
+  
+  const systemPrompt = hasRagContext
+    ? `You are an expert at extracting structured data from academic papers.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "value": <extracted value matching the expected type>,
+  "confidence": <number 0-1>,
+  "reasoning": "<brief explanation>"
+}
+
+Rules:
+1. Extract from ALL provided content (title, abstract, AND full-text excerpts)
+2. Full-text excerpts contain relevant passages retrieved via semantic search
+3. Be conservative - use null if information is not explicitly stated
+4. Do not infer or assume beyond what is written
+5. Keep reasoning brief (1 sentence)
+6. Confidence should reflect how clearly the answer is stated in the text`
+    : `You are an expert at extracting structured data from academic papers.
 
 CRITICAL: You MUST respond with valid JSON in the following format:
 {
@@ -237,18 +256,34 @@ Rules:
 2. Be conservative - use null if information is not explicitly stated
 3. Do not infer or assume beyond what is written
 4. Keep reasoning brief (1 sentence)
-5. Confidence should reflect how clearly the answer is stated in the text`,
-    prompt: `Extract the following from this academic paper:
+5. Confidence should reflect how clearly the answer is stated in the text`
+
+  // Build the user prompt
+  let userPrompt = `Extract the following from this academic paper:
 
 TITLE: "${input.title}"
 
-ABSTRACT: "${input.abstract || 'No abstract available'}"
+ABSTRACT: "${input.abstract || 'No abstract available'}"`
+
+  // Add RAG context if available
+  if (hasRagContext) {
+    userPrompt += `
+
+RELEVANT FULL-TEXT EXCERPTS:
+${input.ragContext}`
+  }
+
+  userPrompt += `
 
 QUESTION: "${input.question}"
 EXPECTED TYPE: ${input.type}
 
 ${typeInstructions[input.type]}
 
-Provide your extraction:`,
+Provide your extraction:`
+
+  return {
+    system: systemPrompt,
+    prompt: userPrompt,
   }
 }

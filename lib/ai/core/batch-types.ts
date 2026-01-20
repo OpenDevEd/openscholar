@@ -71,6 +71,8 @@ export interface ExtractionItem {
   questionId: string
   question: string
   type: 'text' | 'number' | 'boolean'
+  // RAG-enhanced context from full-text search
+  ragContext?: string
 }
 
 export interface ExtractionResultData {

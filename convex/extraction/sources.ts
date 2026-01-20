@@ -3,6 +3,8 @@
  */
 import { query, mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
+import { documentInputValidator } from "./validators";
 
 // ═══════════════════════════════════════════════════════════════
 // QUERIES
@@ -81,6 +83,183 @@ export const addFromSearchHistory = mutation({
   },
 });
 
+/**
+ * Import documents from search history with paper data.
+ * Creates source record + all document records in one transaction.
+ */
+export const importFromSearchHistory = mutation({
+  args: {
+    analysisId: v.id("analyses"),
+    searchId: v.string(),
+    searchQuery: v.optional(v.string()),
+    papers: v.array(documentInputValidator),
+  },
+  returns: v.object({
+    sourceId: v.id("analysisSources"),
+    documentCount: v.number(),
+  }),
+  handler: async (ctx, { analysisId, searchId, searchQuery, papers }) => {
+    // Check for existing source with same searchId
+    const existingSource = await ctx.db
+      .query("analysisSources")
+      .withIndex("by_analysis", (q) => q.eq("analysisId", analysisId))
+      .filter((q) => q.eq(q.field("sourceRef"), searchId))
+      .first();
+
+    if (existingSource) {
+      throw new Error("This search has already been imported to this analysis");
+    }
+
+    // Create source record
+    const sourceId = await ctx.db.insert("analysisSources", {
+      analysisId,
+      sourceType: "search_history",
+      sourceRef: searchId,
+      sourceMeta: {
+        query: searchQuery,
+        count: papers.length,
+      },
+      status: "ready",
+      documentCount: papers.length,
+      createdAt: Date.now(),
+    });
+
+    // Create document records
+    const now = Date.now();
+    await Promise.all(
+      papers.map((paper) =>
+        ctx.db.insert("documents", {
+          analysisId,
+          sourceId,
+          externalId: paper.externalId,
+          title: paper.title,
+          abstract: paper.abstract,
+          authors: paper.authors,
+          year: paper.year,
+          doi: paper.doi,
+          openAccessUrl: paper.openAccessUrl,
+          processingStatus: "ready",
+          createdAt: now,
+        })
+      )
+    );
+
+    return {
+      sourceId,
+      documentCount: papers.length,
+    };
+  },
+});
+
+/**
+ * Import documents from CSV/JSON upload.
+ */
+export const importFromUpload = mutation({
+  args: {
+    analysisId: v.id("analyses"),
+    fileName: v.string(),
+    papers: v.array(documentInputValidator),
+  },
+  returns: v.object({
+    sourceId: v.id("analysisSources"),
+    documentCount: v.number(),
+  }),
+  handler: async (ctx, { analysisId, fileName, papers }) => {
+    const sourceId = await ctx.db.insert("analysisSources", {
+      analysisId,
+      sourceType: "upload",
+      sourceRef: crypto.randomUUID(),
+      sourceMeta: {
+        name: fileName,
+        count: papers.length,
+      },
+      status: "ready",
+      documentCount: papers.length,
+      createdAt: Date.now(),
+    });
+
+    const now = Date.now();
+    await Promise.all(
+      papers.map((paper) =>
+        ctx.db.insert("documents", {
+          analysisId,
+          sourceId,
+          externalId: paper.externalId,
+          title: paper.title,
+          abstract: paper.abstract,
+          authors: paper.authors,
+          year: paper.year,
+          doi: paper.doi,
+          processingStatus: "ready",
+          createdAt: now,
+        })
+      )
+    );
+
+    return {
+      sourceId,
+      documentCount: papers.length,
+    };
+  },
+});
+
+/**
+ * Create a single manual document.
+ */
+export const addManualDocument = mutation({
+  args: {
+    analysisId: v.id("analyses"),
+    title: v.string(),
+    abstract: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
+    year: v.optional(v.number()),
+    doi: v.optional(v.string()),
+  },
+  returns: v.id("documents"),
+  handler: async (ctx, { analysisId, title, abstract, authors, year, doi }) => {
+    // Find or create manual source for this analysis
+    let manualSource = await ctx.db
+      .query("analysisSources")
+      .withIndex("by_analysis", (q) => q.eq("analysisId", analysisId))
+      .filter((q) => q.eq(q.field("sourceType"), "manual"))
+      .first();
+
+    if (!manualSource) {
+      const sourceId = await ctx.db.insert("analysisSources", {
+        analysisId,
+        sourceType: "manual",
+        sourceRef: "manual",
+        sourceMeta: { name: "Manual Entries" },
+        status: "ready",
+        documentCount: 0,
+        createdAt: Date.now(),
+      });
+      manualSource = await ctx.db.get(sourceId);
+    }
+
+    // Create document
+    const docId = await ctx.db.insert("documents", {
+      analysisId,
+      sourceId: manualSource!._id,
+      externalId: doi || crypto.randomUUID(),
+      title,
+      abstract,
+      authors,
+      year,
+      doi,
+      processingStatus: "ready",
+      createdAt: Date.now(),
+    });
+
+    // Update document count
+    await ctx.db.patch(manualSource!._id, {
+      documentCount: (manualSource!.documentCount || 0) + 1,
+    });
+
+    return docId;
+  },
+});
+
 export const addManual = mutation({
   args: {
     analysisId: v.id("analyses"),
@@ -97,6 +276,99 @@ export const addManual = mutation({
       documentCount: 0,
       createdAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Import documents from Zotero library or collection.
+ */
+export const importFromZotero = mutation({
+  args: {
+    analysisId: v.id("analyses"),
+    collectionKey: v.optional(v.string()),
+    collectionName: v.optional(v.string()),
+    groupId: v.optional(v.string()),
+    groupName: v.optional(v.string()),
+    items: v.array(
+      v.object({
+        key: v.string(),
+        title: v.string(),
+        abstract: v.optional(v.string()),
+        authors: v.array(v.string()),
+        year: v.optional(v.number()),
+        doi: v.optional(v.string()),
+      })
+    ),
+  },
+  returns: v.object({
+    sourceId: v.id("analysisSources"),
+    documentCount: v.number(),
+  }),
+  handler: async (ctx, { analysisId, collectionKey, collectionName, groupId, groupName, items }) => {
+    // Create a descriptive source reference
+    const sourceRef = groupId
+      ? `zotero:group:${groupId}${collectionKey ? `:${collectionKey}` : ""}`
+      : `zotero:library${collectionKey ? `:${collectionKey}` : ""}`;
+
+    // Check for existing source with same reference
+    const existingSource = await ctx.db
+      .query("analysisSources")
+      .withIndex("by_analysis", (q) => q.eq("analysisId", analysisId))
+      .filter((q) => q.eq(q.field("sourceRef"), sourceRef))
+      .first();
+
+    if (existingSource) {
+      throw new Error("This Zotero collection has already been imported to this analysis");
+    }
+
+    // Build descriptive name
+    let sourceName = "Zotero Library";
+    if (groupName) {
+      sourceName = `Zotero: ${groupName}`;
+    }
+    if (collectionName) {
+      sourceName = groupName
+        ? `${sourceName} / ${collectionName}`
+        : `Zotero: ${collectionName}`;
+    }
+
+    // Create source record
+    const sourceId = await ctx.db.insert("analysisSources", {
+      analysisId,
+      sourceType: "zotero",
+      sourceRef,
+      sourceMeta: {
+        name: sourceName,
+        count: items.length,
+      },
+      status: "ready",
+      documentCount: items.length,
+      createdAt: Date.now(),
+    });
+
+    // Create document records
+    const now = Date.now();
+    await Promise.all(
+      items.map((item) =>
+        ctx.db.insert("documents", {
+          analysisId,
+          sourceId,
+          externalId: item.key,
+          title: item.title,
+          abstract: item.abstract,
+          authors: item.authors,
+          year: item.year,
+          doi: item.doi,
+          processingStatus: "ready",
+          createdAt: now,
+        })
+      )
+    );
+
+    return {
+      sourceId,
+      documentCount: items.length,
+    };
   },
 });
 

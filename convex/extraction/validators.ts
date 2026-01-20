@@ -74,4 +74,5 @@ export const documentInputValidator = v.object({
   authors: v.optional(v.array(v.string())),
   year: v.optional(v.number()),
   doi: v.optional(v.string()),
+  openAccessUrl: v.optional(v.string()), // URL to open access PDF
 });

@@ -213,6 +213,7 @@ export async function processExtractionBatch(
         abstract: item.abstract,
         question: item.question,
         type: item.type,
+        ragContext: item.ragContext,
       }),
       getOperationConfig: getExtractDataConfig,
       formatResult: (output, item) => ({

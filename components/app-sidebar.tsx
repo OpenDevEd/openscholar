@@ -58,7 +58,7 @@ const hoverSpring = {
   mass: 0.6,
 };
 
-const staggerDelay = 0.04;
+const staggerDelay = 0;
 
 interface NavItemProps {
   href: string;
