@@ -55,11 +55,7 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
 
       // Fill in fields
       setTitle(work.title || work.display_name || "");
-      setAbstract(
-        work.abstract_inverted_index
-          ? reconstructAbstract(work.abstract_inverted_index)
-          : ""
-      );
+      setAbstract(work.abstract || "");
       setAuthors(
         work.authorships
           ?.map((a: any) => a.author?.display_name)
@@ -228,19 +224,3 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
   );
 }
 
-// Helper to reconstruct abstract from inverted index
-function reconstructAbstract(
-  invertedIndex: Record<string, number[]>
-): string {
-  if (!invertedIndex) return "";
-
-  const words: [string, number][] = [];
-  for (const [word, positions] of Object.entries(invertedIndex)) {
-    for (const pos of positions) {
-      words.push([word, pos]);
-    }
-  }
-
-  words.sort((a, b) => a[1] - b[1]);
-  return words.map(([word]) => word).join(" ");
-}

@@ -518,9 +518,13 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                           </div>
 
                           {/* Abstract snippet */}
-                          {abstractSnippet && (
+                          {abstractSnippet ? (
                             <p className="text-sm text-muted-foreground leading-relaxed">
                               {abstractSnippet}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground/60 italic">
+                              No abstract available
                             </p>
                           )}
 
@@ -528,13 +532,19 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                           <div className="flex items-center gap-2 pt-1">
                             {hasOA && (
                               <Button
+                                asChild
                                 size="sm"
                                 variant="outline"
                                 className="h-8"
-                                onClick={() => window.open(doc.openAccessUrl!, "_blank")}
                               >
-                                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                                Open Access
+                                <a
+                                  href={doc.openAccessUrl!}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                                  Open Access
+                                </a>
                               </Button>
                             )}
                             {!hasPdf && (

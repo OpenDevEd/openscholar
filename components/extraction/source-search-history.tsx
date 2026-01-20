@@ -77,9 +77,7 @@ export function SourceSearchHistory({
       const papers = (data.results || []).map((work: any) => ({
         externalId: work.id,
         title: work.title || work.display_name || "Untitled",
-        abstract: work.abstract_inverted_index
-          ? reconstructAbstract(work.abstract_inverted_index)
-          : undefined,
+        abstract: work.abstract,
         authors: work.authorships?.map(
           (a: any) => a.author?.display_name
         ).filter(Boolean),
@@ -200,19 +198,3 @@ export function SourceSearchHistory({
   );
 }
 
-// Helper to reconstruct abstract from inverted index
-function reconstructAbstract(
-  invertedIndex: Record<string, number[]>
-): string {
-  if (!invertedIndex) return "";
-
-  const words: [string, number][] = [];
-  for (const [word, positions] of Object.entries(invertedIndex)) {
-    for (const pos of positions) {
-      words.push([word, pos]);
-    }
-  }
-
-  words.sort((a, b) => a[1] - b[1]);
-  return words.map(([word]) => word).join(" ");
-}
