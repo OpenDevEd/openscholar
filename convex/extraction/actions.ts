@@ -5,11 +5,11 @@
  * Enhanced with RAG (Retrieval-Augmented Generation) for full-text search.
  */
 import { v } from "convex/values";
-import { action, internalAction } from "../_generated/server";
+import { action } from "../_generated/server";
 import { internal, api } from "../_generated/api";
 import { getModel, withAuthAndCreditsBatch } from "../ai/helpers";
-import { processExtractionBatch, aggregateUsage } from "@/lib/ai/core";
-import type { ExtractionItem } from "@/lib/ai/core/batch-types";
+import { processExtractionBatch, aggregateUsage } from "../../lib/ai/core";
+import type { ExtractionItem, RagChunkWithPosition } from "../../lib/ai/core/batch-types";
 import type { Id } from "../_generated/dataModel";
 
 // Type for extraction questions from analysis
@@ -20,209 +20,67 @@ type ExtractionQuestion = {
   type: string;
 };
 
+// Result type from searchContext
+interface RagSearchResult {
+  text: string;
+  chunks: Array<{
+    text: string;
+    score: number;
+    documentId: string;
+    title: string;
+    sourceType: "abstract" | "pdf";
+    pageNumber?: number;
+    startChar: number;
+    endChar: number;
+  }>;
+}
+
 /**
  * Fetch RAG context for a document and question.
- * Returns relevant full-text excerpts if the document has been indexed.
+ * Returns relevant full-text excerpts with position info for citation tracking.
  */
 async function fetchRagContext(
   ctx: any,
   analysisId: Id<"analyses">,
   documentId: Id<"documents">,
   question: string
-): Promise<string | undefined> {
+): Promise<{ ragContext?: string; ragChunks?: RagChunkWithPosition[] }> {
   try {
-    const result = await ctx.runAction(api.rag.actions.searchContext, {
+    const result: RagSearchResult = await ctx.runAction(api.rag.actions.searchContext, {
       analysisId,
       query: question,
       limit: 3,
       documentId,
     });
     
-    // Return the combined text if we got results
-    if (result.text && result.text.trim().length > 0) {
-      return result.text;
+    // Return chunks with position info if available
+    if (result.chunks && result.chunks.length > 0) {
+      const ragChunks: RagChunkWithPosition[] = result.chunks.map((chunk) => ({
+        text: chunk.text,
+        sourceType: chunk.sourceType,
+        pageNumber: chunk.pageNumber,
+        startChar: chunk.startChar,
+        endChar: chunk.endChar,
+      }));
+      
+      return {
+        ragContext: result.text,
+        ragChunks,
+      };
     }
-    return undefined;
+    
+    // Legacy fallback: just text
+    if (result.text && result.text.trim().length > 0) {
+      return { ragContext: result.text };
+    }
+    
+    return {};
   } catch (error) {
     // RAG search failed - continue without context
     console.warn("RAG search failed for document:", documentId, error);
-    return undefined;
+    return {};
   }
 }
-
-/**
- * Run extraction for a single analysis.
- * Fetches all pending documents and questions, runs AI extraction, updates results.
- */
-export const runExtraction = action({
-  args: {
-    analysisId: v.id("analyses"),
-  },
-  returns: v.object({
-    processed: v.number(),
-    errors: v.number(),
-  }),
-  handler: async (ctx, { analysisId }) => {
-    // Get analysis with questions
-    const analysis = await ctx.runQuery(
-      internal.extraction.internal.getAnalysisForExtraction,
-      { analysisId }
-    );
-
-    if (!analysis) {
-      throw new Error("Analysis not found");
-    }
-
-    if (analysis.extractionQuestions.length === 0) {
-      return { processed: 0, errors: 0 };
-    }
-
-    // Get documents that need extraction
-    const documents = await ctx.runQuery(
-      internal.extraction.internal.getDocumentsForExtraction,
-      { analysisId }
-    );
-
-    if (documents.length === 0) {
-      return { processed: 0, errors: 0 };
-    }
-
-    // Get existing results to find what's already done
-    const existingResults = await ctx.runQuery(
-      internal.extraction.internal.getExistingResults,
-      { analysisId }
-    );
-
-    const existingSet = new Set(
-      existingResults.map((r: { documentId: string; questionId: string }) => `${r.documentId}:${r.questionId}`)
-    );
-
-    // Build extraction items for pending extractions
-    const items: ExtractionItem[] = [];
-
-    for (const doc of documents) {
-      for (const q of analysis.extractionQuestions) {
-        const key = `${doc._id}:${q.id}`;
-        if (!existingSet.has(key)) {
-          items.push({
-            documentId: doc._id,
-            resultId: "", // Will be created
-            title: doc.title,
-            abstract: doc.abstract || "",
-            questionId: q.id,
-            question: q.question,
-            type: q.type as "text" | "number" | "boolean",
-          });
-        }
-      }
-    }
-
-    if (items.length === 0) {
-      return { processed: 0, errors: 0 };
-    }
-
-    // Create pending result records and get their IDs
-    const resultIds = await ctx.runMutation(
-      internal.extraction.results.createBatchPending,
-      {
-        items: items.map((item) => ({
-          documentId: item.documentId as Id<"documents">,
-          analysisId,
-          questionId: item.questionId,
-        })),
-      }
-    );
-
-    // Update items with result IDs and fetch RAG context
-    const itemsWithIds: ExtractionItem[] = [];
-    
-    // Group items by document to avoid redundant RAG searches
-    const documentQuestions = new Map<string, { doc: typeof documents[0]; questions: ExtractionQuestion[] }>();
-    for (const doc of documents) {
-      documentQuestions.set(doc._id, { doc, questions: [] });
-    }
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const q = analysis.extractionQuestions.find((eq: ExtractionQuestion) => eq.id === item.questionId);
-      if (q) {
-        documentQuestions.get(item.documentId)?.questions.push(q);
-      }
-    }
-
-    // Fetch RAG context for each document-question pair
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      let ragContext: string | undefined;
-      
-      // Try to fetch RAG context for this question
-      ragContext = await fetchRagContext(
-        ctx,
-        analysisId,
-        item.documentId as Id<"documents">,
-        item.question
-      );
-      
-      itemsWithIds.push({
-        ...item,
-        resultId: resultIds[i],
-        ragContext,
-      });
-    }
-
-    // Update analysis status
-    await ctx.runMutation(internal.extraction.analysesMutations.setStatus, {
-      id: analysisId,
-      status: "processing",
-    });
-
-    return withAuthAndCreditsBatch(
-      ctx,
-      `Extraction (${items.length} items)`,
-      async () => {
-        const model = await getModel();
-
-        const { results, errors, usages } = await processExtractionBatch({
-          model,
-          items: itemsWithIds,
-        });
-
-        // Update successful results
-        for (const [resultId, data] of Object.entries(results)) {
-          await ctx.runMutation(internal.extraction.results.setResult, {
-            resultId: resultId as Id<"extractionResults">,
-            value: data.value,
-            confidence: data.confidence,
-            reasoning: data.reasoning,
-            status: "completed",
-          });
-        }
-
-        // Update failed results
-        for (const error of errors) {
-          await ctx.runMutation(internal.extraction.results.setResult, {
-            resultId: error.paperId as Id<"extractionResults">,
-            value: null,
-            status: "error",
-          });
-        }
-
-        // Update analysis status
-        await ctx.runMutation(internal.extraction.analysesMutations.setStatus, {
-          id: analysisId,
-          status: errors.length === 0 ? "completed" : "completed",
-        });
-
-        return {
-          result: {
-            processed: Object.keys(results).length,
-            errors: errors.length,
-          },
-          totalUsage: aggregateUsage(usages),
-        };
-      }
-    );
-  },
-});
 
 /**
  * Run extraction for a single document (re-run or new questions)
@@ -281,7 +139,7 @@ export const extractDocument = action({
       const q = questionsToExtract[i] as ExtractionQuestion;
       
       // Fetch RAG context for this question
-      const ragContext = await fetchRagContext(
+      const { ragContext, ragChunks } = await fetchRagContext(
         ctx,
         doc.analysisId,
         documentId,
@@ -297,6 +155,7 @@ export const extractDocument = action({
         question: q.question,
         type: q.type as "text" | "number" | "boolean",
         ragContext,
+        ragChunks,
       });
     }
 
@@ -311,12 +170,14 @@ export const extractDocument = action({
           items,
         });
 
+        // Update successful results (with sources for citation tracking)
         for (const [resultId, data] of Object.entries(results)) {
           await ctx.runMutation(internal.extraction.results.setResult, {
             resultId: resultId as Id<"extractionResults">,
             value: data.value,
             confidence: data.confidence,
             reasoning: data.reasoning,
+            sources: data.sources,
             status: "completed",
           });
         }
@@ -340,3 +201,5 @@ export const extractDocument = action({
     );
   },
 });
+
+

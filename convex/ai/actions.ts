@@ -8,12 +8,12 @@ import {
   getTranslateQueryConfig,
   getTranslatePaperContentConfig,
   getScreeningResponsesConfig,
-} from "@/lib/ai/core/configs";
+} from "../../lib/ai/core/configs";
 import { 
   processScreeningBatch, 
   processTranslationBatch,
   aggregateUsage,
-} from "@/lib/ai/core";
+} from "../../lib/ai/core";
 import { createAIAction, getModel, withAuthAndCreditsBatch } from "./helpers";
 
 export const enhanceSearchQuery = createAIAction(

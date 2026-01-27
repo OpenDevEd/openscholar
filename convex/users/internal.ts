@@ -16,6 +16,19 @@ export const getCurrentUser = internalQuery({
 });
 
 /**
+ * Get user by ID (for background jobs that already have the userId)
+ */
+export const getUserById = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(v.null(), userValidator),
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+    return user;
+  },
+});
+
+/**
  * Sync a new user from WorkOS webhook
  */
 export const syncUserFromWorkos = internalMutation({

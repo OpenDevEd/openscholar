@@ -1,8 +1,41 @@
-import { internalMutation } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { FREE_CREDIT_CAP } from "../lib/constants";
 import { ConvexError } from "convex/values";
 import { createError } from "../lib/errors";
+
+/**
+ * Get credit balance for a user by ID (for background jobs)
+ */
+export const getBalanceByUserId = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      free: v.number(),
+      paid: v.number(),
+      total: v.number(),
+      lifetimeUsed: v.number(),
+    })
+  ),
+  handler: async (ctx, { userId }) => {
+    const credits = await ctx.db
+      .query("credits")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerId", userId).eq("ownerType", "user")
+      )
+      .unique();
+
+    if (!credits) return null;
+
+    return {
+      free: credits.freeBalance,
+      paid: credits.paidBalance,
+      total: credits.freeBalance + credits.paidBalance,
+      lifetimeUsed: credits.lifetimeUsed,
+    };
+  },
+});
 
 
 /**

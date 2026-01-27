@@ -5,7 +5,8 @@ import { internalQuery, query } from "../_generated/server";
 import { v } from "convex/values";
 
 /**
- * Get a document for RAG processing.
+ * Get a document for RAG processing (includes fullText - use sparingly).
+ * Prefer getDocumentMetadata for searches/lookups to avoid memory bloat.
  */
 export const getDocument = internalQuery({
   args: { documentId: v.id("documents") },
@@ -17,11 +18,22 @@ export const getDocument = internalQuery({
       title: v.string(),
       abstract: v.optional(v.string()),
       fullText: v.optional(v.string()),
+      pdfPages: v.optional(
+        v.array(
+          v.object({
+            pageNumber: v.number(),
+            startChar: v.number(),
+            endChar: v.number(),
+          })
+        )
+      ),
       authors: v.optional(v.array(v.string())),
       year: v.optional(v.number()),
       ragEntryId: v.optional(v.string()),
       ragIndexedAt: v.optional(v.number()),
       processingStatus: v.string(),
+      openAccessUrl: v.optional(v.string()),
+      pdfStorageId: v.optional(v.id("_storage")),
     })
   ),
   handler: async (ctx, { documentId }) => {
@@ -34,17 +46,65 @@ export const getDocument = internalQuery({
       title: doc.title,
       abstract: doc.abstract,
       fullText: doc.fullText,
+      pdfPages: doc.pdfPages,
       authors: doc.authors,
       year: doc.year,
       ragEntryId: doc.ragEntryId,
       ragIndexedAt: doc.ragIndexedAt,
       processingStatus: doc.processingStatus,
+      openAccessUrl: doc.openAccessUrl,
+      pdfStorageId: doc.pdfStorageId,
+    };
+  },
+});
+
+/**
+ * Get document metadata WITHOUT fullText - use this for searches/lookups.
+ * This prevents loading 100KB-500KB fullText into memory for each document.
+ */
+export const getDocumentMetadata = internalQuery({
+  args: { documentId: v.id("documents") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("documents"),
+      analysisId: v.id("analyses"),
+      title: v.string(),
+      abstract: v.optional(v.string()),
+      pdfPages: v.optional(
+        v.array(
+          v.object({
+            pageNumber: v.number(),
+            startChar: v.number(),
+            endChar: v.number(),
+          })
+        )
+      ),
+      authors: v.optional(v.array(v.string())),
+      year: v.optional(v.number()),
+    })
+  ),
+  handler: async (ctx, { documentId }) => {
+    const doc = await ctx.db.get(documentId);
+    if (!doc) return null;
+
+    return {
+      _id: doc._id,
+      analysisId: doc.analysisId,
+      title: doc.title,
+      abstract: doc.abstract,
+      pdfPages: doc.pdfPages,
+      authors: doc.authors,
+      year: doc.year,
+      // NO fullText - this is intentional to prevent memory bloat
     };
   },
 });
 
 /**
  * Get documents in an analysis that haven't been indexed yet.
+ * NOTE: Does NOT return fullText to prevent memory bloat when listing many docs.
+ * Uses hasFullText boolean flag instead.
  */
 export const getUnindexedDocuments = internalQuery({
   args: { analysisId: v.id("analyses") },
@@ -54,7 +114,7 @@ export const getUnindexedDocuments = internalQuery({
       analysisId: v.id("analyses"),
       title: v.string(),
       abstract: v.optional(v.string()),
-      fullText: v.optional(v.string()),
+      hasFullText: v.boolean(), // Flag instead of actual content
       authors: v.optional(v.array(v.string())),
       year: v.optional(v.number()),
     })
@@ -73,7 +133,7 @@ export const getUnindexedDocuments = internalQuery({
         analysisId: doc.analysisId,
         title: doc.title,
         abstract: doc.abstract,
-        fullText: doc.fullText,
+        hasFullText: !!doc.fullText, // Boolean flag instead of 200KB string
         authors: doc.authors,
         year: doc.year,
       }));
@@ -121,144 +181,34 @@ export const getDocumentsWithOpenAccessUrls = internalQuery({
   },
 });
 
-// ═══════════════════════════════════════════════════════════════
-// PDF Download Job Queries
-// ═══════════════════════════════════════════════════════════════
-
 /**
- * Get PDF download job status (public query for UI polling).
+ * Debug: Get document statistics for an analysis.
  */
-export const getPdfDownloadJobStatus = query({
-  args: { jobId: v.id("pdfDownloadJobs") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("pdfDownloadJobs"),
-      status: v.union(
-        v.literal("pending"),
-        v.literal("running"),
-        v.literal("completed"),
-        v.literal("failed")
-      ),
-      totalDocuments: v.number(),
-      processed: v.number(),
-      success: v.number(),
-      failed: v.number(),
-      skipped: v.number(),
-      errors: v.array(v.string()),
-      startedAt: v.number(),
-      completedAt: v.optional(v.number()),
-    })
-  ),
-  handler: async (ctx, { jobId }) => {
-    const job = await ctx.db.get(jobId);
-    if (!job) return null;
-    const skipped: number = job.skipped ?? 0;
-    return {
-      _id: job._id,
-      status: job.status,
-      totalDocuments: job.totalDocuments,
-      processed: job.processed,
-      success: job.success,
-      failed: job.failed,
-      skipped,
-      errors: job.errors,
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-    };
-  },
-});
-
-/**
- * Get the latest PDF download job for an analysis (for UI).
- */
-export const getLatestPdfDownloadJob = query({
+export const getDocumentStats = query({
   args: { analysisId: v.id("analyses") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("pdfDownloadJobs"),
-      status: v.union(
-        v.literal("pending"),
-        v.literal("running"),
-        v.literal("completed"),
-        v.literal("failed")
-      ),
-      totalDocuments: v.number(),
-      processed: v.number(),
-      success: v.number(),
-      failed: v.number(),
-      skipped: v.number(),
-      errors: v.array(v.string()),
-      startedAt: v.number(),
-      completedAt: v.optional(v.number()),
-    })
-  ),
+  returns: v.object({
+    total: v.number(),
+    withAbstract: v.number(),
+    withFullText: v.number(),
+    withPdfStorageId: v.number(),
+    withRagEntryId: v.number(),
+    eligibleForIndexing: v.number(),
+  }),
   handler: async (ctx, { analysisId }) => {
-    const jobs = await ctx.db
-      .query("pdfDownloadJobs")
-      .withIndex("by_analysis", (q) => q.eq("analysisId", analysisId))
-      .order("desc")
-      .first();
-    if (!jobs) return null;
-    const skipped: number = jobs.skipped ?? 0;
-    return {
-      _id: jobs._id,
-      status: jobs.status,
-      totalDocuments: jobs.totalDocuments,
-      processed: jobs.processed,
-      success: jobs.success,
-      failed: jobs.failed,
-      skipped,
-      errors: jobs.errors,
-      startedAt: jobs.startedAt,
-      completedAt: jobs.completedAt,
-    };
-  },
-});
-
-/**
- * Get next document to process for a job (internal).
- */
-export const getNextDocumentForJob = internalQuery({
-  args: { 
-    analysisId: v.id("analyses"),
-    offset: v.number(),
-  },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("documents"),
-      analysisId: v.id("analyses"),
-      title: v.string(),
-      abstract: v.optional(v.string()),
-      openAccessUrl: v.optional(v.string()),
-      authors: v.optional(v.array(v.string())),
-      year: v.optional(v.number()),
-    })
-  ),
-  handler: async (ctx, { analysisId, offset }) => {
     const docs = await ctx.db
       .query("documents")
       .withIndex("by_analysis", (q) => q.eq("analysisId", analysisId))
       .collect();
 
-    // Filter to documents with open access URLs that don't have full text yet
-    const eligibleDocs = docs.filter(
-      (doc) => doc.openAccessUrl && !doc.fullText && !doc.pdfStorageId
-    );
-
-    const doc = eligibleDocs[offset];
-    if (!doc) return null;
-    
     return {
-      _id: doc._id,
-      analysisId: doc.analysisId,
-      title: doc.title,
-      abstract: doc.abstract,
-      openAccessUrl: doc.openAccessUrl,
-      authors: doc.authors,
-      year: doc.year,
+      total: docs.length,
+      withAbstract: docs.filter((d) => d.abstract && d.abstract.length > 0).length,
+      withFullText: docs.filter((d) => d.fullText && d.fullText.length > 0).length,
+      withPdfStorageId: docs.filter((d) => d.pdfStorageId).length,
+      withRagEntryId: docs.filter((d) => d.ragEntryId).length,
+      eligibleForIndexing: docs.filter((d) => !d.ragEntryId && (d.abstract || d.fullText)).length,
     };
   },
 });
+
+

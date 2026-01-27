@@ -63,6 +63,24 @@ export type BatchTranslationResult = BatchResult<TranslationResultData>
 // EXTRACTION BATCH TYPES
 // ═══════════════════════════════════════════════════════════════
 
+// RAG chunk with position info for citation tracking
+export interface RagChunkWithPosition {
+  text: string
+  sourceType: 'abstract' | 'pdf'
+  pageNumber?: number
+  startChar: number
+  endChar: number
+}
+
+// Source citation from extraction
+export interface ExtractionSource {
+  quote: string
+  sourceType: 'abstract' | 'pdf'
+  pageNumber?: number
+  startChar: number
+  endChar: number
+}
+
 export interface ExtractionItem {
   documentId: string
   resultId: string
@@ -71,14 +89,17 @@ export interface ExtractionItem {
   questionId: string
   question: string
   type: 'text' | 'number' | 'boolean'
-  // RAG-enhanced context from full-text search
+  // RAG-enhanced context from full-text search (legacy)
   ragContext?: string
+  // Position-tracked chunks for citation support
+  ragChunks?: RagChunkWithPosition[]
 }
 
 export interface ExtractionResultData {
   value: string | number | boolean | null
   confidence: number
   reasoning: string
+  sources?: ExtractionSource[]
 }
 
 export interface BatchExtractionParams {

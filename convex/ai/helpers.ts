@@ -3,7 +3,7 @@
 import { action } from "../_generated/server";
 import type { ActionCtx } from "../_generated/server";
 import { internal, api } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import {
   AIUnauthenticatedError,
   AIInsufficientCreditsError,
@@ -11,11 +11,11 @@ import {
   dollarsToCredits,
   executeAIOperation,
   type Usage,
-} from "@/lib/ai/core";
+} from "../../lib/ai/core";
 import { SERVER_AI_CONFIG } from "./config";
-import { getProviderModel } from "@/lib/ai/client/providers";
-import type { AIProvider } from "@/lib/types/ai.types";
-import type { OperationConfig } from "@/lib/ai/core/configs";
+import { getProviderModel } from "../../lib/ai/client/providers";
+import type { AIProvider } from "../../lib/types/ai.types";
+import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType } from "convex/values";
 
 export async function getModel() {
@@ -50,6 +50,40 @@ export async function withAuthAndCreditsBatch<T>(
 
   await ctx.runMutation(internal.credits.internal.deductCredits, {
     userId: user._id,
+    amount: creditsToDeduct,
+    description: `AI: ${operation}`,
+  });
+
+  return result;
+}
+
+/**
+ * Credits wrapper for background jobs (internalActions) where we already know the userId.
+ * Use this when auth context is not available (scheduled jobs, internal actions).
+ */
+export async function withUserCreditsBatch<T>(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  operation: string,
+  handler: () => Promise<{ result: T; totalUsage: Usage }>
+): Promise<T> {
+  // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
+  const user = await ctx.runQuery(internal.users.internal.getUserById, { userId });
+  if (!user) throw new AIUnauthenticatedError();
+
+  // Check credits for this user
+  const balance = await ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId });
+  if (!balance || balance.total <= 0) {
+    throw new AIInsufficientCreditsError();
+  }
+
+  const { result, totalUsage } = await handler();
+
+  const costDollars = calculateCostInDollars(totalUsage, SERVER_AI_CONFIG.provider as AIProvider, SERVER_AI_CONFIG.model);
+  const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
+
+  await ctx.runMutation(internal.credits.internal.deductCredits, {
+    userId,
     amount: creditsToDeduct,
     description: `AI: ${operation}`,
   });

@@ -1,4 +1,4 @@
-import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, ExtractDataInput, ExtractionQuestionType } from './types'
+import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, ExtractDataInput, ExtractionQuestionType, RagChunkWithPosition } from './types'
 import { getLanguageName } from './languages'
 
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
@@ -222,10 +222,41 @@ export function buildExtractDataPrompts(input: ExtractDataInput) {
     boolean: 'Respond with true or false only. Use null if unclear from the text.',
   }
 
-  // Build content section based on available context
-  const hasRagContext = input.ragContext && input.ragContext.trim().length > 0
+  // Check for position-tracked chunks (new citation-aware mode)
+  const hasRagChunks = input.ragChunks && input.ragChunks.length > 0
+  // Legacy mode: raw ragContext string
+  const hasRagContext = !hasRagChunks && input.ragContext && input.ragContext.trim().length > 0
   
-  const systemPrompt = hasRagContext
+  // Citation-aware system prompt (new mode with sources)
+  const citationAwareSystemPrompt = `You are an expert at extracting structured data from academic papers.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "value": <extracted value matching the expected type>,
+  "confidence": <number 0-1>,
+  "reasoning": "<brief explanation>",
+  "sources": [
+    {
+      "quote": "<EXACT text from content, max 200 chars>",
+      "location": "<copy the [SOURCE: ...] marker exactly>"
+    }
+  ]
+}
+
+Rules:
+1. Extract from ALL provided content (title, abstract, AND full-text excerpts)
+2. Each excerpt is prefixed with a [SOURCE: ...] marker - use these for citations
+3. Include 1-3 source quotes that DIRECTLY support your answer
+4. Quotes must be VERBATIM - do not paraphrase
+5. Copy the [SOURCE: ...] marker exactly as shown in the location field
+6. Be conservative - use null if information is not explicitly stated
+7. Keep reasoning brief (1 sentence)
+8. If information not found, return value=null with empty sources array
+9. Confidence should reflect how clearly the answer is stated in the text`
+
+  const systemPrompt = hasRagChunks
+    ? citationAwareSystemPrompt
+    : hasRagContext
     ? `You are an expert at extracting structured data from academic papers.
 
 CRITICAL: You MUST respond with valid JSON in the following format:
@@ -259,23 +290,32 @@ Rules:
 5. Confidence should reflect how clearly the answer is stated in the text`
 
   // Build the user prompt
-  let userPrompt = `Extract the following from this academic paper:
+  let userPrompt = `Extract the following from this academic paper:\n\nTITLE: "${input.title}"\n\n`
 
-TITLE: "${input.title}"
-
-ABSTRACT: "${input.abstract || 'No abstract available'}"`
-
-  // Add RAG context if available
-  if (hasRagContext) {
-    userPrompt += `
-
-RELEVANT FULL-TEXT EXCERPTS:
-${input.ragContext}`
+  // Add abstract with source marker for citation-aware mode
+  if (hasRagChunks) {
+    userPrompt += `[SOURCE: abstract, chars 0-${input.abstract?.length || 0}]\nABSTRACT: "${input.abstract || 'No abstract available'}"\n\n`
+  } else {
+    userPrompt += `ABSTRACT: "${input.abstract || 'No abstract available'}"\n\n`
   }
 
-  userPrompt += `
+  // Add RAG chunks with source markers (new citation-aware mode)
+  if (hasRagChunks && input.ragChunks) {
+    userPrompt += `RELEVANT FULL-TEXT EXCERPTS:\n\n`
+    for (const chunk of input.ragChunks) {
+      if (chunk.sourceType === 'pdf') {
+        userPrompt += `[SOURCE: pdf, page ${chunk.pageNumber ?? '?'}, chars ${chunk.startChar}-${chunk.endChar}]\n`
+      } else {
+        userPrompt += `[SOURCE: abstract, chars ${chunk.startChar}-${chunk.endChar}]\n`
+      }
+      userPrompt += `"${chunk.text}"\n\n`
+    }
+  } else if (hasRagContext) {
+    // Legacy mode: raw context string
+    userPrompt += `RELEVANT FULL-TEXT EXCERPTS:\n${input.ragContext}\n\n`
+  }
 
-QUESTION: "${input.question}"
+  userPrompt += `QUESTION: "${input.question}"
 EXPECTED TYPE: ${input.type}
 
 ${typeInstructions[input.type]}

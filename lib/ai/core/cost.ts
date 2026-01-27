@@ -1,6 +1,6 @@
 import type { Pricing, Usage } from './types'
-import { getModelPricing } from '@/lib/ai-models'
-import { AIProvider } from '@/lib/types/ai.types'
+import { getModelPricing } from '../../ai-models'
+import { AIProvider } from '../../types/ai.types'
 
 export function calculateCostInDollars(
   usage: Usage,

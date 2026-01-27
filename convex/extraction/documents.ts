@@ -30,7 +30,7 @@ export const listByAnalysis = query({
       pdfStorageId: v.optional(v.id("_storage")),
       ragEntryId: v.optional(v.string()),
       ragIndexedAt: v.optional(v.number()),
-      fullText: v.optional(v.string()),
+      hasFullText: v.boolean(), // Flag instead of truncated text to save memory
     })
   ),
   handler: async (ctx, { analysisId, limit }) => {
@@ -56,7 +56,7 @@ export const listByAnalysis = query({
       pdfStorageId: d.pdfStorageId,
       ragEntryId: d.ragEntryId,
       ragIndexedAt: d.ragIndexedAt,
-      fullText: d.fullText ? d.fullText.substring(0, 200) + "..." : undefined, // truncate for list view
+      hasFullText: !!d.fullText, // Boolean flag instead of loading 200 chars × N docs
     }));
   },
 });
@@ -84,6 +84,17 @@ export const getExtractionTable = query({
             value: v.union(v.string(), v.number(), v.boolean(), v.null()),
             status: v.string(),
             confidence: v.optional(v.number()),
+            sources: v.optional(
+              v.array(
+                v.object({
+                  quote: v.string(),
+                  sourceType: v.union(v.literal("abstract"), v.literal("pdf")),
+                  pageNumber: v.optional(v.number()),
+                  startChar: v.number(),
+                  endChar: v.number(),
+                })
+              )
+            ),
           })
         ),
       })
@@ -119,6 +130,13 @@ export const getExtractionTable = query({
           value: string | number | boolean | null;
           status: string;
           confidence?: number;
+          sources?: Array<{
+            quote: string;
+            sourceType: "abstract" | "pdf";
+            pageNumber?: number;
+            startChar: number;
+            endChar: number;
+          }>;
         }
       > = {};
 
@@ -129,6 +147,7 @@ export const getExtractionTable = query({
               value: result.value,
               status: result.status,
               confidence: result.confidence,
+              sources: result.sources,
             }
           : { value: null, status: "pending" };
       }

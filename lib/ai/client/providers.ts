@@ -1,4 +1,4 @@
-import type { AIProvider } from '@/lib/types'
+import type { AIProvider } from '../../types'
 
 export async function getProviderModel(provider: AIProvider, apiKey: string | undefined, modelId: string) {
   // If apiKey is empty string or undefined, pass undefined to let SDK use env vars

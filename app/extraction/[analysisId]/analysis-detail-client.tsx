@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -21,10 +21,11 @@ import {
   FileUp,
   CheckCircle2,
   Download,
-  AlertCircle,
   ExternalLink,
   Lock,
   Unlock,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -59,7 +60,8 @@ const STATUS_CONFIG = {
 export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
-  const [isRunning, setIsRunning] = useState(false);
+  const [isStartingExtraction, setIsStartingExtraction] = useState(false);
+  const [isStartingFullPipeline, setIsStartingFullPipeline] = useState(false);
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
   const [isIndexing, setIsIndexing] = useState(false);
   const [isDownloadingOA, setIsDownloadingOA] = useState(false);
@@ -67,7 +69,9 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
     id: Id<"documents">;
     title: string;
   } | null>(null);
-  const [pdfJobId, setPdfJobId] = useState<Id<"pdfDownloadJobs"> | null>(null);
+  
+  // Track which jobs we've shown toasts for (using ref to avoid re-render loops)
+  const shownJobToasts = useRef<Set<string>>(new Set());
 
   const analysisData = useQuery(api.extraction.analyses.getWithStats, {
     id: analysisId as Id<"analyses">,
@@ -85,52 +89,118 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
     analysisId: analysisId as Id<"analyses">,
   });
 
-  // Query for latest PDF download job
-  const latestPdfJob = useQuery(api.rag.queries.getLatestPdfDownloadJob, {
+  // Use new unified job system queries
+  const latestPdfJob = useQuery(api.jobs.queries.getLatestJobByType, {
+    analysisId: analysisId as Id<"analyses">,
+    type: "pdf_download",
+  });
+
+  const latestIndexingJob = useQuery(api.jobs.queries.getLatestJobByType, {
+    analysisId: analysisId as Id<"analyses">,
+    type: "rag_indexing",
+  });
+
+  const latestExtractionJob = useQuery(api.jobs.queries.getLatestJobByType, {
+    analysisId: analysisId as Id<"analyses">,
+    type: "extraction",
+  });
+
+  // All jobs for this analysis (for potential job history view)
+  const allJobs = useQuery(api.jobs.queries.getJobsForAnalysis, {
     analysisId: analysisId as Id<"analyses">,
   });
 
-  // Poll for job status when job is running
-  const currentJobStatus = useQuery(
-    api.rag.queries.getPdfDownloadJobStatus,
-    pdfJobId ? { jobId: pdfJobId } : "skip"
-  );
+  // Check if jobs are currently running
+  const isPdfJobRunning = latestPdfJob?.status === "running" || latestPdfJob?.status === "pending";
+  const isIndexingJobRunning = latestIndexingJob?.status === "running" || latestIndexingJob?.status === "pending";
+  const isExtractionJobRunning = latestExtractionJob?.status === "running" || latestExtractionJob?.status === "pending";
 
-  // Check if a job is currently running
-  const isJobRunning = latestPdfJob?.status === "running" || latestPdfJob?.status === "pending";
-  const activeJob = isJobRunning ? latestPdfJob : currentJobStatus;
-
-  // Reset state when job completes
-  useEffect(() => {
-    if (currentJobStatus?.status === "completed" || currentJobStatus?.status === "failed") {
-      if (currentJobStatus.status === "completed") {
-        toast.success(
-          `Downloaded ${currentJobStatus.success} open access PDFs (${currentJobStatus.failed} failed, ${currentJobStatus.skipped} skipped)`
-        );
-      } else {
-        toast.error(`PDF download failed: ${currentJobStatus.errors[0] || "Unknown error"}`);
+  // Show toast when jobs complete (check during render, use ref to prevent duplicates)
+  const checkAndToastJob = (
+    job: typeof latestPdfJob | typeof latestIndexingJob | typeof latestExtractionJob,
+    jobType: string
+  ) => {
+    if (!job) return;
+    if (job.status === "completed" || job.status === "failed") {
+      const toastKey = `${job._id}_${job.status}`;
+      if (!shownJobToasts.current.has(toastKey)) {
+        shownJobToasts.current.add(toastKey);
+        // Use setTimeout to avoid calling toast during render
+        setTimeout(() => {
+          if (job.status === "completed") {
+            toast.success(
+              `${jobType}: ${job.succeeded} succeeded, ${job.failed} failed, ${job.skipped} skipped`
+            );
+          } else {
+            toast.error(`${jobType} failed: ${job.errors[0] || "Unknown error"}`);
+          }
+        }, 0);
       }
-      setPdfJobId(null);
-      setIsDownloadingOA(false);
     }
-  }, [currentJobStatus?.status]);
+  };
+  
+  checkAndToastJob(latestPdfJob, "PDF Download");
+  checkAndToastJob(latestIndexingJob, "Indexing");
+  checkAndToastJob(latestExtractionJob, "Extraction");
 
-  const runExtraction = useAction(api.extraction.actions.runExtraction);
+  // New unified entry points
+  const startPdfDownloadJob = useAction(api.jobs.entrypoints.startPdfDownloadJob);
+  const startRagIndexingJob = useAction(api.jobs.entrypoints.startRagIndexingJob);
+  const startExtractionJob = useAction(api.jobs.entrypoints.startExtractionJob);
+  const startFullPipeline = useAction(api.jobs.entrypoints.startFullPipeline);
+  const retryFailedItems = useMutation(api.jobs.mutations.retryFailedItems);
+
   const deleteAnalysis = useMutation(api.extraction.analysesMutations.remove);
   const addQuestion = useMutation(api.extraction.analysesMutations.addQuestion);
-  const indexAnalysisDocuments = useAction(api.rag.actions.indexAnalysisDocuments);
-  const downloadOpenAccessPdfs = useAction(api.rag.actions.downloadOpenAccessPdfs);
 
   const handleRunExtraction = async () => {
-    setIsRunning(true);
+    setIsStartingExtraction(true);
     try {
-      const result = await runExtraction({ analysisId: analysisId as Id<"analyses"> });
-      toast.success(`Extraction completed: ${result.processed} processed, ${result.errors} errors`);
+      const result = await startExtractionJob({ analysisId: analysisId as Id<"analyses"> });
+      
+      if (result.totalItems === 0) {
+        toast.info("No items to extract (all completed, none failed)");
+        setIsStartingExtraction(false);
+      } else {
+        toast.info(`Started extraction for ${result.totalItems} items...`);
+      }
     } catch (error) {
       console.error("Extraction failed:", error);
-      toast.error("Extraction failed");
-    } finally {
-      setIsRunning(false);
+      toast.error("Failed to start extraction");
+      setIsStartingExtraction(false);
+    }
+  };
+
+  const handleRunFullPipeline = async () => {
+    setIsStartingFullPipeline(true);
+    try {
+      const result = await startFullPipeline({ analysisId: analysisId as Id<"analyses"> });
+      
+      const total = result.totalItems.pdfDownload + result.totalItems.ragIndexing + result.totalItems.extraction;
+      if (total === 0) {
+        toast.info("No work to do - all steps completed");
+        setIsStartingFullPipeline(false);
+      } else {
+        toast.success(`Started full pipeline: ${result.totalItems.pdfDownload} PDFs, ${result.totalItems.ragIndexing} to index, ${result.totalItems.extraction} to extract`);
+      }
+    } catch (error) {
+      console.error("Full pipeline failed:", error);
+      toast.error("Failed to start full pipeline");
+      setIsStartingFullPipeline(false);
+    }
+  };
+
+  const handleRetryFailed = async (jobId: Id<"jobs">) => {
+    try {
+      const count = await retryFailedItems({ jobId });
+      if (count > 0) {
+        toast.success(`Retrying ${count} failed items`);
+      } else {
+        toast.info("No failed items to retry");
+      }
+    } catch (error) {
+      console.error("Retry failed:", error);
+      toast.error("Failed to retry items");
     }
   };
 
@@ -175,16 +245,19 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
   const handleIndexAll = async () => {
     setIsIndexing(true);
     try {
-      const result = await indexAnalysisDocuments({
+      const result = await startRagIndexingJob({
         analysisId: analysisId as Id<"analyses">,
       });
-      toast.success(
-        `Indexing complete: ${result.indexed} indexed, ${result.skipped} skipped, ${result.errors} errors`
-      );
+      
+      if (result.totalItems === 0) {
+        toast.info("No documents to index");
+        setIsIndexing(false);
+      } else {
+        toast.info(`Started indexing ${result.totalItems} documents...`);
+      }
     } catch (error) {
       console.error("Indexing failed:", error);
-      toast.error("Indexing failed");
-    } finally {
+      toast.error("Failed to start indexing");
       setIsIndexing(false);
     }
   };
@@ -192,18 +265,15 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
   const handleDownloadOpenAccess = async () => {
     setIsDownloadingOA(true);
     try {
-      const result = await downloadOpenAccessPdfs({
+      const result = await startPdfDownloadJob({
         analysisId: analysisId as Id<"analyses">,
       });
       
-      if (result.totalDocuments === 0) {
+      if (result.totalItems === 0) {
         toast.info("No documents with open access URLs to download");
         setIsDownloadingOA(false);
       } else {
-        // Set the job ID to start polling
-        setPdfJobId(result.jobId);
-        toast.info(`Started downloading ${result.totalDocuments} open access PDFs...`);
-        // Keep isDownloadingOA true - will be reset when job completes
+        toast.info(`Started downloading ${result.totalItems} open access PDFs...`);
       }
     } catch (error) {
       console.error("Open access download failed:", error);
@@ -265,13 +335,30 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                 analysisName={analysis.name}
               />
               <Button
-                onClick={handleRunExtraction}
-                disabled={isRunning || analysis.status === "processing" || documentCount === 0 || analysis.extractionQuestions.length === 0}
+                onClick={handleRunFullPipeline}
+                disabled={isStartingFullPipeline || isPdfJobRunning || isIndexingJobRunning || isExtractionJobRunning || documentCount === 0 || analysis.extractionQuestions.length === 0}
+                variant="outline"
               >
-                {isRunning ? (
+                {isStartingFullPipeline ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Running...
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Full Pipeline
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleRunExtraction}
+                disabled={isStartingExtraction || isExtractionJobRunning || documentCount === 0 || analysis.extractionQuestions.length === 0}
+              >
+                {isStartingExtraction || isExtractionJobRunning ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {latestExtractionJob ? `${latestExtractionJob.processed}/${latestExtractionJob.totalItems}` : "Starting..."}
                   </>
                 ) : (
                   <>
@@ -381,14 +468,14 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                   <div className="flex items-center gap-2">
                     <Button
                       onClick={handleDownloadOpenAccess}
-                      disabled={isDownloadingOA || isJobRunning || !documents || documents.length === 0}
+                      disabled={isDownloadingOA || isPdfJobRunning || !documents || documents.length === 0}
                       size="sm"
                       variant="outline"
                     >
-                      {isDownloadingOA || isJobRunning ? (
+                      {isDownloadingOA || isPdfJobRunning ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          {activeJob ? `${activeJob.processed}/${activeJob.totalDocuments}` : "Starting..."}
+                          {latestPdfJob ? `${latestPdfJob.processed}/${latestPdfJob.totalItems}` : "Starting..."}
                         </>
                       ) : (
                         <>
@@ -399,14 +486,14 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                     </Button>
                     <Button
                       onClick={handleIndexAll}
-                      disabled={isIndexing || !documents || documents.length === 0}
+                      disabled={isIndexing || isIndexingJobRunning || !documents || documents.length === 0}
                       size="sm"
                       variant="outline"
                     >
-                      {isIndexing ? (
+                      {isIndexing || isIndexingJobRunning ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Indexing...
+                          {latestIndexingJob ? `${latestIndexingJob.processed}/${latestIndexingJob.totalItems}` : "Starting..."}
                         </>
                       ) : (
                         <>
@@ -419,8 +506,8 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                 </div>
               </CardHeader>
               
-              {/* Show job progress bar */}
-              {activeJob && (activeJob.status === "running" || activeJob.status === "pending") && (
+              {/* Show PDF download job progress bar */}
+              {latestPdfJob && (latestPdfJob.status === "running" || latestPdfJob.status === "pending") && (
                 <div className="px-6 pb-4">
                   <div className="p-4 rounded-lg bg-muted/50 space-y-3">
                     <div className="flex items-center justify-between text-sm">
@@ -429,15 +516,94 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                         Downloading open access PDFs...
                       </span>
                       <span className="text-muted-foreground">
-                        {activeJob.success} success, {activeJob.failed} failed, {activeJob.skipped} skipped
+                        {latestPdfJob.succeeded} success, {latestPdfJob.failed} failed, {latestPdfJob.skipped} skipped
                       </span>
                     </div>
                     <Progress 
-                      value={activeJob.totalDocuments > 0 ? (activeJob.processed / activeJob.totalDocuments) * 100 : 0} 
+                      value={latestPdfJob.totalItems > 0 ? (latestPdfJob.processed / latestPdfJob.totalItems) * 100 : 0} 
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {activeJob.processed} of {activeJob.totalDocuments} documents processed
-                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{latestPdfJob.processed} of {latestPdfJob.totalItems} documents processed</span>
+                      {latestPdfJob.failed > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs"
+                          onClick={() => handleRetryFailed(latestPdfJob._id)}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retry Failed
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Show indexing job progress bar */}
+              {latestIndexingJob && (latestIndexingJob.status === "running" || latestIndexingJob.status === "pending") && (
+                <div className="px-6 pb-4">
+                  <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/30 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Indexing documents for RAG search...
+                      </span>
+                      <span className="text-muted-foreground">
+                        {latestIndexingJob.succeeded} indexed, {latestIndexingJob.failed} failed, {latestIndexingJob.skipped} skipped
+                      </span>
+                    </div>
+                    <Progress 
+                      value={latestIndexingJob.totalItems > 0 ? (latestIndexingJob.processed / latestIndexingJob.totalItems) * 100 : 0} 
+                    />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{latestIndexingJob.processed} of {latestIndexingJob.totalItems} documents processed</span>
+                      {latestIndexingJob.failed > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs"
+                          onClick={() => handleRetryFailed(latestIndexingJob._id)}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retry Failed
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Show extraction job progress bar */}
+              {latestExtractionJob && (latestExtractionJob.status === "running" || latestExtractionJob.status === "pending") && (
+                <div className="px-6 pb-4">
+                  <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/30 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Running AI extraction...
+                      </span>
+                      <span className="text-muted-foreground">
+                        {latestExtractionJob.succeeded} success, {latestExtractionJob.failed} failed, {latestExtractionJob.skipped} skipped
+                      </span>
+                    </div>
+                    <Progress 
+                      value={latestExtractionJob.totalItems > 0 ? (latestExtractionJob.processed / latestExtractionJob.totalItems) * 100 : 0} 
+                    />
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{latestExtractionJob.processed} of {latestExtractionJob.totalItems} items processed</span>
+                      {latestExtractionJob.failed > 0 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs"
+                          onClick={() => handleRetryFailed(latestExtractionJob._id)}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retry Failed
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -464,7 +630,7 @@ export function AnalysisDetailClient({ analysisId }: AnalysisDetailClientProps) 
                     const nonOaDocs = documents.filter(d => !d.openAccessUrl);
                     
                     const DocumentCard = ({ doc }: { doc: typeof documents[0] }) => {
-                      const hasFullText = !!doc.fullText;
+                      const hasFullText = doc.hasFullText;
                       const isIndexed = !!doc.ragEntryId;
                       const hasPdf = !!doc.pdfStorageId;
                       const hasOA = !!doc.openAccessUrl;

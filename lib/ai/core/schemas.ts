@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { languageOptions } from '@/components/language-selector'
+import { languageOptions } from './languages'
 
 export const queryEnhancementSchema = z.object({
   enhancedQuery: z
@@ -49,10 +49,17 @@ export const translatePaperContentSchema = z.object({
   translatedAbstract: z.string().describe('The paper abstract translated to English'),
 })
 
+// Source citation schema for extraction results
+export const extractionSourceSchema = z.object({
+  quote: z.string().describe('Exact text quoted from the source (max ~200 chars)'),
+  location: z.string().describe('The [SOURCE: ...] marker copied from the input'),
+})
+
 export const extractDataSchema = z.object({
   value: z.union([z.string(), z.number(), z.boolean(), z.null()]).describe('The extracted value'),
   confidence: z.number().min(0).max(1).describe('Confidence in the extraction (0-1)'),
   reasoning: z.string().describe('Brief explanation for the extraction'),
+  sources: z.array(extractionSourceSchema).optional().describe('Citation sources with quotes and locations'),
 })
 
 export const STANDARD_PROVIDER_OPTIONS = {

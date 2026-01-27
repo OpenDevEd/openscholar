@@ -79,6 +79,9 @@ export interface Usage {
 // Data Extraction types
 export type ExtractionQuestionType = 'text' | 'number' | 'boolean'
 
+// Re-export from batch-types to avoid duplication
+export type { RagChunkWithPosition, ExtractionSource } from './batch-types'
+
 export interface ExtractDataInput {
   title: string
   abstract: string
@@ -86,10 +89,13 @@ export interface ExtractDataInput {
   type: ExtractionQuestionType
   // RAG-enhanced context from full-text search (optional)
   ragContext?: string
+  // Position-tracked chunks for citation support
+  ragChunks?: import('./batch-types').RagChunkWithPosition[]
 }
 
 export interface ExtractDataOutput {
   value: string | number | boolean | null
   confidence: number
   reasoning: string
+  sources?: import('./batch-types').ExtractionSource[]
 }

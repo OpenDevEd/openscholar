@@ -247,6 +247,16 @@ export default defineSchema({
     openAccessUrl: v.optional(v.string()), // URL to open access PDF
     pdfStorageId: v.optional(v.id("_storage")),
     fullText: v.optional(v.string()),
+    // PDF page boundaries for citation tracking
+    pdfPages: v.optional(
+      v.array(
+        v.object({
+          pageNumber: v.number(),
+          startChar: v.number(),
+          endChar: v.number(),
+        })
+      )
+    ),
     // RAG indexing
     ragEntryId: v.optional(v.string()), // RAG component entry ID
     ragIndexedAt: v.optional(v.number()), // When content was indexed
@@ -269,6 +279,18 @@ export default defineSchema({
     value: v.union(v.string(), v.number(), v.boolean(), v.null()),
     confidence: v.optional(v.number()),
     reasoning: v.optional(v.string()),
+    // Citation sources for this extraction
+    sources: v.optional(
+      v.array(
+        v.object({
+          quote: v.string(), // Exact text snippet (max ~200 chars)
+          sourceType: v.union(v.literal("abstract"), v.literal("pdf")),
+          pageNumber: v.optional(v.number()), // Only for PDF sources
+          startChar: v.number(), // Character start in source
+          endChar: v.number(), // Character end in source
+        })
+      )
+    ),
     status: v.union(
       v.literal("pending"),
       v.literal("processing"),
@@ -282,38 +304,106 @@ export default defineSchema({
     .index("by_analysis_question", ["analysisId", "questionId"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // ZOTERO INTEGRATION - OAuth connections
+  // UNIVERSAL JOB SYSTEM
+  // Robust, type-safe job processing with watchdog recovery
   // ═══════════════════════════════════════════════════════════════
 
-  // ═══════════════════════════════════════════════════════════════
-  // PDF DOWNLOAD JOBS - background job tracking for open access PDFs
-  // ═══════════════════════════════════════════════════════════════
-
-  pdfDownloadJobs: defineTable({
+  jobs: defineTable({
+    // Identity
+    type: v.union(
+      v.literal("pdf_download"),
+      v.literal("rag_indexing"),
+      v.literal("extraction")
+    ),
     analysisId: v.id("analyses"),
+    userId: v.optional(v.id("users")), // For credit tracking (extraction)
+
+    // Status
     status: v.union(
-      v.literal("pending"),
+      v.literal("pending"), // Waiting for dependency
       v.literal("running"),
       v.literal("completed"),
-      v.literal("failed")
+      v.literal("failed"),
+      v.literal("cancelled")
     ),
-    totalDocuments: v.number(),
+
+    // Configuration
+    concurrencyLimit: v.number(),
+    itemTimeoutMs: v.number(), // Default: 2 min
+    jobTimeoutMs: v.number(), // Default: 30 min
+    maxAttempts: v.number(), // Default: 3
+
+    // Counters
+    totalItems: v.number(),
     processed: v.number(),
-    success: v.number(),
+    succeeded: v.number(),
     failed: v.number(),
-    skipped: v.optional(v.number()), // HTML pages, invalid URLs
-    // Parallel processing
-    concurrencyLimit: v.optional(v.number()), // Max parallel workers
-    activeWorkers: v.optional(v.number()), // Current active workers
-    nextIndex: v.optional(v.number()), // Next document index to process
-    // Tracking
-    currentDocumentId: v.optional(v.id("documents")),
-    errors: v.array(v.string()),
+    skipped: v.number(),
+
+    // Dependency chain
+    dependsOn: v.optional(v.id("jobs")), // Parent job that must complete first
+    chainId: v.optional(v.string()), // Groups jobs in a chain
+    chainPosition: v.optional(v.number()), // Order in chain
+
+    // Timestamps
     startedAt: v.number(),
+    lastActivityAt: v.number(),
     completedAt: v.optional(v.number()),
+
+    // Metadata (job-type-specific config)
+    metadata: v.optional(v.any()),
+
+    // Error tracking (last 100 errors)
+    errors: v.array(v.string()),
   })
     .index("by_analysis", ["analysisId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_type_status", ["type", "status"])
+    .index("by_depends_on", ["dependsOn"])
+    .index("by_chain", ["chainId"]),
+
+  jobItems: defineTable({
+    jobId: v.id("jobs"),
+    index: v.number(), // Position in job for ordering
+
+    // Status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("claimed"),
+      v.literal("succeeded"),
+      v.literal("failed"),
+      v.literal("skipped")
+    ),
+
+    // Payload - type-safe discriminated union
+    payload: v.union(
+      v.object({
+        type: v.literal("pdf_download"),
+        documentId: v.id("documents"),
+      }),
+      v.object({
+        type: v.literal("rag_indexing"),
+        documentId: v.id("documents"),
+      }),
+      v.object({
+        type: v.literal("extraction"),
+        documentId: v.id("documents"),
+        questionId: v.string(),
+      })
+    ),
+
+    // Tracking
+    attempts: v.number(),
+    claimedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+
+    // Result summary (not full data, just references)
+    result: v.optional(v.any()),
+    error: v.optional(v.string()),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_status", ["jobId", "status"])
+    .index("by_job_index", ["jobId", "index"]),
 
   // ═══════════════════════════════════════════════════════════════
   // ZOTERO INTEGRATION - OAuth connections

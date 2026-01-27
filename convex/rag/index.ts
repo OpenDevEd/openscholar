@@ -26,7 +26,7 @@ type FilterTypes = {
   contentType: "abstract" | "fulltext" | "chunk";
 };
 
-// Metadata stored with each RAG entry
+// Metadata stored with each RAG entry (enhanced with position info)
 type Metadata = {
   documentId: string;
   analysisId: string;
@@ -34,6 +34,11 @@ type Metadata = {
   contentType: "abstract" | "fulltext" | "chunk";
   chunkIndex?: number;
   totalChunks?: number;
+  // Position tracking for citations
+  sourceType?: "abstract" | "pdf";
+  pageNumber?: number | null;
+  startChar?: number;
+  endChar?: number;
 };
 
 // Default Ollama model for embeddings
@@ -158,6 +163,126 @@ export function chunkText(
   }
 
   return chunks;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POSITION-TRACKED CHUNKING - For citation tracking
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Page boundary info for PDF documents.
+ */
+export interface PageBoundary {
+  pageNumber: number;
+  startChar: number;
+  endChar: number;
+}
+
+/**
+ * A chunk with position information for citation tracking.
+ */
+export interface ChunkWithPosition {
+  text: string;
+  sourceType: "abstract" | "pdf";
+  pageNumber: number | null; // null for abstract
+  startChar: number; // Start position in original source
+  endChar: number; // End position in original source
+  chunkIndex: number;
+}
+
+/**
+ * Chunk text with position tracking for citation support.
+ * Returns chunks with their source positions.
+ */
+export function chunkTextWithPositions(
+  text: string,
+  sourceType: "abstract" | "pdf",
+  pdfPages?: PageBoundary[],
+  options: {
+    maxChunkSize?: number;
+    overlap?: number;
+    minChunkSize?: number;
+  } = {}
+): ChunkWithPosition[] {
+  const {
+    maxChunkSize = 1500,
+    overlap = 200,
+    minChunkSize = 100,
+  } = options;
+
+  const chunks: ChunkWithPosition[] = [];
+  let start = 0;
+  let chunkIndex = 0;
+
+  while (start < text.length) {
+    let end = Math.min(start + maxChunkSize, text.length);
+
+    // Try to break at sentence boundary
+    if (end < text.length) {
+      const lastPeriod = text.lastIndexOf(".", end);
+      const lastNewline = text.lastIndexOf("\n", end);
+      const breakPoint = Math.max(lastPeriod, lastNewline);
+
+      if (breakPoint > start + minChunkSize) {
+        end = breakPoint + 1;
+      }
+    }
+
+    const chunkText = text.slice(start, end).trim();
+    if (chunkText.length >= minChunkSize) {
+      // Determine page number for PDF chunks
+      let pageNumber: number | null = null;
+      if (sourceType === "pdf" && pdfPages) {
+        // Find the page that contains the start of this chunk
+        const page = pdfPages.find(
+          (p) => start >= p.startChar && start < p.endChar
+        );
+        pageNumber = page?.pageNumber ?? null;
+      }
+
+      chunks.push({
+        text: chunkText,
+        sourceType,
+        pageNumber,
+        startChar: start,
+        endChar: start + chunkText.length,
+        chunkIndex,
+      });
+      chunkIndex++;
+    }
+
+    // Move forward with overlap
+    start = end - overlap;
+    if (start <= 0 || start <= end - maxChunkSize + overlap) {
+      start = end; // Prevent infinite loop
+    }
+  }
+
+  return chunks;
+}
+
+/**
+ * Prepare document content with position-tracked chunks.
+ * Returns separate abstract and PDF chunks with position info.
+ */
+export function prepareDocumentContentWithPositions(doc: {
+  title: string;
+  abstract?: string;
+  fullText?: string;
+  pdfPages?: PageBoundary[];
+}): {
+  abstractChunks: ChunkWithPosition[];
+  pdfChunks: ChunkWithPosition[];
+} {
+  const abstractChunks = doc.abstract
+    ? chunkTextWithPositions(doc.abstract, "abstract")
+    : [];
+
+  const pdfChunks = doc.fullText
+    ? chunkTextWithPositions(doc.fullText, "pdf", doc.pdfPages)
+    : [];
+
+  return { abstractChunks, pdfChunks };
 }
 
 /**

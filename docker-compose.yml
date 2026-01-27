@@ -2,6 +2,7 @@ services:
   backend:
     # Change this to :${REV} if you want to pin to a specific version
     image: ghcr.io/get-convex/convex-backend:latest
+    restart: unless-stopped
     stop_grace_period: 10s
     stop_signal: SIGINT
     ports:
@@ -42,8 +43,10 @@ services:
 
     healthcheck:
       test: curl -f http://localhost:3210/version
-      interval: 5s
-      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   dashboard:
     # Change this to :${REV} if you want to pin to a specific version
