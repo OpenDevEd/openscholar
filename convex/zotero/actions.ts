@@ -439,7 +439,7 @@ export const fetchItems = action({
     const url: URL = new URL(`${ZOTERO_API_URL}${endpoint}`);
     url.searchParams.set("start", start.toString());
     url.searchParams.set("limit", limit.toString());
-    url.searchParams.set("itemType", "-attachment || -note"); // Exclude attachments and notes
+    url.searchParams.set("itemType", "-attachment"); // Exclude attachments
 
     const response: Response = await fetch(url.toString(), {
       headers: {
@@ -449,7 +449,9 @@ export const fetchItems = action({
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch items from Zotero");
+      const text = await response.text();
+      console.error("Zotero fetch failed:", response.status, text);
+      throw new Error(`Failed to fetch items from Zotero: ${response.status} ${text}`);
     }
 
     const totalResults: number = parseInt(response.headers.get("Total-Results") || "0", 10);
