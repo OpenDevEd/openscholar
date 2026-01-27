@@ -17,7 +17,7 @@ import {
 import { planValidator } from "../lib/validators";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
   apiVersion: "2025-12-15.clover",
 });
 

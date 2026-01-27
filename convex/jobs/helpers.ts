@@ -17,7 +17,7 @@ import {
   chunkText,
   prepareDocumentContent,
 } from "../rag/index";
-import { getModel, withUserCreditsBatch } from "../ai/helpers";
+import { getModel, withUserCreditsBatch, fetchRagContext } from "../ai/helpers";
 import { processExtractionBatch, aggregateUsage } from "../../lib/ai/core";
 import type { ExtractionItem, RagChunkWithPosition } from "../../lib/ai/core/batch-types";
 import type { Id } from "../_generated/dataModel";
@@ -296,20 +296,7 @@ export const indexSingleDocument = internalAction({
 // EXTRACTION HELPER
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Result type from searchContext
-interface RagSearchResult {
-  text: string;
-  chunks: Array<{
-    text: string;
-    score: number;
-    documentId: string;
-    title: string;
-    sourceType: "abstract" | "pdf";
-    pageNumber?: number;
-    startChar: number;
-    endChar: number;
-  }>;
-}
+
 
 /**
  * Extract data from a single document for a specific question.
@@ -346,32 +333,12 @@ export const extractSingleDocument = internalAction({
       );
 
       // Fetch RAG context
-      let ragContext: string | undefined;
-      let ragChunks: RagChunkWithPosition[] | undefined;
-
-      try {
-        const result: RagSearchResult = await ctx.runAction(api.rag.actions.searchContext, {
-          analysisId,
-          query: question,
-          limit: 3,
-          documentId,
-        });
-
-        if (result.chunks && result.chunks.length > 0) {
-          ragChunks = result.chunks.map((chunk) => ({
-            text: chunk.text,
-            sourceType: chunk.sourceType,
-            pageNumber: chunk.pageNumber,
-            startChar: chunk.startChar,
-            endChar: chunk.endChar,
-          }));
-          ragContext = result.text;
-        } else if (result.text && result.text.trim().length > 0) {
-          ragContext = result.text;
-        }
-      } catch {
-        // Continue without RAG context
-      }
+      const { ragContext, ragChunks } = await fetchRagContext(
+        ctx,
+        analysisId,
+        documentId,
+        question
+      );
 
       // Process with LLM
       const extraction = await withUserCreditsBatch(

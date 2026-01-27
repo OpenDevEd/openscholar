@@ -8,7 +8,8 @@
     "dev:convex": "convex dev",
     "dev:all": "pm2 start ecosystem.config.js",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "sync:env": "./sync-env.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.12",

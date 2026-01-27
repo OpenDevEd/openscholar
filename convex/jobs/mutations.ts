@@ -450,6 +450,14 @@ export const cancelJob = internalMutation({
       ],
     });
 
+    // If this is an extraction job, update the analysis status to failed
+    if (job.type === "extraction" && job.analysisId) {
+      await ctx.scheduler.runAfter(0, internal.extraction.analysesMutations.setStatus, {
+        id: job.analysisId,
+        status: "failed",
+      });
+    }
+
     return null;
   },
 });
@@ -546,6 +554,14 @@ export const failJob = internalMutation({
       errors: [...job.errors, error],
     });
 
+    // If this is an extraction job, update the analysis status to failed
+    if (job.type === "extraction" && job.analysisId) {
+      await ctx.scheduler.runAfter(0, internal.extraction.analysesMutations.setStatus, {
+        id: job.analysisId,
+        status: "failed",
+      });
+    }
+
     return null;
   },
 });
@@ -572,6 +588,8 @@ export const triggerDependentJobs = internalMutation({
 /**
  * Check if a job should be marked as completed.
  */
+
+
 async function checkJobCompletion(
   ctx: MutationCtx,
   job: Job
@@ -598,6 +616,15 @@ async function checkJobCompletion(
       status: "completed",
       completedAt: now,
     });
+
+    // If this is an extraction job, update the analysis status to completed
+    if (job.type === "extraction" && job.analysisId) {
+      // Using scheduler is safer to avoid unrelated failures blocking job completion
+      await ctx.scheduler.runAfter(0, internal.extraction.analysesMutations.setStatus, {
+        id: job.analysisId,
+        status: "completed",
+      });
+    }
 
     // Start dependent jobs
     await startDependentJobs(ctx, job._id);
@@ -814,6 +841,12 @@ async function queryItemsForJobType(
       for (const doc of docs) {
         // Match original behavior: process all documents, not just RAG-indexed ones
         // RAG context is optional - extraction can work with just abstract
+        
+        // SKIP if no content available (abstract or fullText)
+        if (!doc.abstract && !doc.fullText) {
+          continue;
+        }
+
         for (const q of analysis.extractionQuestions) {
           const key = `${doc._id}_${q.id}`;
           if (!existingPairs.has(key)) {

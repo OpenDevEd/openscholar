@@ -7,7 +7,7 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal, api } from "../_generated/api";
-import { getModel, withAuthAndCreditsBatch } from "../ai/helpers";
+import { getModel, withAuthAndCreditsBatch, fetchRagContext } from "../ai/helpers";
 import { processExtractionBatch, aggregateUsage } from "../../lib/ai/core";
 import type { ExtractionItem, RagChunkWithPosition } from "../../lib/ai/core/batch-types";
 import type { Id } from "../_generated/dataModel";
@@ -20,67 +20,7 @@ type ExtractionQuestion = {
   type: string;
 };
 
-// Result type from searchContext
-interface RagSearchResult {
-  text: string;
-  chunks: Array<{
-    text: string;
-    score: number;
-    documentId: string;
-    title: string;
-    sourceType: "abstract" | "pdf";
-    pageNumber?: number;
-    startChar: number;
-    endChar: number;
-  }>;
-}
 
-/**
- * Fetch RAG context for a document and question.
- * Returns relevant full-text excerpts with position info for citation tracking.
- */
-async function fetchRagContext(
-  ctx: any,
-  analysisId: Id<"analyses">,
-  documentId: Id<"documents">,
-  question: string
-): Promise<{ ragContext?: string; ragChunks?: RagChunkWithPosition[] }> {
-  try {
-    const result: RagSearchResult = await ctx.runAction(api.rag.actions.searchContext, {
-      analysisId,
-      query: question,
-      limit: 3,
-      documentId,
-    });
-    
-    // Return chunks with position info if available
-    if (result.chunks && result.chunks.length > 0) {
-      const ragChunks: RagChunkWithPosition[] = result.chunks.map((chunk) => ({
-        text: chunk.text,
-        sourceType: chunk.sourceType,
-        pageNumber: chunk.pageNumber,
-        startChar: chunk.startChar,
-        endChar: chunk.endChar,
-      }));
-      
-      return {
-        ragContext: result.text,
-        ragChunks,
-      };
-    }
-    
-    // Legacy fallback: just text
-    if (result.text && result.text.trim().length > 0) {
-      return { ragContext: result.text };
-    }
-    
-    return {};
-  } catch (error) {
-    // RAG search failed - continue without context
-    console.warn("RAG search failed for document:", documentId, error);
-    return {};
-  }
-}
 
 /**
  * Run extraction for a single document (re-run or new questions)
