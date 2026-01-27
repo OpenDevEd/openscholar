@@ -4,6 +4,7 @@
 import { query, mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { documentInputValidator } from "./validators";
 
 // ═══════════════════════════════════════════════════════════════
@@ -297,6 +298,7 @@ export const importFromZotero = mutation({
         authors: v.array(v.string()),
         year: v.optional(v.number()),
         doi: v.optional(v.string()),
+        numChildren: v.optional(v.number()),
       })
     ),
   },
@@ -317,40 +319,74 @@ export const importFromZotero = mutation({
       .filter((q) => q.eq(q.field("sourceRef"), sourceRef))
       .first();
 
+    let sourceId: Id<"analysisSources">;
+    let initialDocCount = 0;
+
     if (existingSource) {
-      throw new Error("This Zotero collection has already been imported to this analysis");
+      // Reuse existing source
+      sourceId = existingSource._id;
+      initialDocCount = existingSource.documentCount || 0;
+      
+      // Update status to importing if it was capable of receiving more
+      await ctx.db.patch(sourceId, {
+        status: "importing",
+      });
+    } else {
+      // Build descriptive name
+      let sourceName = "Zotero Library";
+      if (groupName) {
+        sourceName = `Zotero: ${groupName}`;
+      }
+      if (collectionName) {
+        sourceName = groupName
+          ? `${sourceName} / ${collectionName}`
+          : `Zotero: ${collectionName}`;
+      }
+
+      // Create source record
+      sourceId = await ctx.db.insert("analysisSources", {
+        analysisId,
+        sourceType: "zotero",
+        sourceRef,
+        sourceMeta: {
+          name: sourceName,
+          count: items.length,
+        },
+        status: "importing",
+        documentCount: 0,
+        createdAt: Date.now(),
+      });
     }
 
-    // Build descriptive name
-    let sourceName = "Zotero Library";
-    if (groupName) {
-      sourceName = `Zotero: ${groupName}`;
-    }
-    if (collectionName) {
-      sourceName = groupName
-        ? `${sourceName} / ${collectionName}`
-        : `Zotero: ${collectionName}`;
-    }
-
-    // Create source record
-    const sourceId = await ctx.db.insert("analysisSources", {
-      analysisId,
-      sourceType: "zotero",
-      sourceRef,
-      sourceMeta: {
-        name: sourceName,
-        count: items.length,
-      },
-      status: "ready",
-      documentCount: items.length,
-      createdAt: Date.now(),
-    });
-
-    // Create document records
+    // Process items with deduplication
     const now = Date.now();
+    let newDocsCount = 0;
+
     await Promise.all(
-      items.map((item) =>
-        ctx.db.insert("documents", {
+      items.map(async (item) => {
+        // Check if document already exists in this analysis
+        // We use externalId (Zotero key) for deduplication
+        const existingDoc = await ctx.db
+          .query("documents")
+          .withIndex("by_external_id", (q) => q.eq("externalId", item.key))
+          .filter((q) => q.eq(q.field("analysisId"), analysisId))
+          .first();
+
+        if (existingDoc) {
+          return; // Skip duplicate
+        }
+
+        // Construct Zotero URL if it has attachments (likely PDFs)
+        let openAccessUrl = undefined;
+        if ((item.numChildren || 0) > 0) {
+           if (groupId) {
+             openAccessUrl = `zotero://select/groups/${groupId}/items/${item.key}`;
+           } else {
+             openAccessUrl = `zotero://select/library/items/${item.key}`;
+           }
+        }
+
+        await ctx.db.insert("documents", {
           analysisId,
           sourceId,
           externalId: item.key,
@@ -359,15 +395,24 @@ export const importFromZotero = mutation({
           authors: item.authors,
           year: item.year,
           doi: item.doi,
+          openAccessUrl,
           processingStatus: "ready",
           createdAt: now,
-        })
-      )
+        });
+        newDocsCount++;
+      })
     );
+
+    // Update source status and count
+    const totalCount = initialDocCount + newDocsCount;
+    await ctx.db.patch(sourceId, {
+      status: "ready",
+      documentCount: totalCount,
+    });
 
     return {
       sourceId,
-      documentCount: items.length,
+      documentCount: newDocsCount,
     };
   },
 });

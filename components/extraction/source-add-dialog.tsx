@@ -38,7 +38,7 @@ export function SourceAddDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[700px] h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Add Documents</DialogTitle>
           <DialogDescription>
@@ -49,7 +49,7 @@ export function SourceAddDialog({
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 flex flex-col overflow-hidden min-h-0"
         >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="search-history" className="gap-2">
@@ -70,33 +70,24 @@ export function SourceAddDialog({
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 overflow-auto mt-4">
-            <TabsContent value="search-history" className="m-0 h-full">
+          <div className="flex-1 overflow-hidden mt-4 min-h-0 flex flex-col">
+            <TabsContent value="search-history" className="m-0 h-full min-h-0">
               <SourceSearchHistory
                 analysisId={analysisId}
                 onSuccess={handleSuccess}
               />
             </TabsContent>
 
-            <TabsContent value="zotero" className="m-0 h-full">
-              <SourceZotero
-                analysisId={analysisId}
-                onSuccess={handleSuccess}
-              />
+            <TabsContent value="zotero" className="m-0 h-full min-h-0">
+              <SourceZotero analysisId={analysisId} onSuccess={handleSuccess} />
             </TabsContent>
 
             <TabsContent value="upload" className="m-0 h-full">
-              <SourceUpload
-                analysisId={analysisId}
-                onSuccess={handleSuccess}
-              />
+              <SourceUpload analysisId={analysisId} onSuccess={handleSuccess} />
             </TabsContent>
 
             <TabsContent value="manual" className="m-0 h-full">
-              <SourceManual
-                analysisId={analysisId}
-                onSuccess={handleSuccess}
-              />
+              <SourceManual analysisId={analysisId} onSuccess={handleSuccess} />
             </TabsContent>
           </div>
         </Tabs>

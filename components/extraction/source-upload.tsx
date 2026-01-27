@@ -4,7 +4,6 @@ import React, { useState, useCallback, useRef } from "react";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -44,7 +43,7 @@ interface PdfFile {
 
 export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
   const [activeTab, setActiveTab] = useState("pdf");
-  
+
   // JSON/CSV state
   const [fileName, setFileName] = useState<string | null>(null);
   const [papers, setPapers] = useState<ParsedPaper[]>([]);
@@ -86,7 +85,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
         fileInputRef.current.value = "";
       }
     },
-    []
+    [],
   );
 
   const handleRemovePdf = (index: number) => {
@@ -101,7 +100,8 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
 
     try {
       // Upload each file to storage
-      const uploadedPdfs: { storageId: Id<"_storage">; fileName: string }[] = [];
+      const uploadedPdfs: { storageId: Id<"_storage">; fileName: string }[] =
+        [];
       const totalFiles = pdfFiles.length;
 
       for (let i = 0; i < pdfFiles.length; i++) {
@@ -109,9 +109,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
 
         // Update status
         setPdfFiles((prev) =>
-          prev.map((p, idx) =>
-            idx === i ? { ...p, status: "uploading" } : p
-          )
+          prev.map((p, idx) => (idx === i ? { ...p, status: "uploading" } : p)),
         );
 
         try {
@@ -135,16 +133,14 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
           // Update status to processing
           setPdfFiles((prev) =>
             prev.map((p, idx) =>
-              idx === i ? { ...p, status: "processing" } : p
-            )
+              idx === i ? { ...p, status: "processing" } : p,
+            ),
           );
         } catch (error: any) {
           setPdfFiles((prev) =>
             prev.map((p, idx) =>
-              idx === i
-                ? { ...p, status: "error", error: error.message }
-                : p
-            )
+              idx === i ? { ...p, status: "error", error: error.message } : p,
+            ),
           );
         }
 
@@ -165,16 +161,18 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
         // Update all statuses to done
         setPdfFiles((prev) =>
           prev.map((p) =>
-            p.status === "processing" ? { ...p, status: "done" } : p
-          )
+            p.status === "processing" ? { ...p, status: "done" } : p,
+          ),
         );
 
         if (result.errors.length > 0) {
           toast.warning(
-            `Processed ${result.documentsCreated} PDFs with ${result.errors.length} errors`
+            `Processed ${result.documentsCreated} PDFs with ${result.errors.length} errors`,
           );
         } else {
-          toast.success(`Successfully processed ${result.documentsCreated} PDFs`);
+          toast.success(
+            `Successfully processed ${result.documentsCreated} PDFs`,
+          );
         }
 
         // Wait a moment then close
@@ -250,7 +248,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
 
       if (parsedPapers.length === 0) {
         setParseError(
-          "No valid papers found. Make sure your file has 'title' field."
+          "No valid papers found. Make sure your file has 'title' field.",
         );
         return;
       }
@@ -309,16 +307,13 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
     }
   }, []);
 
-  const handleDragOver = useCallback(
-    (event: React.DragEvent<HTMLElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    []
-  );
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
 
   return (
-    <div className="flex flex-col h-[400px]">
+    <div className="flex flex-col h-full min-h-0">
       <input
         type="file"
         ref={fileInputRef}
@@ -328,7 +323,11 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
         className="hidden"
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex-1 flex flex-col"
+      >
         <TabsList className="grid w-full grid-cols-2 mb-4">
           <TabsTrigger value="pdf">PDF Files</TabsTrigger>
           <TabsTrigger value="data">JSON/CSV Data</TabsTrigger>
@@ -345,7 +344,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                 "flex-1 border-2 border-dashed rounded-lg",
                 "flex flex-col items-center justify-center gap-4",
                 "hover:border-primary/50 hover:bg-muted/30 transition-colors",
-                "cursor-pointer"
+                "cursor-pointer",
               )}
             >
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
@@ -362,7 +361,8 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
             <>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm text-muted-foreground">
-                  {pdfFiles.length} file{pdfFiles.length !== 1 ? "s" : ""} selected
+                  {pdfFiles.length} file{pdfFiles.length !== 1 ? "s" : ""}{" "}
+                  selected
                 </p>
                 <Button
                   variant="outline"
@@ -374,7 +374,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1 border rounded-lg">
+              <div className="flex-1 overflow-y-auto border rounded-lg min-h-0">
                 <div className="p-2 space-y-1">
                   {pdfFiles.map((pdf, index) => (
                     <div
@@ -383,9 +383,13 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                     >
                       <File className="h-5 w-5 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{pdf.name}</p>
+                        <p className="text-sm font-medium truncate">
+                          {pdf.name}
+                        </p>
                         {pdf.error && (
-                          <p className="text-xs text-destructive">{pdf.error}</p>
+                          <p className="text-xs text-destructive">
+                            {pdf.error}
+                          </p>
                         )}
                       </div>
                       {pdf.status === "pending" && (
@@ -413,7 +417,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
 
               {isUploadingPdfs && (
                 <div className="mt-3">
@@ -452,7 +456,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                 "flex-1 border-2 border-dashed rounded-lg",
                 "flex flex-col items-center justify-center gap-4",
                 "hover:border-primary/50 hover:bg-muted/30 transition-colors",
-                "cursor-pointer"
+                "cursor-pointer",
               )}
             >
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
@@ -472,7 +476,9 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
               </div>
               <div className="text-center">
                 <p className="font-medium text-destructive">Parse Error</p>
-                <p className="text-sm text-muted-foreground mt-1">{parseError}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {parseError}
+                </p>
               </div>
               <Button variant="outline" onClick={handleClear}>
                 Try Another File
@@ -502,7 +508,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
               </div>
 
               {/* Preview */}
-              <ScrollArea className="flex-1 border rounded-lg">
+              <div className="flex-1 overflow-y-auto border rounded-lg min-h-0">
                 <div className="p-2 space-y-1">
                   {papers.slice(0, 50).map((paper, index) => (
                     <div
@@ -524,7 +530,7 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                     </p>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </>
           )}
 
@@ -535,7 +541,9 @@ export function SourceUpload({ analysisId, onSuccess }: SourceUploadProps) {
                 Ready to import {papers.length} documents
               </p>
               <Button onClick={handleImport} disabled={isImporting}>
-                {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {isImporting && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
                 Import Documents
               </Button>
             </div>

@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useSearchHistoryStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { DialogFooter } from "@/components/ui/dialog";
 import {
   Search,
   Loader2,
@@ -34,7 +34,7 @@ export function SourceSearchHistory({
 
   const searchHistory = useSearchHistoryStore((s) => s.searchHistory);
   const importFromSearchHistory = useMutation(
-    api.extraction.sources.importFromSearchHistory
+    api.extraction.sources.importFromSearchHistory,
   );
 
   // Filter search history
@@ -44,7 +44,7 @@ export function SourceSearchHistory({
     return searchHistory.filter(
       (s) =>
         s.query.toLowerCase().includes(query) ||
-        s.id.toLowerCase().includes(query)
+        s.id.toLowerCase().includes(query),
     );
   }, [searchHistory, searchFilter]);
 
@@ -66,7 +66,7 @@ export function SourceSearchHistory({
             from_year: String(selectedSearch.yearRange[0]),
             to_year: String(selectedSearch.yearRange[1]),
           }),
-        })}`
+        })}`,
       );
 
       if (!response.ok) {
@@ -78,13 +78,16 @@ export function SourceSearchHistory({
         externalId: work.id,
         title: work.title || work.display_name || "Untitled",
         abstract: work.abstract,
-        authors: work.authorships?.map(
-          (a: any) => a.author?.display_name
-        ).filter(Boolean),
+        authors: work.authorships
+          ?.map((a: any) => a.author?.display_name)
+          .filter(Boolean),
         year: work.publication_year,
         doi: work.doi?.replace("https://doi.org/", ""),
         // Extract open access PDF URL if available
-        openAccessUrl: work.open_access?.oa_url || work.primary_location?.pdf_url || undefined,
+        openAccessUrl:
+          work.open_access?.oa_url ||
+          work.primary_location?.pdf_url ||
+          undefined,
       }));
 
       if (papers.length === 0) {
@@ -115,10 +118,10 @@ export function SourceSearchHistory({
   const selectedSearch = searchHistory.find((s) => s.id === selectedSearchId);
 
   return (
-    <div className="flex flex-col h-[400px]">
+    <div className="flex flex-col h-full overflow-hidden min-h-0">
       {/* Search filter */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative mb-4 px-6 shrink-0">
+        <Search className="absolute left-9 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Filter search history..."
           value={searchFilter}
@@ -128,14 +131,14 @@ export function SourceSearchHistory({
       </div>
 
       {/* Search list */}
-      <ScrollArea className="flex-1 border rounded-lg">
+      <div className="flex-1 overflow-y-auto border-t min-h-0">
         {filteredHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <FileText className="h-8 w-8 mb-2" />
             <p className="text-sm">No search history found</p>
           </div>
         ) : (
-          <div className="p-2 space-y-1">
+          <div className="p-0">
             {filteredHistory.map((search) => {
               const isSelected = selectedSearchId === search.id;
               const isImported = importedIds.has(search.id);
@@ -144,25 +147,27 @@ export function SourceSearchHistory({
                 <button
                   key={search.id}
                   onClick={() =>
-                    !isImported && setSelectedSearchId(isSelected ? null : search.id)
+                    !isImported &&
+                    setSelectedSearchId(isSelected ? null : search.id)
                   }
                   disabled={isImported}
                   className={cn(
-                    "w-full text-left p-3 rounded-lg transition-colors",
-                    "hover:bg-muted/50",
-                    isSelected && "bg-primary/10 border border-primary/30",
-                    isImported && "opacity-50 cursor-not-allowed"
+                    "w-full text-left p-4 border-b hover:bg-muted/50 transition-colors",
+                    isSelected && "bg-primary/5 border-l-4 border-l-primary",
+                    isImported && "opacity-50 cursor-not-allowed bg-muted/20",
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{search.query}</p>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
+                  <div className="flex items-start justify-between gap-3 overflow-hidden">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                      <p className="font-medium truncate text-sm">
+                        {search.query}
+                      </p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground truncate">
+                        <span className="flex items-center gap-1 shrink-0">
                           <FileText className="h-3 w-3" />
                           {search.count?.toLocaleString() || 0} papers
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 shrink-0">
                           <Calendar className="h-3 w-3" />
                           {new Date(search.createdAt).toLocaleDateString()}
                         </span>
@@ -177,24 +182,25 @@ export function SourceSearchHistory({
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-4 border-t mt-4">
-        <p className="text-sm text-muted-foreground">
-          {selectedSearch
-            ? `Selected: ${selectedSearch.count?.toLocaleString() || 0} papers`
-            : "Select a search to import"}
-        </p>
-        <Button
-          onClick={handleImport}
-          disabled={!selectedSearchId || isImporting}
-        >
-          {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Import Documents
-        </Button>
-      </div>
+      <DialogFooter className="p-4 border-t bg-muted/20 mt-auto shrink-0">
+        <div className="flex items-center justify-between w-full">
+          <p className="text-sm text-muted-foreground">
+            {selectedSearch
+              ? `Selected: ${selectedSearch.count?.toLocaleString() || 0} papers`
+              : "Select a search to import"}
+          </p>
+          <Button
+            onClick={handleImport}
+            disabled={!selectedSearchId || isImporting}
+          >
+            {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Import Documents
+          </Button>
+        </div>
+      </DialogFooter>
     </div>
   );
 }
-

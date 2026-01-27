@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { DialogFooter } from "@/components/ui/dialog";
 import {
   Loader2,
   FolderOpen,
@@ -16,6 +16,7 @@ import {
   Check,
   RefreshCw,
   Unlink,
+  Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ type ZoteroItem = {
   year?: number;
   doi?: string;
   itemType: string;
+  numChildren?: number;
 };
 
 type BrowseLocation = {
@@ -112,7 +114,7 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
       // Filter to show only collections at current level
       const parentKey = browseLocation.collectionKey || null;
       const filteredCols = cols.filter(
-        (c) => c.parentCollection === parentKey
+        (c: ZoteroCollection) => c.parentCollection === parentKey,
       );
       setCollections(filteredCols);
 
@@ -133,9 +135,11 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
       });
       setItems(result.items);
       setTotalItems(result.totalResults);
-    } catch (error: any) {
+      setTotalItems(result.totalResults);
+    } catch (error: unknown) {
       console.error("Failed to load Zotero data:", error);
-      toast.error(error.message || "Failed to load Zotero data");
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "Failed to load Zotero data");
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +160,7 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
           : process.env.NEXT_PUBLIC_CONVEX_URL?.replace(".cloud", ".site"));
 
       const callbackUrl = `${convexSiteUrl}/api/zotero/callback`;
-      
+
       const result = await startOAuth({
         userId: currentUser._id,
         callbackUrl,
@@ -165,10 +169,13 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
       // Open Zotero auth in new window
       window.open(result.authorizeUrl, "_blank", "width=600,height=700");
 
-      toast.info("Complete authorization in the Zotero window, then refresh this page.");
-    } catch (error: any) {
+      toast.info(
+        "Complete authorization in the Zotero window, then refresh this page.",
+      );
+    } catch (error: unknown) {
       console.error("OAuth start failed:", error);
-      toast.error(error.message || "Failed to start Zotero connection");
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "Failed to start Zotero connection");
     } finally {
       setIsConnecting(false);
     }
@@ -178,8 +185,9 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
     try {
       await disconnectZotero({});
       toast.success("Zotero disconnected");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to disconnect");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "Failed to disconnect");
     }
   };
 
@@ -254,6 +262,7 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
           authors: i.authors,
           year: i.year,
           doi: i.doi,
+          numChildren: i.numChildren,
         }));
 
       const result = await importFromZotero({
@@ -268,9 +277,11 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
       toast.success(`Imported ${result.documentCount} documents from Zotero`);
       setSelectedItems(new Set());
       onSuccess?.();
-    } catch (error: any) {
+      onSuccess?.();
+    } catch (error: unknown) {
       console.error("Import failed:", error);
-      toast.error(error.message || "Failed to import from Zotero");
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "Failed to import from Zotero");
     } finally {
       setIsImporting(false);
     }
@@ -300,10 +311,10 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
   }
 
   return (
-    <div className="flex flex-col h-[400px]">
+    <div className="flex flex-col h-full overflow-hidden min-h-0">
       {/* Header with breadcrumbs and actions */}
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <div className="flex items-center gap-1 text-sm overflow-x-auto">
+      <div className="flex items-center justify-between mb-3 gap-2 px-6 pt-0 shrink-0">
+        <div className="flex items-center gap-1 text-sm overflow-x-auto min-w-0">
           {breadcrumbs.map((crumb, i) => (
             <React.Fragment key={i}>
               {i > 0 && (
@@ -315,7 +326,7 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
                   "hover:underline whitespace-nowrap",
                   i === breadcrumbs.length - 1
                     ? "font-medium"
-                    : "text-muted-foreground"
+                    : "text-muted-foreground",
                 )}
               >
                 {crumb.label}
@@ -330,9 +341,7 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
             onClick={loadData}
             disabled={isLoading}
           >
-            <RefreshCw
-              className={cn("h-4 w-4", isLoading && "animate-spin")}
-            />
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
           </Button>
           <Button
             variant="ghost"
@@ -346,26 +355,28 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 border rounded-lg">
+      <div className="flex-1 overflow-y-auto border-t min-h-0">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="p-2 space-y-1">
+          <div className="p-0">
             {/* Groups (only at library root) */}
             {groups.map((group) => (
               <button
                 key={group.id}
                 onClick={() => navigateToGroup(group)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 text-left"
+                className="w-full flex items-center gap-3 p-3 border-b hover:bg-muted/50 text-left transition-colors"
               >
                 <Users className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{group.name}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="flex-1 truncate font-medium">
+                  {group.name}
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">
                   {group.numItems} items
                 </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
             ))}
 
@@ -374,21 +385,20 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
               <button
                 key={collection.key}
                 onClick={() => navigateToCollection(collection)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 text-left"
+                className="w-full flex items-center gap-3 p-3 border-b hover:bg-muted/50 text-left transition-colors"
               >
                 <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="flex-1 truncate">{collection.name}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="flex-1 truncate font-medium">
+                  {collection.name}
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">
                   {collection.numItems} items
                 </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
             ))}
 
-            {/* Divider if we have both folders and items */}
-            {(groups.length > 0 || collections.length > 0) &&
-              items.length > 0 && <div className="border-t my-2" />}
-
+            {/* Divider if we have both folders and items - visual only now due to borders */}
             {/* Items */}
             {items.map((item) => {
               const isSelected = selectedItems.has(item.key);
@@ -397,10 +407,8 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
                   key={item.key}
                   onClick={() => toggleItemSelection(item.key)}
                   className={cn(
-                    "w-full flex items-start gap-3 p-2 rounded-lg text-left transition-colors",
-                    isSelected
-                      ? "bg-primary/10 border border-primary/30"
-                      : "hover:bg-muted/50"
+                    "w-full flex items-start gap-3 p-3 border-b text-left transition-colors hover:bg-muted/50",
+                    isSelected && "bg-primary/5 border-l-4 border-l-primary",
                   )}
                 >
                   <div
@@ -408,12 +416,12 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
                       "mt-0.5 h-4 w-4 rounded border flex items-center justify-center shrink-0",
                       isSelected
                         ? "bg-primary border-primary text-primary-foreground"
-                        : "border-muted-foreground/30"
+                        : "border-muted-foreground/30",
                     )}
                   >
                     {isSelected && <Check className="h-3 w-3" />}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <p className="font-medium text-sm truncate">{item.title}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {item.authors.slice(0, 3).join(", ")}
@@ -421,6 +429,14 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
                       {item.year && ` (${item.year})`}
                     </p>
                   </div>
+                  {(item.numChildren || 0) > 0 && (
+                    <div
+                      className="flex items-center text-muted-foreground mr-1"
+                      title="Has attachment"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -436,30 +452,34 @@ export function SourceZotero({ analysisId, onSuccess }: SourceZoteroProps) {
               )}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-4 border-t mt-4">
-        <div className="flex items-center gap-3">
-          {items.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={selectAll}>
-              {selectedItems.size === items.length ? "Deselect All" : "Select All"}
-            </Button>
-          )}
-          <p className="text-sm text-muted-foreground">
-            {selectedItems.size > 0
-              ? `${selectedItems.size} of ${items.length} selected`
-              : `${totalItems} items total`}
-          </p>
+      <DialogFooter className="p-4 border-t bg-muted/20 shrink-0">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3">
+            {items.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={selectAll}>
+                {selectedItems.size === items.length
+                  ? "Deselect All"
+                  : "Select All"}
+              </Button>
+            )}
+            <p className="text-sm text-muted-foreground">
+              {selectedItems.size > 0
+                ? `${selectedItems.size} of ${items.length} selected`
+                : `${totalItems} items total`}
+            </p>
+          </div>
+          <Button
+            onClick={handleImport}
+            disabled={selectedItems.size === 0 || isImporting}
+          >
+            {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Import {selectedItems.size > 0 && `(${selectedItems.size})`}
+          </Button>
         </div>
-        <Button
-          onClick={handleImport}
-          disabled={selectedItems.size === 0 || isImporting}
-        >
-          {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Import {selectedItems.size > 0 && `(${selectedItems.size})`}
-        </Button>
-      </div>
+      </DialogFooter>
     </div>
   );
 }

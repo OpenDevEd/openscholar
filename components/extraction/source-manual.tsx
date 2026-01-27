@@ -26,7 +26,9 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
 
-  const addManualDocument = useMutation(api.extraction.sources.addManualDocument);
+  const addManualDocument = useMutation(
+    api.extraction.sources.addManualDocument,
+  );
 
   const handleDoiLookup = async () => {
     if (!doi.trim()) {
@@ -44,7 +46,7 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
 
       // Lookup via OpenAlex
       const response = await fetch(
-        `https://api.openalex.org/works/doi:${encodeURIComponent(cleanDoi)}`
+        `https://api.openalex.org/works/doi:${encodeURIComponent(cleanDoi)}`,
       );
 
       if (!response.ok) {
@@ -60,7 +62,7 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
         work.authorships
           ?.map((a: any) => a.author?.display_name)
           .filter(Boolean)
-          .join(", ") || ""
+          .join(", ") || "",
       );
       setYear(work.publication_year?.toString() || "");
       setDoi(cleanDoi);
@@ -116,7 +118,7 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
   };
 
   return (
-    <div className="flex flex-col h-[400px]">
+    <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 overflow-auto space-y-4">
         {/* DOI Lookup */}
         <div className="space-y-2">
@@ -215,12 +217,9 @@ export function SourceManual({ analysisId, onSuccess }: SourceManualProps) {
             {isAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Add & Continue
           </Button>
-          {addedCount > 0 && (
-            <Button onClick={handleDone}>Done</Button>
-          )}
+          {addedCount > 0 && <Button onClick={handleDone}>Done</Button>}
         </div>
       </div>
     </div>
   );
 }
-

@@ -3,7 +3,7 @@
 /**
  * Zotero actions - OAuth flow and API integration
  */
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import * as crypto from "crypto";
@@ -60,6 +60,19 @@ type ZoteroItemResponse = {
     date?: string;
     DOI?: string;
     itemType: string;
+  };
+  meta?: {
+    numChildren?: number;
+  };
+};
+
+type ZoteroChildItem = {
+  key: string;
+  data: {
+    itemType: string;
+    title: string;
+    contentType?: string;
+    parentItem?: string;
   };
 };
 
@@ -395,6 +408,7 @@ type ZoteroItem = {
   year?: number;
   doi?: string;
   itemType: string;
+  numChildren?: number;
 };
 
 export const fetchItems = action({
@@ -415,6 +429,7 @@ export const fetchItems = action({
         year: v.optional(v.number()),
         doi: v.optional(v.string()),
         itemType: v.string(),
+        numChildren: v.optional(v.number()),
       })
     ),
     totalResults: v.number(),
@@ -469,9 +484,136 @@ export const fetchItems = action({
         year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
         doi: d.DOI || undefined,
         itemType: d.itemType,
+        numChildren: item.meta?.numChildren,
       };
     });
 
     return { items, totalResults };
   },
 });
+
+/**
+ * Get attachments for a Zotero item.
+ * Used by the job system to download PDFs.
+ */
+export const getAttachments = internalAction({
+  args: {
+    userId: v.id("users"),
+    itemKey: v.string(),
+    groupId: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      key: v.string(),
+      title: v.string(),
+      contentType: v.optional(v.string()),
+      url: v.string(),
+    })
+  ),
+  handler: async (ctx, { userId, itemKey, groupId }): Promise<Array<{
+    key: string;
+    title: string;
+    contentType?: string;
+    url: string;
+  }>> => {
+    const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
+      userId,
+    });
+
+    if (!connection) {
+      throw new Error("Zotero not connected");
+    }
+
+    const prefix = groupId
+      ? `/groups/${groupId}`
+      : `/users/${connection.zoteroUserId}`;
+
+    const response = await fetch(
+      `${ZOTERO_API_URL}${prefix}/items/${itemKey}/children`,
+      {
+        headers: {
+          "Zotero-API-Key": connection.apiKey,
+          "Zotero-API-Version": "3",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch attachments from Zotero");
+    }
+
+    const data: ZoteroChildItem[] = await response.json();
+    
+    // Filter for PDF attachments
+    return data
+      .filter((item) => 
+        item.data.itemType === "attachment" && 
+        item.data.contentType === "application/pdf"
+      )
+      .map((item) => ({
+        key: item.key,
+        title: item.data.title,
+        contentType: item.data.contentType,
+        // The URL to download the file content
+        url: `${ZOTERO_API_URL}${prefix}/items/${item.key}/file`,
+      }));
+  },
+});
+
+/**
+ * Download a file from Zotero.
+ * Wraps the fetch with proper authentication headers.
+ */
+export const downloadFile = internalAction({
+  args: {
+    userId: v.id("users"),
+    downloadUrl: v.string(),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    data: v.optional(v.string()), // Base64 encoded data
+    contentType: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, { userId, downloadUrl }): Promise<{
+    success: boolean;
+    data?: string;
+    contentType?: string;
+    error?: string;
+  }> => {
+    const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
+      userId,
+    });
+
+    if (!connection) {
+      return { success: false, error: "Zotero not connected" };
+    }
+
+    try {
+      const response = await fetch(downloadUrl, {
+        headers: {
+          "Zotero-API-Key": connection.apiKey,
+          "Zotero-API-Version": "3",
+        },
+      });
+
+      if (!response.ok) {
+        return { success: false, error: `Download failed: ${response.status}` };
+      }
+
+      const contentType = response.headers.get("Content-Type") || "application/octet-stream";
+      const buffer = await response.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString("base64");
+
+      return {
+        success: true,
+        data: base64,
+        contentType,
+      };
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      return { success: false, error };
+    }
+  },
+});
+

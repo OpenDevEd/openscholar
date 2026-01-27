@@ -140,6 +140,121 @@ export const downloadSinglePdf = internalAction({
   },
 });
 
+/**
+ * Download and process a PDF attachment from Zotero.
+ */
+export const downloadZoteroAttachment = internalAction({
+  args: {
+    documentId: v.id("documents"),
+    analysisId: v.id("analyses"),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    skipped: v.optional(v.boolean()),
+    textLength: v.optional(v.number()),
+    pages: v.optional(v.number()),
+    storageId: v.optional(v.id("_storage")),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, { documentId, analysisId }): Promise<{
+    success: boolean;
+    skipped?: boolean;
+    textLength?: number;
+    pages?: number;
+    storageId?: Id<"_storage">;
+    error?: string;
+  }> => {
+    // Get document and analysis to find user
+    const doc: any = await ctx.runQuery(internal.rag.queries.getDocument, {
+      documentId,
+    });
+    const analysis: any = await ctx.runQuery(api.extraction.analyses.get, {
+      id: analysisId,
+    });
+
+    if (!doc || !analysis) {
+      return { success: false, skipped: true, error: "Document or analysis not found" };
+    }
+
+    if (doc.fullText || doc.pdfStorageId) {
+      return { success: false, skipped: true, error: "Already has PDF/text" };
+    }
+
+
+
+    try {
+      // 1. Find PDF attachment
+      // ExternalId is the Zotero Item Key
+      let groupId: string | undefined;
+      const zoteroUrl = doc.openAccessUrl;
+      if (zoteroUrl && zoteroUrl.startsWith("zotero://select/groups/")) {
+        const match = zoteroUrl.match(/groups\/(\d+)\//);
+        if (match && match[1]) {
+          groupId = match[1];
+        }
+      }
+
+      const attachments: any[] = await ctx.runAction(internal.zotero.actions.getAttachments, {
+        userId: analysis.userId,
+        itemKey: doc.externalId,
+        groupId,
+      });
+
+      const pdfAttachment = attachments.find((a: any) => a.contentType === "application/pdf");
+      if (!pdfAttachment) {
+        return { success: false, skipped: true, error: "No PDF attachment found in Zotero" };
+      }
+
+      // 2. Download file
+      const download: any = await ctx.runAction(internal.zotero.actions.downloadFile, {
+        userId: analysis.userId,
+        downloadUrl: pdfAttachment.url,
+      });
+
+      if (!download.success || !download.data) {
+        return { success: false, error: download.error || "Download failed" };
+      }
+
+      // 3. Process content
+      const buffer = Buffer.from(download.data, "base64");
+      
+      // Extract text with page boundaries
+      const { fullText, pages } = await extractTextWithPages(buffer as unknown as ArrayBuffer);
+
+      if (!fullText || fullText.trim().length < 100) {
+        return {
+          success: false,
+          error: `Insufficient text extracted (${fullText?.length || 0} chars)`,
+        };
+      }
+
+      // Store PDF
+      const storageId = await ctx.storage.store(
+        new Blob([buffer], { type: "application/pdf" })
+      );
+
+      // Save to document
+      await ctx.runMutation(internal.rag.mutations.savePdfWithPages, {
+        documentId,
+        pdfStorageId: storageId,
+        fullText,
+        pdfPages: pages,
+      });
+
+      return {
+        success: true,
+        textLength: fullText.length,
+        pages: pages.length,
+        storageId,
+      };
+
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      return { success: false, error };
+    }
+  },
+});
+
 // Helper functions
 async function fetchWithTimeout(
   url: string,

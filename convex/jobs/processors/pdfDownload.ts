@@ -33,6 +33,47 @@ registerProcessor("pdf_download", async (ctx, job, item) => {
     return { success: false, skipped: true, error: "Already has PDF/text" };
   }
 
+  // Handle Zotero attachments
+  // Handle Zotero attachments via special URL scheme
+  if (doc.openAccessUrl && doc.openAccessUrl.startsWith("zotero://")) {
+    try {
+      const result = await ctx.runAction(internal.jobs.helpers.downloadZoteroAttachment, {
+        documentId,
+        analysisId: job.analysisId,
+      });
+
+      if (result.success) {
+        return {
+          success: true,
+          result: {
+            textLength: result.textLength ?? 0,
+            pages: result.pages ?? 0,
+            storageId: result.storageId,
+          },
+        };
+      } else if (result.skipped) {
+        return {
+          success: false,
+          skipped: true,
+          error: result.error ?? "Skipped",
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error ?? "Zotero download failed",
+        };
+      }
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e.message : String(e);
+      return { success: false, error };
+    }
+  }
+
+  // Standard Open Access Download
+  if (!doc.openAccessUrl) {
+    return { success: false, skipped: true, error: "No open access URL" };
+  }
+
   // Call the existing PDF download action
   // This reuses all the existing smart fetch, retry, and extraction logic
   try {

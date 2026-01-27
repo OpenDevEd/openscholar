@@ -15,6 +15,7 @@ export const getDocument = internalQuery({
     v.object({
       _id: v.id("documents"),
       analysisId: v.id("analyses"),
+      externalId: v.string(),
       title: v.string(),
       abstract: v.optional(v.string()),
       fullText: v.optional(v.string()),
@@ -43,6 +44,7 @@ export const getDocument = internalQuery({
     return {
       _id: doc._id,
       analysisId: doc.analysisId,
+      externalId: doc.externalId,
       title: doc.title,
       abstract: doc.abstract,
       fullText: doc.fullText,
