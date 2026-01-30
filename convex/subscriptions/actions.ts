@@ -18,7 +18,7 @@ import { planValidator } from "../lib/validators";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
-  apiVersion: "2025-12-15.clover",
+  apiVersion: "2026-01-28.clover",
 });
 
 const DOMAIN = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
