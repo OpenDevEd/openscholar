@@ -5,13 +5,11 @@ import {
   createScreeningResponsesSchema,
   translateQuerySchema,
   translatePaperContentSchema,
-  extractDataSchema,
   buildEnhanceQueryPrompts,
   buildScreeningQuestionsPrompts,
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
-  buildExtractDataPrompts,
   validateQuery,
 } from './index'
 import {
@@ -20,7 +18,6 @@ import {
   TranslateQueryInput,
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
-  ExtractDataInput,
 } from './types'
 import type { RepairStrategy } from './execute'
 
@@ -122,18 +119,6 @@ export function getScreeningResponsesConfig(
   return {
     schema,
     buildPrompts: (input) => buildScreeningResponsesPrompts(input),
-    input,
-    repairStrategy: { type: 'full-json' },
-    temperature: 0.1,
-  }
-}
-
-export function getExtractDataConfig(
-  input: ExtractDataInput
-): OperationConfig<ExtractDataInput, z.infer<typeof extractDataSchema>> {
-  return {
-    schema: extractDataSchema,
-    buildPrompts: (input) => buildExtractDataPrompts(input),
     input,
     repairStrategy: { type: 'full-json' },
     temperature: 0.1,

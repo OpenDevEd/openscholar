@@ -36,19 +36,19 @@ http.route({
         // Redirect to error page
         const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         return Response.redirect(
-          `${frontendUrl}/extraction?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
+          `${frontendUrl}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
           302
         );
       }
 
       // Redirect to success page
       const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      return Response.redirect(`${frontendUrl}/extraction?zotero_connected=true`, 302);
+      return Response.redirect(`${frontendUrl}/?zotero_connected=true`, 302);
     } catch (error) {
       console.error("Zotero OAuth callback error:", error);
       const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       return Response.redirect(
-        `${frontendUrl}/extraction?zotero_error=${encodeURIComponent("OAuth failed")}`,
+        `${frontendUrl}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
         302
       );
     }

@@ -24,19 +24,6 @@ crons.interval(
   internal.maintenance.internal.checkSubscriptionStatus
 );
 
-// Hourly RAG cleanup - delete old replaced entries to prevent database bloat
-crons.interval(
-  "cleanup old RAG entries",
-  { hours: 1 },
-  internal.rag.actions.cleanupOldRagEntriesAction,
-  {}
-);
 
-// Job system watchdog - recover stuck jobs and start pending dependencies
-crons.interval(
-  "job system watchdog",
-  { minutes: 1 },
-  internal.jobs.watchdog.watchdog
-);
 
 export default crons;

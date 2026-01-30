@@ -4,7 +4,6 @@ export type AIOperationType =
   | 'translateQuery'
   | 'translatePaperContent'
   | 'generateScreeningResponses'
-  | 'extractData'
 
 export interface EnhanceSearchQueryInput {
   query: string
@@ -76,26 +75,4 @@ export interface Usage {
   outputTokens?: number
 }
 
-// Data Extraction types
-export type ExtractionQuestionType = 'text' | 'number' | 'boolean'
-
-// Re-export from batch-types to avoid duplication
-export type { RagChunkWithPosition, ExtractionSource } from './batch-types'
-
-export interface ExtractDataInput {
-  title: string
-  abstract: string
-  question: string
-  type: ExtractionQuestionType
-  // RAG-enhanced context from full-text search (optional)
-  ragContext?: string
-  // Position-tracked chunks for citation support
-  ragChunks?: import('./batch-types').RagChunkWithPosition[]
-}
-
-export interface ExtractDataOutput {
-  value: string | number | boolean | null
-  confidence: number
-  reasoning: string
-  sources?: import('./batch-types').ExtractionSource[]
-}
+// AI types only - extraction removed

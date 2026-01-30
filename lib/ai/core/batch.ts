@@ -143,8 +143,8 @@ export async function processScreeningBatch(
 // ═══════════════════════════════════════════════════════════════
 
 import { getTranslatePaperContentConfig } from './configs'
-import type { TranslationResultData, ExtractionItem, ExtractionResultData } from './batch-types'
-import type { TranslatePaperContentInput, ExtractDataInput } from './types'
+import type { TranslationResultData } from './batch-types'
+import type { TranslatePaperContentInput } from './types'
 
 export interface TranslationBatchConfig {
   model: LanguageModel
@@ -183,91 +183,4 @@ export async function processTranslationBatch(
   )
 }
 
-// ═══════════════════════════════════════════════════════════════
-// EXTRACTION BATCH PROCESSOR
-// ═══════════════════════════════════════════════════════════════
-
-import { getExtractDataConfig } from './configs'
-
-export interface ExtractionBatchConfig {
-  model: LanguageModel
-  items: ExtractionItem[]
-}
-
-export async function processExtractionBatch(
-  config: ExtractionBatchConfig
-): Promise<BatchProcessorResult<ExtractionResultData & { resultId: string }>> {
-  const { model, items } = config
-
-  return processBatch<
-    ExtractionItem,
-    ExtractDataInput,
-    { value: string | number | boolean | null; confidence: number; reasoning: string; sources?: Array<{ quote: string; location: string }> },
-    ExtractionResultData & { resultId: string }
-  >(
-    items,
-    {
-      model,
-      toConfigInput: (item) => ({
-        title: item.title,
-        abstract: item.abstract,
-        question: item.question,
-        type: item.type,
-        ragContext: item.ragContext,
-        ragChunks: item.ragChunks,
-      }),
-      getOperationConfig: getExtractDataConfig,
-      formatResult: (output, item) => ({
-        value: output.value,
-        confidence: output.confidence,
-        reasoning: output.reasoning,
-        sources: output.sources ? parseSourceLocations(output.sources) : undefined,
-        resultId: item.resultId,
-      }),
-      getItemId: (item) => item.resultId,
-    }
-  )
-}
-
-/**
- * Parse source locations from LLM response.
- * Converts "[SOURCE: pdf, page 3, chars 1200-1500]" markers to structured data.
- */
-function parseSourceLocations(sources: Array<{ quote: string; location: string }>): ExtractionResultData['sources'] {
-  return sources.map((source) => {
-    const location = source.location
-    
-    // Match: "abstract, chars 0-450" or "abstract, chars 0-450"
-    const abstractMatch = location.match(/abstract,?\s*chars?\s*(\d+)-(\d+)/i)
-    if (abstractMatch) {
-      return {
-        quote: source.quote,
-        sourceType: 'abstract' as const,
-        pageNumber: undefined,
-        startChar: parseInt(abstractMatch[1], 10),
-        endChar: parseInt(abstractMatch[2], 10),
-      }
-    }
-    
-    // Match: "pdf, page 3, chars 5201-6800"
-    const pdfMatch = location.match(/pdf,?\s*page\s*(\d+|\?),?\s*chars?\s*(\d+)-(\d+)/i)
-    if (pdfMatch) {
-      return {
-        quote: source.quote,
-        sourceType: 'pdf' as const,
-        pageNumber: pdfMatch[1] !== '?' ? parseInt(pdfMatch[1], 10) : undefined,
-        startChar: parseInt(pdfMatch[2], 10),
-        endChar: parseInt(pdfMatch[3], 10),
-      }
-    }
-    
-    // Fallback: treat as abstract with no position
-    return {
-      quote: source.quote,
-      sourceType: 'abstract' as const,
-      pageNumber: undefined,
-      startChar: 0,
-      endChar: source.quote.length,
-    }
-  })
-}
+// Extraction batch processor removed
