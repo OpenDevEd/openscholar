@@ -17,6 +17,6 @@ module.exports = {
       name: 'convex',
       script: 'npm',
       args: 'run dev:convex',
-    },
+    }
   ],
 };
