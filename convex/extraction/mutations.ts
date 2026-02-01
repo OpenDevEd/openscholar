@@ -710,6 +710,7 @@ export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
             confidence: r.confidence,
             reasoning: r.reasoning,
             contextChunks: r.contextChunks,
+            pdfContentUsed: r.pdfContentUsed,
             processedAt: Date.now(),
           });
         }

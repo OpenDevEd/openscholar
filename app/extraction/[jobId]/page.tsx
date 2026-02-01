@@ -58,7 +58,7 @@ export default function JobDetailPage() {
   const router = useRouter();
   const jobId = params.jobId as any;
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 200;
 
   // Mutations
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);

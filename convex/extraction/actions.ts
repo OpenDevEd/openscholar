@@ -369,55 +369,84 @@ export const chunkPdf = rag.defineChunkerAction(async (ctx, args) => {
   const pdfBuffer = await file.arrayBuffer();
   const extracted = await extractText(pdfBuffer);
 
-  // Smart chunking strategy - unpdf returns { totalPages, text: string[] }
-  const fullText = Array.isArray(extracted.text) 
-    ? extracted.text.join("\n\n") 
-    : String(extracted.text || "");
+  // Extract text by pages and create chunks with metadata
+  console.log(`[chunkPdf] Extracted ${extracted.totalPages} pages from PDF`);
   
-  const chunks = chunkTextIntelligently(fullText, {
-    maxChunkSize: 1000,
-    overlap: 200,
-  });
+  const chunks: Array<{ text: string; metadata: Record<string, any> }> = [];
+  let globalChunkIndex = 0;
+  
+  for (let pageNum = 0; pageNum < extracted.text.length; pageNum++) {
+    const pageText = extracted.text[pageNum];
+    
+    // Validate page text
+    if (typeof pageText !== 'string') {
+      console.warn(`[chunkPdf] Page ${pageNum + 1}: Invalid type ${typeof pageText}, skipping`);
+      continue;
+    }
+    
+    if (pageText.trim().length < 50) {
+      console.log(`[chunkPdf] Page ${pageNum + 1}: Too short (${pageText.length} chars), skipping`);
+      continue;
+    }
+    
+    // Split page into paragraphs and create chunks
+    const paragraphs = pageText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+    let currentChunk = "";
+    let chunkStartChar = 0;
+    
+    for (const paragraph of paragraphs) {
+      const trimmedParagraph = paragraph.trim();
+      if (!trimmedParagraph) continue;
+      
+      // If adding this paragraph exceeds chunk size, save current chunk
+      if (currentChunk.length + trimmedParagraph.length > 1000 && currentChunk.length > 200) {
+        const chunkText = currentChunk.trim();
+        const startChar = pageText.indexOf(chunkText, chunkStartChar);
+        
+        chunks.push({
+          text: chunkText,
+          metadata: {
+            page: pageNum + 1,
+            charRange: [startChar, startChar + chunkText.length],
+            chunkIndex: globalChunkIndex++,
+            totalPages: extracted.totalPages,
+          },
+        });
+        
+        // Start new chunk with overlap (keep last 200 chars)
+        const words = currentChunk.split(" ");
+        const overlapText = words.slice(-40).join(" "); // ~200 chars
+        currentChunk = overlapText + "\n\n" + trimmedParagraph + "\n\n";
+        chunkStartChar = startChar + chunkText.length - overlapText.length;
+      } else {
+        currentChunk += trimmedParagraph + "\n\n";
+      }
+    }
+    
+    // Don't forget the last chunk on this page
+    if (currentChunk.trim().length > 100) {
+      const chunkText = currentChunk.trim();
+      const startChar = pageText.indexOf(chunkText, chunkStartChar);
+      
+      chunks.push({
+        text: chunkText,
+        metadata: {
+          page: pageNum + 1,
+          charRange: [startChar, startChar + chunkText.length],
+          chunkIndex: globalChunkIndex++,
+          totalPages: extracted.totalPages,
+        },
+      });
+    }
+  }
+  
+  console.log(`[chunkPdf] Created ${chunks.length} chunks with metadata`);
 
   return {
     chunks,
     title,
   };
 });
-
-function chunkTextIntelligently(
-  text: string,
-  options: { maxChunkSize: number; overlap: number }
-): string[] {
-  const { maxChunkSize, overlap } = options;
-  const chunks: string[] = [];
-
-  // Split by paragraphs first
-  const paragraphs = text.split(/\n\s*\n/);
-  let currentChunk = "";
-
-  for (const paragraph of paragraphs) {
-    const trimmedParagraph = paragraph.trim();
-    if (!trimmedParagraph) continue;
-
-    if (currentChunk.length + trimmedParagraph.length > maxChunkSize) {
-      if (currentChunk) {
-        chunks.push(currentChunk.trim());
-        // Keep overlap
-        const words = currentChunk.split(" ");
-        const overlapWords = words.slice(-Math.floor(overlap / 5));
-        currentChunk = overlapWords.join(" ") + " ";
-      }
-    }
-    currentChunk += trimmedParagraph + "\n\n";
-  }
-
-  if (currentChunk) {
-    chunks.push(currentChunk.trim());
-  }
-
-  return chunks;
-}
 
 // Extract answer for a single question
 export const extractAnswer = internalAction({

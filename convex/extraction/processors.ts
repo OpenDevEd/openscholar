@@ -48,16 +48,53 @@ export const downloadAndProcessPdf = internalAction({
       const { extractText } = await import("unpdf");
       const extracted = await extractText(pdfBuffer);
 
+      console.log(`[downloadAndProcessPdf] Extracted ${extracted.totalPages} pages`);
+      
+      // Process by pages with validation and simple chunking
+      const chunks: string[] = [];
+      
+      for (let pageNum = 0; pageNum < extracted.text.length; pageNum++) {
+        const pageText = extracted.text[pageNum];
+        
+        // Validate page text
+        if (typeof pageText !== 'string') {
+          console.warn(`[downloadAndProcessPdf] Page ${pageNum + 1}: Invalid type ${typeof pageText}`);
+          continue;
+        }
+        
+        if (pageText.trim().length < 50) {
+          console.log(`[downloadAndProcessPdf] Page ${pageNum + 1}: Too short (${pageText.length} chars)`);
+          continue;
+        }
+        
+        // Simple paragraph-based chunking
+        const paragraphs = pageText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+        let currentChunk = "";
+        
+        for (const paragraph of paragraphs) {
+          const trimmed = paragraph.trim();
+          if (!trimmed) continue;
+          
+          if (currentChunk.length + trimmed.length > 1000 && currentChunk.length > 200) {
+            chunks.push(currentChunk.trim());
+            // Overlap: keep last 40 words
+            const words = currentChunk.split(" ");
+            currentChunk = words.slice(-40).join(" ") + "\n\n" + trimmed + "\n\n";
+          } else {
+            currentChunk += trimmed + "\n\n";
+          }
+        }
+        
+        if (currentChunk.trim().length > 100) {
+          chunks.push(currentChunk.trim());
+        }
+      }
+      
       const fullText = Array.isArray(extracted.text)
         ? extracted.text.join("\n\n")
         : String(extracted.text || "");
-
-      // Chunk text
-      const chunks = chunkTextIntelligently(fullText, {
-        maxChunkSize: 1000,
-        overlap: 200,
-      });
-
+      
+      console.log(`[downloadAndProcessPdf] Created ${chunks.length} chunks`);
       return { text: fullText, chunks };
     } catch (error) {
       console.error("PDF processing error:", error);
@@ -123,37 +160,6 @@ Respond in valid JSON format.`;
     }
   },
 });
-
-function chunkTextIntelligently(
-  text: string,
-  options: { maxChunkSize: number; overlap: number }
-): string[] {
-  const { maxChunkSize, overlap } = options;
-  const chunks: string[] = [];
-  const paragraphs = text.split(/\n\s*\n/);
-  let currentChunk = "";
-
-  for (const paragraph of paragraphs) {
-    const trimmedParagraph = paragraph.trim();
-    if (!trimmedParagraph) continue;
-
-    if (currentChunk.length + trimmedParagraph.length > maxChunkSize) {
-      if (currentChunk) {
-        chunks.push(currentChunk.trim());
-        const words = currentChunk.split(" ");
-        const overlapWords = words.slice(-Math.floor(overlap / 5));
-        currentChunk = overlapWords.join(" ") + " ";
-      }
-    }
-    currentChunk += trimmedParagraph + "\n\n";
-  }
-
-  if (currentChunk) {
-    chunks.push(currentChunk.trim());
-  }
-
-  return chunks;
-}
 
 function buildAnswerSchema(type: string) {
   return z.object({

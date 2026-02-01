@@ -333,6 +333,7 @@ export default defineSchema({
     // Source tracking
     model: v.optional(v.string()),
     provider: v.optional(v.string()),
+    pdfContentUsed: v.optional(v.boolean()), // Whether PDF content was actually used for this answer
     processedAt: v.number(),
   })
     .index("by_paper", ["paperId"])

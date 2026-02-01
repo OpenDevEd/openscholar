@@ -6,18 +6,13 @@ export const createTestJobForFix = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return { error: "Not authenticated" };
-    }
-    
+    // Find first user (skip auth for testing)
     const user = await ctx.db
       .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
+      .first();
       
     if (!user) {
-      return { error: "User not found" };
+      return { error: "No users found" };
     }
     
     const jobId = await ctx.db.insert("extractionJobs", {

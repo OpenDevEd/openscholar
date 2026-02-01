@@ -84,6 +84,23 @@ export { getPaperErrorsInternal } from "./debug_papers";
 // Test job creation
 export { createTestJobForFix } from "./create_test_job";
 
+// Test runner (internal)
+export {
+  createAndRunTestJob,
+  getTestJobStatus,
+} from "./test_runner";
+
+// Test automation - FULL AUTOMATED TEST
+export { runPdfTestNow } from "./test_automation";
+
+// Internal test automation helpers
+export {
+  getFirstUserId,
+  createTestJob as createTestJobInternal,
+  getJobStatus as getJobStatusInternal,
+  getJobResults as getJobResultsInternal,
+} from "./test_automation_internal";
+
 // Types
 export type {
   ExtractionQuestionType,
