@@ -670,6 +670,7 @@ export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
         results?: Array<any>;
         error?: string;
         creditsUsed?: number;
+        pdfUsed?: boolean;
       };
 
       if (data.success && data.results) {
@@ -691,6 +692,9 @@ export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
           status: "completed",
           completedAt: Date.now(),
           creditsUsed: data.creditsUsed || 0,
+          // If PDF was used, mark it as indexed (using a placeholder ID if real one not available)
+          // This allows the UI to show "PDF Used" even if storage failed
+          ...(data.pdfUsed ? { ragEntryId: "indexed" } : {}),
         });
       } else {
         // Mark paper as failed

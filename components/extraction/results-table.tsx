@@ -128,7 +128,7 @@ export function ResultsTable({
                             Open Access
                           </Badge>
                         )}
-                        {paper.storageId ? (
+                        {paper.storageId || paper.ragEntryId ? (
                           <Badge
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
