@@ -196,44 +196,52 @@ export const processPaperAction = internalAction({
         if (downloadResult.success && downloadResult.pdfData) {
           console.log(`[processPaperAction] PDF downloaded successfully (${downloadResult.pdfData.byteLength} bytes)`);
           
-          // CRITICAL: Clone buffer IMMEDIATELY before any processing
-          // extractText() will detach the original buffer, so we need a copy for storage
-          const pdfBufferForStorage = new Uint8Array(downloadResult.pdfData).slice().buffer;
-          
+          // Store PDF immediately
           try {
-            // Step 2: Extract text from PDF (original buffer gets detached here)
-            const { extractText } = await import("unpdf");
-            const extracted = await extractText(downloadResult.pdfData);
-            pdfText = Array.isArray(extracted.text)
-              ? extracted.text.join("\n\n")
-              : String(extracted.text || "");
+            const blob = new Blob([downloadResult.pdfData]);
+            storageId = await ctx.storage.store(blob);
+            console.log(`[processPaperAction] PDF stored with storageId: ${storageId}`);
+          } catch (storageError) {
+            console.error(`[processPaperAction] Failed to store PDF:`, storageError);
+            // Continue, but we won't have a storageId
+          }
 
-            if (pdfText && pdfText.length >= 100) {
-              console.log(`[processPaperAction] PDF text extracted: ${pdfText.length} characters`);
+          if (storageId) {
+             try {
+                // Clone buffer for extraction since unpdf might detach it
+                const pdfBufferForExtraction = new Uint8Array(downloadResult.pdfData).slice().buffer;
+                
+                // Step 2: Extract text from PDF
+                const { extractText } = await import("unpdf");
+                const extracted = await extractText(pdfBufferForExtraction);
+                pdfText = Array.isArray(extracted.text)
+                  ? extracted.text.join("\n\n")
+                  : String(extracted.text || "");
 
-              // Step 3: Store PDF in storage (use cloned buffer)
-              const blob = new Blob([pdfBufferForStorage]);
-              storageId = await ctx.storage.store(blob);
-              console.log(`[processPaperAction] PDF stored with storageId: ${storageId}`);
+                console.log(`[processPaperAction] Extracted text length: ${pdfText.length} chars`);
 
-              // Step 4: Index full text with RAG (RAG handles chunking automatically)
-              await rag.add(ctx, {
-                namespace: `extraction:${args.jobId}`,
-                key: args.paperId,
-                text: pdfText,
-              });
-              ragIndexed = true;
-              console.log(`[processPaperAction] RAG indexed paper ${args.paperId}`);
-            } else {
-              console.log(`[processPaperAction] PDF text too short (${pdfText?.length || 0} chars), skipping RAG`);
-            }
-          } catch (pdfError) {
-            console.error(`[processPaperAction] PDF processing error:`, pdfError);
-            // Continue with abstract-only processing if PDF fails
+                if (pdfText && pdfText.length >= 100) {
+                  // Step 4: Index full text with RAG
+                  await rag.add(ctx, {
+                    namespace: `extraction:${args.jobId}`,
+                    key: args.paperId,
+                    text: pdfText,
+                  });
+                  ragIndexed = true;
+                  console.log(`[processPaperAction] RAG indexed paper ${args.paperId}`);
+                } else {
+                  console.warn(`[processPaperAction] PDF text too short (${pdfText?.length || 0} chars), skipping RAG`);
+                }
+             } catch (pdfError) {
+                console.error(`[processPaperAction] PDF text extraction error:`, pdfError);
+                // Continue with abstract-only processing, but we HAVE the PDF stored
+             }
           }
         } else {
           console.log(`[processPaperAction] PDF download failed: ${downloadResult.error}`);
         }
+      } else {
+         console.warn(`[processPaperAction] SKIPPING PDF: No PDF URL provided`);
       }
 
       // Step 5: Extract answers using AI (with or without PDF content)

@@ -214,8 +214,11 @@ export const processPaper = internalAction({
       }
 
       if (!paper.pdfUrl) {
+        console.log(`[processPaper] No PDF URL for paper ${args.paperId}`);
         throw new Error("No PDF URL available for this paper");
       }
+
+      console.log(`[processPaper] Downloading PDF for ${args.paperId} from ${paper.pdfUrl}`);
 
       // Step 2: Download PDF
       await ctx.runMutation(internal.extraction.mutations.updatePaperStatus, {
@@ -237,7 +240,9 @@ export const processPaper = internalAction({
         }
         
         pdfBuffer = await response.arrayBuffer();
+        console.log(`[processPaper] Download success, size: ${pdfBuffer.byteLength} bytes`);
       } catch (error) {
+        console.error(`[processPaper] Download failed for ${args.paperId}:`, error);
         await ctx.runMutation(
           internal.extraction.mutations.updatePaperStatus,
           {
@@ -253,6 +258,7 @@ export const processPaper = internalAction({
       // Step 3: Store PDF in Convex file storage
       const blob = new Blob([pdfBuffer]);
       const storageId = await ctx.storage.store(blob);
+      console.log(`[processPaper] Stored PDF for ${args.paperId}, storageId: ${storageId}`);
 
       await ctx.runMutation(internal.extraction.mutations.setPaperStorage, {
         paperId: args.paperId,
