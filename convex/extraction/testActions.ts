@@ -21,7 +21,7 @@ export const createTestJob = mutation({
     }
     
     const userId = user._id;
-    
+
     // Create job directly in database
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
@@ -58,7 +58,7 @@ export const createTestJob = mutation({
     const workflowId = await workflow.start(
       ctx,
       internal.extraction.workflow.runExtractionWorkflow,
-      { jobId, userId }
+      { jobId }
     );
     
     // Update job with workflow ID

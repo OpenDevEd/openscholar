@@ -24,7 +24,7 @@ export interface DownloadPdfOptions {
 
 export interface DownloadPdfResult {
   success: boolean;
-  pdfData?: ArrayBuffer;
+  pdfBlob?: Blob;
   error?: string;
   source?: 'direct' | 'pmc-conversion' | 'alternative-oa' | 'html-extraction';
 }
@@ -140,8 +140,8 @@ async function tryDownload(
       };
     }
 
-    const pdfData = await pdfResponse.arrayBuffer();
-    return { success: true, pdfData, source: 'html-extraction' };
+    const pdfBlob = await pdfResponse.blob();
+    return { success: true, pdfBlob, source: 'html-extraction' };
   }
 
   // Direct PDF download
@@ -152,13 +152,13 @@ async function tryDownload(
     };
   }
 
-  const pdfData = await response.arrayBuffer();
+  const pdfBlob = await response.blob();
   
-  if (pdfData.byteLength === 0) {
+  if (pdfBlob.size === 0) {
     return { success: false, error: "Empty PDF response" };
   }
 
-  return { success: true, pdfData };
+  return { success: true, pdfBlob };
 }
 
 /**
@@ -229,8 +229,8 @@ async function downloadZoteroPdf(
       return { success: false, error: `Zotero download failed: ${pdfResponse.status}` };
     }
 
-    const pdfData = await pdfResponse.arrayBuffer();
-    return { success: true, pdfData };
+    const pdfBlob = await pdfResponse.blob();
+    return { success: true, pdfBlob };
   } catch (e: unknown) {
     const error = e instanceof Error ? e.message : String(e);
     return { success: false, error };

@@ -7,7 +7,7 @@
 
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText } from "ai";
@@ -16,8 +16,10 @@ import { getModel } from "../ai/helpers";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import {
   extractAndChunkPdf,
+  type ChunkMetadata,
   type ChunkWithMetadata,
   formatChunkWithMetadata,
+  prepareChunksForRag,
 } from "./chunking";
 import {
   buildEnhancedExtractionPrompt,
@@ -48,6 +50,7 @@ interface ProcessResult {
   error?: string;
   creditsUsed?: number;
   pdfUsed?: boolean;
+  storageId?: string;
 }
 
 // Track chunk content by creating a hash for deduplication
@@ -61,6 +64,54 @@ function getChunkHash(text: string): string {
     hash = hash & hash;
   }
   return hash.toString();
+}
+
+function normalizeChunkMetadata(
+  metadata: unknown,
+  text: string,
+  index: number
+): ChunkMetadata {
+  const safeTextLength = Math.max(text.length, 0);
+  const fallback: ChunkMetadata = {
+    page: 1,
+    charRange: [0, safeTextLength],
+    totalPages: 1,
+    chunkIndex: index,
+  };
+
+  if (!metadata || typeof metadata !== "object") {
+    return fallback;
+  }
+
+  const typed = metadata as Partial<ChunkMetadata>;
+  const page =
+    typeof typed.page === "number" && Number.isFinite(typed.page)
+      ? typed.page
+      : fallback.page;
+  const totalPages =
+    typeof typed.totalPages === "number" && Number.isFinite(typed.totalPages)
+      ? typed.totalPages
+      : fallback.totalPages;
+  const chunkIndex =
+    typeof typed.chunkIndex === "number" && Number.isFinite(typed.chunkIndex)
+      ? typed.chunkIndex
+      : fallback.chunkIndex;
+
+  let charRange = fallback.charRange;
+  if (Array.isArray(typed.charRange) && typed.charRange.length >= 2) {
+    const start = Number(typed.charRange[0]);
+    const end = Number(typed.charRange[1]);
+    if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+      charRange = [start, end];
+    }
+  }
+
+  return {
+    page,
+    charRange,
+    totalPages,
+    chunkIndex,
+  };
 }
 
 /**
@@ -157,7 +208,7 @@ async function performHybridSearch(
   ctx: any,
   namespace: string,
   question: string,
-  maxRetries: number = 10
+  maxRetries: number = 3
 ): Promise<Array<{ text: string; metadata: any }>> {
   const questionType = detectQuestionType(question);
   console.log(`[performHybridSearch] Question type: ${questionType}`);
@@ -170,6 +221,33 @@ async function performHybridSearch(
   const allResults: Array<{ text: string; metadata: any; hash: string }> = [];
   const seenHashes = new Set<string>();
 
+  const getChunksFromResult = (result: any) => {
+    if (result?.content && Array.isArray(result.content)) {
+      return result.content
+        .map((chunk: any, index: number) => {
+          const text = typeof chunk?.text === "string" ? chunk.text : "";
+          if (!text) return null;
+          return {
+            text,
+            metadata: normalizeChunkMetadata(chunk?.metadata, text, index),
+          };
+        })
+        .filter((chunk: { text: string; metadata: ChunkMetadata } | null) =>
+          Boolean(chunk)
+        );
+    }
+    const text = typeof result?.text === "string" ? result.text : "";
+    if (!text) {
+      return [];
+    }
+    return [
+      {
+        text,
+        metadata: normalizeChunkMetadata(result?.metadata, text, 0),
+      },
+    ];
+  };
+
   // Run searches with retry logic
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     let foundNewResults = false;
@@ -179,13 +257,16 @@ async function performHybridSearch(
         const searchResults = await rag.search(ctx, {
           namespace,
           query,
-          limit: 10, // Get more results initially for reranking
+          limit: 10,
         });
 
-        if (searchResults.results.length > 0) {
-          for (const result of searchResults.results) {
-            // Each result has content array with chunks
-            for (const chunk of result.content) {
+        const results = Array.isArray(searchResults?.results)
+          ? searchResults.results
+          : [];
+
+        if (results.length > 0) {
+          for (const result of results) {
+            for (const chunk of getChunksFromResult(result)) {
               const text = chunk.text || "";
               const metadata = chunk.metadata || {};
               const hash = getChunkHash(text);
@@ -208,7 +289,7 @@ async function performHybridSearch(
     }
 
     // Wait before retry
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   console.log(`[performHybridSearch] Found ${allResults.length} unique chunks`);
@@ -240,77 +321,96 @@ export const processPaperAction = internalAction({
   },
   handler: async (ctx, args): Promise<ProcessResult> => {
     const startTime = Date.now();
+    
+    console.log(`\n========================================`);
+    console.log(`[processPaperAction] ACTION STARTED`);
+    console.log(`[processPaperAction] Paper ID: ${args.paperId}`);
+    console.log(`[processPaperAction] Title: ${args.title}`);
+    console.log(`[processPaperAction] PDF URL: ${args.pdfUrl || "NONE"}`);
+    console.log(`[processPaperAction] Abstract: ${args.abstract ? "YES" : "NO"}`);
+    console.log(`[processPaperAction] Questions count: ${args.questions.length}`);
+    console.log(`========================================\n`);
 
     try {
-      console.log(`[processPaperAction] Processing paper ${args.paperId}: ${args.title}`);
-      console.log(`[processPaperAction] PDF URL available: ${!!args.pdfUrl}, Abstract available: ${!!args.abstract}`);
-
+      console.log(`[processPaperAction] BEGIN PROCESSING - Paper ${args.paperId}`);
+      
       let chunksWithMetadata: ChunkWithMetadata[] = [];
       let storageId: string | undefined;
       let ragIndexed = false;
 
       // Step 1: Try to download and process PDF if URL is available
       if (args.pdfUrl) {
-        console.log(`[processPaperAction] Attempting to download PDF from: ${args.pdfUrl.substring(0, 60)}...`);
+        console.log(`[processPaperAction] STEP 1 - Downloading PDF from: ${args.pdfUrl.substring(0, 60)}...`);
 
         const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
           doi: args.doi,
         });
 
-        if (downloadResult.success && downloadResult.pdfData) {
-          console.log(`[processPaperAction] PDF downloaded successfully (${downloadResult.pdfData.byteLength} bytes)`);
+        if (downloadResult.success && downloadResult.pdfBlob) {
+          console.log(`[processPaperAction] STEP 1 SUCCESS - PDF downloaded: ${downloadResult.pdfBlob.size} bytes`);
 
           // Store PDF
           try {
-            const blob = new Blob([downloadResult.pdfData]);
-            storageId = await ctx.storage.store(blob);
-            console.log(`[processPaperAction] PDF stored with storageId: ${storageId}`);
+            console.log(`[processPaperAction] Storing PDF in Convex storage...`);
+            storageId = await ctx.storage.store(downloadResult.pdfBlob);
+            console.log(`[processPaperAction] PDF STORED - storageId: ${storageId}`);
           } catch (storageError) {
-            console.error(`[processPaperAction] Failed to store PDF:`, storageError);
+            console.error(`[processPaperAction] ERROR storing PDF:`, storageError);
           }
 
-          // Extract and chunk PDF with metadata
+          // Step 2: Extract and chunk PDF
           try {
-            const pdfBufferForExtraction = new Uint8Array(downloadResult.pdfData).slice().buffer;
+            console.log(`[processPaperAction] STEP 2 - Extracting text and creating chunks...`);
+            const pdfBufferForExtraction = await downloadResult.pdfBlob.arrayBuffer();
 
             chunksWithMetadata = await extractAndChunkPdf(pdfBufferForExtraction, {
               maxChunkSize: 2500,
             });
 
-            console.log(`[processPaperAction] Extracted ${chunksWithMetadata.length} chunks with metadata`);
+            console.log(`[processPaperAction] STEP 2 COMPLETE - Extracted ${chunksWithMetadata.length} chunks`);
 
             if (chunksWithMetadata.length > 0) {
-              // Index chunks with RAG - use custom chunks
-              const chunksForRag = chunksWithMetadata.map((chunk) => chunk.text);
+              console.log(`[processPaperAction] STEP 3 - Indexing ${chunksWithMetadata.length} chunks with RAG...`);
               
-              // Note: We're using the chunks directly. The RAG component will embed them.
-              // We need to store metadata separately and retrieve it during search
-              await rag.add(ctx, {
+              // Index chunks with RAG - use custom chunks
+              const chunksForRag = prepareChunksForRag(chunksWithMetadata);
+              
+              const ragResult = await rag.add(ctx, {
                 namespace: `extraction:${args.jobId}`,
                 key: args.paperId,
                 chunks: chunksForRag,
+                metadata: {
+                  paperId: args.paperId,
+                },
               });
-              
+
+              await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
+                paperId: args.paperId,
+                ragEntryId: ragResult.entryId,
+              });
+
               ragIndexed = true;
-              console.log(`[processPaperAction] RAG indexed ${chunksForRag.length} chunks for paper ${args.paperId}`);
+              console.log(`[processPaperAction] STEP 3 SUCCESS - RAG indexing ready for ${chunksForRag.length} chunks`);
             } else {
-              console.warn(`[processPaperAction] No chunks extracted from PDF`);
+              console.warn(`[processPaperAction] WARNING - No chunks extracted from PDF`);
             }
           } catch (pdfError) {
-            console.error(`[processPaperAction] PDF extraction error:`, pdfError);
+            console.error(`[processPaperAction] ERROR in Step 2/3:`, pdfError);
           }
         } else {
-          console.log(`[processPaperAction] PDF download failed: ${downloadResult.error}`);
+          console.log(`[processPaperAction] STEP 1 FAILED - PDF download failed: ${downloadResult.error}`);
         }
       } else {
-        console.warn(`[processPaperAction] SKIPPING PDF: No PDF URL provided`);
+        console.warn(`[processPaperAction] NO PDF URL - Skipping PDF processing`);
       }
 
-      // Step 2: Extract answers using AI with hybrid search
+      // Step 4: Extract answers using AI
+      console.log(`[processPaperAction] STEP 4 - Starting AI extraction for ${args.questions.length} questions...`);
       const results = [];
       let pdfContentActuallyUsed = false;
 
       for (const question of args.questions) {
+        console.log(`[processPaperAction] Processing question: ${question.question.substring(0, 50)}...`);
         let finalChunks: Array<{ text: string; metadata: any; relevanceScore?: number }> = [];
         let pdfContentUsedForThisQuestion = false;
 
@@ -319,8 +419,7 @@ export const processPaperAction = internalAction({
           const searchResults = await performHybridSearch(
             ctx,
             `extraction:${args.jobId}`,
-            question.question,
-            10
+            question.question
           );
 
           if (searchResults.length > 0) {
@@ -382,17 +481,30 @@ export const processPaperAction = internalAction({
 
       const creditsUsed = Math.ceil((Date.now() - startTime) / 1000);
 
-      console.log(`[processPaperAction] Completed paper ${args.paperId} with ${results.length} results, PDF content used: ${pdfContentActuallyUsed}`);
+      console.log(`\n========================================`);
+      console.log(`[processPaperAction] ACTION COMPLETED`);
+      console.log(`[processPaperAction] Paper ID: ${args.paperId}`);
+      console.log(`[processPaperAction] Results: ${results.length}`);
+      console.log(`[processPaperAction] PDF Downloaded/Stored: ${storageId ? "YES" : "NO"}`);
+      console.log(`[processPaperAction] PDF Content Used for Extraction: ${pdfContentActuallyUsed}`);
+      console.log(`[processPaperAction] Storage ID: ${storageId || "NONE"}`);
+      console.log(`[processPaperAction] Duration: ${creditsUsed}s`);
+      console.log(`========================================\n`);
 
       return {
         success: true,
         paperId: args.paperId,
         results,
         creditsUsed,
-        pdfUsed: pdfContentActuallyUsed, // Only true if PDF content was actually used in extraction
+        pdfUsed: pdfContentActuallyUsed,
+        storageId, // Always return storageId if PDF was stored, even if not used for extraction
       };
     } catch (error) {
-      console.error(`[processPaperAction] Fatal error processing paper ${args.paperId}:`, error);
+      console.error(`\n========================================`);
+      console.error(`[processPaperAction] ACTION FAILED`);
+      console.error(`[processPaperAction] Paper ID: ${args.paperId}`);
+      console.error(`[processPaperAction] Error:`, error);
+      console.error(`========================================\n`);
       return {
         success: false,
         paperId: args.paperId,
@@ -423,3 +535,258 @@ function getZodTypeForQuestion(type: string) {
       return z.string().nullable();
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// WORKFLOW-BASED ACTIONS
+// ═══════════════════════════════════════════════════════════════
+
+interface IndexResult {
+  success: boolean;
+  storageId?: string;
+  chunksCount?: number;
+  error?: string;
+}
+
+// Step 1: Download PDF and start RAG indexing
+export const downloadAndIndexPdfAction = internalAction({
+  args: {
+    paperId: v.id("extractionPapers"),
+    jobId: v.id("extractionJobs"),
+    pdfUrl: v.string(),
+    title: v.string(),
+    abstract: v.optional(v.string()),
+    doi: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<IndexResult> => {
+    console.log(`[downloadAndIndexPdfAction] Starting for paper ${args.paperId}`);
+
+    if (!args.pdfUrl) {
+      return { success: false, error: "No PDF URL provided" };
+    }
+
+    try {
+      // Download PDF
+      console.log(`[downloadAndIndexPdfAction] Downloading PDF from: ${args.pdfUrl.substring(0, 60)}...`);
+      const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
+        doi: args.doi,
+      });
+
+        if (!downloadResult.success || !downloadResult.pdfBlob) {
+          console.log(`[downloadAndIndexPdfAction] Download failed: ${downloadResult.error}`);
+          return { success: false, error: downloadResult.error || "Download failed" };
+        }
+
+        console.log(`[downloadAndIndexPdfAction] PDF downloaded: ${downloadResult.pdfBlob.size} bytes`);
+
+        // Store PDF
+        let storageId: string | undefined;
+        try {
+          console.log(`[downloadAndIndexPdfAction] Storing PDF in Convex storage...`);
+          storageId = await ctx.storage.store(downloadResult.pdfBlob);
+          console.log(`[downloadAndIndexPdfAction] PDF stored: ${storageId}`);
+          
+          // Save storageId to paper
+          await ctx.runMutation(internal.extraction.mutations.setPaperStorage, {
+            paperId: args.paperId,
+            storageId: storageId as any,
+          });
+        } catch (storageError) {
+          console.error(`[downloadAndIndexPdfAction] Storage error:`, storageError);
+          return { success: false, error: "Failed to store PDF" };
+        }
+
+        // Extract and chunk PDF
+        let chunksWithMetadata: ChunkWithMetadata[] = [];
+        try {
+          console.log(`[downloadAndIndexPdfAction] Extracting text...`);
+          const pdfBuffer = await downloadResult.pdfBlob.arrayBuffer();
+          chunksWithMetadata = await extractAndChunkPdf(pdfBuffer, {
+            maxChunkSize: 2500,
+          });
+          console.log(`[downloadAndIndexPdfAction] Extracted ${chunksWithMetadata.length} chunks`);
+        } catch (chunkError) {
+          console.error(`[downloadAndIndexPdfAction] Chunking error:`, chunkError);
+          // Don't fail - we still have the PDF stored, can extract from abstract
+          return { success: true, storageId, chunksCount: 0 };
+        }
+
+      if (chunksWithMetadata.length === 0) {
+        console.log(`[downloadAndIndexPdfAction] No chunks extracted`);
+        return { success: true, storageId, chunksCount: 0 };
+      }
+
+      // Start RAG indexing
+      console.log(`[downloadAndIndexPdfAction] Starting RAG indexing with ${chunksWithMetadata.length} chunks`);
+      const chunksForRag = prepareChunksForRag(chunksWithMetadata);
+      
+      const ragResult = await rag.add(ctx, {
+        namespace: `extraction:${args.jobId}`,
+        key: args.paperId,
+        chunks: chunksForRag,
+        metadata: {
+          paperId: args.paperId,
+        },
+      });
+
+      await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
+        paperId: args.paperId,
+        ragEntryId: ragResult.entryId,
+      });
+
+      console.log(`[downloadAndIndexPdfAction] RAG indexing ready`);
+      return { success: true, storageId, chunksCount: chunksForRag.length };
+
+    } catch (error) {
+      console.error(`[downloadAndIndexPdfAction] Error:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      };
+    }
+  },
+});
+
+// Step 2: Extract answers after indexing
+export const waitAndExtractAction = internalAction({
+  args: {
+    paperId: v.id("extractionPapers"),
+    jobId: v.id("extractionJobs"),
+    questions: v.array(
+      v.object({
+        key: v.string(),
+        question: v.string(),
+        type: v.union(
+          v.literal("string"),
+          v.literal("boolean"),
+          v.literal("number"),
+          v.literal("array")
+        ),
+        description: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args): Promise<{
+    success: boolean;
+    results?: Array<{
+      questionKey: string;
+      answer: any;
+      confidence?: number;
+      reasoning?: string;
+      contextChunks?: string[];
+      pdfContentUsed?: boolean;
+    }>;
+    creditsUsed?: number;
+    pdfContentUsed?: boolean;
+    error?: string;
+  }> => {
+    const startTime = Date.now();
+    console.log(`[waitAndExtractAction] Starting for paper ${args.paperId}`);
+
+    try {
+      // Step 2a: Get paper details for extraction
+      const paper = await ctx.runQuery(
+        internal.extraction.queries.getPaperInternal,
+        { paperId: args.paperId }
+      );
+
+      if (!paper) {
+        return { success: false, error: "Paper not found" };
+      }
+
+      // Step 2b: Extract answers
+      const results = [];
+      let pdfContentActuallyUsed = false;
+      const isIndexed = !!paper.isIndexed || !!paper.ragEntryId;
+
+      if (!isIndexed) {
+        console.log(`[waitAndExtractAction] Not indexed, using abstract only`);
+      }
+
+      for (const question of args.questions) {
+        console.log(`[waitAndExtractAction] Processing: ${question.question.substring(0, 50)}...`);
+        
+        let finalChunks: Array<{ text: string; metadata: any; relevanceScore?: number }> = [];
+        let pdfContentUsedForThisQuestion = false;
+
+        if (isIndexed) {
+          // Perform hybrid search
+          const searchResults = await performHybridSearch(
+            ctx,
+            `extraction:${args.jobId}`,
+            question.question
+          );
+
+          if (searchResults.length > 0) {
+            // Rerank chunks
+            const rerankedChunks = await rerankChunksWithLLM(
+              question.question,
+              searchResults
+            );
+
+            finalChunks = rerankedChunks.slice(0, 5);
+            pdfContentUsedForThisQuestion = true;
+            pdfContentActuallyUsed = true;
+
+            console.log(`[waitAndExtractAction] Using ${finalChunks.length} chunks`);
+          }
+        }
+
+        // Build extraction prompt
+        const answerSchema = buildAnswerSchema(question.type);
+        const prompt = buildEnhancedExtractionPrompt(
+          question as ExtractionQuestion,
+          paper.abstract,
+          finalChunks
+        );
+
+        try {
+          const { object } = await generateObject({
+            model: await getModel(),
+            schema: answerSchema,
+            prompt,
+            temperature: 0.1,
+          });
+
+          results.push({
+            questionKey: question.key,
+            answer: object.answer,
+            confidence: object.confidence,
+            reasoning: object.reasoning,
+            contextChunks: finalChunks.map((c) =>
+              formatChunkWithMetadata({ text: c.text, metadata: c.metadata })
+            ),
+            pdfContentUsed: pdfContentUsedForThisQuestion,
+          });
+        } catch (error) {
+          console.error(`[waitAndExtractAction] Extraction failed for ${question.key}:`, error);
+          results.push({
+            questionKey: question.key,
+            answer: null,
+            confidence: 0,
+            reasoning: `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+            contextChunks: [],
+            pdfContentUsed: false,
+          });
+        }
+      }
+
+      const creditsUsed = Math.ceil((Date.now() - startTime) / 1000);
+      
+      console.log(`[waitAndExtractAction] Complete - ${results.length} results, PDF used: ${pdfContentActuallyUsed}`);
+      
+      return {
+        success: true,
+        results,
+        creditsUsed,
+        pdfContentUsed: pdfContentActuallyUsed,
+      };
+
+    } catch (error) {
+      console.error(`[waitAndExtractAction] Error:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+});

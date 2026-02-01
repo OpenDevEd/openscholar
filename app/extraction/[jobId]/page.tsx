@@ -63,6 +63,9 @@ export default function JobDetailPage() {
   // Mutations
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
+  const duplicateJob = useMutation(
+    api.extraction.mutations.duplicateExtraction,
+  );
 
   // Metadata query (fast, no heavy results)
   const jobDetails = useQuery(api.extraction.queries.getJobDetails, {
@@ -96,6 +99,16 @@ export default function JobDetailPage() {
       router.push("/extraction");
     } catch (error) {
       toast.error("Failed to delete job");
+    }
+  };
+
+  const handleDuplicate = async () => {
+    try {
+      const result = await duplicateJob({ jobId });
+      toast.success("New job created");
+      router.push(`/extraction/${result.jobId}`);
+    } catch (error) {
+      toast.error("Failed to create new job");
     }
   };
 
@@ -190,6 +203,15 @@ export default function JobDetailPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={handleDuplicate}
+              className="text-primary hover:bg-primary/5"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Restart Job
+            </Button>
+
             {(job.status === "pending" ||
               job.status === "downloading_pdfs" ||
               job.status === "extracting") && (

@@ -32,7 +32,6 @@ export const testSimpleWorkflow = workflow.define({
       internal.extraction.actions.fetchPapersFromHistory,
       {
         searchFilters: { ...job.searchFilters, perPage: 1, limit: 1 },
-        userId: job.userId,
       }
     );
     

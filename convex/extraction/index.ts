@@ -11,38 +11,23 @@ export { testSimpleWorkflow } from "./testWorkflow";
 export { createTestJob } from "./testActions";
 
 // Actions
-export {
-  fetchPapersFromHistory,
-  enqueuePapersForProcessing,
-  processPaper,
-  chunkPdf,
-  extractAnswer,
-} from "./actions";
-
-export { fetchAndCreatePapers } from "./fetchPapersAction";
-
-// Processors (action-only, no internal calls)
-export {
-  downloadAndProcessPdf,
-  extractWithAI,
-  storePdfBlob,
-  indexWithRag,
-} from "./processors";
+export { fetchPapersFromHistory } from "./actions";
 
 // Workpool Actions
-export { processPaperAction } from "./workpoolActions";
+export {
+  downloadAndIndexPdfAction,
+  waitAndExtractAction,
+} from "./workpoolActions";
 
 // Mutations (public)
 export { startExtraction, cancelExtraction } from "./mutations";
 
-// Mutations (internal - for crons and workflow)
+// Mutations (internal - for workflow)
 export {
-  updateAllJobProgress,
   finalizeJob,
-  updateJobProgress,
   updatePaperStatus,
   setPaperStorage,
-  saveExtractionResults,
+  saveExtractionResultsAndComplete,
   createJobDirect,
   createJobByWorkosId,
   getUserIdFromJob,
@@ -51,6 +36,11 @@ export {
   enqueuePaperProcessing,
   handlePaperComplete,
   handlePaperFetchComplete,
+  handleDownloadAndIndexComplete,
+  handleExtractionComplete,
+  finalizeJobIfDone,
+  markPaperIndexed,
+  backfillIsIndexed,
 } from "./mutations";
 
 // Queries (public)
@@ -73,13 +63,12 @@ export {
 
 // User lookup moved to mutations for self-hosted compatibility
 
-// Start extraction action
-export { startExtractionAction } from "./startAction";
 
 // Debug queries
 export { diagnoseJob } from "./debug";
 export { getFailedPapersDebug } from "./debug_errors";
 export { getPaperErrorsInternal } from "./debug_papers";
+export { debugPaperResults } from "./debug_paper_results";
 
 // Test job creation
 export { createTestJobForFix } from "./create_test_job";

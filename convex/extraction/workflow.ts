@@ -11,9 +11,8 @@ import { pdfProcessingPool } from "../workpool";
 export const runExtractionWorkflow = workflow.define({
   args: {
     jobId: v.id("extractionJobs"),
-    userId: v.id("users"),
   },
-  handler: async (step, { jobId, userId }) => {
+  handler: async (step, { jobId }) => {
     console.log(`[Workflow] Starting extraction for job ${jobId}`);
 
     // Step 1: Get job details and questions
@@ -30,7 +29,7 @@ export const runExtractionWorkflow = workflow.define({
       { jobId }
     );
 
-    const questions = questionsRaw.map((q) => ({
+    const questions = questionsRaw.map((q: any) => ({
       key: q.key,
       question: q.question,
       type: q.type,
@@ -54,7 +53,6 @@ export const runExtractionWorkflow = workflow.define({
       internal.extraction.actions.fetchPapersFromHistory,
       {
         searchFilters: job.searchFilters,
-        userId,
       }
     );
 
@@ -72,7 +70,7 @@ export const runExtractionWorkflow = workflow.define({
       totalPapers: papers.length,
     });
 
-    // Step 4: Enqueue all papers for processing using workpool
+    // Step 4: Get created paper IDs
     const paperIds = await step.runQuery(
       internal.extraction.queries.getPapersByOpenAlexIds,
       {
@@ -90,20 +88,23 @@ export const runExtractionWorkflow = workflow.define({
       const hasPdfUrl = !!paper.pdfUrl;
       const hasAbstract = !!paper.abstract && paper.abstract.length > 50;
       
-      if (!hasPdfUrl && !hasAbstract) {
-        // Skip papers without any content - mark as failed
-        await step.runMutation(
-          internal.extraction.mutations.updatePaperStatus,
-          {
-            paperId: paper._id,
-            status: "download_failed",
-            errorMessage: "No PDF URL or abstract available",
-          }
-        );
-        continue;
-      }
+    if (!hasPdfUrl && !hasAbstract) {
+      // Skip papers without any content - mark as failed
+      await step.runMutation(
+        internal.extraction.mutations.updatePaperStatus,
+        {
+          paperId: paper._id,
+          status: "download_failed",
+          errorMessage: "No PDF URL or abstract available",
+        }
+      );
+      await step.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
+      continue;
+    }
 
-      // Enqueue paper processing via workpool
+      // Enqueue paper processing via workpool (uses new 3-step workflow internally)
       await step.runMutation(
         internal.extraction.mutations.enqueuePaperProcessing,
         {

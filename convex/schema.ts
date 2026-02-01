@@ -298,7 +298,8 @@ export default defineSchema({
     pdfDownloadError: v.optional(v.string()),
 
     // RAG indexing
-    ragEntryId: v.optional(v.string()), // RAG component entry ID
+    ragEntryId: v.optional(v.string()), // RAG component entry ID (actual entry ID from callback)
+    isIndexed: v.optional(v.boolean()), // true when PDF was successfully indexed in RAG
     indexedAt: v.optional(v.number()),
 
     // Processing metadata
@@ -309,6 +310,9 @@ export default defineSchema({
 
     // Cost tracking
     creditsUsed: v.optional(v.number()),
+
+    // Content usage tracking
+    pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)
   })
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])

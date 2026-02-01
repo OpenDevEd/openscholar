@@ -8,18 +8,11 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
-import type { Doc, Id } from "../_generated/dataModel";
-import { RAG } from "@convex-dev/rag";
-import { components } from "../_generated/api";
-import { openai } from "@ai-sdk/openai";
+import type { Id } from "../_generated/dataModel";
 import { pdfProcessingPool } from "../workpool";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
 
-const rag = new RAG(components.rag, {
-  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
-  embeddingDimension: 1536,
-});
 
 // Start a new extraction job (public API)
 export const startExtraction = mutation({
@@ -80,7 +73,7 @@ export const startExtraction = mutation({
     const workflowId = await workflow.start(
       ctx,
       internal.extraction.workflow.runExtractionWorkflow,
-      { jobId, userId }
+      { jobId }
     );
 
     // Update job with workflow ID
@@ -117,6 +110,67 @@ export const cancelExtraction = mutation({
     });
 
     return { success: true };
+  },
+});
+
+export const duplicateExtraction = mutation({
+  args: { jobId: v.id("extractionJobs") },
+  handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    const user = await requireAuth(ctx);
+
+    const oldJob = await ctx.db.get(args.jobId);
+    if (!oldJob || oldJob.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
+      .collect();
+
+    // Create new job record (similar to startExtraction)
+    const newJobId = await ctx.db.insert("extractionJobs", {
+      userId: user._id,
+      name: `${oldJob.name} (Copy)`,
+      sourceType: oldJob.sourceType,
+      sourceHistoryId: oldJob.sourceHistoryId,
+      sourceZoteroCollection: oldJob.sourceZoteroCollection,
+      searchFilters: oldJob.searchFilters,
+      status: "pending",
+      totalPapers: 0,
+      processedPapers: 0,
+      failedPapers: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // Copy questions
+    for (const q of questions) {
+      await ctx.db.insert("extractionQuestions", {
+        jobId: newJobId,
+        key: q.key,
+        question: q.question,
+        type: q.type,
+        description: q.description,
+        order: q.order,
+        createdAt: Date.now(),
+      });
+    }
+
+    // Start workflow
+    const workflowId = await workflow.start(
+      ctx,
+      internal.extraction.workflow.runExtractionWorkflow,
+      { jobId: newJobId }
+    );
+
+    await ctx.db.patch(newJobId, { 
+      workflowId,
+      updatedAt: Date.now(),
+    });
+
+    return { jobId: newJobId };
   },
 });
 
@@ -263,31 +317,6 @@ export const updatePaperStatus = internalMutation({
     }
 
     await ctx.db.patch(args.paperId, updates);
-
-    // Update job progress counters
-    const paper = await ctx.db.get(args.paperId);
-    if (paper) {
-      const job = await ctx.db.get(paper.jobId);
-      if (job) {
-        if (args.status === "completed" || args.status === "failed") {
-          const processedCount = await ctx.db
-            .query("extractionPapers")
-            .withIndex("by_job_status", (q) =>
-              q
-                .eq("jobId", paper.jobId)
-                .eq("status", args.status === "completed" ? "completed" : "failed")
-            )
-            .collect()
-            .then((papers) => papers.length);
-
-          await ctx.db.patch(paper.jobId, {
-            [args.status === "completed" ? "processedPapers" : "failedPapers"]:
-              processedCount,
-            updatedAt: Date.now(),
-          });
-        }
-      }
-    }
   },
 });
 
@@ -315,54 +344,22 @@ export const setPaperWorkId = internalMutation({
   },
 });
 
-export const onRagIndexingComplete = rag.defineOnComplete(
-  async (ctx, { entry, replacedEntry, namespace, error }) => {
-    if (error) {
-      console.error("RAG indexing failed:", error);
-      return;
-    }
-
-    const paperId = entry.metadata?.paperId as string;
-    const entryId = entry.entryId;
-
-    if (paperId) {
-      await ctx.db.patch(paperId as Id<"extractionPapers">, {
-        ragEntryId: entryId,
-        indexedAt: Date.now(),
-      });
-    }
-  }
-);
-
-export const saveExtractionResults = internalMutation({
+export const markPaperIndexed = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
-    results: v.array(
-      v.object({
-        questionKey: v.string(),
-        answer: v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null()),
-        confidence: v.optional(v.number()),
-        reasoning: v.optional(v.string()),
-        contextChunks: v.optional(v.array(v.string())),
-        model: v.optional(v.string()),
-        provider: v.optional(v.string()),
-      })
-    ),
+    ragEntryId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<void> => {
-    for (const result of args.results) {
-      await ctx.db.insert("extractionResults", {
-        paperId: args.paperId,
-        questionKey: result.questionKey,
-        answer: result.answer,
-        confidence: result.confidence,
-        reasoning: result.reasoning,
-        contextChunks: result.contextChunks,
-        model: result.model,
-        provider: result.provider,
-        processedAt: Date.now(),
-      });
+    const updates: Record<string, unknown> = {
+      isIndexed: true,
+      indexedAt: Date.now(),
+    };
+
+    if (args.ragEntryId) {
+      updates.ragEntryId = args.ragEntryId;
     }
+
+    await ctx.db.patch(args.paperId, updates);
   },
 });
 
@@ -438,134 +435,43 @@ export const cleanupOldPdfs = internalMutation({
 });
 
 // Process papers for active extraction jobs (called by cron every minute)
-export const updateAllJobProgress = internalMutation({
-  args: {},
-  handler: async (ctx): Promise<void> => {
-    // Find all jobs that need paper processing
-    const activeJobs = await ctx.db
-      .query("extractionJobs")
-      .withIndex("by_user_status")
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "downloading_pdfs"),
-          q.eq(q.field("status"), "extracting")
-        )
-      )
-      .take(10);
-
-    for (const job of activeJobs) {
-      // Check if we need to fetch papers from OpenAlex
-      const existingPapers = await ctx.db
-        .query("extractionPapers")
-        .withIndex("by_job", (q) => q.eq("jobId", job._id))
-        .collect();
-
-      if (existingPapers.length === 0 && job.searchFilters) {
-        // Enqueue paper fetching via workpool
-        console.log(`[Cron] Enqueuing paper fetch for job ${job._id}`);
-        try {
-          await pdfProcessingPool.enqueueAction(
-            ctx,
-            internal.extraction.fetchPapersAction.fetchAndCreatePapers,
-            {
-              jobId: job._id,
-              searchFilters: job.searchFilters,
-            },
-            {
-              onComplete: internal.extraction.mutations.handlePaperFetchComplete,
-              context: { jobId: job._id },
-              retry: {
-                maxAttempts: 3,
-                initialBackoffMs: 2000,
-                base: 2,
-              },
-            }
-          );
-        } catch (error) {
-          console.error(`[Cron] Failed to enqueue paper fetch for job ${job._id}:`, error);
-        }
-        continue; // Skip to next job, papers will be processed in next cron run
-      }
-
-      // Get questions for this job
-      const questions = await ctx.db
-        .query("extractionQuestions")
-        .withIndex("by_job", (q) => q.eq("jobId", job._id))
-        .order("asc")
-        .collect();
-
-      // Get pending papers
-      const pendingPapers = await ctx.db
-        .query("extractionPapers")
-        .withIndex("by_job_status", (q) =>
-          q.eq("jobId", job._id).eq("status", "pending")
-        )
-        .take(5); // Process up to 5 papers per cron run
-
-      // Enqueue papers for processing
-      for (const paper of pendingPapers) {
-        if (!paper.pdfUrl) {
-          // Mark as failed if no PDF URL
-          await ctx.db.patch(paper._id, {
-            status: "download_failed",
-            errorMessage: "No PDF URL available",
-            completedAt: Date.now(),
-          });
-          continue;
-        }
-
-        // Update status to downloading
-        await ctx.db.patch(paper._id, {
-          status: "downloading",
-        });
-
-        // Enqueue for processing via workpool
-        await pdfProcessingPool.enqueueAction(
-          ctx,
-          internal.extraction.workpoolActions.processPaperAction,
-          {
-            paperId: paper._id,
-            jobId: job._id,
-            pdfUrl: paper.pdfUrl,
-            title: paper.title,
-            questions: questions.map((q) => ({
-              key: q.key,
-              question: q.question,
-              type: q.type,
-              description: q.description,
-            })),
-          },
-          {
-            onComplete: internal.extraction.mutations.handlePaperComplete,
-            context: { paperId: paper._id, jobId: job._id },
-            retry: {
-              maxAttempts: 3,
-              initialBackoffMs: 2000,
-              base: 2,
-            },
-          }
-        );
-      }
-
-      // Update job progress
-      await ctx.runMutation(internal.extraction.mutations.finalizeJob, {
-        jobId: job._id,
-      });
-    }
-  },
-});
-
-// Update job progress counters
-export const updateJobProgress = internalMutation({
+export const finalizeJobIfDone = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    processedPapers: v.number(),
-    failedPapers: v.number(),
   },
   handler: async (ctx, args): Promise<void> => {
+    const job = await ctx.db.get(args.jobId);
+    if (!job) return;
+
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+
+    if (papers.length === 0) return;
+
+    const completedCount = papers.filter((p) => p.status === "completed").length;
+    const failedCount = papers.filter(
+      (p) =>
+        p.status === "failed" ||
+        p.status === "download_failed" ||
+        p.status === "indexing_failed"
+    ).length;
+
+    if (completedCount + failedCount < papers.length) {
+      await ctx.db.patch(args.jobId, {
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+
+    const status = failedCount === papers.length ? "failed" : "completed";
+
     await ctx.db.patch(args.jobId, {
-      processedPapers: args.processedPapers,
-      failedPapers: args.failedPapers,
+      status,
+      processedPapers: completedCount,
+      failedPapers: failedCount,
+      completedAt: Date.now(),
       updatedAt: Date.now(),
     });
   },
@@ -627,7 +533,7 @@ export const setJobWorkflowId = internalMutation({
   },
 });
 
-// Enqueue paper for processing via workpool
+// Enqueue paper for processing via workpool (3-step workflow)
 export const enqueuePaperProcessing = internalMutation({
   args: {
     paperId: v.id("extractionPapers"),
@@ -651,27 +557,34 @@ export const enqueuePaperProcessing = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    console.log(`[enqueuePaperProcessing] START - Paper ${args.paperId}, PDF URL: ${args.pdfUrl ? "YES" : "NO"}`);
+    
     // Update status to downloading before enqueuing
     await ctx.db.patch(args.paperId, {
       status: "downloading",
     });
+    console.log(`[enqueuePaperProcessing] Status updated to 'downloading' for ${args.paperId}`);
 
-    // Enqueue via workpool
+    // Enqueue Step 1: Download and index PDF
+    console.log(`[enqueuePaperProcessing] Enqueuing Step 1 (Download & Index) for paper ${args.paperId}`);
     await pdfProcessingPool.enqueueAction(
       ctx,
-      internal.extraction.workpoolActions.processPaperAction,
+      internal.extraction.workpoolActions.downloadAndIndexPdfAction,
       {
         paperId: args.paperId,
-        abstract: args.abstract,
-        doi: args.doi,
         jobId: args.jobId,
         pdfUrl: args.pdfUrl,
         title: args.title,
-        questions: args.questions,
+        abstract: args.abstract,
+        doi: args.doi,
       },
       {
-        onComplete: internal.extraction.mutations.handlePaperComplete,
-        context: { paperId: args.paperId, jobId: args.jobId },
+        onComplete: internal.extraction.mutations.handleDownloadAndIndexComplete,
+        context: { 
+          paperId: args.paperId, 
+          jobId: args.jobId,
+          questions: args.questions,
+        },
         retry: {
           maxAttempts: 3,
           initialBackoffMs: 2000,
@@ -679,10 +592,168 @@ export const enqueuePaperProcessing = internalMutation({
         },
       }
     );
+    console.log(`[enqueuePaperProcessing] SUCCESS - Paper ${args.paperId} enqueued for processing`);
   },
 });
 
-// Handle paper processing completion
+// Handle Step 1 completion: Download & Index
+export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete({
+  context: v.object({
+    paperId: v.id("extractionPapers"),
+    jobId: v.id("extractionJobs"),
+    questions: v.array(
+      v.object({
+        key: v.string(),
+        question: v.string(),
+        type: v.union(
+          v.literal("string"),
+          v.literal("boolean"),
+          v.literal("number"),
+          v.literal("array")
+        ),
+        description: v.optional(v.string()),
+      })
+    ),
+  }),
+  handler: async (ctx, { context, result }) => {
+    const { paperId, jobId, questions } = context;
+    console.log(`[handleDownloadAndIndexComplete] Paper ${paperId}, result: ${result.kind}`);
+
+    if (result.kind === "success") {
+      const data = result.returnValue as {
+        success: boolean;
+        storageId?: string;
+        chunksCount?: number;
+        error?: string;
+      };
+
+      if (data.success) {
+        console.log(`[handleDownloadAndIndexComplete] Download/index success for ${paperId}, chunks: ${data.chunksCount}`);
+        
+        // Update status to indexing
+        await ctx.db.patch(paperId, {
+          status: "indexing",
+        });
+
+        // Step 2: Wait for indexing and extract
+        await pdfProcessingPool.enqueueAction(
+          ctx,
+          internal.extraction.workpoolActions.waitAndExtractAction,
+          {
+            paperId,
+            jobId,
+            questions,
+          },
+          {
+            onComplete: internal.extraction.mutations.handleExtractionComplete,
+            context: { paperId, jobId },
+            retry: {
+              maxAttempts: 3,
+              initialBackoffMs: 2000,
+              base: 2,
+            },
+          }
+        );
+      } else {
+        // Download failed - mark as failed
+        console.log(`[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`);
+        await ctx.db.patch(paperId, {
+          status: "download_failed",
+          errorMessage: data.error || "Download failed",
+          completedAt: Date.now(),
+        });
+        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+          jobId,
+        });
+      }
+    } else if (result.kind === "failed") {
+      await ctx.db.patch(paperId, {
+        status: "failed",
+        errorMessage: result.error || "Download/index action failed",
+        completedAt: Date.now(),
+      });
+      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
+    } else if (result.kind === "canceled") {
+      await ctx.db.patch(paperId, {
+        status: "failed",
+        errorMessage: "Download/index was canceled",
+        completedAt: Date.now(),
+      });
+      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
+    }
+  },
+});
+
+// Handle Step 2 completion: Wait & Extract
+export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
+  context: v.object({
+    paperId: v.id("extractionPapers"),
+    jobId: v.id("extractionJobs"),
+  }),
+  handler: async (ctx, { context, result }) => {
+    const { paperId, jobId } = context;
+    console.log(`[handleExtractionComplete] Paper ${paperId}, result: ${result.kind}`);
+
+    if (result.kind === "success") {
+      const data = result.returnValue as {
+        success: boolean;
+        results?: Array<any>;
+        creditsUsed?: number;
+        pdfContentUsed?: boolean;
+        error?: string;
+      };
+
+      if (data.success && data.results) {
+        await ctx.runMutation(
+          internal.extraction.mutations.saveExtractionResultsAndComplete,
+          {
+            paperId,
+            results: data.results,
+            creditsUsed: data.creditsUsed || 0,
+            pdfContentUsed: data.pdfContentUsed || false,
+          }
+        );
+        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+          jobId,
+        });
+        console.log(`[handleExtractionComplete] Paper ${paperId} completed successfully`);
+      } else {
+        await ctx.db.patch(paperId, {
+          status: "failed",
+          errorMessage: data.error || "Extraction failed",
+          completedAt: Date.now(),
+        });
+        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+          jobId,
+        });
+      }
+    } else if (result.kind === "failed") {
+      await ctx.db.patch(paperId, {
+        status: "failed",
+        errorMessage: result.error || "Extraction action failed",
+        completedAt: Date.now(),
+      });
+      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
+    } else if (result.kind === "canceled") {
+      await ctx.db.patch(paperId, {
+        status: "failed",
+        errorMessage: "Extraction was canceled",
+        completedAt: Date.now(),
+      });
+      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
+    }
+  },
+});
+
+// Legacy handler
 export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
   context: v.object({
     paperId: v.id("extractionPapers"),
@@ -690,6 +761,7 @@ export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
   }),
   handler: async (ctx, { context, result }) => {
     const { paperId, jobId } = context;
+    console.log(`[handlePaperComplete] START - Paper ${paperId}, result kind: ${result.kind}`);
 
     if (result.kind === "success") {
       const data = result.returnValue as {
@@ -698,9 +770,13 @@ export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
         error?: string;
         creditsUsed?: number;
         pdfUsed?: boolean;
+        storageId?: string;
       };
 
       if (data.success && data.results) {
+        // Check if any result actually used PDF content
+        const pdfContentUsedForAnyQuestion = data.results.some((r: any) => r.pdfContentUsed === true);
+        
         // Save extraction results
         for (const r of data.results) {
           await ctx.db.insert("extractionResults", {
@@ -716,40 +792,73 @@ export const handlePaperComplete = pdfProcessingPool.defineOnComplete({
         }
 
         // Mark paper as completed
-        await ctx.db.patch(paperId, {
+        console.log(`[handlePaperComplete] SUCCESS - Paper ${paperId} extraction complete. PDF downloaded: ${data.storageId ? "YES" : "NO"}, PDF content used: ${pdfContentUsedForAnyQuestion}`);
+        
+        // Prepare patch data
+        const patchData: any = {
           status: "completed",
           completedAt: Date.now(),
           creditsUsed: data.creditsUsed || 0,
-          // If PDF was used, mark it as indexed (using a placeholder ID if real one not available)
-          // This allows the UI to show "PDF Used" even if storage failed
-          ...(data.pdfUsed ? { ragEntryId: "indexed" } : {}),
+        };
+        
+        // Save storageId if PDF was stored
+        if (data.storageId) {
+          patchData.storageId = data.storageId;
+          console.log(`[handlePaperComplete] Saving storageId: ${data.storageId}`);
+        }
+        
+        // Mark if PDF content was actually used for extraction (any question)
+        if (pdfContentUsedForAnyQuestion) {
+          patchData.pdfContentUsed = true;
+          console.log(`[handlePaperComplete] Marking PDF content as used for extraction`);
+        }
+        
+        // Indexing handled by workpool pipeline
+
+        await ctx.db.patch(paperId, patchData);
+        console.log(`[handlePaperComplete] Paper ${paperId} marked as completed in DB`);
+        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+          jobId,
         });
       } else {
         // Mark paper as failed
+        console.log(`[handlePaperComplete] FAILED - Paper ${paperId} processing failed: ${data.error}`);
         await ctx.db.patch(paperId, {
           status: "failed",
           errorMessage: data.error || "Processing failed",
           completedAt: Date.now(),
         });
+        await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+          jobId,
+        });
       }
     } else if (result.kind === "failed") {
       // Action failed after retries
+      console.log(`[handlePaperComplete] ACTION FAILED - Paper ${paperId} after retries: ${result.error}`);
       await ctx.db.patch(paperId, {
         status: "failed",
         errorMessage: result.error || "Action failed",
         completedAt: Date.now(),
       });
+      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
     } else if (result.kind === "canceled") {
       // Action was canceled
+      console.log(`[handlePaperComplete] CANCELED - Paper ${paperId} was canceled`);
       await ctx.db.patch(paperId, {
         status: "failed",
         errorMessage: "Processing was canceled",
         completedAt: Date.now(),
       });
+      await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+        jobId,
+      });
     }
+    
+    console.log(`[handlePaperComplete] END - Paper ${paperId} handled`);
 
-    // Note: Job progress is updated by the cron job (updateAllJobProgress)
-    // to avoid OCC conflicts when many papers complete simultaneously
+    // Job progress is finalized by workpool pipeline
   },
 });
 
@@ -866,5 +975,94 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
       });
       console.log(`[handlePaperFetchComplete] Paper fetch canceled for job ${jobId}`);
     }
+  },
+});
+
+// Backfill mutation to set isIndexed for papers with existing ragEntryId
+export const backfillIsIndexed = internalMutation({
+  args: {
+    batchSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<{ updated: number; hasMore: boolean }> => {
+    const batchSize = args.batchSize ?? 100;
+    
+    // Find papers with ragEntryId but no isIndexed flag
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .filter((q) => q.and(
+        q.neq(q.field("ragEntryId"), null),
+        q.eq(q.field("isIndexed"), null)
+      ))
+      .take(batchSize);
+    
+    let updated = 0;
+    for (const paper of papers) {
+      await ctx.db.patch(paper._id, {
+        isIndexed: true,
+      });
+      updated++;
+    }
+    
+    console.log(`[backfillIsIndexed] Updated ${updated} papers`);
+    return { updated, hasMore: papers.length === batchSize };
+  },
+});
+
+// Save extraction results and mark paper complete (used by workflow)
+export const saveExtractionResultsAndComplete = internalMutation({
+  args: {
+    paperId: v.id("extractionPapers"),
+    results: v.array(
+      v.object({
+        questionKey: v.string(),
+        answer: v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null()),
+        confidence: v.optional(v.number()),
+        reasoning: v.optional(v.string()),
+        contextChunks: v.optional(v.array(v.string())),
+        pdfContentUsed: v.optional(v.boolean()),
+      })
+    ),
+    creditsUsed: v.number(),
+    storageId: v.optional(v.id("_storage")),
+    pdfContentUsed: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    // Save extraction results
+    for (const result of args.results) {
+      await ctx.db.insert("extractionResults", {
+        paperId: args.paperId,
+        questionKey: result.questionKey,
+        answer: result.answer,
+        confidence: result.confidence,
+        reasoning: result.reasoning,
+        contextChunks: result.contextChunks,
+        pdfContentUsed: result.pdfContentUsed,
+        processedAt: Date.now(),
+      });
+    }
+
+    // Mark paper as completed
+    const patchData: any = {
+      status: "completed",
+      completedAt: Date.now(),
+      creditsUsed: args.creditsUsed,
+    };
+
+    if (args.storageId) {
+      patchData.storageId = args.storageId;
+    }
+
+    if (args.pdfContentUsed) {
+      patchData.pdfContentUsed = true;
+    }
+
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) return;
+
+    await ctx.db.patch(args.paperId, patchData);
+    await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+      jobId: paper.jobId,
+    });
+    console.log(`[saveExtractionResultsAndComplete] Paper ${args.paperId} completed with ${args.results.length} results`);
   },
 });

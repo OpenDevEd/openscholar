@@ -80,7 +80,7 @@ export const createAndRunTestJob = internalMutation({
       const workflowId = await workflow.start(
         ctx,
         internal.extraction.workflow.runExtractionWorkflow,
-        { jobId, userId: user._id }
+        { jobId }
       );
       
       // Update job with workflow ID

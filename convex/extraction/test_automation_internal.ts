@@ -86,11 +86,16 @@ export const getJobResults = internalQuery({
     const completed = papers.filter((p) => p.status === "completed");
     const withPdf = papers.filter((p) => p.ragEntryId || p.storageId);
     
+    const indexed = papers.filter((p) => p.isIndexed || p.ragEntryId).length;
+    const pdfContentUsed = papers.filter((p) => p.pdfContentUsed).length;
+
     return {
       total: papers.length,
       completed: completed.length,
       failed: papers.filter((p) => p.status === "failed" || p.status === "download_failed").length,
       withPdf: withPdf.length,
+      indexed,
+      pdfContentUsed,
     };
   },
 });

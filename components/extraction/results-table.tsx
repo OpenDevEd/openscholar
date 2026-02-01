@@ -128,21 +128,30 @@ export function ResultsTable({
                             Open Access
                           </Badge>
                         )}
-                        {paper.storageId || paper.ragEntryId ? (
+                        {paper.isIndexed || paper.ragEntryId ? (
+                          <Badge
+                            variant="outline"
+                            className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
+                          >
+                            Indexed
+                          </Badge>
+                        ) : null}
+                        {paper.pdfContentUsed ? (
                           <Badge
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
                           >
                             PDF Used
                           </Badge>
-                        ) : (
+                        ) : null}
+                        {!paper.pdfContentUsed && !paper.isIndexed && !paper.ragEntryId ? (
                           <Badge
                             variant="outline"
                             className="h-4 px-1 text-[9px] text-muted-foreground border-border"
                           >
                             Abstract Only
                           </Badge>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </TableCell>

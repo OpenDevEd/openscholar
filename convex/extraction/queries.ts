@@ -6,9 +6,8 @@
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import { getCurrentUser, requireAuth } from "../lib/auth";
+import { getCurrentUser } from "../lib/auth";
 
 // Get user's extraction jobs (public API)
 export const getMyJobs = query({
@@ -50,6 +49,10 @@ export const getMyJobs = query({
         .take(50);
     }
 
+    if (jobs.length === 0) {
+      return jobs;
+    }
+
     return jobs;
   },
 });
@@ -81,20 +84,26 @@ export const getJobDetails = query({
       .order("asc")
       .take(100);
 
+    const processed = papers.filter((p) => p.status === "completed").length;
+    const failed = papers.filter(
+      (p) =>
+        p.status === "failed" ||
+        p.status === "download_failed" ||
+        p.status === "indexing_failed"
+    ).length;
+
+    const total = job.totalPapers || papers.length;
+
     return {
       job,
       questions,
       papers,
       progress: {
-        total: job.totalPapers,
-        processed: job.processedPapers,
-        failed: job.failedPapers,
+        total,
+        processed,
+        failed,
         percentage:
-          job.totalPapers > 0
-            ? Math.round(
-                ((job.processedPapers + job.failedPapers) / job.totalPapers) * 100
-              )
-            : 0,
+          total > 0 ? Math.round(((processed + failed) / total) * 100) : 0,
       },
     };
   },
@@ -311,10 +320,23 @@ export const getJobProgressInternal = internalQuery({
       return { totalPapers: 0, processedPapers: 0, failedPapers: 0 };
     }
 
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+
+    const processed = papers.filter((p) => p.status === "completed").length;
+    const failed = papers.filter(
+      (p) =>
+        p.status === "failed" ||
+        p.status === "download_failed" ||
+        p.status === "indexing_failed"
+    ).length;
+
     return {
-      totalPapers: job.totalPapers,
-      processedPapers: job.processedPapers,
-      failedPapers: job.failedPapers,
+      totalPapers: job.totalPapers || papers.length,
+      processedPapers: processed,
+      failedPapers: failed,
     };
   },
 });
