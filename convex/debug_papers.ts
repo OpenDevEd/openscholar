@@ -12,9 +12,9 @@ export const recent = internalQuery({
       id: p._id,
       title: p.title,
       status: p.status,
-      error: p.error,
+      error: p.errorMessage,
       pdfUrl: p.pdfUrl,
-      retryCount: p.retries,
+      // retryCount: p.retries,
       storageId: p.storageId,
       ragEntryId: p.ragEntryId,
       // @ts-ignore

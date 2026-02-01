@@ -8,6 +8,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
+import { getCurrentUser, requireAuth } from "../lib/auth";
 
 // Get user's extraction jobs (public API)
 export const getMyJobs = query({
@@ -27,16 +28,7 @@ export const getMyJobs = query({
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     // Handle unauthenticated gracefully
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
+    const user = await getCurrentUser(ctx);
     if (!user) {
       return [];
     }
@@ -67,19 +59,9 @@ export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
     // Handle unauthenticated gracefully
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+    // Handle unauthenticated gracefully
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
 
     const job = await ctx.db.get(args.jobId);
 
@@ -96,6 +78,7 @@ export const getJobDetails = query({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
       .take(100);
 
     return {
@@ -122,26 +105,16 @@ export const getPaperResults = query({
   args: { paperId: v.id("extractionPapers") },
   handler: async (ctx, args) => {
     // Handle unauthenticated gracefully
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+    // Handle unauthenticated gracefully
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
 
     const paper = await ctx.db.get(args.paperId);
     if (!paper) throw new Error("Paper not found");
 
     const job = await ctx.db.get(paper.jobId);
     if (!job || job.userId !== user._id) {
-      throw new Error("Unauthorized");
+      throw new Error("Unauthorized Access");
     }
 
     const results = await ctx.db
@@ -158,19 +131,9 @@ export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
     // Handle unauthenticated gracefully
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+    // Handle unauthenticated gracefully
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
 
     const job = await ctx.db.get(args.jobId);
     if (!job || job.userId !== user._id) {
@@ -222,18 +185,16 @@ export const getJobResultsPaginated = query({
   },
   handler: async (ctx, args) => {
     // Handle unauthenticated gracefully
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
+    // Handle unauthenticated gracefully
+    const user = await getCurrentUser(ctx);
     if (!user) {
-      throw new Error("Unauthorized");
+        return {
+            page: [],
+            isDone: false,
+            continueCursor: "",
+            questions: [],
+            job: null as any
+        };
     }
 
     const job = await ctx.db.get(args.jobId);
@@ -250,7 +211,11 @@ export const getJobResultsPaginated = query({
     const result = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("desc") // Most recent first
+      //.order("desc") // User wants oldest (processing) first? Or if FIFO queue. 
+      // If user said "scroll to bottom to see updates" and it WAS desc, then updates were at bottom -> Oldest were at bottom.
+      // So FIFO processing matches desc list having updates at bottom.
+      // To see updates at TOP, we need ASC (Oldest at top).
+      .order("asc") 
       .paginate(args.paginationOpts);
 
     const papersWithResults = await Promise.all(
@@ -402,19 +367,9 @@ export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
     // Handle unauthenticated gracefully
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+    // Handle unauthenticated gracefully
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
 
     const job = await ctx.db.get(args.jobId);
     if (!job || job.userId !== user._id) {

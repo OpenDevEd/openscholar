@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery, usePaginatedQuery } from "convex/react";
+import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +21,8 @@ import {
   FileText,
   AlertCircle,
   RefreshCw,
+  Trash2,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "motion/react";
@@ -29,10 +31,38 @@ import { JobStatCard } from "@/components/extraction/job-stat-card";
 import { ResultsTable } from "@/components/extraction/results-table";
 import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 export default function JobDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const jobId = params.jobId as any;
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
+
+  // Mutations
+  const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
+  const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
 
   // Metadata query (fast, no heavy results)
   const jobDetails = useQuery(api.extraction.queries.getJobDetails, {
@@ -47,8 +77,56 @@ export default function JobDetailPage() {
   } = usePaginatedQuery(
     api.extraction.queries.getJobResultsPaginated,
     { jobId },
-    { initialNumItems: 20 },
+    { initialNumItems: ITEMS_PER_PAGE },
   );
+
+  const handleCancel = async () => {
+    try {
+      await cancelJob({ jobId });
+      toast.success("Job actions cancelled");
+    } catch (error) {
+      toast.error("Failed to cancel job");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteJob({ jobId });
+      toast.success("Job deleted");
+      router.push("/extraction");
+    } catch (error) {
+      toast.error("Failed to delete job");
+    }
+  };
+
+  // Client-side windowing for pagination
+  // paginatedPapers grows as we loadMore. We slice it to show "pages".
+  const displayedPapers = paginatedPapers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
+  const totalLoaded = paginatedPapers.length;
+  // If we are on the last loaded page, and there might be more (paginationStatus !== "Exhausted"),
+  // we let the user click Next, which triggers loadMore.
+  const hasNextPage =
+    paginationStatus !== "Exhausted" ||
+    currentPage * ITEMS_PER_PAGE < totalLoaded;
+  const hasPrevPage = currentPage > 1;
+
+  const handleNextPage = () => {
+    // If we need more data to show the next page, fetch it
+    if (
+      currentPage * ITEMS_PER_PAGE >= totalLoaded &&
+      paginationStatus !== "Exhausted"
+    ) {
+      loadMore(ITEMS_PER_PAGE);
+    }
+    setCurrentPage((p) => p + 1);
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((p) => p - 1);
+  };
 
   if (!jobDetails) {
     return (
@@ -112,9 +190,66 @@ export default function JobDetailPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" disabled={job.status !== "completed"}>
-              Export CSV
-            </Button>
+            {(job.status === "pending" ||
+              job.status === "downloading_pdfs" ||
+              job.status === "extracting") && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel Job
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel this job?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will stop processing remaining papers. Partial
+                      results will be saved.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Running</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      className="bg-red-500 hover:bg-red-600"
+                    >
+                      Yes, Cancel
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Job
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the job and all extracted data.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -137,7 +272,9 @@ export default function JobDetailPage() {
             value={`${progress.percentage}%`}
             icon={progress.percentage === 100 ? Sparkles : Loader2}
             delay={3}
-            loading={job.status === "extracting"}
+            loading={
+              job.status === "extracting" || job.status === "downloading_pdfs"
+            }
           />
           <JobStatCard
             title="Questions"
@@ -171,12 +308,50 @@ export default function JobDetailPage() {
               transition={{ delay: 0.2 }}
             >
               <ResultsTable
-                papers={paginatedPapers as any}
+                papers={displayedPapers as any}
                 questions={questions}
                 isLoading={paginationStatus === "LoadingMore"}
-                loadMore={() => loadMore(20)}
                 status={job.status}
+                // Hide internal loadMore since we use external pagination
+                loadMore={undefined}
               />
+
+              {/* Pagination Controls */}
+              <div className="mt-6 flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (hasPrevPage) handlePrevPage();
+                        }}
+                        className={cn(
+                          !hasPrevPage && "pointer-events-none opacity-50",
+                        )}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <Button variant="ghost" disabled className="w-20">
+                        Page {currentPage}
+                      </Button>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (hasNextPage) handleNextPage();
+                        }}
+                        className={cn(
+                          !hasNextPage && "pointer-events-none opacity-50",
+                        )}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
             </motion.div>
           </TabsContent>
 

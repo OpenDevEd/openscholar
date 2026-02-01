@@ -14,6 +14,7 @@ import { components } from "../_generated/api";
 import { openai } from "@ai-sdk/openai";
 import { pdfProcessingPool } from "../workpool";
 import { workflow } from "../workflow";
+import { requireAuth } from "../lib/auth";
 
 const rag = new RAG(components.rag, {
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
@@ -42,19 +43,7 @@ export const startExtraction = mutation({
     ),
   },
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Authentication required");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireAuth(ctx);
 
     const userId = user._id;
 
@@ -108,24 +97,18 @@ export const startExtraction = mutation({
 export const cancelExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Authentication required");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
 
     if (!job || job.userId !== user._id) {
       throw new Error("Job not found");
+    }
+
+    // Only allow cancelling pending or active jobs
+    if (["completed", "failed", "cancelled"].includes(job.status)) {
+       // Already done, just return success
+       return { success: true };
     }
 
     await ctx.db.patch(args.jobId, {
@@ -135,6 +118,50 @@ export const cancelExtraction = mutation({
 
     return { success: true };
   },
+});
+
+export const deleteExtraction = mutation({
+  args: { jobId: v.id("extractionJobs") },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) throw new Error("Job not found");
+
+    // Helper to delete in batches
+    const deleteBatch = async (table: string, index: string, field: string) => {
+        const items = await ctx.db
+            .query(table as any)
+            .withIndex(index, (q) => q.eq(field as any, args.jobId))
+            .collect();
+        for (const item of items) {
+            await ctx.db.delete(item._id);
+        }
+    };
+
+    // Delete related data 
+    // Note: detailed cleanup might need internal mutation if too many items, but for now strict delete
+    await deleteBatch("extractionPapers", "by_job", "jobId");
+    await deleteBatch("extractionQuestions", "by_job", "jobId");
+    // extractionResults are linked to papers, so we might need to delete them first or cascade
+    // Actually, extractionResults bind to paperId. We need to find papers first.
+    // This simple delete might be too slow for large jobs.
+    // Better to just delete the job and let a cron clean up orphans, OR use a recursive delete here.
+    // Given the urgency, I'll delete the job and papers/questions. Results might be orphaned but that's acceptable for now or I can iterate papers.
+    // Let's iterate papers to be clean.
+    
+    // Deleting papers and their results
+    const papers = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).collect();
+    for (const paper of papers) {
+        const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).collect();
+        for (const res of results) await ctx.db.delete(res._id);
+        await ctx.db.delete(paper._id);
+    }
+
+    await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).collect().then(qs => qs.forEach(q => ctx.db.delete(q._id)));
+    
+    await ctx.db.delete(args.jobId);
+  }
 });
 
 // Internal mutations (called by workflow/actions)
