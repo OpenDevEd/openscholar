@@ -37,6 +37,7 @@ import {
   Home,
   BookOpen,
   Clock,
+  Database,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -305,6 +306,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     if (pathname === "/") return "home";
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/history")) return "history";
+    if (pathname.includes("/extraction")) return "extraction";
     if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
   };
@@ -376,6 +378,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
             index={2}
+          />
+
+          <NavItem
+            href="/extraction"
+            icon={Database}
+            label="Extraction"
+            isActive={currentPageValue === "extraction"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={3}
           />
         </motion.div>
       </div>

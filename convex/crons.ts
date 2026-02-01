@@ -24,6 +24,11 @@ crons.interval(
   internal.maintenance.internal.checkSubscriptionStatus
 );
 
-
+// Process papers for active extraction jobs every 30 seconds
+crons.interval(
+  "process extraction papers",
+  { seconds: 30 },
+  internal.extraction.mutations.updateAllJobProgress
+);
 
 export default crons;

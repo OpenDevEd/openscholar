@@ -195,4 +195,145 @@ export default defineSchema({
   })
     .index("by_token", ["token"])
     .index("by_user", ["userId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION JOBS - Data extraction from papers (Elicit-style)
+  // ═══════════════════════════════════════════════════════════════
+  extractionJobs: defineTable({
+    userId: v.id("users"),
+    organizationId: v.optional(v.id("organizations")),
+
+    // Source information
+    sourceType: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual")
+    ),
+    sourceHistoryId: v.optional(v.string()), // For history-based extractions
+    sourceZoteroCollection: v.optional(v.string()), // For future Zotero import
+
+    // Search reproduction data (when sourceType === "history")
+    searchFilters: v.optional(v.record(v.string(), v.any())),
+
+    // Job status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("downloading_pdfs"),
+      v.literal("indexing"),
+      v.literal("extracting"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+
+    // Progress tracking
+    totalPapers: v.number(),
+    processedPapers: v.number(),
+    failedPapers: v.number(),
+
+    // Workflow tracking
+    workflowId: v.optional(v.string()),
+
+    // Metadata
+    name: v.string(), // User-friendly job name
+    description: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_workflow", ["workflowId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION QUESTIONS - User-defined questions for data extraction
+  // ═══════════════════════════════════════════════════════════════
+  extractionQuestions: defineTable({
+    jobId: v.id("extractionJobs"),
+    key: v.string(), // Unique identifier for this question within the job
+    question: v.string(), // The actual question text
+    type: v.union(
+      v.literal("string"),
+      v.literal("boolean"),
+      v.literal("number"),
+      v.literal("array")
+    ),
+    description: v.optional(v.string()), // Help text for the AI
+    order: v.number(), // Display order
+    createdAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_key", ["jobId", "key"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION PAPERS - Individual papers being processed
+  // ═══════════════════════════════════════════════════════════════
+  extractionPapers: defineTable({
+    jobId: v.id("extractionJobs"),
+
+    // Paper metadata (from OpenAlex)
+    openalexId: v.string(),
+    title: v.string(),
+    doi: v.optional(v.string()),
+    publicationYear: v.optional(v.number()),
+    abstract: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
+
+    // Processing status
+    status: v.union(
+      v.literal("pending"),
+      v.literal("downloading"),
+      v.literal("download_failed"),
+      v.literal("indexing"),
+      v.literal("indexing_failed"),
+      v.literal("extracting"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+
+    // PDF handling
+    pdfUrl: v.optional(v.string()), // Source URL
+    storageId: v.optional(v.id("_storage")), // Convex file storage ID
+    pdfDownloadError: v.optional(v.string()),
+
+    // RAG indexing
+    ragEntryId: v.optional(v.string()), // RAG component entry ID
+    indexedAt: v.optional(v.number()),
+
+    // Processing metadata
+    workId: v.optional(v.string()), // Workpool work ID for tracking
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+
+    // Cost tracking
+    creditsUsed: v.optional(v.number()),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_status", ["jobId", "status"])
+    .index("by_openalex", ["openalexId"])
+    .index("by_work", ["workId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION RESULTS - Extracted data for each paper/question combo
+  // ═══════════════════════════════════════════════════════════════
+  extractionResults: defineTable({
+    paperId: v.id("extractionPapers"),
+    questionKey: v.string(),
+
+    // Answer value (type depends on question type, null if not found)
+    answer: v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null()),
+
+    // AI metadata
+    confidence: v.optional(v.number()),
+    reasoning: v.optional(v.string()),
+    contextChunks: v.optional(v.array(v.string())), // RAG context used
+
+    // Source tracking
+    model: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    processedAt: v.number(),
+  })
+    .index("by_paper", ["paperId"])
+    .index("by_paper_question", ["paperId", "questionKey"]),
 });

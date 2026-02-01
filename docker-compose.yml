@@ -8,6 +8,8 @@ services:
       - "${SITE_PROXY_PORT:-3211}:3211"
     volumes:
       - data:/convex/data
+    environment:
+      - CONVEX_SELF_HOSTED_URL=http://localhost:3210
     healthcheck:
       test: curl -f http://localhost:3210/version
       interval: 5s

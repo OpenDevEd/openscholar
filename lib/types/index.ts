@@ -35,3 +35,16 @@ export type {
 } from './search.types';
 
 export { SEARCH_FIELDS } from './search.types';
+
+// Extraction Types
+export type {
+  ExtractionQuestionType,
+  ExtractionQuestion,
+  ExtractionJob,
+  ExtractionJobStatus,
+  ExtractionPaper,
+  ExtractionPaperStatus,
+  ExtractionResult,
+  ExtractionJobDetails,
+  CreateExtractionJobInput,
+} from './extraction.types';
