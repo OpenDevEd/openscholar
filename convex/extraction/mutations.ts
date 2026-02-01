@@ -151,6 +151,7 @@ export const createPaperRecords = internalMutation({
         abstract: v.optional(v.string()),
         authors: v.optional(v.array(v.string())),
         pdfUrl: v.optional(v.string()),
+        isOpenAccess: v.optional(v.boolean()),
       })
     ),
   },
@@ -165,6 +166,7 @@ export const createPaperRecords = internalMutation({
         abstract: paper.abstract,
         authors: paper.authors,
         pdfUrl: paper.pdfUrl,
+        isOpenAccess: paper.isOpenAccess,
         status: "pending",
       });
     }
@@ -787,6 +789,7 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
           abstract?: string;
           authors?: string[];
           pdfUrl?: string;
+          isOpenAccess?: boolean;
         }>;
         count: number;
       };

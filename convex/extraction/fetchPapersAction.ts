@@ -96,14 +96,21 @@ export const fetchAndCreatePapers = internalAction({
       const data = await response.json();
 
       for (const work of data.results || []) {
+        // Extract abstract from inverted index if available
+        let abstract: string | undefined;
+        if (work.abstract_inverted_index) {
+          abstract = reconstructAbstract(work.abstract_inverted_index);
+        }
+
         const paper: PaperData = {
           openalexId: work.id?.replace("https://openalex.org/", "") || "",
           title: work.display_name || "Untitled",
           doi: work.doi || undefined,
           publicationYear: work.publication_year || undefined,
-          abstract: work.abstract_inverted_index ? "Abstract available" : undefined,
+          abstract: abstract,
           authors: work.authorships?.map((a: any) => a.author?.display_name).filter(Boolean) || [],
           pdfUrl: work.open_access?.oa_url || undefined,
+          isOpenAccess: work.open_access?.is_oa || false,
         };
 
         papers.push(paper);
@@ -121,3 +128,23 @@ export const fetchAndCreatePapers = internalAction({
     return { papers, count: papers.length };
   },
 });
+
+// Helper to reconstruct abstract from OpenAlex inverted index
+function reconstructAbstract(invertedIndex: Record<string, number[]>): string {
+  if (!invertedIndex || Object.keys(invertedIndex).length === 0) {
+    return "";
+  }
+
+  // Create position -> word mapping
+  const positionMap: Map<number, string> = new Map();
+  
+  for (const [word, positions] of Object.entries(invertedIndex)) {
+    for (const pos of positions) {
+      positionMap.set(pos, word);
+    }
+  }
+
+  // Sort positions and join words
+  const sortedPositions = Array.from(positionMap.keys()).sort((a, b) => a - b);
+  return sortedPositions.map(pos => positionMap.get(pos)).join(" ");
+}

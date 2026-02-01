@@ -4,6 +4,7 @@
  */
 
 import { query, internalQuery } from "../_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -209,6 +210,67 @@ export const getJobResults = query({
       job,
       questions,
       papers: allResults,
+    };
+  },
+});
+
+// Get paginated results for a job
+export const getJobResultsPaginated = query({
+  args: {
+    jobId: v.id("extractionJobs"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    // Handle unauthenticated gracefully
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("Unauthorized");
+    }
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
+      .collect();
+
+    const result = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("desc") // Most recent first
+      .paginate(args.paginationOpts);
+
+    const papersWithResults = await Promise.all(
+      result.page.map(async (paper) => {
+        const results = await ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+          .collect();
+        return {
+          ...paper,
+          results,
+        };
+      })
+    );
+
+    return {
+      ...result,
+      page: papersWithResults,
+      questions,
+      job,
     };
   },
 });

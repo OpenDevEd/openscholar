@@ -108,6 +108,7 @@ export const fetchPapersFromHistory = internalAction({
           abstract: abstract,
           authors: work.authorships?.map((a: any) => a.author?.display_name).filter(Boolean) || [],
           pdfUrl: work.open_access?.oa_url || undefined,
+          isOpenAccess: work.open_access?.is_oa || false,
         });
       }
 

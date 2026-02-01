@@ -278,6 +278,7 @@ export default defineSchema({
     publicationYear: v.optional(v.number()),
     abstract: v.optional(v.string()),
     authors: v.optional(v.array(v.string())),
+    isOpenAccess: v.optional(v.boolean()),
 
     // Processing status
     status: v.union(

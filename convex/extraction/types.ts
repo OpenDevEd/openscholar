@@ -38,6 +38,7 @@ export interface PaperData {
   abstract?: string;
   authors?: string[];
   pdfUrl?: string;
+  isOpenAccess?: boolean;
 }
 
 export interface ExtractionResult {
