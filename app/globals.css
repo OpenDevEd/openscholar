@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "react-pdf/dist/Page/AnnotationLayer.css";
+@import "react-pdf/dist/Page/TextLayer.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -29,6 +31,8 @@
   /* Primary - Orange Brand */
   --primary: oklch(0.7 0.17 54);
   --primary-foreground: oklch(1 0 0);
+  --pdf-highlight: oklch(0.7 0.17 54 / 0.22);
+  --pdf-highlight-border: oklch(0.7 0.17 54 / 0.45);
 
   /* Secondary */
   --secondary: oklch(0.955 0.01 60);
@@ -110,6 +114,8 @@
   /* Primary - Orange Brand (slightly brighter for dark mode) */
   --primary: oklch(0.72 0.17 54);
   --primary-foreground: oklch(0.15 0.01 55);
+  --pdf-highlight: oklch(0.72 0.17 54 / 0.3);
+  --pdf-highlight-border: oklch(0.72 0.17 54 / 0.55);
 
   /* Secondary */
   --secondary: oklch(0.25 0.012 55);
@@ -232,6 +238,38 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+}
+
+@layer components {
+  .react-pdf__Page {
+    position: relative;
+  }
+
+  .react-pdf__Page__textContent {
+    color: transparent;
+  }
+
+  .react-pdf__Page__textContent .citation-highlight {
+    background: var(--pdf-highlight);
+    border-radius: 2px;
+    color: transparent;
+  }
+
+  .textLayer .citation-highlight {
+    background: var(--pdf-highlight);
+    border-radius: 2px;
+    color: transparent;
+  }
+
+  .citation-highlight-rect {
+    background: var(--pdf-highlight);
+    border: 1px solid var(--pdf-highlight-border);
+    border-radius: 2px;
+  }
+
+  .react-pdf__Page canvas {
+    display: block;
   }
 }
 

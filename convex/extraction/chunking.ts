@@ -5,6 +5,8 @@
  * Uses simple, reliable paragraph-based chunking (NO defaultChunker)
  */
 
+import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
+
 export interface ChunkMetadata {
   page: number;
   charRange: [number, number];
@@ -97,25 +99,12 @@ export async function extractTextByPages(
 ): Promise<{ pages: string[]; totalPages: number }> {
   console.log(`[extractTextByPages] Starting extraction (${pdfBuffer.byteLength} bytes)`);
 
-  const { extractText } = await import("unpdf");
-  const extracted = await extractText(pdfBuffer);
+  const { extractPdfJsTextPages } = await import("./pdfjs_extract");
+  const { pages, totalPages } = await extractPdfJsTextPages(pdfBuffer);
 
-  console.log(`[extractTextByPages] PDF reports ${extracted.totalPages} pages`);
+  const pageTexts = pages.map((page) => buildPageTextFromItems(page.items).text);
 
-  // Handle different return types from unpdf
-  let pages: string[];
-
-  if (Array.isArray(extracted.text)) {
-    pages = extracted.text;
-  } else if (typeof extracted.text === "string") {
-    pages = [extracted.text];
-  } else {
-    console.warn(`[extractTextByPages] Unexpected type: ${typeof extracted.text}`);
-    pages = [String(extracted.text || "")];
-  }
-
-  // Validate pages
-  const validPages = pages.filter((page, index) => {
+  const validPages = pageTexts.filter((page, index) => {
     if (typeof page !== "string") {
       console.warn(`[extractTextByPages] Page ${index + 1}: Not a string`);
       return false;
@@ -127,11 +116,11 @@ export async function extractTextByPages(
     return true;
   });
 
-  console.log(`[extractTextByPages] ${validPages.length}/${pages.length} pages valid`);
+  console.log(`[extractTextByPages] ${validPages.length}/${pageTexts.length} pages valid`);
 
   return {
     pages: validPages,
-    totalPages: extracted.totalPages || validPages.length,
+    totalPages: totalPages || validPages.length,
   };
 }
 

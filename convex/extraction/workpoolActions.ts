@@ -31,9 +31,10 @@ import {
 } from "./prompts";
 
 // Initialize RAG
-const rag = new RAG(components.rag, {
+const rag = new RAG<{ paperId: string }>(components.rag, {
   textEmbeddingModel: openai.embedding("text-embedding-3-small"),
   embeddingDimension: 1536,
+  filterNames: ["paperId"],
 });
 
 // Result type for paper processing
@@ -209,6 +210,7 @@ async function performHybridSearch(
   ctx: any,
   namespace: string,
   question: string,
+  paperId: string,
   maxRetries: number = 3
 ): Promise<Array<{ text: string; metadata: any }>> {
   const questionType = detectQuestionType(question);
@@ -259,6 +261,7 @@ async function performHybridSearch(
           namespace,
           query,
           limit: 10,
+          filters: [{ name: "paperId", value: paperId }],
         });
 
         const results = Array.isArray(searchResults?.results)
@@ -376,14 +379,15 @@ export const processPaperAction = internalAction({
               // Index chunks with RAG - use custom chunks
               const chunksForRag = prepareChunksForRag(chunksWithMetadata);
               
-              const ragResult = await rag.add(ctx, {
-                namespace: `extraction:${args.jobId}`,
-                key: args.paperId,
-                chunks: chunksForRag,
-                metadata: {
-                  paperId: args.paperId,
-                },
-              });
+               const ragResult = await rag.add(ctx, {
+                 namespace: `extraction:${args.jobId}`,
+                 key: args.paperId,
+                 chunks: chunksForRag,
+                 filterValues: [{ name: "paperId", value: args.paperId }],
+                 metadata: {
+                   paperId: args.paperId,
+                 },
+               });
 
               await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
                 paperId: args.paperId,
@@ -420,7 +424,8 @@ export const processPaperAction = internalAction({
           const searchResults = await performHybridSearch(
             ctx,
             `extraction:${args.jobId}`,
-            question.question
+            question.question,
+            args.paperId
           );
 
           if (searchResults.length > 0) {
@@ -633,6 +638,7 @@ export const downloadAndIndexPdfAction = internalAction({
         namespace: `extraction:${args.jobId}`,
         key: args.paperId,
         chunks: chunksForRag,
+        filterValues: [{ name: "paperId", value: args.paperId }],
         metadata: {
           paperId: args.paperId,
         },
@@ -723,7 +729,8 @@ export const waitAndExtractAction = internalAction({
           const searchResults = await performHybridSearch(
             ctx,
             `extraction:${args.jobId}`,
-            question.question
+            question.question,
+            args.paperId
           );
 
           if (searchResults.length > 0) {

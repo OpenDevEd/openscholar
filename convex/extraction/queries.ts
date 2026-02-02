@@ -141,6 +141,38 @@ export const getPaperResults = query({
   },
 });
 
+export const getPaperResultsInternal = internalQuery({
+  args: { paperId: v.id("extractionPapers") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("extractionResults")
+      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
+      .collect();
+  },
+});
+
+export const getPaperPdfUrl = query({
+  args: { paperId: v.id("extractionPapers") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) return null;
+
+    const job = await ctx.db.get(paper.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Unauthorized Access");
+    }
+
+    if (paper.storageId) {
+      return await ctx.storage.getUrl(paper.storageId);
+    }
+
+    return paper.pdfUrl || null;
+  },
+});
+
 // Get all results for a job (public API) - for export
 export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },

@@ -15,10 +15,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { FileText, Info, Loader2, Maximize2, ExternalLink } from "lucide-react";
+import { FileText, Info, Loader2, Maximize2, ExternalLink, Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
+import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
+import { useState } from "react";
 
 interface PaperWithResults extends Doc<"extractionPapers"> {
   results: Doc<"extractionResults">[];
@@ -39,6 +41,11 @@ export function ResultsTable({
   loadMore,
   status,
 }: ResultsTableProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
+  const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
+  const [selectedCitation, setSelectedCitation] = useState<string | null>(null);
+
   if (papers.length === 0 && !isLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center border rounded-xl bg-muted/20 border-border/40">
@@ -55,6 +62,13 @@ export function ResultsTable({
 
   return (
     <div className="space-y-4">
+      <PdfCitationDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        paperId={selectedPaperId}
+        paperTitle={selectedPaperTitle}
+        citationChunk={selectedCitation}
+      />
       <div className="rounded-xl border border-border/40 overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm">
         <div className="overflow-x-auto">
           <Table>
@@ -188,19 +202,29 @@ export function ResultsTable({
                     </TableCell>
 
                     {/* Results Columns */}
-                    {questions.map((q) => {
-                      const result = paper.results.find(
-                        (r) => r.questionKey === q.key,
-                      );
-                      return (
-                        <TableCell key={q._id} className="align-top py-4">
-                          <ResultCell result={result} type={q.type} />
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })}
+                  {questions.map((q) => {
+                    const result = paper.results.find(
+                      (r) => r.questionKey === q.key,
+                    );
+                    return (
+                      <TableCell key={q._id} className="align-top py-4">
+                        <ResultCell
+                          result={result}
+                          type={q.type}
+                          onCite={() => {
+                            if (!result?.contextChunks?.length) return;
+                            setSelectedPaperId(paper._id);
+                            setSelectedPaperTitle(paper.title);
+                            setSelectedCitation(result.contextChunks[0]);
+                            setDrawerOpen(true);
+                          }}
+                        />
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
             </TableBody>
           </Table>
         </div>
@@ -232,9 +256,11 @@ export function ResultsTable({
 function ResultCell({
   result,
   type,
+  onCite,
 }: {
   result?: Doc<"extractionResults">;
   type: string;
+  onCite?: () => void;
 }) {
   if (!result) {
     return <span className="text-muted-foreground/30 text-xs">—</span>;
@@ -281,7 +307,7 @@ function ResultCell({
         )}
       </div>
 
-      {(confidence || reasoning) && (
+      {(confidence || reasoning || (result.contextChunks && result.contextChunks.length > 0)) && (
         <div className="flex items-center gap-2">
           {confidence !== undefined && (
             <div
@@ -312,6 +338,17 @@ function ResultCell({
               </PopoverContent>
             </Popover>
           )}
+          {result.contextChunks && result.contextChunks.length > 0 && onCite ? (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onCite}
+              className="h-5 w-5 text-muted-foreground/60 hover:text-foreground transition-colors"
+              title="Open citation"
+            >
+              <Quote className="h-3 w-3" />
+            </Button>
+          ) : null}
         </div>
       )}
     </div>

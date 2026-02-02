@@ -58,6 +58,7 @@ export {
 export {
   getPapersByOpenAlexIds,
   getPaperInternal,
+  getPaperResultsInternal,
   getJobInternal,
   getQuestionsInternal,
   getJobProgressInternal,
@@ -72,6 +73,8 @@ export { getFailedPapersDebug } from "./debug_errors";
 export { getPaperErrorsInternal } from "./debug_papers";
 export { debugPaperResults } from "./debug_paper_results";
 export { debugJobContent } from "./debug_job_content";
+export { debugJobCitations } from "./debug_job_citations";
+export { debugPdfAlignment } from "./debug_pdfjs_alignment";
 
 // Test job creation
 export { createTestJobForFix } from "./create_test_job";
