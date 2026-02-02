@@ -10,6 +10,7 @@ import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
 import type { Id } from "../_generated/dataModel";
 import { pdfProcessingPool } from "../workpool";
+import { getProcessableFlags } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
 
@@ -238,6 +239,10 @@ export const createPaperRecords = internalMutation({
   },
   handler: async (ctx, args): Promise<void> => {
     for (const paper of args.papers) {
+      const { processable } = getProcessableFlags({
+        pdfUrl: paper.pdfUrl,
+        abstract: paper.abstract,
+      });
       await ctx.db.insert("extractionPapers", {
         jobId: args.jobId,
         openalexId: paper.openalexId,
@@ -248,6 +253,7 @@ export const createPaperRecords = internalMutation({
         authors: paper.authors,
         pdfUrl: paper.pdfUrl,
         isOpenAccess: paper.isOpenAccess,
+        processable,
         status: "pending",
       });
     }
@@ -317,6 +323,18 @@ export const updatePaperStatus = internalMutation({
     }
 
     await ctx.db.patch(args.paperId, updates);
+  },
+});
+
+export const updatePaperProcessable = internalMutation({
+  args: {
+    paperId: v.id("extractionPapers"),
+    processable: v.boolean(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await ctx.db.patch(args.paperId, {
+      processable: args.processable,
+    });
   },
 });
 
@@ -450,22 +468,37 @@ export const finalizeJobIfDone = internalMutation({
 
     if (papers.length === 0) return;
 
-    const completedCount = papers.filter((p) => p.status === "completed").length;
-    const failedCount = papers.filter(
+    const processablePapers = papers.filter((p) => p.processable !== false);
+    if (processablePapers.length === 0) {
+      await ctx.db.patch(args.jobId, {
+        status: "failed",
+        processedPapers: 0,
+        failedPapers: 0,
+        completedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return;
+    }
+
+    const completedCount = processablePapers.filter(
+      (p) => p.status === "completed"
+    ).length;
+    const failedCount = processablePapers.filter(
       (p) =>
         p.status === "failed" ||
         p.status === "download_failed" ||
         p.status === "indexing_failed"
     ).length;
 
-    if (completedCount + failedCount < papers.length) {
+    if (completedCount + failedCount < processablePapers.length) {
       await ctx.db.patch(args.jobId, {
         updatedAt: Date.now(),
       });
       return;
     }
 
-    const status = failedCount === papers.length ? "failed" : "completed";
+    const status =
+      failedCount === processablePapers.length ? "failed" : "completed";
 
     await ctx.db.patch(args.jobId, {
       status,
@@ -635,6 +668,12 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
           status: "indexing",
         });
 
+        if ((data.chunksCount ?? 0) === 0) {
+          await ctx.db.patch(paperId, {
+            isIndexed: false,
+          });
+        }
+
         // Step 2: Wait for indexing and extract
         await pdfProcessingPool.enqueueAction(
           ctx,
@@ -707,7 +746,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         error?: string;
       };
 
-      if (data.success && data.results) {
+    if (data.success && data.results) {
         await ctx.runMutation(
           internal.extraction.mutations.saveExtractionResultsAndComplete,
           {
@@ -1005,6 +1044,32 @@ export const backfillIsIndexed = internalMutation({
     
     console.log(`[backfillIsIndexed] Updated ${updated} papers`);
     return { updated, hasMore: papers.length === batchSize };
+  },
+});
+
+export const backfillProcessable = internalMutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+  },
+  handler: async (ctx, args): Promise<{ updated: number; total: number }> => {
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+
+    let updated = 0;
+    for (const paper of papers) {
+      const { processable } = getProcessableFlags({
+        pdfUrl: paper.pdfUrl,
+        abstract: paper.abstract,
+      });
+      if (paper.processable !== processable) {
+        await ctx.db.patch(paper._id, { processable });
+        updated++;
+      }
+    }
+
+    return { updated, total: papers.length };
   },
 });
 

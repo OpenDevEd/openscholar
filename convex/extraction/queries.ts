@@ -8,6 +8,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
+import { getProcessableFlags } from "./content";
 
 // Get user's extraction jobs (public API)
 export const getMyJobs = query({
@@ -80,19 +81,24 @@ export const getJobDetails = query({
 
     const papers = await ctx.db
       .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .withIndex("by_job_processable", (q) =>
+        q.eq("jobId", args.jobId).eq("processable", true)
+      )
       .order("asc")
       .take(100);
 
-    const processed = papers.filter((p) => p.status === "completed").length;
-    const failed = papers.filter(
+    const processablePapers = papers.filter((p) => p.processable !== false);
+    const processed = processablePapers.filter(
+      (p) => p.status === "completed"
+    ).length;
+    const failed = processablePapers.filter(
       (p) =>
         p.status === "failed" ||
         p.status === "download_failed" ||
         p.status === "indexing_failed"
     ).length;
 
-    const total = job.totalPapers || papers.length;
+    const total = job.totalPapers || processablePapers.length;
 
     return {
       job,
@@ -219,12 +225,14 @@ export const getJobResultsPaginated = query({
 
     const result = await ctx.db
       .query("extractionPapers")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .withIndex("by_job_processable", (q) =>
+        q.eq("jobId", args.jobId).eq("processable", true)
+      )
       //.order("desc") // User wants oldest (processing) first? Or if FIFO queue. 
       // If user said "scroll to bottom to see updates" and it WAS desc, then updates were at bottom -> Oldest were at bottom.
       // So FIFO processing matches desc list having updates at bottom.
       // To see updates at TOP, we need ASC (Oldest at top).
-      .order("asc") 
+      .order("asc")
       .paginate(args.paginationOpts);
 
     const papersWithResults = await Promise.all(
@@ -324,9 +332,11 @@ export const getJobProgressInternal = internalQuery({
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .collect();
-
-    const processed = papers.filter((p) => p.status === "completed").length;
-    const failed = papers.filter(
+    const processablePapers = papers.filter((p) => p.processable !== false);
+    const processed = processablePapers.filter(
+      (p) => p.status === "completed"
+    ).length;
+    const failed = processablePapers.filter(
       (p) =>
         p.status === "failed" ||
         p.status === "download_failed" ||
@@ -334,7 +344,7 @@ export const getJobProgressInternal = internalQuery({
     ).length;
 
     return {
-      totalPapers: job.totalPapers || papers.length,
+      totalPapers: job.totalPapers || processablePapers.length,
       processedPapers: processed,
       failedPapers: failed,
     };
@@ -351,11 +361,33 @@ export const getPapersDebug = internalQuery({
       .collect();
 
     const statusCounts: Record<string, number> = {};
+    const contentCounts = {
+      total: papers.length,
+      processable: 0,
+      hasPdfUrl: 0,
+      hasAbstract: 0,
+      abstractOnly: 0,
+      pdfOnly: 0,
+      pdfAndAbstract: 0,
+    };
     const pendingPapers = [];
     const papersWithWorkIds = [];
 
     for (const paper of papers) {
       statusCounts[paper.status] = (statusCounts[paper.status] || 0) + 1;
+      const { hasPdfUrl, hasAbstract } = getProcessableFlags({
+        pdfUrl: paper.pdfUrl,
+        abstract: paper.abstract,
+      });
+      const isProcessable = paper.processable !== false;
+
+      if (hasPdfUrl) contentCounts.hasPdfUrl++;
+      if (hasAbstract) contentCounts.hasAbstract++;
+      if (hasPdfUrl && hasAbstract) contentCounts.pdfAndAbstract++;
+      if (hasPdfUrl && !hasAbstract) contentCounts.pdfOnly++;
+      if (!hasPdfUrl && hasAbstract) contentCounts.abstractOnly++;
+      if (isProcessable) contentCounts.processable++;
+
       if (paper.status === "pending") {
         pendingPapers.push({
           id: paper._id,
@@ -377,6 +409,7 @@ export const getPapersDebug = internalQuery({
     return {
       totalPapers: papers.length,
       statusCounts,
+      contentCounts,
       pendingPapers: pendingPapers.slice(0, 20),
       papersWithWorkIds: papersWithWorkIds.slice(0, 20),
       samplePaper: papers[0] || null,
@@ -416,6 +449,7 @@ export const subscribeToJobProgress = query({
     };
 
     for (const paper of allPapers) {
+      if (paper.processable === false) continue;
       const status = paper.status as keyof typeof statusCounts;
       if (status in statusCounts) {
         statusCounts[status]++;
@@ -425,7 +459,9 @@ export const subscribeToJobProgress = query({
     return {
       job,
       statusCounts,
-      recentPapers: allPapers.slice(-20), // Last 20 updated
+      recentPapers: allPapers
+        .filter((paper) => paper.processable !== false)
+        .slice(-20), // Last 20 updated
     };
   },
 });

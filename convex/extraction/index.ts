@@ -26,6 +26,7 @@ export { startExtraction, cancelExtraction } from "./mutations";
 export {
   finalizeJob,
   updatePaperStatus,
+  updatePaperProcessable,
   setPaperStorage,
   saveExtractionResultsAndComplete,
   createJobDirect,
@@ -41,6 +42,7 @@ export {
   finalizeJobIfDone,
   markPaperIndexed,
   backfillIsIndexed,
+  backfillProcessable,
 } from "./mutations";
 
 // Queries (public)
@@ -69,6 +71,7 @@ export { diagnoseJob } from "./debug";
 export { getFailedPapersDebug } from "./debug_errors";
 export { getPaperErrorsInternal } from "./debug_papers";
 export { debugPaperResults } from "./debug_paper_results";
+export { debugJobContent } from "./debug_job_content";
 
 // Test job creation
 export { createTestJobForFix } from "./create_test_job";

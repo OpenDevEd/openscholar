@@ -65,10 +65,11 @@ export const getJobStatus = internalQuery({
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .collect();
     
+    const processable = papers.filter((p) => p.processable !== false);
     return {
       status: job?.status || "unknown",
-      total: papers.length,
-      completed: papers.filter((p) => p.status === "completed").length,
+      total: processable.length,
+      completed: processable.filter((p) => p.status === "completed").length,
       withPdf: papers.filter((p) => p.ragEntryId || p.storageId).length,
     };
   },
@@ -83,16 +84,19 @@ export const getJobResults = internalQuery({
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .collect();
     
-    const completed = papers.filter((p) => p.status === "completed");
+    const processable = papers.filter((p) => p.processable !== false);
+    const completed = processable.filter((p) => p.status === "completed");
     const withPdf = papers.filter((p) => p.ragEntryId || p.storageId);
     
     const indexed = papers.filter((p) => p.isIndexed || p.ragEntryId).length;
     const pdfContentUsed = papers.filter((p) => p.pdfContentUsed).length;
 
     return {
-      total: papers.length,
+      total: processable.length,
       completed: completed.length,
-      failed: papers.filter((p) => p.status === "failed" || p.status === "download_failed").length,
+      failed: processable.filter(
+        (p) => p.status === "failed" || p.status === "download_failed"
+      ).length,
       withPdf: withPdf.length,
       indexed,
       pdfContentUsed,

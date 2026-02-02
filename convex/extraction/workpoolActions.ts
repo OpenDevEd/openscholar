@@ -21,6 +21,7 @@ import {
   formatChunkWithMetadata,
   prepareChunksForRag,
 } from "./chunking";
+import { MIN_ABSTRACT_LENGTH } from "./content";
 import {
   buildEnhancedExtractionPrompt,
   buildRerankingPrompt,
@@ -342,9 +343,9 @@ export const processPaperAction = internalAction({
       if (args.pdfUrl) {
         console.log(`[processPaperAction] STEP 1 - Downloading PDF from: ${args.pdfUrl.substring(0, 60)}...`);
 
-        const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
-          doi: args.doi,
-        });
+      const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
+        doi: args.doi,
+      });
 
         if (downloadResult.success && downloadResult.pdfBlob) {
           console.log(`[processPaperAction] STEP 1 SUCCESS - PDF downloaded: ${downloadResult.pdfBlob.size} bytes`);
@@ -561,6 +562,12 @@ export const downloadAndIndexPdfAction = internalAction({
     console.log(`[downloadAndIndexPdfAction] Starting for paper ${args.paperId}`);
 
     if (!args.pdfUrl) {
+      if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
+        console.log(
+          `[downloadAndIndexPdfAction] No PDF URL for ${args.paperId}, using abstract only`
+        );
+        return { success: true, chunksCount: 0 };
+      }
       return { success: false, error: "No PDF URL provided" };
     }
 
@@ -571,44 +578,47 @@ export const downloadAndIndexPdfAction = internalAction({
         doi: args.doi,
       });
 
-        if (!downloadResult.success || !downloadResult.pdfBlob) {
-          console.log(`[downloadAndIndexPdfAction] Download failed: ${downloadResult.error}`);
-          return { success: false, error: downloadResult.error || "Download failed" };
+      if (!downloadResult.success || !downloadResult.pdfBlob) {
+        console.log(`[downloadAndIndexPdfAction] Download failed: ${downloadResult.error}`);
+        if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
+          return { success: true, chunksCount: 0, error: downloadResult.error };
         }
+        return { success: false, error: downloadResult.error || "Download failed" };
+      }
 
-        console.log(`[downloadAndIndexPdfAction] PDF downloaded: ${downloadResult.pdfBlob.size} bytes`);
+      console.log(`[downloadAndIndexPdfAction] PDF downloaded: ${downloadResult.pdfBlob.size} bytes`);
 
-        // Store PDF
-        let storageId: string | undefined;
-        try {
-          console.log(`[downloadAndIndexPdfAction] Storing PDF in Convex storage...`);
-          storageId = await ctx.storage.store(downloadResult.pdfBlob);
-          console.log(`[downloadAndIndexPdfAction] PDF stored: ${storageId}`);
-          
-          // Save storageId to paper
-          await ctx.runMutation(internal.extraction.mutations.setPaperStorage, {
-            paperId: args.paperId,
-            storageId: storageId as any,
-          });
-        } catch (storageError) {
-          console.error(`[downloadAndIndexPdfAction] Storage error:`, storageError);
-          return { success: false, error: "Failed to store PDF" };
-        }
+      // Store PDF
+      let storageId: string | undefined;
+      try {
+        console.log(`[downloadAndIndexPdfAction] Storing PDF in Convex storage...`);
+        storageId = await ctx.storage.store(downloadResult.pdfBlob);
+        console.log(`[downloadAndIndexPdfAction] PDF stored: ${storageId}`);
+        
+        // Save storageId to paper
+        await ctx.runMutation(internal.extraction.mutations.setPaperStorage, {
+          paperId: args.paperId,
+          storageId: storageId as any,
+        });
+      } catch (storageError) {
+        console.error(`[downloadAndIndexPdfAction] Storage error:`, storageError);
+        return { success: false, error: "Failed to store PDF" };
+      }
 
-        // Extract and chunk PDF
-        let chunksWithMetadata: ChunkWithMetadata[] = [];
-        try {
-          console.log(`[downloadAndIndexPdfAction] Extracting text...`);
-          const pdfBuffer = await downloadResult.pdfBlob.arrayBuffer();
-          chunksWithMetadata = await extractAndChunkPdf(pdfBuffer, {
-            maxChunkSize: 2500,
-          });
-          console.log(`[downloadAndIndexPdfAction] Extracted ${chunksWithMetadata.length} chunks`);
-        } catch (chunkError) {
-          console.error(`[downloadAndIndexPdfAction] Chunking error:`, chunkError);
-          // Don't fail - we still have the PDF stored, can extract from abstract
-          return { success: true, storageId, chunksCount: 0 };
-        }
+      // Extract and chunk PDF
+      let chunksWithMetadata: ChunkWithMetadata[] = [];
+      try {
+        console.log(`[downloadAndIndexPdfAction] Extracting text...`);
+        const pdfBuffer = await downloadResult.pdfBlob.arrayBuffer();
+        chunksWithMetadata = await extractAndChunkPdf(pdfBuffer, {
+          maxChunkSize: 2500,
+        });
+        console.log(`[downloadAndIndexPdfAction] Extracted ${chunksWithMetadata.length} chunks`);
+      } catch (chunkError) {
+        console.error(`[downloadAndIndexPdfAction] Chunking error:`, chunkError);
+        // Don't fail - we still have the PDF stored, can extract from abstract
+        return { success: true, storageId, chunksCount: 0 };
+      }
 
       if (chunksWithMetadata.length === 0) {
         console.log(`[downloadAndIndexPdfAction] No chunks extracted`);

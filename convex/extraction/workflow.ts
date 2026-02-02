@@ -7,6 +7,7 @@ import { workflow } from "../workflow";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { pdfProcessingPool } from "../workpool";
+import { getProcessableFlags } from "./content";
 
 export const runExtractionWorkflow = workflow.define({
   args: {
@@ -64,12 +65,6 @@ export const runExtractionWorkflow = workflow.define({
       papers,
     });
 
-    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
-      jobId,
-      status: "downloading_pdfs",
-      totalPapers: papers.length,
-    });
-
     // Step 4: Get created paper IDs
     const paperIds = await step.runQuery(
       internal.extraction.queries.getPapersByOpenAlexIds,
@@ -79,30 +74,42 @@ export const runExtractionWorkflow = workflow.define({
       }
     );
 
+    const processableCount = paperIds.filter(
+      (paper) => paper.processable !== false
+    ).length;
+
+    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
+      jobId,
+      status: "downloading_pdfs",
+      totalPapers: processableCount,
+    });
+
     console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
 
     // Enqueue each paper for processing
     let enqueuedCount = 0;
     for (const paper of paperIds) {
-      // Check if paper has content to process (PDF or abstract)
-      const hasPdfUrl = !!paper.pdfUrl;
-      const hasAbstract = !!paper.abstract && paper.abstract.length > 50;
-      
-    if (!hasPdfUrl && !hasAbstract) {
-      // Skip papers without any content - mark as failed
-      await step.runMutation(
-        internal.extraction.mutations.updatePaperStatus,
-        {
-          paperId: paper._id,
-          status: "download_failed",
-          errorMessage: "No PDF URL or abstract available",
-        }
-      );
-      await step.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
-        jobId,
+      const { processable: computedProcessable } = getProcessableFlags({
+        pdfUrl: paper.pdfUrl,
+        abstract: paper.abstract,
       });
-      continue;
-    }
+      const isProcessable = paper.processable !== false && computedProcessable;
+
+      if (!isProcessable) {
+        // Skip papers without any content - mark as failed
+        await step.runMutation(
+          internal.extraction.mutations.updatePaperStatus,
+          {
+            paperId: paper._id,
+            status: "download_failed",
+            errorMessage: "No PDF URL or abstract available",
+          }
+        );
+        await step.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
+          jobId,
+        });
+        continue;
+      }
 
       // Enqueue paper processing via workpool (uses new 3-step workflow internally)
       await step.runMutation(
@@ -127,7 +134,6 @@ export const runExtractionWorkflow = workflow.define({
     await step.runMutation(internal.extraction.mutations.updateJobStatus, {
       jobId,
       status: "extracting",
-      totalPapers: enqueuedCount,
     });
 
     console.log(`[Workflow] Complete - papers processing asynchronously`);

@@ -279,6 +279,7 @@ export default defineSchema({
     abstract: v.optional(v.string()),
     authors: v.optional(v.array(v.string())),
     isOpenAccess: v.optional(v.boolean()),
+    processable: v.optional(v.boolean()),
 
     // Processing status
     status: v.union(
@@ -315,6 +316,7 @@ export default defineSchema({
     pdfContentUsed: v.optional(v.boolean()), // true if PDF content was actually used for extraction (any question)
   })
     .index("by_job", ["jobId"])
+    .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_status", ["jobId", "status"])
     .index("by_openalex", ["openalexId"])
     .index("by_work", ["workId"]),

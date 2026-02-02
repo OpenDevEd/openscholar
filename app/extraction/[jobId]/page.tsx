@@ -71,6 +71,9 @@ export default function JobDetailPage() {
   const jobDetails = useQuery(api.extraction.queries.getJobDetails, {
     jobId: jobId,
   });
+  const jobProgress = useQuery(api.extraction.queries.subscribeToJobProgress, {
+    jobId: jobId,
+  });
 
   // Paginated results query
   const {
@@ -152,6 +155,27 @@ export default function JobDetailPage() {
   }
 
   const { job, questions, progress } = jobDetails;
+  const resolvedProgress = jobProgress
+    ? {
+        total: job.totalPapers,
+        processed: jobProgress.statusCounts.completed,
+        failed:
+          jobProgress.statusCounts.failed +
+          jobProgress.statusCounts.download_failed +
+          jobProgress.statusCounts.indexing_failed,
+        percentage:
+          job.totalPapers > 0
+            ? Math.round(
+                ((jobProgress.statusCounts.completed +
+                  jobProgress.statusCounts.failed +
+                  jobProgress.statusCounts.download_failed +
+                  jobProgress.statusCounts.indexing_failed) /
+                  job.totalPapers) *
+                  100,
+              )
+            : 0,
+      }
+    : progress;
 
   return (
     <PageWrapper>
@@ -285,19 +309,19 @@ export default function JobDetailPage() {
           />
           <JobStatCard
             title="Processed"
-            value={job.processedPapers}
+            value={resolvedProgress.processed}
             icon={Sparkles}
             delay={2}
           />
-          <JobStatCard
-            title="Success Rate"
-            value={`${progress.percentage}%`}
-            icon={progress.percentage === 100 ? Sparkles : Loader2}
-            delay={3}
-            loading={
-              job.status === "extracting" || job.status === "downloading_pdfs"
-            }
-          />
+            <JobStatCard
+              title="Success Rate"
+              value={`${resolvedProgress.percentage}%`}
+              icon={resolvedProgress.percentage === 100 ? Sparkles : Loader2}
+              delay={3}
+              loading={
+                job.status === "extracting" || job.status === "downloading_pdfs"
+              }
+            />
           <JobStatCard
             title="Questions"
             value={questions.length}
@@ -390,13 +414,13 @@ export default function JobDetailPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium">
-                        {progress.percentage}% Complete
+                        {resolvedProgress.percentage}% Complete
                       </span>
                       <span className="text-muted-foreground">
-                        {progress.processed} of {progress.total}
+                        {resolvedProgress.processed} of {resolvedProgress.total}
                       </span>
                     </div>
-                    <Progress value={progress.percentage} className="h-3" />
+                    <Progress value={resolvedProgress.percentage} className="h-3" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-sm">
@@ -405,7 +429,7 @@ export default function JobDetailPage() {
                         Processed
                       </div>
                       <div className="text-2xl font-bold text-green-800 dark:text-green-300">
-                        {progress.processed}
+                        {resolvedProgress.processed}
                       </div>
                     </div>
                     <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
@@ -413,7 +437,7 @@ export default function JobDetailPage() {
                         Failed
                       </div>
                       <div className="text-2xl font-bold text-red-800 dark:text-red-300">
-                        {progress.failed}
+                        {resolvedProgress.failed}
                       </div>
                     </div>
                   </div>

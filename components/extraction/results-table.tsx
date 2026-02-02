@@ -18,6 +18,7 @@ import {
 import { FileText, Info, Loader2, Maximize2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 
 interface PaperWithResults extends Doc<"extractionPapers"> {
   results: Doc<"extractionResults">[];
@@ -85,90 +86,121 @@ export function ResultsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {papers.map((paper, idx) => (
-                <TableRow
-                  key={paper._id}
-                  className="group hover:bg-muted/30 transition-colors"
-                >
-                  {/* Paper Info Column */}
-                  <TableCell className="pl-6 align-top py-4">
-                    <div className="space-y-1.5 max-w-[280px]">
-                      <div
-                        className="font-medium text-sm leading-snug line-clamp-2"
-                        title={paper.title}
-                      >
-                        {paper.title}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {paper.publicationYear && (
-                          <Badge
-                            variant="outline"
-                            className="h-5 px-1.5 text-[10px font-normal"
-                          >
-                            {paper.publicationYear}
-                          </Badge>
-                        )}
-                        {paper.doi && (
-                          <a
-                            href={`https://doi.org/${paper.doi}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center hover:text-primary transition-colors hover:underline"
-                          >
-                            DOI <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 pt-1">
-                        {paper.isOpenAccess && (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
-                          >
-                            Open Access
-                          </Badge>
-                        )}
-                        {paper.isIndexed || paper.ragEntryId ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
-                          >
-                            Indexed
-                          </Badge>
-                        ) : null}
-                        {paper.pdfContentUsed ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
-                          >
-                            PDF Used
-                          </Badge>
-                        ) : null}
-                        {!paper.pdfContentUsed && !paper.isIndexed && !paper.ragEntryId ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] text-muted-foreground border-border"
-                          >
-                            Abstract Only
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-                  </TableCell>
+              {papers.map((paper) => {
+                const hasAbstract =
+                  !!paper.abstract &&
+                  paper.abstract.length > MIN_ABSTRACT_LENGTH;
+                const hasPdfSource =
+                  !!paper.pdfUrl ||
+                  !!paper.storageId ||
+                  !!paper.ragEntryId ||
+                  !!paper.isIndexed;
+                const showAbstractBadge =
+                  hasAbstract &&
+                  !paper.pdfContentUsed &&
+                  !paper.isIndexed &&
+                  !paper.ragEntryId &&
+                  paper.status !== "download_failed";
+                const abstractLabel =
+                  !paper.isOpenAccess && !hasPdfSource
+                    ? "Abstract Only"
+                    : "Abstract";
+                const showNoContent =
+                  paper.status === "download_failed" && !hasAbstract;
 
-                  {/* Results Columns */}
-                  {questions.map((q) => {
-                    const result = paper.results.find(
-                      (r) => r.questionKey === q.key,
-                    );
-                    return (
-                      <TableCell key={q._id} className="align-top py-4">
-                        <ResultCell result={result} type={q.type} />
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
+                return (
+                  <TableRow
+                    key={paper._id}
+                    className="group hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Paper Info Column */}
+                    <TableCell className="pl-6 align-top py-4">
+                      <div className="space-y-1.5 max-w-[280px]">
+                        <div
+                          className="font-medium text-sm leading-snug line-clamp-2"
+                          title={paper.title}
+                        >
+                          {paper.title}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {paper.publicationYear && (
+                            <Badge
+                              variant="outline"
+                              className="h-5 px-1.5 text-[10px font-normal"
+                            >
+                              {paper.publicationYear}
+                            </Badge>
+                          )}
+                          {paper.doi && (
+                            <a
+                              href={`https://doi.org/${paper.doi}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center hover:text-primary transition-colors hover:underline"
+                            >
+                              DOI <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                            </a>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 pt-1">
+                          {showNoContent ? (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+                            >
+                              No Content
+                            </Badge>
+                          ) : null}
+                          {paper.isOpenAccess && (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                            >
+                              Open Access
+                            </Badge>
+                          )}
+                          {paper.isIndexed || paper.ragEntryId ? (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
+                            >
+                              Indexed
+                            </Badge>
+                          ) : null}
+                          {paper.pdfContentUsed ? (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
+                            >
+                              PDF Used
+                            </Badge>
+                          ) : null}
+                          {showAbstractBadge ? (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] text-muted-foreground border-border"
+                            >
+                              {abstractLabel}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Results Columns */}
+                    {questions.map((q) => {
+                      const result = paper.results.find(
+                        (r) => r.questionKey === q.key,
+                      );
+                      return (
+                        <TableCell key={q._id} className="align-top py-4">
+                          <ResultCell result={result} type={q.type} />
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
