@@ -5,30 +5,16 @@ import { api } from "@/convex/_generated/api";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  ArrowLeft,
   Loader2,
-  Sparkles,
   FileText,
-  AlertCircle,
   RefreshCw,
   Trash2,
   XCircle,
+  ChevronLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { PageWrapper } from "@/components/PageWrapper";
-import { JobStatCard } from "@/components/extraction/job-stat-card";
-import { ResultsTable } from "@/components/extraction/results-table";
 import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -42,32 +28,53 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { ResultsToolbar } from "@/components/extraction/results-toolbar";
+import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
+import { SmartPagination } from "@/components/extraction/smart-pagination";
+import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
+import { useSelection } from "@/lib/hooks/use-selection";
+import { useUrlState } from "@/lib/hooks/use-url-state";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import {
+  defaultFilters,
+  filterPapers,
+  preprocessPapers,
+  type FilterState,
+  type PaperWithResults,
+  type Question,
+} from "@/lib/extraction/filtering";
 
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
   const jobId = params.jobId as any;
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 200;
 
-  // Mutations
+  const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
+  const viewModeDeserialize = useCallback((v: string) => v as 'table' | 'cards' | 'split', []);
+
+  const [viewMode, setViewMode] = useUrlState<'table' | 'cards' | 'split'>(
+    'view',
+    'table',
+    viewModeSerialize,
+    viewModeDeserialize
+  );
+
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const debouncedFilters = useDebouncedValue(filters, 150);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+
+  const [activeTab, setActiveTab] = useState<'results' | 'overview'>('results');
+
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
   const duplicateJob = useMutation(
     api.extraction.mutations.duplicateExtraction,
   );
 
-  // Metadata query (fast, no heavy results)
   const jobDetails = useQuery(api.extraction.queries.getJobDetails, {
     jobId: jobId,
   });
@@ -75,21 +82,96 @@ export default function JobDetailPage() {
     jobId: jobId,
   });
 
-  // Paginated results query
   const {
-    results: paginatedPapers,
+    results: allPapers,
     status: paginationStatus,
     loadMore,
   } = usePaginatedQuery(
     api.extraction.queries.getJobResultsPaginated,
     { jobId },
-    { initialNumItems: ITEMS_PER_PAGE },
+    { initialNumItems: 200 },
   );
+
+  const isLoadingRef = useRef(false);
+  const hasAttemptedLoadRef = useRef(false);
+  useEffect(() => {
+    if (paginationStatus !== 'Exhausted' && allPapers.length < 200 && !isLoadingRef.current && !hasAttemptedLoadRef.current) {
+      isLoadingRef.current = true;
+      hasAttemptedLoadRef.current = true;
+      loadMore(200);
+      const timeout = setTimeout(() => {
+        isLoadingRef.current = false;
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [paginationStatus, allPapers.length, loadMore]);
+
+  const questions: Question[] = useMemo(() => {
+    if (!jobDetails?.questions) return [];
+    return jobDetails.questions.map(q => ({
+      key: q.key,
+      question: q.question,
+      type: q.type as 'boolean' | 'string' | 'array' | 'number',
+      description: q.description,
+    }));
+  }, [jobDetails?.questions]);
+
+  const papersWithResults = useMemo(
+    () => allPapers as PaperWithResults[],
+    [allPapers]
+  );
+
+  const preprocessedData = useMemo(
+    () => preprocessPapers(papersWithResults),
+    [papersWithResults]
+  );
+
+  const filteredPapers = useMemo(
+    () => filterPapers(papersWithResults, debouncedFilters, questions, preprocessedData),
+    [papersWithResults, debouncedFilters, questions, preprocessedData]
+  );
+
+  const totalPages = Math.ceil(filteredPapers.length / pageSize);
+  const displayedPapers = useMemo(
+    () => filteredPapers.slice(
+      (currentPage - 1) * pageSize,
+      currentPage * pageSize
+    ),
+    [filteredPapers, currentPage, pageSize]
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  const paperIds = useMemo(
+    () => papersWithResults.map(p => p._id),
+    [papersWithResults]
+  );
+
+  const {
+    selectedIds,
+    clearSelection,
+    setSelection,
+  } = useSelection<string>(paperIds);
+
+  const selectedPapers = useMemo(
+    () => papersWithResults.filter(p => selectedIds.has(p._id)),
+    [papersWithResults, selectedIds]
+  );
+
+  const handleTableSelectionChange = useCallback((newIds: Set<string>) => {
+    setSelection(newIds);
+  }, [setSelection]);
+
+  const handleCardSelectionChange = useCallback((newIds: Set<string>) => {
+    setSelection(newIds);
+  }, [setSelection]);
 
   const handleCancel = async () => {
     try {
       await cancelJob({ jobId });
-      toast.success("Job actions cancelled");
+      toast.success("Job cancelled");
     } catch (error) {
       toast.error("Failed to cancel job");
     }
@@ -115,46 +197,17 @@ export default function JobDetailPage() {
     }
   };
 
-  // Client-side windowing for pagination
-  // paginatedPapers grows as we loadMore. We slice it to show "pages".
-  const displayedPapers = paginatedPapers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
-  const totalLoaded = paginatedPapers.length;
-  // If we are on the last loaded page, and there might be more (paginationStatus !== "Exhausted"),
-  // we let the user click Next, which triggers loadMore.
-  const hasNextPage =
-    paginationStatus !== "Exhausted" ||
-    currentPage * ITEMS_PER_PAGE < totalLoaded;
-  const hasPrevPage = currentPage > 1;
-
-  const handleNextPage = () => {
-    // If we need more data to show the next page, fetch it
-    if (
-      currentPage * ITEMS_PER_PAGE >= totalLoaded &&
-      paginationStatus !== "Exhausted"
-    ) {
-      loadMore(ITEMS_PER_PAGE);
-    }
-    setCurrentPage((p) => p + 1);
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage((p) => p - 1);
-  };
-
   if (!jobDetails) {
     return (
       <PageWrapper>
-        <div className="container mx-auto p-4 sm:p-6 max-w-7xl flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="w-10 h-10 animate-spin text-primary/30" />
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       </PageWrapper>
     );
   }
 
-  const { job, questions, progress } = jobDetails;
+  const { job, progress } = jobDetails;
   const resolvedProgress = jobProgress
     ? {
         total: job.totalPapers,
@@ -177,309 +230,405 @@ export default function JobDetailPage() {
       }
     : progress;
 
+  const isProcessing =
+    job.status === "pending" ||
+    job.status === "downloading_pdfs" ||
+    job.status === "extracting";
+
   return (
     <PageWrapper>
-      <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-8">
-        {/* Header */}
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+      <div className="min-h-screen bg-background">
+        {/* Hero Section */}
+        <div className="bg-card border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            {/* Breadcrumb */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="flex items-center gap-2 text-muted-foreground text-sm mb-6"
+            >
               <Link
                 href="/extraction"
-                className="hover:text-primary transition-colors flex items-center gap-1"
+                className="hover:text-foreground transition-colors flex items-center gap-1"
               >
-                <ArrowLeft className="w-3 h-3" />
+                <ChevronLeft className="w-4 h-4" />
                 Extraction Jobs
               </Link>
               <span>/</span>
-              <span className="truncate max-w-[200px]">{job.name}</span>
+              <span className="text-foreground truncate max-w-[200px]">{job.name}</span>
+            </motion.div>
+
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+              <div className="space-y-4">
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-card-foreground"
+                >
+                  {job.name}
+                </motion.h1>
+
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="flex flex-wrap items-center gap-4 text-muted-foreground"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        job.status === "completed"
+                          ? "bg-emerald-500"
+                          : job.status === "failed"
+                          ? "bg-destructive"
+                          : "bg-primary animate-pulse"
+                      )}
+                    />
+                    <span className="capitalize">
+                      {job.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+
+                  <span className="w-1 h-1 rounded-full bg-border" />
+
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="w-4 h-4" />
+                    <span>{job.totalPapers.toLocaleString()} papers</span>
+                  </div>
+
+                  <span className="w-1 h-1 rounded-full bg-border" />
+
+                  <div className="flex items-center gap-1.5">
+                    <RefreshCw className={cn("w-4 h-4", isProcessing && "animate-spin")} />
+                    <span>Updated {formatTimeAgo(new Date(job.updatedAt))}</span>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Action Buttons */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="flex items-center gap-3"
+              >
+                <Button
+                  variant="outline"
+                  onClick={handleDuplicate}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Restart
+                </Button>
+
+                {isProcessing && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel this job?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will stop processing remaining papers. Partial
+                          results will be saved.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Running</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancel}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          Yes, Cancel
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the job and all extracted data.
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        Delete Permanently
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-background border-b border-border"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Total Papers
+                </p>
+                <p className="text-4xl lg:text-5xl font-bold text-foreground">
+                  {job.totalPapers.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Processed
+                </p>
+                <p className="text-4xl lg:text-5xl font-bold text-emerald-600">
+                  {resolvedProgress.processed.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Success Rate
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-4xl lg:text-5xl font-bold text-primary">
+                    {resolvedProgress.percentage}%
+                  </p>
+                  {isProcessing && (
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Questions
+                </p>
+                <p className="text-4xl lg:text-5xl font-bold text-foreground">
+                  {questions.length}
+                </p>
+              </div>
             </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-3xl md:text-4xl font-bold tracking-tight text-foreground"
-            >
-              {job.name}
-            </motion.h1>
+            {/* Progress Bar */}
+            <div className="mt-8">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-muted-foreground">Extraction Progress</span>
+                <span className="font-medium text-foreground">
+                  {resolvedProgress.processed + resolvedProgress.failed} of{" "}
+                  {resolvedProgress.total} papers
+                </span>
+              </div>
+              <div className="h-3 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${resolvedProgress.percentage}%` }}
+                  transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full bg-primary rounded-full"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
-            <div className="flex items-center gap-3">
-              <Badge
-                variant="outline"
+        {/* Tab Navigation */}
+        <div className="bg-muted/50 border-b border-border">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab('results')}
                 className={cn(
-                  "capitalize px-2 py-0.5",
-                  job.status === "completed"
-                    ? "text-green-600 border-green-200"
-                    : "text-muted-foreground",
+                  "px-6 py-4 text-sm font-medium border-b-2 transition-colors",
+                  activeTab === 'results'
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                {job.status.replace("_", " ")}
-              </Badge>
-              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5" />
-                {job.totalPapers} papers
-              </span>
-              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                <RefreshCw className="w-3.5 h-3.5" />
-                Updated {formatTimeAgo(new Date(job.updatedAt))}
-              </span>
+                Extraction Results
+              </button>
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={cn(
+                  "px-6 py-4 text-sm font-medium border-b-2 transition-colors",
+                  activeTab === 'overview'
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Overview & Questions
+              </button>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={handleDuplicate}
-              className="text-primary hover:bg-primary/5"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Restart Job
-            </Button>
-
-            {(job.status === "pending" ||
-              job.status === "downloading_pdfs" ||
-              job.status === "extracting") && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Cancel Job
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel this job?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will stop processing remaining papers. Partial
-                      results will be saved.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Running</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleCancel}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
-                      Yes, Cancel
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Job
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this job?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete the job and all extracted data.
-                    This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Delete Permanently
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <JobStatCard
-            title="Total Papers"
-            value={job.totalPapers}
-            icon={FileText}
-            delay={1}
-          />
-          <JobStatCard
-            title="Processed"
-            value={resolvedProgress.processed}
-            icon={Sparkles}
-            delay={2}
-          />
-            <JobStatCard
-              title="Success Rate"
-              value={`${resolvedProgress.percentage}%`}
-              icon={resolvedProgress.percentage === 100 ? Sparkles : Loader2}
-              delay={3}
-              loading={
-                job.status === "extracting" || job.status === "downloading_pdfs"
-              }
-            />
-          <JobStatCard
-            title="Questions"
-            value={questions.length}
-            icon={AlertCircle}
-            delay={4}
-          />
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="results" className="space-y-6">
-          <TabsList className="h-12 w-full justify-start rounded-lg bg-muted/50 p-1 md:w-auto">
-            <TabsTrigger
-              value="results"
-              className="h-10 rounded-md px-6 text-sm font-medium"
-            >
-              Extraction Results
-            </TabsTrigger>
-            <TabsTrigger
-              value="overview"
-              className="h-10 rounded-md px-6 text-sm font-medium"
-            >
-              Overview & Progress
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="results" className="space-y-4">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {activeTab === 'results' ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
             >
-              <ResultsTable
-                papers={displayedPapers as any}
+              <ResultsToolbar
+                filters={filters}
+                onFiltersChange={setFilters}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                totalCount={papersWithResults.length}
+                filteredCount={filteredPapers.length}
                 questions={questions}
-                isLoading={paginationStatus === "LoadingMore"}
-                status={job.status}
-                // Hide internal loadMore since we use external pagination
-                loadMore={undefined}
               />
 
-              {/* Pagination Controls */}
-              <div className="mt-6 flex justify-center">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (hasPrevPage) handlePrevPage();
-                        }}
-                        className={cn(
-                          !hasPrevPage && "pointer-events-none opacity-50",
-                        )}
-                      />
-                    </PaginationItem>
-                    <PaginationItem>
-                      <Button variant="ghost" disabled className="w-20">
-                        Page {currentPage}
-                      </Button>
-                    </PaginationItem>
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (hasNextPage) handleNextPage();
-                        }}
-                        className={cn(
-                          !hasNextPage && "pointer-events-none opacity-50",
-                        )}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            </motion.div>
-          </TabsContent>
-
-          <TabsContent value="overview">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Extraction Progress</CardTitle>
-                  <CardDescription>
-                    Real-time status of document processing
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium">
-                        {resolvedProgress.percentage}% Complete
-                      </span>
-                      <span className="text-muted-foreground">
-                        {resolvedProgress.processed} of {resolvedProgress.total}
-                      </span>
-                    </div>
-                    <Progress value={resolvedProgress.percentage} className="h-3" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                      <div className="font-medium text-green-700 dark:text-green-400">
-                        Processed
-                      </div>
-                      <div className="text-2xl font-bold text-green-800 dark:text-green-300">
-                        {resolvedProgress.processed}
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                      <div className="font-medium text-red-700 dark:text-red-400">
-                        Failed
-                      </div>
-                      <div className="text-2xl font-bold text-red-800 dark:text-red-300">
-                        {resolvedProgress.failed}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Extraction Questions</CardTitle>
-                  <CardDescription>Schema defined for this job</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {questions.map((q: any) => (
-                      <div
-                        key={q.key}
-                        className="flex items-start justify-between p-3 rounded-lg border bg-card/50"
+              <div className="min-h-[600px]">
+                {filteredPapers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-24 text-center bg-muted rounded-xl border border-border">
+                    <FileText className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                      No results found
+                    </h3>
+                    <p className="text-muted-foreground max-w-md">
+                      {papersWithResults.length === 0
+                        ? job.status === "completed"
+                          ? "No papers matched your criteria or extraction failed."
+                          : "Results will appear here as they are processed."
+                        : "Try adjusting your filters to see results."}
+                    </p>
+                    {filteredPapers.length === 0 && papersWithResults.length > 0 && (
+                      <Button
+                        variant="outline"
+                        className="mt-6"
+                        onClick={() => setFilters(defaultFilters)}
                       >
-                        <div className="space-y-1">
-                          <div className="font-medium text-sm">
-                            {q.question}
-                          </div>
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {viewMode === 'table' && (
+                      <TableView
+                        papers={displayedPapers}
+                        questions={questions}
+                        selectedIds={selectedIds}
+                        onSelectionChange={handleTableSelectionChange}
+                        searchQuery={filters.searchQuery}
+                      />
+                    )}
+                    {viewMode === 'cards' && (
+                      <CardView
+                        papers={displayedPapers}
+                        questions={questions}
+                        selectedIds={selectedIds}
+                        onSelectionChange={handleCardSelectionChange}
+                      />
+                    )}
+                    {viewMode === 'split' && (
+                      <SplitView
+                        papers={filteredPapers}
+                        questions={questions}
+                      />
+                    )}
+                  </>
+                )}
+              </div>
+
+              {filteredPapers.length > 0 && viewMode !== 'split' && (
+                <SmartPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={setPageSize}
+                  totalCount={papersWithResults.length}
+                  filteredCount={filteredPapers.length}
+                  displayedCount={displayedPapers.length}
+                />
+              )}
+
+              {viewMode !== 'split' && (
+                <BulkActionsBar
+                  selectedIds={selectedIds}
+                  papers={selectedPapers}
+                  questions={questions}
+                  onClearSelection={clearSelection}
+                />
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-8"
+            >
+              {/* Questions Section */}
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <div className="px-6 py-4 border-b border-border bg-muted/50">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Extraction Questions
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Schema defined for this extraction job
+                  </p>
+                </div>
+                <div className="divide-y divide-border">
+                  {questions.map((q, idx) => (
+                    <motion.div
+                      key={q.key}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: idx * 0.05 }}
+                      className="px-6 py-4 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="font-medium text-foreground">{q.question}</p>
                           {q.description && (
-                            <div className="text-xs text-muted-foreground">
-                              {q.description}
-                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{q.description}</p>
                           )}
                         </div>
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] uppercase"
-                        >
+                        <span className="px-3 py-1 bg-muted text-muted-foreground text-xs font-medium uppercase rounded-full">
                           {q.type}
-                        </Badge>
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
     </PageWrapper>
   );
