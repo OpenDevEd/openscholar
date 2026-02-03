@@ -308,6 +308,14 @@ const PROVIDER_CONFIGS: Record<AIProvider, AIProviderConfig> = {
     apiKeyPlaceholder: 'Enter your OpenRouter API key',
     apiKeyUrl: 'https://openrouter.ai/keys',
   },
+  azure: {
+    id: 'azure',
+    name: 'Azure',
+    description: 'Access Azure\'s models',
+    models: [],
+    apiKeyPlaceholder: 'Enter your Azure API key',
+    apiKeyUrl: 'https://portal.azure.com/#view/Microsoft_Azure_ProjectOxford/CognitiveServicesHub/~/CognitiveServices',
+  },
 }
 
 const DEFAULT_MODELS: Record<AIProvider, string> = {
@@ -316,6 +324,7 @@ const DEFAULT_MODELS: Record<AIProvider, string> = {
   anthropic: 'claude-sonnet-4-5',
   deepseek: 'deepseek-chat',
   openrouter: 'anthropic/claude-sonnet-4-5',
+  azure: 'gpt-5-mini',
 }
 
 export function getProviderConfig(provider: AIProvider): AIProviderConfig {

@@ -55,6 +55,14 @@ function chunkTextSimple(
   const paragraphs = trimmedText.split(/\n\s*\n/).filter((p) => p.trim().length > 50);
 
   if (paragraphs.length === 0) {
+    const sentenceChunks = splitBySentences(trimmedText, maxChunkSize);
+    if (sentenceChunks.length > 0) {
+      console.log(
+        `[chunkTextSimple] Page ${pageNum + 1}: Using sentence-based chunking (${sentenceChunks.length})`
+      );
+      return sentenceChunks;
+    }
+
     // If no good paragraphs, treat entire text as one chunk
     if (trimmedText.length >= 100) {
       console.log(`[chunkTextSimple] Page ${pageNum + 1}: Using full text as single chunk`);
@@ -88,6 +96,33 @@ function chunkTextSimple(
   }
 
   console.log(`[chunkTextSimple] Page ${pageNum + 1}: Created ${chunks.length} chunks`);
+  return chunks;
+}
+
+function splitBySentences(text: string, maxChunkSize: number): string[] {
+  const sentenceMatches = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+  const sentences = sentenceMatches
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  if (sentences.length === 0) return [];
+
+  const chunks: string[] = [];
+  let current = "";
+
+  for (const sentence of sentences) {
+    if (current.length + sentence.length > maxChunkSize && current.length > 100) {
+      chunks.push(current.trim());
+      current = sentence + " ";
+    } else {
+      current += sentence + " ";
+    }
+  }
+
+  if (current.trim().length > 80) {
+    chunks.push(current.trim());
+  }
+
   return chunks;
 }
 
@@ -154,9 +189,15 @@ export function chunkPagesWithMetadata(
     }
 
     // Add metadata
+    let cursor = 0;
     for (let i = 0; i < pageChunks.length; i++) {
       const chunkText = pageChunks[i];
-      const startChar = pageText.indexOf(chunkText);
+      const searchStart = Math.max(0, cursor - chunkText.length);
+      let startChar = pageText.indexOf(chunkText, searchStart);
+
+      if (startChar === -1) {
+        startChar = pageText.indexOf(chunkText);
+      }
 
       if (startChar === -1) {
         console.warn(`[chunkPagesWithMetadata] Page ${pageNum + 1}: Chunk not found in text`);
@@ -172,6 +213,7 @@ export function chunkPagesWithMetadata(
           chunkIndex: globalChunkIndex++,
         },
       });
+      cursor = startChar + chunkText.length;
     }
 
     console.log(`[chunkPagesWithMetadata] Page ${pageNum + 1}: ${pageChunks.length} chunks`);

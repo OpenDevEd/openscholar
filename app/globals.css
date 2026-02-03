@@ -262,11 +262,10 @@
     color: transparent;
   }
 
-  .citation-highlight-rect {
-    background: var(--pdf-highlight);
-    border: 1px solid var(--pdf-highlight-border);
-    border-radius: 2px;
+  .textLayer .citation-highlight.appended {
+    position: initial;
   }
+
 
   .react-pdf__Page canvas {
     display: block;

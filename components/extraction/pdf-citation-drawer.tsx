@@ -19,6 +19,8 @@ type PdfCitationDrawerProps = {
   paperId: Id<"extractionPapers"> | null;
   paperTitle: string | null;
   citationChunk: string | null;
+  answerText?: string | null;
+  questionText?: string | null;
 };
 
 export function PdfCitationDrawer({
@@ -27,6 +29,8 @@ export function PdfCitationDrawer({
   paperId,
   paperTitle,
   citationChunk,
+  answerText,
+  questionText,
 }: PdfCitationDrawerProps) {
   const pdfUrl = useQuery(
     api.extraction.queries.getPaperPdfUrl,
@@ -78,6 +82,8 @@ export function PdfCitationDrawer({
               pageNumber={citation.page}
               charRange={citation.charRange}
               citationText={citation.text}
+              answerText={answerText}
+              questionText={questionText}
             />
           )}
         </div>

@@ -25,6 +25,10 @@ export async function getProviderModel(provider: AIProvider, apiKey: string | un
       const { createDeepSeek } = await import('@ai-sdk/deepseek')
       return createDeepSeek(options)(modelId)
     }
+    case 'azure': {
+      const { createAzure } = await import('@ai-sdk/azure')
+      return createAzure(options)(modelId)
+    }
     default:
       throw new Error(`Unsupported AI provider: ${provider}`)
   }

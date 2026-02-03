@@ -45,6 +45,8 @@ export function ResultsTable({
   const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
   const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
   const [selectedCitation, setSelectedCitation] = useState<string | null>(null);
+  const [selectedAnswerText, setSelectedAnswerText] = useState<string | null>(null);
+  const [selectedQuestionText, setSelectedQuestionText] = useState<string | null>(null);
 
   if (papers.length === 0 && !isLoading) {
     return (
@@ -68,6 +70,8 @@ export function ResultsTable({
         paperId={selectedPaperId}
         paperTitle={selectedPaperTitle}
         citationChunk={selectedCitation}
+        answerText={selectedAnswerText}
+        questionText={selectedQuestionText}
       />
       <div className="rounded-xl border border-border/40 overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm">
         <div className="overflow-x-auto">
@@ -202,26 +206,35 @@ export function ResultsTable({
                     </TableCell>
 
                     {/* Results Columns */}
-                  {questions.map((q) => {
-                    const result = paper.results.find(
-                      (r) => r.questionKey === q.key,
-                    );
-                    return (
-                      <TableCell key={q._id} className="align-top py-4">
-                        <ResultCell
-                          result={result}
-                          type={q.type}
-                          onCite={() => {
-                            if (!result?.contextChunks?.length) return;
-                            setSelectedPaperId(paper._id);
-                            setSelectedPaperTitle(paper.title);
-                            setSelectedCitation(result.contextChunks[0]);
-                            setDrawerOpen(true);
-                          }}
-                        />
-                      </TableCell>
-                    );
-                  })}
+                    {questions.map((q) => {
+                      const result = paper.results.find(
+                        (r) => r.questionKey === q.key,
+                      );
+                      return (
+                        <TableCell key={q._id} className="align-top py-4">
+                          <ResultCell
+                            result={result}
+                            type={q.type}
+                            onCite={() => {
+                              if (!result?.contextChunks?.length) return;
+                              setSelectedPaperId(paper._id);
+                              setSelectedPaperTitle(paper.title);
+                              setSelectedCitation(result.contextChunks[0]);
+                              const answerText = Array.isArray(result.answer)
+                                ? result.answer
+                                    .filter((item) => typeof item === "string")
+                                    .sort((a, b) => b.length - a.length)[0]
+                                : result.answer !== null && result.answer !== undefined
+                                  ? String(result.answer)
+                                  : null;
+                              setSelectedAnswerText(answerText ?? null);
+                              setSelectedQuestionText(q.question);
+                              setDrawerOpen(true);
+                            }}
+                          />
+                        </TableCell>
+                      );
+                    })}
                 </TableRow>
               );
             })}
