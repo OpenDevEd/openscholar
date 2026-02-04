@@ -63,6 +63,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
 
    You'll need credentials for:
    - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
+   - **Convex HTTP (optional/custom domain):** `NEXT_PUBLIC_CONVEX_SITE_URL`
    - **WorkOS:** Client ID, API Key, Redirect URI
    - **Stripe:** Publishable Key (optional, for billing)
 

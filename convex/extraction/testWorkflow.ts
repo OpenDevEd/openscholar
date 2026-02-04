@@ -45,7 +45,10 @@ export const testSimpleWorkflow = workflow.define({
     // Just create paper records, don't process yet
     await step.runMutation(internal.extraction.mutations.createPaperRecords, {
       jobId,
-      papers: papers.slice(0, 1), // Only 1 paper
+      papers: papers.slice(0, 1).map((paper) => ({
+        ...paper,
+        storageId: undefined,
+      })) as any, // Only 1 paper
     });
     
     console.log("Step 6: Created paper records");

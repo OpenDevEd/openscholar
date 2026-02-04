@@ -40,6 +40,11 @@ export { SEARCH_FIELDS } from './search.types';
 export type {
   ExtractionQuestionType,
   ExtractionQuestion,
+  ExtractionSourceType,
+  ExtractionHistorySource,
+  ExtractionZoteroItem,
+  ExtractionZoteroSelection,
+  ExtractionManualItem,
   ExtractionJob,
   ExtractionJobStatus,
   ExtractionPaper,

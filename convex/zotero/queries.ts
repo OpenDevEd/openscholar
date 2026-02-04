@@ -1,7 +1,7 @@
 /**
  * Zotero queries - connection status and library data
  */
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
 
@@ -42,5 +42,25 @@ export const getConnectionStatus = query({
       username: connection.username,
       connectedAt: connection.connectedAt,
     };
+  },
+});
+
+/**
+ * Get current user's Zotero user ID (internal)
+ */
+export const getZoteroUserIdInternal = internalQuery({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const connection = await ctx.db
+      .query("zoteroConnections")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+
+    if (!connection) return null;
+    return connection.zoteroUserId;
   },
 });

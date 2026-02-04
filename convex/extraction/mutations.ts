@@ -19,9 +19,54 @@ import { requireAuth } from "../lib/auth";
 export const startExtraction = mutation({
   args: {
     name: v.string(),
-    sourceType: v.union(v.literal("history"), v.literal("zotero")),
+    sourceType: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual"),
+      v.literal("mixed")
+    ),
     sourceHistoryId: v.optional(v.string()),
     searchFilters: v.optional(v.record(v.string(), v.any())),
+    sourceHistoryEntries: v.optional(
+      v.array(
+        v.object({
+          historyId: v.string(),
+          searchFilters: v.record(v.string(), v.any()),
+        })
+      )
+    ),
+    sourceZoteroSelection: v.optional(
+      v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        items: v.array(
+          v.object({
+            itemKey: v.string(),
+            title: v.string(),
+            abstract: v.optional(v.string()),
+            authors: v.array(v.string()),
+            year: v.optional(v.number()),
+            doi: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+    sourceManualItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          abstract: v.optional(v.string()),
+          authors: v.optional(v.array(v.string())),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+        })
+      )
+    ),
     questions: v.array(
       v.object({
         key: v.string(),
@@ -47,6 +92,9 @@ export const startExtraction = mutation({
       name: args.name,
       sourceType: args.sourceType,
       sourceHistoryId: args.sourceHistoryId,
+      sourceHistoryEntries: args.sourceHistoryEntries,
+      sourceZoteroSelection: args.sourceZoteroSelection,
+      sourceManualItems: args.sourceManualItems,
       searchFilters: args.searchFilters,
       status: "pending",
       totalPapers: 0,
@@ -137,6 +185,9 @@ export const duplicateExtraction = mutation({
       sourceType: oldJob.sourceType,
       sourceHistoryId: oldJob.sourceHistoryId,
       sourceZoteroCollection: oldJob.sourceZoteroCollection,
+      sourceHistoryEntries: oldJob.sourceHistoryEntries,
+      sourceZoteroSelection: oldJob.sourceZoteroSelection,
+      sourceManualItems: oldJob.sourceManualItems,
       searchFilters: oldJob.searchFilters,
       status: "pending",
       totalPapers: 0,
@@ -233,7 +284,12 @@ export const createPaperRecords = internalMutation({
         abstract: v.optional(v.string()),
         authors: v.optional(v.array(v.string())),
         pdfUrl: v.optional(v.string()),
+        storageId: v.optional(v.id("_storage")),
         isOpenAccess: v.optional(v.boolean()),
+        sourceType: v.optional(
+          v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"))
+        ),
+        sourceId: v.optional(v.string()),
       })
     ),
   },
@@ -241,6 +297,7 @@ export const createPaperRecords = internalMutation({
     for (const paper of args.papers) {
       const { processable } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        storageId: paper.storageId,
         abstract: paper.abstract,
       });
       await ctx.db.insert("extractionPapers", {
@@ -252,7 +309,10 @@ export const createPaperRecords = internalMutation({
         abstract: paper.abstract,
         authors: paper.authors,
         pdfUrl: paper.pdfUrl,
+        storageId: paper.storageId,
         isOpenAccess: paper.isOpenAccess,
+        sourceType: paper.sourceType,
+        sourceId: paper.sourceId,
         processable,
         status: "pending",
       });
@@ -346,6 +406,7 @@ export const setPaperStorage = internalMutation({
   handler: async (ctx, args): Promise<void> => {
     await ctx.db.patch(args.paperId, {
       storageId: args.storageId,
+      processable: true,
     });
   },
 });
@@ -515,8 +576,53 @@ export const createJobDirect = internalMutation({
   args: {
     userId: v.id("users"),
     name: v.string(),
-    sourceType: v.union(v.literal("history"), v.literal("zotero")),
+    sourceType: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual"),
+      v.literal("mixed")
+    ),
     searchFilters: v.optional(v.record(v.string(), v.any())),
+    sourceHistoryEntries: v.optional(
+      v.array(
+        v.object({
+          historyId: v.string(),
+          searchFilters: v.record(v.string(), v.any()),
+        })
+      )
+    ),
+    sourceZoteroSelection: v.optional(
+      v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        items: v.array(
+          v.object({
+            itemKey: v.string(),
+            title: v.string(),
+            abstract: v.optional(v.string()),
+            authors: v.array(v.string()),
+            year: v.optional(v.number()),
+            doi: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+    sourceManualItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          abstract: v.optional(v.string()),
+          authors: v.optional(v.array(v.string())),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("extractionJobs", {
@@ -524,6 +630,9 @@ export const createJobDirect = internalMutation({
       name: args.name,
       sourceType: args.sourceType,
       searchFilters: args.searchFilters,
+      sourceHistoryEntries: args.sourceHistoryEntries,
+      sourceZoteroSelection: args.sourceZoteroSelection,
+      sourceManualItems: args.sourceManualItems,
       status: "pending",
       totalPapers: 0,
       processedPapers: 0,
@@ -572,6 +681,7 @@ export const enqueuePaperProcessing = internalMutation({
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
     pdfUrl: v.string(),
+    storageId: v.optional(v.id("_storage")),
     title: v.string(),
     abstract: v.optional(v.string()),
     doi: v.optional(v.string()),
@@ -606,7 +716,8 @@ export const enqueuePaperProcessing = internalMutation({
       {
         paperId: args.paperId,
         jobId: args.jobId,
-        pdfUrl: args.pdfUrl,
+        pdfUrl: args.pdfUrl || "",
+        storageId: args.storageId,
         title: args.title,
         abstract: args.abstract,
         doi: args.doi,
@@ -906,8 +1017,53 @@ export const createJobByWorkosId = internalMutation({
   args: {
     workosId: v.string(),
     name: v.string(),
-    sourceType: v.union(v.literal("history"), v.literal("zotero")),
+    sourceType: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual"),
+      v.literal("mixed")
+    ),
     searchFilters: v.optional(v.record(v.string(), v.any())),
+    sourceHistoryEntries: v.optional(
+      v.array(
+        v.object({
+          historyId: v.string(),
+          searchFilters: v.record(v.string(), v.any()),
+        })
+      )
+    ),
+    sourceZoteroSelection: v.optional(
+      v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        items: v.array(
+          v.object({
+            itemKey: v.string(),
+            title: v.string(),
+            abstract: v.optional(v.string()),
+            authors: v.array(v.string()),
+            year: v.optional(v.number()),
+            doi: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+    sourceManualItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          abstract: v.optional(v.string()),
+          authors: v.optional(v.array(v.string())),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     // Look up user by workosId
@@ -925,6 +1081,9 @@ export const createJobByWorkosId = internalMutation({
       name: args.name,
       sourceType: args.sourceType,
       searchFilters: args.searchFilters,
+      sourceHistoryEntries: args.sourceHistoryEntries,
+      sourceZoteroSelection: args.sourceZoteroSelection,
+      sourceManualItems: args.sourceManualItems,
       status: "downloading_pdfs",
       totalPapers: 0,
       processedPapers: 0,

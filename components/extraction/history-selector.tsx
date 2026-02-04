@@ -5,10 +5,11 @@ import { useExtractionStore } from "@/lib/store/extraction";
 import { useSearchHistoryStore } from "@/lib/store";
 import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Search, Calendar, Check, FileText } from "lucide-react";
+import { Search, Calendar, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function HistorySelector() {
-  const { draftJob, setSelectedHistoryId } = useExtractionStore();
+  const { draftJob, toggleHistorySelection } = useExtractionStore();
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
 
   if (searchHistory.length === 0) {
@@ -32,7 +33,7 @@ export function HistorySelector() {
   return (
     <div className="space-y-0 divide-y divide-border border border-border rounded-xl overflow-hidden">
       {searchHistory.map((entry: any, index: number) => {
-        const isSelected = draftJob.selectedHistoryId === entry.id;
+        const isSelected = draftJob.selectedHistoryIds.includes(entry.id);
         
         return (
           <motion.div
@@ -44,7 +45,7 @@ export function HistorySelector() {
               delay: index * 0.05,
               ease: [0.22, 1, 0.36, 1],
             }}
-            onClick={() => setSelectedHistoryId(entry.id)}
+            onClick={() => toggleHistorySelection(entry.id)}
             className={cn(
               "cursor-pointer transition-all duration-200 p-4",
               index % 2 === 0 ? "bg-background" : "bg-muted/30",
@@ -53,29 +54,11 @@ export function HistorySelector() {
                 : "hover:bg-muted/50 border-l-4 border-l-transparent"
             )}
           >
-            <div className="flex items-start gap-4">
+             <div className="flex items-start gap-4">
               {/* Selection Indicator */}
-              <motion.div
-                animate={{
-                  scale: isSelected ? 1 : 0.9,
-                }}
-                className={cn(
-                  "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors",
-                  isSelected 
-                    ? "bg-primary border-primary" 
-                    : "bg-transparent border-muted-foreground/30"
-                )}
-              >
-                {isSelected && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  >
-                    <Check className="w-4 h-4 text-primary-foreground" />
-                  </motion.div>
-                )}
-              </motion.div>
+              <div className="mt-0.5">
+                <Checkbox checked={isSelected} />
+              </div>
 
               {/* Content */}
               <div className="flex-1 min-w-0">

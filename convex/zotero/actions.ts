@@ -4,6 +4,7 @@
  * Zotero actions - OAuth flow and API integration
  */
 import { action, internalAction } from "../_generated/server";
+import { buildZoteroHeaders } from "../../lib/zotero-utils";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import * as crypto from "crypto";
@@ -29,6 +30,7 @@ type ZoteroCollectionResponse = {
   };
   meta?: {
     numItems?: number;
+    numCollections?: number;
   };
 };
 
@@ -59,7 +61,10 @@ type ZoteroItemResponse = {
     }>;
     date?: string;
     DOI?: string;
+    collections?: string[];
     itemType: string;
+    contentType?: string;
+    parentItem?: string;
   };
   meta?: {
     numChildren?: number;
@@ -312,9 +317,10 @@ export const fetchCollections = action({
       name: v.string(),
       parentCollection: v.union(v.string(), v.null()),
       numItems: v.number(),
+      numCollections: v.number(),
     })
   ),
-  handler: async (ctx, { userId, groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number }>> => {
+  handler: async (ctx, { userId, groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> => {
     // Get API key from connection
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
@@ -329,10 +335,7 @@ export const fetchCollections = action({
       : `/users/${connection.zoteroUserId}`;
 
     const response: Response = await fetch(`${ZOTERO_API_URL}${prefix}/collections`, {
-      headers: {
-        "Zotero-API-Key": connection.apiKey,
-        "Zotero-API-Version": "3",
-      },
+      headers: buildZoteroHeaders(connection.apiKey),
     });
 
     if (!response.ok) {
@@ -345,6 +348,7 @@ export const fetchCollections = action({
       name: c.data.name,
       parentCollection: c.data.parentCollection || null,
       numItems: c.meta?.numItems || 0,
+      numCollections: c.meta?.numCollections || 0,
     }));
   },
 });
@@ -376,10 +380,7 @@ export const fetchGroups = action({
     const response: Response = await fetch(
       `${ZOTERO_API_URL}/users/${connection.zoteroUserId}/groups`,
       {
-        headers: {
-          "Zotero-API-Key": connection.apiKey,
-          "Zotero-API-Version": "3",
-        },
+        headers: buildZoteroHeaders(connection.apiKey),
       }
     );
 
@@ -430,11 +431,13 @@ export const fetchItems = action({
         doi: v.optional(v.string()),
         itemType: v.string(),
         numChildren: v.optional(v.number()),
+        hasPdfChild: v.boolean(),
       })
     ),
-    totalResults: v.number(),
+    nextCursor: v.optional(v.number()),
+    hasMore: v.boolean(),
   }),
-  handler: async (ctx, { userId, collectionKey, groupId, start = 0, limit = 50 }): Promise<{ items: ZoteroItem[]; totalResults: number }> => {
+  handler: async (ctx, { userId, collectionKey, groupId, start = 0, limit = 50 }): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => {
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });
@@ -447,48 +450,127 @@ export const fetchItems = action({
       ? `/groups/${groupId}`
       : `/users/${connection.zoteroUserId}`;
 
-    const endpoint: string = collectionKey
-      ? `${prefix}/collections/${collectionKey}/items/top`
-      : `${prefix}/items/top`;
-
-    const url: URL = new URL(`${ZOTERO_API_URL}${endpoint}`);
-    url.searchParams.set("start", start.toString());
-    url.searchParams.set("limit", limit.toString());
-    url.searchParams.set("itemType", "-attachment"); // Exclude attachments
-
-    const response: Response = await fetch(url.toString(), {
-      headers: {
-        "Zotero-API-Key": connection.apiKey,
-        "Zotero-API-Version": "3",
-      },
+    const collectionsResponse: Response = await fetch(`${ZOTERO_API_URL}${prefix}/collections`, {
+      headers: buildZoteroHeaders(connection.apiKey),
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Zotero fetch failed:", response.status, text);
-      throw new Error(`Failed to fetch items from Zotero: ${response.status} ${text}`);
+    if (!collectionsResponse.ok) {
+      const text = await collectionsResponse.text();
+      throw new Error(`Failed to fetch collections from Zotero: ${collectionsResponse.status} ${text}`);
     }
 
-    const totalResults: number = parseInt(response.headers.get("Total-Results") || "0", 10);
-    const data: ZoteroItemResponse[] = await response.json();
+    const collectionsData: ZoteroCollectionResponse[] = await collectionsResponse.json();
+    const collectionChildren = new Map<string, string[]>();
+    for (const collection of collectionsData) {
+      const parent = collection.data.parentCollection || null;
+      if (!parent) continue;
+      const existing = collectionChildren.get(parent) ?? [];
+      existing.push(collection.key);
+      collectionChildren.set(parent, existing);
+    }
 
-    const items: ZoteroItem[] = data.map((item) => {
-      const d = item.data;
-      return {
-        key: item.key,
-        title: d.title || d.shortTitle || "Untitled",
-        abstract: d.abstractNote || undefined,
-        authors: (d.creators || [])
-          .filter((c) => c.creatorType === "author")
-          .map((c) => c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()),
-        year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
-        doi: d.DOI || undefined,
-        itemType: d.itemType,
-        numChildren: item.meta?.numChildren,
-      };
-    });
+    const allowedCollections = new Set<string>();
+    if (collectionKey) {
+      const stack = [collectionKey];
+      while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current || allowedCollections.has(current)) continue;
+        allowedCollections.add(current);
+        const children = collectionChildren.get(current) ?? [];
+        for (const child of children) {
+          stack.push(child);
+        }
+      }
+    }
 
-    return { items, totalResults };
+    const requestLimit = Math.min(limit, 50);
+    const items: Array<ZoteroItem & { hasPdfChild: boolean }> = [];
+    let cursor = start;
+    let totalResults = 0;
+    let done = false;
+
+    while (!done && items.length < requestLimit) {
+      const endpoint: string = `${prefix}/items/top`;
+      const url: URL = new URL(`${ZOTERO_API_URL}${endpoint}`);
+      url.searchParams.set("start", cursor.toString());
+      url.searchParams.set("limit", "100");
+      url.searchParams.set("itemType", "-attachment");
+
+      const response: Response = await fetch(url.toString(), {
+        headers: buildZoteroHeaders(connection.apiKey),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Zotero fetch failed:", response.status, text);
+        throw new Error(`Failed to fetch items from Zotero: ${response.status} ${text}`);
+      }
+
+      const batchTotal: number = parseInt(response.headers.get("Total-Results") || "0", 10);
+      totalResults = batchTotal;
+      const data: ZoteroItemResponse[] = await response.json();
+
+      if (data.length === 0) {
+        done = true;
+        break;
+      }
+
+      const filtered = collectionKey
+        ? data.filter((item) => {
+            const collections = item.data.collections || [];
+            return collections.some((key) => allowedCollections.has(key));
+          })
+        : data;
+
+      const withPdfFlags = await Promise.all(
+        filtered.map(async (item) => {
+          const d = item.data;
+          const numChildren = item.meta?.numChildren || 0;
+          let hasPdfChild = false;
+          if (numChildren > 0) {
+            const childrenUrl = `${ZOTERO_API_URL}${prefix}/items/${item.key}/children`;
+            const childrenResponse = await fetch(childrenUrl, {
+              headers: buildZoteroHeaders(connection.apiKey),
+            });
+            if (childrenResponse.ok) {
+              const children: ZoteroItemResponse[] = await childrenResponse.json();
+              hasPdfChild = children.some(
+                (child) =>
+                  child.data.itemType === "attachment" &&
+                  child.data.contentType === "application/pdf"
+              );
+            }
+          }
+
+          return {
+            key: item.key,
+            title: d.title || d.shortTitle || "Untitled",
+            abstract: d.abstractNote || undefined,
+            authors: (d.creators || [])
+              .filter((c) => c.creatorType === "author")
+              .map((c) => c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()),
+            year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
+            doi: d.DOI || undefined,
+            itemType: d.itemType,
+            numChildren: item.meta?.numChildren,
+            hasPdfChild,
+          };
+        })
+      );
+
+      for (const entry of withPdfFlags) {
+        if (items.length >= requestLimit) break;
+        items.push(entry);
+      }
+
+      cursor += data.length;
+      if (cursor >= totalResults) {
+        done = true;
+      }
+    }
+
+    const hasMore = totalResults !== 0 && cursor < totalResults;
+    return { items, nextCursor: hasMore ? cursor : undefined, hasMore };
   },
 });
 
@@ -531,10 +613,7 @@ export const getAttachments = internalAction({
     const response = await fetch(
       `${ZOTERO_API_URL}${prefix}/items/${itemKey}/children`,
       {
-        headers: {
-          "Zotero-API-Key": connection.apiKey,
-          "Zotero-API-Version": "3",
-        },
+        headers: buildZoteroHeaders(connection.apiKey),
       }
     );
 
@@ -591,10 +670,7 @@ export const downloadFile = internalAction({
 
     try {
       const response = await fetch(downloadUrl, {
-        headers: {
-          "Zotero-API-Key": connection.apiKey,
-          "Zotero-API-Version": "3",
-        },
+        headers: buildZoteroHeaders(connection.apiKey),
       });
 
       if (!response.ok) {
@@ -616,4 +692,3 @@ export const downloadFile = internalAction({
     }
   },
 });
-

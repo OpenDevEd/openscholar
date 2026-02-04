@@ -42,7 +42,7 @@ export function ResultsToolbar({
   }, [onFiltersChange]);
 
   return (
-    <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b rounded-t-xl">
+    <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b rounded-xl">
       {/* Top row: Search + View Mode */}
       <div className="flex flex-col sm:flex-row gap-4 p-4">
         <SearchInput

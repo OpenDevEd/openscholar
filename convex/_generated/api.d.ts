@@ -30,6 +30,7 @@ import type * as extraction_debug_job_content from "../extraction/debug_job_cont
 import type * as extraction_debug_paper_results from "../extraction/debug_paper_results.js";
 import type * as extraction_debug_papers from "../extraction/debug_papers.js";
 import type * as extraction_debug_pdfjs_alignment from "../extraction/debug_pdfjs_alignment.js";
+import type * as extraction_dedupe from "../extraction/dedupe.js";
 import type * as extraction_index from "../extraction/index.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
 import type * as extraction_pdfjs_extract from "../extraction/pdfjs_extract.js";
@@ -43,6 +44,7 @@ import type * as extraction_test_automation_internal from "../extraction/test_au
 import type * as extraction_test_helpers from "../extraction/test_helpers.js";
 import type * as extraction_test_runner from "../extraction/test_runner.js";
 import type * as extraction_types from "../extraction/types.js";
+import type * as extraction_uploads from "../extraction/uploads.js";
 import type * as extraction_workflow from "../extraction/workflow.js";
 import type * as extraction_workpoolActions from "../extraction/workpoolActions.js";
 import type * as http from "../http.js";
@@ -107,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/debug_paper_results": typeof extraction_debug_paper_results;
   "extraction/debug_papers": typeof extraction_debug_papers;
   "extraction/debug_pdfjs_alignment": typeof extraction_debug_pdfjs_alignment;
+  "extraction/dedupe": typeof extraction_dedupe;
   "extraction/index": typeof extraction_index;
   "extraction/mutations": typeof extraction_mutations;
   "extraction/pdfjs_extract": typeof extraction_pdfjs_extract;
@@ -120,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/test_helpers": typeof extraction_test_helpers;
   "extraction/test_runner": typeof extraction_test_runner;
   "extraction/types": typeof extraction_types;
+  "extraction/uploads": typeof extraction_uploads;
   "extraction/workflow": typeof extraction_workflow;
   "extraction/workpoolActions": typeof extraction_workpoolActions;
   http: typeof http;

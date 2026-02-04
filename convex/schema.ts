@@ -207,10 +207,51 @@ export default defineSchema({
     sourceType: v.union(
       v.literal("history"),
       v.literal("zotero"),
-      v.literal("manual")
+      v.literal("manual"),
+      v.literal("mixed")
     ),
     sourceHistoryId: v.optional(v.string()), // For history-based extractions
     sourceZoteroCollection: v.optional(v.string()), // For future Zotero import
+    sourceHistoryEntries: v.optional(
+      v.array(
+        v.object({
+          historyId: v.string(),
+          searchFilters: v.record(v.string(), v.any()),
+        })
+      )
+    ),
+    sourceZoteroSelection: v.optional(
+      v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        items: v.array(
+          v.object({
+            itemKey: v.string(),
+            title: v.string(),
+            abstract: v.optional(v.string()),
+            authors: v.array(v.string()),
+            year: v.optional(v.number()),
+            doi: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+    sourceManualItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          abstract: v.optional(v.string()),
+          authors: v.optional(v.array(v.string())),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+        })
+      )
+    ),
 
     // Search reproduction data (when sourceType === "history")
     searchFilters: v.optional(v.record(v.string(), v.any())),
@@ -297,6 +338,8 @@ export default defineSchema({
     pdfUrl: v.optional(v.string()), // Source URL
     storageId: v.optional(v.id("_storage")), // Convex file storage ID
     pdfDownloadError: v.optional(v.string()),
+    sourceType: v.optional(v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"))),
+    sourceId: v.optional(v.string()),
 
     // RAG indexing
     ragEntryId: v.optional(v.string()), // RAG component entry ID (actual entry ID from callback)

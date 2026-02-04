@@ -1,0 +1,330 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
+import { useAction, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useExtractionStore } from "@/lib/store/extraction";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { AlertCircle, Database, FileText, Library, Loader2, Paperclip } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { getConvexSiteUrl } from "@/lib/convex-site";
+
+type ZoteroGroup = {
+  id: string;
+  name: string;
+  type: string;
+  numItems: number;
+};
+
+type ZoteroCollection = {
+  key: string;
+  name: string;
+  parentCollection: string | null;
+  numItems: number;
+  numCollections: number;
+};
+
+type ZoteroItem = {
+  key: string;
+  title: string;
+  abstract?: string;
+  authors: string[];
+  year?: number;
+  doi?: string;
+  itemType: string;
+  numChildren?: number;
+  hasPdfChild: boolean;
+};
+
+export function ZoteroSelector() {
+  const { draftJob, setZoteroSelection } = useExtractionStore();
+  const me = useQuery(api.users.queries.me);
+  const connectionStatus = useQuery(api.zotero.queries.getConnectionStatus);
+  const startOAuth = useAction(api.zotero.actions.startOAuth);
+  const fetchGroups = useAction(api.zotero.actions.fetchGroups);
+  const fetchCollections = useAction(api.zotero.actions.fetchCollections);
+  const fetchItems = useAction(api.zotero.actions.fetchItems);
+
+  const [libraryType, setLibraryType] = useState<"user" | "group">("user");
+  const [groupId, setGroupId] = useState<string | undefined>(undefined);
+  const [collectionKey, setCollectionKey] = useState<string | undefined>(undefined);
+
+  const userId = me?._id;
+  const zoteroUserId = connectionStatus?.connected ? connectionStatus.zoteroUserId : undefined;
+  const callbackUrl = useMemo(() => {
+    const convexSite = getConvexSiteUrl();
+    return convexSite ? `${convexSite}/api/zotero/callback` : null;
+  }, []);
+
+  const groups = useSWR(
+    userId && connectionStatus?.connected ? ["zotero-groups", userId] : null,
+    async () => fetchGroups({ userId: userId! }),
+    { revalidateOnFocus: false }
+  );
+
+  const collections = useSWR(
+    userId && connectionStatus?.connected ? ["zotero-collections", userId, libraryType, groupId] : null,
+    async () => fetchCollections({ userId: userId!, groupId: libraryType === "group" ? groupId : undefined }),
+    { revalidateOnFocus: false }
+  );
+
+  const getItemsKey = (pageIndex: number, previousPageData: any) => {
+    if (!userId || !connectionStatus?.connected) return null;
+    if (previousPageData && !previousPageData.hasMore) return null;
+    const cursor = pageIndex === 0 ? 0 : (previousPageData?.nextCursor ?? 0);
+    return ["zotero-items", userId, libraryType, groupId, collectionKey, cursor];
+  };
+
+  const items = useSWRInfinite(
+    getItemsKey,
+    async (key) => {
+      const cursor = key[key.length - 1] as number;
+      return await fetchItems({
+        userId: userId!,
+        groupId: libraryType === "group" ? groupId : undefined,
+        collectionKey,
+        start: cursor,
+        limit: 50,
+      });
+    },
+    { revalidateOnFocus: false }
+  );
+
+  const itemPages = items.data || [];
+  const flattenedItems = itemPages.flatMap((page) => page.items || []);
+  const isLoadingItems = items.isLoading || items.isValidating;
+  const isReachingEnd = itemPages.length > 0 && itemPages[itemPages.length - 1]?.hasMore === false;
+
+  const selectedItems = draftJob.zoteroSelection?.items || [];
+
+  const toggleItem = (item: ZoteroItem) => {
+    const exists = selectedItems.some((i) => i.itemKey === item.key);
+    const nextItems = exists
+      ? selectedItems.filter((i) => i.itemKey !== item.key)
+      : [...selectedItems, {
+          itemKey: item.key,
+          title: item.title,
+          abstract: item.abstract,
+          authors: item.authors,
+          year: item.year,
+          doi: item.doi,
+        }];
+    setZoteroSelection({
+      libraryType,
+      groupId: libraryType === "group" ? groupId : undefined,
+      zoteroUserId,
+      collectionKey,
+      items: nextItems,
+    });
+  };
+
+  const isLoading = groups.isLoading || collections.isLoading || isLoadingItems;
+  const itemsError = items.error as Error | undefined;
+
+  if (!connectionStatus) {
+    return (
+      <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
+        Loading Zotero status…
+      </div>
+    );
+  }
+
+  if (!connectionStatus.connected) {
+    return (
+      <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground flex items-start gap-4">
+        <AlertCircle className="h-5 w-5 text-muted-foreground" />
+        <div>
+          <p className="font-medium text-foreground">Zotero not connected</p>
+          <p>Connect your Zotero account to choose items.</p>
+          <div className="mt-4">
+            <Button
+              size="sm"
+              onClick={async () => {
+                if (!userId) {
+                  toast.error("Please sign in to connect Zotero.");
+                  return;
+                }
+                if (!callbackUrl) {
+                  toast.error("Missing backend URL. Set NEXT_PUBLIC_CONVEX_SITE_URL.");
+                  return;
+                }
+                try {
+                  const result = await startOAuth({
+                    userId,
+                    callbackUrl,
+                  });
+                  window.location.href = result.authorizeUrl;
+                } catch (error) {
+                  console.error("Failed to start Zotero OAuth", error);
+                  toast.error("Failed to start Zotero connection.");
+                }
+              }}
+            >
+              Connect Zotero
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <Select value={libraryType} onValueChange={(value) => {
+            setLibraryType(value as "user" | "group");
+            setGroupId(undefined);
+            setCollectionKey(undefined);
+            setZoteroSelection({
+              libraryType: value as "user" | "group",
+              groupId: undefined,
+              zoteroUserId,
+              collectionKey: undefined,
+              items: [],
+            });
+          }}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Library" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">
+                <div className="flex items-center gap-2"><Library className="h-4 w-4" />My Library</div>
+              </SelectItem>
+              <SelectItem value="group">
+                <div className="flex items-center gap-2"><Database className="h-4 w-4" />Group Library</div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          {libraryType === "group" && (
+            <Select value={groupId} onValueChange={(value) => {
+              setGroupId(value);
+              setCollectionKey(undefined);
+              setZoteroSelection({
+                libraryType: "group",
+                groupId: value,
+                zoteroUserId,
+                collectionKey: undefined,
+                items: [],
+              });
+            }}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {(groups.data as ZoteroGroup[] | undefined)?.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select value={collectionKey} onValueChange={(value) => {
+            setCollectionKey(value === "all" ? undefined : value);
+            setZoteroSelection({
+              libraryType,
+              groupId: libraryType === "group" ? groupId : undefined,
+              zoteroUserId,
+              collectionKey: value === "all" ? undefined : value,
+              items: [],
+            });
+          }}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Collection" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All items</SelectItem>
+              {(collections.data as ZoteroCollection[] | undefined)?.map((collection) => (
+                <SelectItem key={collection.key} value={collection.key}>{collection.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="text-sm text-muted-foreground">
+          {selectedItems.length} selected
+        </div>
+      </div>
+
+      {isLoading && (
+        <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading Zotero items…
+        </div>
+      )}
+
+      {itemsError && (
+        <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
+          Failed to load Zotero items: {itemsError.message}
+        </div>
+      )}
+
+      {!isLoading && !itemsError && flattenedItems.length === 0 && (
+        <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
+          No Zotero items found for this selection.
+        </div>
+      )}
+
+      <div className="space-y-0 divide-y divide-border border border-border rounded-xl overflow-hidden">
+        {flattenedItems.map((item: ZoteroItem, index: number) => {
+          const isSelected = selectedItems.some((i) => i.itemKey === item.key);
+          return (
+            <div
+              key={item.key}
+              onClick={() => toggleItem(item)}
+              className={cn(
+                "cursor-pointer transition-all duration-200 p-4",
+                index % 2 === 0 ? "bg-background" : "bg-muted/30",
+                isSelected ? "bg-primary/5 border-l-4 border-l-primary" : "hover:bg-muted/50 border-l-4 border-l-transparent"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <Checkbox checked={isSelected} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.authors.slice(0, 3).join(", ") || "Unknown authors"}
+                    {item.year ? ` • ${item.year}` : ""}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                    {item.hasPdfChild ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Paperclip className="h-3 w-3" /> PDF attached
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <FileText className="h-3 w-3" /> No PDF
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {!isReachingEnd && flattenedItems.length > 0 && (
+        <div className="flex items-center justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => items.setSize(items.size + 1)}
+            disabled={items.isValidating}
+          >
+            {items.isValidating ? "Loading..." : "Load more"}
+          </Button>
+        </div>
+      )}
+      {flattenedItems.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Showing {flattenedItems.length} items.
+        </p>
+      )}
+    </div>
+  );
+}

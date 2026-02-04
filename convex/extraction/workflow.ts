@@ -8,6 +8,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
+import { buildDedupeKey } from "./dedupe";
 
 export const runExtractionWorkflow = workflow.define({
   args: {
@@ -39,30 +40,109 @@ export const runExtractionWorkflow = workflow.define({
 
     console.log(`[Workflow] Loaded ${questions.length} questions`);
 
-    // Step 2: Fetch papers from OpenAlex
-    if (!job.searchFilters) {
-      throw new Error("No search filters found");
-    }
-
+    // Step 2: Fetch papers from sources
     await step.runMutation(internal.extraction.mutations.updateJobStatus, {
       jobId,
       status: "downloading_pdfs",
       totalPapers: 0,
     });
 
-    const papers = await step.runAction(
-      internal.extraction.actions.fetchPapersFromHistory,
-      {
-        searchFilters: job.searchFilters,
-      }
-    );
+    const papers: Array<any> = [];
+    const historyEntries = Array.isArray(job.sourceHistoryEntries)
+      ? job.sourceHistoryEntries
+      : job.searchFilters
+      ? [{ historyId: job.sourceHistoryId || "history", searchFilters: job.searchFilters }]
+      : [];
 
-    console.log(`[Workflow] Fetched ${papers.length} papers`);
+    for (const entry of historyEntries) {
+      const result = await step.runAction(
+        internal.extraction.actions.fetchPapersFromHistory,
+        { searchFilters: entry.searchFilters }
+      );
+      const enriched = result.map((paper: any) => ({
+        ...paper,
+        sourceType: "history",
+        sourceId: entry.historyId,
+      }));
+      papers.push(...enriched);
+    }
+
+    if (job.sourceZoteroSelection?.items?.length) {
+        let zoteroUserId: string | undefined = job.sourceZoteroSelection?.zoteroUserId;
+      if (!zoteroUserId) {
+        try {
+          const resolved = await step.runQuery(internal.zotero.queries.getZoteroUserIdInternal, {});
+          zoteroUserId = resolved ?? undefined;
+        } catch (error) {
+          zoteroUserId = undefined;
+        }
+      }
+      const zoteroItems = job.sourceZoteroSelection.items.map((item: any) => {
+        const libraryType = job.sourceZoteroSelection?.libraryType;
+        const groupId = job.sourceZoteroSelection?.groupId;
+        const uri = libraryType === "group" && groupId
+          ? `zotero://select/groups/${groupId}/items/${item.itemKey}`
+          : zoteroUserId
+            ? `zotero://select/users/${zoteroUserId}/items/${item.itemKey}`
+            : undefined;
+
+        return {
+          openalexId: `zotero:${libraryType}:${item.itemKey}`,
+          title: item.title,
+          doi: item.doi,
+          publicationYear: item.year,
+          abstract: item.abstract,
+          authors: item.authors,
+          pdfUrl: uri,
+          isOpenAccess: false,
+          sourceType: "zotero",
+          sourceId: item.itemKey,
+        };
+      });
+      papers.push(...zoteroItems);
+    }
+
+    if (job.sourceManualItems?.length) {
+      const manualItems = job.sourceManualItems.map((item: any) => ({
+        openalexId: `manual:${item.id}`,
+        title: item.title,
+        doi: item.doi,
+        publicationYear: item.year,
+        abstract: item.abstract,
+        authors: item.authors,
+        pdfUrl: item.pdfUrl,
+        storageId: item.storageId,
+        isOpenAccess: false,
+        sourceType: "manual",
+        sourceId: item.id,
+      }));
+      papers.push(...manualItems);
+    }
+
+    if (papers.length === 0) {
+      throw new Error("No sources selected");
+    }
+
+    const dedupedMap = new Map<string, any>();
+    for (const paper of papers) {
+      const key = buildDedupeKey({
+        openalexId: paper.openalexId,
+        doi: paper.doi,
+        title: paper.title,
+        year: paper.publicationYear,
+      });
+      if (!dedupedMap.has(key)) {
+        dedupedMap.set(key, paper);
+      }
+    }
+    const dedupedPapers = Array.from(dedupedMap.values());
+
+    console.log(`[Workflow] Fetched ${papers.length} papers (${dedupedPapers.length} deduped)`);
 
     // Step 3: Create paper records
     await step.runMutation(internal.extraction.mutations.createPaperRecords, {
       jobId,
-      papers,
+      papers: dedupedPapers,
     });
 
     // Step 4: Get created paper IDs
@@ -70,7 +150,7 @@ export const runExtractionWorkflow = workflow.define({
       internal.extraction.queries.getPapersByOpenAlexIds,
       {
         jobId,
-        openalexIds: papers.map((p: any) => p.openalexId),
+        openalexIds: dedupedPapers.map((p: any) => p.openalexId),
       }
     );
 
@@ -91,6 +171,7 @@ export const runExtractionWorkflow = workflow.define({
     for (const paper of paperIds) {
       const { processable: computedProcessable } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        storageId: paper.storageId,
         abstract: paper.abstract,
       });
       const isProcessable = paper.processable !== false && computedProcessable;
@@ -118,6 +199,7 @@ export const runExtractionWorkflow = workflow.define({
           paperId: paper._id,
           jobId,
           pdfUrl: paper.pdfUrl || "", // Empty string if no PDF
+          storageId: paper.storageId,
           title: paper.title,
           abstract: paper.abstract,
           doi: paper.doi,

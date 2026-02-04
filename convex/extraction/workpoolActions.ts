@@ -305,7 +305,8 @@ export const processPaperAction = internalAction({
   args: {
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
-    pdfUrl: v.string(),
+    pdfUrl: v.optional(v.string()),
+    storageId: v.optional(v.id("_storage")),
     title: v.string(),
     abstract: v.optional(v.string()),
     doi: v.optional(v.string()),
@@ -341,17 +342,36 @@ export const processPaperAction = internalAction({
       let chunksWithMetadata: ChunkWithMetadata[] = [];
       let storageId: string | undefined;
       let ragIndexed = false;
+      const effectiveStorageId = args.storageId;
+
+      let pdfBlob: Blob | null = null;
+
+      if (effectiveStorageId) {
+        console.log(`[processPaperAction] STEP 1 - Loading PDF from storage: ${effectiveStorageId}`);
+        const stored = await ctx.storage.get(effectiveStorageId);
+        if (stored) {
+          pdfBlob = stored;
+          storageId = effectiveStorageId;
+        }
+      }
 
       // Step 1: Try to download and process PDF if URL is available
-      if (args.pdfUrl) {
+      if (!pdfBlob && args.pdfUrl) {
         console.log(`[processPaperAction] STEP 1 - Downloading PDF from: ${args.pdfUrl.substring(0, 60)}...`);
 
-      const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
-        doi: args.doi,
-      });
+        const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, { jobId: args.jobId });
+        const zoteroConnection = job
+          ? await ctx.runQuery(internal.zotero.internal.getConnection, { userId: job.userId })
+          : null;
+        const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
+          doi: args.doi,
+          zoteroConnection: zoteroConnection ? { apiKey: zoteroConnection.apiKey, userId: zoteroConnection.zoteroUserId } : undefined,
+        });
 
         if (downloadResult.success && downloadResult.pdfBlob) {
           console.log(`[processPaperAction] STEP 1 SUCCESS - PDF downloaded: ${downloadResult.pdfBlob.size} bytes`);
+
+          pdfBlob = downloadResult.pdfBlob;
 
           // Store PDF
           try {
@@ -361,52 +381,48 @@ export const processPaperAction = internalAction({
           } catch (storageError) {
             console.error(`[processPaperAction] ERROR storing PDF:`, storageError);
           }
-
-          // Step 2: Extract and chunk PDF
-          try {
-            console.log(`[processPaperAction] STEP 2 - Extracting text and creating chunks...`);
-            const pdfBufferForExtraction = await downloadResult.pdfBlob.arrayBuffer();
-
-            chunksWithMetadata = await extractAndChunkPdf(pdfBufferForExtraction, {
-              maxChunkSize: 2500,
-            });
-
-            console.log(`[processPaperAction] STEP 2 COMPLETE - Extracted ${chunksWithMetadata.length} chunks`);
-
-            if (chunksWithMetadata.length > 0) {
-              console.log(`[processPaperAction] STEP 3 - Indexing ${chunksWithMetadata.length} chunks with RAG...`);
-              
-              // Index chunks with RAG - use custom chunks
-              const chunksForRag = prepareChunksForRag(chunksWithMetadata);
-              
-               const ragResult = await rag.add(ctx, {
-                 namespace: `extraction:${args.jobId}`,
-                 key: args.paperId,
-                 chunks: chunksForRag,
-                 filterValues: [{ name: "paperId", value: args.paperId }],
-                 metadata: {
-                   paperId: args.paperId,
-                 },
-               });
-
-              await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
-                paperId: args.paperId,
-                ragEntryId: ragResult.entryId,
-              });
-
-              ragIndexed = true;
-              console.log(`[processPaperAction] STEP 3 SUCCESS - RAG indexing ready for ${chunksForRag.length} chunks`);
-            } else {
-              console.warn(`[processPaperAction] WARNING - No chunks extracted from PDF`);
-            }
-          } catch (pdfError) {
-            console.error(`[processPaperAction] ERROR in Step 2/3:`, pdfError);
-          }
         } else {
           console.log(`[processPaperAction] STEP 1 FAILED - PDF download failed: ${downloadResult.error}`);
         }
+      }
+
+      if (pdfBlob) {
+        try {
+          console.log(`[processPaperAction] STEP 2 - Extracting text and creating chunks...`);
+          const pdfBufferForExtraction = await pdfBlob.arrayBuffer();
+          chunksWithMetadata = await extractAndChunkPdf(pdfBufferForExtraction, {
+            maxChunkSize: 2500,
+          });
+          console.log(`[processPaperAction] STEP 2 COMPLETE - Extracted ${chunksWithMetadata.length} chunks`);
+
+          if (chunksWithMetadata.length > 0) {
+            console.log(`[processPaperAction] STEP 3 - Indexing ${chunksWithMetadata.length} chunks with RAG...`);
+            const chunksForRag = prepareChunksForRag(chunksWithMetadata);
+            const ragResult = await rag.add(ctx, {
+              namespace: `extraction:${args.jobId}`,
+              key: args.paperId,
+              chunks: chunksForRag,
+              filterValues: [{ name: "paperId", value: args.paperId }],
+              metadata: {
+                paperId: args.paperId,
+              },
+            });
+
+            await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
+              paperId: args.paperId,
+              ragEntryId: ragResult.entryId,
+            });
+
+            ragIndexed = true;
+            console.log(`[processPaperAction] STEP 3 SUCCESS - RAG indexing ready for ${chunksForRag.length} chunks`);
+          } else {
+            console.warn(`[processPaperAction] WARNING - No chunks extracted from PDF`);
+          }
+        } catch (pdfError) {
+          console.error(`[processPaperAction] ERROR in Step 2/3:`, pdfError);
+        }
       } else {
-        console.warn(`[processPaperAction] NO PDF URL - Skipping PDF processing`);
+        console.warn(`[processPaperAction] NO PDF SOURCE - Skipping PDF processing`);
       }
 
       // Step 4: Extract answers using AI
@@ -559,12 +575,49 @@ export const downloadAndIndexPdfAction = internalAction({
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
     pdfUrl: v.string(),
+    storageId: v.optional(v.id("_storage")),
     title: v.string(),
     abstract: v.optional(v.string()),
     doi: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<IndexResult> => {
     console.log(`[downloadAndIndexPdfAction] Starting for paper ${args.paperId}`);
+
+    if (args.storageId) {
+      const stored = await ctx.storage.get(args.storageId);
+      if (!stored) {
+        return { success: false, error: "Stored PDF not found" };
+      }
+
+      const pdfBuffer = await stored.arrayBuffer();
+      const chunksWithMetadata = await extractAndChunkPdf(pdfBuffer, {
+        maxChunkSize: 2500,
+      });
+
+      if (chunksWithMetadata.length > 0) {
+        const chunksForRag = prepareChunksForRag(chunksWithMetadata);
+        const ragResult = await rag.add(ctx, {
+          namespace: `extraction:${args.jobId}`,
+          key: args.paperId,
+          chunks: chunksForRag,
+          filterValues: [{ name: "paperId", value: args.paperId }],
+          metadata: {
+            paperId: args.paperId,
+          },
+        });
+
+        await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
+          paperId: args.paperId,
+          ragEntryId: ragResult.entryId,
+        });
+      }
+
+      if (chunksWithMetadata.length === 0) {
+        return { success: true, storageId: args.storageId, chunksCount: 0 };
+      }
+
+      return { success: true, storageId: args.storageId, chunksCount: chunksWithMetadata.length };
+    }
 
     if (!args.pdfUrl) {
       if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
@@ -579,8 +632,13 @@ export const downloadAndIndexPdfAction = internalAction({
     try {
       // Download PDF
       console.log(`[downloadAndIndexPdfAction] Downloading PDF from: ${args.pdfUrl.substring(0, 60)}...`);
+      const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, { jobId: args.jobId });
+      const zoteroConnection = job
+        ? await ctx.runQuery(internal.zotero.internal.getConnection, { userId: job.userId })
+        : null;
       const downloadResult: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
         doi: args.doi,
+        zoteroConnection: zoteroConnection ? { apiKey: zoteroConnection.apiKey, userId: zoteroConnection.zoteroUserId } : undefined,
       });
 
       if (!downloadResult.success || !downloadResult.pdfBlob) {

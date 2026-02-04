@@ -25,6 +25,9 @@ export const fetchPapersFromHistory = internalAction({
       selectedCountryFocus?: string[];
       reviewFilter?: boolean;
       searchField?: string;
+      citesItemId?: string;
+      citedByItemId?: string;
+      relatedToItemId?: string;
     };
 
     const baseUrl = "https://api.openalex.org/works";
@@ -38,19 +41,68 @@ export const fetchPapersFromHistory = internalAction({
         searchParams.set("filter", `title.search:${filters.query}`);
       } else if (filters.searchField === "abstract") {
         searchParams.set("filter", `abstract.search:${filters.query}`);
+      } else if (filters.searchField === "fulltext") {
+        searchParams.set("filter", `fulltext.search:${filters.query}`);
+      } else if (filters.searchField === "display_name") {
+        searchParams.set("filter", `display_name.search:${filters.query}`);
       } else {
         searchParams.set("search", filters.query);
       }
     }
 
+    const filterParts: string[] = [];
+    const existingFilter = searchParams.get("filter");
+    if (existingFilter) {
+      filterParts.push(existingFilter);
+    }
+
     // Add year range filter
-    if (filters.yearRange) {
-      const existingFilter = searchParams.get("filter") || "";
-      const yearFilter = `publication_year:${filters.yearRange[0]}-${filters.yearRange[1]}`;
-      searchParams.set(
-        "filter",
-        existingFilter ? `${existingFilter},${yearFilter}` : yearFilter
+    if (filters.yearRange && !filters.dateRange?.from && !filters.dateRange?.to) {
+      filterParts.push(
+        `publication_year:${filters.yearRange[0]}-${filters.yearRange[1]}`
       );
+    }
+
+    if (filters.dateRange?.from) {
+      filterParts.push(`from_publication_date:${filters.dateRange.from}`);
+    }
+    if (filters.dateRange?.to) {
+      filterParts.push(`to_publication_date:${filters.dateRange.to}`);
+    }
+
+    if (filters.reviewFilter) {
+      filterParts.push("type:review");
+    }
+
+    if (filters.selectedCountryFocus && filters.selectedCountryFocus.length > 0) {
+      filterParts.push(`countries:${filters.selectedCountryFocus.join("|")}`);
+    }
+
+    if (filters.selectedRegions && filters.selectedRegions.length > 0) {
+      filterParts.push(`regions:${filters.selectedRegions.join("|")}`);
+    }
+
+    if (filters.citesItemId) {
+      const clean = filters.citesItemId.startsWith("https://openalex.org/")
+        ? filters.citesItemId
+        : `https://openalex.org/${filters.citesItemId}`;
+      filterParts.push(`cites:${clean}`);
+    }
+    if (filters.citedByItemId) {
+      const clean = filters.citedByItemId.startsWith("https://openalex.org/")
+        ? filters.citedByItemId
+        : `https://openalex.org/${filters.citedByItemId}`;
+      filterParts.push(`cited_by:${clean}`);
+    }
+    if (filters.relatedToItemId) {
+      const clean = filters.relatedToItemId.startsWith("https://openalex.org/")
+        ? filters.relatedToItemId
+        : `https://openalex.org/${filters.relatedToItemId}`;
+      filterParts.push(`related_to:${clean}`);
+    }
+
+    if (filterParts.length > 0) {
+      searchParams.set("filter", filterParts.join(","));
     }
 
     // Add sorting
@@ -61,6 +113,8 @@ export const fetchPapersFromHistory = internalAction({
 
     // Get 200 papers with abstracts
     searchParams.set("per-page", "200");
+
+    
 
     const papers: PaperData[] = [];
 

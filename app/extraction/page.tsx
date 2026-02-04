@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -9,6 +9,8 @@ import { Plus, Database, Loader2 } from "lucide-react";
 import { ExtractionCommandCenter } from "@/components/extraction/extraction-command-center";
 import { JobCreator } from "@/components/extraction/job-creator";
 import { PageWrapper } from "@/components/PageWrapper";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 export default function ExtractionPage() {
   const [showCreator, setShowCreator] = useState(false);
@@ -77,6 +79,9 @@ export default function ExtractionPage() {
         {/* Main Content */}
         <div className="bg-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Suspense fallback={null}>
+              <ZoteroCallbackToast />
+            </Suspense>
             {showCreator ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -97,4 +102,21 @@ export default function ExtractionPage() {
       </div>
     </PageWrapper>
   );
+}
+
+function ZoteroCallbackToast() {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const connected = searchParams.get("zotero_connected");
+    const error = searchParams.get("zotero_error");
+    if (connected) {
+      toast.success("Zotero connected.");
+    }
+    if (error) {
+      toast.error(`Zotero connection failed: ${error}`);
+    }
+  }, [searchParams]);
+
+  return null;
 }

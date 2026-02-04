@@ -5,11 +5,46 @@
 
 export type ExtractionQuestionType = "string" | "boolean" | "number" | "array";
 
+export type ExtractionSourceType = "history" | "zotero" | "manual" | "mixed";
+
 export interface ExtractionQuestion {
   key: string;
   question: string;
   type: ExtractionQuestionType;
   description?: string;
+}
+
+export interface ExtractionHistorySource {
+  historyId: string;
+  searchFilters: Record<string, any>;
+}
+
+export interface ExtractionZoteroItem {
+  itemKey: string;
+  title: string;
+  abstract?: string;
+  authors: string[];
+  year?: number;
+  doi?: string;
+}
+
+export interface ExtractionZoteroSelection {
+  libraryType: "user" | "group";
+  groupId?: string;
+  zoteroUserId?: string;
+  collectionKey?: string;
+  items: ExtractionZoteroItem[];
+}
+
+export interface ExtractionManualItem {
+  id: string;
+  title: string;
+  abstract?: string;
+  authors?: string[];
+  year?: number;
+  doi?: string;
+  pdfUrl?: string;
+  storageId?: string;
 }
 
 export interface ExtractionJob {
@@ -74,8 +109,11 @@ export interface ExtractionJobDetails {
 
 export interface CreateExtractionJobInput {
   name: string;
-  sourceType: "history" | "zotero";
+  sourceType: ExtractionSourceType;
   sourceHistoryId?: string;
   searchFilters?: Record<string, any>;
+  sourceHistoryEntries?: ExtractionHistorySource[];
+  sourceZoteroSelection?: ExtractionZoteroSelection;
+  sourceManualItems?: ExtractionManualItem[];
   questions: ExtractionQuestion[];
 }

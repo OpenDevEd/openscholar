@@ -17,9 +17,11 @@ import {
   Zap,
 } from "lucide-react";
 import { useExtractionStore } from "@/lib/store/extraction";
+import { Id } from "@/convex/_generated/dataModel";
 import { useSearchHistoryStore } from "@/lib/store";
 import { QuestionBuilder } from "./question-builder";
-import { HistorySelector } from "./history-selector";
+import { SourceSelector } from "./source-selector";
+import { SourceSummary } from "./source-summary";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -78,44 +80,71 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
   };
 
   const handleSubmit = async () => {
-    if (!draftJob.selectedHistoryId || draftJob.questions.length === 0) {
+    const hasHistory = draftJob.selectedHistoryIds.length > 0;
+    const hasZotero = (draftJob.zoteroSelection?.items || []).length > 0;
+    const hasManual = draftJob.manualItems.length > 0;
+    if (!hasHistory && !hasZotero && !hasManual) {
+      toast.error("Please select at least one source");
+      return;
+    }
+
+    if (draftJob.questions.length === 0) {
       toast.error("Please complete all steps");
       return;
     }
 
-    const historyEntry = searchHistory.find(
-      (h: any) => h.id === draftJob.selectedHistoryId,
-    );
-    if (!historyEntry) {
-      toast.error("Selected history entry not found");
+    const historyEntries = draftJob.selectedHistoryIds
+      .map((id) => searchHistory.find((h: any) => h.id === id))
+      .filter(Boolean) as any[];
+
+    if (hasHistory && historyEntries.length === 0) {
+      toast.error("Selected history entries not found");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      const sourceHistoryEntries = historyEntries.map((entry) => ({
+        historyId: entry.id,
+        searchFilters: {
+          query: entry.query,
+          field: entry.field,
+          yearRange: entry.yearRange,
+          dateRange: entry.dateRange,
+          filterType: entry.filterType,
+          isYearRangeEnabled: entry.isYearRangeEnabled,
+          sortBy: entry.sortBy,
+          selectedRegions: entry.selectedRegions,
+          selectedCountryFocus: entry.selectedCountryFocus,
+          ratingRange: entry.ratingRange,
+          onlyRatedPapers: entry.onlyRatedPapers,
+          citesItemId: entry.citesItemId,
+          citedByItemId: entry.citedByItemId,
+          relatedToItemId: entry.relatedToItemId,
+          reviewFilter: entry.reviewFilter,
+          language: entry.language,
+          searchField: entry.field,
+        },
+      }));
+
       await startExtraction({
         name: draftJob.name || "Untitled Extraction Job",
-        sourceType: "history",
-        sourceHistoryId: draftJob.selectedHistoryId,
-        searchFilters: {
-          query: historyEntry.query,
-          field: historyEntry.field,
-          yearRange: historyEntry.yearRange,
-          dateRange: historyEntry.dateRange,
-          filterType: historyEntry.filterType,
-          isYearRangeEnabled: historyEntry.isYearRangeEnabled,
-          sortBy: historyEntry.sortBy,
-          selectedRegions: historyEntry.selectedRegions,
-          selectedCountryFocus: historyEntry.selectedCountryFocus,
-          ratingRange: historyEntry.ratingRange,
-          onlyRatedPapers: historyEntry.onlyRatedPapers,
-          citesItemId: historyEntry.citesItemId,
-          citedByItemId: historyEntry.citedByItemId,
-          relatedToItemId: historyEntry.relatedToItemId,
-          reviewFilter: historyEntry.reviewFilter,
-          language: historyEntry.language,
-        },
+        sourceType: hasHistory && !hasZotero && !hasManual
+          ? "history"
+          : hasZotero && !hasHistory && !hasManual
+          ? "zotero"
+          : hasManual && !hasHistory && !hasZotero
+          ? "manual"
+          : "mixed",
+        sourceHistoryEntries: sourceHistoryEntries.length > 0 ? sourceHistoryEntries : undefined,
+        sourceZoteroSelection: hasZotero ? draftJob.zoteroSelection || undefined : undefined,
+        sourceManualItems: hasManual
+          ? draftJob.manualItems.map((item) => ({
+              ...item,
+              storageId: item.storageId as Id<"_storage"> | undefined,
+            }))
+          : undefined,
         questions: draftJob.questions.map((q, i) => ({
           key: q.key || `q_${i}`,
           question: q.question,
@@ -140,7 +169,11 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
       case 1:
         return draftJob.name.trim().length > 0;
       case 2:
-        return draftJob.selectedHistoryId !== null;
+        return (
+          (draftJob.selectedHistoryIds ?? []).length > 0 ||
+          (draftJob.zoteroSelection?.items ?? []).length > 0 ||
+          (draftJob.manualItems ?? []).length > 0
+        );
       case 3:
         return draftJob.questions.length > 0;
       default:
@@ -312,12 +345,13 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
                   <h2 className="text-2xl font-bold text-foreground mb-2">
                     Select Papers
                   </h2>
-                  <p className="text-muted-foreground">
-                    Choose a search query from your history to extract data from.
-                  </p>
+                 <p className="text-muted-foreground">
+                   Combine sources from history, Zotero, or manual entries.
+                 </p>
+                 <SourceSummary />
                 </motion.div>
 
-                <HistorySelector />
+                 <SourceSelector />
               </div>
             )}
 

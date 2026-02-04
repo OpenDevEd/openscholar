@@ -6,6 +6,8 @@
  * No text extraction, no database operations - just raw PDF bytes.
  */
 
+import { buildZoteroHeaders } from "../zotero-utils";
+
 const PDF_DOWNLOAD_CONFIG = {
   FETCH_TIMEOUT_MS: 30000,
   MAX_RETRIES: 3,
@@ -172,24 +174,25 @@ async function downloadZoteroPdf(
 ): Promise<DownloadPdfResult> {
   try {
     // Parse Zotero URL to get item key
-    const match = zoteroUrl.match(/zotero:\/\/select\/groups\/(\d+)\/items\/(\w+)/);
-    if (!match) {
+    const groupMatch = zoteroUrl.match(/zotero:\/\/select\/groups\/(\d+)\/items\/(\w+)/);
+    const userMatch = zoteroUrl.match(/zotero:\/\/select\/users\/(\d+)\/items\/(\w+)/);
+    if (!groupMatch && !userMatch) {
       return { success: false, error: "Invalid Zotero URL format" };
     }
 
-    const groupId = match[1];
-    const itemKey = match[2];
+    const groupId = groupMatch ? groupMatch[1] : null;
+    const userId = userMatch ? userMatch[1] : null;
+    const itemKey = groupMatch ? groupMatch[2] : userMatch ? userMatch[2] : "";
+    const libraryId = groupId ?? userId ?? "";
+    const libraryType = groupId ? "groups" : "users";
 
     // Fetch attachments
-    const attachmentsUrl = `https://api.zotero.org/groups/${groupId}/items/${itemKey}/children?format=json`;
+    const attachmentsUrl = `https://api.zotero.org/${libraryType}/${libraryId}/items/${itemKey}/children?format=json`;
     
     const response = await fetchWithTimeout(
       attachmentsUrl,
       {
-        headers: {
-          "Zotero-API-Key": connection.apiKey,
-          "Zotero-API-Version": "3",
-        },
+        headers: buildZoteroHeaders(connection.apiKey),
       },
       timeout
     );
@@ -218,9 +221,7 @@ async function downloadZoteroPdf(
     const pdfResponse = await fetchWithTimeout(
       downloadUrl,
       {
-        headers: {
-          "Zotero-API-Key": connection.apiKey,
-        },
+        headers: buildZoteroHeaders(connection.apiKey),
       },
       timeout
     );
