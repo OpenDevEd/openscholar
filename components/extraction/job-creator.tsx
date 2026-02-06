@@ -182,7 +182,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full">
       {/* Header with Cancel */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -247,9 +247,9 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
                   )}
                 >
                   {isActive && step > s.id ? (
-                    <Check className="w-6 h-6" />
+                    <Check className="w-6 h-6 text-muted-foreground opacity-50" />
                   ) : (
-                    <s.icon className="w-5 h-5" />
+                    <s.icon className="w-5 h-5 text-muted-foreground" />
                   )}
                 </motion.div>
                 <div className="mt-3 text-center">
@@ -398,12 +398,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
           onClick={step === 3 ? handleSubmit : handleNext}
           disabled={!canProceed() || isSubmitting}
           size="lg"
-          className={cn(
-            "min-w-[160px] font-semibold",
-            step === 3
-              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-              : ""
-          )}
+          className="min-w-[160px] font-semibold"
         >
           {isSubmitting ? (
             <>

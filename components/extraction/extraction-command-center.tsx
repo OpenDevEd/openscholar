@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { ViewMode } from "@/lib/types";
 import { JobListItem } from "./job-list-item";
-import { Database, SearchX, SlidersHorizontal } from "lucide-react";
+import { Database, Plus, SearchX, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -14,9 +14,10 @@ type ExtractionJob = Doc<"extractionJobs">;
 
 interface ExtractionCommandCenterProps {
   jobs: ExtractionJob[];
+  onNewJob: () => void;
 }
 
-export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) {
+export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCenterProps) {
   const [viewMode] = useState<ViewMode>("list-detail");
   const [searchFilter, setSearchFilter] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "oldest" | "name">("recent");
@@ -60,25 +61,25 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
         transition={{ duration: 0.5 }}
         className="py-24 px-4"
       >
-        <div className="max-w-md mx-auto text-center">
+        <div className="max-w-md mx-auto text-center space-y-2">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="w-20 h-20 mx-auto mb-8 rounded-full bg-muted flex items-center justify-center"
+            className="flex justify-center mb-6"
           >
             {searchFilter ? (
-              <SearchX className="w-10 h-10 text-muted-foreground" />
+              <SearchX className="h-12 w-12 text-muted-foreground opacity-40" />
             ) : (
-              <Database className="w-10 h-10 text-muted-foreground" />
+              <Database className="h-12 w-12 text-muted-foreground opacity-40" />
             )}
           </motion.div>
 
-          <h3 className="text-2xl font-bold text-foreground mb-3">
+          <h3 className="text-2xl font-semibold tracking-tight text-foreground">
             {searchFilter ? "No matches found" : "No extraction jobs"}
           </h3>
 
-          <p className="text-muted-foreground mb-8 text-lg">
+          <p className="text-muted-foreground text-base mb-8">
             {searchFilter
               ? `No jobs matching "${searchFilter}"`
               : "Create your first extraction job to get started with AI-powered data extraction"}
@@ -87,7 +88,7 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
           {searchFilter ? (
             <Button
               variant="outline"
-              size="lg"
+              size="sm"
               onClick={handleClearFilters}
             >
               Clear filter
@@ -110,7 +111,7 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between pb-6 border-b border-border"
+        className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between pb-4 border-b border-border/40"
       >
         <div className="flex items-center gap-3 flex-1 max-w-md">
           <div className="relative flex-1">
@@ -153,6 +154,11 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
           >
             <SlidersHorizontal className="w-4 h-4" />
             Filter
+          </Button>
+
+          <Button size="sm" onClick={onNewJob}>
+            <Plus className="w-4 h-4 mr-1.5" />
+            New
           </Button>
         </div>
       </motion.div>

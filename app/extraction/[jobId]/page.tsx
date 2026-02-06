@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { motion } from "motion/react";
 import { PageWrapper } from "@/components/PageWrapper";
+import { CommandCenterContainer } from "@/components/command-center";
 import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -237,16 +238,16 @@ export default function JobDetailPage() {
 
   return (
     <PageWrapper>
-      <div className="min-h-screen bg-background">
-        {/* Hero Section */}
-        <div className="bg-card border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
+        <CommandCenterContainer>
+          {/* Header Section */}
+          <div className="px-4 md:px-6 py-5 border-b border-border/40">
             {/* Breadcrumb */}
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="flex items-center gap-2 text-muted-foreground text-sm mb-6"
+              className="flex items-center gap-2 text-muted-foreground text-sm mb-4"
             >
               <Link
                 href="/extraction"
@@ -259,64 +260,72 @@ export default function JobDetailPage() {
               <span className="text-foreground truncate max-w-[200px]">{job.name}</span>
             </motion.div>
 
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
-              <div className="space-y-4">
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-card-foreground"
-                >
-                  {job.name}
-                </motion.h1>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {/* Gradient icon */}
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 flex items-center justify-center shadow-sm">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
 
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="flex flex-wrap items-center gap-4 text-muted-foreground"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "w-2 h-2 rounded-full",
-                        job.status === "completed"
-                          ? "bg-emerald-500"
-                          : job.status === "failed"
-                          ? "bg-destructive"
-                          : "bg-primary animate-pulse"
-                      )}
-                    />
-                    <span className="capitalize">
-                      {job.status.replace(/_/g, " ")}
-                    </span>
-                  </div>
+                <div className="min-w-0">
+                  <motion.h1
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="text-xl md:text-2xl font-bold tracking-tight text-foreground truncate"
+                  >
+                    {job.name}
+                  </motion.h1>
 
-                  <span className="w-1 h-1 rounded-full bg-border" />
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "w-2 h-2 rounded-full",
+                          job.status === "completed"
+                            ? "bg-emerald-500"
+                            : job.status === "failed"
+                            ? "bg-destructive"
+                            : "bg-primary animate-pulse"
+                        )}
+                      />
+                      <span className="capitalize">
+                        {job.status.replace(/_/g, " ")}
+                      </span>
+                    </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="w-4 h-4" />
-                    <span>{job.totalPapers.toLocaleString()} papers</span>
-                  </div>
+                    <span className="w-1 h-1 rounded-full bg-border" />
 
-                  <span className="w-1 h-1 rounded-full bg-border" />
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{job.totalPapers.toLocaleString()} papers</span>
+                    </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <RefreshCw className={cn("w-4 h-4", isProcessing && "animate-spin")} />
-                    <span>Updated {formatTimeAgo(new Date(job.updatedAt))}</span>
-                  </div>
-                </motion.div>
+                    <span className="w-1 h-1 rounded-full bg-border" />
+
+                    <div className="flex items-center gap-1.5">
+                      <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
+                      <span>Updated {formatTimeAgo(new Date(job.updatedAt))}</span>
+                    </div>
+                  </motion.div>
+                </div>
               </div>
 
               {/* Action Buttons */}
               <motion.div
-                initial={{ opacity: 0, x: 20 }}
+                initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex items-center gap-3"
+                transition={{ duration: 0.4, delay: 0.15 }}
+                className="flex items-center gap-2"
               >
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={handleDuplicate}
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
@@ -328,6 +337,7 @@ export default function JobDetailPage() {
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="outline"
+                        size="sm"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
@@ -359,6 +369,7 @@ export default function JobDetailPage() {
                   <AlertDialogTrigger asChild>
                     <Button
                       variant="outline"
+                      size="sm"
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
@@ -387,22 +398,20 @@ export default function JobDetailPage() {
               </motion.div>
             </div>
           </div>
-        </div>
 
-        {/* Stats Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="bg-background border-b border-border"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Stats Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="px-4 md:px-6 py-5 border-b border-border/40"
+          >
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                   Total Papers
                 </p>
-                <p className="text-4xl lg:text-5xl font-bold text-foreground">
+                <p className="text-2xl lg:text-3xl font-bold text-foreground">
                   {job.totalPapers.toLocaleString()}
                 </p>
               </div>
@@ -411,7 +420,7 @@ export default function JobDetailPage() {
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                   Processed
                 </p>
-                <p className="text-4xl lg:text-5xl font-bold text-emerald-600">
+                <p className="text-2xl lg:text-3xl font-bold text-foreground">
                   {resolvedProgress.processed.toLocaleString()}
                 </p>
               </div>
@@ -421,7 +430,7 @@ export default function JobDetailPage() {
                   Success Rate
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-4xl lg:text-5xl font-bold text-primary">
+                  <p className="text-2xl lg:text-3xl font-bold text-primary">
                     {resolvedProgress.percentage}%
                   </p>
                   {isProcessing && (
@@ -434,14 +443,14 @@ export default function JobDetailPage() {
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
                   Questions
                 </p>
-                <p className="text-4xl lg:text-5xl font-bold text-foreground">
+                <p className="text-2xl lg:text-3xl font-bold text-foreground">
                   {questions.length}
                 </p>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="mt-8">
+            <div className="mt-6">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Extraction Progress</span>
                 <span className="font-medium text-foreground">
@@ -458,17 +467,15 @@ export default function JobDetailPage() {
                 />
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* Tab Navigation */}
-        <div className="bg-muted/50 border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Tab Navigation */}
+          <div className="px-4 md:px-6 border-b border-border/40">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setActiveTab('results')}
                 className={cn(
-                  "px-6 py-4 text-sm font-medium border-b-2 transition-colors",
+                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
                   activeTab === 'results'
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -479,7 +486,7 @@ export default function JobDetailPage() {
               <button
                 onClick={() => setActiveTab('overview')}
                 className={cn(
-                  "px-6 py-4 text-sm font-medium border-b-2 transition-colors",
+                  "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
                   activeTab === 'overview'
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -489,10 +496,9 @@ export default function JobDetailPage() {
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Content Section */}
+          <div className="p-4 md:p-6">
           {activeTab === 'results' ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -628,7 +634,8 @@ export default function JobDetailPage() {
               </div>
             </motion.div>
           )}
-        </div>
+          </div>
+        </CommandCenterContainer>
       </div>
     </PageWrapper>
   );
