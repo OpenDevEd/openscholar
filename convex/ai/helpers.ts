@@ -27,6 +27,10 @@ export async function getModel() {
     provider as AIProvider,
     undefined,
     SERVER_AI_CONFIG.model,
+    {
+      openrouterProviderOrder: SERVER_AI_CONFIG.openrouterProviderOrder,
+      openrouterAllowFallbacks: SERVER_AI_CONFIG.openrouterAllowFallbacks,
+    }
   );
 }
 
