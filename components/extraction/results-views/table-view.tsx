@@ -353,17 +353,25 @@ const ResultCell = memo(function ResultCell({
       {/* Answer value with highlighting */}
       <div className="text-sm">
         {type === "boolean" ? (
-          <Badge
-            variant={answer ? "default" : "secondary"}
-            className={cn(
-              "font-normal",
-              answer
-                ? "bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
-                : "bg-muted text-muted-foreground hover:bg-muted/80",
-            )}
-          >
-            {answer ? "Yes" : "No"}
-          </Badge>
+          answer === true ? (
+            <Badge
+              variant="default"
+              className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
+            >
+              Yes
+            </Badge>
+          ) : answer === false ? (
+            <Badge
+              variant="secondary"
+              className="font-normal bg-muted text-muted-foreground hover:bg-muted/80"
+            >
+              No
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="font-normal text-muted-foreground">
+              Unknown
+            </Badge>
+          )
         ) : Array.isArray(answer) ? (
           <div className="flex flex-wrap gap-1">
             {answer.map((item, i) => (

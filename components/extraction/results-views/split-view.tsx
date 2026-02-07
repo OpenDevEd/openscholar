@@ -190,9 +190,19 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
   return (
     <div className="text-sm space-y-1">
       {type === "boolean" ? (
-        <Badge className={cn(answer ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-          {answer ? "Yes" : "No"}
-        </Badge>
+        answer === true ? (
+          <Badge className="bg-primary/10 text-primary">
+            Yes
+          </Badge>
+        ) : answer === false ? (
+          <Badge className="bg-muted text-muted-foreground">
+            No
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-muted-foreground">
+            Unknown
+          </Badge>
+        )
       ) : Array.isArray(answer) ? (
         <div className="flex flex-wrap gap-2">
           {answer.map((item, i) => <Badge key={i} variant="outline">{item}</Badge>)}

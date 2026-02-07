@@ -100,6 +100,7 @@ const FUSED_TOP_N = 48;
 const EVIDENCE_POOL_N = 16;
 const BEST_EFFORT_MAX_CITATIONS = 2;
 const BEST_EFFORT_CONFIDENCE_CAP = 0.45;
+const ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7;
 const STRICT_NULL_CONFIDENCE_CAP = 0.3;
 const V32_CUTOVER_AT = Number(process.env.EXTRACTION_V3_2_CUTOVER_AT || "0");
 
@@ -212,6 +213,35 @@ export function applyEvidencePolicy(params: {
     citationStatus: "insufficient_evidence",
     strictNull: true,
     selectedCandidates: [],
+  };
+}
+
+export function isUsableAbstract(abstract?: string | null) {
+  return typeof abstract === "string" && abstract.trim().length > MIN_ABSTRACT_LENGTH;
+}
+
+export function applyAbstractOnlyPolicy(params: {
+  extracted: StrictExtractionOutput;
+}): {
+  answer: string | boolean | number | string[] | null;
+  confidence: number;
+  citationStatus: CitationStatus;
+  strictNull: boolean;
+} {
+  if (params.extracted.answer !== null) {
+    return {
+      answer: params.extracted.answer,
+      confidence: Math.min(params.extracted.confidence, ABSTRACT_ONLY_CONFIDENCE_CAP),
+      citationStatus: "best_effort",
+      strictNull: false,
+    };
+  }
+
+  return {
+    answer: null,
+    confidence: Math.min(params.extracted.confidence, STRICT_NULL_CONFIDENCE_CAP),
+    citationStatus: "insufficient_evidence",
+    strictNull: true,
   };
 }
 
@@ -413,6 +443,77 @@ async function extractQuestionAnswer(params: {
   }
 }
 
+async function extractQuestionAnswerFromAbstract(params: {
+  model: Awaited<ReturnType<typeof getModel>>;
+  question: {
+    key: string;
+    question: string;
+    type: "string" | "boolean" | "number" | "array";
+    description?: string;
+  };
+  abstract: string;
+}): Promise<ExtractionQuestionResult> {
+  const { model, question, abstract } = params;
+
+  try {
+    const prompt = buildEnhancedExtractionPrompt(
+      question as ExtractionQuestion,
+      abstract,
+      []
+    );
+
+    const { object } = await generateObject({
+      model,
+      schema: buildAnswerSchema(question.type),
+      prompt,
+      temperature: 0,
+    });
+
+    const extracted = object as StrictExtractionOutput;
+    const policy = applyAbstractOnlyPolicy({ extracted });
+    const reasoningPrefix =
+      policy.answer === null
+        ? "Abstract-only mode: no direct support found in the abstract."
+        : "Abstract-only mode: answer inferred from abstract content.";
+
+    return {
+      questionKey: question.key,
+      answer: policy.answer,
+      confidence: policy.confidence,
+      reasoning: `${reasoningPrefix} ${extracted.reasoning}`.trim(),
+      citations: [],
+      citationStatus: policy.citationStatus,
+      retrievalDiagnostics: {
+        denseCandidates: 0,
+        lexicalCandidates: 0,
+        fusedCandidates: 0,
+        rerankedCandidates: 0,
+        validatedCitations: 0,
+        strictNull: policy.strictNull,
+      },
+      pdfContentUsed: false,
+    };
+  } catch (error) {
+    return {
+      questionKey: question.key,
+      answer: null,
+      confidence: 0,
+      reasoning: `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      citations: [],
+      citationStatus: "extraction_error",
+      retrievalDiagnostics: {
+        denseCandidates: 0,
+        lexicalCandidates: 0,
+        fusedCandidates: 0,
+        rerankedCandidates: 0,
+        validatedCitations: 0,
+        strictNull: false,
+      },
+      pdfContentUsed: false,
+    };
+  }
+}
+
 async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
   const extracted = await extractPdfJsTextPages(pdfBuffer);
   const pages = extracted.pages.map((page) => {
@@ -545,7 +646,7 @@ export const downloadAndIndexPdfAction = internalAction({
         doi: args.doi,
       });
 
-      // Keep pipeline alive for abstract-only papers, but they will yield strict no-answer.
+      // Keep pipeline alive for abstract-only papers by leaving evidence empty.
       if (!resolved.pdfBlob) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
           await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
@@ -681,14 +782,40 @@ export const waitAndExtractAction = internalAction({
       const model = await getModel();
       const results: ExtractionQuestionResult[] = [];
       let anyPdfEvidenceUsed = false;
+      const abstractPresent = isUsableAbstract(paper.abstract);
+      const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
 
       for (const question of args.questions) {
         if (units.length === 0) {
-          results.push({
+          if (abstractText) {
+            const extracted = await extractQuestionAnswerFromAbstract({
+              model,
+              question,
+              abstract: abstractText,
+            });
+            results.push(extracted);
+            console.info(
+              "[waitAndExtractAction] question diagnostics",
+              JSON.stringify({
+                paperId: args.paperId,
+                questionKey: question.key,
+                mode: "abstract_only",
+                abstractPresent,
+                denseCandidates: 0,
+                lexicalCandidates: 0,
+                fusedCandidates: 0,
+                citationStatus: extracted.citationStatus,
+                selectedEvidenceIds: [],
+              })
+            );
+            continue;
+          }
+
+          const noContentResult: ExtractionQuestionResult = {
             questionKey: question.key,
             answer: null,
             confidence: 0,
-            reasoning: "No chunked evidence units available for this paper.",
+            reasoning: "No PDF evidence and no usable abstract are available for this paper.",
             citations: [],
             citationStatus: "insufficient_evidence",
             retrievalDiagnostics: {
@@ -700,7 +827,22 @@ export const waitAndExtractAction = internalAction({
               strictNull: true,
             },
             pdfContentUsed: false,
-          });
+          };
+          results.push(noContentResult);
+          console.info(
+            "[waitAndExtractAction] question diagnostics",
+            JSON.stringify({
+              paperId: args.paperId,
+              questionKey: question.key,
+              mode: "no_content",
+              abstractPresent,
+              denseCandidates: 0,
+              lexicalCandidates: 0,
+              fusedCandidates: 0,
+              citationStatus: noContentResult.citationStatus,
+              selectedEvidenceIds: [],
+            })
+          );
           continue;
         }
 
@@ -755,6 +897,8 @@ export const waitAndExtractAction = internalAction({
           JSON.stringify({
             paperId: args.paperId,
             questionKey: question.key,
+            mode: "pdf_evidence",
+            abstractPresent,
             denseCandidates: diagnosticsSeed.denseCandidates,
             lexicalCandidates: diagnosticsSeed.lexicalCandidates,
             fusedCandidates: diagnosticsSeed.fusedCandidates,

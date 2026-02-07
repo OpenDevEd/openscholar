@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyAbstractOnlyPolicy,
   applyEvidencePolicy,
+  isUsableAbstract,
   validateSupportEvidenceIds,
 } from "../convex/extraction/workpoolActions";
 
@@ -97,5 +99,42 @@ describe("V3.2 evidence policy", () => {
     expect(policy.strictNull).toBe(true);
     expect(policy.answer).toBeNull();
     expect(policy.selectedCandidates).toHaveLength(0);
+  });
+
+  it("returns best_effort for abstract-only non-null answers with confidence capped", () => {
+    const policy = applyAbstractOnlyPolicy({
+      extracted: {
+        answer: "273 studies",
+        confidence: 0.94,
+        reasoning: "Abstract states the number of retained studies.",
+        supportEvidenceIds: [],
+      },
+    });
+
+    expect(policy.citationStatus).toBe("best_effort");
+    expect(policy.strictNull).toBe(false);
+    expect(policy.answer).toBe("273 studies");
+    expect(policy.confidence).toBeLessThanOrEqual(0.7);
+  });
+
+  it("returns insufficient_evidence for abstract-only null answers", () => {
+    const policy = applyAbstractOnlyPolicy({
+      extracted: {
+        answer: null,
+        confidence: 0.52,
+        reasoning: "Abstract does not contain the requested metric.",
+        supportEvidenceIds: [],
+      },
+    });
+
+    expect(policy.citationStatus).toBe("insufficient_evidence");
+    expect(policy.strictNull).toBe(true);
+    expect(policy.answer).toBeNull();
+  });
+
+  it("treats abstracts shorter than threshold as unusable", () => {
+    expect(isUsableAbstract(undefined)).toBe(false);
+    expect(isUsableAbstract("short abstract")).toBe(false);
+    expect(isUsableAbstract("a".repeat(80))).toBe(true);
   });
 });

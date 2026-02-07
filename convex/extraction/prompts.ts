@@ -29,6 +29,7 @@ export function buildEnhancedExtractionPrompt(
   abstract: string | undefined,
   evidence: EvidenceWithContext[]
 ): string {
+  const hasEvidence = evidence.length > 0;
   let prompt = `You are an expert research assistant extracting structured answers from academic papers.
 
 `;
@@ -42,7 +43,7 @@ ${abstract}
   }
 
   // Add PDF content with clear formatting
-  if (evidence.length > 0) {
+  if (hasEvidence) {
     prompt += `SOURCE EVIDENCE FROM THE FULL PAPER:
 `;
     prompt += `Each evidence item has an EVIDENCE ID, page number, and character range. You MUST only cite evidence IDs present below.
@@ -59,6 +60,12 @@ ${abstract}
       prompt += `[EVIDENCE ${item.evidenceId}] page=${item.page} chars=${start}-${end}${section}${relevance}
 ${item.text}\n\n`;
     });
+  } else {
+    prompt += `NO FULL-PAPER EVIDENCE IS AVAILABLE.
+You are in ABSTRACT-ONLY mode. If the abstract supports the question, answer using only the abstract.
+In ABSTRACT-ONLY mode you MUST return supportEvidenceIds as an empty array ([]).
+
+`;
   }
 
   // Question section
@@ -77,12 +84,12 @@ Question: ${question.question}
   // Strong instructions
   prompt += `INSTRUCTIONS - FOLLOW EXACTLY:
 1. Use ONLY the provided evidence and abstract. Do not use outside knowledge.
-2. You may cite only evidence IDs listed above.
-3. Do NOT invent IDs and do NOT quote text that is not in the evidence list.
-4. Prefer a best-effort answer when evidence is suggestive, but only cite listed IDs.
+2. ${hasEvidence ? "You may cite only evidence IDs listed above." : "In ABSTRACT-ONLY mode, supportEvidenceIds must always be []."}
+3. ${hasEvidence ? "Do NOT invent IDs and do NOT quote text that is not in the evidence list." : "Do not invent evidence IDs."}
+4. Prefer a best-effort answer when support is suggestive but incomplete.
 5. If there is no support at all, set answer to null and supportEvidenceIds to [].
 6. Confidence must be between 0.0 and 1.0.
-7. Keep reasoning concise and evidence-based.
+7. Keep reasoning concise and evidence-based, and tie it to the abstract when in ABSTRACT-ONLY mode.
 
 Return strict JSON:
 {
