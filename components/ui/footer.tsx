@@ -1,7 +1,7 @@
 export function FooterBanner() {
   return (
-    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/50 shadow-sm dark:from-orange-950/30 dark:to-amber-950/30 dark:border-orange-800/30">
-      <span className="text-sm text-muted-foreground">Built by</span>
+    <div className="lg:text-base text-xs inline-flex flex-wrap justify-center items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100/50 shadow-sm dark:from-orange-950/30 dark:to-amber-950/30 dark:border-orange-800/30">
+      <span className="lg:text-sm text-xs text-muted-foreground">Built by</span>
       <a
         href="https://opendeved.net/"
         target="_blank"
@@ -10,7 +10,7 @@ export function FooterBanner() {
       >
         OpenDevEd 
       </a>
-      <span className="text-muted-foreground">with</span>
+      <span className="lg:text-sm text-xs text-muted-foreground">with</span>
       <a
         href="https://openalex.org"
         target="_blank"
@@ -19,7 +19,6 @@ export function FooterBanner() {
       >
         OpenAlex
       </a>
-      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-400 to-orange-600"></div>
     </div>
   );
 }
