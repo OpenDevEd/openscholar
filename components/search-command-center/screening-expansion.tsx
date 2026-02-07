@@ -86,14 +86,27 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   };
 
   const handleDeleteQuestion = (index: number, question: string) => {
+    const remainingQuestions = screeningQuestions.length - 1;
     removeScreeningQuestion(searchId, index);
     toast.success("Question deleted");
+
+    // Track screening question deletion
+    posthog.capture("screening_question_deleted", {
+      question_length: question.length,
+      remaining_questions: remainingQuestions,
+    });
   };
 
   const handleTestQuestion = (question: string) => {
     removeScreeningQuestionFromAllPapers(searchId, question);
     incrementTestIndexPerQuestion(question);
     toast.success("Removed responses for this question");
+
+    // Track screening question test
+    posthog.capture("screening_question_tested", {
+      question: question,
+      question_length: question.length,
+    });
   };
 
   const handleTestAllQuestions = () => {
@@ -116,8 +129,14 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       return;
     }
 
+    const questionsCleared = screeningQuestions.length;
     clearScreeningQuestions(searchId);
-    toast.success(`Cleared all ${screeningQuestions.length} questions`);
+    toast.success(`Cleared all ${questionsCleared} questions`);
+
+    // Track screening questions cleared
+    posthog.capture("screening_questions_cleared", {
+      questions_cleared_count: questionsCleared,
+    });
   };
 
   const handleGenerateWithAI = async () => {

@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { validateAndExpandKeywordsSilently } from './keyword-validation';
@@ -151,7 +152,7 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
 
 export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
   const { setIsDialogOpen, setIsFocusModeOpen, setFocusModeIndex } = useUIStore.getState();
-  
+
   // If isMobile is provided, use it; otherwise fall back to window check for backward compatibility
   const isDesktop = isMobile !== undefined ? !isMobile : window.matchMedia("(min-width: 768px)").matches;
   if (!isDesktop) {
@@ -159,4 +160,9 @@ export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
   }
   setFocusModeIndex(initialIndex);
   setIsFocusModeOpen(true);
+
+  // Track focus mode opened
+  posthog.capture("focus_mode_opened", {
+    from_position: initialIndex,
+  });
 }; 

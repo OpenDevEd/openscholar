@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import posthog from "posthog-js"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -17,7 +18,15 @@ export function ThemeToggle() {
   }, [setMounted])
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark")
+    const previousTheme = theme;
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+
+    // Track theme toggle
+    posthog.capture("theme_toggled", {
+      theme: newTheme,
+      previous_theme: previousTheme,
+    });
   }
 
   // Don't render anything until mounted to avoid hydration mismatch

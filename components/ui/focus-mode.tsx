@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import posthog from "posthog-js";
 
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -76,7 +77,34 @@ export function FocusMode({
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
 
+  // Track focus mode time spent
+  const focusModeStartTimeRef = useRef<number | null>(null);
+  const currentPaperIdRef = useRef<string | null>(null);
+
   const currentPaper = papers[currentIndex];
+
+  // Initialize start time when focus mode opens
+  useEffect(() => {
+    if (isOpen && !focusModeStartTimeRef.current) {
+      focusModeStartTimeRef.current = Date.now();
+      currentPaperIdRef.current = currentPaper?.id || null;
+    }
+  }, [isOpen, currentPaper?.id]);
+
+  // Track when focus mode closes
+  useEffect(() => {
+    return () => {
+      if (focusModeStartTimeRef.current && currentPaperIdRef.current) {
+        const timeSpentSeconds = Math.floor((Date.now() - focusModeStartTimeRef.current) / 1000);
+
+        // Track focus mode closed with time spent
+        posthog.capture("focus_mode_closed", {
+          paper_id: currentPaperIdRef.current,
+          time_spent_seconds: timeSpentSeconds,
+        });
+      }
+    };
+  }, []); // Only run on unmount
 
   // Get language from URL params (source of truth on results page)
   const search = useSearchOptional();
@@ -266,7 +294,15 @@ export function FocusMode({
       if (isMobile) {
         setSwipeDirection("left");
       }
+      const nextPaper = papers[currentIndex + 1];
       setCurrentIndex(currentIndex + 1);
+
+      // Track focus mode navigation
+      posthog.capture("focus_mode_navigation", {
+        direction: "next",
+        current_paper_id: currentPaper?.id,
+        next_paper_id: nextPaper?.id,
+      });
     }
   };
 
@@ -275,7 +311,15 @@ export function FocusMode({
       if (isMobile) {
         setSwipeDirection("right");
       }
+      const previousPaper = papers[currentIndex - 1];
       setCurrentIndex(currentIndex - 1);
+
+      // Track focus mode navigation
+      posthog.capture("focus_mode_navigation", {
+        direction: "previous",
+        current_paper_id: currentPaper?.id,
+        next_paper_id: previousPaper?.id,
+      });
     }
   };
 

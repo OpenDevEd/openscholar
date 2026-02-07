@@ -157,7 +157,15 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const handleLanguageChange = async (language: string) => {
     if (!search || language === selectedLanguage) return;
 
+    const previousLanguage = selectedLanguage;
     search.setLanguage(language || null);
+
+    // Track language selection
+    posthog.capture("language_selected", {
+      language: language || "none",
+      previous_language: previousLanguage || "none",
+      context: "search",
+    });
 
     if (localInputValue.trim() && language) {
       if (!apiKey || !provider) {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import posthog from "posthog-js";
 import { motion } from "framer-motion";
 import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,14 @@ export function SearchCommandFooter({
   const showBroadenButton = totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
   const showNarrowButton = totalCount > 1000 && effectiveQuery.trim();
 
+  // Wrap screening toggle to add tracking
+  const handleScreeningToggle = () => {
+    posthog.capture("screening_panel_toggled", {
+      is_open: !isScreeningOpen,
+    });
+    onScreeningToggle();
+  };
+
   const handleBroadenQuery = async () => {
     if (!effectiveQuery.trim() || !apiKey || !provider) return;
 
@@ -72,6 +81,12 @@ Return a more inclusive version of this query.`;
       toast.dismiss(loadingToast);
       toast.success("Query broadened", {
         description: `New query: "${result.enhancedQuery}"`,
+      });
+
+      // Track query broadened
+      posthog.capture("query_broadened", {
+        original_query: expandedQuery,
+        broadened_query: result.enhancedQuery,
       });
     } catch {
       toast.dismiss(loadingToast);
@@ -112,6 +127,12 @@ Return a more targeted version of this query.`;
       toast.dismiss(loadingToast);
       toast.success("Query made more specific", {
         description: `New query: "${result.enhancedQuery}"`,
+      });
+
+      // Track query narrowed
+      posthog.capture("query_narrowed", {
+        original_query: expandedQuery,
+        narrowed_query: result.enhancedQuery,
       });
     } catch {
       toast.dismiss(loadingToast);
@@ -181,7 +202,7 @@ Return a more targeted version of this query.`;
       <Button
         variant={isScreeningOpen ? "default" : "outline"}
         size="sm"
-        onClick={onScreeningToggle}
+        onClick={handleScreeningToggle}
         className={cn(
           "h-8 gap-1.5",
           isScreeningOpen && "bg-primary text-primary-foreground"
