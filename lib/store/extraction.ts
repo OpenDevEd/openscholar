@@ -163,13 +163,18 @@ export const useExtractionStore = create<ExtractionStore>()(
           ...currentState,
           ...persisted,
           draftJob: {
-            ...currentState.draftJob,
-            ...draftJob,
-            selectedHistoryIds: draftJob.selectedHistoryIds ?? [],
-            zoteroSelection: draftJob.zoteroSelection ?? null,
-            manualItems: draftJob.manualItems ?? [],
-            questions: draftJob.questions ?? [],
-          },
+              ...currentState.draftJob,
+              ...draftJob,
+              selectedHistoryIds: draftJob.selectedHistoryIds ?? [],
+              zoteroSelection: draftJob.zoteroSelection
+                ? {
+                    ...draftJob.zoteroSelection,
+                    includeDescendants: draftJob.zoteroSelection.includeDescendants ?? true,
+                  }
+                : null,
+              manualItems: draftJob.manualItems ?? [],
+              questions: draftJob.questions ?? [],
+            },
         } as ExtractionStore;
       },
     }

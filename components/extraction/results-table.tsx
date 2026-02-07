@@ -21,6 +21,12 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
 import { useState } from "react";
+import {
+  getAllCitationLocations,
+  getCitationStatus,
+  type CitationStatus,
+  type CitationLocation,
+} from "@/lib/extraction/citations";
 
 interface PaperWithResults extends Doc<"extractionPapers"> {
   results: Doc<"extractionResults">[];
@@ -44,7 +50,8 @@ export function ResultsTable({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
   const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
-  const [selectedCitation, setSelectedCitation] = useState<string | null>(null);
+  const [selectedCitations, setSelectedCitations] = useState<CitationLocation[]>([]);
+  const [selectedCitationStatus, setSelectedCitationStatus] = useState<CitationStatus | undefined>(undefined);
   const [selectedAnswerText, setSelectedAnswerText] = useState<string | null>(null);
   const [selectedQuestionText, setSelectedQuestionText] = useState<string | null>(null);
 
@@ -69,7 +76,8 @@ export function ResultsTable({
         onOpenChange={setDrawerOpen}
         paperId={selectedPaperId}
         paperTitle={selectedPaperTitle}
-        citationChunk={selectedCitation}
+        citations={selectedCitations}
+        citationStatus={selectedCitationStatus}
         answerText={selectedAnswerText}
         questionText={selectedQuestionText}
       />
@@ -144,7 +152,7 @@ export function ResultsTable({
                           {paper.publicationYear && (
                             <Badge
                               variant="outline"
-                              className="h-5 px-1.5 text-[10px font-normal"
+                              className="h-5 px-1.5 text-[10px] font-normal"
                             >
                               {paper.publicationYear}
                             </Badge>
@@ -216,10 +224,12 @@ export function ResultsTable({
                             result={result}
                             type={q.type}
                             onCite={() => {
-                              if (!result?.contextChunks?.length) return;
+                              if (!result) return;
+                              const citations = getAllCitationLocations(result);
+                              if (citations.length === 0) return;
                               setSelectedPaperId(paper._id);
                               setSelectedPaperTitle(paper.title);
-                              setSelectedCitation(result.contextChunks[0]);
+                              setSelectedCitations(citations);
                               const answerText = Array.isArray(result.answer)
                                 ? result.answer
                                     .filter((item) => typeof item === "string")
@@ -229,6 +239,7 @@ export function ResultsTable({
                                   : null;
                               setSelectedAnswerText(answerText ?? null);
                               setSelectedQuestionText(q.question);
+                              setSelectedCitationStatus(getCitationStatus(result));
                               setDrawerOpen(true);
                             }}
                           />
@@ -280,6 +291,8 @@ function ResultCell({
   }
 
   const { answer, confidence, reasoning } = result;
+  const citations = getAllCitationLocations(result);
+  const citationStatus = getCitationStatus(result);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500";
@@ -320,7 +333,7 @@ function ResultCell({
         )}
       </div>
 
-      {(confidence || reasoning || (result.contextChunks && result.contextChunks.length > 0)) && (
+      {(confidence || reasoning || citations.length > 0) && (
         <div className="flex items-center gap-2">
           {confidence !== undefined && (
             <div
@@ -332,6 +345,26 @@ function ResultCell({
               {Math.round(confidence * 100)}%
             </div>
           )}
+          {citationStatus === "grounded" ? (
+            <Badge variant="outline" className="text-[10px] font-medium">
+              Grounded
+            </Badge>
+          ) : null}
+          {citationStatus === "best_effort" ? (
+            <Badge variant="outline" className="text-[10px] font-medium">
+              Best effort
+            </Badge>
+          ) : null}
+          {citationStatus === "insufficient_evidence" ? (
+            <Badge variant="outline" className="text-[10px] font-medium">
+              Insufficient evidence
+            </Badge>
+          ) : null}
+          {citationStatus === "extraction_error" ? (
+            <Badge variant="outline" className="text-[10px] font-medium">
+              Extraction error
+            </Badge>
+          ) : null}
           {reasoning && (
             <Popover>
               <PopoverTrigger asChild>
@@ -351,7 +384,7 @@ function ResultCell({
               </PopoverContent>
             </Popover>
           )}
-          {result.contextChunks && result.contextChunks.length > 0 && onCite ? (
+          {citations.length > 0 && onCite ? (
             <Button
               variant="outline"
               size="icon"

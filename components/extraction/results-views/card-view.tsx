@@ -18,6 +18,12 @@ import { getAvgConfidence } from "@/lib/extraction/filtering";
 import { ConfidenceRing } from "../confidence-ring";
 import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
+import {
+  getAllCitationLocations,
+  getCitationStatus,
+  type CitationStatus,
+  type CitationLocation,
+} from "@/lib/extraction/citations";
 
 interface CardViewProps {
   papers: PaperWithResults[];
@@ -35,7 +41,8 @@ export const CardView = memo(function CardView({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
   const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
-  const [selectedCitation, setSelectedCitation] = useState<string | null>(null);
+  const [selectedCitations, setSelectedCitations] = useState<CitationLocation[]>([]);
+  const [selectedCitationStatus, setSelectedCitationStatus] = useState<CitationStatus | undefined>(undefined);
   const [selectedAnswerText, setSelectedAnswerText] = useState<string | null>(null);
   const [selectedQuestionText, setSelectedQuestionText] = useState<string | null>(null);
 
@@ -56,7 +63,8 @@ export const CardView = memo(function CardView({
         onOpenChange={setDrawerOpen}
         paperId={selectedPaperId}
         paperTitle={selectedPaperTitle}
-        citationChunk={selectedCitation}
+        citations={selectedCitations}
+        citationStatus={selectedCitationStatus}
         answerText={selectedAnswerText}
         questionText={selectedQuestionText}
       />
@@ -173,10 +181,12 @@ export const CardView = memo(function CardView({
                       <ResultActions
                         result={result}
                         onCite={() => {
-                          if (!result?.contextChunks?.length) return;
+                          if (!result) return;
+                          const citations = getAllCitationLocations(result);
+                          if (citations.length === 0) return;
                           setSelectedPaperId(paper._id);
                           setSelectedPaperTitle(paper.title);
-                          setSelectedCitation(result.contextChunks[0]);
+                          setSelectedCitations(citations);
                           const answerText = Array.isArray(result.answer)
                             ? result.answer
                                 .filter((item) => typeof item === "string")
@@ -186,6 +196,7 @@ export const CardView = memo(function CardView({
                               : null;
                           setSelectedAnswerText(answerText ?? null);
                           setSelectedQuestionText(q.question);
+                          setSelectedCitationStatus(getCitationStatus(result));
                           setDrawerOpen(true);
                         }}
                       />
@@ -214,6 +225,7 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
   }
 
   const { answer, confidence } = result;
+  const citationStatus = getCitationStatus(result);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500 border-gray-200";
@@ -264,6 +276,26 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
           {Math.round((confidence || 0) * 100)}%
         </Badge>
       )}
+      {citationStatus === "grounded" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Grounded
+        </Badge>
+      ) : null}
+      {citationStatus === "best_effort" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Best effort
+        </Badge>
+      ) : null}
+      {citationStatus === "insufficient_evidence" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Insufficient evidence
+        </Badge>
+      ) : null}
+      {citationStatus === "extraction_error" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Extraction error
+        </Badge>
+      ) : null}
     </div>
   );
 }
@@ -277,7 +309,8 @@ function ResultActions({
 }) {
   if (!result) return null;
 
-  const { reasoning, contextChunks } = result;
+  const { reasoning } = result;
+  const citations = getAllCitationLocations(result);
 
   return (
     <div className="flex flex-col gap-1">
@@ -300,7 +333,7 @@ function ResultActions({
           </PopoverContent>
         </Popover>
       )}
-      {contextChunks && contextChunks.length > 0 && onCite ? (
+      {citations.length > 0 && onCite ? (
         <Button
           variant="ghost"
           size="icon"

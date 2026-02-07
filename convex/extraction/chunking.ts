@@ -1,8 +1,8 @@
 "use node";
 
 /**
- * PDF chunking with page metadata and character indexing
- * Uses simple, reliable paragraph-based chunking (NO defaultChunker)
+ * PDF chunking with page metadata and character indexing.
+ * Chunks are generated from exact page substrings so char ranges stay aligned.
  */
 
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
@@ -19,204 +19,199 @@ export interface ChunkWithMetadata {
   metadata: ChunkMetadata;
 }
 
-/**
- * Simple, reliable paragraph-based chunking
- * Completely avoids defaultChunker which causes "c is not iterable" errors
- */
+export interface ExtractedPage {
+  pageNumber: number;
+  text: string;
+}
+
+type ChunkSpan = {
+  text: string;
+  start: number;
+  end: number;
+};
+
+const TARGET_CHUNK_SIZE = 700;
+const MAX_CHUNK_SIZE = 900;
+const CHUNK_OVERLAP = 120;
+const MIN_CHUNK_SIZE = 80;
+
+function isWhitespace(char: string | undefined) {
+  return !char || /\s/.test(char);
+}
+
+function findPreferredBoundary(text: string, softEnd: number, hardEnd: number) {
+  // Best: paragraph boundary.
+  for (let i = hardEnd; i > softEnd; i--) {
+    if (text[i - 1] === "\n" && text[i - 2] === "\n") return i;
+  }
+
+  // Next: sentence boundary.
+  for (let i = hardEnd; i > softEnd; i--) {
+    const prev = text[i - 1];
+    if (/[.!?]/.test(prev) && isWhitespace(text[i])) return i;
+  }
+
+  // Next: line boundary.
+  for (let i = hardEnd; i > softEnd; i--) {
+    if (text[i - 1] === "\n") return i;
+  }
+
+  // Last: any whitespace.
+  for (let i = hardEnd; i > softEnd; i--) {
+    if (isWhitespace(text[i - 1])) return i;
+  }
+
+  return hardEnd;
+}
+
 function chunkTextSimple(
   text: string,
   options: {
-    maxChunkSize?: number;
     pageNum?: number;
+    targetChunkSize?: number;
+    maxChunkSize?: number;
+    overlapSize?: number;
   } = {}
-): string[] {
-  const { maxChunkSize = 2500, pageNum = 0 } = options;
+): ChunkSpan[] {
+  const {
+    pageNum = 0,
+    targetChunkSize = TARGET_CHUNK_SIZE,
+    maxChunkSize = MAX_CHUNK_SIZE,
+    overlapSize = CHUNK_OVERLAP,
+  } = options;
 
-  // Validate input
   if (typeof text !== "string") {
-    console.warn(`[chunkTextSimple] Page ${pageNum + 1}: Invalid text type "${typeof text}"`);
+    console.warn(
+      `[chunkTextSimple] Page ${pageNum + 1}: Invalid text type "${typeof text}"`
+    );
     return [];
   }
 
-  const trimmedText = text.trim();
-  if (trimmedText.length === 0) {
+  if (text.trim().length === 0) {
     console.log(`[chunkTextSimple] Page ${pageNum + 1}: Empty text`);
     return [];
   }
 
-  if (trimmedText.length < 100) {
-    console.log(`[chunkTextSimple] Page ${pageNum + 1}: Text too short (${trimmedText.length} chars)`);
-    return [];
-  }
+  const spans: ChunkSpan[] = [];
+  const textLength = text.length;
+  let cursor = 0;
 
-  console.log(`[chunkTextSimple] Page ${pageNum + 1}: Processing ${trimmedText.length} chars`);
-
-  // Split into paragraphs
-  const paragraphs = trimmedText.split(/\n\s*\n/).filter((p) => p.trim().length > 50);
-
-  if (paragraphs.length === 0) {
-    const sentenceChunks = splitBySentences(trimmedText, maxChunkSize);
-    if (sentenceChunks.length > 0) {
-      console.log(
-        `[chunkTextSimple] Page ${pageNum + 1}: Using sentence-based chunking (${sentenceChunks.length})`
-      );
-      return sentenceChunks;
+  while (cursor < textLength) {
+    while (cursor < textLength && isWhitespace(text[cursor])) {
+      cursor++;
     }
+    if (cursor >= textLength) break;
 
-    // If no good paragraphs, treat entire text as one chunk
-    if (trimmedText.length >= 100) {
-      console.log(`[chunkTextSimple] Page ${pageNum + 1}: Using full text as single chunk`);
-      return [trimmedText];
-    }
-    return [];
-  }
+    const remaining = textLength - cursor;
+    let end: number;
 
-  const chunks: string[] = [];
-  let currentChunk = "";
-
-  for (const paragraph of paragraphs) {
-    const trimmed = paragraph.trim();
-    if (!trimmed) continue;
-
-    // If adding this paragraph would exceed chunk size, save current chunk
-    if (currentChunk.length + trimmed.length > maxChunkSize && currentChunk.length > 200) {
-      chunks.push(currentChunk.trim());
-      // Keep overlap: last ~200 chars (about 40 words)
-      const words = currentChunk.split(" ");
-      const overlapText = words.slice(-40).join(" ");
-      currentChunk = overlapText + "\n\n" + trimmed + "\n\n";
+    if (remaining <= maxChunkSize) {
+      end = textLength;
     } else {
-      currentChunk += trimmed + "\n\n";
+      const softEnd = Math.min(textLength, cursor + targetChunkSize);
+      const hardEnd = Math.min(textLength, cursor + maxChunkSize);
+      end = findPreferredBoundary(text, softEnd, hardEnd);
+      if (end <= cursor) {
+        end = hardEnd;
+      }
     }
-  }
 
-  // Don't forget the last chunk
-  if (currentChunk.trim().length > 100) {
-    chunks.push(currentChunk.trim());
-  }
-
-  console.log(`[chunkTextSimple] Page ${pageNum + 1}: Created ${chunks.length} chunks`);
-  return chunks;
-}
-
-function splitBySentences(text: string, maxChunkSize: number): string[] {
-  const sentenceMatches = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
-  const sentences = sentenceMatches
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence.length > 0);
-
-  if (sentences.length === 0) return [];
-
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const sentence of sentences) {
-    if (current.length + sentence.length > maxChunkSize && current.length > 100) {
-      chunks.push(current.trim());
-      current = sentence + " ";
-    } else {
-      current += sentence + " ";
+    let startTrimmed = cursor;
+    let endTrimmed = end;
+    while (startTrimmed < endTrimmed && isWhitespace(text[startTrimmed])) {
+      startTrimmed++;
     }
+    while (endTrimmed > startTrimmed && isWhitespace(text[endTrimmed - 1])) {
+      endTrimmed--;
+    }
+
+    if (endTrimmed - startTrimmed >= MIN_CHUNK_SIZE) {
+      spans.push({
+        text: text.slice(startTrimmed, endTrimmed),
+        start: startTrimmed,
+        end: endTrimmed,
+      });
+    }
+
+    if (end >= textLength) break;
+
+    cursor = Math.max(startTrimmed + 1, end - overlapSize);
   }
 
-  if (current.trim().length > 80) {
-    chunks.push(current.trim());
-  }
-
-  return chunks;
+  console.log(`[chunkTextSimple] Page ${pageNum + 1}: Created ${spans.length} chunks`);
+  return spans;
 }
 
 /**
- * Extract text from PDF buffer using unpdf
+ * Extract text from PDF buffer using unpdf + pdfjs.
  */
 export async function extractTextByPages(
   pdfBuffer: ArrayBuffer
-): Promise<{ pages: string[]; totalPages: number }> {
+): Promise<{ pages: ExtractedPage[]; totalPages: number }> {
   console.log(`[extractTextByPages] Starting extraction (${pdfBuffer.byteLength} bytes)`);
 
   const { extractPdfJsTextPages } = await import("./pdfjs_extract");
   const { pages, totalPages } = await extractPdfJsTextPages(pdfBuffer);
 
-  const pageTexts = pages.map((page) => buildPageTextFromItems(page.items).text);
+  const extractedPages: ExtractedPage[] = pages.map((page) => ({
+    pageNumber: page.pageNumber,
+    text: buildPageTextFromItems(page.items).text,
+  }));
 
-  const validPages = pageTexts.filter((page, index) => {
-    if (typeof page !== "string") {
-      console.warn(`[extractTextByPages] Page ${index + 1}: Not a string`);
-      return false;
-    }
-    if (page.trim().length < 50) {
-      console.log(`[extractTextByPages] Page ${index + 1}: Too short (${page.length} chars)`);
-      return false;
-    }
-    return true;
-  });
-
-  console.log(`[extractTextByPages] ${validPages.length}/${pageTexts.length} pages valid`);
+  console.log(`[extractTextByPages] Extracted ${extractedPages.length}/${totalPages} pages`);
 
   return {
-    pages: validPages,
-    totalPages: totalPages || validPages.length,
+    pages: extractedPages,
+    totalPages,
   };
 }
 
 /**
- * Chunk pages with metadata
+ * Chunk pages with metadata, preserving original PDF page numbers.
  */
 export function chunkPagesWithMetadata(
-  pages: string[],
+  pages: ExtractedPage[],
+  totalPages: number,
   options: {
+    targetChunkSize?: number;
     maxChunkSize?: number;
+    overlapSize?: number;
   } = {}
 ): ChunkWithMetadata[] {
-  const { maxChunkSize = 2500 } = options;
   const chunks: ChunkWithMetadata[] = [];
   let globalChunkIndex = 0;
 
   console.log(`[chunkPagesWithMetadata] Processing ${pages.length} pages`);
 
-  for (let pageNum = 0; pageNum < pages.length; pageNum++) {
-    const pageText = pages[pageNum];
-
-    // Use simple chunking
-    const pageChunks = chunkTextSimple(pageText, {
-      maxChunkSize,
-      pageNum,
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i];
+    const pageSpans = chunkTextSimple(page.text, {
+      pageNum: page.pageNumber - 1,
+      targetChunkSize: options.targetChunkSize,
+      maxChunkSize: options.maxChunkSize,
+      overlapSize: options.overlapSize,
     });
 
-    if (pageChunks.length === 0) {
-      console.log(`[chunkPagesWithMetadata] Page ${pageNum + 1}: No chunks`);
+    if (pageSpans.length === 0) {
+      console.log(`[chunkPagesWithMetadata] Page ${page.pageNumber}: No usable chunks`);
       continue;
     }
 
-    // Add metadata
-    let cursor = 0;
-    for (let i = 0; i < pageChunks.length; i++) {
-      const chunkText = pageChunks[i];
-      const searchStart = Math.max(0, cursor - chunkText.length);
-      let startChar = pageText.indexOf(chunkText, searchStart);
-
-      if (startChar === -1) {
-        startChar = pageText.indexOf(chunkText);
-      }
-
-      if (startChar === -1) {
-        console.warn(`[chunkPagesWithMetadata] Page ${pageNum + 1}: Chunk not found in text`);
-        continue;
-      }
-
+    for (const span of pageSpans) {
       chunks.push({
-        text: chunkText,
+        text: span.text,
         metadata: {
-          page: pageNum + 1,
-          charRange: [startChar, startChar + chunkText.length],
-          totalPages: pages.length,
+          page: page.pageNumber,
+          charRange: [span.start, span.end],
+          totalPages,
           chunkIndex: globalChunkIndex++,
         },
       });
-      cursor = startChar + chunkText.length;
     }
 
-    console.log(`[chunkPagesWithMetadata] Page ${pageNum + 1}: ${pageChunks.length} chunks`);
+    console.log(
+      `[chunkPagesWithMetadata] Page ${page.pageNumber}: ${pageSpans.length} chunks`
+    );
   }
 
   console.log(`[chunkPagesWithMetadata] Total: ${chunks.length} chunks`);
@@ -224,25 +219,26 @@ export function chunkPagesWithMetadata(
 }
 
 /**
- * Main extraction function
+ * Main extraction function.
  */
 export async function extractAndChunkPdf(
   pdfBuffer: ArrayBuffer,
   options?: {
+    targetChunkSize?: number;
     maxChunkSize?: number;
+    overlapSize?: number;
   }
 ): Promise<ChunkWithMetadata[]> {
   console.log(`[extractAndChunkPdf] Starting (${pdfBuffer.byteLength} bytes)`);
 
   try {
     const { pages, totalPages } = await extractTextByPages(pdfBuffer);
-
     if (pages.length === 0) {
-      console.warn(`[extractAndChunkPdf] No valid pages`);
+      console.warn(`[extractAndChunkPdf] No pages extracted`);
       return [];
     }
 
-    const chunks = chunkPagesWithMetadata(pages, options);
+    const chunks = chunkPagesWithMetadata(pages, totalPages, options);
     console.log(`[extractAndChunkPdf] Complete: ${chunks.length} chunks`);
     return chunks;
   } catch (error) {
@@ -252,17 +248,17 @@ export async function extractAndChunkPdf(
 }
 
 /**
- * Format chunk for display
+ * Format chunk for legacy display.
  */
 export function formatChunkWithMetadata(chunk: ChunkWithMetadata): string {
-  const { page, charRange, chunkIndex } = chunk.metadata;
+  const { page, charRange } = chunk.metadata;
   const [start, end] = charRange;
   return `[Page ${page}, chars ${start}-${end}]
 ${chunk.text}`;
 }
 
 /**
- * Prepare for RAG
+ * Prepare chunk format for Convex RAG component.
  */
 export function prepareChunksForRag(
   chunks: ChunkWithMetadata[]

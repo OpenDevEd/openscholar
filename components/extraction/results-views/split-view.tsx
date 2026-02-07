@@ -9,6 +9,12 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { getAvgConfidence } from "@/lib/extraction/filtering";
 import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
+import {
+  getAllCitationLocations,
+  getCitationStatus,
+  type CitationStatus,
+  type CitationLocation,
+} from "@/lib/extraction/citations";
 
 interface SplitViewProps {
   papers: PaperWithResults[];
@@ -22,7 +28,8 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPaperId, setDrawerPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
   const [drawerPaperTitle, setDrawerPaperTitle] = useState<string | null>(null);
-  const [drawerCitation, setDrawerCitation] = useState<string | null>(null);
+  const [drawerCitations, setDrawerCitations] = useState<CitationLocation[]>([]);
+  const [drawerCitationStatus, setDrawerCitationStatus] = useState<CitationStatus | undefined>(undefined);
   const [drawerAnswerText, setDrawerAnswerText] = useState<string | null>(null);
   const [drawerQuestionText, setDrawerQuestionText] = useState<string | null>(null);
 
@@ -35,7 +42,8 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
         onOpenChange={setDrawerOpen}
         paperId={drawerPaperId}
         paperTitle={drawerPaperTitle}
-        citationChunk={drawerCitation}
+        citations={drawerCitations}
+        citationStatus={drawerCitationStatus}
         answerText={drawerAnswerText}
         questionText={drawerQuestionText}
       />
@@ -102,6 +110,7 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
                 <div className="space-y-4">
                   {questions.map(q => {
                     const result = selectedPaper.results.find(r => r.questionKey === q.key);
+                    const citations = getAllCitationLocations(result);
                     return (
                       <div key={q.key} className="bg-card rounded-lg border border-border/40 p-4">
                         <h3 className="font-medium text-sm mb-3">{q.question}</h3>
@@ -114,13 +123,16 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
                               </p>
                             )}
                           </div>
-                          {result?.contextChunks?.[0] && (
+                          {citations.length > 0 && (
                             <CitationPreview
-                              chunk={result.contextChunks[0]}
+                              citation={citations[0]}
                               onClick={() => {
+                                if (!result) return;
+                                if (citations.length === 0) return;
                                 setDrawerPaperId(selectedPaper._id);
                                 setDrawerPaperTitle(selectedPaper.title);
-                                setDrawerCitation(result.contextChunks![0]);
+                                setDrawerCitations(citations);
+                                setDrawerCitationStatus(getCitationStatus(result));
                                 const answerText = Array.isArray(result.answer)
                                   ? result.answer
                                       .filter((item) => typeof item === "string")
@@ -173,9 +185,10 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
   if (!result) return <span className="text-muted-foreground/50 text-sm">No result</span>;
   
   const { answer } = result;
+  const citationStatus = getCitationStatus(result);
 
   return (
-    <div className="text-sm">
+    <div className="text-sm space-y-1">
       {type === "boolean" ? (
         <Badge className={cn(answer ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
           {answer ? "Yes" : "No"}
@@ -187,18 +200,46 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       ) : (
         <div className="text-sm">{String(answer)}</div>
       )}
+      {citationStatus === "grounded" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Grounded
+        </Badge>
+      ) : null}
+      {citationStatus === "best_effort" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Best effort
+        </Badge>
+      ) : null}
+      {citationStatus === "insufficient_evidence" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Insufficient evidence
+        </Badge>
+      ) : null}
+      {citationStatus === "extraction_error" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          Extraction error
+        </Badge>
+      ) : null}
     </div>
   );
 }
 
-function CitationPreview({ chunk, onClick }: { chunk: string; onClick: () => void }) {
+function CitationPreview({
+  citation,
+  onClick,
+}: {
+  citation: CitationLocation;
+  onClick: () => void;
+}) {
   return (
     <div className="bg-muted/30 rounded-lg border border-border/40 p-3 space-y-2 cursor-pointer hover:bg-muted/50" onClick={onClick}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">Citation</span>
         <Quote className="w-3 h-3 text-muted-foreground" />
       </div>
-      <p className="text-xs text-muted-foreground line-clamp-4">{chunk}</p>
+      <p className="text-xs text-muted-foreground line-clamp-4">
+        {citation.text}
+      </p>
       <Button variant="link" size="sm" className="h-auto p-0 text-xs">View in PDF</Button>
     </div>
   );

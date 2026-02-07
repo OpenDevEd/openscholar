@@ -352,6 +352,16 @@ export const getPaperInternal = internalQuery({
   },
 });
 
+export const getEvidenceUnitsInternal = internalQuery({
+  args: { paperId: v.id("extractionPapers") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("extractionEvidenceUnits")
+      .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
+      .collect();
+  },
+});
+
 export const getJobProgressInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {

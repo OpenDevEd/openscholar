@@ -226,6 +226,7 @@ export default defineSchema({
         groupId: v.optional(v.string()),
         zoteroUserId: v.optional(v.string()),
         collectionKey: v.optional(v.string()),
+        includeDescendants: v.optional(v.boolean()),
         items: v.array(
           v.object({
             itemKey: v.string(),
@@ -365,6 +366,25 @@ export default defineSchema({
     .index("by_work", ["workId"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)
+  // ═══════════════════════════════════════════════════════════════
+  extractionEvidenceUnits: defineTable({
+    paperId: v.id("extractionPapers"),
+    evidenceId: v.string(),
+    page: v.number(),
+    charRange: v.array(v.number()),
+    text: v.string(),
+    section: v.optional(v.string()),
+    tokens: v.array(v.string()),
+    anchorConfidence: v.number(),
+    source: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_paper", ["paperId"])
+    .index("by_paper_evidence", ["paperId", "evidenceId"])
+    .index("by_paper_page", ["paperId", "page"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // EXTRACTION RESULTS - Extracted data for each paper/question combo
   // ═══════════════════════════════════════════════════════════════
   extractionResults: defineTable({
@@ -377,7 +397,37 @@ export default defineSchema({
     // AI metadata
     confidence: v.optional(v.number()),
     reasoning: v.optional(v.string()),
-    contextChunks: v.optional(v.array(v.string())), // RAG context used
+    citations: v.array(
+      v.object({
+        evidenceId: v.string(),
+        page: v.number(),
+        charRange: v.array(v.number()),
+        quote: v.string(),
+        retrieval: v.object({
+          denseScore: v.optional(v.number()),
+          lexicalScore: v.optional(v.number()),
+          fusedScore: v.optional(v.number()),
+          rerankScore: v.optional(v.number()),
+        }),
+        validated: v.boolean(),
+      })
+    ),
+    citationStatus: v.union(
+      v.literal("grounded"),
+      v.literal("best_effort"),
+      v.literal("insufficient_evidence"),
+      v.literal("extraction_error")
+    ),
+    retrievalDiagnostics: v.optional(
+      v.object({
+        denseCandidates: v.number(),
+        lexicalCandidates: v.number(),
+        fusedCandidates: v.number(),
+        rerankedCandidates: v.number(),
+        validatedCitations: v.number(),
+        strictNull: v.boolean(),
+      })
+    ),
 
     // Source tracking
     model: v.optional(v.string()),

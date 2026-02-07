@@ -5,8 +5,6 @@
  * Strong instructions to ensure AI thoroughly searches provided content
  */
 
-import type { ChunkMetadata } from "./chunking";
-
 export interface ExtractionQuestion {
   key: string;
   question: string;
@@ -14,9 +12,12 @@ export interface ExtractionQuestion {
   description?: string;
 }
 
-export interface ChunkWithContext {
+export interface EvidenceWithContext {
+  evidenceId: string;
   text: string;
-  metadata: ChunkMetadata;
+  page: number;
+  charRange: [number, number];
+  section?: string;
   relevanceScore?: number;
 }
 
@@ -26,9 +27,9 @@ export interface ChunkWithContext {
 export function buildEnhancedExtractionPrompt(
   question: ExtractionQuestion,
   abstract: string | undefined,
-  chunks: ChunkWithContext[]
+  evidence: EvidenceWithContext[]
 ): string {
-  let prompt = `You are an expert research assistant extracting specific data from academic papers.
+  let prompt = `You are an expert research assistant extracting structured answers from academic papers.
 
 `;
 
@@ -41,22 +42,22 @@ ${abstract}
   }
 
   // Add PDF content with clear formatting
-  if (chunks.length > 0) {
-    prompt += `SOURCE MATERIAL FROM THE FULL PAPER - READ ALL PASSAGES CAREFULLY:
+  if (evidence.length > 0) {
+    prompt += `SOURCE EVIDENCE FROM THE FULL PAPER:
 `;
-    prompt += `The following passages are extracted from the paper. You MUST search through ALL of them to find the answer. The information you need IS in these passages.
+    prompt += `Each evidence item has an EVIDENCE ID, page number, and character range. You MUST only cite evidence IDs present below.
 
 `;
 
-    chunks.forEach((chunk, index) => {
-      const { page, charRange } = chunk.metadata;
-      const [start, end] = charRange;
-      const relevance = chunk.relevanceScore
-        ? ` (relevance: ${(chunk.relevanceScore * 100).toFixed(0)}%)`
+    evidence.forEach((item) => {
+      const [start, end] = item.charRange;
+      const relevance = item.relevanceScore
+        ? ` (relevance: ${(item.relevanceScore * 100).toFixed(0)}%)`
         : "";
+      const section = item.section ? ` section=${item.section}` : "";
 
-      prompt += `[${index + 1}] Page ${page}, characters ${start}-${end}${relevance}:
-${chunk.text}\n\n`;
+      prompt += `[EVIDENCE ${item.evidenceId}] page=${item.page} chars=${start}-${end}${section}${relevance}
+${item.text}\n\n`;
     });
   }
 
@@ -75,71 +76,23 @@ Question: ${question.question}
 
   // Strong instructions
   prompt += `INSTRUCTIONS - FOLLOW EXACTLY:
-1. You MUST search through ALL provided passages above. The answer is contained in the source material.
-2. Read each passage carefully and identify specific facts, numbers, dates, and statements.
-3. If the answer requires information from multiple passages, combine them accurately.
-4. Answer ONLY based on the source material provided above. Do not use outside knowledge.
-5. If you cannot find the answer after searching ALL passages, respond with null.
-6. Be specific and cite page numbers when possible (e.g., "Found on page 3").
-7. For factual questions (sample sizes, dates, measurements): Look for exact numbers and units.
-8. For interpretive questions (methods, conclusions): Look for explicit statements in the text.
-9. Provide a confidence score (0.0-1.0) where 1.0 = definitely found in text, 0.0 = not found.
-10. Include brief reasoning explaining where in the text you found the answer.
+1. Use ONLY the provided evidence and abstract. Do not use outside knowledge.
+2. You may cite only evidence IDs listed above.
+3. Do NOT invent IDs and do NOT quote text that is not in the evidence list.
+4. Prefer a best-effort answer when evidence is suggestive, but only cite listed IDs.
+5. If there is no support at all, set answer to null and supportEvidenceIds to [].
+6. Confidence must be between 0.0 and 1.0.
+7. Keep reasoning concise and evidence-based.
 
-Respond in the requested JSON format. Do not say "content is empty" or "no information provided" - the information IS in the passages above.\n`;
+Return strict JSON:
+{
+  "answer": <value|null>,
+  "confidence": <number>,
+  "reasoning": <string>,
+  "supportEvidenceIds": [<string>, ...]
+}\n`;
 
   return prompt;
-}
-
-/**
- * Build prompt for LLM-based reranking
- */
-export function buildRerankingPrompt(
-  question: string,
-  chunkText: string,
-  chunkMetadata: ChunkMetadata
-): string {
-  const { page, charRange } = chunkMetadata;
-  const [start, end] = charRange;
-
-  return `Rate how relevant this passage is for answering the question.
-
-Question: ${question}
-
-Passage [Page ${page}, chars ${start}-${end}]:
-${chunkText.substring(0, 1500)}${chunkText.length > 1500 ? "..." : ""}
-
-Rate from 0.0 to 1.0 where:
-- 1.0 = Contains direct answer to the question
-- 0.7-0.9 = Highly relevant, contains related information
-- 0.4-0.6 = Somewhat relevant, tangential information
-- 0.1-0.3 = Minimally relevant
-- 0.0 = Not relevant at all
-
-Return ONLY a number between 0.0 and 1.0.`;
-}
-
-/**
- * Build prompt for query expansion (academic terminology)
- */
-export function buildQueryExpansionPrompt(
-  originalQuestion: string
-): string {
-  return `Expand this research extraction question with academic terminology and synonyms.
-
-Original Question: ${originalQuestion}
-
-Provide 3 search queries:
-1. Original question (exactly as written)
-2. Keyword-focused version (extract key terms, numbers, technical terms)
-3. Academic-expanded version (expand acronyms, add synonyms, use formal academic language)
-
-Format your response as:
-QUERY_1: [original]
-QUERY_2: [keywords]
-QUERY_3: [academic expanded]
-
-Queries should be optimized for semantic search in academic papers.`;
 }
 
 /**
@@ -166,40 +119,4 @@ export function detectQuestionType(question: string): "factual" | "interpretive"
   ).length;
 
   return factualScore >= interpretiveScore ? "factual" : "interpretive";
-}
-
-/**
- * Build schema for extraction answer
- */
-export function getExtractionSchema(): object {
-  return {
-    type: "object",
-    properties: {
-      answer: {
-        oneOf: [
-          { type: "string" },
-          { type: "number" },
-          { type: "boolean" },
-          { type: "array", items: { type: "string" } },
-          { type: "null" },
-        ],
-      },
-      confidence: {
-        type: "number",
-        minimum: 0,
-        maximum: 1,
-        description:
-          "Confidence that answer was found in text (1.0 = definitely found)",
-      },
-      reasoning: {
-        type: "string",
-        description: "Brief explanation of where answer was found",
-      },
-      sourceLocation: {
-        type: "string",
-        description: "Page numbers where answer was found",
-      },
-    },
-    required: ["answer", "confidence", "reasoning"],
-  };
 }

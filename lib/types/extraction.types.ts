@@ -33,6 +33,7 @@ export interface ExtractionZoteroSelection {
   groupId?: string;
   zoteroUserId?: string;
   collectionKey?: string;
+  includeDescendants?: boolean;
   items: ExtractionZoteroItem[];
 }
 
@@ -90,9 +91,35 @@ export type ExtractionPaperStatus =
 
 export interface ExtractionResult {
   questionKey: string;
-  answer: string | boolean | number | string[];
+  answer: string | boolean | number | string[] | null;
   confidence?: number;
   reasoning?: string;
+  citations: Array<{
+    evidenceId: string;
+    page: number;
+    charRange: [number, number];
+    quote: string;
+    retrieval: {
+      denseScore?: number;
+      lexicalScore?: number;
+      fusedScore?: number;
+      rerankScore?: number;
+    };
+    validated: true;
+  }>;
+  citationStatus:
+    | "grounded"
+    | "best_effort"
+    | "insufficient_evidence"
+    | "extraction_error";
+  retrievalDiagnostics?: {
+    denseCandidates: number;
+    lexicalCandidates: number;
+    fusedCandidates: number;
+    rerankedCandidates: number;
+    validatedCitations: number;
+    strictNull: boolean;
+  };
 }
 
 export interface ExtractionJobDetails {

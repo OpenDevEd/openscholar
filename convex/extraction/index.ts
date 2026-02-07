@@ -35,7 +35,6 @@ export {
   createQuestionDirect,
   setJobWorkflowId,
   enqueuePaperProcessing,
-  handlePaperComplete,
   handlePaperFetchComplete,
   handleDownloadAndIndexComplete,
   handleExtractionComplete,
@@ -43,6 +42,9 @@ export {
   markPaperIndexed,
   backfillIsIndexed,
   backfillProcessable,
+  replacePaperEvidenceUnits,
+  resetExtractionMvpData,
+  purgeLegacyExtractionRowsBatch,
 } from "./mutations";
 
 // Queries (public)
@@ -62,6 +64,7 @@ export {
   getJobInternal,
   getQuestionsInternal,
   getJobProgressInternal,
+  getEvidenceUnitsInternal,
 } from "./queries";
 
 // User lookup moved to mutations for self-hosted compatibility

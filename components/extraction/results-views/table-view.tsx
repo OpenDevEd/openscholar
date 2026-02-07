@@ -23,6 +23,12 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
+import {
+  getAllCitationLocations,
+  getCitationStatus,
+  type CitationStatus,
+  type CitationLocation,
+} from "@/lib/extraction/citations";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -42,7 +48,8 @@ export const TableView = memo(function TableView({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
   const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
-  const [selectedCitation, setSelectedCitation] = useState<string | null>(null);
+  const [selectedCitations, setSelectedCitations] = useState<CitationLocation[]>([]);
+  const [selectedCitationStatus, setSelectedCitationStatus] = useState<CitationStatus | undefined>(undefined);
   const [selectedAnswerText, setSelectedAnswerText] = useState<string | null>(null);
   const [selectedQuestionText, setSelectedQuestionText] = useState<string | null>(null);
 
@@ -74,7 +81,8 @@ export const TableView = memo(function TableView({
         onOpenChange={setDrawerOpen}
         paperId={selectedPaperId}
         paperTitle={selectedPaperTitle}
-        citationChunk={selectedCitation}
+        citations={selectedCitations}
+        citationStatus={selectedCitationStatus}
         answerText={selectedAnswerText}
         questionText={selectedQuestionText}
       />
@@ -249,10 +257,12 @@ export const TableView = memo(function TableView({
                             type={q.type}
                             searchQuery={searchQuery}
                             onCite={() => {
-                              if (!result?.contextChunks?.length) return;
+                              if (!result) return;
+                              const citations = getAllCitationLocations(result);
+                              if (citations.length === 0) return;
                               setSelectedPaperId(paper._id);
                               setSelectedPaperTitle(paper.title);
-                              setSelectedCitation(result.contextChunks[0]);
+                              setSelectedCitations(citations);
                               const answerText = Array.isArray(result.answer)
                                 ? result.answer
                                     .filter((item) => typeof item === "string")
@@ -262,6 +272,7 @@ export const TableView = memo(function TableView({
                                   : null;
                               setSelectedAnswerText(answerText ?? null);
                               setSelectedQuestionText(q.question);
+                              setSelectedCitationStatus(getCitationStatus(result));
                               setDrawerOpen(true);
                             }}
                           />
@@ -310,6 +321,8 @@ const ResultCell = memo(function ResultCell({
   }
 
   const { answer, confidence, reasoning } = result;
+  const citations = getAllCitationLocations(result);
+  const citationStatus = getCitationStatus(result);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500";
@@ -387,6 +400,26 @@ const ResultCell = memo(function ResultCell({
             {Math.round((confidence || 0) * 100)}%
           </Badge>
         )}
+        {citationStatus === "grounded" ? (
+          <Badge variant="outline" className="text-[10px] font-medium">
+            Grounded
+          </Badge>
+        ) : null}
+        {citationStatus === "best_effort" ? (
+          <Badge variant="outline" className="text-[10px] font-medium">
+            Best effort
+          </Badge>
+        ) : null}
+        {citationStatus === "insufficient_evidence" ? (
+          <Badge variant="outline" className="text-[10px] font-medium">
+            Insufficient evidence
+          </Badge>
+        ) : null}
+        {citationStatus === "extraction_error" ? (
+          <Badge variant="outline" className="text-[10px] font-medium">
+            Extraction error
+          </Badge>
+        ) : null}
 
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {reasoning && (
@@ -414,7 +447,7 @@ const ResultCell = memo(function ResultCell({
             </Popover>
           )}
 
-          {result.contextChunks && result.contextChunks.length > 0 && onCite ? (
+          {citations.length > 0 && onCite ? (
             <Button
               variant="ghost"
               size="icon"

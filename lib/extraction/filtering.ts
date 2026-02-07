@@ -45,6 +45,15 @@ export function preprocessPapers(papers: PaperWithResults[]): Map<string, Prepro
         paper.title,
         ...paper.results.map(r => String(r.answer)),
         ...paper.results.map(r => r.reasoning || ''),
+        ...paper.results.flatMap((r) => {
+          const citations = (r as any).citations;
+          if (!Array.isArray(citations)) return [];
+          return citations
+            .map((citation: any) =>
+              typeof citation?.quote === "string" ? citation.quote : ""
+            )
+            .filter(Boolean);
+        }),
       ].join(' ').toLowerCase();
 
       return [paper._id, { avgConfidence, searchableText }];

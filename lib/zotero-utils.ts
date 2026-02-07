@@ -2,8 +2,7 @@ export const ZOTERO_USER_AGENT = 'OpenAlex-Count/1.0';
 
 /**
  * Build standard headers for Zotero API requests. If an apiKey is provided,
- * both header-based and Bearer authentication are added for maximum
- * compatibility with various endpoints and redirect patterns.
+ * use documented API-key authentication headers.
  */
 export function buildZoteroHeaders(apiKey?: string): Record<string, string> {
   const headers: Record<string, string> = {
@@ -12,8 +11,7 @@ export function buildZoteroHeaders(apiKey?: string): Record<string, string> {
   };
 
   if (apiKey) {
-    headers['Zotero-API-Key'] = apiKey;      // legacy clients still rely on this
-    headers['Authorization'] = `Bearer ${apiKey}`;
+    headers['Zotero-API-Key'] = apiKey;
   }
 
   return headers;

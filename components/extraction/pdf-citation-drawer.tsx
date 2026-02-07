@@ -1,13 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import type { Id } from "@/convex/_generated/dataModel";
-import { parseContextChunk } from "@/lib/extraction/citations";
+import type {
+  CitationLocation,
+  CitationStatus,
+} from "@/lib/extraction/citations";
 const PdfViewer = dynamic(
   () => import("@/components/extraction/pdf-viewer").then((mod) => mod.PdfViewer),
   { ssr: false },
@@ -18,7 +22,8 @@ type PdfCitationDrawerProps = {
   onOpenChange: (open: boolean) => void;
   paperId: Id<"extractionPapers"> | null;
   paperTitle: string | null;
-  citationChunk: string | null;
+  citations: CitationLocation[];
+  citationStatus?: CitationStatus;
   answerText?: string | null;
   questionText?: string | null;
 };
@@ -28,7 +33,8 @@ export function PdfCitationDrawer({
   onOpenChange,
   paperId,
   paperTitle,
-  citationChunk,
+  citations,
+  citationStatus,
   answerText,
   questionText,
 }: PdfCitationDrawerProps) {
@@ -37,10 +43,28 @@ export function PdfCitationDrawer({
     paperId ? { paperId } : "skip",
   );
 
-  const citation = useMemo(
-    () => (citationChunk ? parseContextChunk(citationChunk) : null),
-    [citationChunk],
-  );
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [paperId, open]);
+
+  useEffect(() => {
+    if (selectedIndex < citations.length) return;
+    setSelectedIndex(0);
+  }, [citations.length, selectedIndex]);
+
+  const citation = citations[selectedIndex] || null;
+  const statusLabel =
+    citationStatus === "grounded"
+      ? "Grounded"
+      : citationStatus === "best_effort"
+        ? "Best effort"
+        : citationStatus === "insufficient_evidence"
+          ? "Insufficient evidence"
+          : citationStatus === "extraction_error"
+            ? "Extraction error"
+            : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,20 +77,43 @@ export function PdfCitationDrawer({
             <DialogTitle className="text-lg font-semibold truncate">
               {paperTitle || "Citation"}
             </DialogTitle>
-            {pdfUrl ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(pdfUrl, "_blank")}
-              >
-                Open PDF
-              </Button>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {statusLabel ? (
+                <Badge variant="outline" className="text-[10px] font-medium">
+                  {statusLabel}
+                </Badge>
+              ) : null}
+              {pdfUrl ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(pdfUrl, "_blank")}
+                >
+                  Open PDF
+                </Button>
+              ) : null}
+            </div>
           </div>
           {citation?.text ? (
             <p className="text-xs text-muted-foreground line-clamp-3">
               {citation.text}
             </p>
+          ) : null}
+          {citations.length > 1 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {citations.map((item, index) => (
+                <Button
+                  key={`${item.page}-${item.charRange[0]}-${item.charRange[1]}`}
+                  type="button"
+                  variant={index === selectedIndex ? "default" : "outline"}
+                  size="sm"
+                  className="h-6 px-2 text-[10px]"
+                  onClick={() => setSelectedIndex(index)}
+                >
+                  Evidence {index + 1} · p{item.page}
+                </Button>
+              ))}
+            </div>
           ) : null}
         </DialogHeader>
         <div className="flex-1 overflow-auto px-6 py-4">
@@ -82,6 +129,7 @@ export function PdfCitationDrawer({
               pageNumber={citation.page}
               charRange={citation.charRange}
               citationText={citation.text}
+              citationValidated={citation.validated}
               answerText={answerText}
               questionText={questionText}
             />

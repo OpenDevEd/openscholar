@@ -260,8 +260,8 @@ export default function JobDetailPage() {
               <span className="text-foreground truncate max-w-[200px]">{job.name}</span>
             </motion.div>
 
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full overflow-hidden">
+              <div className="flex items-center gap-3 truncate">
                 {/* Gradient icon */}
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 flex items-center justify-center shadow-sm">
                   <FileText className="h-5 w-5 text-primary" />
@@ -321,7 +321,7 @@ export default function JobDetailPage() {
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.4, delay: 0.15 }}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 shrink-0"
               >
                 <Button
                   variant="outline"

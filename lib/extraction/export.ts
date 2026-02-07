@@ -170,7 +170,10 @@ export function exportToJSON(
         answer: r.answer,
         confidence: r.confidence,
         ...(includeReasoning && { reasoning: r.reasoning }),
-        ...(includeCitations && { citations: r.contextChunks }),
+        ...(includeCitations && {
+          citations: (r as any).citations ?? [],
+          citationStatus: (r as any).citationStatus,
+        }),
       })),
     })),
   };

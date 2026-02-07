@@ -47,7 +47,32 @@ export interface ExtractionResult {
   answer: string | boolean | number | string[] | null;
   confidence?: number;
   reasoning?: string;
-  contextChunks?: string[];
+  citations: Array<{
+    evidenceId: string;
+    page: number;
+    charRange: [number, number];
+    quote: string;
+    retrieval: {
+      denseScore?: number;
+      lexicalScore?: number;
+      fusedScore?: number;
+      rerankScore?: number;
+    };
+    validated: true;
+  }>;
+  citationStatus:
+    | "grounded"
+    | "best_effort"
+    | "insufficient_evidence"
+    | "extraction_error";
+  retrievalDiagnostics?: {
+    denseCandidates: number;
+    lexicalCandidates: number;
+    fusedCandidates: number;
+    rerankedCandidates: number;
+    validatedCitations: number;
+    strictNull: boolean;
+  };
   model?: string;
   provider?: string;
 }

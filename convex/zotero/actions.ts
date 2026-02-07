@@ -27,6 +27,7 @@ type ZoteroCollectionResponse = {
   data: {
     name: string;
     parentCollection: string | false;
+    deleted?: boolean | number | string;
   };
   meta?: {
     numItems?: number;
@@ -65,6 +66,7 @@ type ZoteroItemResponse = {
     itemType: string;
     contentType?: string;
     parentItem?: string;
+    deleted?: boolean | number | string;
   };
   meta?: {
     numChildren?: number;
@@ -78,8 +80,30 @@ type ZoteroChildItem = {
     title: string;
     contentType?: string;
     parentItem?: string;
+    deleted?: boolean | number | string;
   };
 };
+
+function isDeletedFlag(value: unknown): boolean {
+  if (value === true || value === 1 || value === "1") return true;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true";
+  }
+  return false;
+}
+
+function normalizeVisibleCollections(
+  collections: ZoteroCollectionResponse[]
+): ZoteroCollectionResponse[] {
+  return collections.filter((collection) => !isDeletedFlag(collection.data.deleted));
+}
+
+function filterVisibleItems(
+  items: ZoteroItemResponse[]
+): ZoteroItemResponse[] {
+  return items.filter((item) => !isDeletedFlag(item.data.deleted));
+}
 
 /**
  * Generate OAuth 1.0a signature
@@ -130,6 +154,249 @@ function generateOAuthHeader(
  */
 function generateNonce(): string {
   return crypto.randomBytes(16).toString("hex");
+}
+
+function buildZoteroUrl(
+  path: string,
+  params?: Record<string, string | number | undefined>
+): URL {
+  const url = new URL(`${ZOTERO_API_URL}${path}`);
+  url.searchParams.set("v", "3");
+  url.searchParams.set("format", "json");
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+  return url;
+}
+
+async function fetchCollectionPage(
+  prefix: string,
+  apiKey: string,
+  opts: { parentKey?: string; start: number; limit: number }
+): Promise<{ collections: ZoteroCollectionResponse[]; totalResults: number }> {
+  const endpoint = opts.parentKey
+    ? `${prefix}/collections/${opts.parentKey}/collections`
+    : `${prefix}/collections/top`;
+  const url = buildZoteroUrl(endpoint, {
+    start: opts.start,
+    limit: opts.limit,
+  });
+  const response = await fetch(url.toString(), {
+    headers: buildZoteroHeaders(apiKey),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Failed to fetch collections from Zotero: ${response.status} ${text}`);
+  }
+
+  const totalResults = parseInt(response.headers.get("Total-Results") || "0", 10);
+  const collections: ZoteroCollectionResponse[] = await response.json();
+  return { collections, totalResults };
+}
+
+async function fetchAllCollectionsForParent(
+  prefix: string,
+  apiKey: string,
+  parentKey: string | undefined,
+  pageSizes?: number[]
+): Promise<ZoteroCollectionResponse[]> {
+  const all: ZoteroCollectionResponse[] = [];
+  let start = 0;
+  let totalResults = Number.POSITIVE_INFINITY;
+  const limit = 100;
+  let page = 0;
+
+  while (start < totalResults) {
+    const result = await fetchCollectionPage(prefix, apiKey, {
+      parentKey,
+      start,
+      limit,
+    });
+    totalResults = result.totalResults;
+    pageSizes?.push(result.collections.length);
+    console.log("[fetchCollections] Collection page stats:", {
+      parentKey: parentKey || null,
+      page,
+      start,
+      pageSize: result.collections.length,
+      totalResults,
+    });
+
+    if (result.collections.length === 0) {
+      break;
+    }
+
+    all.push(...result.collections);
+    start += result.collections.length;
+    page += 1;
+  }
+
+  return all;
+}
+
+async function fetchDescendantCollections(
+  prefix: string,
+  apiKey: string,
+  parentKey: string,
+  pageSizes?: number[],
+  deletedCounter?: { count: number }
+): Promise<ZoteroCollectionResponse[]> {
+  const descendants: ZoteroCollectionResponse[] = [];
+  const children = await fetchAllCollectionsForParent(prefix, apiKey, parentKey, pageSizes);
+
+  for (const child of children) {
+    if (isDeletedFlag(child.data.deleted)) {
+      if (deletedCounter) {
+        deletedCounter.count += 1;
+      }
+      continue;
+    }
+    descendants.push(child);
+    if ((child.meta?.numCollections || 0) > 0) {
+      const nested = await fetchDescendantCollections(
+        prefix,
+        apiKey,
+        child.key,
+        pageSizes,
+        deletedCounter
+      );
+      descendants.push(...nested);
+    }
+  }
+
+  return descendants;
+}
+
+async function fetchCollectionTreeFlat(
+  prefix: string,
+  apiKey: string
+): Promise<{
+  collections: ZoteroCollectionResponse[];
+  topLevelCount: number;
+  filteredDeletedCount: number;
+  pageSizes: number[];
+}> {
+  const pageSizes: number[] = [];
+  const deletedCounter = { count: 0 };
+  const topCollections = await fetchAllCollectionsForParent(prefix, apiKey, undefined, pageSizes);
+  const collections: ZoteroCollectionResponse[] = [];
+  let topLevelCount = 0;
+
+  for (const collection of topCollections) {
+    if (isDeletedFlag(collection.data.deleted)) {
+      deletedCounter.count += 1;
+      continue;
+    }
+    topLevelCount += 1;
+    collections.push(collection);
+    if ((collection.meta?.numCollections || 0) > 0) {
+      const descendants = await fetchDescendantCollections(
+        prefix,
+        apiKey,
+        collection.key,
+        pageSizes,
+        deletedCounter
+      );
+      collections.push(...descendants);
+    }
+  }
+
+  return {
+    collections,
+    topLevelCount,
+    filteredDeletedCount: deletedCounter.count,
+    pageSizes,
+  };
+}
+
+async function fetchCollectionByKey(
+  prefix: string,
+  apiKey: string,
+  collectionKey: string
+): Promise<ZoteroCollectionResponse | null> {
+  const response = await fetch(
+    buildZoteroUrl(`${prefix}/collections/${collectionKey}`).toString(),
+    {
+      headers: buildZoteroHeaders(apiKey),
+    }
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Failed to fetch selected collection from Zotero (${collectionKey}): ${response.status} ${text}`
+    );
+  }
+
+  const data: ZoteroCollectionResponse = await response.json();
+  if (isDeletedFlag(data.data.deleted)) {
+    return null;
+  }
+  return data;
+}
+
+async function fetchDescendantCollectionKeys(
+  prefix: string,
+  apiKey: string,
+  parentKey: string,
+  pageSizes?: number[]
+): Promise<string[]> {
+  const descendants = await fetchDescendantCollections(prefix, apiKey, parentKey, pageSizes);
+  return descendants.map((collection) => collection.key);
+}
+
+async function fetchAllTopItemsForCollection(
+  prefix: string,
+  collectionKey: string,
+  apiKey: string
+): Promise<ZoteroItemResponse[]> {
+  const all: ZoteroItemResponse[] = [];
+  let start = 0;
+  let totalResults = Number.POSITIVE_INFINITY;
+
+  while (start < totalResults) {
+    const url = buildZoteroUrl(`${prefix}/collections/${collectionKey}/items/top`, {
+      start,
+      limit: 100,
+      includeTrashed: 0,
+    });
+    const response = await fetch(url.toString(), {
+      headers: buildZoteroHeaders(apiKey),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Failed to fetch collection items from Zotero (${collectionKey}): ${response.status} ${text}`
+      );
+    }
+
+    totalResults = parseInt(response.headers.get("Total-Results") || "0", 10);
+    console.log("[fetchItems] Per-request collection headers:", {
+      collectionKey,
+      start,
+      totalResults,
+      includeTrashedSet: true,
+    });
+    const batch: ZoteroItemResponse[] = await response.json();
+
+    if (batch.length === 0) {
+      break;
+    }
+
+    all.push(...batch);
+    start += batch.length;
+  }
+
+  return all;
 }
 
 /**
@@ -288,6 +555,12 @@ export const completeOAuth = action({
     const username = responseParams.get("username");
 
     if (!accessToken || !zoteroUserId) {
+      console.error("Zotero access token response missing fields", {
+        hasAccessToken: !!accessToken,
+        hasUserId: !!zoteroUserId,
+        hasUsername: !!username,
+        responseText,
+      });
       return { success: false, error: "Invalid response from Zotero" };
     }
 
@@ -334,16 +607,21 @@ export const fetchCollections = action({
       ? `/groups/${groupId}`
       : `/users/${connection.zoteroUserId}`;
 
-    const response: Response = await fetch(`${ZOTERO_API_URL}${prefix}/collections`, {
-      headers: buildZoteroHeaders(connection.apiKey),
+    const tree = await fetchCollectionTreeFlat(
+      prefix,
+      connection.apiKey
+    );
+    const visibleCollections = normalizeVisibleCollections(tree.collections);
+
+    console.log("[fetchCollections] Collection tree stats:", {
+      prefix,
+      topLevelCount: tree.topLevelCount,
+      flattenedCount: visibleCollections.length,
+      filteredDeletedCount: tree.filteredDeletedCount,
+      pageSizes: tree.pageSizes,
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch collections from Zotero");
-    }
-
-    const data: ZoteroCollectionResponse[] = await response.json();
-    return data.map((c) => ({
+    return visibleCollections.map((c) => ({
       key: c.key,
       name: c.data.name,
       parentCollection: c.data.parentCollection || null,
@@ -378,7 +656,7 @@ export const fetchGroups = action({
     }
 
     const response: Response = await fetch(
-      `${ZOTERO_API_URL}/users/${connection.zoteroUserId}/groups`,
+      buildZoteroUrl(`/users/${connection.zoteroUserId}/groups`).toString(),
       {
         headers: buildZoteroHeaders(connection.apiKey),
       }
@@ -416,6 +694,7 @@ export const fetchItems = action({
   args: {
     userId: v.id("users"),
     collectionKey: v.optional(v.string()),
+    includeDescendants: v.optional(v.boolean()),
     groupId: v.optional(v.string()),
     start: v.optional(v.number()),
     limit: v.optional(v.number()),
@@ -437,7 +716,10 @@ export const fetchItems = action({
     nextCursor: v.optional(v.number()),
     hasMore: v.boolean(),
   }),
-  handler: async (ctx, { userId, collectionKey, groupId, start = 0, limit = 50 }): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => {
+  handler: async (
+    ctx,
+    { userId, collectionKey, includeDescendants = true, groupId, start = 0, limit = 50 }
+  ): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => {
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });
@@ -450,54 +732,107 @@ export const fetchItems = action({
       ? `/groups/${groupId}`
       : `/users/${connection.zoteroUserId}`;
 
-    const collectionsResponse: Response = await fetch(`${ZOTERO_API_URL}${prefix}/collections`, {
-      headers: buildZoteroHeaders(connection.apiKey),
+    console.log("[fetchItems] Starting fetch with params:", {
+      userId,
+      collectionKey,
+      includeDescendants,
+      groupId,
+      start,
+      limit,
+      prefix,
+      apiKeyPresent: !!connection.apiKey,
+      apiKeyPrefix: connection.apiKey ? connection.apiKey.substring(0, 8) + "..." : "none",
     });
 
-    if (!collectionsResponse.ok) {
-      const text = await collectionsResponse.text();
-      throw new Error(`Failed to fetch collections from Zotero: ${collectionsResponse.status} ${text}`);
-    }
+    const requestLimit = Math.min(limit, 50);
+    let currentPageData: ZoteroItemResponse[] = [];
+    let totalResults = 0;
+    let nextCursor: number | undefined;
 
-    const collectionsData: ZoteroCollectionResponse[] = await collectionsResponse.json();
-    const collectionChildren = new Map<string, string[]>();
-    for (const collection of collectionsData) {
-      const parent = collection.data.parentCollection || null;
-      if (!parent) continue;
-      const existing = collectionChildren.get(parent) ?? [];
-      existing.push(collection.key);
-      collectionChildren.set(parent, existing);
-    }
+    if (collectionKey && includeDescendants) {
+      const selectedCollection = await fetchCollectionByKey(prefix, connection.apiKey, collectionKey);
+      if (!selectedCollection) {
+        console.warn("[fetchItems] Selected collection is missing/deleted; returning empty result:", {
+          collectionKey,
+        });
+        return { items: [], nextCursor: undefined, hasMore: false };
+      }
+      const collectionPageSizes: number[] = [];
+      const descendantCollectionKeys = await fetchDescendantCollectionKeys(
+        prefix,
+        connection.apiKey,
+        collectionKey,
+        collectionPageSizes
+      );
+      const collectionKeys = [collectionKey, ...descendantCollectionKeys];
 
-    const allowedCollections = new Set<string>();
-    if (collectionKey) {
-      const stack = [collectionKey];
-      while (stack.length > 0) {
-        const current = stack.pop();
-        if (!current || allowedCollections.has(current)) continue;
-        allowedCollections.add(current);
-        const children = collectionChildren.get(current) ?? [];
-        for (const child of children) {
-          stack.push(child);
+      console.log("[fetchItems] Recursive collection mode:", {
+        selectedCollectionKey: collectionKey,
+        selectedCollectionName: selectedCollection.data.name,
+        selectedCollectionDirectItems: selectedCollection.meta?.numItems ?? 0,
+        selectedCollectionNumChildren: selectedCollection.meta?.numCollections ?? 0,
+        descendantCollectionCount: descendantCollectionKeys.length,
+        collectionPageSizes,
+      });
+
+      if (
+        (selectedCollection.meta?.numItems || 0) === 0 &&
+        (selectedCollection.meta?.numCollections || 0) > 0
+      ) {
+        console.warn(
+          "[fetchItems] Selected parent collection has 0 direct items but has child collections; using recursive fetch."
+        );
+      }
+
+      const mergedMap = new Map<string, ZoteroItemResponse>();
+      for (const key of collectionKeys) {
+        const itemsForCollectionRaw = await fetchAllTopItemsForCollection(prefix, key, connection.apiKey);
+        const itemsForCollection = filterVisibleItems(itemsForCollectionRaw);
+        console.log("[fetchItems] Collection batch stats:", {
+          collectionKey: key,
+          itemsRaw: itemsForCollectionRaw.length,
+          itemsFiltered: itemsForCollection.length,
+          includeTrashedSet: true,
+        });
+        for (const item of itemsForCollection) {
+          if (!mergedMap.has(item.key)) {
+            mergedMap.set(item.key, item);
+          }
         }
       }
-    }
 
-    const requestLimit = Math.min(limit, 50);
-    const items: Array<ZoteroItem & { hasPdfChild: boolean }> = [];
-    let cursor = start;
-    let totalResults = 0;
-    let done = false;
+      const merged = Array.from(mergedMap.values());
+      totalResults = merged.length;
+      currentPageData = merged.slice(start, start + requestLimit);
+      const computedCursor = start + currentPageData.length;
+      nextCursor = computedCursor < totalResults ? computedCursor : undefined;
 
-    while (!done && items.length < requestLimit) {
-      const endpoint: string = `${prefix}/items/top`;
-      const url: URL = new URL(`${ZOTERO_API_URL}${endpoint}`);
-      url.searchParams.set("start", cursor.toString());
-      url.searchParams.set("limit", "100");
-      url.searchParams.set("itemType", "-attachment");
+      console.log("[fetchItems] Recursive merged results:", {
+        mergedTotalResults: totalResults,
+        pageStart: start,
+        pageSize: currentPageData.length,
+        nextCursor,
+      });
+    } else {
+      const endpoint = collectionKey
+        ? `${prefix}/collections/${collectionKey}/items/top`
+        : `${prefix}/items/top`;
+      const url = buildZoteroUrl(endpoint, {
+        start,
+        limit: requestLimit,
+        includeTrashed: 0,
+      });
 
+      console.log("[fetchItems] Fetching from URL:", url.toString());
       const response: Response = await fetch(url.toString(), {
         headers: buildZoteroHeaders(connection.apiKey),
+      });
+
+      console.log("[fetchItems] Response status:", response.status);
+      console.log("[fetchItems] Response headers:", {
+        totalResults: response.headers.get("Total-Results"),
+        contentType: response.headers.get("Content-Type"),
+        includeTrashedSet: true,
       });
 
       if (!response.ok) {
@@ -506,71 +841,67 @@ export const fetchItems = action({
         throw new Error(`Failed to fetch items from Zotero: ${response.status} ${text}`);
       }
 
-      const batchTotal: number = parseInt(response.headers.get("Total-Results") || "0", 10);
-      totalResults = batchTotal;
-      const data: ZoteroItemResponse[] = await response.json();
-
-      if (data.length === 0) {
-        done = true;
-        break;
-      }
-
-      const filtered = collectionKey
-        ? data.filter((item) => {
-            const collections = item.data.collections || [];
-            return collections.some((key) => allowedCollections.has(key));
-          })
-        : data;
-
-      const withPdfFlags = await Promise.all(
-        filtered.map(async (item) => {
-          const d = item.data;
-          const numChildren = item.meta?.numChildren || 0;
-          let hasPdfChild = false;
-          if (numChildren > 0) {
-            const childrenUrl = `${ZOTERO_API_URL}${prefix}/items/${item.key}/children`;
-            const childrenResponse = await fetch(childrenUrl, {
-              headers: buildZoteroHeaders(connection.apiKey),
-            });
-            if (childrenResponse.ok) {
-              const children: ZoteroItemResponse[] = await childrenResponse.json();
-              hasPdfChild = children.some(
-                (child) =>
-                  child.data.itemType === "attachment" &&
-                  child.data.contentType === "application/pdf"
-              );
-            }
-          }
-
-          return {
-            key: item.key,
-            title: d.title || d.shortTitle || "Untitled",
-            abstract: d.abstractNote || undefined,
-            authors: (d.creators || [])
-              .filter((c) => c.creatorType === "author")
-              .map((c) => c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()),
-            year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
-            doi: d.DOI || undefined,
-            itemType: d.itemType,
-            numChildren: item.meta?.numChildren,
-            hasPdfChild,
-          };
-        })
-      );
-
-      for (const entry of withPdfFlags) {
-        if (items.length >= requestLimit) break;
-        items.push(entry);
-      }
-
-      cursor += data.length;
-      if (cursor >= totalResults) {
-        done = true;
-      }
+      totalResults = parseInt(response.headers.get("Total-Results") || "0", 10);
+      const rawPageData: ZoteroItemResponse[] = await response.json();
+      currentPageData = filterVisibleItems(rawPageData);
+      console.log("[fetchItems] Non-recursive page stats:", {
+        itemsRaw: rawPageData.length,
+        itemsFiltered: currentPageData.length,
+        includeTrashedSet: true,
+      });
+      const computedCursor = start + rawPageData.length;
+      nextCursor = computedCursor < totalResults ? computedCursor : undefined;
     }
 
-    const hasMore = totalResults !== 0 && cursor < totalResults;
-    return { items, nextCursor: hasMore ? cursor : undefined, hasMore };
+    const items: Array<ZoteroItem & { hasPdfChild: boolean }> = await Promise.all(
+      currentPageData.map(async (item) => {
+        const d = item.data;
+        const numChildren = item.meta?.numChildren || 0;
+        let hasPdfChild = false;
+        if (numChildren > 0) {
+          const childrenUrl = buildZoteroUrl(`${prefix}/items/${item.key}/children`, {
+            includeTrashed: 0,
+          });
+          const childrenResponse = await fetch(childrenUrl.toString(), {
+            headers: buildZoteroHeaders(connection.apiKey),
+          });
+          if (childrenResponse.ok) {
+            const children: ZoteroItemResponse[] = await childrenResponse.json();
+            hasPdfChild = children.some(
+              (child) =>
+                !isDeletedFlag(child.data.deleted) &&
+                child.data.itemType === "attachment" &&
+                child.data.contentType === "application/pdf"
+            );
+          }
+        }
+
+        return {
+          key: item.key,
+          title: d.title || d.shortTitle || "Untitled",
+          abstract: d.abstractNote || undefined,
+          authors: (d.creators || [])
+            .filter((c) => c.creatorType === "author")
+            .map((c) => c.name || `${c.firstName || ""} ${c.lastName || ""}`.trim()),
+          year: d.date ? parseInt(d.date.match(/\d{4}/)?.[0] || "", 10) || undefined : undefined,
+          doi: d.DOI || undefined,
+          itemType: d.itemType,
+          numChildren: item.meta?.numChildren,
+          hasPdfChild,
+        };
+      })
+    );
+
+    const hasMore = nextCursor !== undefined;
+
+    console.log("[fetchItems] Final result:", {
+      itemsReturned: items.length,
+      totalResults,
+      nextCursor,
+      hasMore,
+    });
+
+    return { items, nextCursor, hasMore };
   },
 });
 
@@ -611,7 +942,9 @@ export const getAttachments = internalAction({
       : `/users/${connection.zoteroUserId}`;
 
     const response = await fetch(
-      `${ZOTERO_API_URL}${prefix}/items/${itemKey}/children`,
+      buildZoteroUrl(`${prefix}/items/${itemKey}/children`, {
+        includeTrashed: 0,
+      }).toString(),
       {
         headers: buildZoteroHeaders(connection.apiKey),
       }
@@ -626,6 +959,7 @@ export const getAttachments = internalAction({
     // Filter for PDF attachments
     return data
       .filter((item) => 
+        !isDeletedFlag(item.data.deleted) &&
         item.data.itemType === "attachment" && 
         item.data.contentType === "application/pdf"
       )
