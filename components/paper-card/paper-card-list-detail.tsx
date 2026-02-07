@@ -42,6 +42,7 @@ import {
   DOIBadge,
   ScreeningResponses,
 } from "./shared";
+import posthog from "posthog-js";
 
 export function PaperCardListDetail({
   result,
@@ -62,12 +63,38 @@ export function PaperCardListDetail({
 
   const handleFilteredSearch = (filterType: "cites" | "citedBy" | "related") => {
     const { url } = createCitationSearch(result.id, filterType);
+
+    // Track citation search event
+    posthog.capture("citation_search_initiated", {
+      filter_type: filterType,
+      paper_id: result.id,
+      paper_title: result.title,
+      paper_year: result.publication_year,
+      cited_by_count: result.cited_by_count || 0,
+      references_count: result.referenced_works_count || 0,
+      related_count: result.related_works?.length || 0,
+    });
+
     router.push(url);
   };
 
   const handleCitesSearch = () => handleFilteredSearch("cites");
   const handleCitedBySearch = () => handleFilteredSearch("citedBy");
   const handleRelatedSearch = () => handleFilteredSearch("related");
+
+  // Handle paper opened
+  const handlePaperOpened = () => {
+    posthog.capture("paper_opened", {
+      paper_id: result.id,
+      paper_title: result.title,
+      paper_year: result.publication_year,
+      result_index: resultIndex,
+      has_abstract: !!result.abstract,
+      is_open_access: result.open_access?.is_oa || false,
+      cited_by_count: result.cited_by_count || 0,
+    });
+    openFocusMode(isMobile, resultIndex);
+  };
 
   const {
     translatedContent,
@@ -125,7 +152,7 @@ export function PaperCardListDetail({
 
           {/* Title Button */}
           <button
-            onClick={() => openFocusMode(isMobile, resultIndex)}
+            onClick={handlePaperOpened}
             className="text-left w-full group/title"
           >
             <h3 className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">

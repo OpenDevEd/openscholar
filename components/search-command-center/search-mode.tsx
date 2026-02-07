@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
+import posthog from "posthog-js";
 
 interface SearchModeProps {
   isLoading?: boolean;
@@ -77,9 +78,17 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       e.preventDefault();
       if (search && localInputValue.trim()) {
         search.setQuery(localInputValue);
+
+        // Track search submitted event
+        posthog.capture("search_submitted", {
+          query: localInputValue,
+          query_length: localInputValue.length,
+          has_boolean_operators: /\b(AND|OR|NOT)\b/.test(localInputValue),
+          language: selectedLanguage || "en",
+        });
       }
     },
-    [search, localInputValue]
+    [search, localInputValue, selectedLanguage]
   );
 
   // Handle research question submit
@@ -115,10 +124,27 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         search.setQuery(result.enhancedQuery);
       }
 
+      // Track AI query enhancement event
+      posthog.capture("ai_query_enhanced", {
+        original_question: questionToProcess,
+        enhanced_query: result.enhancedQuery,
+        ai_provider: provider,
+        ai_model: model,
+        language: currentSearchResult?.language || "en",
+      });
+
       toast.success("Question converted to keywords", {
         description: `Searching for: "${result.enhancedQuery}"`,
       });
     } catch (error) {
+      // Track enhancement error
+      posthog.capture("ai_query_enhancement_failed", {
+        original_question: questionToProcess,
+        ai_provider: provider,
+        ai_model: model,
+        error_message: error instanceof Error ? error.message : "Unknown error",
+      });
+
       toast.error("Enhancement Failed", {
         description: error instanceof Error ? error.message : "Unknown error",
       });
@@ -156,11 +182,30 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
         search.setQuery(translatedQuery);
         toast.dismiss(loadingToast);
+
+        // Track query translation event
+        posthog.capture("query_translated", {
+          original_query: expandedQuery,
+          translated_query: translatedQuery,
+          target_language: language,
+          ai_provider: provider,
+          ai_model: model,
+        });
+
         toast.success("Query translated", {
           description: `Translated to ${language}`,
         });
       } catch {
         toast.dismiss(loadingToast);
+
+        // Track translation error
+        posthog.capture("query_translation_failed", {
+          original_query: localInputValue,
+          target_language: language,
+          ai_provider: provider,
+          ai_model: model,
+        });
+
         toast.error("Translation failed");
       } finally {
         setIsTranslating(false);

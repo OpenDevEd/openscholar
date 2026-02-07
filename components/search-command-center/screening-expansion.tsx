@@ -18,6 +18,7 @@ import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
 import { commandCenterSpring } from "@/lib/animation-config";
+import posthog from "posthog-js";
 
 interface ScreeningExpansionProps {
   isOpen: boolean;
@@ -67,6 +68,14 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
     setIsAdding(true);
     try {
       addScreeningQuestion(searchId, newQuestion.trim());
+
+      // Track manual screening question added event
+      posthog.capture("screening_question_added", {
+        question_length: newQuestion.trim().length,
+        total_questions: screeningQuestions.length + 1,
+        source: "manual",
+      });
+
       setNewQuestion("");
       toast.success("Question added");
     } catch {
@@ -143,11 +152,27 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       }
 
       if (addedCount > 0) {
+        // Track AI-generated screening questions event
+        posthog.capture("screening_questions_generated", {
+          questions_generated: result.questions.length,
+          questions_added: addedCount,
+          questions_duplicated: result.questions.length - addedCount,
+          total_questions: screeningQuestions.length + addedCount,
+          ai_provider: provider,
+          ai_model: model,
+        });
+
         toast.success(`Added ${addedCount} new question${addedCount > 1 ? "s" : ""}`);
       } else {
         toast.warning("No new questions generated");
       }
     } catch {
+      // Track generation failure
+      posthog.capture("screening_questions_generation_failed", {
+        ai_provider: provider,
+        ai_model: model,
+      });
+
       toast.error("Failed to generate questions");
     } finally {
       setIsGenerating(false);

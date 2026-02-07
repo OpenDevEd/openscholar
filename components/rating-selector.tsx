@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Star } from "lucide-react";
 import {
@@ -8,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRatingsStore } from "@/lib/store";
+import posthog from "posthog-js";
 
 interface RatingSelectorProps {
   paperId: string;
@@ -18,11 +21,23 @@ export function RatingSelector({ paperId, variant = "default" }: RatingSelectorP
   const { ratings, setRating } = useRatingsStore();
 
   const handleRatingChange = (rating: string) => {
+    const previousRating = ratings[paperId];
+    const newRating = rating === "no-rating" ? null : parseInt(rating);
+
     if (rating === "no-rating") {
       setRating(paperId, null);
     } else {
       setRating(paperId, parseInt(rating));
     }
+
+    // Track paper rating event
+    posthog.capture("paper_rated", {
+      paper_id: paperId,
+      rating: newRating,
+      previous_rating: previousRating ?? null,
+      is_rating_removed: rating === "no-rating",
+      variant: variant,
+    });
   };
 
   const currentRating = ratings[paperId];

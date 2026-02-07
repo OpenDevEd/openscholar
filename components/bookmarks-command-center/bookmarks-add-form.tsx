@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore } from "@/lib/store";
 import { toast } from "sonner";
 import { subtleSpring } from "@/lib/animation-config";
+import posthog from "posthog-js";
 
 export function BookmarksAddForm() {
   const [name, setName] = useState("");
@@ -45,6 +46,15 @@ export function BookmarksAddForm() {
     }
 
     addKeyword(trimmedName, trimmedExpansion);
+
+    // Track bookmark creation event
+    posthog.capture("bookmark_created", {
+      bookmark_name: trimmedName,
+      expansion_length: trimmedExpansion.length,
+      has_boolean_operators: /\b(AND|OR|NOT)\b/.test(trimmedExpansion),
+      total_bookmarks: Object.keys(keywords).length + 1,
+    });
+
     setName("");
     setExpansion("");
     toast.success(`Bookmark "${trimmedName}" added successfully`);

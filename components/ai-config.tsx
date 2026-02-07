@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type { AIModel, AIProvider } from "@/lib/types/ai.types"
 import { ArrowLeft, Check, ChevronRight, Search } from "lucide-react"
+import posthog from "posthog-js"
 
 interface AIConfigProps {
   variant?: 'card' | 'plain'
@@ -58,6 +59,14 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
   const handleApiKeyChange = (value: string) => {
     setApiKey(value)
     if (value) {
+      // Track AI settings configured event
+      posthog.capture("ai_settings_configured", {
+        ai_provider: provider,
+        ai_model: model,
+        has_api_key: true,
+        config_type: "api_key",
+      })
+
       toast.success("API Key Updated", {
         description: "Your API key has been saved securely",
       })

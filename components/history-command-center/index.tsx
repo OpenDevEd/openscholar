@@ -13,6 +13,7 @@ import { HistoryToolbar } from "./history-toolbar";
 import { HistoryList } from "./history-list";
 import { HistoryPagination } from "./history-pagination";
 import type { SearchResult } from "@/lib/types";
+import posthog from "posthog-js";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -78,6 +79,17 @@ export function HistoryCommandCenter() {
 
   // Handlers
   const handleSearchClick = (item: SearchResult) => {
+    // Track history item restored event
+    posthog.capture("history_item_restored", {
+      query: item.query,
+      results_count: item.count || 0,
+      has_screening_questions: (item.screeningQuestions?.length || 0) > 0,
+      screening_questions_count: item.screeningQuestions?.length || 0,
+      history_age_days: Math.floor(
+        (Date.now() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      ),
+    });
+
     router.push(restoreFromHistory(item));
   };
 

@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -7,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import posthog from "posthog-js";
 
 interface DownloadMenuProps {
   onDownloadJSON?: () => void;
@@ -43,22 +46,46 @@ export function DownloadMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {onDownloadJSON && (
-          <DropdownMenuItem onClick={onDownloadJSON}>
+          <DropdownMenuItem onClick={() => {
+            posthog.capture("results_downloaded", {
+              format: "json",
+              content_type: "full",
+            });
+            onDownloadJSON();
+          }}>
             Download as JSON
           </DropdownMenuItem>
         )}
         {onDownloadCSV && (
-          <DropdownMenuItem onClick={onDownloadCSV}>
+          <DropdownMenuItem onClick={() => {
+            posthog.capture("results_downloaded", {
+              format: "csv",
+              content_type: "full",
+            });
+            onDownloadCSV();
+          }}>
             Download as CSV
           </DropdownMenuItem>
         )}
         {onDownloadEssentialJSON && (
-          <DropdownMenuItem onClick={onDownloadEssentialJSON}>
+          <DropdownMenuItem onClick={() => {
+            posthog.capture("results_downloaded", {
+              format: "json",
+              content_type: "essential",
+            });
+            onDownloadEssentialJSON();
+          }}>
             Download Essential Info as JSON
           </DropdownMenuItem>
         )}
         {onDownloadEssentialCSV && (
-          <DropdownMenuItem onClick={onDownloadEssentialCSV}>
+          <DropdownMenuItem onClick={() => {
+            posthog.capture("results_downloaded", {
+              format: "csv",
+              content_type: "essential",
+            });
+            onDownloadEssentialCSV();
+          }}>
             Download Essential Info as CSV
           </DropdownMenuItem>
         )}

@@ -12,6 +12,7 @@ import { BookmarksList } from "./bookmarks-list";
 import { BookmarksAddForm } from "./bookmarks-add-form";
 import { BookmarksSaveBanner } from "./bookmarks-save-banner";
 import { BookmarksGuide } from "./bookmarks-guide";
+import posthog from "posthog-js";
 
 export interface BookmarkEntry {
   name: string;
@@ -78,6 +79,15 @@ export function BookmarksCommandCenter() {
   };
 
   const handleDelete = (name: string) => {
+    const deletedBookmark = keywords[name];
+
+    // Track bookmark deletion event
+    posthog.capture("bookmark_deleted", {
+      bookmark_name: name,
+      expansion_length: deletedBookmark?.expansion?.length || 0,
+      remaining_bookmarks: Object.keys(keywords).length - 1,
+    });
+
     removeKeyword(name);
     if (editingBookmark === name) {
       setEditingBookmark(null);
