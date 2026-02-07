@@ -27,21 +27,23 @@ export default function ExtractionPage() {
           <CommandCenterHeader
             icon={Database}
             title="Extraction Jobs"
-            description="Transform research papers into structured datasets using AI-powered extraction"
+            description="Extract structured data from research papers"
             count={jobs?.length ?? 0}
             singular="job"
             plural="jobs"
           />
 
-          <div className="p-4 md:p-6 !py-4">
+          <div>
             {showCreator ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <JobCreator onCancel={() => setShowCreator(false)} />
-              </motion.div>
+              <div className="p-4 md:p-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <JobCreator onCancel={() => setShowCreator(false)} />
+                </motion.div>
+              </div>
             ) : jobs === undefined ? (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />

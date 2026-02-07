@@ -323,13 +323,6 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
                       autoFocus
                     />
                   </div>
-
-                  <div className="pt-4 text-sm text-muted-foreground bg-muted p-4 rounded-lg">
-                    <p>
-                      <strong className="text-foreground">Tip:</strong> Use a descriptive name that includes the
-                      research topic and time period for easy reference.
-                    </p>
-                  </div>
                 </motion.div>
               </form>
             )}

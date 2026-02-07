@@ -165,6 +165,11 @@ export type HistorySortBy = 'recent' | 'oldest' | 'most' | 'least';
 export type BookmarkSortBy = 'recent' | 'oldest' | 'alpha' | 'alpha-desc';
 
 /**
+ * Sort options for extraction jobs
+ */
+export type ExtractionSortBy = 'recent' | 'oldest' | 'name' | 'status';
+
+/**
  * Bookmark data structure
  */
 export interface BookmarkData {

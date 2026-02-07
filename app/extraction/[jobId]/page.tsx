@@ -31,10 +31,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { ResultsToolbar } from "@/components/extraction/results-toolbar";
+import { ResultsToolbar, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
+import { ExportDialog } from "@/components/extraction/export-dialog";
 import { useSelection } from "@/lib/hooks/use-selection";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
@@ -69,6 +70,9 @@ export default function JobDetailPage() {
   const [pageSize, setPageSize] = useState(50);
 
   const [activeTab, setActiveTab] = useState<'results' | 'overview'>('results');
+  const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -132,13 +136,40 @@ export default function JobDetailPage() {
     [papersWithResults, debouncedFilters, questions, preprocessedData]
   );
 
-  const totalPages = Math.ceil(filteredPapers.length / pageSize);
+  const sortedPapers = useMemo(() => {
+    if (resultsSortBy === 'default') return filteredPapers;
+    const sorted = [...filteredPapers];
+    switch (resultsSortBy) {
+      case 'title-asc':
+        return sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      case 'title-desc':
+        return sorted.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+      case 'confidence-high': {
+        const avgConf = (p: PaperWithResults) => {
+          if (!p.results.length) return 0;
+          return p.results.reduce((sum, r) => sum + (r.confidence || 0), 0) / p.results.length;
+        };
+        return sorted.sort((a, b) => avgConf(b) - avgConf(a));
+      }
+      case 'confidence-low': {
+        const avgConf = (p: PaperWithResults) => {
+          if (!p.results.length) return 0;
+          return p.results.reduce((sum, r) => sum + (r.confidence || 0), 0) / p.results.length;
+        };
+        return sorted.sort((a, b) => avgConf(a) - avgConf(b));
+      }
+      default:
+        return sorted;
+    }
+  }, [filteredPapers, resultsSortBy]);
+
+  const totalPages = Math.ceil(sortedPapers.length / pageSize);
   const displayedPapers = useMemo(
-    () => filteredPapers.slice(
+    () => sortedPapers.slice(
       (currentPage - 1) * pageSize,
       currentPage * pageSize
     ),
-    [filteredPapers, currentPage, pageSize]
+    [sortedPapers, currentPage, pageSize]
   );
 
   useEffect(() => {
@@ -263,7 +294,7 @@ export default function JobDetailPage() {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full overflow-hidden">
               <div className="flex items-center gap-3 truncate">
                 {/* Gradient icon */}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 flex items-center justify-center shadow-sm shrink-0">
                   <FileText className="h-5 w-5 text-primary" />
                 </div>
 
@@ -504,7 +535,7 @@ export default function JobDetailPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="space-y-6"
+              className=""
             >
               <ResultsToolbar
                 filters={filters}
@@ -512,13 +543,19 @@ export default function JobDetailPage() {
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 totalCount={papersWithResults.length}
-                filteredCount={filteredPapers.length}
+                filteredCount={sortedPapers.length}
                 questions={questions}
+                sortBy={resultsSortBy}
+                onSortChange={setResultsSortBy}
+                onExportAll={() => {
+                  setExportMode('all');
+                  setExportDialogOpen(true);
+                }}
               />
 
               <div className="min-h-[600px]">
-                {filteredPapers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-24 text-center bg-muted rounded-xl border border-border">
+                {sortedPapers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-24 text-center bg-muted rounded-xl border border-border my-6">
                     <FileText className="w-16 h-16 text-muted-foreground/50 mb-4" />
                     <h3 className="text-xl font-semibold text-foreground mb-2">
                       No results found
@@ -530,7 +567,7 @@ export default function JobDetailPage() {
                           : "Results will appear here as they are processed."
                         : "Try adjusting your filters to see results."}
                     </p>
-                    {filteredPapers.length === 0 && papersWithResults.length > 0 && (
+                    {sortedPapers.length === 0 && papersWithResults.length > 0 && (
                       <Button
                         variant="outline"
                         className="mt-6"
@@ -561,7 +598,7 @@ export default function JobDetailPage() {
                     )}
                     {viewMode === 'split' && (
                       <SplitView
-                        papers={filteredPapers}
+                        papers={sortedPapers}
                         questions={questions}
                       />
                     )}
@@ -569,7 +606,7 @@ export default function JobDetailPage() {
                 )}
               </div>
 
-              {filteredPapers.length > 0 && viewMode !== 'split' && (
+              {sortedPapers.length > 0 && viewMode !== 'split' && (
                 <SmartPagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -577,7 +614,7 @@ export default function JobDetailPage() {
                   onPageChange={setCurrentPage}
                   onPageSizeChange={setPageSize}
                   totalCount={papersWithResults.length}
-                  filteredCount={filteredPapers.length}
+                  filteredCount={sortedPapers.length}
                   displayedCount={displayedPapers.length}
                 />
               )}
@@ -590,6 +627,18 @@ export default function JobDetailPage() {
                   onClearSelection={clearSelection}
                 />
               )}
+
+              <ExportDialog
+                open={exportDialogOpen}
+                onOpenChange={setExportDialogOpen}
+                papers={exportMode === 'all' ? sortedPapers : selectedPapers}
+                questions={questions}
+                label={
+                  exportMode === 'all'
+                    ? `${sortedPapers.length} filtered paper${sortedPapers.length !== 1 ? 's' : ''}`
+                    : `${selectedIds.size} selected paper${selectedIds.size !== 1 ? 's' : ''}`
+                }
+              />
             </motion.div>
           ) : (
             <motion.div

@@ -4,17 +4,10 @@ import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/format";
-import {
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  FileText,
-  Clock,
-  ArrowRight,
-  AlertCircle,
-} from "lucide-react";
+import { FileText, Clock } from "lucide-react";
 import Link from "next/link";
 import type { ViewMode } from "@/lib/types";
+import { subtleSpring } from "@/lib/animation-config";
 
 type ExtractionJob = Doc<"extractionJobs">;
 
@@ -24,166 +17,225 @@ interface JobListItemProps {
   index: number;
 }
 
-export function JobListItem({ job, index }: JobListItemProps) {
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case "completed":
-        return {
-          icon: CheckCircle2,
-          bgColor: "bg-emerald-500/10",
-          borderColor: "border-emerald-500/20",
-          textColor: "text-emerald-600 dark:text-emerald-400",
-          barColor: "bg-emerald-500",
-          label: "Completed",
-        };
-      case "failed":
-        return {
-          icon: XCircle,
-          bgColor: "bg-destructive/10",
-          borderColor: "border-destructive/20",
-          textColor: "text-destructive",
-          barColor: "bg-destructive",
-          label: "Failed",
-        };
-      case "cancelled":
-        return {
-          icon: AlertCircle,
-          bgColor: "bg-muted",
-          borderColor: "border-border",
-          textColor: "text-muted-foreground",
-          barColor: "bg-muted-foreground",
-          label: "Cancelled",
-        };
-      default:
-        return {
-          icon: Loader2,
-          bgColor: "bg-primary/10",
-          borderColor: "border-primary/20",
-          textColor: "text-primary",
-          barColor: "bg-primary",
-          label: status.replace(/_/g, " "),
-        };
-    }
-  };
+const STATUS_DOT_COLORS: Record<string, string> = {
+  completed: "bg-emerald-500",
+  failed: "bg-destructive",
+  cancelled: "bg-muted-foreground",
+};
 
-  const status = getStatusConfig(job.status);
-  const StatusIcon = status.icon;
+const STATUS_BAR_COLORS: Record<string, string> = {
+  completed: "bg-emerald-500",
+  failed: "bg-destructive",
+  cancelled: "bg-muted-foreground",
+};
 
+const STATUS_STRIPE_COLORS: Record<string, string> = {
+  completed: "bg-emerald-500",
+  failed: "bg-destructive",
+  cancelled: "bg-muted-foreground",
+};
+
+function getStatusDotColor(status: string) {
+  return STATUS_DOT_COLORS[status] ?? "bg-primary animate-pulse";
+}
+
+function getStatusBarColor(status: string) {
+  return STATUS_BAR_COLORS[status] ?? "bg-primary";
+}
+
+function getStatusStripeColor(status: string) {
+  return STATUS_STRIPE_COLORS[status] ?? "bg-primary";
+}
+
+function getStatusLabel(status: string) {
+  switch (status) {
+    case "completed": return "Completed";
+    case "failed": return "Failed";
+    case "cancelled": return "Cancelled";
+    default: return status.replace(/_/g, " ");
+  }
+}
+
+export function JobListItem({ job, viewMode, index }: JobListItemProps) {
   const progressPercentage =
     job.totalPapers > 0
       ? Math.round((job.processedPapers / job.totalPapers) * 100)
       : 0;
 
-  const isProcessing =
-    job.status === "pending" ||
-    job.status === "downloading_pdfs" ||
-    job.status === "extracting";
+  // list-simple: Single compact row
+  if (viewMode === "list-simple") {
+    return (
+      <Link href={`/extraction/${job._id}`} className="block group">
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...subtleSpring, delay: index * 0.03 }}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl",
+            "bg-card/40 dark:bg-card/30",
+            "border border-border/40",
+            "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
+            "transition-all duration-200"
+          )}
+        >
+          {/* Status dot */}
+          <span className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(job.status))} />
+
+          {/* Job name */}
+          <span className="flex-1 text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+            {job.name}
+          </span>
+
+          {/* Papers count */}
+          <span className="text-xs text-muted-foreground shrink-0">
+            {job.processedPapers}/{job.totalPapers}
+          </span>
+
+          {/* Time ago */}
+          <span className="text-xs text-muted-foreground shrink-0">
+            {formatTimeAgo(new Date(job.createdAt))}
+          </span>
+        </motion.div>
+      </Link>
+    );
+  }
+
+  // list-detail: Detailed row
+  if (viewMode === "list-detail") {
+    return (
+      <Link href={`/extraction/${job._id}`} className="block group">
+        <motion.div
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...subtleSpring, delay: index * 0.03 }}
+          className={cn(
+            "relative rounded-xl overflow-hidden",
+            "bg-card/50 dark:bg-card/40",
+            "border border-border/40",
+            "hover:border-border/60 hover:shadow-md",
+            "transition-all duration-200"
+          )}
+        >
+          <div className="p-4">
+            <div className="flex items-start gap-3">
+              {/* Status dot */}
+              <span className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(job.status))} />
+
+              <div className="flex-1 min-w-0 space-y-2">
+                {/* Job name */}
+                <h3 className="text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {job.name}
+                </h3>
+
+                {/* Description */}
+                {job.description && (
+                  <p className="text-sm text-muted-foreground truncate">
+                    {job.description}
+                  </p>
+                )}
+
+                {/* Progress bar */}
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden max-w-xs">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPercentage}%` }}
+                    transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    className={cn("h-full rounded-full", getStatusBarColor(job.status))}
+                  />
+                </div>
+
+                {/* Metadata row */}
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className={cn("text-xs font-medium capitalize", {
+                    "text-emerald-600 dark:text-emerald-400": job.status === "completed",
+                    "text-destructive": job.status === "failed",
+                    "text-primary": job.status !== "completed" && job.status !== "failed" && job.status !== "cancelled",
+                  })}>
+                    {getStatusLabel(job.status)}
+                  </span>
+
+                  <span className="w-1 h-1 rounded-full bg-border" />
+
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>{job.processedPapers}/{job.totalPapers} papers</span>
+                  </div>
+
+                  <span className="w-1 h-1 rounded-full bg-border" />
+
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{formatTimeAgo(new Date(job.createdAt))}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </Link>
+    );
+  }
+
+  // grid-2 / grid-3: Card layout
+  const isCompact = viewMode === "grid-3";
 
   return (
     <Link href={`/extraction/${job._id}`} className="block group">
       <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{
-          duration: 0.4,
-          delay: index * 0.05,
-          ease: [0.22, 1, 0.36, 1],
-        }}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ ...subtleSpring, delay: index * 0.03 }}
         className={cn(
-          "relative py-6 px-4 sm:px-6 transition-colors hover:bg-muted/50",
-          index % 2 === 0 ? "bg-background" : "bg-muted/30"
+          "relative flex flex-col rounded-xl overflow-hidden",
+          "bg-card/50 dark:bg-card/40",
+          "border border-border/40",
+          "hover:border-border/60 hover:shadow-md",
+          "transition-all duration-200"
         )}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-8">
-          {/* Left: Status & Progress */}
-          <div className="flex items-center gap-4 lg:w-64 shrink-0">
+        {/* Colored top stripe */}
+        <div className={cn("h-[3px]", getStatusStripeColor(job.status))} />
+
+        {/* Content */}
+        <div className={cn("flex-1 flex flex-col", isCompact ? "p-3" : "p-4")}>
+          {/* Job name */}
+          <h3 className={cn(
+            "font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2",
+            isCompact ? "text-sm" : "text-base"
+          )}>
+            {job.name}
+          </h3>
+
+          {/* Description */}
+          {job.description && (
+            <p className={cn(
+              "text-muted-foreground line-clamp-1 mt-1",
+              isCompact ? "text-xs" : "text-sm"
+            )}>
+              {job.description}
+            </p>
+          )}
+
+          {/* Progress bar */}
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-3">
             <motion.div
-              whileHover={{ scale: 1.05 }}
-              className={cn(
-                "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border-2",
-                status.bgColor,
-                status.borderColor
-              )}
-            >
-              <StatusIcon
-                className={cn(
-                  "w-6 h-6",
-                  status.textColor,
-                  isProcessing && "animate-spin"
-                )}
-              />
-            </motion.div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={cn("text-sm font-semibold", status.textColor)}>
-                  {status.label}
-                </span>
-                <span className="text-muted-foreground text-sm">
-                  {progressPercentage}%
-                </span>
-              </div>
-
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercentage}%` }}
-                  transition={{
-                    duration: 0.8,
-                    delay: index * 0.05 + 0.2,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className={cn("h-full rounded-full", status.barColor)}
-                />
-              </div>
-            </div>
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercentage}%` }}
+              transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className={cn("h-full rounded-full", getStatusBarColor(job.status))}
+            />
           </div>
 
-          {/* Middle: Job Info */}
-          <div className="flex-1 min-w-0 space-y-1">
-            <h3 className="text-lg font-semibold text-foreground truncate group-hover:text-primary transition-colors duration-200">
-              {job.name}
-            </h3>
-
-            {job.description && (
-              <p className="text-sm text-muted-foreground truncate">
-                {job.description}
-              </p>
-            )}
-
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <FileText className="w-4 h-4" />
-                <span>
-                  {job.processedPapers.toLocaleString()} /{" "}
-                  {job.totalPapers.toLocaleString()} papers
-                </span>
-              </div>
-
-              <span className="w-1 h-1 rounded-full bg-border" />
-
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4" />
-                <span>{formatTimeAgo(new Date(job.createdAt))}</span>
-              </div>
+          {/* Metadata */}
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <FileText className="w-3 h-3" />
+              <span>{job.processedPapers}/{job.totalPapers}</span>
             </div>
+            <span className="text-xs text-muted-foreground">
+              {formatTimeAgo(new Date(job.createdAt))}
+            </span>
           </div>
-
-          {/* Right: Action Arrow */}
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 + 0.3 }}
-            className="flex items-center justify-end lg:w-12"
-          >
-            <motion.div
-              initial={{ x: 0 }}
-              whileHover={{ x: 4 }}
-              className="w-10 h-10 rounded-full border-2 border-border flex items-center justify-center group-hover:border-primary group-hover:bg-primary/5 transition-all duration-200"
-            >
-              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-            </motion.div>
-          </motion.div>
         </div>
       </motion.div>
     </Link>

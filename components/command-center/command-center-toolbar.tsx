@@ -47,16 +47,18 @@ interface CommandCenterToolbarProps<TSort extends string> {
   searchFilter: string;
   onSearchChange: (value: string) => void;
   placeholder: string;
-  // Download/Upload handlers
-  onDownloadJSON: () => void;
-  onDownloadCSV: () => Promise<void>;
-  onUploadJSON: () => Promise<void>;
-  onUploadCSV: () => Promise<void>;
-  // Clear
-  onClearAll: () => void;
-  clearTooltip: string;
+  // Download/Upload handlers (optional)
+  onDownloadJSON?: () => void;
+  onDownloadCSV?: () => Promise<void>;
+  onUploadJSON?: () => Promise<void>;
+  onUploadCSV?: () => Promise<void>;
+  // Clear (optional)
+  onClearAll?: () => void;
+  clearTooltip?: string;
   // State
-  totalCount: number;
+  totalCount?: number;
+  // Extra actions slot (rendered after view mode toggle, before search)
+  extraActions?: React.ReactNode;
 }
 
 /**
@@ -79,8 +81,10 @@ export function CommandCenterToolbar<TSort extends string>({
   onClearAll,
   clearTooltip,
   totalCount,
+  extraActions,
 }: CommandCenterToolbarProps<TSort>) {
   const currentSortOption = sortOptions.find((o) => o.value === currentSort);
+  const hasDownloadUpload = onDownloadJSON || onDownloadCSV || onUploadJSON || onUploadCSV;
 
   return (
     <motion.div
@@ -93,7 +97,7 @@ export function CommandCenterToolbar<TSort extends string>({
         "flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
       )}
     >
-      {/* Left: View mode toggle */}
+      {/* Left: View mode toggle + extra actions */}
       <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
           {VIEW_MODE_OPTIONS.map((option) => {
@@ -116,6 +120,7 @@ export function CommandCenterToolbar<TSort extends string>({
             );
           })}
         </div>
+        {extraActions}
       </div>
 
       {/* Center: Search input */}
@@ -172,58 +177,72 @@ export function CommandCenterToolbar<TSort extends string>({
         </DropdownMenu>
 
         {/* Download/Upload dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-foreground"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={onDownloadJSON}
-              disabled={totalCount === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download as JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onDownloadCSV}
-              disabled={totalCount === 0}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download as CSV
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onUploadJSON}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload JSON
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onUploadCSV}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload CSV
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {hasDownloadUpload && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {onDownloadJSON && (
+                <DropdownMenuItem
+                  onClick={onDownloadJSON}
+                  disabled={totalCount === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download as JSON
+                </DropdownMenuItem>
+              )}
+              {onDownloadCSV && (
+                <DropdownMenuItem
+                  onClick={onDownloadCSV}
+                  disabled={totalCount === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download as CSV
+                </DropdownMenuItem>
+              )}
+              {(onDownloadJSON || onDownloadCSV) && (onUploadJSON || onUploadCSV) && (
+                <DropdownMenuSeparator />
+              )}
+              {onUploadJSON && (
+                <DropdownMenuItem onClick={onUploadJSON}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload JSON
+                </DropdownMenuItem>
+              )}
+              {onUploadCSV && (
+                <DropdownMenuItem onClick={onUploadCSV}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload CSV
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         {/* Clear all button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClearAll}
-              disabled={totalCount === 0}
-              className="h-9 w-9 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{clearTooltip}</TooltipContent>
-        </Tooltip>
+        {onClearAll && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClearAll}
+                disabled={totalCount === 0}
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{clearTooltip}</TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </motion.div>
   );

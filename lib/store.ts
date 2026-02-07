@@ -1,16 +1,17 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { 
-  SearchField, 
-  QueryHistoryEntry, 
-  QuestionHistoryEntry, 
-  ScreeningQuestionEntry, 
+import type {
+  SearchField,
+  QueryHistoryEntry,
+  QuestionHistoryEntry,
+  ScreeningQuestionEntry,
   ScreeningResponses,
   AIProvider,
   SearchResult,
   ViewMode,
   HistorySortBy,
   BookmarkSortBy,
+  ExtractionSortBy,
   BookmarkData,
 } from './types';
 import { MIN_YEAR } from './constants';
@@ -68,6 +69,8 @@ interface UIState {
   historySortBy: HistorySortBy
   bookmarkViewMode: ViewMode
   bookmarkSortBy: BookmarkSortBy
+  extractionViewMode: ViewMode
+  extractionSortBy: ExtractionSortBy
   expandedScreeningDetails: Record<string, boolean>
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
@@ -78,6 +81,8 @@ interface UIState {
   setHistorySortBy: (sort: HistorySortBy) => void
   setBookmarkViewMode: (mode: ViewMode) => void
   setBookmarkSortBy: (sort: BookmarkSortBy) => void
+  setExtractionViewMode: (mode: ViewMode) => void
+  setExtractionSortBy: (sort: ExtractionSortBy) => void
   setScreeningDetailExpanded: (paperId: string, expanded: boolean) => void
   getScreeningDetailExpanded: (paperId: string) => boolean
 }
@@ -523,6 +528,8 @@ export const useUIStore = create<UIState>()(
       historySortBy: 'recent',
       bookmarkViewMode: 'list-detail',
       bookmarkSortBy: 'recent',
+      extractionViewMode: 'list-detail',
+      extractionSortBy: 'recent',
       expandedScreeningDetails: {},
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
@@ -533,6 +540,8 @@ export const useUIStore = create<UIState>()(
       setHistorySortBy: (sort) => set({ historySortBy: sort }),
       setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
       setBookmarkSortBy: (sort) => set({ bookmarkSortBy: sort }),
+      setExtractionViewMode: (mode) => set({ extractionViewMode: mode }),
+      setExtractionSortBy: (sort) => set({ extractionSortBy: sort }),
       setScreeningDetailExpanded: (paperId, expanded) => set((state) => ({
         expandedScreeningDetails: {
           ...state.expandedScreeningDetails,
@@ -549,6 +558,8 @@ export const useUIStore = create<UIState>()(
         historySortBy: state.historySortBy,
         bookmarkViewMode: state.bookmarkViewMode,
         bookmarkSortBy: state.bookmarkSortBy,
+        extractionViewMode: state.extractionViewMode,
+        extractionSortBy: state.extractionSortBy,
         expandedScreeningDetails: state.expandedScreeningDetails,
       }),
     }

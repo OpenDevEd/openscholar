@@ -31,6 +31,7 @@ export type {
   ViewMode,
   HistorySortBy,
   BookmarkSortBy,
+  ExtractionSortBy,
   BookmarkData,
 } from './search.types';
 
