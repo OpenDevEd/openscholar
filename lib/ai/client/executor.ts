@@ -8,6 +8,7 @@ import {
 import {
   getEnhanceQueryConfig,
   getScreeningQuestionsConfig,
+  getExtractionQuestionsConfig,
   getTranslateQueryConfig,
   getTranslatePaperContentConfig,
   getScreeningResponsesConfig,
@@ -17,6 +18,7 @@ import type { AIProvider } from '@/lib/types'
 import type {
   EnhanceSearchQueryInput,
   GenerateScreeningQuestionsInput,
+  GenerateExtractionQuestionsInput,
   TranslateQueryInput,
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
@@ -66,6 +68,11 @@ export const generateScreeningQuestions = createClientExecutor(
   (output) => ({
     questions: output.questions,
   })
+)
+
+export const generateExtractionQuestions = createClientExecutor(
+  getExtractionQuestionsConfig,
+  (output) => ({ questions: output.questions })
 )
 
 export const translateQuery = createClientExecutor(

@@ -5,6 +5,7 @@ import { action } from "../_generated/server";
 import {
   getEnhanceQueryConfig,
   getScreeningQuestionsConfig,
+  getExtractionQuestionsConfig,
   getTranslateQueryConfig,
   getTranslatePaperContentConfig,
   getScreeningResponsesConfig,
@@ -46,6 +47,24 @@ export const generateScreeningQuestions = createAIAction(
   (output) => ({
     questions: output.questions,
   })
+);
+
+export const generateExtractionQuestions = createAIAction(
+  {
+    jobName: v.string(),
+    sourceContext: v.string(),
+    existingQuestions: v.array(v.string()),
+  },
+  v.object({
+    questions: v.array(v.object({
+      question: v.string(),
+      type: v.union(v.literal("string"), v.literal("boolean"), v.literal("number"), v.literal("array")),
+      description: v.optional(v.string()),
+    })),
+  }),
+  "Generate extraction questions",
+  getExtractionQuestionsConfig,
+  (output) => ({ questions: output.questions })
 );
 
 export const translateQuery = createAIAction(

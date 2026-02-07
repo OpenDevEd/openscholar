@@ -386,9 +386,7 @@ export function ZoteroSelector() {
                         <Paperclip className="h-3 w-3" /> PDF attached
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1">
-                        <FileText className="h-3 w-3" /> No PDF
-                      </span>
+                      <></>
                     )}
                   </div>
                 </div>

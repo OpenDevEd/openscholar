@@ -1,19 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { Suspense, useEffect } from "react";
 import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Database, Loader2 } from "lucide-react";
 import { ExtractionCommandCenter } from "@/components/extraction/extraction-command-center";
-import { JobCreator } from "@/components/extraction/job-creator";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer, CommandCenterHeader } from "@/components/command-center";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 export default function ExtractionPage() {
-  const [showCreator, setShowCreator] = useState(false);
+  const router = useRouter();
   const jobs = useQuery(api.extraction.queries.getMyJobs, {});
 
   return (
@@ -34,22 +33,12 @@ export default function ExtractionPage() {
           />
 
           <div>
-            {showCreator ? (
-              <div className="p-4 md:p-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <JobCreator onCancel={() => setShowCreator(false)} />
-                </motion.div>
-              </div>
-            ) : jobs === undefined ? (
+            {jobs === undefined ? (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : (
-              <ExtractionCommandCenter jobs={jobs || []} onNewJob={() => setShowCreator(true)} />
+              <ExtractionCommandCenter jobs={jobs || []} onNewJob={() => router.push("/extraction/new")} />
             )}
           </div>
         </CommandCenterContainer>

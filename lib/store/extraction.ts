@@ -10,12 +10,14 @@ import type { ExtractionManualItem, ExtractionQuestion, ExtractionZoteroSelectio
 interface ExtractionStore {
   draftJob: {
     name: string;
+    activeSourceTab: "history" | "zotero" | "manual";
     selectedHistoryIds: string[];
     zoteroSelection: ExtractionZoteroSelection | null;
     manualItems: ExtractionManualItem[];
     questions: ExtractionQuestion[];
   };
   setDraftJobName: (name: string) => void;
+  setActiveSourceTab: (tab: "history" | "zotero" | "manual") => void;
   toggleHistorySelection: (historyId: string) => void;
   clearHistorySelections: () => void;
   setZoteroSelection: (selection: ExtractionZoteroSelection | null) => void;
@@ -35,6 +37,7 @@ export const useExtractionStore = create<ExtractionStore>()(
     (set) => ({
       draftJob: {
         name: "",
+        activeSourceTab: "history",
         selectedHistoryIds: [],
         zoteroSelection: null,
         manualItems: [],
@@ -43,6 +46,10 @@ export const useExtractionStore = create<ExtractionStore>()(
       setDraftJobName: (name) =>
         set((state) => ({
           draftJob: { ...state.draftJob, name },
+        })),
+      setActiveSourceTab: (tab) =>
+        set((state) => ({
+          draftJob: { ...state.draftJob, activeSourceTab: tab },
         })),
       toggleHistorySelection: (historyId) =>
         set((state) => {
@@ -147,6 +154,7 @@ export const useExtractionStore = create<ExtractionStore>()(
         set({
           draftJob: {
             name: "",
+            activeSourceTab: "history",
             selectedHistoryIds: [],
             zoteroSelection: null,
             manualItems: [],
@@ -165,6 +173,7 @@ export const useExtractionStore = create<ExtractionStore>()(
           draftJob: {
               ...currentState.draftJob,
               ...draftJob,
+              activeSourceTab: draftJob.activeSourceTab ?? "history",
               selectedHistoryIds: draftJob.selectedHistoryIds ?? [],
               zoteroSelection: draftJob.zoteroSelection
                 ? {

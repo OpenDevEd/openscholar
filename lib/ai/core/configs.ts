@@ -2,11 +2,13 @@ import { z } from 'zod'
 import {
   queryEnhancementSchema,
   screeningQuestionsSchema,
+  extractionQuestionsSchema,
   createScreeningResponsesSchema,
   translateQuerySchema,
   translatePaperContentSchema,
   buildEnhanceQueryPrompts,
   buildScreeningQuestionsPrompts,
+  buildExtractionQuestionsPrompts,
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
@@ -15,6 +17,7 @@ import {
 import {
   EnhanceSearchQueryInput,
   GenerateScreeningQuestionsInput,
+  GenerateExtractionQuestionsInput,
   TranslateQueryInput,
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
@@ -74,6 +77,32 @@ export function getScreeningQuestionsConfig(
     postProcess: (output, input) => {
       const newQuestions = output.questions.filter((newQuestion: string) => {
         const normalizedNew = newQuestion.toLowerCase().trim()
+        return !input.existingQuestions.some((existingQuestion: string) => {
+          const normalizedExisting = existingQuestion.toLowerCase().trim()
+          return (
+            normalizedExisting === normalizedNew ||
+            normalizedExisting.includes(normalizedNew) ||
+            normalizedNew.includes(normalizedExisting)
+          )
+        })
+      })
+      return { questions: newQuestions }
+    },
+  }
+}
+
+export function getExtractionQuestionsConfig(
+  input: GenerateExtractionQuestionsInput
+): OperationConfig<GenerateExtractionQuestionsInput, z.infer<typeof extractionQuestionsSchema>> {
+  return {
+    schema: extractionQuestionsSchema,
+    buildPrompts: (input) => buildExtractionQuestionsPrompts(input),
+    input,
+    repairStrategy: { type: 'full-json' },
+    temperature: 0.7,
+    postProcess: (output, input) => {
+      const newQuestions = output.questions.filter((newQ) => {
+        const normalizedNew = newQ.question.toLowerCase().trim()
         return !input.existingQuestions.some((existingQuestion: string) => {
           const normalizedExisting = existingQuestion.toLowerCase().trim()
           return (

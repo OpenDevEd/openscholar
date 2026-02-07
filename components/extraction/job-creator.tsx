@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation } from "convex/react";
+import { useRouter } from "next/navigation";
+import { parseAsInteger, useQueryState } from "nuqs";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +27,6 @@ import { SourceSummary } from "./source-summary";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface JobCreatorProps {
-  onCancel: () => void;
-}
-
 const stepVariants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 50 : -50,
@@ -47,10 +45,16 @@ const stepVariants = {
   }),
 };
 
-export function JobCreator({ onCancel }: JobCreatorProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+export function JobCreator() {
+  const router = useRouter();
+  const [stepRaw, setStepRaw] = useQueryState(
+    "step",
+    parseAsInteger.withDefault(1).withOptions({ history: "push" }),
+  );
   const [direction, setDirection] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validStep = Math.min(3, Math.max(1, stepRaw)) as 1 | 2 | 3;
 
   const { draftJob, setDraftJobName, clearDraftJob } = useExtractionStore();
   const startExtraction = useMutation(api.extraction.mutations.startExtraction);
@@ -64,18 +68,18 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
 
   const handleNext = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (step < 3 && canProceed()) {
+    if (validStep < 3 && canProceed()) {
       setDirection(1);
-      setStep((prev) => (prev + 1) as 1 | 2 | 3);
+      setStepRaw(validStep + 1);
     }
   };
 
   const handleBack = () => {
-    if (step > 1) {
+    if (validStep > 1) {
       setDirection(-1);
-      setStep((prev) => (prev - 1) as 1 | 2 | 3);
+      setStepRaw(validStep - 1);
     } else {
-      onCancel();
+      router.push("/extraction");
     }
   };
 
@@ -128,7 +132,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
         },
       }));
 
-      await startExtraction({
+      const result = await startExtraction({
         name: draftJob.name || "Untitled Extraction Job",
         sourceType: hasHistory && !hasZotero && !hasManual
           ? "history"
@@ -155,7 +159,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
 
       toast.success("Extraction job started!");
       clearDraftJob();
-      onCancel();
+      router.push(`/extraction/${result.jobId}`);
     } catch (error) {
       console.error("Failed to start extraction:", error);
       toast.error("Failed to start extraction job");
@@ -165,7 +169,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
   };
 
   const canProceed = () => {
-    switch (step) {
+    switch (validStep) {
       case 1:
         return draftJob.name.trim().length > 0;
       case 2:
@@ -182,7 +186,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full p-4 md:p-6">
       {/* Header with Cancel */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -192,14 +196,14 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={onCancel}
+          onClick={() => router.push("/extraction")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Cancel
         </Button>
 
         <div className="text-sm text-muted-foreground">
-          Step {step} of 3
+          Step {validStep} of 3
         </div>
       </motion.div>
 
@@ -217,16 +221,16 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
             <motion.div
               className="h-full bg-primary rounded-full"
               initial={{ width: "0%" }}
-              animate={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
+              animate={{ width: `${((validStep - 1) / (steps.length - 1)) * 100}%` }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             />
           </div>
 
           {/* Step Indicators */}
           {steps.map((s, i) => {
-            const isActive = step >= s.id;
-            const isCurrent = step === s.id;
-            
+            const isActive = validStep >= s.id;
+            const isCurrent = validStep === s.id;
+
             return (
               <motion.div
                 key={s.id}
@@ -246,7 +250,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
                     isActive ? "text-primary-foreground" : "text-muted-foreground"
                   )}
                 >
-                  {isActive && step > s.id ? (
+                  {isActive && validStep > s.id ? (
                     <Check className="w-6 h-6 text-muted-foreground opacity-50" />
                   ) : (
                     <s.icon className="w-5 h-5 text-muted-foreground" />
@@ -275,7 +279,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
       <div className="min-h-[400px]">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
-            key={step}
+            key={validStep}
             custom={direction}
             variants={stepVariants}
             initial="enter"
@@ -288,7 +292,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
             }}
             className="h-full"
           >
-            {step === 1 && (
+            {validStep === 1 && (
               <form onSubmit={handleNext} className="max-w-lg mx-auto">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -327,7 +331,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
               </form>
             )}
 
-            {step === 2 && (
+            {validStep === 2 && (
               <div className="h-full">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -348,7 +352,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
               </div>
             )}
 
-            {step === 3 && (
+            {validStep === 3 && (
               <div className="h-full">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -384,11 +388,11 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
           disabled={isSubmitting}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          {step === 1 ? "Cancel" : "Back"}
+          {validStep === 1 ? "Cancel" : "Back"}
         </Button>
 
         <Button
-          onClick={step === 3 ? handleSubmit : handleNext}
+          onClick={validStep === 3 ? handleSubmit : handleNext}
           disabled={!canProceed() || isSubmitting}
           size="lg"
           className="min-w-[160px] font-semibold"
@@ -398,7 +402,7 @@ export function JobCreator({ onCancel }: JobCreatorProps) {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Starting...
             </>
-          ) : step === 3 ? (
+          ) : validStep === 3 ? (
             <>
               Start Extraction
               <Zap className="ml-2 h-4 w-4" />
