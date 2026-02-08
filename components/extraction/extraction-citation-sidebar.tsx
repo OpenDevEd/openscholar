@@ -15,12 +15,10 @@ import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
 
 type ExtractionCitationSidebarProps = {
   panelPayload: CitationPanelPayload | null;
-  isActiveTab: boolean;
 };
 
 export function ExtractionCitationSidebar({
   panelPayload,
-  isActiveTab,
 }: ExtractionCitationSidebarProps) {
   const { isCollapsed, setCollapsed, toggle, _hasHydrated } =
     useExtractionCitationPanelStore();
@@ -29,7 +27,7 @@ export function ExtractionCitationSidebar({
 
   if (!_hasHydrated) return null;
 
-  const hasPayload = panelPayload !== null && isActiveTab;
+  const hasPayload = panelPayload !== null;
   const width = !hasPayload ? 0 : isCollapsed ? collapsedWidth : expandedWidth;
   const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
 

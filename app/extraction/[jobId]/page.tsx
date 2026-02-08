@@ -329,7 +329,6 @@ export default function JobDetailPage() {
           isMobile ? null : (
             <ExtractionCitationSidebar
               panelPayload={citationPanelPayload}
-              isActiveTab={activeTab === "results" || activeTab === "review"}
             />
           )
         }
