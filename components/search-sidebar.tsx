@@ -70,21 +70,7 @@ import {
 import { useFilterSidebarStore, getFilterSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { motion, AnimatePresence } from "motion/react";
-
-// Spring animation config for sidebar - bouncier version
-const sidebarSpring = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 25,
-  mass: 0.8,
-};
-
-const hoverSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 25,
-  mass: 0.6,
-};
+import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
 
 interface SearchSidebarProps {
   isOpen?: boolean;

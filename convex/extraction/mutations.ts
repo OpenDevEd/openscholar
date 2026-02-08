@@ -8,11 +8,89 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
+import {
+  aggregateQuestionInsights,
+  buildDisagreementClusters,
+  buildRunDiff,
+  formatAnswerForDisplay,
+  type InsightEntry,
+  type RunDiffRecord,
+} from "../../lib/extraction/insights";
+
+async function assertJobOwnership(
+  ctx: any,
+  userId: Id<"users">,
+  jobId: Id<"extractionJobs">
+) {
+  const job = await ctx.db.get(jobId);
+  if (!job || job.userId !== userId) {
+    throw new Error("Job not found");
+  }
+  return job;
+}
+
+async function loadJobDataForReporting(
+  ctx: any,
+  jobId: Id<"extractionJobs">
+) {
+  const [questions, papers] = await Promise.all([
+    ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+      .order("asc")
+      .collect(),
+    ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+      .collect(),
+  ]);
+
+  const resultsByPaper = new Map<string, Doc<"extractionResults">[]>();
+  const reviewsByResult = new Map<string, Doc<"extractionResultReviews">>();
+
+  for (const paper of papers) {
+    const [results, reviews] = await Promise.all([
+      ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+        .collect(),
+      ctx.db
+        .query("extractionResultReviews")
+        .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+        .collect(),
+    ]);
+    resultsByPaper.set(paper._id, results);
+    for (const review of reviews) {
+      reviewsByResult.set(review.resultId, review);
+    }
+  }
+
+  return { questions, papers, resultsByPaper, reviewsByResult };
+}
+
+function toInsightEntry(
+  paper: Doc<"extractionPapers">,
+  questionKey: string,
+  result: Doc<"extractionResults"> | undefined,
+  review?: Doc<"extractionResultReviews">
+): InsightEntry {
+  return {
+    paperId: paper._id,
+    title: paper.title,
+    openalexId: paper.openalexId,
+    questionKey,
+    answer: review?.correctedAnswer ?? result?.answer ?? null,
+    confidence: result?.confidence,
+    citationStatus: result?.citationStatus as any,
+    pdfContentUsed: Boolean(result?.pdfContentUsed),
+    reviewState: (review?.state as any) || "unreviewed",
+  };
+}
 
 
 // Start a new extraction job (public API)
@@ -224,6 +302,508 @@ export const duplicateExtraction = mutation({
     });
 
     return { jobId: newJobId };
+  },
+});
+
+export const setResultReviewState = mutation({
+  args: {
+    resultId: v.id("extractionResults"),
+    state: v.union(
+      v.literal("unreviewed"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("needs_followup")
+    ),
+    note: v.optional(v.string()),
+    correctedAnswer: v.optional(
+      v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
+    ),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const result = await ctx.db.get(args.resultId);
+    if (!result) throw new Error("Result not found");
+
+    const paper = await ctx.db.get(result.paperId);
+    if (!paper) throw new Error("Paper not found");
+
+    const job = await assertJobOwnership(ctx, user._id, paper.jobId);
+    const existing = await ctx.db
+      .query("extractionResultReviews")
+      .withIndex("by_result", (q) => q.eq("resultId", args.resultId))
+      .first();
+
+    const note = args.note?.trim() || undefined;
+    const hasCorrection = args.correctedAnswer !== undefined;
+
+    if (args.state === "unreviewed" && !note && !hasCorrection) {
+      if (existing) {
+        await ctx.db.delete(existing._id);
+      }
+      return {
+        cleared: true,
+        state: "unreviewed",
+      };
+    }
+
+    const patchData = {
+      state: args.state,
+      note,
+      correctedAnswer: args.correctedAnswer,
+      reviewedBy: user._id,
+      reviewedAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patchData);
+      return {
+        reviewId: existing._id,
+        state: args.state,
+      };
+    }
+
+    const reviewId = await ctx.db.insert("extractionResultReviews", {
+      jobId: job._id,
+      paperId: paper._id,
+      resultId: result._id,
+      questionKey: result.questionKey,
+      ...patchData,
+      createdAt: Date.now(),
+    });
+
+    return {
+      reviewId,
+      state: args.state,
+    };
+  },
+});
+
+export const saveExtractionSavedView = mutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    name: v.string(),
+    filters: v.object({
+      searchQuery: v.string(),
+      confidenceRange: v.array(v.number()),
+      statusFilters: v.array(v.string()),
+    }),
+    sortBy: v.optional(v.string()),
+    viewMode: v.optional(v.string()),
+    selectedQuestionKeys: v.optional(v.array(v.string())),
+  },
+  returns: v.object({
+    viewId: v.id("extractionSavedViews"),
+    created: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    await assertJobOwnership(ctx, user._id, args.jobId);
+
+    const name = args.name.trim();
+    if (!name) throw new Error("View name is required");
+
+    const existing = await ctx.db
+      .query("extractionSavedViews")
+      .withIndex("by_job_name", (q) => q.eq("jobId", args.jobId).eq("name", name))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        filters: args.filters,
+        sortBy: args.sortBy,
+        viewMode: args.viewMode,
+        selectedQuestionKeys: args.selectedQuestionKeys,
+        updatedAt: Date.now(),
+      });
+      return { viewId: existing._id, created: false };
+    }
+
+    const viewId = await ctx.db.insert("extractionSavedViews", {
+      jobId: args.jobId,
+      userId: user._id,
+      name,
+      filters: args.filters,
+      sortBy: args.sortBy,
+      viewMode: args.viewMode,
+      selectedQuestionKeys: args.selectedQuestionKeys,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { viewId, created: true };
+  },
+});
+
+export const deleteExtractionSavedView = mutation({
+  args: {
+    viewId: v.id("extractionSavedViews"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const view = await ctx.db.get(args.viewId);
+    if (!view || view.userId !== user._id) {
+      throw new Error("Saved view not found");
+    }
+    await ctx.db.delete(args.viewId);
+    return { success: true };
+  },
+});
+
+export const saveWorkflowTemplate = mutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  returns: v.object({
+    templateId: v.id("extractionWorkflowTemplates"),
+    created: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const job = await assertJobOwnership(ctx, user._id, args.jobId);
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
+      .collect();
+
+    const name = args.name.trim();
+    if (!name) throw new Error("Template name is required");
+
+    const existing = await ctx.db
+      .query("extractionWorkflowTemplates")
+      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", name))
+      .first();
+
+    const payload = {
+      name,
+      description: args.description?.trim() || undefined,
+      sourceType: job.sourceType,
+      sourceHistoryEntries: job.sourceHistoryEntries,
+      sourceZoteroSelection: job.sourceZoteroSelection,
+      sourceManualItems: job.sourceManualItems,
+      questions: questions.map((question) => ({
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
+      })),
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, payload);
+      return { templateId: existing._id, created: false };
+    }
+
+    const templateId = await ctx.db.insert("extractionWorkflowTemplates", {
+      userId: user._id,
+      ...payload,
+      createdAt: Date.now(),
+    });
+    return { templateId, created: true };
+  },
+});
+
+export const deleteWorkflowTemplate = mutation({
+  args: {
+    templateId: v.id("extractionWorkflowTemplates"),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const template = await ctx.db.get(args.templateId);
+    if (!template || template.userId !== user._id) {
+      throw new Error("Template not found");
+    }
+    await ctx.db.delete(args.templateId);
+    return { success: true };
+  },
+});
+
+export const startExtractionFromTemplate = mutation({
+  args: {
+    templateId: v.id("extractionWorkflowTemplates"),
+    name: v.optional(v.string()),
+  },
+  returns: v.object({ jobId: v.id("extractionJobs") }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const template = await ctx.db.get(args.templateId);
+    if (!template || template.userId !== user._id) {
+      throw new Error("Template not found");
+    }
+
+    const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
+      userId: user._id,
+      name: args.name?.trim() || `${template.name} (Rerun)`,
+      sourceType: template.sourceType,
+      sourceHistoryEntries: template.sourceHistoryEntries,
+      sourceZoteroSelection: template.sourceZoteroSelection,
+      sourceManualItems: template.sourceManualItems,
+      status: "pending",
+      totalPapers: 0,
+      processedPapers: 0,
+      failedPapers: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    for (let i = 0; i < template.questions.length; i++) {
+      const question = template.questions[i];
+      await ctx.db.insert("extractionQuestions", {
+        jobId,
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
+        order: i,
+        createdAt: Date.now(),
+      });
+    }
+
+    const workflowId = await workflow.start(
+      ctx,
+      internal.extraction.workflow.runExtractionWorkflow,
+      { jobId }
+    );
+    await ctx.db.patch(jobId, {
+      workflowId,
+      updatedAt: Date.now(),
+    });
+
+    return { jobId };
+  },
+});
+
+export const createExtractionReportSnapshot = mutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    name: v.optional(v.string()),
+    scope: v.optional(
+      v.object({
+        filteredPaperIds: v.optional(v.array(v.id("extractionPapers"))),
+        selectedQuestionKeys: v.optional(v.array(v.string())),
+        viewName: v.optional(v.string()),
+      })
+    ),
+  },
+  returns: v.object({ reportId: v.id("extractionReportSnapshots") }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const job = await assertJobOwnership(ctx, user._id, args.jobId);
+    const { questions, papers, resultsByPaper, reviewsByResult } =
+      await loadJobDataForReporting(ctx, args.jobId);
+
+    const filteredPaperIds = new Set(
+      args.scope?.filteredPaperIds || papers.map((p: Doc<"extractionPapers">) => p._id)
+    );
+    const selectedQuestions = new Set(
+      args.scope?.selectedQuestionKeys ||
+        questions.map((question: Doc<"extractionQuestions">) => question.key)
+    );
+    const scopedPapers = papers.filter((paper: Doc<"extractionPapers">) =>
+      filteredPaperIds.has(paper._id)
+    );
+    const scopedQuestions = questions.filter((question: Doc<"extractionQuestions">) =>
+      selectedQuestions.has(question.key)
+    );
+
+    const insightByQuestion = scopedQuestions.map((question: Doc<"extractionQuestions">) => {
+      const entries: InsightEntry[] = scopedPapers.map((paper: Doc<"extractionPapers">) => {
+        const result = (resultsByPaper.get(paper._id) || []).find(
+          (row: Doc<"extractionResults">) => row.questionKey === question.key
+        );
+        const review = result ? reviewsByResult.get(result._id) : undefined;
+        return toInsightEntry(paper, question.key, result, review);
+      });
+
+      return {
+        question,
+        aggregate: aggregateQuestionInsights(entries, question.type as any),
+        disagreements: buildDisagreementClusters(entries, question.type as any),
+        entries,
+      };
+    });
+
+    const keyFindingsLines = insightByQuestion.map((row: any) => {
+      const top = row.aggregate.topAnswers[0];
+      const topText = top ? `"${top.display}" (${top.count})` : "No dominant answer";
+      return `- ${row.question.question}: ${topText}`;
+    });
+
+    const disagreementLines = insightByQuestion
+      .filter((row: any) => row.disagreements.length > 1)
+      .map((row: any) => {
+        const topCluster = row.disagreements
+          .slice(0, 2)
+          .map((cluster: any) => `${cluster.displayAnswer} (${cluster.count})`)
+          .join(" vs ");
+        return `- ${row.question.question}: ${topCluster}`;
+      });
+
+    const evidenceHighlights = insightByQuestion
+      .flatMap((row: any) => {
+        const groundedEntries = row.entries
+          .filter(
+            (entry: InsightEntry) =>
+              entry.citationStatus === "grounded" && entry.answer !== null
+          )
+          .slice(0, 2);
+        return groundedEntries.map(
+          (entry: InsightEntry) =>
+            `- ${row.question.question}: ${formatAnswerForDisplay(
+              entry.answer,
+              row.question.type as any
+            )} (${entry.title})`
+        );
+      })
+      .slice(0, 12);
+
+    const totalExpected = scopedPapers.length * Math.max(scopedQuestions.length, 1);
+    const answeredTotal = insightByQuestion.reduce(
+      (sum: number, row: any) => sum + row.aggregate.answered,
+      0
+    );
+    const groundedTotal = insightByQuestion.reduce(
+      (sum: number, row: any) => sum + row.aggregate.grounded,
+      0
+    );
+    const bestEffortTotal = insightByQuestion.reduce(
+      (sum: number, row: any) => sum + row.aggregate.citationStatusMix.best_effort,
+      0
+    );
+
+    const reportId = await ctx.db.insert("extractionReportSnapshots", {
+      jobId: job._id,
+      userId: user._id,
+      name:
+        args.name?.trim() ||
+        `${job.name} report ${new Date().toISOString().slice(0, 10)}`,
+      scope: {
+        filteredPaperIds: args.scope?.filteredPaperIds,
+        selectedQuestionKeys: args.scope?.selectedQuestionKeys,
+        viewName: args.scope?.viewName,
+      },
+      sections: [
+        {
+          id: "key-findings",
+          title: "Key Findings",
+          body: keyFindingsLines.length > 0 ? keyFindingsLines.join("\n") : "- No findings yet.",
+        },
+        {
+          id: "conflicts-uncertainties",
+          title: "Conflicts and Uncertainties",
+          body:
+            disagreementLines.length > 0
+              ? disagreementLines.join("\n")
+              : "- No major disagreements detected.",
+        },
+        {
+          id: "evidence-highlights",
+          title: "Evidence Highlights",
+          body:
+            evidenceHighlights.length > 0
+              ? evidenceHighlights.join("\n")
+              : "- No grounded evidence highlights available.",
+        },
+        {
+          id: "methods-limitations",
+          title: "Methods and Limitations",
+          body: [
+            `- Scope: ${scopedPapers.length} papers, ${scopedQuestions.length} questions.`,
+            `- Answered rate: ${Math.round(
+              (totalExpected > 0 ? answeredTotal / totalExpected : 0) * 100
+            )}%.`,
+            `- Grounded rate: ${Math.round(
+              (totalExpected > 0 ? groundedTotal / totalExpected : 0) * 100
+            )}%.`,
+            `- Best-effort rate: ${Math.round(
+              (totalExpected > 0 ? bestEffortTotal / totalExpected : 0) * 100
+            )}%.`,
+          ].join("\n"),
+        },
+      ],
+      metrics: {
+        totalPapers: scopedPapers.length,
+        answeredRate: totalExpected > 0 ? answeredTotal / totalExpected : 0,
+        groundedRate: totalExpected > 0 ? groundedTotal / totalExpected : 0,
+        bestEffortRate: totalExpected > 0 ? bestEffortTotal / totalExpected : 0,
+      },
+      generatedAt: Date.now(),
+      createdAt: Date.now(),
+    });
+
+    return { reportId };
+  },
+});
+
+export const createExtractionRunDiff = mutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    baselineJobId: v.id("extractionJobs"),
+  },
+  returns: v.object({
+    diffId: v.id("extractionRunDiffs"),
+    summary: v.object({
+      newAnswers: v.number(),
+      changedAnswers: v.number(),
+      removedAnswers: v.number(),
+      confidenceShifts: v.number(),
+      newlyInsufficientEvidence: v.number(),
+      totalCompared: v.number(),
+    }),
+  }),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    await assertJobOwnership(ctx, user._id, args.jobId);
+    await assertJobOwnership(ctx, user._id, args.baselineJobId);
+
+    const currentData = await loadJobDataForReporting(ctx, args.jobId);
+    const baselineData = await loadJobDataForReporting(ctx, args.baselineJobId);
+
+    const toDiffRecords = (
+      papers: Doc<"extractionPapers">[],
+      resultsByPaper: Map<string, Doc<"extractionResults">[]>
+    ): RunDiffRecord[] => {
+      const rows: RunDiffRecord[] = [];
+      for (const paper of papers.filter((row) => row.processable !== false)) {
+        const results = resultsByPaper.get(paper._id) || [];
+        for (const result of results) {
+          rows.push({
+            key: `${paper.openalexId}::${result.questionKey}`,
+            openalexId: paper.openalexId,
+            title: paper.title,
+            questionKey: result.questionKey,
+            answer: result.answer,
+            confidence: result.confidence,
+            citationStatus: result.citationStatus as any,
+          });
+        }
+      }
+      return rows;
+    };
+
+    const { summary, changes } = buildRunDiff(
+      toDiffRecords(baselineData.papers, baselineData.resultsByPaper),
+      toDiffRecords(currentData.papers, currentData.resultsByPaper)
+    );
+
+    const diffId = await ctx.db.insert("extractionRunDiffs", {
+      jobId: args.jobId,
+      baselineJobId: args.baselineJobId,
+      userId: user._id,
+      summary,
+      changes: changes.slice(0, 1000),
+      generatedAt: Date.now(),
+      createdAt: Date.now(),
+    });
+
+    return { diffId, summary };
   },
 });
 

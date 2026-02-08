@@ -1,6 +1,15 @@
 "use client";
 
-import { Filter, FileText, Unlock, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Filter,
+  FileText,
+  Unlock,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +32,8 @@ const options = [
   { id: 'has-errors', label: 'Has Errors', icon: AlertCircle },
   { id: 'high-confidence', label: 'High Confidence', icon: TrendingUp },
   { id: 'low-confidence', label: 'Low Confidence', icon: TrendingDown },
+  { id: 'reviewed', label: 'Reviewed', icon: CheckCircle2 },
+  { id: 'needs-followup', label: 'Needs Follow-up', icon: AlertTriangle },
 ];
 
 export function StatusFilter({ selected, onChange }: StatusFilterProps) {

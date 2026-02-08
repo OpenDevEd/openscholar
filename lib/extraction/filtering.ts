@@ -1,4 +1,5 @@
 import type { Doc } from "@/convex/_generated/dataModel";
+import { getReviewState, isReviewed } from "./reviews";
 
 export interface FilterState {
   searchQuery: string;
@@ -43,7 +44,7 @@ export function preprocessPapers(papers: PaperWithResults[]): Map<string, Prepro
 
       const searchableText = [
         paper.title,
-        ...paper.results.map(r => String(r.answer)),
+        ...paper.results.map((r) => String((r as any).correctedAnswer ?? r.answer)),
         ...paper.results.map(r => r.reasoning || ''),
         ...paper.results.flatMap((r) => {
           const citations = (r as any).citations;
@@ -100,6 +101,10 @@ export function filterPapers(
         }
         if (filter === 'high-confidence') return data.avgConfidence >= 0.8;
         if (filter === 'low-confidence') return data.avgConfidence < 0.5;
+        if (filter === 'reviewed') return paper.results.some((result) => isReviewed(result));
+        if (filter === 'needs-followup') {
+          return paper.results.some((result) => getReviewState(result) === "needs_followup");
+        }
         return false;
       });
       if (!hasMatch) return false;

@@ -27,6 +27,11 @@ import {
   type CitationStatus,
   type CitationLocation,
 } from "@/lib/extraction/citations";
+import {
+  getReviewLabel,
+  getReviewState,
+  isReviewed,
+} from "@/lib/extraction/reviews";
 
 interface PaperWithResults extends Doc<"extractionPapers"> {
   results: Doc<"extractionResults">[];
@@ -133,6 +138,7 @@ export function ResultsTable({
                     : "Abstract";
                 const showNoContent =
                   paper.status === "download_failed" && !hasAbstract;
+                const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
 
                 return (
                   <TableRow
@@ -207,6 +213,14 @@ export function ResultsTable({
                               className="h-4 px-1 text-[9px] text-muted-foreground border-border"
                             >
                               {abstractLabel}
+                            </Badge>
+                          ) : null}
+                          {reviewedCount > 0 ? (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                            >
+                              Reviewed {reviewedCount}/{paper.results.length}
                             </Badge>
                           ) : null}
                         </div>
@@ -293,6 +307,8 @@ function ResultCell({
   const { answer, confidence, reasoning } = result;
   const citations = getAllCitationLocations(result);
   const citationStatus = getCitationStatus(result);
+  const reviewState = getReviewState(result);
+  const reviewLabel = getReviewLabel(reviewState);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500";
@@ -371,6 +387,11 @@ function ResultCell({
           {citationStatus === "extraction_error" ? (
             <Badge variant="outline" className="text-[10px] font-medium">
               Extraction error
+            </Badge>
+          ) : null}
+          {reviewLabel && reviewState !== "unreviewed" ? (
+            <Badge variant="outline" className="text-[10px] font-medium">
+              {reviewLabel}
             </Badge>
           ) : null}
           {reasoning && (

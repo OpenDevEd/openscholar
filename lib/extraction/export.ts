@@ -114,7 +114,8 @@ export function exportToCSV(
     // Add answers
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
-      row.push(formatAnswerForCSV(result?.answer, q.type));
+      const answer = (result as any)?.correctedAnswer ?? result?.answer;
+      row.push(formatAnswerForCSV(answer, q.type));
     });
 
     // Add confidence scores
@@ -167,12 +168,13 @@ export function exportToJSON(
       pdfUsed: paper.pdfContentUsed,
       results: paper.results.map(r => ({
         questionKey: r.questionKey,
-        answer: r.answer,
+        answer: (r as any).correctedAnswer ?? r.answer,
         confidence: r.confidence,
         ...(includeReasoning && { reasoning: r.reasoning }),
         ...(includeCitations && {
           citations: (r as any).citations ?? [],
           citationStatus: (r as any).citationStatus,
+          reviewState: (r as any).reviewState,
         }),
       })),
     })),
@@ -214,7 +216,8 @@ export function exportToExcel(
 
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
-      row[q.question] = formatAnswerForExcel(result?.answer, q.type);
+      const answer = (result as any)?.correctedAnswer ?? result?.answer;
+      row[q.question] = formatAnswerForExcel(answer, q.type);
 
       if (includeConfidence) {
         row[`${q.question} (Confidence)`] = result?.confidence

@@ -3,6 +3,7 @@ import {
   applyAbstractOnlyPolicy,
   applyEvidencePolicy,
   isUsableAbstract,
+  normalizeExtractionOutputForQuestion,
   validateSupportEvidenceIds,
 } from "../convex/extraction/workpoolActions";
 
@@ -136,5 +137,48 @@ describe("V3.2 evidence policy", () => {
     expect(isUsableAbstract(undefined)).toBe(false);
     expect(isUsableAbstract("short abstract")).toBe(false);
     expect(isUsableAbstract("a".repeat(80))).toBe(true);
+  });
+
+  it("normalizes array answers by deduping, splitting, and capping", () => {
+    const normalized = normalizeExtractionOutputForQuestion("array", {
+      answer: [
+        "GPT-4; ChatGPT",
+        "gpt-4",
+        "Machine Learning",
+        "GitHub Copilot",
+        "CodeLlama",
+        "Claude",
+        "Gemini",
+        "Bard",
+        "StarCoder",
+        "Mistral",
+      ],
+      confidence: 0.9,
+      reasoning: "test",
+      supportEvidenceIds: [],
+    });
+
+    expect(Array.isArray(normalized.answer)).toBe(true);
+    expect((normalized.answer as string[]).length).toBeLessThanOrEqual(8);
+    expect((normalized.answer as string[]).includes("gpt-4")).toBe(true);
+    expect((normalized.answer as string[]).includes("chatgpt")).toBe(true);
+  });
+
+  it("reduces confidence when array answers are mostly generic terms", () => {
+    const normalized = normalizeExtractionOutputForQuestion("array", {
+      answer: [
+        "Machine Learning",
+        "Deep Learning",
+        "Neural Networks",
+        "Transformer Architecture",
+        "GPT-4",
+      ],
+      confidence: 0.8,
+      reasoning: "test",
+      supportEvidenceIds: [],
+    });
+
+    expect(normalized.confidence).toBeLessThan(0.8);
+    expect(normalized.confidence).toBeGreaterThanOrEqual(0);
   });
 });

@@ -81,6 +81,16 @@ Question: ${question.question}
 
 `;
 
+  if (question.type === "array") {
+    prompt += `ARRAY ANSWER RULES:
+- Return concise canonical items only (no narrative text).
+- Prefer specific model/tool names over umbrella terms.
+- Maximum 8 items in the final array.
+- Do not duplicate synonymous variants in the same answer.
+
+`;
+  }
+
   // Strong instructions
   prompt += `INSTRUCTIONS - FOLLOW EXACTLY:
 1. Use ONLY the provided evidence and abstract. Do not use outside knowledge.

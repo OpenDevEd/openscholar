@@ -103,6 +103,29 @@ const BEST_EFFORT_CONFIDENCE_CAP = 0.45;
 const ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7;
 const STRICT_NULL_CONFIDENCE_CAP = 0.3;
 const V32_CUTOVER_AT = Number(process.env.EXTRACTION_V3_2_CUTOVER_AT || "0");
+const ARRAY_ANSWER_MAX_ITEMS = 8;
+const ARRAY_GENERIC_PENALTY = 0.15;
+const ARRAY_GENERIC_THRESHOLD = 0.6;
+const ARRAY_GENERIC_TERMS = new Set([
+  "artificial intelligence",
+  "artificial-intelligence",
+  "ai",
+  "generative ai",
+  "large language model",
+  "large language models",
+  "llm",
+  "llms",
+  "language model",
+  "language models",
+  "machine learning",
+  "deep learning",
+  "neural network",
+  "neural networks",
+  "transformer",
+  "transformer architecture",
+  "transformer architectures",
+  "transformer-based models",
+]);
 
 function toTupleRange(charRange: number[] | [number, number]): [number, number] {
   const start = Number(charRange?.[0] ?? 0);
@@ -155,6 +178,86 @@ function dedupeEvidenceIds(ids: string[]) {
     ordered.push(trimmed);
   }
   return ordered;
+}
+
+function normalizeArrayEntity(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s%.-]/g, "");
+}
+
+function isGenericArrayEntity(value: string) {
+  const normalized = normalizeArrayEntity(value);
+  if (!normalized) return true;
+  if (ARRAY_GENERIC_TERMS.has(normalized)) return true;
+  if (normalized.includes("machine learning")) return true;
+  if (normalized.includes("deep learning")) return true;
+  if (normalized.includes("neural network")) return true;
+  if (normalized.includes("transformer architecture")) return true;
+  return false;
+}
+
+function splitArrayFragments(raw: string): string[] {
+  return raw
+    .split(/[;,]/g)
+    .map((value) => normalizeArrayEntity(value))
+    .filter(Boolean);
+}
+
+function sanitizeArrayAnswer(
+  answer: string[] | string | null | undefined
+): { answer: string[] | null; genericShare: number } {
+  if (answer === null || answer === undefined) {
+    return { answer: null, genericShare: 0 };
+  }
+
+  const values = Array.isArray(answer) ? answer : [answer];
+  const normalized = new Set<string>();
+  for (const value of values) {
+    for (const token of splitArrayFragments(String(value))) {
+      normalized.add(token);
+    }
+  }
+
+  const cleaned = Array.from(normalized).sort().slice(0, ARRAY_ANSWER_MAX_ITEMS);
+  if (cleaned.length === 0) {
+    return { answer: null, genericShare: 0 };
+  }
+
+  const genericCount = cleaned.filter((value) => isGenericArrayEntity(value)).length;
+  return {
+    answer: cleaned,
+    genericShare: genericCount / cleaned.length,
+  };
+}
+
+export function normalizeExtractionOutputForQuestion(
+  questionType: "string" | "boolean" | "number" | "array",
+  extracted: StrictExtractionOutput
+): StrictExtractionOutput {
+  if (questionType !== "array") {
+    return extracted;
+  }
+
+  const sanitized = sanitizeArrayAnswer(
+    Array.isArray(extracted.answer) || typeof extracted.answer === "string"
+      ? (extracted.answer as string[] | string)
+      : null
+  );
+
+  const shouldPenalize =
+    sanitized.answer !== null && sanitized.genericShare >= ARRAY_GENERIC_THRESHOLD;
+  const confidence = shouldPenalize
+    ? Math.max(0, extracted.confidence - ARRAY_GENERIC_PENALTY)
+    : extracted.confidence;
+
+  return {
+    ...extracted,
+    answer: sanitized.answer,
+    confidence: Math.min(1, confidence),
+  };
 }
 
 export function validateSupportEvidenceIds(
@@ -399,7 +502,10 @@ async function extractQuestionAnswer(params: {
       temperature: 0,
     });
 
-    const extracted = object as StrictExtractionOutput;
+    const extracted = normalizeExtractionOutputForQuestion(
+      question.type,
+      object as StrictExtractionOutput
+    );
     const validated = validateSupportEvidenceIds(
       extracted.supportEvidenceIds || [],
       evidencePool
@@ -469,7 +575,10 @@ async function extractQuestionAnswerFromAbstract(params: {
       temperature: 0,
     });
 
-    const extracted = object as StrictExtractionOutput;
+    const extracted = normalizeExtractionOutputForQuestion(
+      question.type,
+      object as StrictExtractionOutput
+    );
     const policy = applyAbstractOnlyPolicy({ extracted });
     const reasoningPrefix =
       policy.answer === null

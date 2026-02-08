@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, memo } from "react";
+import { useState, memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Quote, ExternalLink, FileText } from "lucide-react";
@@ -8,53 +8,37 @@ import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { getAvgConfidence } from "@/lib/extraction/filtering";
-import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
 import {
   getAllCitationLocations,
   getCitationStatus,
-  type CitationStatus,
-  type CitationLocation,
 } from "@/lib/extraction/citations";
+import type { CitationLocation } from "@/lib/extraction/citations";
+import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
 
 interface SplitViewProps {
   papers: PaperWithResults[];
   questions: Question[];
+  onOpenCitationPanel: (payload: CitationPanelPayload) => void;
 }
 
-export const SplitView = memo(function SplitView({ papers, questions }: SplitViewProps) {
+export const SplitView = memo(function SplitView({ papers, questions, onOpenCitationPanel }: SplitViewProps) {
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(
     papers.length > 0 ? papers[0]._id : null
   );
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerPaperId, setDrawerPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
-  const [drawerPaperTitle, setDrawerPaperTitle] = useState<string | null>(null);
-  const [drawerCitations, setDrawerCitations] = useState<CitationLocation[]>([]);
-  const [drawerCitationStatus, setDrawerCitationStatus] = useState<CitationStatus | undefined>(undefined);
-  const [drawerAnswerText, setDrawerAnswerText] = useState<string | null>(null);
-  const [drawerQuestionText, setDrawerQuestionText] = useState<string | null>(null);
 
   const selectedPaper = papers.find(p => p._id === selectedPaperId);
 
   return (
-    <>
-      <PdfCitationDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        paperId={drawerPaperId}
-        paperTitle={drawerPaperTitle}
-        citations={drawerCitations}
-        citationStatus={drawerCitationStatus}
-        answerText={drawerAnswerText}
-        questionText={drawerQuestionText}
-      />
-
-      <div className="rounded-xl border border-border/40 overflow-hidden bg-card/50 shadow-sm h-[calc(100vh-400px)] min-h-[500px] max-h-[800px]">
-        <div className="flex h-full">
+      <div className="h-[calc(100vh-400px)] min-h-[500px] max-h-[800px] overflow-hidden rounded-xl border border-border/40 bg-card/50 shadow-sm">
+        <div className="flex h-full min-w-0 flex-col lg:flex-row">
           {/* Left: Paper list */}
-          <div className="w-[320px] min-w-[320px] border-r border-border/40 overflow-y-auto bg-muted/30 h-full">
+          <div className="h-56 w-full overflow-y-auto border-b border-border/40 bg-muted/30 lg:h-full lg:w-[320px] lg:min-w-[320px] lg:border-b-0 lg:border-r">
             {papers.map(paper => {
               const avgConfidence = getAvgConfidence(paper);
               const isSelected = selectedPaperId === paper._id;
+              const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
 
               return (
                 <div
@@ -75,6 +59,14 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
                       </span>
                     )}
                     <ConfidenceBadge value={avgConfidence} size="sm" />
+                    {reviewedCount > 0 ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                      >
+                        Reviewed {reviewedCount}/{paper.results.length}
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -82,7 +74,7 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
           </div>
 
           {/* Right: Extracted data */}
-          <div className="flex-1 overflow-y-auto p-6 bg-card/30 h-full">
+          <div className="h-full min-w-0 flex-1 overflow-y-auto bg-card/30 p-4 sm:p-6">
             {selectedPaper ? (
               <div className="space-y-6">
                 <div className="border-b border-border/40 pb-4">
@@ -114,7 +106,7 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
                     return (
                       <div key={q.key} className="bg-card rounded-lg border border-border/40 p-4">
                         <h3 className="font-medium text-sm mb-3">{q.question}</h3>
-                        <div className="grid grid-cols-1 lg:grid-cols-[1fr,280px] gap-4">
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr,280px]">
                           <div className="space-y-2">
                             <ResultValue result={result} type={q.type} />
                             {result?.reasoning && (
@@ -129,20 +121,16 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
                               onClick={() => {
                                 if (!result) return;
                                 if (citations.length === 0) return;
-                                setDrawerPaperId(selectedPaper._id);
-                                setDrawerPaperTitle(selectedPaper.title);
-                                setDrawerCitations(citations);
-                                setDrawerCitationStatus(getCitationStatus(result));
-                                const answerText = Array.isArray(result.answer)
-                                  ? result.answer
-                                      .filter((item) => typeof item === "string")
-                                      .sort((a, b) => b.length - a.length)[0]
-                                  : result.answer !== null && result.answer !== undefined
-                                    ? String(result.answer)
-                                    : null;
-                                setDrawerAnswerText(answerText ?? null);
-                                setDrawerQuestionText(q.question);
-                                setDrawerOpen(true);
+                                const payload = buildCitationPanelPayload({
+                                  paperId: selectedPaper._id,
+                                  paperTitle: selectedPaper.title,
+                                  citations,
+                                  citationStatus: getCitationStatus(result),
+                                  answer: result.answer,
+                                  questionText: q.question,
+                                });
+                                if (!payload) return;
+                                onOpenCitationPanel(payload);
                               }}
                             />
                           )}
@@ -161,10 +149,13 @@ export const SplitView = memo(function SplitView({ papers, questions }: SplitVie
           </div>
         </div>
       </div>
-    </>
   );
 }, (prevProps, nextProps) => {
-  return prevProps.papers === nextProps.papers && prevProps.questions === nextProps.questions;
+  return (
+    prevProps.papers === nextProps.papers &&
+    prevProps.questions === nextProps.questions &&
+    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel
+  );
 });
 
 function ConfidenceBadge({ value, size = "md", className }: { value: number; size?: "sm" | "md"; className?: string }) {
@@ -186,6 +177,8 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
   
   const { answer } = result;
   const citationStatus = getCitationStatus(result);
+  const reviewState = getReviewState(result);
+  const reviewLabel = getReviewLabel(reviewState);
 
   return (
     <div className="text-sm space-y-1">
@@ -228,6 +221,11 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       {citationStatus === "extraction_error" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
           Extraction error
+        </Badge>
+      ) : null}
+      {reviewLabel && reviewState !== "unreviewed" ? (
+        <Badge variant="outline" className="text-[10px] font-medium">
+          {reviewLabel}
         </Badge>
       ) : null}
     </div>

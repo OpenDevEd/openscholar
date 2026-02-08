@@ -437,4 +437,203 @@ export default defineSchema({
   })
     .index("by_paper", ["paperId"])
     .index("by_paper_question", ["paperId", "questionKey"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION RESULT REVIEWS - Human QA state and corrections
+  // ═══════════════════════════════════════════════════════════════
+  extractionResultReviews: defineTable({
+    jobId: v.id("extractionJobs"),
+    paperId: v.id("extractionPapers"),
+    resultId: v.id("extractionResults"),
+    questionKey: v.string(),
+    state: v.union(
+      v.literal("unreviewed"),
+      v.literal("accepted"),
+      v.literal("rejected"),
+      v.literal("needs_followup")
+    ),
+    note: v.optional(v.string()),
+    correctedAnswer: v.optional(
+      v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
+    ),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_result", ["resultId"])
+    .index("by_paper", ["paperId"])
+    .index("by_job", ["jobId"])
+    .index("by_job_state", ["jobId", "state"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION SAVED VIEWS - Persisted filtering and sorting presets
+  // ═══════════════════════════════════════════════════════════════
+  extractionSavedViews: defineTable({
+    jobId: v.id("extractionJobs"),
+    userId: v.id("users"),
+    name: v.string(),
+    filters: v.object({
+      searchQuery: v.string(),
+      confidenceRange: v.array(v.number()),
+      statusFilters: v.array(v.string()),
+    }),
+    sortBy: v.optional(v.string()),
+    viewMode: v.optional(v.string()),
+    selectedQuestionKeys: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_user", ["userId"])
+    .index("by_job_name", ["jobId", "name"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION WORKFLOW TEMPLATES - Reusable extraction configs
+  // ═══════════════════════════════════════════════════════════════
+  extractionWorkflowTemplates: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    sourceType: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual"),
+      v.literal("mixed")
+    ),
+    sourceHistoryEntries: v.optional(
+      v.array(
+        v.object({
+          historyId: v.string(),
+          searchFilters: v.record(v.string(), v.any()),
+        })
+      )
+    ),
+    sourceZoteroSelection: v.optional(
+      v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        includeDescendants: v.optional(v.boolean()),
+        items: v.array(
+          v.object({
+            itemKey: v.string(),
+            title: v.string(),
+            abstract: v.optional(v.string()),
+            authors: v.array(v.string()),
+            year: v.optional(v.number()),
+            doi: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+    sourceManualItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          abstract: v.optional(v.string()),
+          authors: v.optional(v.array(v.string())),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+        })
+      )
+    ),
+    questions: v.array(
+      v.object({
+        key: v.string(),
+        question: v.string(),
+        type: v.union(
+          v.literal("string"),
+          v.literal("boolean"),
+          v.literal("number"),
+          v.literal("array")
+        ),
+        description: v.optional(v.string()),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_name", ["userId", "name"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION REPORT SNAPSHOTS - Generated report artifacts
+  // ═══════════════════════════════════════════════════════════════
+  extractionReportSnapshots: defineTable({
+    jobId: v.id("extractionJobs"),
+    userId: v.id("users"),
+    name: v.string(),
+    scope: v.object({
+      filteredPaperIds: v.optional(v.array(v.id("extractionPapers"))),
+      selectedQuestionKeys: v.optional(v.array(v.string())),
+      viewName: v.optional(v.string()),
+    }),
+    sections: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        body: v.string(),
+      })
+    ),
+    metrics: v.object({
+      totalPapers: v.number(),
+      answeredRate: v.number(),
+      groundedRate: v.number(),
+      bestEffortRate: v.number(),
+    }),
+    generatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_user", ["userId"])
+    .index("by_job_generated", ["jobId", "generatedAt"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION RUN DIFFS - Rerun change summaries for alerts
+  // ═══════════════════════════════════════════════════════════════
+  extractionRunDiffs: defineTable({
+    jobId: v.id("extractionJobs"),
+    baselineJobId: v.id("extractionJobs"),
+    userId: v.id("users"),
+    summary: v.object({
+      newAnswers: v.number(),
+      changedAnswers: v.number(),
+      removedAnswers: v.number(),
+      confidenceShifts: v.number(),
+      newlyInsufficientEvidence: v.number(),
+      totalCompared: v.number(),
+    }),
+    changes: v.array(
+      v.object({
+        openalexId: v.string(),
+        title: v.string(),
+        questionKey: v.string(),
+        changeType: v.union(
+          v.literal("new"),
+          v.literal("changed"),
+          v.literal("removed"),
+          v.literal("confidence_shift"),
+          v.literal("newly_insufficient_evidence")
+        ),
+        previousAnswer: v.optional(
+          v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
+        ),
+        nextAnswer: v.optional(
+          v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
+        ),
+        previousConfidence: v.optional(v.number()),
+        nextConfidence: v.optional(v.number()),
+      })
+    ),
+    generatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_baseline", ["baselineJobId"])
+    .index("by_job_generated", ["jobId", "generatedAt"]),
 });

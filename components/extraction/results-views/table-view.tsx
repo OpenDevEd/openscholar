@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo } from "react";
 import {
   Table,
   TableBody,
@@ -22,13 +22,13 @@ import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
-import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
 import {
   getAllCitationLocations,
   getCitationStatus,
-  type CitationStatus,
-  type CitationLocation,
 } from "@/lib/extraction/citations";
+import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -36,6 +36,7 @@ interface TableViewProps {
   selectedIds: Set<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
   searchQuery?: string;
+  onOpenCitationPanel: (payload: CitationPanelPayload) => void;
 }
 
 export const TableView = memo(function TableView({
@@ -44,15 +45,8 @@ export const TableView = memo(function TableView({
   selectedIds,
   onSelectionChange,
   searchQuery = '',
+  onOpenCitationPanel,
 }: TableViewProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
-  const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
-  const [selectedCitations, setSelectedCitations] = useState<CitationLocation[]>([]);
-  const [selectedCitationStatus, setSelectedCitationStatus] = useState<CitationStatus | undefined>(undefined);
-  const [selectedAnswerText, setSelectedAnswerText] = useState<string | null>(null);
-  const [selectedQuestionText, setSelectedQuestionText] = useState<string | null>(null);
-
   const allSelected = papers.length > 0 && papers.every(p => selectedIds.has(p._id));
   const someSelected = papers.some(p => selectedIds.has(p._id)) && !allSelected;
 
@@ -75,19 +69,7 @@ export const TableView = memo(function TableView({
   };
 
   return (
-    <>
-      <PdfCitationDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        paperId={selectedPaperId}
-        paperTitle={selectedPaperTitle}
-        citations={selectedCitations}
-        citationStatus={selectedCitationStatus}
-        answerText={selectedAnswerText}
-        questionText={selectedQuestionText}
-      />
-
-      <div className="rounded-xl border border-border/40 overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm">
+      <div className="min-w-0 overflow-x-hidden rounded-xl border border-border/40 bg-card/50 shadow-sm backdrop-blur-sm">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
@@ -146,6 +128,7 @@ export const TableView = memo(function TableView({
                     : "Abstract";
                 const showNoContent =
                   paper.status === "download_failed" && !hasAbstract;
+                const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
 
                 return (
                   <TableRow
@@ -237,6 +220,14 @@ export const TableView = memo(function TableView({
                               {abstractLabel}
                             </Badge>
                           ) : null}
+                          {reviewedCount > 0 ? (
+                            <Badge
+                              variant="outline"
+                              className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                            >
+                              Reviewed {reviewedCount}/{paper.results.length}
+                            </Badge>
+                          ) : null}
                         </div>
                       </div>
                     </TableCell>
@@ -260,20 +251,16 @@ export const TableView = memo(function TableView({
                               if (!result) return;
                               const citations = getAllCitationLocations(result);
                               if (citations.length === 0) return;
-                              setSelectedPaperId(paper._id);
-                              setSelectedPaperTitle(paper.title);
-                              setSelectedCitations(citations);
-                              const answerText = Array.isArray(result.answer)
-                                ? result.answer
-                                    .filter((item) => typeof item === "string")
-                                    .sort((a, b) => b.length - a.length)[0]
-                                : result.answer !== null && result.answer !== undefined
-                                  ? String(result.answer)
-                                  : null;
-                              setSelectedAnswerText(answerText ?? null);
-                              setSelectedQuestionText(q.question);
-                              setSelectedCitationStatus(getCitationStatus(result));
-                              setDrawerOpen(true);
+                              const payload = buildCitationPanelPayload({
+                                paperId: paper._id,
+                                paperTitle: paper.title,
+                                citations,
+                                citationStatus: getCitationStatus(result),
+                                answer: result.answer,
+                                questionText: q.question,
+                              });
+                              if (!payload) return;
+                              onOpenCitationPanel(payload);
                             }}
                           />
                         </TableCell>
@@ -286,7 +273,6 @@ export const TableView = memo(function TableView({
           </Table>
         </div>
       </div>
-    </>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison to prevent unnecessary re-renders
@@ -294,7 +280,8 @@ export const TableView = memo(function TableView({
     prevProps.papers === nextProps.papers &&
     prevProps.questions === nextProps.questions &&
     prevProps.selectedIds === nextProps.selectedIds &&
-    prevProps.searchQuery === nextProps.searchQuery
+    prevProps.searchQuery === nextProps.searchQuery &&
+    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel
   );
 });
 
@@ -323,6 +310,8 @@ const ResultCell = memo(function ResultCell({
   const { answer, confidence, reasoning } = result;
   const citations = getAllCitationLocations(result);
   const citationStatus = getCitationStatus(result);
+  const reviewState = getReviewState(result);
+  const reviewLabel = getReviewLabel(reviewState);
 
   const getConfidenceColor = (conf?: number) => {
     if (!conf) return "bg-gray-500/10 text-gray-500";
@@ -426,6 +415,11 @@ const ResultCell = memo(function ResultCell({
         {citationStatus === "extraction_error" ? (
           <Badge variant="outline" className="text-[10px] font-medium">
             Extraction error
+          </Badge>
+        ) : null}
+        {reviewLabel && reviewState !== "unreviewed" ? (
+          <Badge variant="outline" className="text-[10px] font-medium">
+            {reviewLabel}
           </Badge>
         ) : null}
 

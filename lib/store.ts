@@ -992,6 +992,48 @@ export const getFilterSidebarDimensions = (isCollapsed: boolean) => ({
   currentWidth: isCollapsed ? FILTER_SIDEBAR_WIDTH_COLLAPSED : FILTER_SIDEBAR_WIDTH_EXPANDED,
 });
 
+// Extraction citation panel store
+const EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED = 460;
+const EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED = 48;
+
+interface ExtractionCitationPanelState {
+  isCollapsed: boolean;
+  _hasHydrated: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+  toggle: () => void;
+  expand: () => void;
+  setHasHydrated: (state: boolean) => void;
+}
+
+export const useExtractionCitationPanelStore = create<ExtractionCitationPanelState>()(
+  persist(
+    (set) => ({
+      isCollapsed: false,
+      _hasHydrated: false,
+      setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
+      toggle: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+      expand: () => set({ isCollapsed: false }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
+    }),
+    {
+      name: "openalex-extraction-citation-panel",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ isCollapsed: state.isCollapsed }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    },
+  ),
+);
+
+export const getExtractionCitationPanelDimensions = (isCollapsed: boolean) => ({
+  expandedWidth: EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED,
+  collapsedWidth: EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED,
+  currentWidth: isCollapsed
+    ? EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED
+    : EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED,
+});
+
 export const useTransientScreeningStore = create<{
   testIndexPerQuestion: Record<string, number>;
   setTestIndexPerQuestion: (key: string, value: number) => void;

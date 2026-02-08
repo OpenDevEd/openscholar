@@ -53,4 +53,8 @@ export type {
   ExtractionResult,
   ExtractionJobDetails,
   CreateExtractionJobInput,
+  ExtractionSavedView,
+  ExtractionWorkflowTemplate,
+  ExtractionReportSnapshot,
+  ExtractionRunDiff,
 } from './extraction.types';

@@ -8,7 +8,120 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
-import { getProcessableFlags } from "./content";
+import { getProcessableFlags, MIN_ABSTRACT_LENGTH } from "./content";
+import {
+  aggregateQuestionInsights,
+  buildArrayAnswerProfileClusters,
+  buildDisagreementClusters,
+  type CitationStatus,
+  type InsightEntry,
+  type ReviewState,
+} from "../../lib/extraction/insights";
+
+function hasUsableAbstract(abstract?: string) {
+  return typeof abstract === "string" && abstract.trim().length > MIN_ABSTRACT_LENGTH;
+}
+
+function hasUsablePdfSource(paper: Doc<"extractionPapers">) {
+  return Boolean(
+    paper.pdfUrl ||
+      paper.storageId ||
+      paper.ragEntryId ||
+      paper.isIndexed
+  );
+}
+
+function toReviewState(value?: string): ReviewState | undefined {
+  if (
+    value === "unreviewed" ||
+    value === "accepted" ||
+    value === "rejected" ||
+    value === "needs_followup"
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+function toCitationStatus(value?: string): CitationStatus | undefined {
+  if (
+    value === "grounded" ||
+    value === "best_effort" ||
+    value === "insufficient_evidence" ||
+    value === "extraction_error"
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+async function attachReviewMetadata(
+  ctx: any,
+  paperId: Id<"extractionPapers">,
+  results: Doc<"extractionResults">[]
+) {
+  const reviews = await ctx.db
+    .query("extractionResultReviews")
+    .withIndex("by_paper", (q: any) => q.eq("paperId", paperId))
+    .collect();
+  const reviewByResultId = new Map<string, any>(
+    reviews.map((review: any) => [review.resultId, review] as [string, any])
+  );
+
+  return results.map((result) => {
+    const review: any = reviewByResultId.get(result._id);
+    if (!review) return result;
+    return {
+      ...result,
+      reviewState: toReviewState(review.state),
+      reviewNote: review.note,
+      correctedAnswer: review.correctedAnswer,
+      reviewedAt: review.reviewedAt,
+      reviewedBy: review.reviewedBy,
+    };
+  });
+}
+
+function buildQuestionInfoByKey(questions: Doc<"extractionQuestions">[]) {
+  return new Map(
+    questions.map((question) => [
+      question.key,
+      {
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
+      },
+    ])
+  );
+}
+
+async function loadJobPapersAndResults(ctx: any, jobId: Id<"extractionJobs">) {
+  const questions = await ctx.db
+    .query("extractionQuestions")
+    .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+    .order("asc")
+    .collect();
+
+  const papers = await ctx.db
+    .query("extractionPapers")
+    .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+    .collect();
+
+  const resultsByPaper = new Map<string, any[]>();
+  for (const paper of papers) {
+    const results = await ctx.db
+      .query("extractionResults")
+      .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+      .collect();
+    resultsByPaper.set(
+      paper._id,
+      await attachReviewMetadata(ctx, paper._id, results)
+    );
+  }
+
+  return { questions, papers, resultsByPaper };
+}
 
 // Get user's extraction jobs (public API)
 export const getMyJobs = query({
@@ -137,7 +250,9 @@ export const getPaperResults = query({
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
       .collect();
 
-    return { paper, results };
+    const resultsWithReviews = await attachReviewMetadata(ctx, args.paperId, results);
+
+    return { paper, results: resultsWithReviews };
   },
 });
 
@@ -209,10 +324,11 @@ export const getJobResults = query({
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .collect();
+      const resultsWithReviews = await attachReviewMetadata(ctx, paper._id, results);
 
       allResults[paper._id] = {
         paper,
-        results,
+        results: resultsWithReviews,
       };
     }
 
@@ -273,9 +389,10 @@ export const getJobResultsPaginated = query({
           .query("extractionResults")
           .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
           .collect();
+        const resultsWithReviews = await attachReviewMetadata(ctx, paper._id, results);
         return {
           ...paper,
-          results,
+          results: resultsWithReviews,
         };
       })
     );
@@ -286,6 +403,487 @@ export const getJobResultsPaginated = query({
       questions,
       job,
     };
+  },
+});
+
+export const getJobInsights = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
+    const processablePapers = papers.filter(
+      (paper: Doc<"extractionPapers">) => paper.processable !== false
+    );
+    const questionEntries = new Map<string, InsightEntry[]>();
+    const noContentPapers: Array<{ paperId: string; title: string; reason: string }> = [];
+    let abstractOnlyCount = 0;
+    let answeredTotal = 0;
+    let groundedTotal = 0;
+    let bestEffortTotal = 0;
+    let confidenceSum = 0;
+    let confidenceCount = 0;
+    let effectiveConfidenceSum = 0;
+    let effectiveConfidenceCount = 0;
+
+    for (const question of questions) {
+      questionEntries.set(question.key, []);
+    }
+
+    for (const paper of processablePapers) {
+      const hasAbstract = hasUsableAbstract(paper.abstract);
+      const hasPdf = hasUsablePdfSource(paper);
+      if (!hasPdf && !hasAbstract) {
+        noContentPapers.push({
+          paperId: paper._id,
+          title: paper.title,
+          reason: "No usable PDF and no abstract",
+        });
+      }
+      if (!paper.pdfContentUsed && hasAbstract) {
+        abstractOnlyCount += 1;
+      }
+
+      const paperResults = resultsByPaper.get(paper._id) || [];
+      const resultByQuestionKey = new Map(paperResults.map((result: any) => [result.questionKey, result]));
+
+      for (const question of questions) {
+        const result: any = resultByQuestionKey.get(question.key);
+        const entry: InsightEntry = {
+          paperId: paper._id,
+          title: paper.title,
+          openalexId: paper.openalexId,
+          questionKey: question.key,
+          answer: result?.correctedAnswer ?? result?.answer ?? null,
+          confidence: result?.confidence,
+          citationStatus: toCitationStatus(result?.citationStatus),
+          pdfContentUsed: Boolean(result?.pdfContentUsed),
+          reviewState: toReviewState(result?.reviewState),
+        };
+        questionEntries.get(question.key)!.push(entry);
+      }
+    }
+
+    const questionInsights = questions.map((question: Doc<"extractionQuestions">) => {
+      const entries = questionEntries.get(question.key) || [];
+      const aggregate = aggregateQuestionInsights(entries, question.type as any);
+      answeredTotal += aggregate.answered;
+      groundedTotal += aggregate.grounded;
+      bestEffortTotal += aggregate.citationStatusMix.best_effort;
+      if (aggregate.total > 0) {
+        confidenceSum += aggregate.avgConfidence * aggregate.total;
+        confidenceCount += aggregate.total;
+        effectiveConfidenceSum += aggregate.avgEffectiveConfidence * aggregate.total;
+        effectiveConfidenceCount += aggregate.total;
+      }
+      return {
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
+        ...aggregate,
+      };
+    });
+
+    const totalExpectedAnswers = processablePapers.length * Math.max(questions.length, 1);
+    const answeredRate =
+      totalExpectedAnswers > 0 ? answeredTotal / totalExpectedAnswers : 0;
+    const groundedRate =
+      totalExpectedAnswers > 0 ? groundedTotal / totalExpectedAnswers : 0;
+    const bestEffortRate =
+      totalExpectedAnswers > 0 ? bestEffortTotal / totalExpectedAnswers : 0;
+
+    return {
+      job: {
+        id: job._id,
+        name: job.name,
+      },
+      summary: {
+        totalPapers: processablePapers.length,
+        totalQuestions: questions.length,
+        answeredTotal,
+        groundedTotal,
+        answeredRate,
+        groundedRate,
+        bestEffortRate,
+        averageConfidence: confidenceCount > 0 ? confidenceSum / confidenceCount : 0,
+        averageEffectiveConfidence:
+          effectiveConfidenceCount > 0
+            ? effectiveConfidenceSum / effectiveConfidenceCount
+            : 0,
+        noContentCount: noContentPapers.length,
+        abstractOnlyCount,
+      },
+      questions: questionInsights,
+      diagnostics: {
+        noContentPapers: noContentPapers.slice(0, 20),
+      },
+    };
+  },
+});
+
+export const getQuestionInsights = query({
+  args: {
+    jobId: v.id("extractionJobs"),
+    questionKey: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
+    const question = questions.find(
+      (q: Doc<"extractionQuestions">) => q.key === args.questionKey
+    );
+    if (!question) {
+      throw new Error("Question not found");
+    }
+
+    const entries: InsightEntry[] = [];
+    for (const paper of papers.filter((item: Doc<"extractionPapers">) => item.processable !== false)) {
+      const result = (resultsByPaper.get(paper._id) || []).find(
+        (row: any) => row.questionKey === args.questionKey
+      );
+      entries.push({
+        paperId: paper._id,
+        title: paper.title,
+        openalexId: paper.openalexId,
+        questionKey: args.questionKey,
+        answer: result?.correctedAnswer ?? result?.answer ?? null,
+        confidence: result?.confidence,
+        citationStatus: toCitationStatus(result?.citationStatus),
+        pdfContentUsed: Boolean(result?.pdfContentUsed),
+        reviewState: toReviewState(result?.reviewState),
+      });
+    }
+
+    const aggregate = aggregateQuestionInsights(entries, question.type as any);
+    const rawAnswerDistribution = aggregate.topAnswers.map((answer) => ({
+      ...answer,
+      examples: entries
+        .filter((entry) => answer.paperIds.includes(entry.paperId))
+        .slice(0, 5)
+        .map((entry) => ({
+          paperId: entry.paperId,
+          title: entry.title,
+          openalexId: entry.openalexId,
+          answer: entry.answer,
+          confidence: entry.confidence,
+        })),
+    }));
+
+    console.info(
+      "[getQuestionInsights] mode selected",
+      JSON.stringify({
+        jobId: args.jobId,
+        questionKey: args.questionKey,
+        questionType: question.type,
+        mode: aggregate.insightMode,
+        rawAnswerBuckets: rawAnswerDistribution.length,
+        entityBuckets: aggregate.entityDistribution.length,
+      })
+    );
+
+    return {
+      question: {
+        key: question.key,
+        question: question.question,
+        type: question.type,
+        description: question.description,
+      },
+      ...aggregate,
+      rawAnswerDistribution,
+      topAnswers: rawAnswerDistribution,
+    };
+  },
+});
+
+export const getQuestionDisagreements = query({
+  args: {
+    jobId: v.id("extractionJobs"),
+    questionKey: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
+    const question = questions.find(
+      (q: Doc<"extractionQuestions">) => q.key === args.questionKey
+    );
+    if (!question) {
+      throw new Error("Question not found");
+    }
+
+    const entries: InsightEntry[] = [];
+    for (const paper of papers.filter((item: Doc<"extractionPapers">) => item.processable !== false)) {
+      const result = (resultsByPaper.get(paper._id) || []).find(
+        (row: any) => row.questionKey === args.questionKey
+      );
+      entries.push({
+        paperId: paper._id,
+        title: paper.title,
+        openalexId: paper.openalexId,
+        questionKey: args.questionKey,
+        answer: result?.correctedAnswer ?? result?.answer ?? null,
+        confidence: result?.confidence,
+        citationStatus: toCitationStatus(result?.citationStatus),
+        reviewState: toReviewState(result?.reviewState),
+      });
+    }
+
+    let viewMode: "disagreement" | "answer_profiles" = "disagreement";
+    let suppressedSingletonCount = 0;
+    let totalClusterCount = 0;
+    let clusters: any[] = [];
+
+    if (question.type === "array") {
+      viewMode = "answer_profiles";
+      const profile = buildArrayAnswerProfileClusters(entries, {
+        minClusterSize: 2,
+        maxClusters: 20,
+      });
+      clusters = profile.clusters;
+      suppressedSingletonCount = profile.suppressedSingletonCount;
+      totalClusterCount = profile.totalClusterCount;
+    } else {
+      clusters = buildDisagreementClusters(entries, question.type as any, 20);
+      totalClusterCount = clusters.length;
+    }
+
+    console.info(
+      "[getQuestionDisagreements] cluster diagnostics",
+      JSON.stringify({
+        jobId: args.jobId,
+        questionKey: args.questionKey,
+        questionType: question.type,
+        mode: viewMode,
+        clusterCount: clusters.length,
+        totalClusterCount,
+        suppressedSingletonCount,
+      })
+    );
+
+    return {
+      question: {
+        key: question.key,
+        question: question.question,
+        type: question.type,
+      },
+      viewMode,
+      hasDisagreement:
+        viewMode === "disagreement" ? clusters.length > 1 : clusters.length > 0,
+      clusterCount: clusters.length,
+      totalClusterCount,
+      suppressedSingletonCount,
+      clusters,
+    };
+  },
+});
+
+export const getReviewQueue = query({
+  args: {
+    jobId: v.id("extractionJobs"),
+    states: v.optional(
+      v.array(
+        v.union(
+          v.literal("unreviewed"),
+          v.literal("accepted"),
+          v.literal("rejected"),
+          v.literal("needs_followup")
+        )
+      )
+    ),
+    onlyInsufficientEvidence: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
+    const questionByKey = buildQuestionInfoByKey(questions);
+    const allowedStates = new Set(args.states || []);
+    const includeStateFilter = allowedStates.size > 0;
+    const items: any[] = [];
+
+    for (const paper of papers.filter((row: Doc<"extractionPapers">) => row.processable !== false)) {
+      const results = resultsByPaper.get(paper._id) || [];
+      for (const result of results) {
+        const reviewState = toReviewState((result as any).reviewState) || "unreviewed";
+        if (includeStateFilter && !allowedStates.has(reviewState)) {
+          continue;
+        }
+        if (
+          args.onlyInsufficientEvidence &&
+          (result as any).citationStatus !== "insufficient_evidence"
+        ) {
+          continue;
+        }
+        const question = questionByKey.get(result.questionKey);
+        items.push({
+          resultId: result._id,
+          paperId: paper._id,
+          paperTitle: paper.title,
+          openalexId: paper.openalexId,
+          questionKey: result.questionKey,
+          question: question?.question || result.questionKey,
+          questionType: question?.type,
+          answer: (result as any).correctedAnswer ?? result.answer,
+          confidence: result.confidence,
+          reasoning: result.reasoning,
+          citations: (result as any).citations || [],
+          citationStatus: (result as any).citationStatus,
+          reviewState,
+          reviewNote: (result as any).reviewNote,
+          correctedAnswer: (result as any).correctedAnswer,
+          reviewedAt: (result as any).reviewedAt,
+        });
+      }
+    }
+
+    const statePriority: Record<string, number> = {
+      unreviewed: 0,
+      needs_followup: 1,
+      rejected: 2,
+      accepted: 3,
+    };
+    items.sort((a, b) => {
+      if ((statePriority[a.reviewState] ?? 9) !== (statePriority[b.reviewState] ?? 9)) {
+        return (statePriority[a.reviewState] ?? 9) - (statePriority[b.reviewState] ?? 9);
+      }
+      const aInsufficient = a.citationStatus === "insufficient_evidence" ? 0 : 1;
+      const bInsufficient = b.citationStatus === "insufficient_evidence" ? 0 : 1;
+      if (aInsufficient !== bInsufficient) return aInsufficient - bInsufficient;
+      return (b.confidence || 0) - (a.confidence || 0);
+    });
+
+    const counts = {
+      total: items.length,
+      unreviewed: items.filter((item) => item.reviewState === "unreviewed").length,
+      accepted: items.filter((item) => item.reviewState === "accepted").length,
+      rejected: items.filter((item) => item.reviewState === "rejected").length,
+      needsFollowup: items.filter((item) => item.reviewState === "needs_followup").length,
+      insufficientEvidence: items.filter(
+        (item) => item.citationStatus === "insufficient_evidence"
+      ).length,
+    };
+
+    return {
+      counts,
+      items: items.slice(0, Math.max(1, Math.min(args.limit ?? 200, 1000))),
+    };
+  },
+});
+
+export const getSavedViews = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    return await ctx.db
+      .query("extractionSavedViews")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const getWorkflowTemplates = query({
+  args: {},
+  returns: v.array(v.any()),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    return await ctx.db
+      .query("extractionWorkflowTemplates")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const getReportSnapshots = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    return await ctx.db
+      .query("extractionReportSnapshots")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("desc")
+      .collect();
+  },
+});
+
+export const getRunDiff = query({
+  args: {
+    jobId: v.id("extractionJobs"),
+    diffId: v.optional(v.id("extractionRunDiffs")),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw new Error("Job not found");
+    }
+
+    if (args.diffId) {
+      const diff = await ctx.db.get(args.diffId);
+      if (!diff || diff.jobId !== args.jobId) return null;
+      return diff;
+    }
+
+    const latest = await ctx.db
+      .query("extractionRunDiffs")
+      .withIndex("by_job_generated", (q) => q.eq("jobId", args.jobId))
+      .order("desc")
+      .first();
+
+    return latest || null;
   },
 });
 

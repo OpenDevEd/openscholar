@@ -242,8 +242,45 @@
 }
 
 @layer components {
+  .extraction-results-shell {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .extraction-results-shell > * {
+    min-width: 0;
+  }
+
+  .pdf-viewer-shell {
+    --pdf-viewer-toolbar-height: 56px;
+  }
+
+  .pdf-viewer-toolbar {
+    z-index: 20;
+    flex-shrink: 0;
+  }
+
+  .pdf-viewer-stage {
+    background-image: radial-gradient(
+      circle at top,
+      oklch(0.98 0.004 60) 0%,
+      oklch(0.95 0.006 60) 100%
+    );
+  }
+
+  .dark .pdf-viewer-stage {
+    background-image: radial-gradient(
+      circle at top,
+      oklch(0.22 0.01 55) 0%,
+      oklch(0.18 0.01 55) 100%
+    );
+  }
+
   .react-pdf__Page {
     position: relative;
+    box-shadow: var(--shadow-lg);
+    border-radius: 10px;
+    overflow: hidden;
   }
 
   .react-pdf__Page__textContent {

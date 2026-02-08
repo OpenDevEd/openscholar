@@ -16,6 +16,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer } from "@/components/command-center";
+import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -36,9 +37,19 @@ import { TableView, CardView, SplitView } from "@/components/extraction/results-
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
+import { InsightsOverview } from "@/components/extraction/insights-overview";
+import { InsightsQuestionPanel } from "@/components/extraction/insights-question-panel";
+import { ReviewQueue } from "@/components/extraction/review-queue";
+import { ReportBuilder } from "@/components/extraction/report-builder";
+import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
+import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { useSelection } from "@/lib/hooks/use-selection";
+import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { useExtractionCitationPanelStore } from "@/lib/store";
 import {
   defaultFilters,
   filterPapers,
@@ -51,6 +62,7 @@ import {
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const jobId = params.jobId as any;
 
   const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
@@ -69,10 +81,16 @@ export default function JobDetailPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  const [activeTab, setActiveTab] = useState<'results' | 'overview'>('results');
+  const [activeTab, setActiveTab] = useState<
+    "results" | "insights" | "review" | "report" | "overview"
+  >("results");
+  const [selectedInsightsQuestion, setSelectedInsightsQuestion] = useState<string | undefined>(undefined);
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
+  const [citationPanelPayload, setCitationPanelPayload] = useState<CitationPanelPayload | null>(null);
+  const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
+  const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -83,6 +101,7 @@ export default function JobDetailPage() {
   const jobDetails = useQuery(api.extraction.queries.getJobDetails, {
     jobId: jobId,
   });
+  const subscription = useQuery(api.subscriptions.queries.getMy);
   const jobProgress = useQuery(api.extraction.queries.subscribeToJobProgress, {
     jobId: jobId,
   });
@@ -120,6 +139,12 @@ export default function JobDetailPage() {
       description: q.description,
     }));
   }, [jobDetails?.questions]);
+
+  useEffect(() => {
+    if (!questions.length) return;
+    if (selectedInsightsQuestion) return;
+    setSelectedInsightsQuestion(questions[0].key);
+  }, [questions, selectedInsightsQuestion]);
 
   const papersWithResults = useMemo(
     () => allPapers as PaperWithResults[],
@@ -200,6 +225,12 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
+  const openCitationPanel = useCallback((payload: CitationPanelPayload) => {
+    setCitationPanelPayload(payload);
+    expandCitationPanel();
+    setMobilePane("citation");
+  }, [expandCitationPanel]);
+
   const handleCancel = async () => {
     try {
       await cancelJob({ jobId });
@@ -228,6 +259,29 @@ export default function JobDetailPage() {
       toast.error("Failed to create new job");
     }
   };
+
+  const handleApplySavedView = useCallback(
+    (view: any) => {
+      setFilters({
+        searchQuery: view?.filters?.searchQuery || "",
+        confidenceRange: Array.isArray(view?.filters?.confidenceRange)
+          ? view.filters.confidenceRange
+          : [0, 100],
+        statusFilters: new Set(view?.filters?.statusFilters || []),
+        questionFilters: new Map(),
+      });
+      if (view?.sortBy) {
+        setResultsSortBy(view.sortBy as ResultsSortBy);
+      }
+      if (view?.viewMode && ["table", "cards", "split"].includes(view.viewMode)) {
+        setViewMode(view.viewMode);
+      }
+      setCurrentPage(1);
+      setActiveTab("results");
+      toast.success(`Applied saved view: ${view?.name || "view"}`);
+    },
+    [setViewMode]
+  );
 
   if (!jobDetails) {
     return (
@@ -266,11 +320,23 @@ export default function JobDetailPage() {
     job.status === "pending" ||
     job.status === "downloading_pdfs" ||
     job.status === "extracting";
-
+  const currentPlan = subscription?.plan ?? "free";
+  const hasProFeatures = currentPlan === "pro" || currentPlan === "enterprise";
   return (
-    <PageWrapper>
-      <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-        <CommandCenterContainer>
+    <div className="flex w-full flex-1 flex-col overflow-x-clip">
+      <TwoColumnLayout
+        leftColumn={
+          isMobile ? null : (
+            <ExtractionCitationSidebar
+              panelPayload={citationPanelPayload}
+              isActiveTab={activeTab === "results" || activeTab === "review"}
+            />
+          )
+        }
+        rightColumn={
+          <PageWrapper>
+            <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+              <CommandCenterContainer>
           {/* Header Section */}
           <div className="px-4 md:px-6 py-5 border-b border-border/40">
             {/* Breadcrumb */}
@@ -514,6 +580,45 @@ export default function JobDetailPage() {
               >
                 Extraction Results
               </button>
+              {extractionFeatureFlags.insights && hasProFeatures ? (
+                <button
+                  onClick={() => setActiveTab("insights")}
+                  className={cn(
+                    "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                    activeTab === "insights"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Insights
+                </button>
+              ) : null}
+              {extractionFeatureFlags.reviewQueue && hasProFeatures ? (
+                <button
+                  onClick={() => setActiveTab("review")}
+                  className={cn(
+                    "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                    activeTab === "review"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Review Queue
+                </button>
+              ) : null}
+              {extractionFeatureFlags.reportBuilder && hasProFeatures ? (
+                <button
+                  onClick={() => setActiveTab("report")}
+                  className={cn(
+                    "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                    activeTab === "report"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Report Builder
+                </button>
+              ) : null}
               <button
                 onClick={() => setActiveTab('overview')}
                 className={cn(
@@ -529,115 +634,186 @@ export default function JobDetailPage() {
           </div>
 
           {/* Content Section */}
-          <div className="p-4 md:p-6">
+          <div className="overflow-x-hidden p-4 md:p-6">
           {activeTab === 'results' ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className=""
+              className="min-w-0 overflow-x-hidden"
             >
-              <ResultsToolbar
-                filters={filters}
-                onFiltersChange={setFilters}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                totalCount={papersWithResults.length}
-                filteredCount={sortedPapers.length}
-                questions={questions}
-                sortBy={resultsSortBy}
-                onSortChange={setResultsSortBy}
-                onExportAll={() => {
-                  setExportMode('all');
-                  setExportDialogOpen(true);
-                }}
-              />
-
-              <div className="min-h-[600px]">
-                {sortedPapers.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-24 text-center bg-muted rounded-xl border border-border my-6">
-                    <FileText className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-xl font-semibold text-foreground mb-2">
-                      No results found
-                    </h3>
-                    <p className="text-muted-foreground max-w-md">
-                      {papersWithResults.length === 0
-                        ? job.status === "completed"
-                          ? "No papers matched your criteria or extraction failed."
-                          : "Results will appear here as they are processed."
-                        : "Try adjusting your filters to see results."}
-                    </p>
-                    {sortedPapers.length === 0 && papersWithResults.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="mt-6"
-                        onClick={() => setFilters(defaultFilters)}
-                      >
-                        Clear Filters
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    {viewMode === 'table' && (
-                      <TableView
-                        papers={displayedPapers}
-                        questions={questions}
-                        selectedIds={selectedIds}
-                        onSelectionChange={handleTableSelectionChange}
-                        searchQuery={filters.searchQuery}
-                      />
-                    )}
-                    {viewMode === 'cards' && (
-                      <CardView
-                        papers={displayedPapers}
-                        questions={questions}
-                        selectedIds={selectedIds}
-                        onSelectionChange={handleCardSelectionChange}
-                      />
-                    )}
-                    {viewMode === 'split' && (
-                      <SplitView
-                        papers={sortedPapers}
-                        questions={questions}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-
-              {sortedPapers.length > 0 && viewMode !== 'split' && (
-                <SmartPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  pageSize={pageSize}
-                  onPageChange={setCurrentPage}
-                  onPageSizeChange={setPageSize}
+              <ExtractionResultsShell
+                panelPayload={citationPanelPayload}
+                mobilePane={mobilePane}
+                onMobilePaneChange={setMobilePane}
+                primaryLabel="Results"
+              >
+                <ResultsToolbar
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
                   totalCount={papersWithResults.length}
                   filteredCount={sortedPapers.length}
-                  displayedCount={displayedPapers.length}
-                />
-              )}
-
-              {viewMode !== 'split' && (
-                <BulkActionsBar
-                  selectedIds={selectedIds}
-                  papers={selectedPapers}
                   questions={questions}
-                  onClearSelection={clearSelection}
+                  sortBy={resultsSortBy}
+                  onSortChange={setResultsSortBy}
+                  onExportAll={() => {
+                    setExportMode('all');
+                    setExportDialogOpen(true);
+                  }}
                 />
-              )}
 
-              <ExportDialog
-                open={exportDialogOpen}
-                onOpenChange={setExportDialogOpen}
-                papers={exportMode === 'all' ? sortedPapers : selectedPapers}
+                <div className="min-h-[600px] min-w-0">
+                  {sortedPapers.length === 0 ? (
+                    <div className="my-6 flex flex-col items-center justify-center rounded-xl border border-border bg-muted py-24 text-center">
+                      <FileText className="mb-4 h-16 w-16 text-muted-foreground/50" />
+                      <h3 className="mb-2 text-xl font-semibold text-foreground">
+                        No results found
+                      </h3>
+                      <p className="max-w-md text-muted-foreground">
+                        {papersWithResults.length === 0
+                          ? job.status === "completed"
+                            ? "No papers matched your criteria or extraction failed."
+                            : "Results will appear here as they are processed."
+                          : "Try adjusting your filters to see results."}
+                      </p>
+                      {sortedPapers.length === 0 && papersWithResults.length > 0 && (
+                        <Button
+                          variant="outline"
+                          className="mt-6"
+                          onClick={() => setFilters(defaultFilters)}
+                        >
+                          Clear Filters
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {viewMode === 'table' && (
+                        <TableView
+                          papers={displayedPapers}
+                          questions={questions}
+                          selectedIds={selectedIds}
+                          onSelectionChange={handleTableSelectionChange}
+                          searchQuery={filters.searchQuery}
+                          onOpenCitationPanel={openCitationPanel}
+                        />
+                      )}
+                      {viewMode === 'cards' && (
+                        <CardView
+                          papers={displayedPapers}
+                          questions={questions}
+                          selectedIds={selectedIds}
+                          onSelectionChange={handleCardSelectionChange}
+                          onOpenCitationPanel={openCitationPanel}
+                        />
+                      )}
+                      {viewMode === 'split' && (
+                        <SplitView
+                          papers={sortedPapers}
+                          questions={questions}
+                          onOpenCitationPanel={openCitationPanel}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {sortedPapers.length > 0 && viewMode !== 'split' && (
+                  <SmartPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={setPageSize}
+                    totalCount={papersWithResults.length}
+                    filteredCount={sortedPapers.length}
+                    displayedCount={displayedPapers.length}
+                  />
+                )}
+
+                {viewMode !== 'split' && (
+                  <BulkActionsBar
+                    selectedIds={selectedIds}
+                    papers={selectedPapers}
+                    questions={questions}
+                    onClearSelection={clearSelection}
+                  />
+                )}
+
+                <ExportDialog
+                  open={exportDialogOpen}
+                  onOpenChange={setExportDialogOpen}
+                  papers={exportMode === 'all' ? sortedPapers : selectedPapers}
+                  questions={questions}
+                  label={
+                    exportMode === 'all'
+                      ? `${sortedPapers.length} filtered paper${sortedPapers.length !== 1 ? 's' : ''}`
+                      : `${selectedIds.size} selected paper${selectedIds.size !== 1 ? 's' : ''}`
+                  }
+                />
+              </ExtractionResultsShell>
+            </motion.div>
+          ) : activeTab === "insights" ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
+            >
+              <InsightsOverview
+                jobId={jobId}
+                selectedQuestionKey={selectedInsightsQuestion}
+                onSelectQuestion={setSelectedInsightsQuestion}
+                onRerun={handleDuplicate}
+              />
+              <InsightsQuestionPanel
+                jobId={jobId}
+                questionKey={selectedInsightsQuestion}
+                onJumpToPaper={(paperId) => {
+                  const target = papersWithResults.find((paper) => paper._id === paperId);
+                  if (!target) return;
+                  setFilters((prev) => ({
+                    ...prev,
+                    searchQuery: target.title,
+                  }));
+                  setActiveTab("results");
+                  setCurrentPage(1);
+                }}
+              />
+            </motion.div>
+          ) : activeTab === "review" ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="min-w-0 overflow-x-hidden"
+            >
+              <ExtractionResultsShell
+                panelPayload={citationPanelPayload}
+                mobilePane={mobilePane}
+                onMobilePaneChange={setMobilePane}
+                primaryLabel="Review"
+              >
+                <ReviewQueue jobId={jobId} onOpenCitationPanel={openCitationPanel} />
+              </ExtractionResultsShell>
+            </motion.div>
+          ) : activeTab === "report" ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <ReportBuilder
+                jobId={jobId}
+                filters={filters}
+                sortBy={resultsSortBy}
+                viewMode={viewMode}
                 questions={questions}
-                label={
-                  exportMode === 'all'
-                    ? `${sortedPapers.length} filtered paper${sortedPapers.length !== 1 ? 's' : ''}`
-                    : `${selectedIds.size} selected paper${selectedIds.size !== 1 ? 's' : ''}`
-                }
+                onApplySavedView={handleApplySavedView}
+                canUseTemplates={hasProFeatures}
+                canUseRunDiff={hasProFeatures}
               />
             </motion.div>
           ) : (
@@ -683,9 +859,12 @@ export default function JobDetailPage() {
               </div>
             </motion.div>
           )}
-          </div>
-        </CommandCenterContainer>
-      </div>
-    </PageWrapper>
+              </div>
+                </CommandCenterContainer>
+            </div>
+          </PageWrapper>
+        }
+      />
+    </div>
   );
 }

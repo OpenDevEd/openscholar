@@ -112,6 +112,11 @@ export interface ExtractionResult {
     | "best_effort"
     | "insufficient_evidence"
     | "extraction_error";
+  reviewState?: "unreviewed" | "accepted" | "rejected" | "needs_followup";
+  reviewNote?: string;
+  correctedAnswer?: string | boolean | number | string[] | null;
+  reviewedAt?: number;
+  reviewedBy?: string;
   retrievalDiagnostics?: {
     denseCandidates: number;
     lexicalCandidates: number;
@@ -143,4 +148,83 @@ export interface CreateExtractionJobInput {
   sourceZoteroSelection?: ExtractionZoteroSelection;
   sourceManualItems?: ExtractionManualItem[];
   questions: ExtractionQuestion[];
+}
+
+export interface ExtractionSavedView {
+  _id: string;
+  jobId: string;
+  name: string;
+  filters: {
+    searchQuery: string;
+    confidenceRange: [number, number];
+    statusFilters: string[];
+  };
+  sortBy?: string;
+  viewMode?: string;
+  selectedQuestionKeys?: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ExtractionWorkflowTemplate {
+  _id: string;
+  name: string;
+  description?: string;
+  sourceType: ExtractionSourceType;
+  questions: ExtractionQuestion[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ExtractionReportSnapshot {
+  _id: string;
+  jobId: string;
+  name: string;
+  scope: {
+    filteredPaperIds?: string[];
+    selectedQuestionKeys?: string[];
+    viewName?: string;
+  };
+  sections: Array<{
+    id: string;
+    title: string;
+    body: string;
+  }>;
+  metrics: {
+    totalPapers: number;
+    answeredRate: number;
+    groundedRate: number;
+    bestEffortRate: number;
+  };
+  generatedAt: number;
+}
+
+export interface ExtractionRunDiff {
+  _id: string;
+  jobId: string;
+  baselineJobId: string;
+  summary: {
+    newAnswers: number;
+    changedAnswers: number;
+    removedAnswers: number;
+    confidenceShifts: number;
+    newlyInsufficientEvidence: number;
+    totalCompared: number;
+  };
+  changes: Array<{
+    openalexId: string;
+    title: string;
+    questionKey: string;
+    changeType:
+      | "new"
+      | "changed"
+      | "removed"
+      | "confidence_shift"
+      | "newly_insufficient_evidence";
+    previousAnswer?: string | boolean | number | string[] | null;
+    nextAnswer?: string | boolean | number | string[] | null;
+    previousConfidence?: number;
+    nextConfidence?: number;
+  }>;
+  generatedAt: number;
 }

@@ -20,7 +20,20 @@ export {
 } from "./workpoolActions";
 
 // Mutations (public)
-export { startExtraction, cancelExtraction } from "./mutations";
+export {
+  startExtraction,
+  cancelExtraction,
+  duplicateExtraction,
+  deleteExtraction,
+  setResultReviewState,
+  saveExtractionSavedView,
+  deleteExtractionSavedView,
+  saveWorkflowTemplate,
+  deleteWorkflowTemplate,
+  startExtractionFromTemplate,
+  createExtractionReportSnapshot,
+  createExtractionRunDiff,
+} from "./mutations";
 
 // Mutations (internal - for workflow)
 export {
@@ -53,6 +66,14 @@ export {
   getJobDetails,
   getPaperResults,
   getJobResults,
+  getJobInsights,
+  getQuestionInsights,
+  getQuestionDisagreements,
+  getReviewQueue,
+  getSavedViews,
+  getWorkflowTemplates,
+  getReportSnapshots,
+  getRunDiff,
   subscribeToJobProgress,
 } from "./queries";
 
