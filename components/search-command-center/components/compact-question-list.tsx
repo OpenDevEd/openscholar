@@ -60,11 +60,18 @@ export function CompactQuestionList({
             )}
           >
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={() => onTest(q.question)}
               disabled={disabled}
-              className="h-7 w-7"
+              className={cn(
+                "h-7 w-7",
+                "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                "border-violet-500/30 hover:border-violet-500/50",
+                "text-violet-700 dark:text-violet-300",
+                "transition-all duration-200"
+              )}
               title="Test question"
             >
               <Play className="h-3 w-3" />

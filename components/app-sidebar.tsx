@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
@@ -27,6 +27,7 @@ import {
   useSearchHistoryUIStore,
   useCurrentQueryStore,
   useKeywordExpansionStore,
+  useAISettingsDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
@@ -38,6 +39,7 @@ import {
   BookOpen,
   Clock,
   Sparkles,
+  Wand2,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -268,7 +270,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
   const effectiveSearchId = useEffectiveSearchId();
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const { isOpen: aiSettingsOpen, setIsOpen: setAiSettingsOpen } = useAISettingsDialogStore();
 
   // Determine active query - now uses store for real-time updates on all pages
   // Fallback to URL params if store is empty (shouldn't happen but safety first)
@@ -571,18 +573,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <ThemeToggle />
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2.5 text-xs gap-1.5",
+                    "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                    "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                    "border-violet-500/30 hover:border-violet-500/50",
+                    "text-violet-700 dark:text-violet-300",
+                    "transition-all duration-200"
+                  )}
                   onClick={() => setAiSettingsOpen(true)}
                 >
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sparkles className="h-5 w-5" />
-                  </motion.div>
+                  <Wand2 className="h-3 w-3" />
+                  AI Settings
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">
@@ -595,18 +600,20 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <ThemeToggle />
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9 transition-all duration-200 hover:bg-sidebar-accent/80"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 w-7 px-0",
+                    "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                    "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                    "border-violet-500/30 hover:border-violet-500/50",
+                    "text-violet-700 dark:text-violet-300",
+                    "transition-all duration-200"
+                  )}
                   onClick={() => setAiSettingsOpen(true)}
                 >
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Sparkles className="h-5 w-5" />
-                  </motion.div>
+                  <Wand2 className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">

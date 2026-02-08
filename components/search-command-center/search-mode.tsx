@@ -12,6 +12,7 @@ import {
   useAIConfigStore,
   useCurrentQueryStore,
   useKeywordExpansionDialogStore,
+  useAISettingsDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -171,6 +172,10 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       if (!apiKey || !provider) {
         toast.error("API Key Required", {
           description: "Please configure your AI settings to translate queries.",
+          action: {
+            label: "Open Settings",
+            onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+          },
         });
         return;
       }
@@ -203,7 +208,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         toast.success("Query translated", {
           description: `Translated to ${language}`,
         });
-      } catch {
+      } catch (error) {
         toast.dismiss(loadingToast);
 
         // Track translation error
@@ -214,7 +219,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           ai_model: model,
         });
 
-        toast.error("Translation failed");
+        toast.error("Translation failed", {
+          description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        });
       } finally {
         setIsTranslating(false);
       }

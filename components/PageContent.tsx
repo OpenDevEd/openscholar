@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
-import { useAIConfigStore } from "@/lib/store";
+import { useAIConfigStore, useAISettingsDialogStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
 
@@ -61,6 +61,10 @@ function PageContent() {
         if (!apiKey) {
           toast.error("Configuration Required", {
             description: "Please configure your AI API key in the settings first.",
+            action: {
+              label: "Open Settings",
+              onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+            },
           });
           return;
         }
@@ -68,6 +72,10 @@ function PageContent() {
         if (!provider) {
           toast.error("Configuration Required", {
             description: "Please select an AI provider in the settings first.",
+            action: {
+              label: "Open Settings",
+              onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+            },
           });
           return;
         }
@@ -88,7 +96,7 @@ function PageContent() {
       } catch (error) {
         console.error("Failed to convert research question:", error);
         toast.error("Question Conversion Failed", {
-          description: "Failed to convert research question to search query. Please check your AI configuration.",
+          description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
         });
         return;
       } finally {

@@ -186,9 +186,9 @@ export function useScreening(data: {
         return screeningResponses;
       } catch (error) {
         console.error("Error generating screening responses:", error);
-        toast.error(
-          "Failed to generate screening responses. Please check your API key and try again."
-        );
+        toast.error("Failed to generate screening responses", {
+          description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        });
       }
     }
   }, [data.title, data.abstract, myMissingResponses, provider, apiKey, model, budget, dollarsUsed, setScreeningResponses, data.id]);

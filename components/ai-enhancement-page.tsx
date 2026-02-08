@@ -7,8 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search } from "lucide-react"
-import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useSearchHistoryStore } from "@/lib/store"
+import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search, Settings2 } from "lucide-react"
+import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useSearchHistoryStore, useAISettingsDialogStore } from "@/lib/store"
 import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -47,6 +47,10 @@ export function AIEnhancementPage({
     if (!apiKey) {
       toast.error("API Key Required", {
         description: "Please enter your API key first",
+        action: {
+          label: "Open Settings",
+          onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+        },
       })
       return
     }
@@ -195,10 +199,19 @@ export function AIEnhancementPage({
               {/* Status Messages */}
               {!apiKey && (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0" />
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
                     Please configure your API key to enhance queries
                   </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto shrink-0 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/50"
+                    onClick={() => useAISettingsDialogStore.getState().setIsOpen(true)}
+                  >
+                    <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+                    Open Settings
+                  </Button>
                 </div>
               )}
               

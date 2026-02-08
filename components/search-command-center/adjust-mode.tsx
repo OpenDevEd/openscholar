@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
-import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
+import { useSearchHistoryStore, useAIConfigStore, useAISettingsDialogStore } from "@/lib/store";
 import { toast } from "sonner";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -101,6 +101,10 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (!apiKey || !provider) {
       toast.error("Configuration Required", {
         description: "Please configure your AI API key in settings.",
+        action: {
+          label: "Open Settings",
+          onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+        },
       });
       return;
     }
@@ -140,9 +144,9 @@ Please enhance this academic search query according to the user's specific instr
       });
 
       setAiInstructions("");
-    } catch {
+    } catch (error) {
       toast.error("Enhancement failed", {
-        description: "Please check your API key and try again.",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
       });
     } finally {
       setIsEnhancing(false);

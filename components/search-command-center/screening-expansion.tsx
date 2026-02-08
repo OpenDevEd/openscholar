@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompactQuestionList } from "./components/compact-question-list";
-import { useSearchHistoryStore, useAIConfigStore, useTransientScreeningStore } from "@/lib/store";
+import { useSearchHistoryStore, useAIConfigStore, useTransientScreeningStore, useAISettingsDialogStore } from "@/lib/store";
 import { toast } from "sonner";
 import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -141,7 +141,13 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleGenerateWithAI = async () => {
     if (!apiKey) {
-      toast.error("Please configure your AI API key first");
+      toast.error("API Key Required", {
+        description: "Please configure your AI API key first.",
+        action: {
+          label: "Open Settings",
+          onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+        },
+      });
       return;
     }
 
@@ -185,14 +191,16 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       } else {
         toast.warning("No new questions generated");
       }
-    } catch {
+    } catch (error) {
       // Track generation failure
       posthog.capture("screening_questions_generation_failed", {
         ai_provider: provider,
         ai_model: model,
       });
 
-      toast.error("Failed to generate questions");
+      toast.error("Failed to generate questions", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -274,13 +282,20 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
                 size="sm"
                 onClick={handleGenerateWithAI}
                 disabled={isGenerating || !researchQuestion.trim()}
-                className="h-9 px-3 flex-shrink-0"
+                className={cn(
+                  "h-9 px-3 flex-shrink-0 text-xs gap-1.5",
+                  "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                  "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                  "border-violet-500/30 hover:border-violet-500/50",
+                  "text-violet-700 dark:text-violet-300",
+                  "transition-all duration-200"
+                )}
               >
                 {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <>
-                    <Wand2 className="h-4 w-4 sm:mr-1.5" />
+                    <Wand2 className="h-3 w-3 sm:mr-0.5" />
                     <span className="hidden sm:inline">Generate</span>
                   </>
                 )}

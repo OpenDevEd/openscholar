@@ -4,6 +4,7 @@ import { addCostFromUsage, assertWithinBudget } from "@/lib/ai-cost";
 import { createAIModel } from "@/lib/ai-utils";
 import { languageOptions } from "@/components/language-selector";
 import type { AIProvider } from "@/lib/types";
+import { captureAIGeneration } from "@/lib/posthog-ai";
 import { jsonrepair } from "jsonrepair";
 
 // ============================================================================
@@ -71,11 +72,133 @@ const STANDARD_PROVIDER_OPTIONS = {
 };
 
 /**
+ * Given an OpenRouter-style error data object { message, code, metadata },
+ * compose the most informative message by combining the base message with
+ * provider details and raw upstream errors from metadata.
+ */
+function extractFromErrorData(data: Record<string, unknown>): string | null {
+  const message = typeof data.message === "string" ? data.message : null;
+  const metadata = data.metadata as Record<string, unknown> | null | undefined;
+
+  if (!metadata || typeof metadata !== "object") {
+    return message || null;
+  }
+
+  // Try to get the raw upstream provider error message
+  const raw = metadata.raw as Record<string, unknown> | undefined;
+  const rawMessage =
+    raw && typeof raw === "object" && raw.error && typeof raw.error === "object"
+      ? (raw.error as Record<string, unknown>).message
+      : undefined;
+
+  const providerName =
+    typeof metadata.provider_name === "string" ? metadata.provider_name : null;
+
+  // Prefer the raw upstream message (e.g. "Rate limit exceeded. Please retry after 20s")
+  if (typeof rawMessage === "string" && rawMessage) {
+    return providerName ? `${providerName}: ${rawMessage}` : rawMessage;
+  }
+
+  // Fall back to reasons array
+  const reasons = Array.isArray(metadata.reasons)
+    ? metadata.reasons.join(", ")
+    : null;
+
+  if (message && providerName && reasons) {
+    return `${providerName}: ${message} (${reasons})`;
+  }
+  if (message && providerName) {
+    return `${providerName}: ${message}`;
+  }
+  if (message && reasons) {
+    return `${message} (${reasons})`;
+  }
+
+  return message || null;
+}
+
+/**
+ * Extract the most useful error message from nested AI SDK / provider errors.
+ *
+ * Error structures vary by provider:
+ * - AI SDK `APICallError`: wraps provider errors; real details in `responseBody`, `data`, or `cause`
+ * - OpenRouter SDK errors: `error.error.message` has the provider message; `body` has raw JSON
+ *   When OpenRouter proxies to an upstream provider that fails, the real details
+ *   live in `error.metadata` (provider_name, reasons, raw upstream error).
+ * - Plain `Error`: `.message` is sufficient
+ */
+function extractErrorMessage(error: unknown): string {
+  if (!error || typeof error !== "object") {
+    return error ? String(error) : "Unknown error";
+  }
+
+  const err = error as Record<string, unknown>;
+
+  // 1. AI SDK APICallError – parse responseBody JSON
+  if (typeof err.responseBody === "string" && err.responseBody) {
+    try {
+      const body = JSON.parse(err.responseBody);
+      if (body?.error && typeof body.error === "object") {
+        const msg = extractFromErrorData(
+          body.error as Record<string, unknown>
+        );
+        if (msg) return msg;
+      }
+    } catch {
+      /* not JSON */
+    }
+  }
+
+  // 2. AI SDK APICallError – pre-parsed data.error
+  if (err.data && typeof err.data === "object") {
+    const data = err.data as Record<string, unknown>;
+    if (data.error && typeof data.error === "object") {
+      const msg = extractFromErrorData(data.error as Record<string, unknown>);
+      if (msg) return msg;
+    }
+  }
+
+  // 3. OpenRouter SDK errors – error.error (structured error data)
+  if (err.error && typeof err.error === "object") {
+    const msg = extractFromErrorData(err.error as Record<string, unknown>);
+    if (msg) return msg;
+  }
+
+  // 4. OpenRouter SDK errors – parse body string
+  if (typeof err.body === "string" && err.body) {
+    try {
+      const body = JSON.parse(err.body);
+      if (body?.error && typeof body.error === "object") {
+        const msg = extractFromErrorData(
+          body.error as Record<string, unknown>
+        );
+        if (msg) return msg;
+      }
+    } catch {
+      /* not JSON */
+    }
+  }
+
+  // 5. Recurse into cause (AI SDK often wraps the real error)
+  if ("cause" in err && err.cause && err.cause !== error) {
+    const causeMsg = extractErrorMessage(err.cause);
+    if (causeMsg && causeMsg !== "Unknown error") return causeMsg;
+  }
+
+  // 6. Fall back to error.message
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Unknown error";
+}
+
+/**
  * Enhanced error logging for AI failures
  */
 function logAIError(context: string, error: unknown): void {
   console.error(`Error in ${context}:`, error);
-  
+
   if (error && typeof error === 'object') {
     if ('cause' in error) {
       console.error("Error cause:", error.cause);
@@ -173,6 +296,7 @@ export async function enhanceSearchQuery(
     let lastError: Error | null = null;
 
     while (retryCount < maxRetries) {
+      const startTime = performance.now();
       try {
         const { object, usage } = await generateObject({
           model,
@@ -254,7 +378,16 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
         const validatedQuery = validateQuery(object.enhancedQuery);
 
         // If we get here, validation passed
+        const latencyMs = performance.now() - startTime;
         addCostFromUsage(provider, modelId, usage);
+        captureAIGeneration({
+          provider, modelId,
+          feature: "enhance_search_query",
+          usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+          latencyMs,
+          input: query,
+          output: JSON.stringify(object),
+        });
 
         return {
           enhancedQuery: validatedQuery,
@@ -285,8 +418,18 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
 
   } catch (error) {
     logAIError("enhanceSearchQuery", error);
+    captureAIGeneration({
+      provider, modelId,
+      feature: "enhance_search_query",
+      usage: { inputTokens: 0, outputTokens: 0 },
+      latencyMs: 0,
+      input: query,
+      output: "",
+      isError: true,
+      errorMessage: extractErrorMessage(error),
+    });
     throw new Error(
-      `Failed to enhance query. ${error instanceof Error ? error.message : 'Please try again or try a different AI model.'}`
+      `Failed to enhance query. ${extractErrorMessage(error)}`
     );
   }
 }
@@ -310,6 +453,7 @@ export async function generateScreeningQuestions(
     assertWithinBudget();
 
     const model = createAIModel(provider, apiKey, modelId);
+    const startTime = performance.now();
 
     const { object, usage } = await generateObject({
       model,
@@ -365,7 +509,16 @@ ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 5. Can be answered from the paper's title, abstract, and methods section`,
     });
 
+    const latencyMs = performance.now() - startTime;
     addCostFromUsage(provider, modelId, usage);
+    captureAIGeneration({
+      provider, modelId,
+      feature: "generate_screening_questions",
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs,
+      input: researchQuestion,
+      output: JSON.stringify(object),
+    });
 
     // Filter out any questions that are too similar to existing ones
     const newQuestions = object.questions.filter(newQuestion => {
@@ -385,9 +538,17 @@ ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 
   } catch (error) {
     logAIError("generateScreeningQuestions", error);
-    throw new Error(
-      "Failed to generate screening questions. Please check your API key and try again."
-    );
+    captureAIGeneration({
+      provider, modelId,
+      feature: "generate_screening_questions",
+      usage: { inputTokens: 0, outputTokens: 0 },
+      latencyMs: 0,
+      input: researchQuestion,
+      output: "",
+      isError: true,
+      errorMessage: extractErrorMessage(error),
+    });
+    throw new Error(extractErrorMessage(error));
   }
 }
 
@@ -414,6 +575,7 @@ export async function translateQuery(
     assertWithinBudget();
 
     const model = createAIModel(provider, apiKey, modelId);
+    const startTime = performance.now();
 
     const { object, usage } = await generateObject({
       model,
@@ -443,16 +605,31 @@ IMPORTANT: Do NOT translate the Boolean operators AND, OR, and NOT. They must re
 Provide only the translated query without any additional explanation or formatting.`,
     });
 
+    const latencyMs = performance.now() - startTime;
     addCostFromUsage(provider, modelId, usage);
+    captureAIGeneration({
+      provider, modelId,
+      feature: "translate_query",
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs,
+      input: query,
+      output: JSON.stringify(object),
+    });
 
     return object.translatedQuery;
   } catch (error) {
     logAIError("translateQuery", error);
-    throw new Error(
-      error instanceof Error
-        ? `Translation failed: ${error.message}`
-        : "Failed to translate query. Please check your API key and try again."
-    );
+    captureAIGeneration({
+      provider, modelId,
+      feature: "translate_query",
+      usage: { inputTokens: 0, outputTokens: 0 },
+      latencyMs: 0,
+      input: query,
+      output: "",
+      isError: true,
+      errorMessage: extractErrorMessage(error),
+    });
+    throw new Error(`Translation failed: ${extractErrorMessage(error)}`);
   }
 }
 
@@ -480,6 +657,7 @@ export async function translatePaperContent(
     assertWithinBudget();
 
     const model = createAIModel(provider, apiKey, modelId);
+    const startTime = performance.now();
 
     const { object, usage } = await generateObject({
       model,
@@ -516,7 +694,16 @@ Provide the English translation of the title and abstract, maintaining academic 
  `,
     });
 
+    const latencyMs = performance.now() - startTime;
     addCostFromUsage(provider, modelId, usage);
+    captureAIGeneration({
+      provider, modelId,
+      feature: "translate_paper_content",
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs,
+      input: `${title}\n\n${abstract}`,
+      output: JSON.stringify(object),
+    });
 
     return {
       translatedTitle: object.translatedTitle,
@@ -526,11 +713,17 @@ Provide the English translation of the title and abstract, maintaining academic 
     };
   } catch (error) {
     logAIError("translatePaperContent", error);
-    throw new Error(
-      error instanceof Error
-        ? `Translation failed: ${error.message}`
-        : "Failed to translate paper content. Please check your API key and try again."
-    );
+    captureAIGeneration({
+      provider, modelId,
+      feature: "translate_paper_content",
+      usage: { inputTokens: 0, outputTokens: 0 },
+      latencyMs: 0,
+      input: `${title}\n\n${abstract}`,
+      output: "",
+      isError: true,
+      errorMessage: extractErrorMessage(error),
+    });
+    throw new Error(`Translation failed: ${extractErrorMessage(error)}`);
   }
 }
 
@@ -561,6 +754,7 @@ export async function generateScreeningResponses(
 
     // Create dynamic schema based on questions
     const schema = createScreeningResponsesSchema(questions);
+    const startTime = performance.now();
 
     const { object, usage } = await generateObject({
       model,
@@ -603,7 +797,17 @@ INSTRUCTIONS:
 Provide your screening decisions:`,
     });
 
+    const latencyMs = performance.now() - startTime;
     addCostFromUsage(provider, modelId, usage);
+    captureAIGeneration({
+      provider, modelId,
+      feature: "generate_screening_responses",
+      usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+      latencyMs,
+      input: `${title}\n\n${abstract}`,
+      output: JSON.stringify(object),
+      metadata: { question_count: questions.length },
+    });
 
     return {
       responses: object.responses as Record<string, boolean | null>,
@@ -612,9 +816,18 @@ Provide your screening decisions:`,
 
   } catch (error) {
     logAIError("generateScreeningResponses", error);
-    throw new Error(
-      "Failed to generate screening responses. Please check your API key and try again."
-    );
+    captureAIGeneration({
+      provider, modelId,
+      feature: "generate_screening_responses",
+      usage: { inputTokens: 0, outputTokens: 0 },
+      latencyMs: 0,
+      input: `${title}\n\n${abstract}`,
+      output: "",
+      isError: true,
+      errorMessage: extractErrorMessage(error),
+      metadata: { question_count: questions.length },
+    });
+    throw new Error(extractErrorMessage(error));
   }
 }
 

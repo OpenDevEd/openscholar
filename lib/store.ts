@@ -696,8 +696,8 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
 export const useAIConfigStore = create<AIConfigState>()(
   persist(
     (set) => ({
-      provider: 'openai',
-      model: 'o4-mini-2025-04-16',
+      provider: 'openrouter',
+      model: 'openrouter/free',
       apiKey: '',
       dollarsUsed: 0,
       budget: 0,
@@ -707,7 +707,7 @@ export const useAIConfigStore = create<AIConfigState>()(
       setProvider: (provider) => set({ provider }),
       setModel: (model) => set({ model }),
       setApiKey: (apiKey) => set({ apiKey }),
-      clearConfig: () => set({ provider: 'openai', model: 'o4-mini-2025-04-16', apiKey: '', dollarsUsed: 0, budget: 0 }),
+      clearConfig: () => set({ provider: 'openrouter', model: 'openrouter/free', apiKey: '', dollarsUsed: 0, budget: 0 }),
     }),
     {
       name: 'ai-config-storage',
@@ -826,6 +826,12 @@ export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
 
 // Add a global store to persist the DateRangePicker popover state across rerenders
 export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>((set) => ({
+  isOpen: false,
+  setIsOpen: (open) => set({ isOpen: open }),
+}))
+
+// Global store to control the AI Settings dialog from anywhere (toasts, banners, etc.)
+export const useAISettingsDialogStore = create<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>((set) => ({
   isOpen: false,
   setIsOpen: (open) => set({ isOpen: open }),
 })) 

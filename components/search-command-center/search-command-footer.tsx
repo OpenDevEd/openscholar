@@ -88,9 +88,11 @@ Return a more inclusive version of this query.`;
         original_query: expandedQuery,
         broadened_query: result.enhancedQuery,
       });
-    } catch {
+    } catch (error) {
       toast.dismiss(loadingToast);
-      toast.error("Failed to broaden query");
+      toast.error("Failed to broaden query", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsBroadening(false);
     }
@@ -134,9 +136,11 @@ Return a more targeted version of this query.`;
         original_query: expandedQuery,
         narrowed_query: result.enhancedQuery,
       });
-    } catch {
+    } catch (error) {
       toast.dismiss(loadingToast);
-      toast.error("Failed to narrow query");
+      toast.error("Failed to narrow query", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+      });
     } finally {
       setIsNarrowing(false);
     }
@@ -164,32 +168,46 @@ Return a more targeted version of this query.`;
           <div className="hidden sm:flex items-center gap-2">
             {showBroadenButton && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleBroadenQuery}
                 disabled={isBroadening || isLoading}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className={cn(
+                  "h-7 px-2.5 text-xs gap-1.5",
+                  "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                  "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                  "border-violet-500/30 hover:border-violet-500/50",
+                  "text-violet-700 dark:text-violet-300",
+                  "transition-all duration-200"
+                )}
               >
                 {isBroadening ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Expand className="h-3 w-3 mr-1" />
+                  <Expand className="h-3 w-3" />
                 )}
                 Make broader
               </Button>
             )}
             {showNarrowButton && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleNarrowQuery}
                 disabled={isNarrowing || isLoading}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className={cn(
+                  "h-7 px-2.5 text-xs gap-1.5",
+                  "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                  "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                  "border-violet-500/30 hover:border-violet-500/50",
+                  "text-violet-700 dark:text-violet-300",
+                  "transition-all duration-200"
+                )}
               >
                 {isNarrowing ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Minimize2 className="h-3 w-3 mr-1" />
+                  <Minimize2 className="h-3 w-3" />
                 )}
                 Make specific
               </Button>
