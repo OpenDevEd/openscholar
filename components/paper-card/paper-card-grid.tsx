@@ -73,8 +73,8 @@ export function PaperCardGrid({
       <div
         role="button"
         tabIndex={0}
-        onClick={() => openFocusMode(isMobile, resultIndex)}
-        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex)}
+        onClick={() => openFocusMode(isMobile, resultIndex, result.id)}
+        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
         className="flex-1 w-full text-left flex flex-col cursor-pointer"
       >
         <div className={cn("flex flex-col h-full", isCompact ? "p-3" : "p-4")}>

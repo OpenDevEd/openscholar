@@ -150,7 +150,11 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
   }
 };
 
-export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
+export const openFocusMode = (
+  isMobile?: boolean,
+  initialIndex: number = 0,
+  paperId?: string
+) => {
   const { setIsDialogOpen, setIsFocusModeOpen, setFocusModeIndex } = useUIStore.getState();
 
   // If isMobile is provided, use it; otherwise fall back to window check for backward compatibility
@@ -164,5 +168,6 @@ export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
   // Track focus mode opened
   posthog.capture("focus_mode_opened", {
     from_position: initialIndex,
+    paper_id: paperId ?? null,
   });
-}; 
+};

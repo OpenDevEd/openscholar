@@ -93,7 +93,7 @@ export function PaperCardListDetail({
       is_open_access: result.open_access?.is_oa || false,
       cited_by_count: result.cited_by_count || 0,
     });
-    openFocusMode(isMobile, resultIndex);
+    openFocusMode(isMobile, resultIndex, result.id);
   };
 
   const {

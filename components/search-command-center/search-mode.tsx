@@ -79,17 +79,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       e.preventDefault();
       if (search && localInputValue.trim()) {
         search.setQuery(localInputValue);
-
-        // Track search submitted event
-        posthog.capture("search_submitted", {
-          query: localInputValue,
-          query_length: localInputValue.length,
-          has_boolean_operators: /\b(AND|OR|NOT)\b/.test(localInputValue),
-          language: selectedLanguage || "en",
-        });
       }
     },
-    [search, localInputValue, selectedLanguage]
+    [search, localInputValue]
   );
 
   // Handle research question submit

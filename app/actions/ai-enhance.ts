@@ -218,7 +218,7 @@ const queryEnhancementSchema = z.object({
   enhancedQuery: z
     .string()
     .describe(
-      "A complete, syntactically valid Elasticsearch Boolean query string. Must have balanced parentheses and no unfinished groups."
+      "A complete, syntactically valid Boolean query string for OpenAlex-compatible search. Must have balanced parentheses, no unfinished groups, and no field:value prefixes."
     ),
 });
 
@@ -255,20 +255,63 @@ function createScreeningResponsesSchema(questions: string[]) {
   });
 }
 
-// Helper to check query validity
-function validateQuery(query: string): string {
-  const openParens = (query.match(/\(/g) || []).length;
-  const closeParens = (query.match(/\)/g) || []).length;
+const DISALLOWED_FIELD_PREFIX_REGEX =
+  /(^|[\s(])([A-Za-z_][A-Za-z0-9_.-]*):(?=(?:"|\(|[^\s/)"]))/g;
+
+function stripDisallowedFieldPrefixes(query: string): string {
+  return query.replace(DISALLOWED_FIELD_PREFIX_REGEX, "$1");
+}
+
+function normalizeQueryWhitespace(query: string): string {
+  return query
+    .replace(/\s+/g, " ")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+    .trim();
+}
+
+function normalizeAndValidateQuery(query: string): string {
+  const queryWithoutFieldPrefixes = stripDisallowedFieldPrefixes(query);
+  const normalizedQuery = normalizeQueryWhitespace(queryWithoutFieldPrefixes);
+
+  if (!normalizedQuery) {
+    throw new Error(
+      "Generated query is empty after removing disallowed field prefixes"
+    );
+  }
+
+  if (!/[^\s()]/.test(normalizedQuery)) {
+    throw new Error(
+      "Generated query is invalid after removing disallowed field prefixes"
+    );
+  }
+
+  const openParens = (normalizedQuery.match(/\(/g) || []).length;
+  const closeParens = (normalizedQuery.match(/\)/g) || []).length;
 
   if (openParens !== closeParens) {
     throw new Error("Generated query has unbalanced parentheses");
   }
 
-  if (/OR\s*$|AND\s*$|NOT\s*$/.test(query)) {
+  if (/^(OR|AND|NOT)\b/.test(normalizedQuery)) {
+    throw new Error("Generated query starts with an incomplete operator");
+  }
+
+  if (/\b(OR|AND|NOT)\s*$/.test(normalizedQuery)) {
     throw new Error("Generated query ends with an incomplete operator");
   }
 
-  return query;
+  return normalizedQuery;
+}
+
+function isRetryableQueryValidationError(errorMessage: string): boolean {
+  return [
+    "Generated query has unbalanced parentheses",
+    "Generated query starts with an incomplete operator",
+    "Generated query ends with an incomplete operator",
+    "Generated query is empty after removing disallowed field prefixes",
+    "Generated query is invalid after removing disallowed field prefixes",
+  ].some((message) => errorMessage.includes(message));
 }
 
 export async function enhanceSearchQuery(
@@ -305,7 +348,7 @@ export async function enhanceSearchQuery(
             repairSingleField(text, error, 'enhancedQuery'),
           providerOptions: STANDARD_PROVIDER_OPTIONS,
           temperature: 1,
-          system: `You are an Elasticsearch Query String Query optimization expert for academic search.
+          system: `You are an OpenAlex academic search query optimization expert.
 
 CRITICAL: You MUST respond with valid JSON in the following format:
 {
@@ -326,25 +369,28 @@ Your task:
 
 Core Principles:
 1. Use parentheses to group shared terms efficiently: (mechanical OR software) AND engineering
-2. Follow Elasticsearch Query String Query syntax exactly
+2. Follow OpenAlex-compatible Boolean syntax (Elasticsearch-like subset)
 3. Prioritize character efficiency - avoid redundant terms
 4. Group synonyms with OR, then AND with shared concepts
-5. Use field-specific academic terminology and abbreviations
+5. Use domain-specific academic terminology and abbreviations
 6. Maintain precision while improving recall
 
-Elasticsearch Rules:
+Syntax Rules:
 - Use AND, OR, NOT operators (case sensitive) - THESE OPERATORS MUST NEVER BE TRANSLATED
 - Group with parentheses for precedence
 - Use quotes for exact phrases: "machine learning"
 - Wildcards: algorithm* for variations
-- Field searches: title:"deep learning"
+- NEVER use field prefixes of any kind (field:value), including title:, abstract:, author:, year:, etc.
+- INVALID: title:"ai testing" OR (AI OR artificial) AND (testing OR evaluation)
+- VALID: "ai testing" OR (AI OR artificial) AND (testing OR evaluation)
 
 Validation Rules:
 - Always return a complete Boolean query with balanced parentheses
 - Never leave unfinished groups
 - Do not end with OR, AND, or NOT
+- Never output field:value syntax; output only plain Boolean terms and groups
 - Limit synonym groups to the most common 2–3 academic terms to avoid truncation
-- The final query must be executable in Elasticsearch
+- The final query must be executable in OpenAlex search
 
 Examples:
 Q: "What are the effects of climate change on agriculture in Africa?"
@@ -358,7 +404,7 @@ Character Optimization Examples:
 - Use: (mechanical OR software) AND engineering
 - Instead of: "artificial intelligence" OR "machine learning" OR "deep learning"
 - Use: (artificial OR machine OR deep) AND (intelligence OR learning)`,
-          prompt: `Enhance this academic search query using Elasticsearch Query String Query syntax.
+          prompt: `Enhance this academic search query using OpenAlex-compatible Boolean syntax.
 Input query: "${query}"
 
 ${language ? `CRITICAL LANGUAGE ENFORCEMENT: REMEMBER - You MUST output your ENTIRE response in ${languageOptions.find(option => option.code === language)?.name} ONLY. This includes the enhanced query, if there are any terms that are not in ${languageOptions.find(option => option.code === language)?.name}, you MUST translate them to ${languageOptions.find(option => option.code === language)?.name}.
@@ -371,11 +417,15 @@ Requirements:
 3. Always produce a syntactically valid query (balanced parentheses, no dangling operators).
 4. Minimize character count while maximizing recall and precision.
 5. Provide synonyms and abbreviations, but keep groups concise (max 2–3 terms per group).
-${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. Ensure ALL parentheses are properly balanced and closed.' : ''}`,
+6. NEVER use field prefixes (field:value), including title:, abstract:, author:, year:, or any other field name.
+7. If you receive field:value syntax in input, convert it by removing field names and keeping only values.
+8. INVALID EXAMPLE: title:"ai testing" OR (AI OR artificial) AND (testing OR evaluation)
+9. VALID EXAMPLE: "ai testing" OR (AI OR artificial) AND (testing OR evaluation)
+${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt produced an invalid query. Ensure there are no field:value prefixes, all parentheses are balanced, and no dangling operators remain.' : ''}`,
         });
 
         // Validate the query
-        const validatedQuery = validateQuery(object.enhancedQuery);
+        const validatedQuery = normalizeAndValidateQuery(object.enhancedQuery);
 
         // If we get here, validation passed
         const latencyMs = performance.now() - startTime;
@@ -398,8 +448,8 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
         lastError = validationError as Error;
         console.warn(`Query validation failed (attempt ${retryCount + 1}/${maxRetries}):`, validationError);
 
-        // Check if this is a parentheses error that we should retry
-        if (lastError.message.includes("unbalanced parentheses") || lastError.message.includes("incomplete operator")) {
+        // Retry for validation errors so the model can self-correct
+        if (isRetryableQueryValidationError(lastError.message)) {
           retryCount++;
           if (retryCount >= maxRetries) {
             throw new Error(`Failed to generate valid query after ${maxRetries} attempts. Last error: ${lastError.message}`);
@@ -594,6 +644,9 @@ export async function translateQuery(
 4. The same query structure and complexity
 
 CRITICAL RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as "AND", "OR", and "NOT" in English, even when translating the rest of the query to another language. These are syntax keywords that must remain unchanged.
+CRITICAL RULE: Never output field prefixes of any kind (field:value), including title:, abstract:, author:, year:, etc. If present in the source query, remove field names and keep only the value expression.
+INVALID: title:"ai testing" OR (AI OR artificial) AND (testing OR evaluation)
+VALID: "ai testing" OR (AI OR artificial) AND (testing OR evaluation)
 
 Translate naturally and fluently, using the most appropriate academic terms in the target language, but preserve the Boolean operators in their original English form.`,
       prompt: `Translate this academic search query to ${languageOptions.find(option => option.code === targetLanguage)?.name}:
@@ -601,6 +654,9 @@ Translate naturally and fluently, using the most appropriate academic terms in t
 Original query: "${query}"
 
 IMPORTANT: Do NOT translate the Boolean operators AND, OR, and NOT. They must remain as "AND", "OR", and "NOT" in English. Only translate the search terms and academic vocabulary.
+IMPORTANT: Do NOT output any field:value syntax. Remove all field names such as title:, abstract:, author:, year:, etc.
+INVALID EXAMPLE: title:"ai testing" OR (AI OR artificial) AND (testing OR evaluation)
+VALID EXAMPLE: "ai testing" OR (AI OR artificial) AND (testing OR evaluation)
 
 Provide only the translated query without any additional explanation or formatting.`,
     });
@@ -616,7 +672,7 @@ Provide only the translated query without any additional explanation or formatti
       output: JSON.stringify(object),
     });
 
-    return object.translatedQuery;
+    return normalizeAndValidateQuery(object.translatedQuery);
   } catch (error) {
     logAIError("translateQuery", error);
     captureAIGeneration({

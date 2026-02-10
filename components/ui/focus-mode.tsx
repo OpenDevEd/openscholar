@@ -79,32 +79,75 @@ export function FocusMode({
 
   // Track focus mode time spent
   const focusModeStartTimeRef = useRef<number | null>(null);
+  const entryPaperIdRef = useRef<string | null>(null);
   const currentPaperIdRef = useRef<string | null>(null);
+  const wasOpenRef = useRef(isOpen);
 
   const currentPaper = papers[currentIndex];
 
-  // Initialize start time when focus mode opens
-  useEffect(() => {
-    if (isOpen && !focusModeStartTimeRef.current) {
-      focusModeStartTimeRef.current = Date.now();
-      currentPaperIdRef.current = currentPaper?.id || null;
+  const trackFocusModeClosed = () => {
+    if (!focusModeStartTimeRef.current) {
+      return;
     }
+
+    const entryPaperId = entryPaperIdRef.current ?? currentPaperIdRef.current;
+    const exitPaperId = currentPaperIdRef.current ?? entryPaperIdRef.current;
+
+    if (!entryPaperId && !exitPaperId) {
+      focusModeStartTimeRef.current = null;
+      entryPaperIdRef.current = null;
+      currentPaperIdRef.current = null;
+      return;
+    }
+
+    const timeSpentSeconds = Math.floor(
+      (Date.now() - focusModeStartTimeRef.current) / 1000
+    );
+
+    posthog.capture("focus_mode_closed", {
+      paper_id: entryPaperId ?? exitPaperId,
+      entry_paper_id: entryPaperId ?? exitPaperId,
+      exit_paper_id: exitPaperId,
+      time_spent_seconds: timeSpentSeconds,
+    });
+
+    focusModeStartTimeRef.current = null;
+    entryPaperIdRef.current = null;
+    currentPaperIdRef.current = null;
+  };
+
+  // Track open/close transitions and keep the currently visible paper in sync.
+  useEffect(() => {
+    const wasOpen = wasOpenRef.current;
+    const isOpening = !wasOpen && isOpen;
+    const isClosing = wasOpen && !isOpen;
+
+    if (isOpening) {
+      const activePaperId = currentPaper?.id ?? null;
+      focusModeStartTimeRef.current = Date.now();
+      entryPaperIdRef.current = activePaperId;
+      currentPaperIdRef.current = activePaperId;
+    }
+
+    if (isOpen && currentPaper?.id) {
+      currentPaperIdRef.current = currentPaper.id;
+    }
+
+    if (isClosing) {
+      trackFocusModeClosed();
+    }
+
+    wasOpenRef.current = isOpen;
   }, [isOpen, currentPaper?.id]);
 
-  // Track when focus mode closes
+  // Unmount fallback: capture close if the component unmounts while still open.
   useEffect(() => {
     return () => {
-      if (focusModeStartTimeRef.current && currentPaperIdRef.current) {
-        const timeSpentSeconds = Math.floor((Date.now() - focusModeStartTimeRef.current) / 1000);
-
-        // Track focus mode closed with time spent
-        posthog.capture("focus_mode_closed", {
-          paper_id: currentPaperIdRef.current,
-          time_spent_seconds: timeSpentSeconds,
-        });
+      if (wasOpenRef.current) {
+        trackFocusModeClosed();
       }
     };
-  }, []); // Only run on unmount
+  }, []);
 
   // Get language from URL params (source of truth on results page)
   const search = useSearchOptional();

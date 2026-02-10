@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { format } from "date-fns";
 import { getEffectiveSearchId, DEFAULT_FILTERS } from "@/lib/utils";
 import { useSearchHistoryStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
 import type { SearchField, SearchFilters } from '@/lib/types';
 
 // Import the new search context
-import { useSearchOptional } from './search';
+import { useSearchOptional, type SearchParams } from './search';
 
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
@@ -200,54 +201,87 @@ function useUpdateSearchFilterFromUrl() {
       console.warn('useUpdateSearchFilter called outside of SearchProvider - no-op');
       return;
     }
-    
+
+    const batchUpdates: Partial<SearchParams> = {};
+    let shouldResetPage = false;
+
     if ('currentSearchField' in updates || 'field' in updates) {
-      search.setField((updates.currentSearchField || updates.field) as SearchField);
+      batchUpdates.field = (updates.currentSearchField || updates.field) as SearchParams['field'];
     }
     if ('sortBy' in updates) {
-      search.setSort(updates.sortBy as string);
+      batchUpdates.sort = updates.sortBy as string;
     }
     if ('filterType' in updates) {
-      search.setFilterType(updates.filterType as 'date' | 'year');
+      batchUpdates.ft = updates.filterType as SearchParams['ft'];
     }
     if ('yearRange' in updates) {
       const range = updates.yearRange as [number, number] | undefined;
-      search.setYearRange(range?.[0] ?? null, range?.[1] ?? null);
+      batchUpdates.yf = range?.[0] ?? null;
+      batchUpdates.yt = range?.[1] ?? null;
+      batchUpdates.ft = 'year';
+      shouldResetPage = true;
     }
     if ('isYearRangeEnabled' in updates) {
       // If disabling year range, clear the values
       if (!updates.isYearRangeEnabled) {
-        search.setYearRange(null, null);
+        batchUpdates.yf = null;
+        batchUpdates.yt = null;
+        batchUpdates.ft = 'year';
+        shouldResetPage = true;
       }
     }
     if ('dateRange' in updates) {
       const range = updates.dateRange as DateRange | undefined;
-      search.setDateRange(range?.from ?? null, range?.to ?? null);
+      batchUpdates.df = range?.from ? format(range.from, 'yyyy-MM-dd') : null;
+      batchUpdates.dt = range?.to ? format(range.to, 'yyyy-MM-dd') : null;
+      batchUpdates.ft = 'date';
+      shouldResetPage = true;
     }
     if ('ratingRange' in updates) {
-      const range = updates.ratingRange as [number, number];
-      search.setRatingRange(range[0], range[1]);
+      const range = updates.ratingRange as [number, number] | undefined;
+      batchUpdates.rmin = range?.[0] ?? DEFAULT_FILTERS.ratingRange[0];
+      batchUpdates.rmax = range?.[1] ?? DEFAULT_FILTERS.ratingRange[1];
+      shouldResetPage = true;
     }
     if ('onlyRatedPapers' in updates) {
-      search.setOnlyRated(updates.onlyRatedPapers as boolean);
+      batchUpdates.rated = updates.onlyRatedPapers as boolean;
+      shouldResetPage = true;
     }
     if ('selectedRegions' in updates) {
-      search.setRegions(updates.selectedRegions as string[]);
+      batchUpdates.reg = updates.selectedRegions as string[];
+      shouldResetPage = true;
     }
     if ('selectedCountryFocus' in updates) {
-      search.setCountryFocus(updates.selectedCountryFocus as string[]);
+      batchUpdates.focus = updates.selectedCountryFocus as string[];
+      shouldResetPage = true;
     }
     if ('citesItemId' in updates) {
-      search.setCites(updates.citesItemId as string);
+      batchUpdates.cites = updates.citesItemId as string;
+      shouldResetPage = true;
     }
     if ('citedByItemId' in updates) {
-      search.setCitedBy(updates.citedByItemId as string);
+      batchUpdates.citedBy = updates.citedByItemId as string;
+      shouldResetPage = true;
     }
     if ('relatedToItemId' in updates) {
-      search.setRelatedTo(updates.relatedToItemId as string);
+      batchUpdates.rel = updates.relatedToItemId as string;
+      shouldResetPage = true;
     }
     if ('reviewFilter' in updates) {
-      search.setReviewOnly(updates.reviewFilter as boolean);
+      batchUpdates.review = updates.reviewFilter as boolean;
+      shouldResetPage = true;
+    }
+    if ('language' in updates || 'lang' in updates) {
+      batchUpdates.lang = ((updates.language as string | null | undefined) ?? updates.lang ?? null) as string | null;
+      shouldResetPage = true;
+    }
+
+    if (shouldResetPage) {
+      batchUpdates.page = 1;
+    }
+
+    if (Object.keys(batchUpdates).length > 0) {
+      search.updateParams(batchUpdates);
     }
   }, [search]);
   
