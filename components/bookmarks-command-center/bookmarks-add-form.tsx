@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { subtleSpring } from "@/lib/animation-config";
 import posthog from "posthog-js";
 
@@ -31,17 +31,17 @@ export function BookmarksAddForm() {
 
     const validationError = validateKeyword(trimmedName);
     if (validationError) {
-      toast.error(validationError);
+      appToast.validation.failed(validationError);
       return;
     }
 
     if (!trimmedExpansion) {
-      toast.error("Expansion text cannot be empty");
+      appToast.validation.failed("Expansion text cannot be empty.");
       return;
     }
 
     if (keywords[trimmedName]) {
-      toast.error(`Bookmark "${trimmedName}" already exists`);
+      appToast.validation.failed(`Bookmark "${trimmedName}" already exists.`);
       return;
     }
 
@@ -57,7 +57,7 @@ export function BookmarksAddForm() {
 
     setName("");
     setExpansion("");
-    toast.success(`Bookmark "${trimmedName}" added successfully`);
+    appToast.entity.created("bookmark", trimmedName);
   };
 
   return (

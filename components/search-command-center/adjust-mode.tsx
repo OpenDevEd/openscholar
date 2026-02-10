@@ -5,8 +5,8 @@ import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
-import { useSearchHistoryStore, useAIConfigStore, useAISettingsDialogStore } from "@/lib/store";
-import { toast } from "sonner";
+import { useSearchHistoryStore, useAIConfigStore } from "@/lib/store";
+import { appToast } from "@/lib/toast";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { languageOptions } from "@/components/language-selector";
@@ -99,13 +99,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (!aiInstructions.trim() || !urlQuery.trim()) return;
 
     if (!apiKey || !provider) {
-      toast.error("Configuration Required", {
-        description: "Please configure your AI API key in settings.",
-        action: {
-          label: "Open Settings",
-          onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
-        },
-      });
+      appToast.ai.configRequired("Please configure your AI API key in settings.");
       return;
     }
 
@@ -139,15 +133,11 @@ Please enhance this academic search query according to the user's specific instr
       setQueryFlash(true);
       setTimeout(() => setQueryFlash(false), 1000);
 
-      toast.success("Query enhanced!", {
-        description: response.explanation,
-      });
+      appToast.ai.succeeded("Query enhanced", response.explanation || undefined);
 
       setAiInstructions("");
     } catch (error) {
-      toast.error("Enhancement failed", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-      });
+      appToast.ai.failed("Enhancement", error);
     } finally {
       setIsEnhancing(false);
     }

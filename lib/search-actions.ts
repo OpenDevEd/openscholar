@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
@@ -70,9 +70,7 @@ export const downloadItem = async (item: any, format: 'json' | 'csv', searchStat
     const { ratings } = useRatingsStore.getState();
     
     if (!searchState) {
-      toast.error('Download failed', {
-        description: 'Search information not available for download.'
-      });
+      appToast.io.downloadFailed('item');
       return;
     }
     
@@ -88,18 +86,14 @@ export const downloadItem = async (item: any, format: 'json' | 'csv', searchStat
     await downloadWithMetadata(itemWithRating, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading item:', error);
-    toast.error('Download failed', {
-      description: 'Could not download the item. Please try again.'
-    });
+    appToast.io.downloadFailed('item');
   }
 };
 
 export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', searchState?: any) => {
   try {
     if (!searchState) {
-      toast.error('Download failed', {
-        description: 'Search information not available for download.'
-      });
+      appToast.io.downloadFailed('essential item');
       return;
     }
     
@@ -112,9 +106,7 @@ export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', s
     await downloadWithMetadata(essentialInfo, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading essential item:', error);
-    toast.error('Download failed', {
-      description: 'Could not download the essential information. Please try again.'
-    });
+    appToast.io.downloadFailed('essential item');
   }
 };
 
@@ -123,9 +115,7 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
     const { ratings } = useRatingsStore.getState();
     
     if (!searchState || !results) {
-      toast.error('Download failed', {
-        description: 'Search results not available for download.'
-      });
+      appToast.io.downloadFailed('results');
       return;
     }
 
@@ -144,9 +134,7 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
     await downloadWithMetadata(dataToDownload, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading all results:', error);
-    toast.error('Download failed', {
-      description: 'Could not download the results. Please try again.'
-    });
+    appToast.io.downloadFailed('results');
   }
 };
 

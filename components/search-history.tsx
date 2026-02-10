@@ -20,7 +20,7 @@ import {
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
 
-import { toast } from "sonner";
+import { appToast, getErrorMessage } from "@/lib/toast";
 import { showConfirmation } from "@/lib/confirmation";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -54,7 +54,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const handleCopyQuery = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      toast.success("Query copied to clipboard");
+      appToast.clipboard.copied("Query");
     } catch (err) {
       const textArea = document.createElement('textarea');
       textArea.value = query;
@@ -62,7 +62,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      toast.success("Query copied to clipboard");
+      appToast.clipboard.copied("Query");
     }
   };
 
@@ -77,9 +77,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         };
       });
       downloadAsFile(JSON.stringify(data, null, 2), 'search_history.json', 'json');
-      toast.success(`Downloaded ${data.length} search entries as JSON`);
+      appToast.entity.created("history export", `${data.length} search entries (JSON)`);
     } catch (error) {
-      toast.error("Failed to download JSON file");
+      appToast.io.downloadFailed("JSON file");
     }
   };
 
@@ -95,9 +95,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, 'search_history.csv', 'csv');
-      toast.success(`Downloaded ${data.length} search entries as CSV`);
+      appToast.entity.created("history export", `${data.length} search entries (CSV)`);
     } catch (error) {
-      toast.error("Failed to download CSV file");
+      appToast.io.downloadFailed("CSV file");
     }
   };
 
@@ -106,13 +106,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.json');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} search entries`);
-      } else {
-        toast.warning("No valid search entries found in the file");
-      }
+      appToast.io.importResult("search entries", importedCount);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to upload JSON file");
+      appToast.io.uploadFailed("JSON file", getErrorMessage(error, "Failed to upload JSON file."));
     }
   };
 
@@ -121,13 +117,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.csv');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} search entries`);
-      } else {
-        toast.warning("No valid search entries found in the file");
-      }
+      appToast.io.importResult("search entries", importedCount);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to upload CSV file");
+      appToast.io.uploadFailed("CSV file", getErrorMessage(error, "Failed to upload CSV file."));
     }
   };
 
@@ -139,7 +131,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       confirmText: "Delete",
       onConfirm: () => {
         removeSearchResult(index);
-        toast.success("Search entry deleted");
+        appToast.entity.deleted("search entry");
       }
     });
   };
@@ -151,7 +143,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       confirmText: "Clear All",
       onConfirm: () => {
         clearSearchHistory();
-        toast.success("All search history cleared");
+        appToast.entity.cleared("search history");
       }
     });
   };
@@ -191,9 +183,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       updatedAt: new Date().toISOString()
     });
     
-    toast.success('Query entry removed', {
-      description: 'The query entry has been removed from history.'
-    });
+    appToast.entity.deleted("query entry");
   };
 
   // Reusable Bookmark Form Component
@@ -222,7 +212,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     const handleSubmit = () => {
       const validationError = validateKeyword(localBookmarkName);
     if (validationError) {
-      toast.error(validationError);
+      appToast.validation.failed(validationError);
       return;
     }
 
@@ -230,8 +220,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     
       addKeyword(localBookmarkName.trim(), expandedQuery);
-      const message = variant === 'full' ? 'Search saved as bookmark' : 'Query saved as bookmark';
-      toast.success(`${message} "${localBookmarkName}"`);
+      appToast.entity.created("bookmark", localBookmarkName);
       onSubmit(localBookmarkName);
       setLocalBookmarkName('');
     };

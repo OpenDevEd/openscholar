@@ -4,7 +4,7 @@ import React from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCurrentSearchFormState, useUpdateSearchFilter } from '@/lib/hooks';
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 
 export function ReviewFilter() {
   const { reviewFilter } = useCurrentSearchFormState();
@@ -12,7 +12,10 @@ export function ReviewFilter() {
 
   const handleToggle = (checked: boolean) => {
     updateFilter({ reviewFilter: checked });
-    toast.success(checked ? "Review filter applied" : "Review filter removed");
+    appToast.entity.updated(
+      "Review filter",
+      checked ? "Review filter is enabled." : "Review filter is disabled."
+    );
   };
 
   return (

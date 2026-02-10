@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, RefreshCw, Send, Sparkles, Key, Brain, CheckCircle, AlertTriangle, Search, Settings2 } from "lucide-react"
 import { useAIConfigStore, useAIConfigDialogStore, useKeywordExpansionDialogStore, useSearchHistoryStore, useAISettingsDialogStore } from "@/lib/store"
-import { enhanceSearchQuery, AIProvider } from "@/app/actions/ai-enhance"
-import { toast } from "sonner"
+import { enhanceSearchQuery } from "@/app/actions/ai-enhance"
+import { appToast } from "@/lib/toast"
 import { useRouter } from "next/navigation"
 import { useEffectiveSearchId } from "@/lib/hooks"
 import { useSearchOptional } from "@/lib/search"
@@ -44,21 +44,13 @@ export function AIEnhancementPage({
   const currentLanguage = search?.params?.lang ?? '';
 
   const handleEnhanceQuery = async () => {
-    if (!apiKey) {
-      toast.error("API Key Required", {
-        description: "Please enter your API key first",
-        action: {
-          label: "Open Settings",
-          onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
-        },
-      })
+    if (!apiKey || !provider) {
+      appToast.ai.configRequired("Please configure your AI provider and API key first.")
       return
     }
 
     if (!suggestedQuery.trim()) {
-      toast.error("Query Required", {
-        description: "Please enter a search query to enhance with AI",
-      })
+      appToast.validation.failed("Please enter a search query to enhance with AI.")
       return
     }
 
@@ -69,9 +61,7 @@ export function AIEnhancementPage({
       const result = await enhanceSearchQuery(suggestedQuery, provider, apiKey, model, currentLanguage || undefined)
       setEnhancedPreview(result)
     } catch (error) {
-      toast.error("Enhancement Failed", {
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-      })
+      appToast.ai.failed("Enhancement", error)
     } finally {
       setIsEnhancing(false)
     }
@@ -79,9 +69,7 @@ export function AIEnhancementPage({
 
   const handleUseEnhancedQuery = async () => {
     if (enhancedPreview) {
-      toast.success("Enhanced Query Applied", {
-        description: "Navigating to results with enhanced query",
-      })
+      appToast.ai.succeeded("Enhanced query applied", "Navigating to results with enhanced query.")
       
       // Navigate with enhanced query in URL params (URL is source of truth)
       if (currentSearchId) {
@@ -161,7 +149,7 @@ export function AIEnhancementPage({
               <div className="flex gap-3 pt-2">
                 <Button
                   onClick={handleEnhanceQuery}
-                  disabled={isEnhancing || !suggestedQuery.trim() || !apiKey}
+                  disabled={isEnhancing || !suggestedQuery.trim() || !apiKey || !provider}
                   className="flex-1"
                   variant={enhancedPreview ? "outline" : "default"}
                   size="lg"

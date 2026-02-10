@@ -15,7 +15,7 @@ import {
   useAISettingsDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
-import { toast } from "sonner";
+import { appToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
 import { enhanceSearchQuery, translateQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -89,9 +89,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     e.preventDefault();
 
     if (!effectiveSearchId) {
-      toast.error("No active search", {
-        description: "Please perform a search first.",
-      });
+      appToast.validation.failed("Please perform a search first.");
       return;
     }
 
@@ -126,21 +124,17 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         language: currentSearchResult?.language || "en",
       });
 
-      toast.success("Question converted to keywords", {
-        description: `Searching for: "${result.enhancedQuery}"`,
-      });
+      appToast.ai.succeeded("Question converted to keywords", `Searching for: "${result.enhancedQuery}"`);
     } catch (error) {
       // Track enhancement error
       posthog.capture("ai_query_enhancement_failed", {
         original_question: questionToProcess,
         ai_provider: provider,
         ai_model: model,
-        error_message: error instanceof Error ? error.message : "Unknown error",
+        error_message: getErrorMessage(error, "Unknown error"),
       });
 
-      toast.error("Enhancement Failed", {
-        description: error instanceof Error ? error.message : "Unknown error",
-      });
+      appToast.ai.failed("Enhancement", error);
     } finally {
       setIsEnhancing(false);
     }
@@ -162,58 +156,66 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
     if (localInputValue.trim() && language) {
       if (!apiKey || !provider) {
-        toast.error("API Key Required", {
-          description: "Please configure your AI settings to translate queries.",
-          action: {
-            label: "Open Settings",
-            onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
-          },
-        });
+        appToast.ai.configRequired("Please configure your AI settings to translate queries.");
         return;
       }
 
       setIsTranslating(true);
-      const loadingToast = toast.loading("Translating query...");
-
       try {
-        const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
-        const translatedQuery = await translateQuery(
-          expandedQuery,
-          language,
-          provider,
-          apiKey,
-          model
-        );
+        await runWithLoadingToast({
+          loading: "Translating query...",
+          run: async () => {
+            const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
+            const translatedQuery = await translateQuery(
+              expandedQuery,
+              language,
+              provider,
+              apiKey,
+              model
+            );
 
-        search.setQuery(translatedQuery);
-        toast.dismiss(loadingToast);
+            search.setQuery(translatedQuery);
 
-        // Track query translation event
-        posthog.capture("query_translated", {
-          original_query: expandedQuery,
-          translated_query: translatedQuery,
-          target_language: language,
-          ai_provider: provider,
-          ai_model: model,
+            // Track query translation event
+            posthog.capture("query_translated", {
+              original_query: expandedQuery,
+              translated_query: translatedQuery,
+              target_language: language,
+              ai_provider: provider,
+              ai_model: model,
+            });
+
+            return translatedQuery;
+          },
+          success: () => ({
+            title: "Query translated",
+            description: `Translated to ${language}`,
+          }),
+          error: (error) => {
+            // Track translation error
+            posthog.capture("query_translation_failed", {
+              original_query: localInputValue,
+              target_language: language,
+              ai_provider: provider,
+              ai_model: model,
+              error_message: getErrorMessage(error, "Translation failed"),
+            });
+
+            return {
+              title: "Translation failed",
+              description: getErrorMessage(
+                error,
+                "An unexpected error occurred. Please try again."
+              ),
+              action: {
+                label: "Open AI Settings",
+                onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+              },
+            };
+          },
         });
-
-        toast.success("Query translated", {
-          description: `Translated to ${language}`,
-        });
-      } catch (error) {
-        toast.dismiss(loadingToast);
-
-        // Track translation error
-        posthog.capture("query_translation_failed", {
-          original_query: localInputValue,
-          target_language: language,
-          ai_provider: provider,
-          ai_model: model,
-        });
-
-        toast.error("Translation failed", {
-          description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-        });
+      } catch {
+        // Toast is already handled by runWithLoadingToast.
       } finally {
         setIsTranslating(false);
       }

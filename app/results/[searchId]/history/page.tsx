@@ -6,7 +6,7 @@ import { SearchHistory } from '@/components/search-history';
 import { useUIStore, useSearchHistoryStore } from '@/lib/store';
 import { useCurrentSearchFormState } from '@/lib/hooks';
 import { restoreFromHistory } from '@/lib/search/actions';
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { History } from 'lucide-react';
 
@@ -45,9 +45,7 @@ export default function HistoryPage({ params }: HistoryPageProps) {
     if (searchResult) {
       router.push(restoreFromHistory(searchResult));
     } else {
-      toast.error('Search not found', {
-        description: 'The requested search could not be found in your history.'
-      });
+      appToast.validation.failed("The requested search could not be found in your history.");
     }
   };
 

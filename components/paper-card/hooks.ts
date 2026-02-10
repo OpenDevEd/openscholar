@@ -12,7 +12,7 @@ import { useSearchOptional } from "@/lib/search";
 import { createCitationSearch } from "@/lib/search";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { translatePaperContent, generateScreeningResponses } from "@/app/actions/ai-enhance";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import useSWRImmutable from "swr/immutable";
 import { ScreeningContext } from "@/components/results-list";
 
@@ -186,9 +186,7 @@ export function useScreening(data: {
         return screeningResponses;
       } catch (error) {
         console.error("Error generating screening responses:", error);
-        toast.error("Failed to generate screening responses", {
-          description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-        });
+        appToast.ai.failed("Screening response generation", error);
       }
     }
   }, [data.title, data.abstract, myMissingResponses, provider, apiKey, model, budget, dollarsUsed, setScreeningResponses, data.id]);

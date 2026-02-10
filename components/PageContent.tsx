@@ -6,7 +6,7 @@ import {
   useUIStore,
   useCurrentQueryStore,
 } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import {
   useQueryChangeHandler,
   useCreateSearchFilters,
@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
-import { useAIConfigStore, useAISettingsDialogStore } from "@/lib/store";
+import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
 
@@ -59,24 +59,12 @@ function PageContent() {
       try {
         // Check if AI configuration is available
         if (!apiKey) {
-          toast.error("Configuration Required", {
-            description: "Please configure your AI API key in the settings first.",
-            action: {
-              label: "Open Settings",
-              onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
-            },
-          });
+          appToast.ai.configRequired("Please configure your AI API key in the settings first.");
           return;
         }
 
         if (!provider) {
-          toast.error("Configuration Required", {
-            description: "Please select an AI provider in the settings first.",
-            action: {
-              label: "Open Settings",
-              onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
-            },
-          });
+          appToast.ai.configRequired("Please select an AI provider in the settings first.");
           return;
         }
 
@@ -89,15 +77,11 @@ function PageContent() {
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;
 
-        toast.success("Research Question Processed", {
-          description: `Converted to search query: "${searchQuery}"`,
-        });
+        appToast.ai.succeeded("Research question processed", `Converted to search query: "${searchQuery}"`);
 
       } catch (error) {
         console.error("Failed to convert research question:", error);
-        toast.error("Question Conversion Failed", {
-          description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-        });
+        appToast.ai.failed("Question conversion", error);
         return;
       } finally {
         // End AI enhancement loading state

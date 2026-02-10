@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
 import { ViewModeToggleCompact } from "@/components/view-mode-toggle";
@@ -57,12 +57,10 @@ export function SearchCommandHeader({
       const shareableUrl = getShareableUrl();
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);
-      toast.success("Link copied!", {
-        description: "Share this URL with others to share your search.",
-      });
+      appToast.clipboard.copied("Link");
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy link");
+      appToast.clipboard.copyFailed("link");
     }
   };
 

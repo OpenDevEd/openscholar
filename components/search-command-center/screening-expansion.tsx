@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompactQuestionList } from "./components/compact-question-list";
-import { useSearchHistoryStore, useAIConfigStore, useTransientScreeningStore, useAISettingsDialogStore } from "@/lib/store";
-import { toast } from "sonner";
+import { useSearchHistoryStore, useAIConfigStore, useTransientScreeningStore } from "@/lib/store";
+import { appToast } from "@/lib/toast";
 import { generateScreeningQuestions } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) {
-      toast.error("Please enter a question");
+      appToast.validation.failed("Please enter a question.");
       return;
     }
 
@@ -61,7 +61,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       (q) => q.question.toLowerCase() === newQuestion.trim().toLowerCase()
     );
     if (duplicate) {
-      toast.error("This question already exists");
+      appToast.validation.failed("This question already exists.");
       return;
     }
 
@@ -77,9 +77,9 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       });
 
       setNewQuestion("");
-      toast.success("Question added");
+      appToast.entity.created("question");
     } catch {
-      toast.error("Failed to add question");
+      appToast.validation.failed("Failed to add question.");
     } finally {
       setIsAdding(false);
     }
@@ -88,7 +88,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   const handleDeleteQuestion = (index: number, question: string) => {
     const remainingQuestions = screeningQuestions.length - 1;
     removeScreeningQuestion(searchId, index);
-    toast.success("Question deleted");
+    appToast.entity.deleted("question");
 
     // Track screening question deletion
     posthog.capture("screening_question_deleted", {
@@ -100,7 +100,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   const handleTestQuestion = (question: string) => {
     removeScreeningQuestionFromAllPapers(searchId, question);
     incrementTestIndexPerQuestion(question);
-    toast.success("Removed responses for this question");
+    appToast.entity.cleared("question responses");
 
     // Track screening question test
     posthog.capture("screening_question_tested", {
@@ -111,7 +111,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleTestAllQuestions = () => {
     if (screeningQuestions.length === 0) {
-      toast.info("No questions to test");
+      appToast.validation.warning("No questions to test.");
       return;
     }
 
@@ -120,18 +120,18 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       incrementTestIndexPerQuestion(q.question);
     });
 
-    toast.success(`Removed all ${screeningQuestions.length} question responses`);
+    appToast.entity.cleared("question responses", screeningQuestions.length);
   };
 
   const handleClearAllQuestions = () => {
     if (screeningQuestions.length === 0) {
-      toast.info("No questions to clear");
+      appToast.validation.warning("No questions to clear.");
       return;
     }
 
     const questionsCleared = screeningQuestions.length;
     clearScreeningQuestions(searchId);
-    toast.success(`Cleared all ${questionsCleared} questions`);
+    appToast.entity.cleared("questions", questionsCleared);
 
     // Track screening questions cleared
     posthog.capture("screening_questions_cleared", {
@@ -140,19 +140,13 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   };
 
   const handleGenerateWithAI = async () => {
-    if (!apiKey) {
-      toast.error("API Key Required", {
-        description: "Please configure your AI API key first.",
-        action: {
-          label: "Open Settings",
-          onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
-        },
-      });
+    if (!apiKey || !provider) {
+      appToast.ai.configRequired("Please configure your AI provider and API key first.");
       return;
     }
 
     if (!researchQuestion.trim()) {
-      toast.error("No research question available");
+      appToast.validation.failed("No research question available.");
       return;
     }
 
@@ -187,9 +181,12 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
           ai_model: model,
         });
 
-        toast.success(`Added ${addedCount} new question${addedCount > 1 ? "s" : ""}`);
+        appToast.entity.created(
+          "screening questions",
+          `${addedCount} new question${addedCount > 1 ? "s" : ""}`
+        );
       } else {
-        toast.warning("No new questions generated");
+        appToast.validation.warning("No new questions generated.");
       }
     } catch (error) {
       // Track generation failure
@@ -198,9 +195,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
         ai_model: model,
       });
 
-      toast.error("Failed to generate questions", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-      });
+      appToast.ai.failed("Question generation", error);
     } finally {
       setIsGenerating(false);
     }

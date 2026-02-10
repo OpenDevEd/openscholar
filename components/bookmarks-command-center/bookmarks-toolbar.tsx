@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useUIStore, useKeywordExpansionStore } from "@/lib/store";
 import { BookmarkSortBy, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
-import { toast } from "sonner";
+import { appToast, getErrorMessage } from "@/lib/toast";
 import { jsonToCSV, downloadAsFile, triggerFileUpload, uploadFile } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
@@ -84,9 +84,9 @@ export function BookmarksToolbar({
         createdAt: bookmark.createdAt,
       }));
       downloadAsFile(JSON.stringify(data, null, 2), "bookmarks.json", "json");
-      toast.success(`Downloaded ${data.length} bookmarks as JSON`);
+      appToast.entity.created("bookmark export", `${data.length} bookmarks (JSON)`);
     } catch {
-      toast.error("Failed to download JSON file");
+      appToast.io.downloadFailed("JSON file");
     }
   };
 
@@ -99,9 +99,9 @@ export function BookmarksToolbar({
       }));
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "bookmarks.csv", "csv");
-      toast.success(`Downloaded ${data.length} bookmarks as CSV`);
+      appToast.entity.created("bookmark export", `${data.length} bookmarks (CSV)`);
     } catch {
-      toast.error("Failed to download CSV file");
+      appToast.io.downloadFailed("CSV file");
     }
   };
 
@@ -110,15 +110,9 @@ export function BookmarksToolbar({
       const file = await triggerFileUpload(".json");
       const data = await uploadFile(file);
       const importedCount = importKeywords(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} bookmarks`);
-      } else {
-        toast.warning("No valid bookmarks found in the file");
-      }
+      appToast.io.importResult("bookmarks", importedCount);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload JSON file"
-      );
+      appToast.io.uploadFailed("JSON file", getErrorMessage(error, "Failed to upload JSON file."));
     }
   };
 
@@ -127,15 +121,9 @@ export function BookmarksToolbar({
       const file = await triggerFileUpload(".csv");
       const data = await uploadFile(file);
       const importedCount = importKeywords(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} bookmarks`);
-      } else {
-        toast.warning("No valid bookmarks found in the file");
-      }
+      appToast.io.importResult("bookmarks", importedCount);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload CSV file"
-      );
+      appToast.io.uploadFailed("CSV file", getErrorMessage(error, "Failed to upload CSV file."));
     }
   };
 
@@ -146,7 +134,7 @@ export function BookmarksToolbar({
       confirmText: "Clear All",
       onConfirm: () => {
         clearKeywords();
-        toast.success("All bookmarks cleared");
+        appToast.entity.cleared("bookmarks");
       },
     });
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import {
   getModelsForProvider,
 } from "@/lib/ai-models";
 import { fetchOpenRouterModels } from "@/app/actions/openrouter";
-import { toast } from "sonner";
+import { appToast, getErrorMessage } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 import { ArrowLeft, Check, ChevronRight, Search } from "lucide-react";
@@ -86,6 +86,7 @@ export function AIConfig({ variant = "card", onViewChange }: AIConfigProps) {
   const [models, setModels] = useState<AIModel[]>([]);
   const [modelSearch, setModelSearch] = useState("");
   const [loadingModels, setLoadingModels] = useState(false);
+  const configured = useRef(false);
 
   const setView = (newView: View) => {
     setViewState(newView);
@@ -105,33 +106,26 @@ export function AIConfig({ variant = "card", onViewChange }: AIConfigProps) {
     const defaultModel = getDefaultModelForProvider(newProvider);
     setModel(defaultModel);
     setModels([]);
-    toast.success("Provider Updated", {
-      description: `AI provider set to ${newProvider}`,
-    });
+    appToast.entity.updated("AI provider", newProvider);
   };
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel);
     setView("config");
     setModelSearch("");
-    toast.success("Model Updated", {
-      description: `AI model set to ${newModel}`,
-    });
+    appToast.entity.updated("AI model", newModel);
   };
 
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
-    if (value) {
+    if (value && !configured.current) {
+      configured.current = true;
       // Track AI settings configured event
       posthog.capture("ai_settings_configured", {
         ai_provider: provider,
         ai_model: model,
         has_api_key: true,
         config_type: "api_key",
-      });
-
-      toast.success("API Key Updated", {
-        description: "Your API key has been saved securely",
       });
     }
   };
@@ -140,12 +134,10 @@ export function AIConfig({ variant = "card", onViewChange }: AIConfigProps) {
     const num = parseFloat(value);
     if (!isNaN(num) && num >= 0) {
       setBudget(num);
-      toast.success("Budget Updated", {
-        description:
-          num === 0
-            ? "Unlimited budget set"
-            : `Budget set to $${num.toFixed(2)}`,
-      });
+      appToast.entity.updated(
+        "Budget",
+        num === 0 ? "Unlimited budget set" : `Budget set to $${num.toFixed(2)}`,
+      );
     }
   };
 
@@ -157,10 +149,9 @@ export function AIConfig({ variant = "card", onViewChange }: AIConfigProps) {
           const openRouterModels = await fetchOpenRouterModels();
           setModels(openRouterModels);
         } catch (error) {
-          toast.error("Failed to load OpenRouter models", {
-            description:
-              error instanceof Error ? error.message : "Unknown error",
-          });
+          appToast.validation.failed(
+            getErrorMessage(error, "Failed to load OpenRouter models."),
+          );
         } finally {
           setLoadingModels(false);
         }

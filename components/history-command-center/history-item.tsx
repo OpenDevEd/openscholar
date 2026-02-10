@@ -25,7 +25,7 @@ import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { QueryText } from "@/components/ui/query-text";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
@@ -66,9 +66,9 @@ export function HistoryItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(item.query);
-      toast.success("Query copied to clipboard");
+      appToast.clipboard.copied("Query");
     } catch {
-      toast.success("Query copied to clipboard");
+      appToast.clipboard.copied("Query");
     }
   };
 
@@ -81,28 +81,28 @@ export function HistoryItem({
       confirmText: "Delete",
       onConfirm: () => {
         removeSearchResult(actualIndex);
-        toast.success("Search entry deleted");
+        appToast.entity.deleted("search entry");
       },
     });
   };
 
   const handleBookmarkSubmit = () => {
     if (!bookmarkName.trim()) {
-      toast.error("Bookmark name is required");
+      appToast.validation.failed("Bookmark name is required.");
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      toast.error("Only letters, numbers, and dashes allowed");
+      appToast.validation.failed("Only letters, numbers, and dashes are allowed.");
       return;
     }
     if (keywords[bookmarkName]) {
-      toast.error(`Bookmark "${bookmarkName}" already exists`);
+      appToast.validation.failed(`Bookmark "${bookmarkName}" already exists.`);
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    toast.success(`Saved as bookmark "${bookmarkName}"`);
+    appToast.entity.created("bookmark", bookmarkName);
     setIsBookmarking(false);
     setBookmarkName("");
   };

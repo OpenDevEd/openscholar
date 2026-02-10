@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useUIStore, useSearchHistoryStore } from "@/lib/store";
 import { HistorySortBy, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
-import { toast } from "sonner";
+import { appToast, getErrorMessage } from "@/lib/toast";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { subtleSpring } from "@/lib/animation-config";
@@ -91,9 +91,9 @@ export function HistoryToolbar({
         };
       });
       downloadAsFile(JSON.stringify(data, null, 2), "search_history.json", "json");
-      toast.success(`Downloaded ${data.length} search entries as JSON`);
+      appToast.entity.created("history export", `${data.length} search entries (JSON)`);
     } catch {
-      toast.error("Failed to download JSON file");
+      appToast.io.downloadFailed("JSON file");
     }
   };
 
@@ -109,9 +109,9 @@ export function HistoryToolbar({
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "search_history.csv", "csv");
-      toast.success(`Downloaded ${data.length} search entries as CSV`);
+      appToast.entity.created("history export", `${data.length} search entries (CSV)`);
     } catch {
-      toast.error("Failed to download CSV file");
+      appToast.io.downloadFailed("CSV file");
     }
   };
 
@@ -120,15 +120,9 @@ export function HistoryToolbar({
       const file = await triggerFileUpload(".json");
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} search entries`);
-      } else {
-        toast.warning("No valid search entries found in the file");
-      }
+      appToast.io.importResult("search entries", importedCount);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload JSON file"
-      );
+      appToast.io.uploadFailed("JSON file", getErrorMessage(error, "Failed to upload JSON file."));
     }
   };
 
@@ -137,15 +131,9 @@ export function HistoryToolbar({
       const file = await triggerFileUpload(".csv");
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      if (importedCount > 0) {
-        toast.success(`Successfully imported ${importedCount} search entries`);
-      } else {
-        toast.warning("No valid search entries found in the file");
-      }
+      appToast.io.importResult("search entries", importedCount);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to upload CSV file"
-      );
+      appToast.io.uploadFailed("CSV file", getErrorMessage(error, "Failed to upload CSV file."));
     }
   };
 
@@ -156,7 +144,7 @@ export function HistoryToolbar({
       confirmText: "Clear All",
       onConfirm: () => {
         clearSearchHistory();
-        toast.success("All search history cleared");
+        appToast.entity.cleared("search history");
       },
     });
   };

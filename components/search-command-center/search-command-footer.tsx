@@ -7,8 +7,8 @@ import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
-import { useAIConfigStore, useCurrentQuestionStore } from "@/lib/store";
-import { toast } from "sonner";
+import { useAIConfigStore, useCurrentQuestionStore, useAISettingsDialogStore } from "@/lib/store";
+import { appToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
 import { enhanceSearchQuery } from "@/app/actions/ai-enhance";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -52,12 +52,19 @@ export function SearchCommandFooter({
   };
 
   const handleBroadenQuery = async () => {
-    if (!effectiveQuery.trim() || !apiKey || !provider) return;
+    if (!effectiveQuery.trim()) {
+      appToast.validation.failed("No active query to broaden.");
+      return;
+    }
+
+    if (!apiKey || !provider) {
+      appToast.ai.configRequired("Please configure your AI settings to broaden this query.");
+      return;
+    }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
     setIsBroadening(true);
-    const loadingToast = toast.loading("Broadening search...");
 
     try {
       const broadenPrompt = `Current query: "${expandedQuery}"
@@ -72,39 +79,66 @@ This query is returning fewer than 10 results. Please broaden the search by:
 
 Return a more inclusive version of this query.`;
 
-      const result = await enhanceSearchQuery(broadenPrompt, provider, apiKey, model, currentLanguage);
+      await runWithLoadingToast({
+        loading: "Broadening search...",
+        run: async () => {
+          const result = await enhanceSearchQuery(
+            broadenPrompt,
+            provider,
+            apiKey,
+            model,
+            currentLanguage
+          );
 
-      if (search) {
-        search.setQuery(result.enhancedQuery);
-      }
+          if (search) {
+            search.setQuery(result.enhancedQuery);
+          }
 
-      toast.dismiss(loadingToast);
-      toast.success("Query broadened", {
-        description: `New query: "${result.enhancedQuery}"`,
-      });
+          // Track query broadened
+          posthog.capture("query_broadened", {
+            original_query: expandedQuery,
+            broadened_query: result.enhancedQuery,
+          });
 
-      // Track query broadened
-      posthog.capture("query_broadened", {
-        original_query: expandedQuery,
-        broadened_query: result.enhancedQuery,
+          return result;
+        },
+        success: (result) => ({
+          title: "Query broadened",
+          description: `New query: "${result.enhancedQuery}"`,
+        }),
+        error: (error) => ({
+          title: "Failed to broaden query",
+          description: getErrorMessage(
+            error,
+            "An unexpected error occurred. Please try again."
+          ),
+          action: {
+            label: "Open AI Settings",
+            onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+          },
+        }),
       });
-    } catch (error) {
-      toast.dismiss(loadingToast);
-      toast.error("Failed to broaden query", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-      });
+    } catch {
+      // Toast is already handled by runWithLoadingToast.
     } finally {
       setIsBroadening(false);
     }
   };
 
   const handleNarrowQuery = async () => {
-    if (!effectiveQuery.trim() || !apiKey || !provider) return;
+    if (!effectiveQuery.trim()) {
+      appToast.validation.failed("No active query to narrow.");
+      return;
+    }
+
+    if (!apiKey || !provider) {
+      appToast.ai.configRequired("Please configure your AI settings to narrow this query.");
+      return;
+    }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
     setIsNarrowing(true);
-    const loadingToast = toast.loading("Making search more specific...");
 
     try {
       const narrowPrompt = `Current query: "${expandedQuery}"
@@ -120,27 +154,47 @@ This query is returning too many results. Please make it more specific by:
 
 Return a more targeted version of this query.`;
 
-      const result = await enhanceSearchQuery(narrowPrompt, provider, apiKey, model, currentLanguage);
+      await runWithLoadingToast({
+        loading: "Making search more specific...",
+        run: async () => {
+          const result = await enhanceSearchQuery(
+            narrowPrompt,
+            provider,
+            apiKey,
+            model,
+            currentLanguage
+          );
 
-      if (search) {
-        search.setQuery(result.enhancedQuery);
-      }
+          if (search) {
+            search.setQuery(result.enhancedQuery);
+          }
 
-      toast.dismiss(loadingToast);
-      toast.success("Query made more specific", {
-        description: `New query: "${result.enhancedQuery}"`,
-      });
+          // Track query narrowed
+          posthog.capture("query_narrowed", {
+            original_query: expandedQuery,
+            narrowed_query: result.enhancedQuery,
+          });
 
-      // Track query narrowed
-      posthog.capture("query_narrowed", {
-        original_query: expandedQuery,
-        narrowed_query: result.enhancedQuery,
+          return result;
+        },
+        success: (result) => ({
+          title: "Query made more specific",
+          description: `New query: "${result.enhancedQuery}"`,
+        }),
+        error: (error) => ({
+          title: "Failed to narrow query",
+          description: getErrorMessage(
+            error,
+            "An unexpected error occurred. Please try again."
+          ),
+          action: {
+            label: "Open AI Settings",
+            onClick: () => useAISettingsDialogStore.getState().setIsOpen(true),
+          },
+        }),
       });
-    } catch (error) {
-      toast.dismiss(loadingToast);
-      toast.error("Failed to narrow query", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
-      });
+    } catch {
+      // Toast is already handled by runWithLoadingToast.
     } finally {
       setIsNarrowing(false);
     }

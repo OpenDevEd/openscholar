@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { subtleSpring } from "@/lib/animation-config";
 import type { QueryHistoryEntry } from "@/lib/types";
@@ -53,9 +53,9 @@ export function HistoryQueryExpansion({
   const handleCopy = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      toast.success("Query copied to clipboard");
+      appToast.clipboard.copied("Query");
     } catch {
-      toast.success("Query copied to clipboard");
+      appToast.clipboard.copied("Query");
     }
   };
 
@@ -71,26 +71,26 @@ export function HistoryQueryExpansion({
       queryHistory: updatedQueryHistory,
     });
 
-    toast.success("Query entry removed");
+    appToast.entity.deleted("query entry");
   };
 
   const handleBookmarkSubmit = (query: string) => {
     if (!bookmarkName.trim()) {
-      toast.error("Bookmark name is required");
+      appToast.validation.failed("Bookmark name is required.");
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      toast.error("Only letters, numbers, and dashes allowed");
+      appToast.validation.failed("Only letters, numbers, and dashes are allowed.");
       return;
     }
     if (keywords[bookmarkName]) {
-      toast.error(`Bookmark "${bookmarkName}" already exists`);
+      appToast.validation.failed(`Bookmark "${bookmarkName}" already exists.`);
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    toast.success(`Saved as bookmark "${bookmarkName}"`);
+    appToast.entity.created("bookmark", bookmarkName);
     setBookmarkingIndex(null);
     setBookmarkName("");
   };

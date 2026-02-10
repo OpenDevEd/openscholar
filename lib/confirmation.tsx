@@ -1,5 +1,6 @@
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { AlertTriangle, ShieldAlert } from "lucide-react";
 
 /**
  * Universal Confirmation Toast Component
@@ -49,33 +50,69 @@ export const showConfirmation = ({
   onConfirm,
   onCancel
 }: ConfirmationOptions) => {
-  toast.custom((t) => (
-    <div className="bg-background border border-border rounded-lg p-4 shadow-lg max-w-md">
-      <div className="flex flex-col gap-3">
-        <div>
-          <h4 className="font-semibold text-foreground">{title}</h4>
-          <p className="text-sm text-muted-foreground mt-1">{message}</p>
+  appToast.custom((t) => (
+    <div
+      className={cn(
+        "relative w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-xl border p-3.5 shadow-md",
+        "bg-card/95 backdrop-blur-sm backdrop-saturate-150",
+        "transition-all duration-150"
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute left-1.5 top-2 bottom-2 w-[3px] rounded-full bg-gradient-to-b from-primary/70 to-primary" />
+
+      <div className="relative grid grid-cols-[2.15rem_minmax(0,1fr)] gap-x-3 gap-y-2">
+        <div
+          className={cn(
+            "mt-0.5 flex h-[2.15rem] w-[2.15rem] items-center justify-center rounded-[0.75rem] border",
+            variant === "destructive"
+              ? "border-destructive/25 bg-destructive/10 text-destructive"
+              : "border-primary/25 bg-primary/12 text-primary"
+          )}
+        >
+          {variant === "destructive" ? (
+            <ShieldAlert className="h-4 w-4" />
+          ) : (
+            <AlertTriangle className="h-4 w-4" />
+          )}
         </div>
-        <div className="flex gap-2 justify-end">
+
+        <div className="min-w-0 pr-6">
+          <h4 className="text-[0.92rem] font-semibold leading-[1.3] tracking-[-0.01em] text-foreground">
+            {title}
+          </h4>
+          <p className="mt-1 text-[0.8rem] leading-[1.45] text-muted-foreground">
+            {message}
+          </p>
+        </div>
+
+        <div className="col-span-2 mt-1 grid grid-cols-1 gap-2 sm:grid-cols-[auto_auto] sm:justify-end">
           <button
             onClick={() => {
               onCancel?.();
-              toast.dismiss(t);
+              appToast.dismiss(t);
             }}
-            className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors"
+            className={cn(
+              "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border px-3 text-sm font-medium",
+              "border-border bg-background text-foreground shadow-xs transition-all",
+              "hover:-translate-y-px hover:bg-accent hover:text-accent-foreground",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+            )}
           >
             {cancelText}
           </button>
           <button
             onClick={() => {
               onConfirm();
-              toast.dismiss(t);
+              appToast.dismiss(t);
             }}
             className={cn(
-              "px-3 py-1.5 text-sm rounded-md transition-colors",
+              "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md border px-3 text-sm font-medium",
+              "shadow-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
+              "hover:-translate-y-px",
               variant === 'destructive'
-                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                ? 'border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                : 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
             )}
           >
             {confirmText}

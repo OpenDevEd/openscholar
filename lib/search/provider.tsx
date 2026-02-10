@@ -16,7 +16,7 @@ import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
 import useSWR from 'swr';
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 
 import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
@@ -305,19 +305,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
           }
         }
         
-        if (message.includes('400')) {
-          toast.error('Search query too large', {
-            description: 'Please try simplifying your search.',
-          });
-        } else if (message.includes('429')) {
-          toast.error('Too many requests', {
-            description: 'Please wait a moment before trying again.',
-          });
-        } else {
-          toast.error('Search failed', {
-            description: 'An unexpected error occurred.',
-          });
-        }
+        appToast.search.failed(err);
       },
     }
   );
