@@ -3,10 +3,7 @@
 import React, { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
-import {
-  useResultsStore,
-  useUIStore,
-} from "@/lib/store";
+import { useResultsStore, useUIStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
 import { useSearchOptional } from "@/lib/search";
@@ -57,11 +54,13 @@ export function PaperCardListDetail({
   const isMobile = useIsTablet();
 
   const searchId = getEffectiveSearchId(pathname, undefined);
-  
-  const search = useSearchOptional();
-  const selectedLanguage = search?.params?.lang ?? '';
 
-  const handleFilteredSearch = (filterType: "cites" | "citedBy" | "related") => {
+  const search = useSearchOptional();
+  const selectedLanguage = search?.params?.lang ?? "";
+
+  const handleFilteredSearch = (
+    filterType: "cites" | "citedBy" | "related",
+  ) => {
     const { url } = createCitationSearch(result.id, filterType);
 
     // Track citation search event
@@ -84,15 +83,6 @@ export function PaperCardListDetail({
 
   // Handle paper opened
   const handlePaperOpened = () => {
-    posthog.capture("paper_opened", {
-      paper_id: result.id,
-      paper_title: result.title,
-      paper_year: result.publication_year,
-      result_index: resultIndex,
-      has_abstract: !!result.abstract,
-      is_open_access: result.open_access?.is_oa || false,
-      cited_by_count: result.cited_by_count || 0,
-    });
     openFocusMode(isMobile, resultIndex, result.id);
   };
 
@@ -185,12 +175,12 @@ export function PaperCardListDetail({
                   ? translatedContent.translatedAbstract
                   : result.abstract
                 : showTranslated && translatedContent
-                ? translatedContent.translatedAbstract.length > 500
-                  ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
-                  : translatedContent.translatedAbstract
-                : result.abstract.length > 500
-                ? `${result.abstract.slice(0, 500)}...`
-                : result.abstract}
+                  ? translatedContent.translatedAbstract.length > 500
+                    ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
+                    : translatedContent.translatedAbstract
+                  : result.abstract.length > 500
+                    ? `${result.abstract.slice(0, 500)}...`
+                    : result.abstract}
             </p>
 
             {/* Expanded Metadata */}
@@ -202,7 +192,8 @@ export function PaperCardListDetail({
                     <Award className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">Citation Percentile:</span>
                     <span className="text-foreground">
-                      {result.cited_by_percentile_year.min}-{result.cited_by_percentile_year.max}%
+                      {result.cited_by_percentile_year.min}-
+                      {result.cited_by_percentile_year.max}%
                     </span>
                   </div>
                 )}
@@ -213,7 +204,7 @@ export function PaperCardListDetail({
                     <FileText className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">Type:</span>
                     <span className="text-foreground capitalize">
-                      {result.type.replace(/-/g, ' ')}
+                      {result.type.replace(/-/g, " ")}
                     </span>
                   </div>
                 )}
@@ -223,7 +214,9 @@ export function PaperCardListDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Target className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">Topic:</span>
-                    <span className="text-foreground">{result.primary_topic.display_name}</span>
+                    <span className="text-foreground">
+                      {result.primary_topic.display_name}
+                    </span>
                   </div>
                 )}
 
@@ -232,7 +225,9 @@ export function PaperCardListDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Layers className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">Subfield:</span>
-                    <span className="text-foreground">{result.primary_topic.subfield.display_name}</span>
+                    <span className="text-foreground">
+                      {result.primary_topic.subfield.display_name}
+                    </span>
                   </div>
                 )}
 
@@ -241,7 +236,9 @@ export function PaperCardListDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <BookOpen className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">Field:</span>
-                    <span className="text-foreground">{result.primary_topic.field.display_name}</span>
+                    <span className="text-foreground">
+                      {result.primary_topic.field.display_name}
+                    </span>
                   </div>
                 )}
 
@@ -250,7 +247,9 @@ export function PaperCardListDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Building className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">Domain:</span>
-                    <span className="text-foreground">{result.primary_topic.domain.display_name}</span>
+                    <span className="text-foreground">
+                      {result.primary_topic.domain.display_name}
+                    </span>
                   </div>
                 )}
 
@@ -262,7 +261,11 @@ export function PaperCardListDetail({
                       <span className="font-medium">SDGs:</span>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {result.sustainable_development_goals.map(
-                          (sdg: { id: string; display_name: string; score: number }) => (
+                          (sdg: {
+                            id: string;
+                            display_name: string;
+                            score: number;
+                          }) => (
                             <span
                               key={sdg.id}
                               className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 rounded-full text-xs border border-green-200 dark:border-green-800"
@@ -275,7 +278,7 @@ export function PaperCardListDetail({
                                 </span>
                               )}
                             </span>
-                          )
+                          ),
                         )}
                       </div>
                     </div>
@@ -287,12 +290,16 @@ export function PaperCardListDetail({
                   <div className="flex items-center gap-1.5">
                     <Quote className="h-3.5 w-3.5" />
                     <span className="font-medium">References:</span>
-                    <span className="text-foreground">{result.referenced_works_count || 0}</span>
+                    <span className="text-foreground">
+                      {result.referenced_works_count || 0}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="font-medium">FWCI:</span>
-                    <span className="text-foreground">{result.fwci ? result.fwci.toFixed(2) : "N/A"}</span>
+                    <span className="text-foreground">
+                      {result.fwci ? result.fwci.toFixed(2) : "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -329,8 +336,12 @@ export function PaperCardListDetail({
                   variant="icon"
                   onDownloadJSON={() => onDownloadItem(result, "json")}
                   onDownloadCSV={() => onDownloadItem(result, "csv")}
-                  onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
-                  onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
+                  onDownloadEssentialJSON={() =>
+                    onDownloadEssentialItem(result, "json")
+                  }
+                  onDownloadEssentialCSV={() =>
+                    onDownloadEssentialItem(result, "csv")
+                  }
                 />
                 <OpenAccessBadge
                   isOA={result.open_access?.is_oa}
@@ -402,8 +413,12 @@ export function PaperCardListDetail({
                 variant="icon"
                 onDownloadJSON={() => onDownloadItem(result, "json")}
                 onDownloadCSV={() => onDownloadItem(result, "csv")}
-                onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
-                onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
+                onDownloadEssentialJSON={() =>
+                  onDownloadEssentialItem(result, "json")
+                }
+                onDownloadEssentialCSV={() =>
+                  onDownloadEssentialItem(result, "csv")
+                }
               />
             </div>
 

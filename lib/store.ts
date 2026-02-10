@@ -115,6 +115,7 @@ interface AIConfigState {
   provider: AIProvider;
   model: string;
   apiKey: string;
+  providerApiKeys: Record<string, string>;
   /** cumulative USD spent on AI calls (client-side estimate) */
   dollarsUsed: number;
   /** optional spending limit; 0 means unlimited */
@@ -699,15 +700,41 @@ export const useAIConfigStore = create<AIConfigState>()(
       provider: 'openrouter',
       model: 'openrouter/free',
       apiKey: '',
+      providerApiKeys: {},
       dollarsUsed: 0,
       budget: 0,
       setBudget: (budget) => set({ budget }),
       addDollarsUsed: (amount) => set((state) => ({ dollarsUsed: state.dollarsUsed + amount })),
       resetDollarsUsed: () => set({ dollarsUsed: 0 }),
-      setProvider: (provider) => set({ provider }),
+      setProvider: (provider) =>
+        set((state) => {
+          const providerApiKeys = { ...(state.providerApiKeys ?? {}) };
+          providerApiKeys[state.provider] = state.apiKey ?? '';
+
+          return {
+            provider,
+            apiKey: providerApiKeys[provider] ?? '',
+            providerApiKeys,
+          };
+        }),
       setModel: (model) => set({ model }),
-      setApiKey: (apiKey) => set({ apiKey }),
-      clearConfig: () => set({ provider: 'openrouter', model: 'openrouter/free', apiKey: '', dollarsUsed: 0, budget: 0 }),
+      setApiKey: (apiKey) =>
+        set((state) => ({
+          apiKey,
+          providerApiKeys: {
+            ...(state.providerApiKeys ?? {}),
+            [state.provider]: apiKey,
+          },
+        })),
+      clearConfig: () =>
+        set({
+          provider: 'openrouter',
+          model: 'openrouter/free',
+          apiKey: '',
+          providerApiKeys: {},
+          dollarsUsed: 0,
+          budget: 0,
+        }),
     }),
     {
       name: 'ai-config-storage',

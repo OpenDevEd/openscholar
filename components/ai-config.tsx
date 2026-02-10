@@ -1,63 +1,126 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from 'react'
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { getProviderIcon, OpenAIIcon, GoogleIcon, AnthropicIcon, OpenRouterIcon } from "@/components/icons/provider-icons"
-import { useAIConfigStore } from "@/lib/store"
-import { getProviderConfig, getDefaultModelForProvider, getModelsForProvider } from "@/lib/ai-models"
-import { fetchOpenRouterModels } from "@/app/actions/openrouter"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import type { AIModel, AIProvider } from "@/lib/types/ai.types"
-import { ArrowLeft, Check, ChevronRight, Search } from "lucide-react"
-import posthog from "posthog-js"
+import React, { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  getProviderIcon,
+  OpenAIIcon,
+  GoogleIcon,
+  AnthropicIcon,
+  OpenRouterIcon,
+} from "@/components/icons/provider-icons";
+import { useAIConfigStore } from "@/lib/store";
+import {
+  getProviderConfig,
+  getDefaultModelForProvider,
+  getModelsForProvider,
+} from "@/lib/ai-models";
+import { fetchOpenRouterModels } from "@/app/actions/openrouter";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import type { AIModel, AIProvider } from "@/lib/types/ai.types";
+import { ArrowLeft, Check, ChevronRight, Search } from "lucide-react";
+import posthog from "posthog-js";
 
 interface AIConfigProps {
-  variant?: 'card' | 'plain'
-  onViewChange?: (view: 'config' | 'model-select') => void
+  variant?: "card" | "plain";
+  onViewChange?: (view: "config" | "model-select") => void;
 }
 
-type View = 'config' | 'model-select'
+type View = "config" | "model-select";
 
-export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
-  const { provider, model, setProvider, setModel, apiKey, setApiKey, budget, setBudget, dollarsUsed } = useAIConfigStore()
+const PROVIDER_API_KEY_GUIDANCE: Record<
+  AIProvider,
+  { whatIs: string; credits: string; freeModels: string }
+> = {
+  openai: {
+    whatIs:
+      "Your OpenAI API key is a private token that lets this app send requests through your OpenAI account.",
+    credits:
+      "If your account has no prepaid balance (or no available free credits/quota), requests can stop until you add funds or your quota resets.",
+    freeModels:
+      "Free options (Jan 2026): OpenAI doesn't provide model-specific ':free' API variants in this app. OpenAI API usage is still subject to usage tiers and rate limits.",
+  },
+  google: {
+    whatIs:
+      "Your Google API key connects this app to your Gemini API project in AI Studio/Google Cloud.",
+    credits:
+      "If free-tier quota is exhausted or paid billing is not available, requests fail until quota resets or billing is enabled.",
+    freeModels:
+      "Free options (Jan 2026): gemini-2.5-pro, gemini-2.5-flash, and gemini-2.5-flash-lite have free-tier access, but with strict RPM/TPM/RPD limits.",
+  },
+  anthropic: {
+    whatIs:
+      "Your Anthropic API key authenticates calls to Claude models from your organization account.",
+    credits:
+      "Anthropic enforces monthly spend limits per tier; once reached, API usage pauses until your next cycle or a higher tier/deposit.",
+    freeModels:
+      "Free options (Jan 2026): no model-specific free Claude API variants are documented; Claude API models are metered and rate-limited.",
+  },
+  openrouter: {
+    whatIs:
+      "Your OpenRouter API key authorizes requests and applies usage to your OpenRouter account.",
+    credits:
+      "If your OpenRouter balance is negative, you may receive 402 errors, including for free models, until your balance is topped up.",
+    freeModels:
+      "Free options (Jan 2026): use openrouter/free (Free Models Router). Free variants have tighter limits.",
+  },
+};
 
-  const [view, setViewState] = useState<View>('config')
-  const [models, setModels] = useState<AIModel[]>([])
-  const [modelSearch, setModelSearch] = useState("")
-  const [loadingModels, setLoadingModels] = useState(false)
+export function AIConfig({ variant = "card", onViewChange }: AIConfigProps) {
+  const {
+    provider,
+    model,
+    setProvider,
+    setModel,
+    apiKey,
+    setApiKey,
+    budget,
+    setBudget,
+    dollarsUsed,
+  } = useAIConfigStore();
+
+  const [view, setViewState] = useState<View>("config");
+  const [models, setModels] = useState<AIModel[]>([]);
+  const [modelSearch, setModelSearch] = useState("");
+  const [loadingModels, setLoadingModels] = useState(false);
 
   const setView = (newView: View) => {
-    setViewState(newView)
-    onViewChange?.(newView)
-  }
+    setViewState(newView);
+    onViewChange?.(newView);
+  };
 
-  const providerConfig = getProviderConfig(provider)
-  const ProviderIcon = getProviderIcon(provider)
+  const providerConfig = getProviderConfig(provider);
+  const ProviderIcon = getProviderIcon(provider);
+  const providerApiKeyGuidance = PROVIDER_API_KEY_GUIDANCE[provider];
 
   const handleProviderChange = (newProvider: AIProvider) => {
-    setProvider(newProvider)
-    const defaultModel = getDefaultModelForProvider(newProvider)
-    setModel(defaultModel)
-    setModels([])
+    if (newProvider === provider) {
+      return;
+    }
+
+    setProvider(newProvider);
+    const defaultModel = getDefaultModelForProvider(newProvider);
+    setModel(defaultModel);
+    setModels([]);
     toast.success("Provider Updated", {
       description: `AI provider set to ${newProvider}`,
-    })
-  }
+    });
+  };
 
   const handleModelChange = (newModel: string) => {
-    setModel(newModel)
-    setView('config')
-    setModelSearch("")
+    setModel(newModel);
+    setView("config");
+    setModelSearch("");
     toast.success("Model Updated", {
       description: `AI model set to ${newModel}`,
-    })
-  }
+    });
+  };
 
   const handleApiKeyChange = (value: string) => {
-    setApiKey(value)
+    setApiKey(value);
     if (value) {
       // Track AI settings configured event
       posthog.capture("ai_settings_configured", {
@@ -65,69 +128,74 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
         ai_model: model,
         has_api_key: true,
         config_type: "api_key",
-      })
+      });
 
       toast.success("API Key Updated", {
         description: "Your API key has been saved securely",
-      })
+      });
     }
-  }
+  };
 
   const handleBudgetChange = (value: string) => {
-    const num = parseFloat(value)
+    const num = parseFloat(value);
     if (!isNaN(num) && num >= 0) {
-      setBudget(num)
+      setBudget(num);
       toast.success("Budget Updated", {
-        description: num === 0 ? "Unlimited budget set" : `Budget set to $${num.toFixed(2)}`,
-      })
+        description:
+          num === 0
+            ? "Unlimited budget set"
+            : `Budget set to $${num.toFixed(2)}`,
+      });
     }
-  }
+  };
 
   useEffect(() => {
     const loadModels = async () => {
-      if (provider === 'openrouter') {
-        setLoadingModels(true)
+      if (provider === "openrouter") {
+        setLoadingModels(true);
         try {
-          const openRouterModels = await fetchOpenRouterModels()
-          setModels(openRouterModels)
+          const openRouterModels = await fetchOpenRouterModels();
+          setModels(openRouterModels);
         } catch (error) {
           toast.error("Failed to load OpenRouter models", {
-            description: error instanceof Error ? error.message : "Unknown error",
-          })
+            description:
+              error instanceof Error ? error.message : "Unknown error",
+          });
         } finally {
-          setLoadingModels(false)
+          setLoadingModels(false);
         }
       } else {
-        setModels(getModelsForProvider(provider))
+        setModels(getModelsForProvider(provider));
       }
-    }
+    };
 
-    loadModels()
-  }, [provider, apiKey])
+    loadModels();
+  }, [provider, apiKey]);
 
-  const selectedModel = models.find((m) => m.id === model)
+  const selectedModel = models.find((m) => m.id === model);
 
-  const filteredModels = models.filter((model) =>
-    model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
-    model.id.toLowerCase().includes(modelSearch.toLowerCase())
-  )
+  const filteredModels = models.filter(
+    (model) =>
+      model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+      model.id.toLowerCase().includes(modelSearch.toLowerCase()),
+  );
 
   // Group filtered models by category
-  const filteredGroupedModels: Record<string, AIModel[]> = {}
+  const filteredGroupedModels: Record<string, AIModel[]> = {};
   filteredModels.forEach((m) => {
-    if (provider === 'openrouter') {
-      const category = m.category || 'Other'
+    if (provider === "openrouter") {
+      const category = m.category || "Other";
       if (!filteredGroupedModels[category]) {
-        filteredGroupedModels[category] = []
+        filteredGroupedModels[category] = [];
       }
-      filteredGroupedModels[category].push(m)
+      filteredGroupedModels[category].push(m);
     } else {
-      if (!filteredGroupedModels['All']) {
-        filteredGroupedModels['All'] = []
+      if (!filteredGroupedModels["All"]) {
+        filteredGroupedModels["All"] = [];
       }
-      filteredGroupedModels['All'].push(m)
+      filteredGroupedModels["All"].push(m);
     }
-  })
+  });
 
   // Model Selection View
   const modelSelectView = (
@@ -139,8 +207,8 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
           <button
             type="button"
             onClick={() => {
-              setView('config')
-              setModelSearch("")
+              setView("config");
+              setModelSearch("");
             }}
             className="p-1.5 rounded-md hover:bg-accent transition-colors"
           >
@@ -148,7 +216,9 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
           </button>
           <div>
             <h3 className="font-semibold">Select Model</h3>
-            <p className="text-xs text-muted-foreground">{providerConfig.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {providerConfig.name}
+            </p>
           </div>
         </div>
 
@@ -177,52 +247,57 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {Object.entries(filteredGroupedModels).map(([category, categoryModels]) => (
-              <div key={category}>
-                {provider === 'openrouter' && (
-                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                    {category}
-                  </div>
-                )}
-                <div className="space-y-1">
-                  {categoryModels.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => handleModelChange(m.id)}
-                      className={cn(
-                        "w-full flex flex-col items-start gap-1 p-3 rounded-lg text-left transition-colors",
-                        m.id === model
-                          ? "bg-primary/10 border border-primary/20"
-                          : "hover:bg-accent border border-transparent"
-                      )}
-                    >
-                      <div className="flex items-center justify-between w-full gap-2 min-w-0">
-                        <span className="font-medium truncate min-w-0 flex-1">{m.name}</span>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            ${m.pricing.input.toFixed(2)}/${m.pricing.output.toFixed(2)}
+            {Object.entries(filteredGroupedModels).map(
+              ([category, categoryModels]) => (
+                <div key={category}>
+                  {provider === "openrouter" && (
+                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      {category}
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    {categoryModels.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => handleModelChange(m.id)}
+                        className={cn(
+                          "w-full flex flex-col items-start gap-1 p-3 rounded-lg text-left transition-colors",
+                          m.id === model
+                            ? "bg-primary/10 border border-primary/20"
+                            : "hover:bg-accent border border-transparent",
+                        )}
+                      >
+                        <div className="flex items-center justify-between w-full gap-2 min-w-0">
+                          <span className="font-medium truncate min-w-0 flex-1">
+                            {m.name}
                           </span>
-                          {m.id === model && (
-                            <Check className="h-4 w-4 text-primary" />
-                          )}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              ${m.pricing.input.toFixed(2)}/$
+                              {m.pricing.output.toFixed(2)}
+                            </span>
+                            {m.id === model && (
+                              <Check className="h-4 w-4 text-primary" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      {m.description && (
-                        <span className="text-xs text-muted-foreground line-clamp-1 w-full">
-                          {m.description}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                        {m.description && (
+                          <span className="text-xs text-muted-foreground line-clamp-1 w-full">
+                            {m.description}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 
   const content = (
     <div className="space-y-6 p-6">
@@ -232,19 +307,23 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => handleProviderChange('openai')}
+            onClick={() => handleProviderChange("openai")}
             className={cn(
               "p-4 rounded-xl border-2 transition-all duration-200",
-              provider === 'openai'
-                ? 'border-green-500 bg-green-50 dark:bg-green-950/50'
-                : 'border-border hover:border-border/80'
+              provider === "openai"
+                ? "border-green-500 bg-green-50 dark:bg-green-950/50"
+                : "border-border hover:border-border/80",
             )}
           >
             <div className="flex flex-col items-center gap-2 text-center">
-              <OpenAIIcon className={cn(
-                "h-10 w-10",
-                provider === 'openai' ? 'text-green-500' : 'text-muted-foreground'
-              )} />
+              <OpenAIIcon
+                className={cn(
+                  "h-10 w-10",
+                  provider === "openai"
+                    ? "text-green-500"
+                    : "text-muted-foreground",
+                )}
+              />
               <div>
                 <div className="text-sm font-medium">OpenAI</div>
                 <div className="text-xs text-muted-foreground">GPT</div>
@@ -254,19 +333,23 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
 
           <button
             type="button"
-            onClick={() => handleProviderChange('google')}
+            onClick={() => handleProviderChange("google")}
             className={cn(
               "p-4 rounded-xl border-2 transition-all duration-200",
-              provider === 'google'
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/50'
-                : 'border-border hover:border-border/80'
+              provider === "google"
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50"
+                : "border-border hover:border-border/80",
             )}
           >
             <div className="flex flex-col items-center gap-2 text-center">
-              <GoogleIcon className={cn(
-                "h-10 w-10",
-                provider === 'google' ? 'text-blue-500' : 'text-muted-foreground'
-              )} />
+              <GoogleIcon
+                className={cn(
+                  "h-10 w-10",
+                  provider === "google"
+                    ? "text-blue-500"
+                    : "text-muted-foreground",
+                )}
+              />
               <div>
                 <div className="text-sm font-medium">Google</div>
                 <div className="text-xs text-muted-foreground">Gemini</div>
@@ -276,19 +359,23 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
 
           <button
             type="button"
-            onClick={() => handleProviderChange('anthropic')}
+            onClick={() => handleProviderChange("anthropic")}
             className={cn(
               "p-4 rounded-xl border-2 transition-all duration-200",
-              provider === 'anthropic'
-                ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/50'
-                : 'border-border hover:border-border/80'
+              provider === "anthropic"
+                ? "border-orange-500 bg-orange-50 dark:bg-orange-950/50"
+                : "border-border hover:border-border/80",
             )}
           >
             <div className="flex flex-col items-center gap-2 text-center">
-              <AnthropicIcon className={cn(
-                "h-10 w-10",
-                provider === 'anthropic' ? 'text-orange-500' : 'text-muted-foreground'
-              )} />
+              <AnthropicIcon
+                className={cn(
+                  "h-10 w-10",
+                  provider === "anthropic"
+                    ? "text-orange-500"
+                    : "text-muted-foreground",
+                )}
+              />
               <div>
                 <div className="text-sm font-medium">Anthropic</div>
                 <div className="text-xs text-muted-foreground">Claude</div>
@@ -298,19 +385,23 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
 
           <button
             type="button"
-            onClick={() => handleProviderChange('openrouter')}
+            onClick={() => handleProviderChange("openrouter")}
             className={cn(
               "p-4 rounded-xl border-2 transition-all duration-200",
-              provider === 'openrouter'
-                ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/50'
-                : 'border-border hover:border-border/80'
+              provider === "openrouter"
+                ? "border-purple-500 bg-purple-50 dark:bg-purple-950/50"
+                : "border-border hover:border-border/80",
             )}
           >
             <div className="flex flex-col items-center gap-2 text-center">
-              <OpenRouterIcon className={cn(
-                "h-10 w-10",
-                provider === 'openrouter' ? 'text-purple-500' : 'text-muted-foreground'
-              )} />
+              <OpenRouterIcon
+                className={cn(
+                  "h-10 w-10",
+                  provider === "openrouter"
+                    ? "text-purple-500"
+                    : "text-muted-foreground",
+                )}
+              />
               <div>
                 <div className="text-sm font-medium">OpenRouter</div>
                 <div className="text-xs text-muted-foreground">300+ Models</div>
@@ -325,14 +416,16 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
         <Label>Model</Label>
         <button
           type="button"
-          onClick={() => setView('model-select')}
+          onClick={() => setView("model-select")}
           className={cn(
             "w-full flex items-center justify-between rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent/50 transition-colors",
-            !selectedModel && "text-muted-foreground"
+            !selectedModel && "text-muted-foreground",
           )}
         >
           <span className="truncate">
-            {selectedModel ? selectedModel.name : `Select ${providerConfig.name} model...`}
+            {selectedModel
+              ? selectedModel.name
+              : `Select ${providerConfig.name} model...`}
           </span>
           <div className="flex items-center gap-2">
             {loadingModels && (
@@ -345,7 +438,7 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
 
       {/* API Key Input */}
       <div className="space-y-2">
-        <Label htmlFor="ai-config-api-key">API Key</Label>
+        <Label htmlFor="ai-config-api-key">{providerConfig.name} API Key</Label>
         <Input
           id="ai-config-api-key"
           type="password"
@@ -362,6 +455,11 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
           >
             Get your {providerConfig.name} API key →
           </a>
+        </div>
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p>{providerApiKeyGuidance.whatIs}</p>
+          <p>{providerApiKeyGuidance.credits}</p>
+          <p>{providerApiKeyGuidance.freeModels}</p>
         </div>
       </div>
 
@@ -382,13 +480,13 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
         </p>
       </div>
     </div>
-  )
+  );
 
-  if (variant === 'plain') {
-    if (view === 'model-select') {
-      return modelSelectView
+  if (variant === "plain") {
+    if (view === "model-select") {
+      return modelSelectView;
     }
-    return content
+    return content;
   }
 
   return (
@@ -400,8 +498,8 @@ export function AIConfig({ variant = 'card', onViewChange }: AIConfigProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {view === 'model-select' ? modelSelectView : content}
+        {view === "model-select" ? modelSelectView : content}
       </CardContent>
     </Card>
-  )
+  );
 }
