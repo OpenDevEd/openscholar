@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { useQuery } from "convex/react";
-import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 const PdfViewer = dynamic(
   () => import("@/components/extraction/pdf-viewer").then((mod) => mod.PdfViewer),
@@ -22,10 +22,12 @@ type PdfCitationPanelProps = {
 export function PdfCitationPanel({
   payload,
 }: PdfCitationPanelProps) {
-  const pdfUrl = useQuery(
+  const pdfUrlQuery = useProtectedQuery(
     api.extraction.queries.getPaperPdfUrl,
     payload?.paperId ? { paperId: payload.paperId } : "skip",
   );
+  const pdfUrlResult = pdfUrlQuery.data;
+  const pdfUrl = pdfUrlResult?.status === "ok" ? pdfUrlResult.pdfUrl : null;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [expandedCitation, setExpandedCitation] = useState(false);
@@ -46,6 +48,8 @@ export function PdfCitationPanel({
   }, [selectedIndex]);
 
   const citation = payload?.citations[selectedIndex] || null;
+  const shouldRenderPdfViewer =
+    !pdfUrlQuery.isDeferred && Boolean(pdfUrl) && Boolean(citation);
   const statusLabel =
     payload?.citationStatus === "grounded"
       ? "Grounded"
@@ -158,23 +162,33 @@ export function PdfCitationPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden p-1.5">
-        {!pdfUrl ? (
+        {pdfUrlQuery.isDeferred ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-            PDF unavailable for this paper.
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Checking PDF access...
           </div>
-        ) : !citation ? (
+        ) : null}
+        {!pdfUrlQuery.isDeferred && !pdfUrl ? (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+            {pdfUrlResult?.status === "no_access"
+              ? "You do not have access to this paper."
+              : pdfUrlResult?.status === "unauthenticated"
+                ? "Sign in to view this PDF."
+                : "PDF unavailable for this paper."}
+          </div>
+        ) : !pdfUrlQuery.isDeferred && !citation ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
             Citation unavailable for this result.
           </div>
-        ) : (
+        ) : shouldRenderPdfViewer ? (
           <PdfViewer
-            pdfUrl={pdfUrl}
-            initialPageNumber={citation.page}
-            highlightPage={citation.page}
-            highlightRange={citation.charRange}
-            highlightValidated={citation.validated}
+            pdfUrl={pdfUrl!}
+            initialPageNumber={citation!.page}
+            highlightPage={citation!.page}
+            highlightRange={citation!.charRange}
+            highlightValidated={citation!.validated}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );

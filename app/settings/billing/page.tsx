@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
@@ -8,11 +8,16 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { useRouter } from "next/navigation";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 
 export default function BillingPage() {
   const router = useRouter();
-  const subscription = useQuery(api.subscriptions.queries.getMy);
-  const creditBalance = useQuery(api.credits.queries.getMyBalance);
+  const subscriptionState = useSubscriptionState();
+  const subscription = subscriptionState.subscription;
+  const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
+  const creditBalance = creditBalanceQuery.data;
   const createPortalSession = useAction(
     api.subscriptions.actions.createPortalSession,
   );
@@ -103,19 +108,32 @@ export default function BillingPage() {
     }
   };
 
-  if (subscription === undefined) {
+  if (
+    subscriptionState.isSettling ||
+    creditBalanceQuery.isDeferred ||
+    creditBalance === undefined
+  ) {
     return (
       <div className="p-8 flex items-center justify-center text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-        <span>Loading details...</span>
+        <AuthStatePanel
+          variant="loading"
+          loadingStyle="panel"
+          title="Loading billing details"
+          description="Fetching your subscription and credit balance."
+        />
       </div>
     );
   }
 
-  const currentPlan = subscription?.plan || "free";
-  const status = subscription?.status || "inactive";
-  const creditsPerMonth = subscription?.creditsPerMonth || 0;
-  const seats = subscription?.seats || 1;
+  let currentPlan: "free" | "go" | "pro" | "enterprise" = "free";
+  let status = "inactive";
+  let creditsPerMonth = 0;
+
+  if (subscription) {
+    currentPlan = subscription.plan;
+    status = subscription.status;
+    creditsPerMonth = subscription.creditsPerMonth ?? 0;
+  }
   const isFree = currentPlan === "free";
 
   // Format currency

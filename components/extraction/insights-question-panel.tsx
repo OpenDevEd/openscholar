@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { DisagreementList } from "@/components/extraction/disagreement-list";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 interface InsightsQuestionPanelProps {
   jobId: string;
   questionKey?: string;
   onJumpToPaper?: (paperId: string) => void;
+  enabled?: boolean;
 }
 
 function pct(value: number) {
@@ -31,24 +32,33 @@ export function InsightsQuestionPanel({
   jobId,
   questionKey,
   onJumpToPaper,
+  enabled = true,
 }: InsightsQuestionPanelProps) {
   const [arrayView, setArrayView] = useState<"entities" | "raw">("entities");
-  const questionInsights = useQuery(
+  const questionInsightsQuery = useProtectedQuery(
     api.extraction.queries.getQuestionInsights,
-    questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip"
+    enabled && questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip",
   );
-  const disagreementData = useQuery(
+  const disagreementQuery = useProtectedQuery(
     api.extraction.queries.getQuestionDisagreements,
-    questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip"
+    enabled && questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip",
   );
+  const questionInsights = questionInsightsQuery.data;
+  const disagreementData = disagreementQuery.data;
+
+  if (!enabled) return null;
 
   useEffect(() => {
-    if (questionInsights?.insightMode === "array") {
+    if (questionInsights?.status !== "ok") {
+      setArrayView("raw");
+      return;
+    }
+    if (questionInsights.insightMode === "array") {
       setArrayView("entities");
     } else {
       setArrayView("raw");
     }
-  }, [questionInsights?.insightMode, questionKey]);
+  }, [questionInsights, questionKey]);
 
   if (!questionKey) {
     return (
@@ -58,7 +68,12 @@ export function InsightsQuestionPanel({
     );
   }
 
-  if (questionInsights === undefined || disagreementData === undefined) {
+  if (
+    questionInsightsQuery.isDeferred ||
+    disagreementQuery.isDeferred ||
+    questionInsights === undefined ||
+    disagreementData === undefined
+  ) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -66,10 +81,18 @@ export function InsightsQuestionPanel({
     );
   }
 
-  if (!questionInsights) {
+  if (!questionInsights || questionInsights.status !== "ok") {
+    const message =
+      questionInsights?.status === "not_found"
+        ? "Question insights are not available for that question."
+        : questionInsights?.status === "unauthenticated"
+          ? "Sign in to view question insights."
+          : questionInsights?.status === "no_access"
+            ? "You do not have access to these question insights."
+            : "Question insights are unavailable.";
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
-        Question insights are unavailable.
+        {message}
       </div>
     );
   }
@@ -80,7 +103,7 @@ export function InsightsQuestionPanel({
   const entityDistribution = questionInsights.entityDistribution || [];
   const isArrayMode = questionInsights.insightMode === "array";
   const disagreementTitle =
-    disagreementData?.viewMode === "answer_profiles"
+    disagreementData?.status === "ok" && disagreementData.viewMode === "answer_profiles"
       ? "Answer profiles"
       : "Disagreement finder";
 
@@ -238,9 +261,11 @@ export function InsightsQuestionPanel({
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="text-sm font-medium">{disagreementTitle}</div>
         <DisagreementList
-          viewMode={disagreementData?.viewMode}
-          suppressedSingletonCount={disagreementData?.suppressedSingletonCount || 0}
-          clusters={disagreementData?.clusters || []}
+          viewMode={disagreementData?.status === "ok" ? disagreementData.viewMode : undefined}
+          suppressedSingletonCount={
+            disagreementData?.status === "ok" ? disagreementData.suppressedSingletonCount || 0 : 0
+          }
+          clusters={disagreementData?.status === "ok" ? disagreementData.clusters || [] : []}
           maxInitial={10}
           onJumpToExample={(paperId) => onJumpToPaper?.(paperId)}
         />

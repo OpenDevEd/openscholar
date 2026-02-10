@@ -1,16 +1,17 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 interface InsightsOverviewProps {
   jobId: string;
   selectedQuestionKey?: string;
   onSelectQuestion: (questionKey: string) => void;
   onRerun?: () => void;
+  enabled?: boolean;
 }
 
 function pct(value: number) {
@@ -22,12 +23,17 @@ export function InsightsOverview({
   selectedQuestionKey,
   onSelectQuestion,
   onRerun,
+  enabled = true,
 }: InsightsOverviewProps) {
-  const insights = useQuery(api.extraction.queries.getJobInsights, {
-    jobId: jobId as any,
-  });
+  const insightsQuery = useProtectedQuery(
+    api.extraction.queries.getJobInsights,
+    enabled ? ({ jobId: jobId as any } as any) : "skip",
+  );
+  const insights = insightsQuery.data;
 
-  if (insights === undefined) {
+  if (!enabled) return null;
+
+  if (insightsQuery.isDeferred || insights === undefined) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -35,10 +41,16 @@ export function InsightsOverview({
     );
   }
 
-  if (!insights) {
+  if (!insights || insights.status !== "ok") {
+    const message =
+      insights?.status === "unauthenticated"
+        ? "Sign in to view insights for this job."
+        : insights?.status === "no_access"
+          ? "You do not have access to insights for this job."
+          : "Insights are unavailable for this job.";
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
-        Insights are unavailable for this job.
+        {message}
       </div>
     );
   }

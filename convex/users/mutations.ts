@@ -44,6 +44,12 @@ export const ensureUser = mutation({
       .unique();
 
     if (existing) {
+      if (existing.state === "suspended") {
+        throw createError("FORBIDDEN", "Account suspended");
+      }
+      if (existing.state === "deleted") {
+        throw createError("FORBIDDEN", "Account deleted");
+      }
       // Update last login
       await ctx.db.patch(existing._id, { lastLoginAt: Date.now() });
       return existing._id;

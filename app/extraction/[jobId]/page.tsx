@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -50,6 +50,11 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useExtractionCitationPanelStore } from "@/lib/store";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import {
+  useProtectedPaginatedQuery,
+  useProtectedQuery,
+} from "@/lib/auth/use-auth-query";
 import {
   defaultFilters,
   filterPapers,
@@ -58,6 +63,7 @@ import {
   type PaperWithResults,
   type Question,
 } from "@/lib/extraction/filtering";
+import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -98,47 +104,64 @@ export default function JobDetailPage() {
     api.extraction.mutations.duplicateExtraction,
   );
 
-  const jobDetails = useQuery(api.extraction.queries.getJobDetails, {
-    jobId: jobId,
-  });
-  const subscription = useQuery(api.subscriptions.queries.getMy);
-  const jobProgress = useQuery(api.extraction.queries.subscribeToJobProgress, {
-    jobId: jobId,
-  });
+  const jobDetailsQuery = useProtectedQuery(api.extraction.queries.getJobDetails, {
+    jobId,
+  } as any);
+  const jobDetails = jobDetailsQuery.data;
+  const canReadJob = jobDetails?.status === "ok";
+  const subscriptionQuery = useProtectedQuery(api.subscriptions.queries.getMy, {});
+  const subscription = subscriptionQuery.data;
+  const subscriptionSettlement = subscriptionQuery.settlement;
+  const isSubscriptionSettling =
+    subscriptionSettlement === "auth_loading" ||
+    subscriptionSettlement === "query_loading";
+  const jobProgressQuery = useProtectedQuery(
+    api.extraction.queries.subscribeToJobProgress,
+    canReadJob ? ({ jobId } as any) : "skip",
+  );
+  const jobProgress = jobProgressQuery.data;
 
   const {
     results: allPapers,
     status: paginationStatus,
     loadMore,
-  } = usePaginatedQuery(
+    isDeferred: isResultsDeferred,
+    settlement: resultsSettlement,
+    hasLoadedFirstPage,
+  } = useProtectedPaginatedQuery(
     api.extraction.queries.getJobResultsPaginated,
-    { jobId },
+    canReadJob ? ({ jobId } as any) : "skip",
     { initialNumItems: 200 },
   );
 
   const isLoadingRef = useRef(false);
   const hasAttemptedLoadRef = useRef(false);
   useEffect(() => {
-    if (paginationStatus !== 'Exhausted' && allPapers.length < 200 && !isLoadingRef.current && !hasAttemptedLoadRef.current) {
-      isLoadingRef.current = true;
-      hasAttemptedLoadRef.current = true;
-      loadMore(200);
-      const timeout = setTimeout(() => {
-        isLoadingRef.current = false;
-      }, 1000);
-      return () => clearTimeout(timeout);
+    if (paginationStatus !== "LoadingMore") {
+      isLoadingRef.current = false;
     }
-  }, [paginationStatus, allPapers.length, loadMore]);
+  }, [paginationStatus]);
+
+  useEffect(() => {
+    if (!canReadJob) return;
+    if (paginationStatus !== "CanLoadMore") return;
+    if (allPapers.length >= 200) return;
+    if (isLoadingRef.current || hasAttemptedLoadRef.current) return;
+
+    isLoadingRef.current = true;
+    hasAttemptedLoadRef.current = true;
+    loadMore(200);
+  }, [canReadJob, paginationStatus, allPapers.length, loadMore]);
 
   const questions: Question[] = useMemo(() => {
-    if (!jobDetails?.questions) return [];
-    return jobDetails.questions.map(q => ({
+    if (jobDetails?.status !== "ok") return [];
+    return jobDetails.questions.map((q: any) => ({
       key: q.key,
       question: q.question,
       type: q.type as 'boolean' | 'string' | 'array' | 'number',
       description: q.description,
     }));
-  }, [jobDetails?.questions]);
+  }, [jobDetails]);
 
   useEffect(() => {
     if (!questions.length) return;
@@ -187,6 +210,27 @@ export default function JobDetailPage() {
         return sorted;
     }
   }, [filteredPapers, resultsSortBy]);
+
+  const hasActiveResultFilters = useMemo(
+    () =>
+      debouncedFilters.searchQuery.trim().length > 0 ||
+      debouncedFilters.confidenceRange[0] > 0 ||
+      debouncedFilters.confidenceRange[1] < 100 ||
+      debouncedFilters.statusFilters.size > 0 ||
+      debouncedFilters.questionFilters.size > 0,
+    [
+      debouncedFilters.confidenceRange,
+      debouncedFilters.questionFilters,
+      debouncedFilters.searchQuery,
+      debouncedFilters.statusFilters,
+    ],
+  );
+  const resultsRenderState = getAuthSensitiveListRenderState({
+    settlement: resultsSettlement,
+    hasLoadedFirstPage,
+    visibleCount: sortedPapers.length,
+    hasActiveFilter: hasActiveResultFilters,
+  });
 
   const totalPages = Math.ceil(sortedPapers.length / pageSize);
   const displayedPapers = useMemo(
@@ -283,32 +327,63 @@ export default function JobDetailPage() {
     [setViewMode]
   );
 
-  if (!jobDetails) {
+  if (jobDetailsQuery.isDeferred || isResultsDeferred || jobDetails === undefined) {
     return (
       <PageWrapper>
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <AuthStatePanel variant="loading" layout="fullscreen" />
+      </PageWrapper>
+    );
+  }
+
+  if (jobDetails.status === "unauthenticated") {
+    return (
+      <PageWrapper>
+        <div className="container mx-auto max-w-4xl p-6">
+          <AuthStatePanel
+            variant="sign_in_required"
+            description="You need to sign in to view extraction job details."
+            primaryHref="/auth/signin"
+            primaryLabel="Sign In"
+            secondaryHref="/extraction"
+            secondaryLabel="Back to Jobs"
+          />
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (jobDetails.status === "no_access") {
+    return (
+      <PageWrapper>
+        <div className="container mx-auto max-w-4xl p-6">
+          <AuthStatePanel
+            variant="no_access"
+            description="You do not have access to this extraction job."
+            primaryHref="/extraction"
+            primaryLabel="Back to Jobs"
+          />
         </div>
       </PageWrapper>
     );
   }
 
   const { job, progress } = jobDetails;
-  const resolvedProgress = jobProgress
+  const jobProgressSafe = jobProgress?.status === "ok" ? jobProgress : null;
+  const resolvedProgress = jobProgressSafe
     ? {
         total: job.totalPapers,
-        processed: jobProgress.statusCounts.completed,
+        processed: jobProgressSafe.statusCounts.completed,
         failed:
-          jobProgress.statusCounts.failed +
-          jobProgress.statusCounts.download_failed +
-          jobProgress.statusCounts.indexing_failed,
+          jobProgressSafe.statusCounts.failed +
+          jobProgressSafe.statusCounts.download_failed +
+          jobProgressSafe.statusCounts.indexing_failed,
         percentage:
           job.totalPapers > 0
             ? Math.round(
-                ((jobProgress.statusCounts.completed +
-                  jobProgress.statusCounts.failed +
-                  jobProgress.statusCounts.download_failed +
-                  jobProgress.statusCounts.indexing_failed) /
+                ((jobProgressSafe.statusCounts.completed +
+                  jobProgressSafe.statusCounts.failed +
+                  jobProgressSafe.statusCounts.download_failed +
+                  jobProgressSafe.statusCounts.indexing_failed) /
                   job.totalPapers) *
                   100,
               )
@@ -320,8 +395,14 @@ export default function JobDetailPage() {
     job.status === "pending" ||
     job.status === "downloading_pdfs" ||
     job.status === "extracting";
-  const currentPlan = subscription?.plan ?? "free";
-  const hasProFeatures = currentPlan === "pro" || currentPlan === "enterprise";
+  const resolvedPlan =
+    subscriptionSettlement === "ready"
+      ? subscription
+        ? subscription.plan
+        : "free"
+      : null;
+  const hasProFeatures =
+    resolvedPlan === "pro" || resolvedPlan === "enterprise";
   return (
     <div className="flex w-full flex-1 flex-col overflow-x-clip">
       <TwoColumnLayout
@@ -591,6 +672,10 @@ export default function JobDetailPage() {
                 >
                   Insights
                 </button>
+              ) : extractionFeatureFlags.insights && isSubscriptionSettling ? (
+                <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
+                  Insights
+                </span>
               ) : null}
               {extractionFeatureFlags.reviewQueue && hasProFeatures ? (
                 <button
@@ -604,6 +689,10 @@ export default function JobDetailPage() {
                 >
                   Review Queue
                 </button>
+              ) : extractionFeatureFlags.reviewQueue && isSubscriptionSettling ? (
+                <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
+                  Review Queue
+                </span>
               ) : null}
               {extractionFeatureFlags.reportBuilder && hasProFeatures ? (
                 <button
@@ -617,6 +706,10 @@ export default function JobDetailPage() {
                 >
                   Report Builder
                 </button>
+              ) : extractionFeatureFlags.reportBuilder && isSubscriptionSettling ? (
+                <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
+                  Report Builder
+                </span>
               ) : null}
               <button
                 onClick={() => setActiveTab('overview')}
@@ -664,20 +757,34 @@ export default function JobDetailPage() {
                 />
 
                 <div className="min-h-[600px] min-w-0">
-                  {sortedPapers.length === 0 ? (
+                  {resultsRenderState === "loading" ? (
+                    <div className="my-6 flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-muted/30 py-24 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary/80" />
+                        <p className="text-sm text-muted-foreground">
+                          Loading extraction results...
+                        </p>
+                      </div>
+                    </div>
+                  ) : resultsRenderState === "empty" ||
+                    resultsRenderState === "filtered_empty" ? (
                     <div className="my-6 flex flex-col items-center justify-center rounded-xl border border-border bg-muted py-24 text-center">
                       <FileText className="mb-4 h-16 w-16 text-muted-foreground/50" />
                       <h3 className="mb-2 text-xl font-semibold text-foreground">
-                        No results found
+                        {resultsRenderState === "filtered_empty"
+                          ? "No matches for current filters"
+                          : "No results found"}
                       </h3>
                       <p className="max-w-md text-muted-foreground">
-                        {papersWithResults.length === 0
+                        {resultsRenderState === "filtered_empty"
+                          ? "Try adjusting your filters to see more results."
+                          : papersWithResults.length === 0
                           ? job.status === "completed"
                             ? "No papers matched your criteria or extraction failed."
                             : "Results will appear here as they are processed."
-                          : "Try adjusting your filters to see results."}
+                          : "No results are available yet."}
                       </p>
-                      {sortedPapers.length === 0 && papersWithResults.length > 0 && (
+                      {resultsRenderState === "filtered_empty" && (
                         <Button
                           variant="outline"
                           className="mt-6"
@@ -766,10 +873,12 @@ export default function JobDetailPage() {
                 selectedQuestionKey={selectedInsightsQuestion}
                 onSelectQuestion={setSelectedInsightsQuestion}
                 onRerun={handleDuplicate}
+                enabled={canReadJob}
               />
               <InsightsQuestionPanel
                 jobId={jobId}
                 questionKey={selectedInsightsQuestion}
+                enabled={canReadJob}
                 onJumpToPaper={(paperId) => {
                   const target = papersWithResults.find((paper) => paper._id === paperId);
                   if (!target) return;
@@ -795,7 +904,11 @@ export default function JobDetailPage() {
                 onMobilePaneChange={setMobilePane}
                 primaryLabel="Review"
               >
-                <ReviewQueue jobId={jobId} onOpenCitationPanel={openCitationPanel} />
+                <ReviewQueue
+                  jobId={jobId}
+                  enabled={canReadJob}
+                  onOpenCitationPanel={openCitationPanel}
+                />
               </ExtractionResultsShell>
             </motion.div>
           ) : activeTab === "report" ? (

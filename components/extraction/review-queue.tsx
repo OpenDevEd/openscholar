@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Quote } from "lucide-react";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 type ReviewState = "unreviewed" | "accepted" | "rejected" | "needs_followup";
 
@@ -41,9 +42,11 @@ function parseCorrectedAnswer(raw: string, type?: string) {
 export function ReviewQueue({
   jobId,
   onOpenCitationPanel,
+  enabled = true,
 }: {
   jobId: string;
   onOpenCitationPanel: (payload: CitationPanelPayload) => void;
+  enabled?: boolean;
 }) {
   const [selectedStates, setSelectedStates] = useState<Set<ReviewState>>(
     new Set(defaultStates)
@@ -54,15 +57,23 @@ export function ReviewQueue({
   const [correctedAnswer, setCorrectedAnswer] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const queue = useQuery(api.extraction.queries.getReviewQueue, {
-    jobId: jobId as any,
-    states: Array.from(selectedStates),
-    onlyInsufficientEvidence,
-    limit: 250,
-  });
+  const queueQuery = useProtectedQuery(
+    api.extraction.queries.getReviewQueue,
+    enabled
+      ? ({
+          jobId: jobId as any,
+          states: Array.from(selectedStates),
+          onlyInsufficientEvidence,
+          limit: 250,
+        } as any)
+      : "skip",
+  );
+  const queue = queueQuery.data;
   const setReviewState = useMutation(api.extraction.mutations.setResultReviewState);
 
-  const items = queue?.items || [];
+  if (!enabled) return null;
+
+  const items = queue?.status === "ok" ? queue.items || [] : [];
   const current = items[index] || null;
 
   useEffect(() => {
@@ -119,7 +130,7 @@ export function ReviewQueue({
     return () => window.removeEventListener("keydown", listener);
   }, [current, items.length, note, correctedAnswer]);
 
-  const counts = queue?.counts;
+  const counts = queue?.status === "ok" ? queue.counts : undefined;
 
   const citations = useMemo(() => {
     if (!current?.citations || !Array.isArray(current.citations)) return [];
@@ -189,9 +200,17 @@ export function ReviewQueue({
         </div>
       </div>
 
-      {queue === undefined ? (
+      {queueQuery.isDeferred || queue === undefined ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : queue.status !== "ok" ? (
+        <div className="rounded-lg border border-border/50 bg-muted/20 p-6 text-sm text-muted-foreground">
+          {queue.status === "unauthenticated"
+            ? "Sign in to review extraction results."
+            : queue.status === "no_access"
+              ? "You do not have access to this review queue."
+              : "Review queue is unavailable."}
         </div>
       ) : !current ? (
         <div className="rounded-lg border border-border/50 bg-muted/20 p-6 text-sm text-muted-foreground">

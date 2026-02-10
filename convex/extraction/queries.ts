@@ -8,6 +8,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
+import { noAccess, notFound, ok, unauthenticated } from "../lib/query_states";
 import { getProcessableFlags, MIN_ABSTRACT_LENGTH } from "./content";
 import {
   aggregateQuestionInsights,
@@ -17,6 +18,45 @@ import {
   type InsightEntry,
   type ReviewState,
 } from "../../lib/extraction/insights";
+
+type OwnedJobResolution =
+  | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
+  | { status: "unauthenticated" }
+  | { status: "no_access" };
+
+async function resolveOwnedJob(
+  ctx: any,
+  jobId: Id<"extractionJobs">
+): Promise<OwnedJobResolution> {
+  const user = await getCurrentUser(ctx);
+  if (!user) return unauthenticated();
+
+  const job = await ctx.db.get(jobId);
+  if (!job || job.userId !== user._id) return noAccess();
+
+  return ok({ user, job });
+}
+
+type OwnedPaperResolution =
+  | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs">; paper: Doc<"extractionPapers"> }
+  | { status: "unauthenticated" }
+  | { status: "no_access" };
+
+async function resolveOwnedPaper(
+  ctx: any,
+  paperId: Id<"extractionPapers">
+): Promise<OwnedPaperResolution> {
+  const user = await getCurrentUser(ctx);
+  if (!user) return unauthenticated();
+
+  const paper = await ctx.db.get(paperId);
+  if (!paper) return noAccess();
+
+  const job = await ctx.db.get(paper.jobId);
+  if (!job || job.userId !== user._id) return noAccess();
+
+  return ok({ user, job, paper });
+}
 
 function hasUsableAbstract(abstract?: string) {
   return typeof abstract === "string" && abstract.trim().length > MIN_ABSTRACT_LENGTH;
@@ -174,17 +214,13 @@ export const getMyJobs = query({
 // Get job details with progress (public API)
 export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    // Handle unauthenticated gracefully
-    // Handle unauthenticated gracefully
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { job } = access;
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -213,7 +249,7 @@ export const getJobDetails = query({
 
     const total = job.totalPapers || processablePapers.length;
 
-    return {
+    return ok({
       job,
       questions,
       papers,
@@ -224,26 +260,20 @@ export const getJobDetails = query({
         percentage:
           total > 0 ? Math.round(((processed + failed) / total) * 100) : 0,
       },
-    };
+    });
   },
 });
 
 // Get paper extraction results (public API)
 export const getPaperResults = query({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    // Handle unauthenticated gracefully
-    // Handle unauthenticated gracefully
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const paper = await ctx.db.get(args.paperId);
-    if (!paper) throw new Error("Paper not found");
-
-    const job = await ctx.db.get(paper.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Unauthorized Access");
+    const access = await resolveOwnedPaper(ctx, args.paperId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { paper } = access;
 
     const results = await ctx.db
       .query("extractionResults")
@@ -252,7 +282,7 @@ export const getPaperResults = query({
 
     const resultsWithReviews = await attachReviewMetadata(ctx, args.paperId, results);
 
-    return { paper, results: resultsWithReviews };
+    return ok({ paper, results: resultsWithReviews });
   },
 });
 
@@ -268,39 +298,35 @@ export const getPaperResultsInternal = internalQuery({
 
 export const getPaperPdfUrl = query({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const paper = await ctx.db.get(args.paperId);
-    if (!paper) return null;
-
-    const job = await ctx.db.get(paper.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Unauthorized Access");
+    const access = await resolveOwnedPaper(ctx, args.paperId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { paper } = access;
 
+    let pdfUrl: string | null = null;
     if (paper.storageId) {
-      return await ctx.storage.getUrl(paper.storageId);
+      pdfUrl = await ctx.storage.getUrl(paper.storageId);
+    } else {
+      pdfUrl = paper.pdfUrl || null;
     }
 
-    return paper.pdfUrl || null;
+    return ok({ pdfUrl });
   },
 });
 
 // Get all results for a job (public API) - for export
 export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    // Handle unauthenticated gracefully
-    // Handle unauthenticated gracefully
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { job } = access;
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -332,11 +358,11 @@ export const getJobResults = query({
       };
     }
 
-    return {
+    return ok({
       job,
       questions,
       papers: allResults,
-    };
+    });
   },
 });
 
@@ -346,24 +372,20 @@ export const getJobResultsPaginated = query({
     jobId: v.id("extractionJobs"),
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    // Handle unauthenticated gracefully
-    // Handle unauthenticated gracefully
-    const user = await getCurrentUser(ctx);
-    if (!user) {
-        return {
-            page: [],
-            isDone: false,
-            continueCursor: "",
-            questions: [],
-            job: null as any
-        };
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return {
+        status: access.status,
+        page: [],
+        isDone: true,
+        continueCursor: "",
+        questions: [],
+        job: null as any,
+      };
     }
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
-    }
+    const { job } = access;
 
     const questions = await ctx.db
       .query("extractionQuestions")
@@ -398,6 +420,7 @@ export const getJobResultsPaginated = query({
     );
 
     return {
+      status: "ok" as const,
       ...result,
       page: papersWithResults,
       questions,
@@ -410,13 +433,11 @@ export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { job } = access;
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const processablePapers = papers.filter(
@@ -500,7 +521,7 @@ export const getJobInsights = query({
     const bestEffortRate =
       totalExpectedAnswers > 0 ? bestEffortTotal / totalExpectedAnswers : 0;
 
-    return {
+    return ok({
       job: {
         id: job._id,
         name: job.name,
@@ -525,7 +546,7 @@ export const getJobInsights = query({
       diagnostics: {
         noContentPapers: noContentPapers.slice(0, 20),
       },
-    };
+    });
   },
 });
 
@@ -536,20 +557,18 @@ export const getQuestionInsights = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { job } = access;
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const question = questions.find(
       (q: Doc<"extractionQuestions">) => q.key === args.questionKey
     );
     if (!question) {
-      throw new Error("Question not found");
+      return notFound();
     }
 
     const entries: InsightEntry[] = [];
@@ -597,7 +616,7 @@ export const getQuestionInsights = query({
       })
     );
 
-    return {
+    return ok({
       question: {
         key: question.key,
         question: question.question,
@@ -607,7 +626,7 @@ export const getQuestionInsights = query({
       ...aggregate,
       rawAnswerDistribution,
       topAnswers: rawAnswerDistribution,
-    };
+    });
   },
 });
 
@@ -618,20 +637,18 @@ export const getQuestionDisagreements = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { job } = access;
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const question = questions.find(
       (q: Doc<"extractionQuestions">) => q.key === args.questionKey
     );
     if (!question) {
-      throw new Error("Question not found");
+      return notFound();
     }
 
     const entries: InsightEntry[] = [];
@@ -683,7 +700,7 @@ export const getQuestionDisagreements = query({
       })
     );
 
-    return {
+    return ok({
       question: {
         key: question.key,
         question: question.question,
@@ -696,7 +713,7 @@ export const getQuestionDisagreements = query({
       totalClusterCount,
       suppressedSingletonCount,
       clusters,
-    };
+    });
   },
 });
 
@@ -718,12 +735,9 @@ export const getReviewQueue = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
@@ -794,30 +808,28 @@ export const getReviewQueue = query({
       ).length,
     };
 
-    return {
+    return ok({
       counts,
       items: items.slice(0, Math.max(1, Math.min(args.limit ?? 200, 1000))),
-    };
+    });
   },
 });
 
 export const getSavedViews = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.array(v.any()),
+  returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
 
-    return await ctx.db
+    const views = await ctx.db
       .query("extractionSavedViews")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("desc")
       .collect();
+    return ok({ views });
   },
 });
 
@@ -838,21 +850,19 @@ export const getWorkflowTemplates = query({
 
 export const getReportSnapshots = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.array(v.any()),
+  returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
 
-    return await ctx.db
+    const reports = await ctx.db
       .query("extractionReportSnapshots")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("desc")
       .collect();
+    return ok({ reports });
   },
 });
 
@@ -861,20 +871,17 @@ export const getRunDiff = query({
     jobId: v.id("extractionJobs"),
     diffId: v.optional(v.id("extractionRunDiffs")),
   },
-  returns: v.union(v.any(), v.null()),
+  returns: v.any(),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
 
     if (args.diffId) {
       const diff = await ctx.db.get(args.diffId);
-      if (!diff || diff.jobId !== args.jobId) return null;
-      return diff;
+      if (!diff || diff.jobId !== args.jobId) return ok({ diff: null });
+      return ok({ diff });
     }
 
     const latest = await ctx.db
@@ -883,7 +890,7 @@ export const getRunDiff = query({
       .order("desc")
       .first();
 
-    return latest || null;
+    return ok({ diff: latest || null });
   },
 });
 
@@ -1060,16 +1067,13 @@ export const getPapersDebug = internalQuery({
 // Subscribe to job progress (real-time updates)
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
-    // Handle unauthenticated gracefully
-    // Handle unauthenticated gracefully
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+    const access = await resolveOwnedJob(ctx, args.jobId);
+    if (access.status !== "ok") {
+      return access;
     }
+    const { job } = access;
 
     // Get status counts
     const allPapers = await ctx.db
@@ -1096,13 +1100,13 @@ export const subscribeToJobProgress = query({
       }
     }
 
-    return {
+    return ok({
       job,
       statusCounts,
       recentPapers: allPapers
         .filter((paper) => paper.processable !== false)
         .slice(-20), // Last 20 updated
-    };
+    });
   },
 });
 

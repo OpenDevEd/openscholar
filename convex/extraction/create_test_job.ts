@@ -1,19 +1,16 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../lib/auth";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 export const createTestJobForFix = mutation({
   args: {
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    // Find first user (skip auth for testing)
-    const user = await ctx.db
-      .query("users")
-      .first();
-      
-    if (!user) {
-      return { error: "No users found" };
-    }
+    requirePublicDebugEnabled();
+
+    const user = await requireAuth(ctx);
     
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,

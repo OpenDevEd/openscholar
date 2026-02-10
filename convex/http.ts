@@ -5,6 +5,10 @@ import { registerRoutes } from "@convex-dev/stripe";
 import { workosWebhook } from "./webhooks/workos";
 
 const http = httpRouter();
+const FRONTEND_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_URL ||
+  "http://localhost:3000";
 
 // WorkOS webhook for user/org/membership sync
 http.route({
@@ -34,21 +38,18 @@ http.route({
 
       if (!result.success) {
         // Redirect to error page
-        const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         return Response.redirect(
-          `${frontendUrl}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
+          `${FRONTEND_URL}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
           302
         );
       }
 
       // Redirect to success page
-      const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      return Response.redirect(`${frontendUrl}/?zotero_connected=true`, 302);
+      return Response.redirect(`${FRONTEND_URL}/?zotero_connected=true`, 302);
     } catch (error) {
       console.error("Zotero OAuth callback error:", error);
-      const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       return Response.redirect(
-        `${frontendUrl}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
+        `${FRONTEND_URL}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
         302
       );
     }
@@ -199,4 +200,3 @@ function mapStripeStatus(
       return "active";
   }
 }
-

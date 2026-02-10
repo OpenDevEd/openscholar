@@ -1,6 +1,6 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/auth";
+import { getCurrentUser } from "../lib/auth";
 import { apiKeyProviderValidator } from "../lib/validators";
 
 /**
@@ -19,7 +19,8 @@ export const getMy = query({
     })
   ),
   handler: async (ctx) => {
-    const user = await requireAuth(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
 
     const keys = await ctx.db
       .query("apiKeys")

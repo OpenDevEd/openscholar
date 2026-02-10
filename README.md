@@ -64,8 +64,21 @@ It's designed for systematic reviews and complex queries, not just keyword match
    You'll need credentials for:
    - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
    - **Convex HTTP (optional/custom domain):** `NEXT_PUBLIC_CONVEX_SITE_URL`
-   - **WorkOS:** Client ID, API Key, Redirect URI
-   - **Stripe:** Publishable Key (optional, for billing)
+   - **WorkOS/AuthKit:** `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_REDIRECT_URI` (or `NEXT_PUBLIC_WORKOS_REDIRECT_URI` for edge runtime redirect precedence), `WORKOS_WEBHOOK_SECRET`
+   - **App URL (for billing/webhook redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
+   - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (and optional publishable key for client UI)
+
+   WorkOS notes for this repo:
+   - Next.js auth edge protection is configured in `proxy.ts`.
+   - Public route policy is centralized in `lib/auth/public-routes.ts` and shared by both `proxy.ts` and client route gating.
+   - Redirect URI precedence in edge auth is `NEXT_PUBLIC_WORKOS_REDIRECT_URI` then `WORKOS_REDIRECT_URI`.
+   - Convex JWT verification is configured in `convex/auth.config.ts` and accepts both WorkOS issuer formats used by AuthKit.
+   - Protected App Router rendering is guarded by `components/auth/auth-route-gate.tsx`, which enforces a no-flicker auth bootstrap flow.
+   - Client auth readiness is exposed via `useAuthReadiness()` from `components/providers/convex-provider.tsx`.
+   - Use auth-aware query wrappers from `lib/auth/use-auth-query.ts` (`useProtectedQuery`, `useProtectedPaginatedQuery`, `useOptionalAuthQuery`) instead of direct `useQuery` calls in UI.
+   - Configure your WorkOS webhook endpoint to `POST /webhooks/workos` on your Convex HTTP deployment URL.
+   - Public debug/test Convex endpoints are disabled by default; only enable with `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true`.
+   - Public read-query auth/authorization states follow the safe contract documented in `docs/auth-error-contract.md`.
 
 4. **Run the development server**
 

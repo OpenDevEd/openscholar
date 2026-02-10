@@ -21,7 +21,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
   apiVersion: "2026-01-28.clover",
 });
 
-const DOMAIN = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+const DOMAIN =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_URL ||
+  "http://localhost:3000";
 
 /**
  * Create a Stripe Checkout session for a subscription or one-time payment

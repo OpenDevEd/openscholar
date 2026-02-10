@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser, requireAuth } from "../lib/auth";
+import { getCurrentUser } from "../lib/auth";
 import { userValidator, subscriptionValidator, creditsValidator, orgWithMembershipValidator } from "../lib/validators";
 
 /**
@@ -22,7 +22,8 @@ export const getById = query({
   args: { userId: v.id("users") },
   returns: v.union(userValidator, v.null()),
   handler: async (ctx, { userId }) => {
-    const currentUser = await requireAuth(ctx);
+    const currentUser = await getCurrentUser(ctx);
+    if (!currentUser) return null;
     
     // Allow fetching own profile
     if (currentUser._id === userId) {
@@ -59,7 +60,8 @@ export const getMyOrganizations = query({
   args: {},
   returns: v.array(orgWithMembershipValidator),
   handler: async (ctx) => {
-    const user = await requireAuth(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
 
     const memberships = await ctx.db
       .query("memberships")
@@ -84,7 +86,8 @@ export const getMySubscription = query({
   args: {},
   returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx) => {
-    const user = await requireAuth(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
 
     return await ctx.db
       .query("subscriptions")
@@ -102,7 +105,8 @@ export const getMyCredits = query({
   args: {},
   returns: v.union(creditsValidator, v.null()),
   handler: async (ctx) => {
-    const user = await requireAuth(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
 
     return await ctx.db
       .query("credits")

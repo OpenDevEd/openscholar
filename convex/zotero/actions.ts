@@ -8,6 +8,8 @@ import { buildZoteroHeaders } from "../../lib/zotero-utils";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import * as crypto from "crypto";
+import type { ActionCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
 const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
@@ -20,6 +22,11 @@ type ZoteroConnection = {
   apiKey: string;
   username?: string;
 } | null;
+
+async function requireCurrentUserId(ctx: ActionCtx): Promise<Id<"users">> {
+  const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+  return user._id;
+}
 
 // Type for Zotero API collection response
 type ZoteroCollectionResponse = {
@@ -404,13 +411,13 @@ async function fetchAllTopItemsForCollection(
  */
 export const startOAuth = action({
   args: {
-    userId: v.id("users"),
     callbackUrl: v.string(),
   },
   returns: v.object({
     authorizeUrl: v.string(),
   }),
-  handler: async (ctx, { userId, callbackUrl }) => {
+  handler: async (ctx, { callbackUrl }) => {
+    const userId = await requireCurrentUserId(ctx);
     const consumerKey = process.env.ZOTERO_CLIENT_KEY;
     const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
 
@@ -581,7 +588,6 @@ export const completeOAuth = action({
  */
 export const fetchCollections = action({
   args: {
-    userId: v.id("users"),
     groupId: v.optional(v.string()), // If provided, fetch group collections
   },
   returns: v.array(
@@ -593,7 +599,8 @@ export const fetchCollections = action({
       numCollections: v.number(),
     })
   ),
-  handler: async (ctx, { userId, groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> => {
+  handler: async (ctx, { groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> => {
+    const userId = await requireCurrentUserId(ctx);
     // Get API key from connection
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
@@ -635,9 +642,7 @@ export const fetchCollections = action({
  * Fetch user's Zotero groups.
  */
 export const fetchGroups = action({
-  args: {
-    userId: v.id("users"),
-  },
+  args: {},
   returns: v.array(
     v.object({
       id: v.string(),
@@ -646,7 +651,8 @@ export const fetchGroups = action({
       numItems: v.number(),
     })
   ),
-  handler: async (ctx, { userId }): Promise<Array<{ id: string; name: string; type: string; numItems: number }>> => {
+  handler: async (ctx): Promise<Array<{ id: string; name: string; type: string; numItems: number }>> => {
+    const userId = await requireCurrentUserId(ctx);
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });
@@ -692,7 +698,6 @@ type ZoteroItem = {
 
 export const fetchItems = action({
   args: {
-    userId: v.id("users"),
     collectionKey: v.optional(v.string()),
     includeDescendants: v.optional(v.boolean()),
     groupId: v.optional(v.string()),
@@ -718,8 +723,9 @@ export const fetchItems = action({
   }),
   handler: async (
     ctx,
-    { userId, collectionKey, includeDescendants = true, groupId, start = 0, limit = 50 }
+    { collectionKey, includeDescendants = true, groupId, start = 0, limit = 50 }
   ): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => {
+    const userId = await requireCurrentUserId(ctx);
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });

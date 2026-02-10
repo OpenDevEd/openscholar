@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Cascader, type CascaderOption } from "@/components/ui/cascader";
 import { toast } from "sonner";
 import { getConvexSiteUrl } from "@/lib/convex-site";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 type ZoteroGroup = {
   id: string;
@@ -44,8 +45,13 @@ type ZoteroItem = {
 
 export function ZoteroSelector() {
   const { draftJob, setZoteroSelection } = useExtractionStore();
-  const me = useQuery(api.users.queries.me);
-  const connectionStatus = useQuery(api.zotero.queries.getConnectionStatus);
+  const meQuery = useProtectedQuery(api.users.queries.me, {});
+  const me = meQuery.data;
+  const connectionStatusQuery = useProtectedQuery(
+    api.zotero.queries.getConnectionStatus,
+    {},
+  );
+  const connectionStatus = connectionStatusQuery.data;
   const startOAuth = useAction(api.zotero.actions.startOAuth);
   const fetchGroups = useAction(api.zotero.actions.fetchGroups);
   const fetchCollections = useAction(api.zotero.actions.fetchCollections);
@@ -57,7 +63,6 @@ export function ZoteroSelector() {
   const [includeDescendants, setIncludeDescendants] = useState<boolean>(true);
   const requiresGroupSelection = libraryType === "group" && !groupId;
 
-  const userId = me?._id;
   const zoteroUserId = connectionStatus?.connected ? connectionStatus.zoteroUserId : undefined;
   const callbackUrl = useMemo(() => {
     const convexSite = getConvexSiteUrl();
@@ -65,27 +70,26 @@ export function ZoteroSelector() {
   }, []);
 
   const groups = useSWR(
-    userId && connectionStatus?.connected ? ["zotero-groups", userId] : null,
-    async () => fetchGroups({ userId: userId! }),
+    connectionStatus?.connected ? ["zotero-groups"] : null,
+    async () => fetchGroups({}),
     { revalidateOnFocus: false }
   );
 
   const collections = useSWR(
-    userId && connectionStatus?.connected && !requiresGroupSelection
-      ? ["zotero-collections", userId, libraryType, groupId]
+    connectionStatus?.connected && !requiresGroupSelection
+      ? ["zotero-collections", libraryType, groupId]
       : null,
-    async () => fetchCollections({ userId: userId!, groupId: libraryType === "group" ? groupId : undefined }),
+    async () => fetchCollections({ groupId: libraryType === "group" ? groupId : undefined }),
     { revalidateOnFocus: false }
   );
 
   const getItemsKey = (pageIndex: number, previousPageData: any) => {
-    if (!userId || !connectionStatus?.connected) return null;
+    if (!connectionStatus?.connected) return null;
     if (requiresGroupSelection) return null;
     if (previousPageData && !previousPageData.hasMore) return null;
     const cursor = pageIndex === 0 ? 0 : (previousPageData?.nextCursor ?? 0);
     return [
       "zotero-items",
-      userId,
       libraryType,
       groupId,
       collectionKey,
@@ -99,7 +103,6 @@ export function ZoteroSelector() {
     async (key) => {
       const cursor = key[key.length - 1] as number;
       return await fetchItems({
-        userId: userId!,
         groupId: libraryType === "group" ? groupId : undefined,
         collectionKey,
         includeDescendants,
@@ -182,7 +185,11 @@ export function ZoteroSelector() {
   const isLoading = groups.isLoading || collections.isLoading || isLoadingItems;
   const itemsError = requiresGroupSelection ? undefined : (items.error as Error | undefined);
 
-  if (!connectionStatus) {
+  if (
+    meQuery.isDeferred ||
+    connectionStatusQuery.isDeferred ||
+    connectionStatus === undefined
+  ) {
     return (
       <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
         Loading Zotero status…
@@ -201,7 +208,7 @@ export function ZoteroSelector() {
             <Button
               size="sm"
               onClick={async () => {
-                if (!userId) {
+                if (!me?._id) {
                   toast.error("Please sign in to connect Zotero.");
                   return;
                 }
@@ -211,7 +218,6 @@ export function ZoteroSelector() {
                 }
                 try {
                   const result = await startOAuth({
-                    userId,
                     callbackUrl,
                   });
                   window.location.href = result.authorizeUrl;

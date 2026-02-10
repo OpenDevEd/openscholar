@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth, requireOrgMember } from "../lib/auth";
+import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
 
 /**
@@ -10,15 +10,7 @@ export const getMyBalance = query({
   args: {},
   returns: v.union(creditBalanceValidator, v.null()),
   handler: async (ctx) => {
-    // Handle unauthenticated gracefully to avoid race conditions
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
+    const user = await getCurrentUser(ctx);
     if (!user) return null;
 
     const credits = await ctx.db
@@ -45,9 +37,18 @@ export const getMyBalance = query({
  */
 export const getOrgBalance = query({
   args: { organizationId: v.id("organizations") },
-  returns: creditBalanceValidator,
+  returns: v.union(creditBalanceValidator, v.null()),
   handler: async (ctx, { organizationId }) => {
-    await requireOrgMember(ctx, organizationId);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", organizationId)
+      )
+      .unique();
+    if (!membership) return null;
 
     const credits = await ctx.db
       .query("credits")
@@ -78,13 +79,20 @@ export const getTransactions = query({
   },
   returns: v.array(creditTransactionValidator),
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
 
     const ownerId = args.organizationId ?? user._id;
     const ownerType = args.organizationId ? "organization" : "user";
 
     if (args.organizationId) {
-      await requireOrgMember(ctx, args.organizationId);
+      const membership = await ctx.db
+        .query("memberships")
+        .withIndex("by_user_org", (q) =>
+          q.eq("userId", user._id).eq("organizationId", args.organizationId!)
+        )
+        .unique();
+      if (!membership) return [];
     }
 
     const credits = await ctx.db
@@ -114,16 +122,30 @@ export const checkBalance = query({
     organizationId: v.optional(v.id("organizations")),
     requiredAmount: v.number(),
   },
-  returns: v.object({
-    hasEnough: v.boolean(),
-    free: v.number(),
-    paid: v.number(),
-    total: v.number(),
-    required: v.number(),
-    deficit: v.number(),
-  }),
+  returns: v.union(
+    v.object({
+      hasEnough: v.boolean(),
+      free: v.number(),
+      paid: v.number(),
+      total: v.number(),
+      required: v.number(),
+      deficit: v.number(),
+    }),
+    v.null()
+  ),
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    if (args.organizationId) {
+      const membership = await ctx.db
+        .query("memberships")
+        .withIndex("by_user_org", (q) =>
+          q.eq("userId", user._id).eq("organizationId", args.organizationId!)
+        )
+        .unique();
+      if (!membership) return null;
+    }
 
     const ownerId = args.organizationId ?? user._id;
     const ownerType = args.organizationId ? "organization" : "user";

@@ -1,27 +1,20 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { createError } from "../lib/errors";
+import { requireAuth } from "../lib/auth";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 // Debug query to get detailed error information for failed papers
 export const getFailedPapersDebug = query({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+    requirePublicDebugEnabled();
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
+    const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
     if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+      throw createError("FORBIDDEN", "Unauthorized access");
     }
 
     // Get failed papers with error messages

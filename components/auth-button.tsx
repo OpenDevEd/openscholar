@@ -2,7 +2,15 @@
 
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
 import { Button } from "@/components/ui/button";
-import { LogIn, LogOut, User, Crown, CreditCard, Settings } from "lucide-react";
+import {
+  LogIn,
+  LogOut,
+  User,
+  Crown,
+  CreditCard,
+  Settings,
+  Loader2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -19,35 +27,35 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
+import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
 }
 
 export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
-  const { user, loading } = useAuth();
-  const { isAuthenticated } = useConvexAuth();
+  const { user } = useAuth();
+  const { phase } = useAuthReadiness();
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  // Fetch user subscription (will be undefined if not logged in or loading)
-  // We strictly skip this query if Convex is not fully authenticated to avoid "Unauthenticated" errors
-  const subscription = useQuery(
-    api.subscriptions.queries.getMy,
-    isAuthenticated ? {} : "skip",
-  );
+  const isInitializing = phase === "initializing";
+  const isSignedIn = phase === "authenticated";
 
-  // Fetch user credits
-  const credits = useQuery(
-    api.credits.queries.getMyBalance,
-    isAuthenticated ? {} : "skip",
-  );
+  const subscriptionState = useSubscriptionState();
+  const isSubscriptionLoading = subscriptionState.isSettling;
+  const hasResolvedSubscription = subscriptionState.isReady;
+  const resolvedPlan = subscriptionState.resolvedPlan;
+
+  const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {});
+  const credits = creditsQuery.data;
 
   // Loading state
-  if (loading) {
+  if (isInitializing) {
     return (
       <Button
         variant="ghost"
@@ -58,17 +66,22 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         )}
         disabled
       >
-        <User className="h-[1.2rem] w-[1.2rem] animate-pulse" />
+        <span className="flex h-[1.2rem] w-[1.2rem] items-center justify-center rounded-full border border-border/60 bg-background/70">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        </span>
         {!isCollapsed && (
-          <span className="text-sm font-medium">Loading...</span>
+          <span
+            className="h-2.5 w-16 animate-pulse rounded-full bg-muted/60"
+            aria-hidden
+          />
         )}
-        <span className="sr-only">Loading...</span>
+        <span className="sr-only">Loading account controls</span>
       </Button>
     );
   }
 
   // Not signed in
-  if (!user) {
+  if (!isSignedIn) {
     const button = (
       <Button
         variant="ghost"
@@ -99,24 +112,35 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   }
 
   // Signed in - get display info
-  const displayName = user.firstName
-    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
-    : user.email?.split("@")[0] || "User";
+  const fallbackEmail = "account@openscholar.ai";
+  const profile: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    profilePictureUrl?: string | null;
+  } = user ?? {
+    email: fallbackEmail,
+  };
+  const displayName = profile.firstName
+    ? `${profile.firstName}${profile.lastName ? ` ${profile.lastName}` : ""}`
+    : profile.email?.split("@")[0] || "User";
 
   const initials =
-    user.firstName && user.lastName
-      ? `${user.firstName[0]}${user.lastName[0]}`
-      : user.firstName
-        ? user.firstName[0]
-        : user.email?.[0]?.toUpperCase() || "U";
+    profile.firstName && profile.lastName
+      ? `${profile.firstName[0]}${profile.lastName[0]}`
+      : profile.firstName
+        ? profile.firstName[0]
+        : profile.email?.[0]?.toUpperCase() || "U";
 
   // Determine plan label and upgrade status
-  const planLabel = subscription?.plan
-    ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
-    : "Free";
+  const planLabel = resolvedPlan
+    ? resolvedPlan.charAt(0).toUpperCase() + resolvedPlan.slice(1)
+    : null;
+  const isResolvedProPlan = resolvedPlan === "pro" || resolvedPlan === "enterprise";
 
   const showUpgrade =
-    !subscription || subscription.plan === "free" || subscription.plan === "go";
+    hasResolvedSubscription &&
+    (resolvedPlan === "free" || resolvedPlan === "go");
 
   const trigger = (
     <Button
@@ -156,7 +180,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9">
               <AvatarImage
-                src={user.profilePictureUrl || undefined}
+                src={profile.profilePictureUrl || undefined}
                 alt={displayName}
               />
               <AvatarFallback>{initials}</AvatarFallback>
@@ -164,7 +188,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{displayName}</p>
               <p className="text-xs leading-none text-muted-foreground truncate max-w-[160px]">
-                {user.email}
+                {profile.email}
               </p>
             </div>
           </div>
@@ -177,17 +201,21 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             <span className="text-sm font-medium text-muted-foreground">
               Plan
             </span>
-            <div className="flex items-center text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-              {(subscription?.plan === "pro" ||
-                subscription?.plan === "enterprise") && (
-                <Crown className="w-3 h-3 mr-1" />
-              )}
-              {planLabel}
-            </div>
+            {isSubscriptionLoading ? (
+              <span
+                className="h-5 w-16 animate-pulse rounded-full bg-muted/60"
+                aria-hidden
+              />
+            ) : (
+              <div className="flex items-center text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                {isResolvedProPlan && <Crown className="w-3 h-3 mr-1" />}
+                {planLabel}
+              </div>
+            )}
           </div>
 
           {/* Credits display */}
-          {credits && credits.total > 0 && (
+          {creditsQuery.settlement === "ready" && credits && credits.total > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
                 Credits

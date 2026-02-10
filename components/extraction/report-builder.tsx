@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { FilterState, Question } from "@/lib/extraction/filtering";
+import { Loader2 } from "lucide-react";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 interface ReportBuilderProps {
   jobId: string;
@@ -65,19 +67,24 @@ export function ReportBuilder({
   canUseRunDiff,
 }: ReportBuilderProps) {
   const router = useRouter();
-  const savedViews = useQuery(api.extraction.queries.getSavedViews, {
+  const savedViewsQuery = useProtectedQuery(api.extraction.queries.getSavedViews, {
     jobId: jobId as any,
-  });
-  const templates = useQuery(api.extraction.queries.getWorkflowTemplates, {});
-  const reports = useQuery(api.extraction.queries.getReportSnapshots, {
+  } as any);
+  const templatesQuery = useProtectedQuery(api.extraction.queries.getWorkflowTemplates, {});
+  const reportsQuery = useProtectedQuery(api.extraction.queries.getReportSnapshots, {
     jobId: jobId as any,
-  });
-  const latestDiff = useQuery(api.extraction.queries.getRunDiff, {
+  } as any);
+  const latestDiffQuery = useProtectedQuery(api.extraction.queries.getRunDiff, {
     jobId: jobId as any,
-  });
-  const completedJobs = useQuery(api.extraction.queries.getMyJobs, {
+  } as any);
+  const completedJobsQuery = useProtectedQuery(api.extraction.queries.getMyJobs, {
     status: "completed",
   });
+  const savedViews = savedViewsQuery.data;
+  const templates = templatesQuery.data;
+  const reports = reportsQuery.data;
+  const latestDiff = latestDiffQuery.data;
+  const completedJobs = completedJobsQuery.data;
 
   const saveView = useMutation(api.extraction.mutations.saveExtractionSavedView);
   const deleteView = useMutation(api.extraction.mutations.deleteExtractionSavedView);
@@ -93,12 +100,38 @@ export function ReportBuilder({
   const [selectedBaselineJobId, setSelectedBaselineJobId] = useState<string>("");
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
+  const isDeferred =
+    savedViewsQuery.isDeferred ||
+    templatesQuery.isDeferred ||
+    reportsQuery.isDeferred ||
+    latestDiffQuery.isDeferred ||
+    completedJobsQuery.isDeferred;
+
+  const savedViewsData = savedViews?.status === "ok" ? savedViews.views : [];
+  const reportsData = reports?.status === "ok" ? reports.reports : [];
+  const latestDiffData = latestDiff?.status === "ok" ? latestDiff.diff : null;
+
   const baselineOptions = useMemo(
     () => (completedJobs || []).filter((job) => job._id !== jobId),
     [completedJobs, jobId]
   );
 
-  const latestReport = reports && reports.length > 0 ? reports[0] : null;
+  const latestReport = reportsData.length > 0 ? reportsData[0] : null;
+
+  if (
+    isDeferred ||
+    savedViews === undefined ||
+    templates === undefined ||
+    reports === undefined ||
+    latestDiff === undefined ||
+    completedJobs === undefined
+  ) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   async function handleSaveView() {
     if (!viewName.trim()) return;
@@ -185,10 +218,10 @@ export function ReportBuilder({
             </Button>
           </div>
           <div className="space-y-2">
-            {(savedViews || []).length === 0 ? (
+            {savedViewsData.length === 0 ? (
               <div className="text-sm text-muted-foreground">No saved views yet.</div>
             ) : (
-              (savedViews || []).map((view: any) => (
+              savedViewsData.map((view: any) => (
                 <div
                   key={view._id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/40 bg-muted/20 px-3 py-2"
@@ -404,16 +437,16 @@ export function ReportBuilder({
                 Generate diff
               </Button>
             </div>
-            {latestDiff ? (
+            {latestDiffData ? (
               <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">New answers: {latestDiff.summary.newAnswers}</Badge>
-                <Badge variant="outline">Changed answers: {latestDiff.summary.changedAnswers}</Badge>
-                <Badge variant="outline">Removed answers: {latestDiff.summary.removedAnswers}</Badge>
+                <Badge variant="outline">New answers: {latestDiffData.summary.newAnswers}</Badge>
+                <Badge variant="outline">Changed answers: {latestDiffData.summary.changedAnswers}</Badge>
+                <Badge variant="outline">Removed answers: {latestDiffData.summary.removedAnswers}</Badge>
                 <Badge variant="outline">
-                  Confidence shifts: {latestDiff.summary.confidenceShifts}
+                  Confidence shifts: {latestDiffData.summary.confidenceShifts}
                 </Badge>
                 <Badge variant="outline">
-                  Newly insufficient: {latestDiff.summary.newlyInsufficientEvidence}
+                  Newly insufficient: {latestDiffData.summary.newlyInsufficientEvidence}
                 </Badge>
               </div>
             ) : (

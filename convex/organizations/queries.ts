@@ -1,6 +1,19 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth, requireOrgMember } from "../lib/auth";
+import { getCurrentUser } from "../lib/auth";
+
+async function getMembership(
+  ctx: any,
+  userId: string,
+  organizationId: string
+) {
+  return await ctx.db
+    .query("memberships")
+    .withIndex("by_user_org", (q: any) =>
+      q.eq("userId", userId).eq("organizationId", organizationId)
+    )
+    .unique();
+}
 
 /**
  * Get organization by ID
@@ -8,6 +21,18 @@ import { requireAuth, requireOrgMember } from "../lib/auth";
 export const getById = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, { organizationId }) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_user_org", (q) =>
+        q.eq("userId", user._id).eq("organizationId", organizationId)
+      )
+      .unique();
+
+    if (!membership) return null;
+
     return await ctx.db.get(organizationId);
   },
 });
@@ -18,7 +43,10 @@ export const getById = query({
 export const getWithMembership = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, { organizationId }) => {
-    const { user, membership } = await requireOrgMember(ctx, organizationId);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const membership = await getMembership(ctx, user._id, organizationId);
+    if (!membership) return null;
     const org = await ctx.db.get(organizationId);
 
     return {
@@ -35,7 +63,10 @@ export const getWithMembership = query({
 export const getMembers = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, { organizationId }) => {
-    await requireOrgMember(ctx, organizationId);
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+    const membership = await getMembership(ctx, user._id, organizationId);
+    if (!membership) return [];
 
     const memberships = await ctx.db
       .query("memberships")
@@ -59,7 +90,10 @@ export const getMembers = query({
 export const getCredits = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, { organizationId }) => {
-    await requireOrgMember(ctx, organizationId);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const membership = await getMembership(ctx, user._id, organizationId);
+    if (!membership) return null;
 
     return await ctx.db
       .query("credits")
@@ -76,7 +110,10 @@ export const getCredits = query({
 export const getSubscription = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, { organizationId }) => {
-    await requireOrgMember(ctx, organizationId);
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const membership = await getMembership(ctx, user._id, organizationId);
+    if (!membership) return null;
 
     return await ctx.db
       .query("subscriptions")

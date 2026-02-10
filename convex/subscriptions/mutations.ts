@@ -51,14 +51,7 @@ export const cleanupDuplicateSubscriptions = mutation({
     keptPlan: v.optional(v.string()),
   }),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED", message: "Not authenticated" });
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
-    if (!user) throw new ConvexError({ code: "NOT_FOUND", message: "User not found" });
+    const user = await requireAuth(ctx);
 
     const subscriptions = await ctx.db
       .query("subscriptions")

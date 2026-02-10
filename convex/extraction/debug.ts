@@ -1,12 +1,20 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../lib/auth";
+import { createError } from "../lib/errors";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 // Diagnostic query to check extraction job status
 export const diagnoseJob = query({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
+    requirePublicDebugEnabled();
+
+    const user = await requireAuth(ctx);
     const job = await ctx.db.get(args.jobId);
-    if (!job) return { error: "Job not found" };
+    if (!job || job.userId !== user._id) {
+      throw createError("FORBIDDEN", "Unauthorized access");
+    }
 
     const papers = await ctx.db
       .query("extractionPapers")

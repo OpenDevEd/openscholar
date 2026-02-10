@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useAction, useConvexAuth, useQuery } from "convex/react";
-import { useAuth } from "@workos-inc/authkit-nextjs/components";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -20,7 +19,9 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
-import { getPlanTier } from "@/convex/lib/constants";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 
 const FEATURES = {
   free: ["10,000 free credits", "Basic search", "Limited queries"],
@@ -108,9 +109,14 @@ export function Pricing() {
   const [isMobile, setIsMobile] = useState(false);
 
   // Fetch current subscription
-  const subscription = useQuery(api.subscriptions.queries.getMy);
-  const currentPlan = subscription?.plan || "free";
-  const currentTier = getPlanTier(currentPlan);
+  const { phase, retryUserSync } = useAuthReadiness();
+  const subscriptionState = useSubscriptionState();
+  const isAuthLoading = subscriptionState.isAuthLoading;
+  const isSubscriptionLoading = subscriptionState.isQueryLoading;
+  const isAnonymous = subscriptionState.isAnonymous;
+  const hasResolvedSubscription = subscriptionState.isReady;
+  const resolvedPlan = subscriptionState.resolvedPlan;
+  const resolvedTier = subscriptionState.resolvedTier;
 
   // Fetch prices using SWR
   const {
@@ -145,8 +151,6 @@ export function Pricing() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
-  const { user } = useAuth();
   const router = useRouter();
 
   // Reorder plans for mobile (PRO first)
@@ -163,19 +167,8 @@ export function Pricing() {
   }, [isMobile]);
 
   const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
-    if (isAuthLoading) return;
-
-    // If not logged in at all, sign in
-    if (!user) {
+    if (phase !== "authenticated") {
       router.push("/auth/signin");
-      return;
-    }
-
-    // If logged in but Convex doesn't have the token yet
-    if (!isAuthenticated) {
-      toast.error("Authentication error", {
-        description: "Please refresh the page and try again.",
-      });
       return;
     }
 
@@ -241,13 +234,7 @@ export function Pricing() {
   };
 
   const getButtonConfig = (plan: PlanConfig) => {
-    const isLoading = subscription === undefined;
-    const isCurrent = currentPlan === plan.id;
-    const isUpgrade = plan.tier > currentTier;
-    const isDowngrade = plan.tier < currentTier;
-    const planPriceId = prices?.find((p) => p.plan === plan.id)?.id;
-
-    if (isLoading) {
+    if (isAuthLoading || isSubscriptionLoading) {
       return {
         disabled: true,
         label: "Loading...",
@@ -256,7 +243,7 @@ export function Pricing() {
       };
     }
 
-    if (!user) {
+    if (isAnonymous || phase !== "authenticated") {
       return {
         disabled: false,
         label: "Sign in to Subscribe",
@@ -264,6 +251,21 @@ export function Pricing() {
         onClick: () => router.push("/auth/signin"),
       };
     }
+
+    if (!hasResolvedSubscription || !resolvedPlan || resolvedTier === null) {
+      return {
+        disabled: true,
+        label: "Loading...",
+        variant: "outline" as const,
+        onClick: () => {},
+      };
+    }
+
+    const currentPlan = resolvedPlan;
+    const currentTier = resolvedTier;
+    const isCurrent = currentPlan === plan.id;
+    const isUpgrade = plan.tier > currentTier;
+    const isDowngrade = plan.tier < currentTier;
 
     if (isCurrent) {
       return {
@@ -310,6 +312,22 @@ export function Pricing() {
       onClick: () => {},
     };
   };
+
+  if (phase === "sync_error") {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <AuthStatePanel
+          variant="sync_error_retry"
+          title="Session setup issue"
+          description="Retry session sync to continue with billing actions."
+          onRetry={retryUserSync}
+          secondaryHref="/"
+          secondaryLabel="Go Home"
+          className="max-w-lg"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 min-h-screen">
@@ -364,7 +382,7 @@ export function Pricing() {
         )}
       >
         {orderedPlans.map((plan, index) => {
-          const isCurrent = currentPlan === plan.id;
+          const isCurrent = hasResolvedSubscription && resolvedPlan === plan.id;
           const buttonConfig = getButtonConfig(plan);
           const planPriceId = prices?.find((p) => p.plan === plan.id)?.id;
           const Icon = plan.icon;

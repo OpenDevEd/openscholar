@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
+import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -76,8 +77,8 @@ export default function RootLayout({
                     <div className="flex-1 flex flex-col min-w-0 min-h-0">
                       {/* Mobile Navbar */}
                       <MobileNavbar />
-                      
-                      {children}
+
+                      <AuthRouteGate>{children}</AuthRouteGate>
                     </div>
                   </div>
                   <Toaster />

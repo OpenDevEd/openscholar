@@ -7,6 +7,7 @@ import {
 import { Doc } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
 import { subscriptionValidator } from "../lib/validators";
+import { selectCanonicalSubscription } from "./lib/selectCanonicalSubscription";
 
 type StripeMetadata = {
   userId?: string;
@@ -33,8 +34,8 @@ async function getSubscriptionByStripeOrMetadata(
       )
       .order("desc")
       .collect();
-    const active = bySub.find((sub) => sub.status !== "canceled") ?? bySub[0];
-    if (active) return active;
+    const canonical = selectCanonicalSubscription(bySub);
+    if (canonical) return canonical;
   }
 
   // 2. Try by Stripe Customer ID
@@ -46,8 +47,8 @@ async function getSubscriptionByStripeOrMetadata(
       )
       .order("desc")
       .collect();
-    const active = byCustomer.find((sub) => sub.status !== "canceled") ?? byCustomer[0];
-    if (active) return active;
+    const canonical = selectCanonicalSubscription(byCustomer);
+    if (canonical) return canonical;
   }
 
   // 3. Try by Metadata (User ID or Org ID) - get active subscription
@@ -59,7 +60,7 @@ async function getSubscriptionByStripeOrMetadata(
       )
       .order("desc")
       .collect();
-    return subs.find(s => s.status !== "canceled") ?? subs[0] ?? null;
+    return selectCanonicalSubscription(subs);
   }
   
   if (args.metadata?.organizationId) {
@@ -70,7 +71,7 @@ async function getSubscriptionByStripeOrMetadata(
       )
       .order("desc")
       .collect();
-    return subs.find(s => s.status !== "canceled") ?? subs[0] ?? null;
+    return selectCanonicalSubscription(subs);
   }
 
   return null;
@@ -94,18 +95,7 @@ export const getSubscriptionByOwner = internalQuery({
       )
       .order("desc")
       .collect();
-
-    // Filter to active subscriptions only
-    const activeSubscriptions = subscriptions.filter(s => s.status !== "canceled");
-    
-    // Prefer active subscriptions with stripeSubscriptionId (real paid subscriptions)
-    const paidSubscription = activeSubscriptions.find(s => s.stripeSubscriptionId);
-    if (paidSubscription) {
-      return paidSubscription;
-    }
-
-    // Otherwise, return most recent active subscription (free plan stub)
-    return activeSubscriptions[0] ?? subscriptions[0] ?? null;
+    return selectCanonicalSubscription(subscriptions);
   },
 });
 
@@ -217,7 +207,7 @@ export const handleSubscriptionCanceled = internalMutation({
       )
       .order("desc")
       .collect();
-    const subscription = subscriptions.find((sub) => sub.status !== "canceled") ?? subscriptions[0] ?? null;
+    const subscription = selectCanonicalSubscription(subscriptions);
 
     if (!subscription) {
       console.log(`[handleSubscriptionCanceled] No subscription found for Stripe ID: ${args.stripeSubscriptionId}`);
@@ -271,7 +261,7 @@ export const handlePaymentFailed = internalMutation({
       )
       .order("desc")
       .collect();
-    const subscription = subscriptions.find((sub) => sub.status !== "canceled") ?? subscriptions[0] ?? null;
+    const subscription = selectCanonicalSubscription(subscriptions);
 
     if (!subscription) return null;
 
@@ -283,4 +273,3 @@ export const handlePaymentFailed = internalMutation({
     return null;
   },
 });
-

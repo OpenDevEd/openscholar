@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import { Database, Loader2 } from "lucide-react";
@@ -10,10 +9,14 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer, CommandCenterHeader } from "@/components/command-center";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 export default function ExtractionPage() {
   const router = useRouter();
-  const jobs = useQuery(api.extraction.queries.getMyJobs, {});
+  const { data: jobs, isDeferred } = useProtectedQuery(
+    api.extraction.queries.getMyJobs,
+    {},
+  );
 
   return (
     <PageWrapper>
@@ -33,7 +36,7 @@ export default function ExtractionPage() {
           />
 
           <div>
-            {jobs === undefined ? (
+            {isDeferred || jobs === undefined ? (
               <div className="flex items-center justify-center py-24">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>

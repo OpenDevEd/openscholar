@@ -1,12 +1,33 @@
 import { QueryCtx, MutationCtx, ActionCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
-import { ConvexError } from "convex/values";
 import { createUserWithDefaults } from "./userCreation";
 import { createError } from "./errors";
 
 
 export type AuthContext = QueryCtx | MutationCtx;
 export type ActionAuthContext = ActionCtx;
+
+async function getUserByWorkosId(
+  ctx: AuthContext,
+  workosId: string
+): Promise<Doc<"users"> | null> {
+  return await ctx.db
+    .query("users")
+    .withIndex("by_workos_id", (q) => q.eq("workosId", workosId))
+    .unique();
+}
+
+function assertActiveUser(user: Doc<"users">): Doc<"users"> {
+  if (user.state === "suspended") {
+    throw createError("FORBIDDEN", "Account suspended");
+  }
+
+  if (user.state === "deleted") {
+    throw createError("FORBIDDEN", "Account deleted");
+  }
+
+  return user;
+}
 
 /**
  * Get current user from JWT identity
@@ -18,10 +39,9 @@ export async function getCurrentUser(
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
 
-  return await ctx.db
-    .query("users")
-    .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-    .unique();
+  const user = await getUserByWorkosId(ctx, identity.subject);
+  if (!user || user.state !== "active") return null;
+  return user;
 }
 
 /**
@@ -32,13 +52,7 @@ export async function getCurrentUser(
 export async function getCurrentUserSafe(
   ctx: QueryCtx
 ): Promise<Doc<"users"> | null> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-
-  return await ctx.db
-    .query("users")
-    .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-    .unique();
+  return await getCurrentUser(ctx);
 }
 
 /**
@@ -46,23 +60,21 @@ export async function getCurrentUserSafe(
  * Throws if not authenticated or account is not active
  */
 export async function requireAuth(ctx: AuthContext, allowSyncing?: boolean): Promise<Doc<"users">> {
-  const user = await getCurrentUser(ctx);
-  
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw createError("UNAUTHENTICATED", "Authentication required");
+  }
+
+  const user = await getUserByWorkosId(ctx, identity.subject);
+
   if (!user) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity && allowSyncing) {
-      // User is authenticated but not yet in DB (race condition)
-      // Return a temporary mock or throw a specific error the client can handle?
-      // Actually, safest is to throw a specific error or strict null check
-       throw createError("UNAUTHENTICATED", "User not synced yet");
+    if (allowSyncing) {
+      throw createError("UNAUTHENTICATED", "User not synced yet");
     }
     throw createError("UNAUTHENTICATED", "Authentication required");
   }
 
-  if (user.state !== "active") {
-    throw createError("FORBIDDEN", "Account suspended");
-  }
-  return user;
+  return assertActiveUser(user);
 }
 
 /**
@@ -124,12 +136,10 @@ export async function getOrCreateUserFromIdentity(
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw createError("UNAUTHENTICATED", "Authentication required");
 
-  const existing = await ctx.db
-    .query("users")
-    .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-    .unique();
+  const existing = await getUserByWorkosId(ctx, identity.subject);
 
   if (existing) {
+    assertActiveUser(existing);
     // Update last login
     await ctx.db.patch(existing._id, { lastLoginAt: Date.now() });
     return existing;

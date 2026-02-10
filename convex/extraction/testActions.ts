@@ -1,25 +1,15 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
+import { requireAuth } from "../lib/auth";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 export const createTestJob = mutation({
   args: {},
   handler: async (ctx): Promise<{ jobId: string }> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Authentication required");
-    }
-    
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
-      .unique();
+    requirePublicDebugEnabled();
 
-    if (!user) {
-      throw new Error("User not found");
-    }
-    
+    const user = await requireAuth(ctx);
     const userId = user._id;
 
     // Create job directly in database
