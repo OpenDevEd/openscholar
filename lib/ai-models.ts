@@ -1,6 +1,7 @@
 import type { AIModel, AIProvider, AIProviderConfig } from './types/ai.types'
 
 const OPENAI_MODELS: AIModel[] = [
+  // GPT-5.2 Family (Flagship)
   {
     id: 'gpt-5.2',
     name: 'GPT-5.2',
@@ -20,6 +21,16 @@ const OPENAI_MODELS: AIModel[] = [
     capabilities: ['vision', 'function-calling', 'reasoning'],
   },
   {
+    id: 'gpt-5.2-codex',
+    name: 'GPT-5.2 Codex',
+    provider: 'openai',
+    description: 'Coding-optimized GPT-5.2 model',
+    contextWindow: 400000,
+    pricing: { input: 1.75, output: 14.00 },
+    capabilities: ['vision', 'function-calling'],
+  },
+  // GPT-5.1 Family
+  {
     id: 'gpt-5.1',
     name: 'GPT-5.1',
     provider: 'openai',
@@ -28,6 +39,25 @@ const OPENAI_MODELS: AIModel[] = [
     pricing: { input: 1.25, output: 10.00 },
     capabilities: ['vision', 'function-calling', 'reasoning'],
   },
+  {
+    id: 'gpt-5.1-codex',
+    name: 'GPT-5.1 Codex',
+    provider: 'openai',
+    description: 'Coding-optimized GPT-5.1 model',
+    contextWindow: 400000,
+    pricing: { input: 1.25, output: 10.00 },
+    capabilities: ['vision', 'function-calling'],
+  },
+  {
+    id: 'gpt-5.1-codex-mini',
+    name: 'GPT-5.1 Codex Mini',
+    provider: 'openai',
+    description: 'Fast coding-optimized model',
+    contextWindow: 400000,
+    pricing: { input: 0.25, output: 2.00 },
+    capabilities: ['function-calling'],
+  },
+  // GPT-5 Family
   {
     id: 'gpt-5',
     name: 'GPT-5',
@@ -64,14 +94,89 @@ const OPENAI_MODELS: AIModel[] = [
     pricing: { input: 0.05, output: 0.40 },
     capabilities: ['function-calling'],
   },
+  // o-Series Reasoning Models
+  {
+    id: 'o4-mini',
+    name: 'o4-mini',
+    provider: 'openai',
+    description: 'Latest compact reasoning model with vision',
+    contextWindow: 200000,
+    pricing: { input: 1.10, output: 4.40 },
+    capabilities: ['vision', 'function-calling', 'reasoning'],
+  },
+  {
+    id: 'o3',
+    name: 'o3',
+    provider: 'openai',
+    description: 'Advanced reasoning model with vision',
+    contextWindow: 200000,
+    pricing: { input: 2.00, output: 8.00 },
+    capabilities: ['vision', 'function-calling', 'reasoning'],
+  },
+  {
+    id: 'o3-pro',
+    name: 'o3 Pro',
+    provider: 'openai',
+    description: 'Highest-compute reasoning model',
+    contextWindow: 200000,
+    pricing: { input: 20.00, output: 80.00 },
+    capabilities: ['vision', 'function-calling', 'reasoning'],
+  },
+  {
+    id: 'o3-mini',
+    name: 'o3-mini',
+    provider: 'openai',
+    description: 'Efficient reasoning model',
+    contextWindow: 200000,
+    pricing: { input: 1.10, output: 4.40 },
+    capabilities: ['function-calling', 'reasoning'],
+  },
+  {
+    id: 'o1',
+    name: 'o1',
+    provider: 'openai',
+    description: 'Original deep reasoning model',
+    contextWindow: 200000,
+    pricing: { input: 15.00, output: 60.00 },
+    capabilities: ['function-calling', 'reasoning'],
+  },
+  // GPT-4.1 Family (1M context)
+  {
+    id: 'gpt-4.1',
+    name: 'GPT-4.1',
+    provider: 'openai',
+    description: 'High-performance model with 1M token context',
+    contextWindow: 1047576,
+    pricing: { input: 2.00, output: 8.00 },
+    capabilities: ['vision', 'function-calling'],
+  },
+  {
+    id: 'gpt-4.1-mini',
+    name: 'GPT-4.1 Mini',
+    provider: 'openai',
+    description: 'Efficient model with 1M token context',
+    contextWindow: 1047576,
+    pricing: { input: 0.40, output: 1.60 },
+    capabilities: ['vision', 'function-calling'],
+  },
+  {
+    id: 'gpt-4.1-nano',
+    name: 'GPT-4.1 Nano',
+    provider: 'openai',
+    description: 'Ultra-efficient model with 1M token context',
+    contextWindow: 1047576,
+    pricing: { input: 0.10, output: 0.40 },
+    capabilities: ['vision', 'function-calling'],
+  },
+  // GPT-4o Family
   {
     id: 'gpt-4o',
     name: 'GPT-4o',
     provider: 'openai',
-    description: 'OpenAI\'s advanced multimodal model',
+    description: 'Multimodal model with 128K context',
     contextWindow: 128000,
     pricing: { input: 2.50, output: 10.00 },
-    capabilities: ['vision', 'function-calling', 'reasoning'],
+    capabilities: ['vision', 'function-calling'],
   },
   {
     id: 'gpt-4o-mini',
@@ -85,6 +190,7 @@ const OPENAI_MODELS: AIModel[] = [
 ]
 
 const GOOGLE_MODELS: AIModel[] = [
+  // Gemini 3 Family (Preview)
   {
     id: 'gemini-3-pro-preview',
     name: 'Gemini 3 Pro Preview',
@@ -103,6 +209,7 @@ const GOOGLE_MODELS: AIModel[] = [
     pricing: { input: 0.50, output: 3.00 },
     capabilities: ['vision', 'function-calling', 'reasoning'],
   },
+  // Gemini 2.5 Family (Production)
   {
     id: 'gemini-2.5-pro',
     name: 'Gemini 2.5 Pro',
@@ -130,41 +237,25 @@ const GOOGLE_MODELS: AIModel[] = [
     pricing: { input: 0.10, output: 0.40 },
     capabilities: ['vision', 'function-calling'],
   },
+  // Gemini 2.0 Family (Deprecated March 31, 2026)
   {
     id: 'gemini-2.0-flash',
     name: 'Gemini 2.0 Flash',
     provider: 'google',
-    description: 'Gemini 2.0 Flash model',
+    description: 'Gemini 2.0 Flash model (deprecated March 2026)',
     contextWindow: 1048576,
     pricing: { input: 0.10, output: 0.40 },
-    capabilities: ['vision', 'function-calling'],
-  },
-  {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
-    provider: 'google',
-    description: 'High-performance Pro model',
-    contextWindow: 2097152,
-    pricing: { input: 3.50, output: 10.50 },
-    capabilities: ['vision', 'function-calling'],
-  },
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
-    provider: 'google',
-    description: 'Fast and cost-effective model',
-    contextWindow: 1048576,
-    pricing: { input: 0.07, output: 0.30 },
     capabilities: ['vision', 'function-calling'],
   },
 ]
 
 const ANTHROPIC_MODELS: AIModel[] = [
+  // Latest Generation
   {
-    id: 'claude-opus-4-5',
-    name: 'Claude Opus 4.5',
+    id: 'claude-opus-4-6',
+    name: 'Claude Opus 4.6',
     provider: 'anthropic',
-    description: 'Latest and most powerful Claude model',
+    description: 'Most powerful Claude model with adaptive thinking',
     contextWindow: 200000,
     pricing: { input: 5.00, output: 25.00 },
     capabilities: ['vision', 'function-calling', 'reasoning'],
@@ -185,7 +276,17 @@ const ANTHROPIC_MODELS: AIModel[] = [
     description: 'Latest fast and efficient model',
     contextWindow: 200000,
     pricing: { input: 1.00, output: 5.00 },
-    capabilities: ['vision', 'function-calling'],
+    capabilities: ['vision', 'function-calling', 'reasoning'],
+  },
+  // Previous Generation
+  {
+    id: 'claude-opus-4-5',
+    name: 'Claude Opus 4.5',
+    provider: 'anthropic',
+    description: 'Powerful Claude model with extended thinking',
+    contextWindow: 200000,
+    pricing: { input: 5.00, output: 25.00 },
+    capabilities: ['vision', 'function-calling', 'reasoning'],
   },
   {
     id: 'claude-opus-4-1',
@@ -197,7 +298,16 @@ const ANTHROPIC_MODELS: AIModel[] = [
     capabilities: ['vision', 'function-calling', 'reasoning'],
   },
   {
-    id: 'claude-sonnet-4',
+    id: 'claude-opus-4-0',
+    name: 'Claude Opus 4',
+    provider: 'anthropic',
+    description: 'Original Claude 4 Opus model',
+    contextWindow: 200000,
+    pricing: { input: 15.00, output: 75.00 },
+    capabilities: ['vision', 'function-calling', 'reasoning'],
+  },
+  {
+    id: 'claude-sonnet-4-0',
     name: 'Claude Sonnet 4',
     provider: 'anthropic',
     description: 'High-performance model with 1M context window',
@@ -205,6 +315,7 @@ const ANTHROPIC_MODELS: AIModel[] = [
     pricing: { input: 3.00, output: 15.00 },
     capabilities: ['vision', 'function-calling', 'reasoning'],
   },
+  // Legacy Models
   {
     id: 'claude-3-7-sonnet-latest',
     name: 'Claude 3.7 Sonnet',
@@ -215,31 +326,13 @@ const ANTHROPIC_MODELS: AIModel[] = [
     capabilities: ['vision', 'function-calling', 'reasoning'],
   },
   {
-    id: 'claude-3-5-sonnet-latest',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'anthropic',
-    description: 'Versatile Sonnet model',
-    contextWindow: 200000,
-    pricing: { input: 3.00, output: 15.00 },
-    capabilities: ['vision', 'function-calling', 'reasoning'],
-  },
-  {
     id: 'claude-3-5-haiku-latest',
     name: 'Claude 3.5 Haiku',
     provider: 'anthropic',
     description: 'Fast and lightweight model',
     contextWindow: 200000,
-    pricing: { input: 1.00, output: 5.00 },
+    pricing: { input: 0.80, output: 4.00 },
     capabilities: ['vision', 'function-calling'],
-  },
-  {
-    id: 'claude-3-opus-latest',
-    name: 'Claude 3 Opus',
-    provider: 'anthropic',
-    description: 'Most capable Claude 3 model',
-    contextWindow: 200000,
-    pricing: { input: 15.00, output: 75.00 },
-    capabilities: ['vision', 'function-calling', 'reasoning'],
   },
   {
     id: 'claude-3-haiku',
@@ -256,7 +349,7 @@ const PROVIDER_CONFIGS: Record<AIProvider, AIProviderConfig> = {
   openai: {
     id: 'openai',
     name: 'OpenAI',
-    description: 'Access OpenAI\'s advanced models like GPT-4o and o1',
+    description: 'Access OpenAI\'s advanced models like GPT-5.2 and o3',
     models: OPENAI_MODELS,
     apiKeyPlaceholder: 'Enter your OpenAI API key',
     apiKeyUrl: 'https://platform.openai.com/api-keys',
@@ -323,7 +416,7 @@ const DEFAULT_MODELS: Record<AIProvider, string> = {
   google: 'gemini-3-flash-preview',
   anthropic: 'claude-sonnet-4-5',
   deepseek: 'deepseek-chat',
-  openrouter: 'anthropic/claude-sonnet-4-5',
+  openrouter: 'openrouter/free',
   azure: 'gpt-5-mini',
 }
 

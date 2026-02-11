@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
 import { useSearchHistoryStore } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { languageOptions } from "@/lib/ai/core/languages";
@@ -101,13 +101,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (!aiInstructions.trim() || !urlQuery.trim()) return;
 
     if (!isConfigured) {
-      toast.error("Configuration Required", {
-        description: "Please configure your AI API key in settings.",
-        action: {
-          label: "Configure",
-          onClick: () => window.location.href = "/settings/ai",
-        },
-      });
+      appToast.ai.configRequired("Please configure your AI API key in settings.");
       return;
     }
 
@@ -138,26 +132,11 @@ Please enhance this academic search query according to the user's specific instr
       setQueryFlash(true);
       setTimeout(() => setQueryFlash(false), 1000);
 
-      toast.success("Query enhanced!", {
-        description: response.explanation,
-      });
+      appToast.ai.succeeded("Query enhanced", response.explanation || undefined);
 
       setAiInstructions("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Enhancement failed";
-      if (message === "API_KEY_REQUIRED") {
-        toast.error("API Key Required", {
-          description: "Please configure your AI API key.",
-          action: {
-            label: "Configure",
-            onClick: () => window.location.href = "/settings/ai",
-          },
-        });
-      } else {
-        toast.error("Enhancement failed", {
-          description: "Please check your configuration and try again.",
-        });
-      }
+      appToast.ai.failed("Enhancement", error);
     } finally {
       setIsEnhancing(false);
     }

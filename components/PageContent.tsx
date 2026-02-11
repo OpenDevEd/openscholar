@@ -6,7 +6,7 @@ import {
   useUIStore,
   useCurrentQueryStore,
 } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import {
   useQueryChangeHandler,
   useCreateSearchFilters,
@@ -70,15 +70,11 @@ function PageContent() {
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;
 
-        toast.success("Research Question Processed", {
-          description: `Converted to search query: "${searchQuery}"`,
-        });
+        appToast.ai.succeeded("Research question processed", `Converted to search query: "${searchQuery}"`);
 
       } catch (error) {
         console.error("Failed to convert research question:", error);
-        toast.error("Question Conversion Failed", {
-          description: "Failed to convert research question to search query. Please check your AI configuration.",
-        });
+        appToast.ai.failed("Question conversion", error);
         return;
       } finally {
         // End AI enhancement loading state

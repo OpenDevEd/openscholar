@@ -23,7 +23,7 @@ import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
-import { toasts } from "@/lib/toast-utils";
+import { appToast } from "@/lib/toast";
 import { BookmarkForm } from "@/components/command-center";
 import { QueryText } from "@/components/ui/query-text";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
@@ -65,9 +65,9 @@ export function HistoryItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(item.query);
-      toasts.clipboard.queryCopied();
+      appToast.clipboard.copied("Query");
     } catch {
-      toasts.clipboard.queryCopied();
+      appToast.clipboard.copied("Query");
     }
   };
 
@@ -80,28 +80,28 @@ export function HistoryItem({
       confirmText: "Delete",
       onConfirm: () => {
         removeSearchResult(actualIndex);
-        toasts.history.deleted();
+        appToast.entity.deleted("search entry");
       },
     });
   };
 
   const handleBookmarkSubmit = () => {
     if (!bookmarkName.trim()) {
-      toasts.bookmark.nameRequired();
+      appToast.validation.failed("Bookmark name is required.");
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      toasts.bookmark.invalidChars();
+      appToast.validation.failed("Only letters, numbers, and dashes are allowed.");
       return;
     }
     if (keywords[bookmarkName]) {
-      toasts.bookmark.exists(bookmarkName);
+      appToast.validation.failed(`Bookmark "${bookmarkName}" already exists.`);
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    toasts.bookmark.saved(bookmarkName);
+    appToast.entity.created("bookmark", bookmarkName);
     setIsBookmarking(false);
     setBookmarkName("");
   };

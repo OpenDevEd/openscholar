@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { subtleSpring } from "@/lib/animation-config";
+import posthog from "posthog-js";
 
 export function BookmarksAddForm() {
   const [name, setName] = useState("");
@@ -30,24 +31,33 @@ export function BookmarksAddForm() {
 
     const validationError = validateKeyword(trimmedName);
     if (validationError) {
-      toast.error(validationError);
+      appToast.validation.failed(validationError);
       return;
     }
 
     if (!trimmedExpansion) {
-      toast.error("Expansion text cannot be empty");
+      appToast.validation.failed("Expansion text cannot be empty.");
       return;
     }
 
     if (keywords[trimmedName]) {
-      toast.error(`Bookmark "${trimmedName}" already exists`);
+      appToast.validation.failed(`Bookmark "${trimmedName}" already exists.`);
       return;
     }
 
     addKeyword(trimmedName, trimmedExpansion);
+
+    // Track bookmark creation event
+    posthog.capture("bookmark_created", {
+      bookmark_name: trimmedName,
+      expansion_length: trimmedExpansion.length,
+      has_boolean_operators: /\b(AND|OR|NOT)\b/.test(trimmedExpansion),
+      total_bookmarks: Object.keys(keywords).length + 1,
+    });
+
     setName("");
     setExpansion("");
-    toast.success(`Bookmark "${trimmedName}" added successfully`);
+    appToast.entity.created("bookmark", trimmedName);
   };
 
   return (

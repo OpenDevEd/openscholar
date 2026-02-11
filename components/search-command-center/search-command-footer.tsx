@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import posthog from "posthog-js";
 import { motion } from "motion/react";
 import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore } from "@/lib/store";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -44,24 +45,28 @@ export function SearchCommandFooter({
   const showBroadenButton = totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
   const showNarrowButton = totalCount > 1000 && effectiveQuery.trim();
 
+  // Wrap screening toggle to add tracking
+  const handleScreeningToggle = () => {
+    posthog.capture("screening_panel_toggled", {
+      is_open: !isScreeningOpen,
+    });
+    onScreeningToggle();
+  };
+
   const handleBroadenQuery = async () => {
-    if (!effectiveQuery.trim()) return;
+    if (!effectiveQuery.trim()) {
+      appToast.validation.failed("No active query to broaden.");
+      return;
+    }
 
     if (!isConfigured) {
-      toast.error("AI Not Configured", {
-        description: "Please configure your AI settings first.",
-        action: {
-          label: "Configure",
-          onClick: () => window.location.href = "/settings/ai",
-        },
-      });
+      appToast.ai.configRequired("Please configure your AI settings to broaden this query.");
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
     setIsBroadening(true);
-    const loadingToast = toast.loading("Broadening search...");
 
     try {
       const broadenPrompt = `Current query: "${expandedQuery}"
@@ -82,36 +87,34 @@ Return a more inclusive version of this query.`;
         search.setQuery(result.enhancedQuery);
       }
 
-      toast.dismiss(loadingToast);
-      toast.success("Query broadened", {
-        description: `New query: "${result.enhancedQuery}"`,
+      // Track query broadened
+      posthog.capture("query_broadened", {
+        original_query: expandedQuery,
+        broadened_query: result.enhancedQuery,
       });
-    } catch {
-      toast.dismiss(loadingToast);
-      toast.error("Failed to broaden query");
+
+      appToast.ai.succeeded("Query broadened", `New query: "${result.enhancedQuery}"`);
+    } catch (error) {
+      appToast.ai.failed("Broaden query", error);
     } finally {
       setIsBroadening(false);
     }
   };
 
   const handleNarrowQuery = async () => {
-    if (!effectiveQuery.trim()) return;
+    if (!effectiveQuery.trim()) {
+      appToast.validation.failed("No active query to narrow.");
+      return;
+    }
 
     if (!isConfigured) {
-      toast.error("AI Not Configured", {
-        description: "Please configure your AI settings first.",
-        action: {
-          label: "Configure",
-          onClick: () => window.location.href = "/settings/ai",
-        },
-      });
+      appToast.ai.configRequired("Please configure your AI settings to narrow this query.");
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
     setIsNarrowing(true);
-    const loadingToast = toast.loading("Making search more specific...");
 
     try {
       const narrowPrompt = `Current query: "${expandedQuery}"
@@ -133,13 +136,15 @@ Return a more targeted version of this query.`;
         search.setQuery(result.enhancedQuery);
       }
 
-      toast.dismiss(loadingToast);
-      toast.success("Query made more specific", {
-        description: `New query: "${result.enhancedQuery}"`,
+      // Track query narrowed
+      posthog.capture("query_narrowed", {
+        original_query: expandedQuery,
+        narrowed_query: result.enhancedQuery,
       });
-    } catch {
-      toast.dismiss(loadingToast);
-      toast.error("Failed to narrow query");
+
+      appToast.ai.succeeded("Query made more specific", `New query: "${result.enhancedQuery}"`);
+    } catch (error) {
+      appToast.ai.failed("Narrow query", error);
     } finally {
       setIsNarrowing(false);
     }
@@ -167,32 +172,46 @@ Return a more targeted version of this query.`;
           <div className="hidden sm:flex items-center gap-2">
             {showBroadenButton && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleBroadenQuery}
                 disabled={isBroadening || isLoading}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className={cn(
+                  "h-7 px-2.5 text-xs gap-1.5",
+                  "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                  "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                  "border-violet-500/30 hover:border-violet-500/50",
+                  "text-violet-700 dark:text-violet-300",
+                  "transition-all duration-200"
+                )}
               >
                 {isBroadening ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Expand className="h-3 w-3 mr-1" />
+                  <Expand className="h-3 w-3" />
                 )}
                 Make broader
               </Button>
             )}
             {showNarrowButton && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleNarrowQuery}
                 disabled={isNarrowing || isLoading}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                className={cn(
+                  "h-7 px-2.5 text-xs gap-1.5",
+                  "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                  "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                  "border-violet-500/30 hover:border-violet-500/50",
+                  "text-violet-700 dark:text-violet-300",
+                  "transition-all duration-200"
+                )}
               >
                 {isNarrowing ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Minimize2 className="h-3 w-3 mr-1" />
+                  <Minimize2 className="h-3 w-3" />
                 )}
                 Make specific
               </Button>
@@ -205,7 +224,7 @@ Return a more targeted version of this query.`;
       <Button
         variant={isScreeningOpen ? "default" : "outline"}
         size="sm"
-        onClick={onScreeningToggle}
+        onClick={handleScreeningToggle}
         className={cn(
           "h-8 gap-1.5",
           isScreeningOpen && "bg-primary text-primary-foreground"

@@ -65,8 +65,8 @@ export function PaperCardListSimple({
       <div
         role="button"
         tabIndex={0}
-        onClick={() => openFocusMode(isMobile, resultIndex)}
-        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex)}
+        onClick={() => openFocusMode(isMobile, resultIndex, result.id)}
+        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
         className="w-full text-left cursor-pointer"
       >
         <div className="flex items-center gap-3 p-3 @sm/card:p-4">

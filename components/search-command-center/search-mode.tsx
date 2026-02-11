@@ -14,10 +14,11 @@ import {
   useKeywordExpansionDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
-import { toast } from "sonner";
+import { appToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
+import posthog from "posthog-js";
 
 interface SearchModeProps {
   isLoading?: boolean;
@@ -91,20 +92,12 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     e.preventDefault();
 
     if (!effectiveSearchId) {
-      toast.error("No active search", {
-        description: "Please perform a search first.",
-      });
+      appToast.validation.failed("Please perform a search first.");
       return;
     }
 
     if (!isEnhanceConfigured) {
-      toast.error("AI Not Configured", {
-        description: "Please configure your AI settings first.",
-        action: {
-          label: "Configure",
-          onClick: () => window.location.href = "/settings/ai",
-        },
-      });
+      appToast.ai.configRequired("Please configure your AI settings first.");
       return;
     }
 
@@ -127,30 +120,22 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         search.setQuery(result.enhancedQuery);
       }
 
-      toast.success("Question converted to keywords", {
-        description: `Searching for: "${result.enhancedQuery}"`,
+      // Track AI query enhancement event
+      posthog.capture("ai_query_enhanced", {
+        original_question: questionToProcess,
+        enhanced_query: result.enhancedQuery,
+        language: currentSearchResult?.language || "en",
       });
+
+      appToast.ai.succeeded("Question converted to keywords", `Searching for: "${result.enhancedQuery}"`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      if (message === "API_KEY_REQUIRED") {
-        toast.error("API Key Required", {
-          description: "Please configure your AI API key.",
-          action: {
-            label: "Configure",
-            onClick: () => window.location.href = "/settings/ai",
-          },
-        });
-      } else if (message.includes("Insufficient credits")) {
-        toast.error("Insufficient Credits", {
-          description: "Please add more credits to continue.",
-          action: {
-            label: "Add Credits",
-            onClick: () => window.location.href = "/settings/credits",
-          },
-        });
-      } else {
-        toast.error("Enhancement Failed", { description: message });
-      }
+      // Track enhancement error
+      posthog.capture("ai_query_enhancement_failed", {
+        original_question: questionToProcess,
+        error_message: getErrorMessage(error, "Unknown error"),
+      });
+
+      appToast.ai.failed("Enhancement", error);
     } finally {
       setIsEnhancing(false);
     }
@@ -160,23 +145,23 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const handleLanguageChange = async (language: string) => {
     if (!search || language === selectedLanguage) return;
 
+    const previousLanguage = selectedLanguage;
     search.setLanguage(language || null);
+
+    // Track language selection
+    posthog.capture("language_selected", {
+      language: language || "none",
+      previous_language: previousLanguage || "none",
+      context: "search",
+    });
 
     if (localInputValue.trim() && language) {
       if (!isTranslateConfigured) {
-        toast.error("AI Not Configured", {
-          description: "Please configure your AI settings to translate queries.",
-          action: {
-            label: "Configure",
-            onClick: () => window.location.href = "/settings/ai",
-          },
-        });
+        appToast.ai.configRequired("Please configure your AI settings to translate queries.");
         return;
       }
 
       setIsTranslating(true);
-      const loadingToast = toast.loading("Translating query...");
-
       try {
         const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
         const result = await translateQueryFn({
@@ -185,24 +170,24 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         });
 
         search.setQuery(result.translatedQuery);
-        toast.dismiss(loadingToast);
-        toast.success("Query translated", {
-          description: `Translated to ${language}`,
+
+        // Track query translation event
+        posthog.capture("query_translated", {
+          original_query: expandedQuery,
+          translated_query: result.translatedQuery,
+          target_language: language,
         });
+
+        appToast.ai.succeeded("Query translated", `Translated to ${language}`);
       } catch (error) {
-        toast.dismiss(loadingToast);
-        const message = error instanceof Error ? error.message : "Translation failed";
-        if (message === "API_KEY_REQUIRED") {
-          toast.error("API Key Required", {
-            description: "Please configure your AI API key.",
-            action: {
-              label: "Configure",
-              onClick: () => window.location.href = "/settings/ai",
-            },
-          });
-        } else {
-          toast.error("Translation failed");
-        }
+        // Track translation error
+        posthog.capture("query_translation_failed", {
+          original_query: localInputValue,
+          target_language: language,
+          error_message: getErrorMessage(error, "Translation failed"),
+        });
+
+        appToast.ai.failed("Translation", error);
       } finally {
         setIsTranslating(false);
       }

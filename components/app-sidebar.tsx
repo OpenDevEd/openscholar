@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
@@ -38,6 +38,7 @@ import {
   BookOpen,
   Clock,
   Database,
+  Wand2,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -610,11 +611,60 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             transition={{ duration: 0.2 }}
           >
             <ThemeToggle />
-            <AuthButton isCollapsed={false} />
+            <div className="flex items-center gap-2">
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Link href="/settings/ai">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-2.5 text-xs gap-1.5",
+                        "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                        "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                        "border-violet-500/30 hover:border-violet-500/50",
+                        "text-violet-700 dark:text-violet-300",
+                        "transition-all duration-200"
+                      )}
+                    >
+                      <Wand2 className="h-3 w-3" />
+                      AI
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  AI Settings
+                </TooltipContent>
+              </Tooltip>
+              <AuthButton isCollapsed={false} />
+            </div>
           </motion.div>
         ) : (
           <>
             <ThemeToggle />
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Link href="/settings/ai">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-7 w-7 px-0",
+                      "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+                      "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+                      "border-violet-500/30 hover:border-violet-500/50",
+                      "text-violet-700 dark:text-violet-300",
+                      "transition-all duration-200"
+                    )}
+                  >
+                    <Wand2 className="h-3 w-3" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                AI Settings
+              </TooltipContent>
+            </Tooltip>
             <AuthButton isCollapsed={true} />
           </>
         )}

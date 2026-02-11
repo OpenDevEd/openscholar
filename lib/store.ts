@@ -121,6 +121,7 @@ interface AIConfigState {
   model: string
   apiKey: string
   apiKeyMode: 'local' | 'credits'
+  providerApiKeys: Record<string, string>
   setProvider: (provider: AIProvider) => void
   setModel: (model: string) => void
   setApiKey: (apiKey: string) => void
@@ -699,15 +700,33 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
 export const useAIConfigStore = create<AIConfigState>()(
   persist(
     (set) => ({
-      provider: 'openai',
-      model: 'o4-mini-2025-04-16',
+      provider: 'openrouter',
+      model: 'openrouter/free',
       apiKey: '',
       apiKeyMode: 'local',
-      setProvider: (provider) => set({ provider }),
+      providerApiKeys: {},
+      setProvider: (provider) =>
+        set((state) => {
+          const providerApiKeys = { ...(state.providerApiKeys ?? {}) };
+          providerApiKeys[state.provider] = state.apiKey ?? '';
+
+          return {
+            provider,
+            apiKey: providerApiKeys[provider] ?? '',
+            providerApiKeys,
+          };
+        }),
       setModel: (model) => set({ model }),
-      setApiKey: (apiKey) => set({ apiKey }),
+      setApiKey: (apiKey) =>
+        set((state) => ({
+          apiKey,
+          providerApiKeys: {
+            ...(state.providerApiKeys ?? {}),
+            [state.provider]: apiKey,
+          },
+        })),
       setApiKeyMode: (apiKeyMode) => set({ apiKeyMode }),
-      clearConfig: () => set({ provider: 'openai', model: 'o4-mini-2025-04-16', apiKey: '', apiKeyMode: 'local' }),
+      clearConfig: () => set({ provider: 'openrouter', model: 'openrouter/free', apiKey: '', apiKeyMode: 'local', providerApiKeys: {} }),
     }),
     {
       name: 'ai-config-storage',
@@ -839,7 +858,7 @@ export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
 export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>((set) => ({
   isOpen: false,
   setIsOpen: (open) => set({ isOpen: open }),
-})) 
+}))
 
 // Translation Store - for storing translation data by paper ID
 interface TranslationData {

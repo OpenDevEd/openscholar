@@ -11,24 +11,67 @@
  * NO useEffects for syncing - URL is truth, SWR handles caching.
  */
 
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
 import useSWR from 'swr';
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 
-import { searchParamsParsers, serializeSearchParams } from '../search-params/parsers';
+import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
+import { validateAndExpandKeywordsSilently } from '../keyword-validation';
 import type { SearchFilters, SearchField } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData } from './types';
+import {
+  SEARCH_EVENT_SCHEMA_VERSION,
+  SEARCH_FETCH_PARAM_KEYS,
+  buildSearchFilterSnapshot,
+  captureSearchExecuted,
+  captureSearchFailed,
+  captureSearchSucceeded,
+  createSearchRequestId,
+  deriveSearchTrigger,
+  getChangedParamKeys,
+  type SearchBaseEventPayload,
+  type SearchParamKey,
+} from '../posthog-search';
 
 // Create context with undefined default (must be used within provider)
 const SearchContext = createContext<SearchContextValue | undefined>(undefined);
 
 interface SearchProviderProps {
   children: ReactNode;
+}
+
+interface PendingSearchRequest {
+  startedAt: number;
+  payload: SearchBaseEventPayload;
+}
+
+const SEARCH_FETCH_PARAM_KEY_SET = new Set<SearchParamKey>(SEARCH_FETCH_PARAM_KEYS);
+
+function parseSearchErrorType(message: string): string {
+  const statusMatch = message.match(/\b(\d{3})\b/);
+  if (statusMatch) {
+    const status = statusMatch[1];
+    return status.startsWith('4') ? 'http_4xx' : status.startsWith('5') ? 'http_5xx' : `http_${status}`;
+  }
+
+  if (/network|failed to fetch|timeout/i.test(message)) {
+    return 'network';
+  }
+
+  return 'unknown';
+}
+
+function cloneSearchParams(params: SearchParams): SearchParams {
+  return {
+    ...params,
+    reg: [...params.reg],
+    focus: [...params.focus],
+  };
 }
 
 /**
@@ -43,6 +86,11 @@ export function SearchProvider({ children }: SearchProviderProps) {
     history: 'push',
     shallow: false,
   });
+
+  const currentParams = urlParams as SearchParams;
+  const previousTrackedParamsRef = useRef<SearchParams | null>(null);
+  const pendingRequestsRef = useRef<Map<string, PendingSearchRequest>>(new Map());
+  const paramsSnapshotByKeyRef = useRef<Map<string, SearchParams>>(new Map());
   
   // Get store methods for updating history entry
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
@@ -63,22 +111,35 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Create stable params object for debouncing
   // We serialize to string first to get stable reference
-  const paramsKey = useMemo(() => JSON.stringify({
-    q: urlParams.q,
-    field: urlParams.field,
-    sort: urlParams.sort,
-    yf: urlParams.yf,
-    yt: urlParams.yt,
-    df: urlParams.df,
-    dt: urlParams.dt,
-    ft: urlParams.ft,
-    reg: urlParams.reg,
-    focus: urlParams.focus,
-    cites: urlParams.cites,
-    citedBy: urlParams.citedBy,
-    rel: urlParams.rel,
-    review: urlParams.review,
-  }), [
+  const paramsKey = useMemo(() => {
+    const key = JSON.stringify({
+      q: urlParams.q,
+      field: urlParams.field,
+      sort: urlParams.sort,
+      yf: urlParams.yf,
+      yt: urlParams.yt,
+      df: urlParams.df,
+      dt: urlParams.dt,
+      ft: urlParams.ft,
+      reg: urlParams.reg,
+      focus: urlParams.focus,
+      cites: urlParams.cites,
+      citedBy: urlParams.citedBy,
+      rel: urlParams.rel,
+      review: urlParams.review,
+    });
+
+    paramsSnapshotByKeyRef.current.set(key, cloneSearchParams(currentParams));
+
+    if (paramsSnapshotByKeyRef.current.size > 40) {
+      const oldestKey = paramsSnapshotByKeyRef.current.keys().next().value;
+      if (oldestKey) {
+        paramsSnapshotByKeyRef.current.delete(oldestKey);
+      }
+    }
+
+    return key;
+  }, [
     urlParams.q,
     urlParams.field,
     urlParams.sort,
@@ -93,6 +154,11 @@ export function SearchProvider({ children }: SearchProviderProps) {
     urlParams.citedBy,
     urlParams.rel,
     urlParams.review,
+    urlParams.page,
+    urlParams.rmin,
+    urlParams.rmax,
+    urlParams.rated,
+    urlParams.lang,
   ]);
   
   // Build SWR key - null means don't fetch
@@ -104,7 +170,51 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Single SWR fetcher - all data comes from the key
   const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
-    const params = JSON.parse(paramsJson);
+    const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
+    const snapshotParams = paramsSnapshotByKeyRef.current.get(paramsJson);
+    const params: SearchParams = snapshotParams
+      ? cloneSearchParams(snapshotParams)
+      : {
+          ...DEFAULT_SEARCH_PARAMS,
+          ...parsedParams,
+          reg: parsedParams.reg ? [...parsedParams.reg] : [],
+          focus: parsedParams.focus ? [...parsedParams.focus] : [],
+          page: DEFAULT_SEARCH_PARAMS.page,
+          rmin: DEFAULT_SEARCH_PARAMS.rmin,
+          rmax: DEFAULT_SEARCH_PARAMS.rmax,
+          rated: DEFAULT_SEARCH_PARAMS.rated,
+          lang: DEFAULT_SEARCH_PARAMS.lang,
+        };
+
+    const previousParams = previousTrackedParamsRef.current;
+    const changedParamKeys = getChangedParamKeys(previousParams, params);
+    const trigger = deriveSearchTrigger(previousParams, params, changedParamKeys);
+    const requestId = createSearchRequestId();
+    const searchResult = searchId ? getSearchResult(searchId) : undefined;
+    const fallbackQuerySource = searchResult?.query || params.q || '';
+    const fallbackResearchQuestion = fallbackQuerySource
+      ? validateAndExpandKeywordsSilently(fallbackQuerySource).expandedQuery
+      : '';
+
+    const basePayload: SearchBaseEventPayload = {
+      search_id: searchId || 'unknown',
+      request_id: requestId,
+      trigger,
+      changed_param_keys: changedParamKeys,
+      changed_param_count: changedParamKeys.length,
+      search_event_schema_version: SEARCH_EVENT_SCHEMA_VERSION,
+      ...buildSearchFilterSnapshot(params, {
+        searchResult,
+        fallbackResearchQuestion,
+      }),
+    };
+
+    captureSearchExecuted(basePayload);
+    pendingRequestsRef.current.set(paramsJson, {
+      startedAt: Date.now(),
+      payload: basePayload,
+    });
+    previousTrackedParamsRef.current = cloneSearchParams(params);
     
     // Auto-switch from relevance sorting if no query
     let effectiveSortBy = params.sort;
@@ -139,9 +249,9 @@ export function SearchProvider({ children }: SearchProviderProps) {
     };
     
     const result = await getSearchResultsWithFilters(searchParams);
-    // Attach the paramsKey to the result so we can verify if it matches the current request
-    return { ...result, paramsKey: paramsJson };
-  }, []);
+    // Attach the paramsKey and requestId for outcome tracking
+    return { ...result, paramsKey: paramsJson, requestId };
+  }, [searchId, getSearchResult]);
   
   // Single SWR instance
   const { data, error, isLoading, isValidating, mutate } = useSWR(
@@ -156,6 +266,20 @@ export function SearchProvider({ children }: SearchProviderProps) {
       errorRetryCount: 2,
       errorRetryInterval: 1000,
       onSuccess: (data) => {
+        if (data?.paramsKey) {
+          const pendingRequest = pendingRequestsRef.current.get(data.paramsKey);
+          if (pendingRequest) {
+            captureSearchSucceeded({
+              ...pendingRequest.payload,
+              duration_ms: Date.now() - pendingRequest.startedAt,
+              results_count: data?.results?.meta?.count ?? 0,
+              validation_is_valid: data?.validation?.isValid ?? true,
+              validation_warning_count: data?.validation?.warnings?.length ?? 0,
+            });
+            pendingRequestsRef.current.delete(data.paramsKey);
+          }
+        }
+
         if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
           const existing = getSearchResult(searchId);
           if (existing && existing.count !== data.results.meta.count) {
@@ -163,26 +287,102 @@ export function SearchProvider({ children }: SearchProviderProps) {
           }
         }
       },
-      onError: (err) => {
+      onError: (err, key) => {
         console.error('Search failed:', err);
         const message = err?.message || '';
-        
-        if (message.includes('400')) {
-          toast.error('Search query too large', {
-            description: 'Please try simplifying your search.',
-          });
-        } else if (message.includes('429')) {
-          toast.error('Too many requests', {
-            description: 'Please wait a moment before trying again.',
-          });
-        } else {
-          toast.error('Search failed', {
-            description: 'An unexpected error occurred.',
-          });
+
+        const paramsJson = Array.isArray(key) && typeof key[1] === 'string' ? key[1] : undefined;
+        if (paramsJson) {
+          const pendingRequest = pendingRequestsRef.current.get(paramsJson);
+          if (pendingRequest) {
+            captureSearchFailed({
+              ...pendingRequest.payload,
+              duration_ms: Date.now() - pendingRequest.startedAt,
+              error_message: message || 'Unknown error',
+              error_type: parseSearchErrorType(message),
+            });
+            pendingRequestsRef.current.delete(paramsJson);
+          }
         }
+        
+        appToast.search.failed(err);
       },
     }
   );
+
+  // Track local-only search interactions (pagination, rating, language)
+  // that intentionally do not trigger API fetches.
+  useEffect(() => {
+    const previousParams = previousTrackedParamsRef.current;
+    if (!previousParams) {
+      return;
+    }
+
+    const changedParamKeys = getChangedParamKeys(previousParams, currentParams);
+    if (changedParamKeys.length === 0) {
+      return;
+    }
+
+    const hasFetchParamChange = changedParamKeys.some((key) => SEARCH_FETCH_PARAM_KEY_SET.has(key));
+    if (hasFetchParamChange) {
+      return;
+    }
+
+    const requestId = createSearchRequestId();
+    const trigger = deriveSearchTrigger(previousParams, currentParams, changedParamKeys);
+    const searchResult = searchId ? getSearchResult(searchId) : undefined;
+    const fallbackQuerySource = searchResult?.query || currentParams.q || '';
+    const fallbackResearchQuestion = fallbackQuerySource
+      ? validateAndExpandKeywordsSilently(fallbackQuerySource).expandedQuery
+      : '';
+    const basePayload: SearchBaseEventPayload = {
+      search_id: searchId || 'unknown',
+      request_id: requestId,
+      trigger,
+      changed_param_keys: changedParamKeys,
+      changed_param_count: changedParamKeys.length,
+      search_event_schema_version: SEARCH_EVENT_SCHEMA_VERSION,
+      ...buildSearchFilterSnapshot(currentParams, {
+        searchResult,
+        fallbackResearchQuestion,
+      }),
+    };
+
+    captureSearchExecuted(basePayload);
+    captureSearchSucceeded({
+      ...basePayload,
+      duration_ms: 0,
+      results_count: data?.results?.meta?.count ?? 0,
+      validation_is_valid: data?.validation?.isValid ?? true,
+      validation_warning_count: data?.validation?.warnings?.length ?? 0,
+    });
+    previousTrackedParamsRef.current = cloneSearchParams(currentParams);
+  }, [
+    currentParams.q,
+    currentParams.field,
+    currentParams.sort,
+    currentParams.page,
+    currentParams.yf,
+    currentParams.yt,
+    currentParams.df,
+    currentParams.dt,
+    currentParams.ft,
+    currentParams.rmin,
+    currentParams.rmax,
+    currentParams.rated,
+    currentParams.reg,
+    currentParams.focus,
+    currentParams.cites,
+    currentParams.citedBy,
+    currentParams.rel,
+    currentParams.review,
+    currentParams.lang,
+    data?.results?.meta?.count,
+    data?.validation?.isValid,
+    data?.validation?.warnings?.length,
+    searchId,
+    getSearchResult,
+  ]);
   
   // Param setters - just update URL, SWR auto-refetches
   const setQuery = useCallback((q: string, options?: { skipHistory?: boolean }) => {
@@ -324,6 +524,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
     if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
     if ('review' in updates) storeUpdates.reviewFilter = updates.review;
     if ('lang' in updates) storeUpdates.language = updates.lang || undefined;
+    if ('page' in updates) storeUpdates.page = updates.page;
     
     if (Object.keys(storeUpdates).length > 0) {
       syncToStore(storeUpdates);

@@ -42,7 +42,15 @@ export function LanguageSelector({
         <Select value={value} onValueChange={onValueChange} disabled={disabled}>
           <SelectTrigger
           size="sm"
-            className={cn("w-auto min-w-[120px] flex-1", className)}
+            className={cn(
+              "w-auto min-w-[120px] flex-1",
+              "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
+              "hover:from-violet-500/20 hover:to-fuchsia-500/20",
+              "border-violet-500/30 hover:border-violet-500/50",
+              "text-violet-700 dark:text-violet-300",
+              "transition-all duration-200",
+              className,
+            )}
           >
             <div className="flex items-center gap-2">
               {selectedLanguage ? (

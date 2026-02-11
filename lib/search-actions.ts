@@ -1,6 +1,7 @@
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
+import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { validateAndExpandKeywordsSilently } from './keyword-validation';
@@ -69,9 +70,7 @@ export const downloadItem = async (item: any, format: 'json' | 'csv', searchStat
     const { ratings } = useRatingsStore.getState();
     
     if (!searchState) {
-      toast.error('Download failed', {
-        description: 'Search information not available for download.'
-      });
+      appToast.io.downloadFailed('item');
       return;
     }
     
@@ -87,18 +86,14 @@ export const downloadItem = async (item: any, format: 'json' | 'csv', searchStat
     await downloadWithMetadata(itemWithRating, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading item:', error);
-    toast.error('Download failed', {
-      description: 'Could not download the item. Please try again.'
-    });
+    appToast.io.downloadFailed('item');
   }
 };
 
 export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', searchState?: any) => {
   try {
     if (!searchState) {
-      toast.error('Download failed', {
-        description: 'Search information not available for download.'
-      });
+      appToast.io.downloadFailed('essential item');
       return;
     }
     
@@ -111,9 +106,7 @@ export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', s
     await downloadWithMetadata(essentialInfo, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading essential item:', error);
-    toast.error('Download failed', {
-      description: 'Could not download the essential information. Please try again.'
-    });
+    appToast.io.downloadFailed('essential item');
   }
 };
 
@@ -122,9 +115,7 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
     const { ratings } = useRatingsStore.getState();
     
     if (!searchState || !results) {
-      toast.error('Download failed', {
-        description: 'Search results not available for download.'
-      });
+      appToast.io.downloadFailed('results');
       return;
     }
 
@@ -143,15 +134,17 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
     await downloadWithMetadata(dataToDownload, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading all results:', error);
-    toast.error('Download failed', {
-      description: 'Could not download the results. Please try again.'
-    });
+    appToast.io.downloadFailed('results');
   }
 };
 
-export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
+export const openFocusMode = (
+  isMobile?: boolean,
+  initialIndex: number = 0,
+  paperId?: string
+) => {
   const { setIsDialogOpen, setIsFocusModeOpen, setFocusModeIndex } = useUIStore.getState();
-  
+
   // If isMobile is provided, use it; otherwise fall back to window check for backward compatibility
   const isDesktop = isMobile !== undefined ? !isMobile : window.matchMedia("(min-width: 768px)").matches;
   if (!isDesktop) {
@@ -159,4 +152,10 @@ export const openFocusMode = (isMobile?: boolean, initialIndex: number = 0) => {
   }
   setFocusModeIndex(initialIndex);
   setIsFocusModeOpen(true);
-}; 
+
+  // Track focus mode opened
+  posthog.capture("focus_mode_opened", {
+    from_position: initialIndex,
+    paper_id: paperId ?? null,
+  });
+};

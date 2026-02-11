@@ -15,7 +15,7 @@ import {
 import { cn, createDefaultFilters } from "@/lib/utils";
 import { getIdColor } from "@/lib/format";
 import { ViewMode } from "@/lib/types";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { submitNewSearch } from "@/lib/search/actions";
 import { subtleSpring } from "@/lib/animation-config";
 import { type BookmarkEntry } from "./index";
@@ -64,9 +64,9 @@ export function BookmarksItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(bookmark.expansion);
-      toast.success("Expansion copied to clipboard");
+      appToast.clipboard.copied("Expansion");
     } catch {
-      toast.success("Expansion copied to clipboard");
+      appToast.clipboard.copied("Expansion");
     }
   };
 

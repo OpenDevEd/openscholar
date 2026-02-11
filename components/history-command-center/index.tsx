@@ -27,6 +27,7 @@ import {
   CommandCenterPagination,
 } from "@/components/command-center";
 import { HistoryItem } from "./history-item";
+import posthog from "posthog-js";
 
 const SORT_OPTIONS: { value: HistorySortBy; label: string }[] = [
   { value: "recent", label: "Recent" },
@@ -105,6 +106,17 @@ export function HistoryCommandCenter() {
 
   // Handlers
   const handleSearchClick = (item: SearchResult) => {
+    // Track history item restored event
+    posthog.capture("history_item_restored", {
+      query: item.query,
+      results_count: item.count || 0,
+      has_screening_questions: (item.screeningQuestions?.length || 0) > 0,
+      screening_questions_count: item.screeningQuestions?.length || 0,
+      history_age_days: Math.floor(
+        (Date.now() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      ),
+    });
+
     router.push(restoreFromHistory(item));
   };
 

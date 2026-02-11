@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore, useKeywordExpansionDialogStore } from "@/lib/store";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksSaveBanner() {
@@ -33,18 +33,18 @@ export function BookmarksSaveBanner() {
     const trimmedName = name.trim();
 
     if (!suggestedQuery.trim()) {
-      toast.error("No query to save");
+      appToast.validation.failed("No query to save.");
       return;
     }
 
     const validationError = validateKeyword(trimmedName);
     if (validationError) {
-      toast.error(validationError);
+      appToast.validation.failed(validationError);
       return;
     }
 
     if (keywords[trimmedName]) {
-      toast.error(`Bookmark "${trimmedName}" already exists`);
+      appToast.validation.failed(`Bookmark "${trimmedName}" already exists.`);
       return;
     }
 
@@ -54,7 +54,7 @@ export function BookmarksSaveBanner() {
     addKeyword(trimmedName, expandedQuery);
     setName("");
     setSuggestedQuery("");
-    toast.success(`Search saved as bookmark "${trimmedName}"`);
+    appToast.entity.created("bookmark", trimmedName);
   };
 
   return (

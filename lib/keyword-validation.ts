@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { appToast } from '@/lib/toast';
 import { useKeywordExpansionStore } from './store';
 
 export interface KeywordValidationResult {
@@ -31,7 +31,7 @@ export function validateAndExpandKeywords(query: string): KeywordValidationResul
   // Check for minimum query length (only for non-empty queries)
   if (trimmedQuery.length === 1) {
     const warning = 'Single character searches are not supported. Please use at least 2 characters.';
-    toast.warning(warning);
+    appToast.validation.warning(warning);
     return {
       isValid: false,
       expandedQuery: query,
@@ -44,7 +44,7 @@ export function validateAndExpandKeywords(query: string): KeywordValidationResul
   
   if (warnings.length > 0) {
     // Show warning toasts for missing keywords
-    warnings.forEach(warning => toast.warning(warning));
+    warnings.forEach((warning) => appToast.validation.warning(warning));
     
     return {
       isValid: false,

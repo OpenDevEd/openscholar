@@ -65,6 +65,7 @@
     "nuqs": "^2.6.0",
     "ollama": "^0.6.3",
     "ollama-ai-provider-v2": "^2.0.0",
+    "posthog-js": "^1.342.1",
     "react": "^19.2.4",
     "react-day-picker": "^9.9.0",
     "react-dom": "^19.2.4",
