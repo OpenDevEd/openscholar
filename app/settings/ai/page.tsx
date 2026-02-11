@@ -26,9 +26,63 @@ import {
   getModelsForProvider,
 } from "@/lib/ai-models";
 import { fetchOpenRouterModels } from "@/app/actions/openrouter";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
+
+const PROVIDER_API_KEY_GUIDANCE: Record<
+  AIProvider,
+  { whatIs: string; credits: string; freeModels: string }
+> = {
+  openai: {
+    whatIs:
+      "Your OpenAI API key is a private token that lets this app send requests through your OpenAI account.",
+    credits:
+      "If your account has no prepaid balance (or no available free credits/quota), requests can stop until you add funds or your quota resets.",
+    freeModels:
+      "Free options (Jan 2026): OpenAI doesn't provide model-specific ':free' API variants in this app. OpenAI API usage is still subject to usage tiers and rate limits.",
+  },
+  google: {
+    whatIs:
+      "Your Google API key connects this app to your Gemini API project in AI Studio/Google Cloud.",
+    credits:
+      "If free-tier quota is exhausted or paid billing is not available, requests fail until quota resets or billing is enabled.",
+    freeModels:
+      "Free options (Jan 2026): gemini-2.5-pro, gemini-2.5-flash, and gemini-2.5-flash-lite have free-tier access, but with strict RPM/TPM/RPD limits.",
+  },
+  anthropic: {
+    whatIs:
+      "Your Anthropic API key authenticates calls to Claude models from your organization account.",
+    credits:
+      "Anthropic enforces monthly spend limits per tier; once reached, API usage pauses until your next cycle or a higher tier/deposit.",
+    freeModels:
+      "Free options (Jan 2026): no model-specific free Claude API variants are documented; Claude API models are metered and rate-limited.",
+  },
+  openrouter: {
+    whatIs:
+      "Your OpenRouter API key authorizes requests and applies usage to your OpenRouter account.",
+    credits:
+      "If your OpenRouter balance is negative, you may receive 402 errors, including for free models, until your balance is topped up.",
+    freeModels:
+      "Free options (Jan 2026): use openrouter/free (Free Models Router). Free variants have tighter limits.",
+  },
+  deepseek: {
+    whatIs:
+      "Your DeepSeek API key authenticates calls to DeepSeek models from your account.",
+    credits:
+      "DeepSeek API usage is metered; if your balance is exhausted, requests will fail until you add funds.",
+    freeModels:
+      "Free options: DeepSeek does not currently offer free API tiers.",
+  },
+  azure: {
+    whatIs:
+      "Your Azure API key connects this app to your Azure OpenAI Service deployment.",
+    credits:
+      "Azure OpenAI usage is billed through your Azure subscription; if your subscription or spending limit is reached, requests will fail.",
+    freeModels:
+      "Free options: Azure OpenAI does not offer free-tier API access; usage is billed per token.",
+  },
+};
 
 export default function AISettingsPage() {
   const {
@@ -50,32 +104,27 @@ export default function AISettingsPage() {
   const providerConfig = getProviderConfig(provider);
 
   const handleProviderChange = (newProvider: AIProvider) => {
+    if (newProvider === provider) {
+      return;
+    }
+
     setProvider(newProvider);
     const defaultModel = getDefaultModelForProvider(newProvider);
     setModel(defaultModel);
     setModels([]);
     setModelSectionExpanded(false);
-    toast.success("Provider Updated", {
-      description: `AI provider set to ${newProvider}`,
-    });
+    appToast.entity.updated("Provider", newProvider);
   };
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel);
     setModelSectionExpanded(false);
     setModelSearch("");
-    toast.success("Model Updated", {
-      description: `AI model set to ${newModel}`,
-    });
+    appToast.entity.updated("Model", newModel);
   };
 
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
-    if (value) {
-      toast.success("API Key Updated", {
-        description: "Your API key has been saved securely",
-      });
-    }
   };
 
   useEffect(() => {
@@ -86,10 +135,7 @@ export default function AISettingsPage() {
           const openRouterModels = await fetchOpenRouterModels();
           setModels(openRouterModels);
         } catch (error) {
-          toast.error("Failed to load OpenRouter models", {
-            description:
-              error instanceof Error ? error.message : "Unknown error",
-          });
+          appToast.ai.failed("Loading OpenRouter models", error);
         } finally {
           setLoadingModels(false);
         }
@@ -201,9 +247,7 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("local");
-                toast.success("Using Your Keys", {
-                  description: "AI requests will use your own API keys",
-                });
+                appToast.entity.updated("Mode", "Using your own API keys");
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
@@ -236,9 +280,7 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("credits");
-                toast.success("Using Credits", {
-                  description: "AI requests will use your account credits",
-                });
+                appToast.entity.updated("Mode", "Using account credits");
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
@@ -510,6 +552,11 @@ export default function AISettingsPage() {
                   Get your {providerConfig.name} API key
                   <ExternalLink className="w-3 h-3" />
                 </a>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>{PROVIDER_API_KEY_GUIDANCE[provider].whatIs}</p>
+                <p>{PROVIDER_API_KEY_GUIDANCE[provider].credits}</p>
+                <p>{PROVIDER_API_KEY_GUIDANCE[provider].freeModels}</p>
               </div>
             </div>
           </div>

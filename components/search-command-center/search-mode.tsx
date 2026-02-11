@@ -14,7 +14,7 @@ import {
   useKeywordExpansionDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
-import { appToast, getErrorMessage } from "@/lib/toast";
+import { appToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -162,32 +162,47 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       }
 
       setIsTranslating(true);
+      const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
-        const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
-        const result = await translateQueryFn({
-          query: expandedQuery,
-          targetLanguage: language,
+        await runWithLoadingToast({
+          loading: "Translating query...",
+          run: async () => {
+            const result = await translateQueryFn({
+              query: expandedQuery,
+              targetLanguage: language,
+            });
+
+            search.setQuery(result.translatedQuery);
+
+            // Track query translation event
+            posthog.capture("query_translated", {
+              original_query: expandedQuery,
+              translated_query: result.translatedQuery,
+              target_language: language,
+            });
+
+            return result;
+          },
+          success: () => ({
+            title: "Query translated",
+            description: `Translated to ${language}`,
+          }),
+          error: (error) => {
+            // Track translation error
+            posthog.capture("query_translation_failed", {
+              original_query: localInputValue,
+              target_language: language,
+              error_message: getErrorMessage(error, "Translation failed"),
+            });
+
+            return {
+              title: "Translation failed",
+              description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
+            };
+          },
         });
-
-        search.setQuery(result.translatedQuery);
-
-        // Track query translation event
-        posthog.capture("query_translated", {
-          original_query: expandedQuery,
-          translated_query: result.translatedQuery,
-          target_language: language,
-        });
-
-        appToast.ai.succeeded("Query translated", `Translated to ${language}`);
-      } catch (error) {
-        // Track translation error
-        posthog.capture("query_translation_failed", {
-          original_query: localInputValue,
-          target_language: language,
-          error_message: getErrorMessage(error, "Translation failed"),
-        });
-
-        appToast.ai.failed("Translation", error);
+      } catch {
+        // Toast is already handled by runWithLoadingToast.
       } finally {
         setIsTranslating(false);
       }

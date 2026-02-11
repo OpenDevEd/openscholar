@@ -10,7 +10,6 @@ import { useSearchOptional } from "@/lib/search";
 import { createCitationSearch } from "@/lib/search";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { ScreeningContext, TranslationContext } from "@/components/results-list";
-import { appToast } from "@/lib/toast";
 
 // ==================== Types ====================
 
