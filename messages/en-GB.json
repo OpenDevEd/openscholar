@@ -589,6 +589,7 @@
     "missingBookmarksDescription": "You'll see a warning if you use a bookmark that doesn't exist.",
     "howToUseBookmarks": "How to use bookmarks",
     "saveCurrentSearch": "Save Current Search as Bookmark",
+    "saveQueryAsBookmark": "Save Query as Bookmark",
     "saveSearchDescription": "Save your search query for quick access later",
     "editQueryPlaceholder": "Edit the query that will be saved as bookmark...",
     "enterBookmarkName": "Enter bookmark name (e.g., my-search)",
@@ -598,7 +599,10 @@
     "expanded": "Expanded:",
     "someBookmarksNotFound": "Some bookmarks were not found in your expansion list.",
     "bookmarksHighlighted": "Bookmarks are highlighted when expanded",
-    "useBookmarkFormat": "Use the format \"bookmark...\" in your search to expand automatically."
+    "useBookmarkFormat": "Use the format \"bookmark...\" in your search to expand automatically.",
+    "guideTip1Description": "Type your bookmark name followed by <code>...</code> in the search box. For example: <code>(ml...)</code>",
+    "guideTip2Description": "Your bookmark will automatically expand to the full search terms. Example: <code>ml...</code> becomes <code>AI OR ML OR \"artificial intelligence\"</code>",
+    "addedDate": "Added {date}"
   },
   "historyPage": {
     "description": "View and revisit your previous searches",
@@ -618,11 +622,21 @@
     "queryEvolution": "Query Evolution",
     "backToCard": "Back to card",
     "current": "Current",
-    "bookmarkNamePlaceholder": "bookmark-name"
+    "bookmarkNamePlaceholder": "bookmark-name",
+    "recentSearches": "Recent Searches",
+    "infoClickToRevisit": "Click any search to revisit results",
+    "infoDownloadUpload": "Download or upload search data",
+    "infoManageArchive": "Manage your search archive"
   },
   "commandCenter": {
     "searchCount": "{count, plural, one {# search} other {# searches}}",
-    "bookmarkCount": "{count, plural, one {# bookmark} other {# bookmarks}}"
+    "bookmarkCount": "{count, plural, one {# bookmark} other {# bookmarks}}",
+    "searchesLabel": "searches",
+    "bookmarksLabel": "bookmarks",
+    "searchSingular": "search",
+    "searchPlural": "searches",
+    "bookmarkSingular": "bookmark",
+    "bookmarkPlural": "bookmarks"
   },
   "admin": {
     "cleanupTitle": "Admin: Cleanup Duplicate Subscriptions",
@@ -709,6 +723,7 @@
     "testQuestion": "Test question",
     "deleteQuestion": "Delete question",
     "useThisQuery": "Use this query",
+    "switchQuery": "Switch",
     "queryHistory": "Query History",
     "selectSearchScope": "Select search scope",
     "selectSortOrder": "Select sort order",
@@ -938,6 +953,8 @@
     "workIdFilter": "Work ID filter"
   },
   "footer": {
-    "builtBy": "Built by"
+    "builtBy": "Built by",
+    "with": "with",
+    "suffix": ""
   }
 }

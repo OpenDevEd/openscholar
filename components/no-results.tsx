@@ -5,14 +5,27 @@ import { Button } from "@/components/ui/button";
 import { SearchX, ArrowRight, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+export type NoResultsVariant = "search" | "filter";
+
 interface NoResultsProps {
   query?: string;
+  variant?: NoResultsVariant;
   onTryNewSearch?: () => void;
 }
 
-export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
+export function NoResults({ query, variant = "search", onTryNewSearch }: NoResultsProps) {
   const t = useTranslations("search");
   const tc = useTranslations("common");
+
+  const isFilter = variant === "filter";
+
+  const title = isFilter ? t("noResultsMatchFilters") : tc("noResultsFound");
+  const subtitle = isFilter
+    ? tc("tryAdjustingSearch")
+    : query
+      ? t("nothingMatched", { query })
+      : t("noResultsNoFilter");
+
   return (
     <div className="flex items-center justify-center py-16 md:py-24">
       <motion.div
@@ -39,14 +52,10 @@ export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-            {tc("noResultsFound")}
+            {title}
           </h2>
           <p className="text-base text-muted-foreground leading-relaxed">
-            {query ? (
-              t("nothingMatched", { query })
-            ) : (
-              t("noResultsNoFilter")
-            )}
+            {subtitle}
           </p>
         </motion.div>
 
@@ -69,27 +78,58 @@ export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
         </motion.div>
 
         {/* Action */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Button
-            onClick={onTryNewSearch}
-            variant="outline"
-            className="group gap-2 h-10 px-5"
+        {onTryNewSearch && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
           >
-            {tc("newSearch")}
-            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-          </Button>
-        </motion.div>
+            <Button
+              onClick={onTryNewSearch}
+              variant="outline"
+              className="group gap-2 h-10 px-5"
+            >
+              {tc("newSearch")}
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+            </Button>
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );
 }
 
-export function LoadingResults() {
+export type LoadingResultsVariant = "full" | "banner";
+
+interface LoadingResultsProps {
+  variant?: LoadingResultsVariant;
+}
+
+export function LoadingResults({ variant = "full" }: LoadingResultsProps) {
   const t = useTranslations("search");
+
+  if (variant === "banner") {
+    return (
+      <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 relative overflow-hidden">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-5 w-5 text-primary animate-spin" />
+          <div className="flex-1">
+            <p className="font-medium text-foreground">{t("updatingResults")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("applyingParameters")}
+            </p>
+          </div>
+        </div>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: "100%" }}
+          transition={{ duration: 2, ease: "easeInOut" }}
+          className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center py-16 md:py-24">
       <motion.div

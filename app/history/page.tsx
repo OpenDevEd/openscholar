@@ -1,10 +1,14 @@
 import { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { HistoryPageClient } from "./history-page-client";
 
-export const metadata: Metadata = {
-  title: "Search History | OpenScholar",
-  description: "View and manage your past search queries.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("historyTitle"),
+    description: t("historyDescription"),
+  };
+}
 
 export default function HistoryPage() {
   return <HistoryPageClient />;

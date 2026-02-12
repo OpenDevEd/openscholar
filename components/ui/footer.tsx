@@ -14,7 +14,7 @@ export function FooterBanner() {
       >
         OpenDevEd 
       </a>
-      <span className="lg:text-sm text-xs text-muted-foreground">with</span>
+      <span className="lg:text-sm text-xs text-muted-foreground">{t('with')}</span>
       <a
         href="https://openalex.org"
         target="_blank"
@@ -23,6 +23,9 @@ export function FooterBanner() {
       >
         OpenAlex
       </a>
+      {t('suffix') && (
+        <span className="lg:text-sm text-xs text-muted-foreground">{t('suffix')}</span>
+      )}
     </div>
   );
 }

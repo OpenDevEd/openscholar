@@ -18,6 +18,9 @@ interface HistoryPageProps {
 export default function HistoryPage({ params }: HistoryPageProps) {
   const router = useRouter();
   const tc = useTranslations('common');
+  const th = useTranslations('historyPage');
+  const te = useTranslations('errorPages');
+  const tcc = useTranslations('commandCenter');
   const { currentSearchField } = useCurrentSearchFormState();
   const { loadingResultIndex } = useUIStore();
   const { searchHistory } = useSearchHistoryStore();
@@ -47,7 +50,7 @@ export default function HistoryPage({ params }: HistoryPageProps) {
     if (searchResult) {
       router.push(restoreFromHistory(searchResult));
     } else {
-      appToast.validation.failed("The requested search could not be found in your history.");
+      appToast.validation.failed(te("searchNotFound"));
     }
   };
 
@@ -70,19 +73,19 @@ export default function HistoryPage({ params }: HistoryPageProps) {
     <div className="container mx-auto p-6">
       <PageHeader
         title={tc("history")}
-        description="View and manage your previous searches"
+        description={th("description")}
         icon={History}
         showBackButton={true}
         onBack={handleBackToResults}
         stats={{
           count: searchHistory.length,
-          label: 'Searches',
-          singularLabel: 'Search'
+          label: tcc("searchPlural"),
+          singularLabel: tcc("searchSingular")
         }}
         infoItems={[
-          { label: 'Click any search to revisit results', color: 'bg-blue-500' },
-          { label: 'Download or upload search data', color: 'bg-green-500' },
-          { label: 'Manage your search archive', color: 'bg-purple-500' }
+          { label: th("infoClickToRevisit"), color: "bg-blue-500" },
+          { label: th("infoDownloadUpload"), color: "bg-green-500" },
+          { label: th("infoManageArchive"), color: "bg-purple-500" },
         ]}
       />
 

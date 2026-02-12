@@ -11,25 +11,18 @@ export function BookmarksGuide() {
   const tb = useTranslations("bookmarksPage");
   const [isOpen, setIsOpen] = useState(false);
 
+  const code = (chunks: React.ReactNode) => (
+    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{chunks}</code>
+  );
+
   const tips = [
     {
       title: tb("usingBookmarksInSearch"),
-      description: (
-        <>
-          Type your bookmark name followed by <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">...</code> in the search box.
-          For example: <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">(ml...)</code>
-        </>
-      ),
+      description: tb.rich("guideTip1Description", { code }),
     },
     {
       title: tb("autoExpansion"),
-      description: (
-        <>
-          Your bookmark will automatically expand to the full search terms.
-          Example: <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">ml...</code> becomes{" "}
-          <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">AI OR ML OR &quot;artificial intelligence&quot;</code>
-        </>
-      ),
+      description: tb.rich("guideTip2Description", { code }),
     },
     {
       title: tb("namingRules"),

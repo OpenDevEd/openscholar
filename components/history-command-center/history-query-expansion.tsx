@@ -244,8 +244,8 @@ export function HistoryQueryExpansion({
                             <span>{timeAgo}</span>
                             <span className="opacity-40">•</span>
                             <span>
-                              {date.toLocaleDateString()}{" "}
-                              {date.toLocaleTimeString([], {
+                              {date.toLocaleDateString(locale)}{" "}
+                              {date.toLocaleTimeString(locale, {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}

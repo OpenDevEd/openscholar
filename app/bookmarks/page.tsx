@@ -1,11 +1,15 @@
 import { BookmarksCommandCenter } from "@/components/bookmarks-command-center"
 import { Metadata } from "next"
 import { Suspense } from "react"
+import { getTranslations } from "next-intl/server"
 import { PageWrapper } from "@/components/PageWrapper"
 
-export const metadata: Metadata = {
-  title: "Bookmarks | OpenScholar",
-  description: "Manage your bookmarks for faster, more efficient searches.",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("bookmarksTitle"),
+    description: t("bookmarksDescription"),
+  };
 }
 
 function BookmarksFallback() {

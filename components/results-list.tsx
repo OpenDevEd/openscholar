@@ -28,7 +28,6 @@ import { ViewMode } from "@/lib/types";
 import { PaperCard } from "./paper-card/index";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
-import { Loader2 } from "lucide-react";
 
 import { NoResults, LoadingResults } from "@/components/no-results";
 import { motion, AnimatePresence } from "motion/react";
@@ -39,7 +38,6 @@ import { downloadEssentialItem, downloadItem } from "@/lib/search-actions";
 import { useIsTablet } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
-import { useTranslations } from "next-intl";
 
 interface PapersListProps {
   results: any[];
@@ -90,58 +88,18 @@ export const TranslationContext = createContext<{
   errors?: Array<{ paperId: string; error: string }>;
 }>({});
 
-function PapersList({
+function PapersGrid({
   results,
-  filteredResults,
   paginatedResults,
-  ratingRange,
-  onlyRatedPapers,
   currentPage,
   totalPages,
-  isLoading = false,
-  isValidating = false,
-  currentQuery,
-  onBackToHome,
+  filteredResults,
   onDownloadItem,
   onDownloadEssentialItem,
   onPageChange,
   resultsContainerRef,
   viewMode,
 }: PapersListProps) {
-  const ts = useTranslations("search");
-  const tc = useTranslations("common");
-  const [showInitialLoading, setShowInitialLoading] = React.useState(true);
-
-  // Show initial loading for first 5 seconds, even if there are no results
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowInitialLoading(false);
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Show loading state when:
-  // 1. Actively loading/validating with no results, OR
-  // 2. Within first 5 seconds with no results and not actively loading
-  if (
-    ((isLoading || isValidating) && results.length === 0) ||
-    (results.length === 0 && showInitialLoading && !isLoading && !isValidating)
-  ) {
-    return <LoadingResults />;
-  }
-
-  // Show no results when there are no results (only after initial 5 seconds)
-  if (results.length === 0 && !showInitialLoading) {
-    return (
-      <NoResults
-        query={currentQuery}
-        onTryNewSearch={onBackToHome}
-      />
-    );
-  }
-
-  // Determine grid layout classes based on view mode
   const gridClasses = {
     "list-simple": "flex flex-col gap-2",
     "list-detail": "flex flex-col gap-4",
@@ -153,9 +111,6 @@ function PapersList({
     <div ref={resultsContainerRef}>
       <div className={cn(gridClasses[viewMode])}>
         {paginatedResults.map((result: any, index: number) => {
-          // Calculate the global index in the filtered results
-          const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
-          // Find the index in the original unfiltered results array
           const originalIndex = results.findIndex(
             (r: any) => r.id === result.id
           );
@@ -170,20 +125,6 @@ function PapersList({
             />
           );
         })}
-        {paginatedResults.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-lg text-muted-foreground">
-              {isRatingFilterActive(ratingRange, onlyRatedPapers)
-                ? ts("noResultsMatchFilters")
-                : tc("noResultsFound")}
-            </p>
-            {isRatingFilterActive(ratingRange, onlyRatedPapers) && (
-              <p className="text-sm text-muted-foreground mt-2">
-                {tc("tryAdjustingSearch")}
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       {filteredResults.length > ITEMS_PER_PAGE && (
@@ -350,10 +291,15 @@ export function ResultsList({
   const { ratings } = useRatingsStore();
   const resultsContainerRef = useRef<HTMLDivElement>(null);
   const [canStartScreening, setCanStartScreening] = useState(false);
+  const [showInitialLoading, setShowInitialLoading] = useState(true);
 
   const pathname = usePathname();
 
-  const ts = useTranslations("search");
+  useEffect(() => {
+    const timer = setTimeout(() => setShowInitialLoading(false), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
   const isMobile = useIsTablet();
   
@@ -527,60 +473,77 @@ export function ResultsList({
           />
         </div>
 
-        {/* Updating Results Animation */}
-        <AnimatePresence>
-          {isValidating && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-              animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 400,
-                damping: 30,
-              }}
-              className="overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 relative overflow-hidden">
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground">{ts("updatingResults")}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {ts("applyingParameters")}
-                    </p>
-                  </div>
-                </div>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 2, ease: "easeInOut" }}
-                  className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Single results area – loading, no-results, and papers all rendered here */}
+        {(() => {
+          const isSearching =
+            (isLoading || isValidating) && results.length === 0;
+          const isInitialLoading =
+            results.length === 0 &&
+            showInitialLoading &&
+            !isLoading &&
+            !isValidating;
+          const isEmptySearch =
+            results.length === 0 && !showInitialLoading;
+          const isEmptyFilter =
+            paginatedResults.length === 0 && results.length > 0;
+          const showValidatingBanner =
+            isValidating && results.length > 0;
 
-        {/* Papers List */}
-        <PapersList
-          results={results}
-          filteredResults={filteredResults}
-          paginatedResults={paginatedResults}
-          ratingRange={ratingRange}
-          onlyRatedPapers={onlyRatedPapers}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          isLoading={isLoading}
-          isValidating={isValidating}
-          currentQuery={currentQuery}
-          onBackToHome={onBackToHome}
-          onDownloadItem={onDownloadItem}
-          onDownloadEssentialItem={onDownloadEssentialItem}
-          onPageChange={handlePageChange}
-          resultsContainerRef={resultsContainerRef}
-          viewMode={effectiveViewMode}
-        />
+          return (
+            <>
+              {showValidatingBanner && (
+                <AnimatePresence>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 30,
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <LoadingResults variant="banner" />
+                  </motion.div>
+                </AnimatePresence>
+              )}
+              {isSearching || isInitialLoading ? (
+                <LoadingResults />
+              ) : isEmptySearch ? (
+                <NoResults
+                  query={currentQuery}
+                  onTryNewSearch={onBackToHome}
+                />
+              ) : isEmptyFilter ? (
+                <NoResults
+                  variant="filter"
+                  query={currentQuery}
+                  onTryNewSearch={onBackToHome}
+                />
+              ) : (
+                <PapersGrid
+                  results={results}
+                  filteredResults={filteredResults}
+                  paginatedResults={paginatedResults}
+                  ratingRange={ratingRange}
+                  onlyRatedPapers={onlyRatedPapers}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  isLoading={isLoading}
+                  isValidating={isValidating}
+                  currentQuery={currentQuery}
+                  onBackToHome={onBackToHome}
+                  onDownloadItem={onDownloadItem}
+                  onDownloadEssentialItem={onDownloadEssentialItem}
+                  onPageChange={handlePageChange}
+                  resultsContainerRef={resultsContainerRef}
+                  viewMode={effectiveViewMode}
+                />
+              )}
+            </>
+          );
+        })()}
       </div>
     </ScreeningContext.Provider>
     </TranslationContext.Provider>

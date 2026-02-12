@@ -214,8 +214,8 @@ export function HistoryCommandCenter() {
         title={tc("searchHistory")}
         description={th("description")}
         count={sortedHistory.length}
-        singular="search"
-        plural="searches"
+        singular={tcc("searchSingular")}
+        plural={tcc("searchPlural")}
         countLabel={tcc("searchCount", { count: sortedHistory.length })}
       />
 
@@ -276,7 +276,7 @@ export function HistoryCommandCenter() {
             onPageChange={setCurrentPage}
             totalItems={sortedHistory.length}
             itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
-            itemLabel="searches"
+            itemLabel={tcc("searchesLabel")}
           />
         )}
       </div>

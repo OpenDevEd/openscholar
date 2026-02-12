@@ -225,8 +225,9 @@ export function BookmarksCommandCenter() {
         title={tc("bookmarks")}
         description={tb("description")}
         count={sortedBookmarks.length}
-        singular="bookmark"
-        plural="bookmarks"
+        singular={tcc("bookmarkSingular")}
+        plural={tcc("bookmarkPlural")}
+        countLabel={tcc("bookmarkCount", { count: sortedBookmarks.length })}
       />
 
       {/* Save Current Search Banner */}
@@ -289,7 +290,7 @@ export function BookmarksCommandCenter() {
             onPageChange={setCurrentPage}
             totalItems={sortedBookmarks.length}
             itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
-            itemLabel="bookmarks"
+            itemLabel={tcc("bookmarksLabel")}
           />
         )}
 

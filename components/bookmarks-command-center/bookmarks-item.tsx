@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Trash2, Pencil, Check, X, Calendar, Copy, Search } from "lucide-react";
@@ -44,6 +44,7 @@ export function BookmarksItem({
 }: BookmarksItemProps) {
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const [editValue, setEditValue] = useState(bookmark.expansion);
   const router = useRouter();
   const idColor = getIdColor(bookmark.name);
@@ -81,7 +82,7 @@ export function BookmarksItem({
     router.push(url);
   };
 
-  const formattedDate = new Date(bookmark.createdAt).toLocaleDateString(undefined, {
+  const formattedDate = new Date(bookmark.createdAt).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -307,7 +308,7 @@ export function BookmarksItem({
               {/* Left: Date */}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
-                <span>Added {formattedDate}</span>
+                <span>{tb("addedDate", { date: formattedDate })}</span>
               </div>
 
               {/* Right: Actions */}

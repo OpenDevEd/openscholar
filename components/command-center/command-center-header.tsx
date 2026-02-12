@@ -86,15 +86,22 @@ export function CommandCenterHeader({
             )}
           >
             {countLabel ? (
-              <motion.span
-                key={count}
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={subtleSpring}
-                className="text-sm font-semibold text-foreground tabular-nums"
-              >
-                {countLabel}
-              </motion.span>
+              <>
+                <motion.span
+                  key={count}
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={subtleSpring}
+                  className="text-sm font-semibold text-foreground tabular-nums"
+                >
+                  {countLabel.split(" ")[0]}
+                </motion.span>
+                {countLabel.includes(" ") && (
+                  <span className="text-sm text-muted-foreground">
+                    {" " + countLabel.split(" ").slice(1).join(" ")}
+                  </span>
+                )}
+              </>
             ) : (
               <>
                 <motion.span

@@ -18,7 +18,7 @@ function HistoryPageContent() {
 function HistoryPageFallback() {
   return (
     <PageWrapper>
-      <div className="container mx-auto p-4 sm:p-6">
+      <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>

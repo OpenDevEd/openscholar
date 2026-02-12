@@ -589,6 +589,7 @@
     "missingBookmarksDescription": "如果您使用不存在的书签，将会看到警告。",
     "howToUseBookmarks": "如何使用书签",
     "saveCurrentSearch": "将当前搜索保存为书签",
+    "saveQueryAsBookmark": "将查询保存为书签",
     "saveSearchDescription": "保存您的搜索查询以便稍后快速访问",
     "editQueryPlaceholder": "编辑将保存为书签的查询...",
     "enterBookmarkName": "输入书签名称（例如：my-search）",
@@ -598,7 +599,10 @@
     "expanded": "已扩展：",
     "someBookmarksNotFound": "扩展列表中未找到某些书签。",
     "bookmarksHighlighted": "书签在扩展时高亮显示",
-    "useBookmarkFormat": "在搜索中使用 \"bookmark...\" 格式以自动扩展。"
+    "useBookmarkFormat": "在搜索中使用 \"bookmark...\" 格式以自动扩展。",
+    "guideTip1Description": "在搜索框中输入您的书签名称，后跟 <code>...</code>。例如：<code>(ml...)</code>",
+    "guideTip2Description": "您的书签将自动扩展为完整的搜索词。例如：<code>ml...</code> 会变成 <code>AI OR ML OR \"artificial intelligence\"</code>",
+    "addedDate": "添加于 {date}"
   },
   "historyPage": {
     "description": "查看并重访您之前的搜索",
@@ -618,11 +622,21 @@
     "queryEvolution": "查询演变",
     "backToCard": "返回卡片",
     "current": "当前",
-    "bookmarkNamePlaceholder": "书签名称"
+    "bookmarkNamePlaceholder": "书签名称",
+    "recentSearches": "最近搜索",
+    "infoClickToRevisit": "点击任意搜索以重新查看结果",
+    "infoDownloadUpload": "下载或上传搜索数据",
+    "infoManageArchive": "管理您的搜索档案"
   },
   "commandCenter": {
     "searchCount": "{count, plural, other {# 次搜索}}",
-    "bookmarkCount": "{count, plural, other {# 个书签}}"
+    "bookmarkCount": "{count, plural, other {# 个书签}}",
+    "searchesLabel": "次搜索",
+    "bookmarksLabel": "个书签",
+    "searchSingular": "次搜索",
+    "searchPlural": "次搜索",
+    "bookmarkSingular": "个书签",
+    "bookmarkPlural": "个书签"
   },
   "admin": {
     "cleanupTitle": "管理员：清理重复订阅",
@@ -709,6 +723,7 @@
     "testQuestion": "测试问题",
     "deleteQuestion": "删除问题",
     "useThisQuery": "使用此查询",
+    "switchQuery": "切换",
     "queryHistory": "查询历史",
     "selectSearchScope": "选择搜索范围",
     "selectSortOrder": "选择排序顺序",
@@ -938,6 +953,8 @@
     "workIdFilter": "作品 ID 筛选"
   },
   "footer": {
-    "builtBy": "由...构建"
+    "builtBy": "由",
+    "with": "与",
+    "suffix": "联合打造"
   }
 }

@@ -50,6 +50,7 @@ export function HistoryItem({
   }: HistoryItemProps) {
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
+  const tv = useTranslations("validation");
   const tp = useTranslations("paperCard");
   const tl = useTranslations("languages");
   const locale = useLocale();
@@ -91,15 +92,15 @@ export function HistoryItem({
 
   const handleBookmarkSubmit = () => {
     if (!bookmarkName.trim()) {
-      appToast.validation.failed("Bookmark name is required.");
+      appToast.validation.failed(tv("bookmarkNameRequired"));
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      appToast.validation.failed("Only letters, numbers, and dashes are allowed.");
+      appToast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
     if (keywords[bookmarkName]) {
-      appToast.validation.failed(`Bookmark "${bookmarkName}" already exists.`);
+      appToast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }
 

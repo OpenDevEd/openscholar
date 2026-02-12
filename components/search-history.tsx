@@ -249,13 +249,13 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             "font-medium",
             variant === 'full' ? 'text-sm' : 'text-xs'
           )}>
-            {variant === 'full' ? 'Save as Bookmark' : 'Save Query as Bookmark'}
+            {variant === 'full' ? t('common.saveAsBookmark') : t('bookmarksPage.saveQueryAsBookmark')}
           </span>
         </div>
         
         {variant === 'full' && (
           <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-            Bookmarks let you create shortcuts for complex search queries. Use the format "bookmark..." in your search to expand them automatically.
+            {t('bookmarksPage.useBookmarkFormat')}
           </p>
         )}
         
@@ -284,7 +284,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
             "text-amber-600 dark:text-amber-400",
             variant === 'full' ? 'text-xs' : 'text-xs'
           )}>
-            Letters, numbers, and dashes only. No spaces allowed.
+            {t('bookmarksPage.lettersNumbersDashes')}
           </p>
           <div className={cn(variant === 'full' ? 'flex gap-2' : 'flex gap-1')}>
             <Button
@@ -300,7 +300,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 "mr-1",
                 variant === 'full' ? 'h-3 w-3' : 'h-2 w-2'
               )} />
-              Save
+              {t('common.save')}
             </Button>
             <Button
               size="sm"
@@ -311,7 +311,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
                 variant === 'compact' && 'h-6 text-xs px-2'
               )}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </div>
@@ -451,20 +451,20 @@ function ActionButtons({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={handleDownloadJSON}>
           <FileDown className="h-4 w-4 mr-2" />
-          Download as JSON
+          {t('common.downloadAsJson')}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleDownloadCSV}>
           <FileDown className="h-4 w-4 mr-2" />
-          Download as CSV
+          {t('common.downloadAsCsv')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleUploadJSON}>
           <FileUp className="h-4 w-4 mr-2" />
-          Upload JSON
+          {t('common.uploadJson')}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleUploadCSV}>
           <FileUp className="h-4 w-4 mr-2" />
-          Upload CSV
+          {t('common.uploadCsv')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -496,7 +496,7 @@ function ActionButtons({
         <CardTitle className="text-xl">{title}</CardTitle>
       )}
       <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-full">
-        {count}{variant === 'full' ? ' searches' : ''}
+        {count}{variant === 'full' ? ` ${t('commandCenter.searchPlural')}` : ''}
       </span>
     </div>
   );
@@ -585,7 +585,7 @@ function ActionButtons({
                 className="text-[10px] opacity-70 leading-none mt-0.5"
                 style={{ color: idColor.text }}
               >
-                results
+                {t('common.results').toLowerCase()}
               </div>
             </div>
             
@@ -742,6 +742,10 @@ function QueryHistoryDisplay({
   onDeleteQueryEntry?: (searchId: string, queryIndex: number) => void,
   initiallyExpanded?: boolean
 }) {
+  const t = useTranslations();
+  const ta = useTranslations("accessibility");
+  const th = useTranslations("historyPage");
+  const locale = useLocale();
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [bookmarkingQueryIndex, setBookmarkingQueryIndex] = useState<number | null>(null);
   
@@ -823,7 +827,7 @@ function QueryHistoryDisplay({
                           <Clock className="h-3 w-3" />
                           <span>{timeAgo}</span>
                           <span>•</span>
-                          <span>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{date.toLocaleDateString(locale)} {date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       </div>
                       
@@ -887,7 +891,7 @@ function QueryHistoryDisplay({
                           onClick={() => onCopyQuery?.(entry.query)}
                         >
                           <Copy className="h-3 w-3 mr-1" />
-                          Copy
+                          {t("common.copy")}
                         </Button>
                         
                         <Button
@@ -897,7 +901,7 @@ function QueryHistoryDisplay({
                           onClick={() => handleQueryBookmarkClick(originalIndex)}
                         >
                           <BookmarkPlus className="h-3 w-3 mr-1" />
-                          Save
+                          {t("common.save")}
                         </Button>
                       </div>
                       
@@ -910,7 +914,7 @@ function QueryHistoryDisplay({
                             onClick={() => handleQueryClick(entry.query)}
                           >
                             <Search className="h-3 w-3 mr-1" />
-                            Switch
+                            {ta("switchQuery")}
                           </Button>
                         )}
                         
@@ -922,7 +926,7 @@ function QueryHistoryDisplay({
                             onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
                           >
                             <Trash2 className="h-3 w-3 mr-1" />
-                            Delete
+                            {t("common.delete")}
                           </Button>
                         )}
                       </div>
@@ -944,7 +948,7 @@ function QueryHistoryDisplay({
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        Query History ({queryHistory.length})
+        {th("queryHistoryCount", { count: queryHistory.length })}
       </button>
       
       {isExpanded && (
@@ -1005,7 +1009,7 @@ function QueryHistoryDisplay({
                             <Clock className="h-3 w-3" />
                             <span>{timeAgo}</span>
                             <span>•</span>
-                            <span>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>{date.toLocaleDateString(locale)} {date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
                         
@@ -1069,7 +1073,7 @@ function QueryHistoryDisplay({
                             onClick={() => onCopyQuery?.(entry.query)}
                           >
                             <Copy className="h-3 w-3 mr-1" />
-                            Copy
+                            {t("common.copy")}
                           </Button>
                           
                           <Button
@@ -1079,33 +1083,33 @@ function QueryHistoryDisplay({
                             onClick={() => handleQueryBookmarkClick(originalIndex)}
                           >
                             <BookmarkPlus className="h-3 w-3 mr-1" />
-                    Save
-                  </Button>
+                            {t("common.save")}
+                          </Button>
                         </div>
                         
                         <div className="flex gap-2">
                           {isClickable && (
-                  <Button
+                            <Button
                               variant="ghost"
-                    size="sm"
+                              size="sm"
                               className="h-8 px-2 text-xs"
                               onClick={() => handleQueryClick(entry.query)}
                             >
                               <Search className="h-3 w-3 mr-1" />
-                              Switch
+                              {ta("switchQuery")}
                             </Button>
                           )}
                           
                           {canDelete && onDeleteQueryEntry && searchId && (
                             <Button
-                    variant="ghost"
+                              variant="ghost"
                               size="sm"
                               className="h-8 px-2 text-xs text-destructive hover:text-destructive"
                               onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-                  >
+                            >
                               <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
-                  </Button>
+                              {t("common.delete")}
+                            </Button>
                           )}
                 </div>
               </div>
@@ -1215,7 +1219,12 @@ function QueryHistoryDisplay({
           {searchHistory.length > itemsPerPage && (
             <div className="text-center">
               <p className="text-xs text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, searchHistory.length)} of {searchHistory.length} searches
+                {t('common.showingStartEnd', {
+                  start: (currentPage - 1) * itemsPerPage + 1,
+                  end: Math.min(currentPage * itemsPerPage, searchHistory.length),
+                  total: searchHistory.length,
+                  label: t('commandCenter.searchPlural'),
+                })}
               </p>
             </div>
           )}
@@ -1226,7 +1235,12 @@ function QueryHistoryDisplay({
     return (
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6">
         <p className="text-sm text-muted-foreground text-center sm:text-left">
-          Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, searchHistory.length)} of {searchHistory.length} searches
+          {t('common.showingStartEnd', {
+            start: (currentPage - 1) * itemsPerPage + 1,
+            end: Math.min(currentPage * itemsPerPage, searchHistory.length),
+            total: searchHistory.length,
+            label: t('commandCenter.searchPlural'),
+          })}
         </p>
         <div className="flex items-center gap-2 justify-center sm:justify-end">
           <Button
@@ -1237,8 +1251,8 @@ function QueryHistoryDisplay({
             className="flex items-center gap-1"
           >
             <ChevronLeft className="h-4 w-4" />
-            <span className="hidden xs:inline">Previous</span>
-            <span className="xs:hidden">Prev</span>
+            <span className="hidden xs:inline">{t('common.previous')}</span>
+            <span className="xs:hidden">{t('common.previous')}</span>
           </Button>
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
@@ -1273,8 +1287,8 @@ function QueryHistoryDisplay({
             disabled={currentPage === totalPages}
             className="flex items-center gap-1"
           >
-            <span className="hidden xs:inline">Next</span>
-            <span className="xs:hidden">Next</span>
+            <span className="hidden xs:inline">{t('common.next')}</span>
+            <span className="xs:hidden">{t('common.next')}</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -1292,7 +1306,7 @@ function QueryHistoryDisplay({
     return (
       <div className="w-full space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <HeaderSection title="Recent Searches" count={searchHistory.length} variant="compact" />
+          <HeaderSection title={t('historyPage.recentSearches')} count={searchHistory.length} variant="compact" />
           <HeaderButtons variant="compact" />
         </div>
         
@@ -1372,7 +1386,7 @@ function QueryHistoryDisplay({
     <Card suppressHydrationWarning className="w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <HeaderSection title="Search History" count={searchHistory.length} variant="full" />
+          <HeaderSection title={t('common.searchHistory')} count={searchHistory.length} variant="full" />
           <HeaderButtons variant="full" />
         </div>
       </CardHeader>
