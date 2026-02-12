@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { Globe, ChevronRight, Check, X, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { COUNTRY_HIERARCHY, COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
 import { CountryFlag } from "@/components/ui/country-flag";
+import { getRegionDisplayName } from "@/lib/i18n/region-names";
 
 type RegionNode = {
   id: string;
@@ -46,6 +47,7 @@ export function CountrySelector({
   showCountryNames = false,
   bypassLimit = false
 }: CountrySelectorProps) {
+  const locale = useLocale();
   const tf = useTranslations("searchFilters");
   const tc = useTranslations("common");
   const resolvedPlaceholder = placeholder ?? tf("selectRegionsOrCountries");
@@ -131,13 +133,16 @@ export function CountrySelector({
       selectedRegions.forEach(regionId => {
         if (regionId.length === 2 && COUNTRIES[regionId]) {
           // Direct country code
-          countryNames.push(COUNTRIES[regionId]);
+          countryNames.push(getRegionDisplayName(regionId, locale, (k) => (tf as (key: string) => string)(k)));
         } else {
           // Region - get all country names from the region
           const regionCountryCodes = countryData.countries;
           regionCountryCodes.forEach(code => {
-            if (COUNTRIES[code] && !countryNames.includes(COUNTRIES[code])) {
-              countryNames.push(COUNTRIES[code]);
+            if (COUNTRIES[code]) {
+              const name = getRegionDisplayName(code, locale, (k) => (tf as (key: string) => string)(k));
+              if (!countryNames.includes(name)) {
+                countryNames.push(name);
+              }
             }
           });
         }
@@ -156,12 +161,12 @@ export function CountrySelector({
     if (!query.trim()) return node;
 
     const searchTerm = query.toLowerCase();
+    const displayName = getRegionDisplayName(node.isCountry ? node.label : node.id, locale, (k) => (tf as (key: string) => string)(k)).toLowerCase();
     
-    // For countries, check both the country code and the full country name
+    // For countries, check both the country code and the localized display name
     const nodeMatchesSearch = node.isCountry ? 
-      (node.label.toLowerCase().includes(searchTerm) || 
-       COUNTRIES[node.label]?.toLowerCase().includes(searchTerm)) :
-      node.label.toLowerCase().includes(searchTerm);
+      (node.label.toLowerCase().includes(searchTerm) || displayName.includes(searchTerm)) :
+      displayName.includes(searchTerm);
 
     // If this node matches, return it with all its children
     if (nodeMatchesSearch) {
@@ -189,7 +194,7 @@ export function CountrySelector({
   const filteredTree = React.useMemo(() => {
     if (!searchQuery.trim()) return buildTree;
     return filterNodes(buildTree, searchQuery);
-  }, [buildTree, searchQuery]);
+  }, [buildTree, searchQuery, locale, tf]);
 
   // Auto-expand nodes when searching
   React.useEffect(() => {
@@ -220,10 +225,8 @@ export function CountrySelector({
     const isSelected = selectedRegions.includes(node.id);
     const hasChildren = node.children && node.children.length > 0;
     
-    // For countries (leaf nodes), show the country name from COUNTRIES mapping
-    const displayName = node.isCountry && COUNTRIES[node.label] 
-      ? COUNTRIES[node.label] 
-      : node.label;
+    // For countries and regions, use localized display names
+    const displayName = getRegionDisplayName(node.isCountry ? node.label : node.id, locale, (k) => (tf as (key: string) => string)(k));
 
     return (
       <div key={node.id} className="w-full">
@@ -379,14 +382,10 @@ export function CountrySelector({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {selectedRegions.map((regionId, index) => {
+            {selectedRegions.map((regionId: string, index: number) => {
               // Check if this is a country code (2 letters) or a region
               const isCountryCode = regionId.length === 2 && COUNTRIES[regionId];
-              const displayLabel = isCountryCode 
-                ? COUNTRIES[regionId] 
-                : regionId.split('_').map(word => 
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ');
+              const displayLabel = getRegionDisplayName(regionId, locale, (k) => (tf as (key: string) => string)(k));
               
               return (
                 <React.Fragment key={regionId}>

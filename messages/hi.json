@@ -1,1 +1,34 @@
-{}
+{
+  "searchFilters": {
+    "regionNames": {
+      "africa": "अफ्रीका",
+      "americas": "अमेरिका",
+      "asia": "एशिया",
+      "europe": "यूरोप",
+      "oceania": "ओशिनिया",
+      "antarctica": "अंटार्कटिका",
+      "eastern_africa": "पूर्वी अफ्रीका",
+      "middle_africa": "मध्य अफ्रीका",
+      "northern_africa": "उत्तरी अफ्रीका",
+      "southern_africa": "दक्षिणी अफ्रीका",
+      "western_africa": "पश्चिमी अफ्रीका",
+      "caribbean": "कैरिबियन",
+      "central_america": "मध्य अमेरिका",
+      "north_america": "उत्तरी अमेरिका",
+      "south_america": "दक्षिण अमेरिका",
+      "central_asia": "मध्य एशिया",
+      "eastern_asia": "पूर्वी एशिया",
+      "south-eastern_asia": "दक्षिण पूर्व एशिया",
+      "southern_asia": "दक्षिण एशिया",
+      "western_asia": "पश्चिमी एशिया",
+      "eastern_europe": "पूर्वी यूरोप",
+      "northern_europe": "उत्तरी यूरोप",
+      "southern_europe": "दक्षिणी यूरोप",
+      "western_europe": "पश्चिमी यूरोप",
+      "australia_and_new_zealand": "ऑस्ट्रेलिया और न्यूज़ीलैंड",
+      "melanesia": "मेलनेशिया",
+      "micronesia": "माइक्रोनेशिया",
+      "polynesia": "पोलिनेशिया"
+    }
+  }
+}

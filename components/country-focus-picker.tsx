@@ -2,32 +2,37 @@
 
 import React, { useMemo } from 'react';
 import { Focus } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 import { isCountryFocusActive } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
 import { CountrySelector } from "./country-selector";
 import { useCountryFilter } from "@/hooks/use-country-filter";
-import { useTranslations } from "next-intl";
+import { getRegionDisplayName } from "@/lib/i18n/region-names";
 
 export function CountryFocusPicker() {
+  const locale = useLocale();
   const tf = useTranslations("searchFilters");
   const { selectedValues, handleSelectionChange } = useCountryFilter('selectedCountryFocus');
 
   // Computed filter active state
   const isCountryFocusFilterActive = isCountryFocusActive(selectedValues);
 
-  // Get country names for display and search enhancement
+  // Get country names for display and search enhancement (localized)
   const countryNames = useMemo(() => {
     const names: string[] = [];
     const countryData = getCountryCodesForRegions(selectedValues);
-    
-    countryData.countries.forEach(code => {
-      if (COUNTRIES[code] && !names.includes(COUNTRIES[code])) {
-        names.push(COUNTRIES[code]);
+
+    countryData.countries.forEach((code) => {
+      if (COUNTRIES[code]) {
+        const name = getRegionDisplayName(code, locale, (k) => (tf as (key: string) => string)(k));
+        if (!names.includes(name)) {
+          names.push(name);
+        }
       }
     });
-    
+
     return names;
-  }, [selectedValues]);
+  }, [selectedValues, locale, tf]);
 
   return (
     <div className="space-y-3">
