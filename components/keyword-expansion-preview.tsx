@@ -93,7 +93,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
                     <Badge 
                       variant="secondary" 
                       className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs rounded-md break-words whitespace-normal max-w-full inline-block"
-                      title={`Expanded from "${part.originalKeyword}..."`}
+                      title={tb("expandedFrom", { keyword: part.originalKeyword ?? "" })}
                     >
                       <span className="break-words overflow-wrap-anywhere">{part.text}</span>
                     </Badge>

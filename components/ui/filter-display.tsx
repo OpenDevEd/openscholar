@@ -130,10 +130,18 @@ function UnifiedBadge({ item, colorClass, baseClass, variant }: UnifiedBadgeProp
   }
 
   const t = useTranslations("filterDisplay");
+  const labelMap: Record<string, string> = {
+    cites: t("cites"),
+    citedBy: t("citedBy"),
+    relatedTo: t("relatedTo"),
+    review: t("reviews"),
+    onlyRated: t("rated"),
+  };
+  const resolvedLabel = labelMap[item.type] ?? item.label;
   // Default rendering
   const displayText = isSidebar
     ? (item.type === "field" ? item.displayValue : (item.emoji ? `${item.emoji} ${item.displayValue}` : item.displayValue))
-    : (item.emoji ? `${item.emoji} ${item.label}: ${item.displayValue}` : `${item.label}: ${item.displayValue}`);
+    : (item.emoji ? `${item.emoji} ${resolvedLabel}: ${item.displayValue}` : `${resolvedLabel}: ${item.displayValue}`);
 
   // Sidebar variant uses even more compact display
   const sidebarCompactText = isSidebar

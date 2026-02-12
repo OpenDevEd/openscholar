@@ -341,7 +341,7 @@ export function ZoteroSelector() {
         )}
 
         <div className="text-sm text-muted-foreground">
-          {selectedItems.length} selected
+          {t("selectedCount", { count: selectedItems.length })}
         </div>
       </div>
 
@@ -353,19 +353,19 @@ export function ZoteroSelector() {
 
       {requiresGroupSelection && (
         <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-          Select a group to load collections and items.
+          {t("selectGroupToLoad")}
         </div>
       )}
 
       {itemsError && (
         <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-          Failed to load Zotero items: {itemsError.message}
+          {t("failedToLoadItems", { error: itemsError.message })}
         </div>
       )}
 
       {!requiresGroupSelection && !isLoading && !itemsError && flattenedItems.length === 0 && (
         <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-          No Zotero items found for this selection.
+          {t("noItemsFound")}
         </div>
       )}
 

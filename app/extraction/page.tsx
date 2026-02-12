@@ -16,6 +16,7 @@ export default function ExtractionPage() {
   const router = useRouter();
   const tc = useTranslations('common');
   const te = useTranslations('extraction');
+  const tcc = useTranslations('commandCenter');
   const { data: jobs, isDeferred } = useProtectedQuery(
     api.extraction.queries.getMyJobs,
     {},
@@ -34,8 +35,8 @@ export default function ExtractionPage() {
             title={tc("extraction")}
             description={te("extractDescription")}
             count={jobs?.length ?? 0}
-            singular="job"
-            plural="jobs"
+            singular={tcc("jobSingular")}
+            plural={tcc("jobPlural")}
           />
 
           <div>

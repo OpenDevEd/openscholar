@@ -85,6 +85,7 @@ export function FocusMode({
   const tWidth = useTranslations("width");
   const tCommon = useTranslations("common");
   const tFocus = useTranslations("focusMode");
+  const tp = useTranslations("paperCard");
 
   // Track focus mode time spent
   const focusModeStartTimeRef = useRef<number | null>(null);
@@ -461,7 +462,7 @@ export function FocusMode({
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {isPreview ? (
               <span className="flex-1 truncate">
-                Smith, J., Johnson, A., Williams, R. +3 more
+                {tFocus("authorsPreview")}
               </span>
             ) : (
               paper.authorships && (
@@ -487,11 +488,11 @@ export function FocusMode({
                 {paper.primary_location.source.display_name}
                 {(paper.biblio?.volume || paper.biblio?.issue || paper.biblio?.first_page) && (
                   <>
-                    {paper.biblio?.volume && `, Vol. ${paper.biblio.volume}`}
+                    {paper.biblio?.volume && `, ${tp("vol")} ${paper.biblio.volume}`}
                     {paper.biblio?.issue && ` (${paper.biblio.issue})`}
                     {paper.biblio?.first_page && (
                       <>
-                        {`, pp. ${paper.biblio.first_page}`}
+                        {`, ${tp("pp")} ${paper.biblio.first_page}`}
                         {paper.biblio?.last_page && `-${paper.biblio.last_page}`}
                       </>
                     )}
@@ -537,7 +538,7 @@ export function FocusMode({
                     ? "2.34"
                     : paper.fwci
                     ? paper.fwci.toFixed(2)
-                    : "N/A"}
+                    : tCommon("notAvailable")}
                 </span>
               </span>
               {(isPreview || paper.cited_by_percentile_year) && (
@@ -659,9 +660,11 @@ export function FocusMode({
                         <span
                           key={sdg.id}
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
-                          title={`${sdg.display_name} (Score: ${
-                            sdg.score?.toFixed(2) || "N/A"
-                          })`}
+                          title={tp("sdgWithScoreTooltip", {
+                            name: sdg.display_name,
+                            scoreLabel: tp("score"),
+                            score: sdg.score?.toFixed(2) ?? tCommon("notAvailable"),
+                          })}
                         >
                           {sdg.display_name}
                           {sdg.score && (
@@ -674,7 +677,7 @@ export function FocusMode({
                     )}
                   {paper.sustainable_development_goals.length > 2 && (
                     <span className="text-muted-foreground">
-                      +{paper.sustainable_development_goals.length - 2} more
+                      {tp("moreSdgs", { count: paper.sustainable_development_goals.length - 2 })}
                     </span>
                   )}
                 </div>

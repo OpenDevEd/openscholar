@@ -52,7 +52,7 @@ export function DisagreementList({
   if (viewMode === "disagreement" && clusters.length <= 1) {
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
-        No meaningful disagreement clusters detected for this question.
+        {t("noDisagreementClusters")}
       </div>
     );
   }
@@ -60,7 +60,7 @@ export function DisagreementList({
   if (isAnswerProfiles && clusters.length === 0) {
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
-        No meaningful answer profiles detected for this question.
+        {t("noAnswerProfiles")}
       </div>
     );
   }
@@ -74,7 +74,7 @@ export function DisagreementList({
     <div className="space-y-3">
       {suppressedSingletonCount > 0 ? (
         <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          Suppressed {suppressedSingletonCount} singleton profiles to reduce noise.
+          {t("suppressedSingletonProfiles", { count: suppressedSingletonCount })}
         </div>
       ) : null}
 

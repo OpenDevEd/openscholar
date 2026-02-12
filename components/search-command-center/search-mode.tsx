@@ -30,6 +30,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
   const tl = useTranslations("languages");
+  const te = useTranslations("errors");
   const tValidation = useTranslations("validation");
   const search = useSearchOptional();
   const effectiveSearchId = useEffectiveSearchId();
@@ -137,7 +138,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       // Track enhancement error
       posthog.capture("ai_query_enhancement_failed", {
         original_question: questionToProcess,
-        error_message: getErrorMessage(error, "Unknown error"),
+        error_message: getErrorMessage(error, te("unknownError")),
       });
 
       appToast.ai.failed(t("enhancement"), error);
@@ -197,12 +198,12 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
             posthog.capture("query_translation_failed", {
               original_query: localInputValue,
               target_language: language,
-              error_message: getErrorMessage(error, "Translation failed"),
+              error_message: getErrorMessage(error, te("translationFailed")),
             });
 
             return {
               title: t('translationFailed'),
-              description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
+              description: getErrorMessage(error, te("unexpectedErrorRetry")),
             };
           },
         });

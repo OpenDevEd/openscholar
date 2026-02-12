@@ -35,16 +35,26 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-function reportToMarkdown(report: any) {
+function reportToMarkdown(
+  report: any,
+  t: {
+    generatedAt: (p: { date: string }) => string;
+    totalPapers: string;
+    answeredRate: string;
+    groundedRate: string;
+    bestEffortRate: string;
+  }
+) {
+  const dateStr = new Date(report.generatedAt).toLocaleString();
   const header = [
     `# ${report.name}`,
     "",
-    `Generated: ${new Date(report.generatedAt).toLocaleString()}`,
+    t.generatedAt({ date: dateStr }),
     "",
-    `- Total papers: ${report.metrics.totalPapers}`,
-    `- Answered rate: ${Math.round(report.metrics.answeredRate * 100)}%`,
-    `- Grounded rate: ${Math.round(report.metrics.groundedRate * 100)}%`,
-    `- Best effort rate: ${Math.round(report.metrics.bestEffortRate * 100)}%`,
+    `- ${t.totalPapers}: ${report.metrics.totalPapers}`,
+    `- ${t.answeredRate}: ${Math.round(report.metrics.answeredRate * 100)}%`,
+    `- ${t.groundedRate}: ${Math.round(report.metrics.groundedRate * 100)}%`,
+    `- ${t.bestEffortRate}: ${Math.round(report.metrics.bestEffortRate * 100)}%`,
     "",
   ];
 
@@ -232,7 +242,7 @@ export function ReportBuilder({
                   <div>
                     <div className="font-medium text-sm">{view.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {t("updated")} {new Date(view.updatedAt).toLocaleString()}
+                      {t("updatedAt", { date: new Date(view.updatedAt).toLocaleString() })}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -354,7 +364,7 @@ export function ReportBuilder({
               <div>
                 <div className="font-medium">{latestReport.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {t("generated")} {new Date(latestReport.generatedAt).toLocaleString()}
+                  {t("generatedAt", { date: new Date(latestReport.generatedAt).toLocaleString() })}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -378,7 +388,13 @@ export function ReportBuilder({
                   variant="outline"
                   onClick={() =>
                     downloadFile(
-                      reportToMarkdown(latestReport),
+                      reportToMarkdown(latestReport, {
+                        generatedAt: (p) => t("generatedAt", p),
+                        totalPapers: t("totalPapers"),
+                        answeredRate: t("answeredRate"),
+                        groundedRate: t("groundedRate"),
+                        bestEffortRate: t("bestEffortRate"),
+                      }),
                       `report-${latestReport._id}.md`,
                       "text/markdown"
                     )

@@ -259,7 +259,7 @@ export function ScreeningResponses({
                   ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
                   : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
               )}
-              title={`Question ${index + 1}: ${question.question}`}
+              title={tp("questionN", { n: index + 1, question: question.question })}
             >
               {displayState === "checked" && <Check className="h-3 w-3" />}
               {displayState === "crossed" && <X className="h-3 w-3" />}
@@ -281,9 +281,8 @@ export function ScreeningResponses({
             setScreeningDetailExpanded(data.id, !showExpandedView);
           }}
           className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
-          title={`Show detailed screening responses${
-            expandShortcut ? ` (${expandShortcut.toUpperCase()})` : ""
-          }`}
+          title={tp("showDetailedScreeningResponses") +
+            (expandShortcut ? tp("shortcutInTooltip", { shortcut: expandShortcut.toUpperCase() }) : "")}
         >
           <Table className="h-3 w-3" />
           {showExpandedView ? tc("hide") : tc("details")}
@@ -386,6 +385,7 @@ export function ScreeningBadge({
   question,
   variant = "default",
 }: ScreeningBadgeProps) {
+  const tp = useTranslations("paperCard");
   const baseClasses = cn(
     "flex items-center gap-1 rounded border text-xs transition-colors",
     variant === "icon-only" ? "p-1" : "px-2 py-1"
@@ -401,7 +401,7 @@ export function ScreeningBadge({
   return (
     <div
       className={cn(baseClasses, stateClasses[displayState])}
-      title={`Question ${index + 1}: ${question}`}
+      title={tp("questionN", { n: index + 1, question })}
     >
       {displayState === "checked" && <Check className="h-3 w-3" />}
       {displayState === "crossed" && <X className="h-3 w-3" />}
@@ -545,7 +545,7 @@ export function DOIBadge({
           }
         }}
         className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
-        title={`DOI: ${shortDoi}`}
+        title={tAcc("doiTooltip", { doi: shortDoi })}
       >
         <ExternalLink className="h-4 w-4" />
       </div>

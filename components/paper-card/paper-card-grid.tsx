@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { workToCoins } from "@/lib/utils";
 import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
@@ -30,6 +31,7 @@ export function PaperCardGrid({
   viewMode = "grid-2",
 }: PaperCardProps) {
   const pathname = usePathname();
+  const tp = useTranslations("paperCard");
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
@@ -188,7 +190,7 @@ export function PaperCardGrid({
                   "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
                   isCompact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm"
                 )}
-                title={`Cited by ${result.cited_by_count || 0}`}
+                title={tp("citedByCount", { count: result.cited_by_count || 0 })}
               >
                 <Quote className={cn(isCompact ? "h-3 w-3" : "h-3.5 w-3.5")} />
                 <span>{result.cited_by_count || 0}</span>
@@ -202,7 +204,7 @@ export function PaperCardGrid({
                     handleRelatedSearch();
                   }}
                   className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
-                  title={`Related: ${result.related_works?.length || 0}`}
+                  title={tp("relatedCount", { count: result.related_works?.length || 0 })}
                 >
                   <Network className="h-3.5 w-3.5" />
                   <span>{result.related_works?.length || 0}</span>

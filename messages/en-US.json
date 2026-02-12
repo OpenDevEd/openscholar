@@ -240,6 +240,7 @@
     "searchModels": "Search models...",
     "credentials": "Credentials",
     "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter your {provider} API key",
     "getApiKey": "Get your {provider} API key",
     "per1MTokens": "per 1M tokens",
     "models300Plus": "300+ Models",
@@ -329,6 +330,9 @@
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
+    "unexpectedErrorRetry": "An unexpected error occurred. Please try again.",
+    "unknownError": "Unknown error",
+    "translationFailed": "Translation failed",
     "notFoundCode": "404",
     "pageNotFound": "Page Not Found",
     "pageNotFoundDescription": "The page you're looking for doesn't exist or has been moved.",
@@ -422,6 +426,10 @@
     "sourceContextZoteroPapers": "Zotero papers:",
     "sourceContextManualPapers": "Manual papers:",
     "sourceContextAbstract": "Abstract:",
+    "noDisagreementClusters": "No meaningful disagreement clusters detected for this question.",
+    "noAnswerProfiles": "No meaningful answer profiles detected for this question.",
+    "suppressedSingletonProfiles": "Suppressed {count} singleton profiles to reduce noise.",
+    "sourceSummary": "{history} history • {zotero} Zotero • {manual} manual",
     "addedQuestions": "Added {count, plural, one {# new question} other {# new questions}}",
     "noNewQuestions": "No new questions generated",
     "apiKeyRequired": "API Key Required",
@@ -450,6 +458,7 @@
     "rejectR": "Reject (R)",
     "clearReviewU": "Clear review (U)",
     "confidence": "confidence",
+    "rawConfidenceTooltip": "Raw {confidence}: {value}%",
     "avgConf": "avg conf",
     "effectiveConf": "effective conf",
     "signInToViewInsights": "Sign in to view insights for this job.",
@@ -645,7 +654,16 @@
     "fwciLabel": "FWCI:",
     "citedBy": "Cited by",
     "cites": "Cites",
-    "languageNotSet": "Language not set"
+    "related": "Related",
+    "languageNotSet": "Language not set",
+    "questionN": "Question {n}: {question}",
+    "showDetailedScreeningResponses": "Show detailed screening responses",
+    "shortcutInTooltip": " ({shortcut})",
+    "sdgWithScoreTooltip": "{name} ({scoreLabel}: {score})",
+    "moreSdgs": "+{count} more",
+    "citedByCount": "Cited by {count}",
+    "relatedCount": "Related: {count}",
+    "score": "Score"
   },
   "bookmarksPage": {
     "description": "Create shortcuts for commonly used search terms",
@@ -683,6 +701,7 @@
     "typeQueryToPreview": "Type a query with \"bookmark...\" to see expansion preview",
     "noExpandableBookmarks": "No expandable bookmarks found. Use \"bookmark...\" format.",
     "expanded": "Expanded:",
+    "expandedFrom": "Expanded from \"{keyword}...\"",
     "someBookmarksNotFound": "Some bookmarks were not found in your expansion list.",
     "bookmarksHighlighted": "Bookmarks are highlighted when expanded",
     "useBookmarkFormat": "Use the format \"bookmark...\" in your search to expand automatically.",
@@ -722,7 +741,9 @@
     "searchSingular": "search",
     "searchPlural": "searches",
     "bookmarkSingular": "bookmark",
-    "bookmarkPlural": "bookmarks"
+    "bookmarkPlural": "bookmarks",
+    "jobSingular": "job",
+    "jobPlural": "jobs"
   },
   "admin": {
     "cleanupTitle": "Admin: Cleanup Duplicate Subscriptions",
@@ -807,6 +828,7 @@
     "searchWithQuery": "Search with this query",
     "removeFromHistory": "Remove from history",
     "openDoi": "Open DOI",
+    "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Reset to defaults",
     "focusMode": "Focus Mode",
     "testQuestion": "Test question",
@@ -838,7 +860,11 @@
     "connected": "Zotero connected",
     "connectionFailedWithError": "Zotero connection failed: {error}",
     "connectDescription": "Connect your Zotero account to choose items.",
-    "connectZotero": "Connect Zotero"
+    "connectZotero": "Connect Zotero",
+    "selectGroupToLoad": "Select a group to load collections and items.",
+    "failedToLoadItems": "Failed to load Zotero items: {error}",
+    "noItemsFound": "No Zotero items found for this selection.",
+    "selectedCount": "{count} selected"
   },
   "pdfViewer": {
     "loadingPdf": "Loading PDF...",
@@ -935,6 +961,14 @@
     "noManualItems": "No manual items yet"
   },
   "jobStatus": {
+    "restart": "Restart",
+    "papersCount": "{count} papers",
+    "statusPending": "Pending",
+    "statusDownloadingPdfs": "Downloading PDFs",
+    "statusExtracting": "Extracting",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusCancelled": "Cancelled",
     "jobCancelled": "Job cancelled",
     "failedToCancel": "Failed to cancel job",
     "jobDeleted": "Job deleted",
@@ -947,7 +981,11 @@
     "successRate": "Success Rate",
     "extractionProgress": "Extraction Progress",
     "noMatches": "No matches for current filters",
-    "clearFilters": "Clear Filters"
+    "clearFilters": "Clear Filters",
+    "questions": "Questions",
+    "progressOfPapers": "{processed} of {total} papers",
+    "loadingExtractionResults": "Loading extraction results...",
+    "appliedSavedView": "Applied saved view: {name}"
   },
   "reportBuilder": {
     "savedViews": "Saved Views",
@@ -958,6 +996,11 @@
     "reportBuilderTitle": "Report Builder",
     "generateReportSnapshot": "Generate report snapshot",
     "generated": "Generated",
+    "generatedAt": "Generated: {date}",
+    "totalPapers": "Total papers",
+    "answeredRate": "Answered rate",
+    "groundedRate": "Grounded rate",
+    "bestEffortRate": "Best effort rate",
     "exportJson": "Export JSON",
     "exportMarkdown": "Export Markdown",
     "answered": "Answered",
@@ -978,6 +1021,7 @@
     "noSavedViewsYet": "No saved views yet.",
     "noTemplatesYet": "No templates yet.",
     "updated": "Updated",
+    "updatedAt": "Updated: {date}",
     "apply": "Apply",
     "runAgain": "Run again",
     "questionsCount": "{count} questions"
@@ -1040,7 +1084,10 @@
   },
   "filterDisplay": {
     "reviews": "Reviews",
-    "rated": "Rated"
+    "rated": "Rated",
+    "cites": "Cites",
+    "citedBy": "Cited by",
+    "relatedTo": "Related to"
   },
   "extractionView": {
     "extractionResults": "Extraction Results",
@@ -1050,7 +1097,13 @@
     "overviewQuestions": "Overview & Questions",
     "results": "Results",
     "citation": "Citation",
-    "review": "Review"
+    "review": "Review",
+    "extractionQuestions": "Extraction Questions",
+    "schemaDefinedDescription": "Schema defined for this extraction job",
+    "filteredPapersCount": "{count} filtered paper",
+    "filteredPapersCountPlural": "{count} filtered papers",
+    "selectedPapersCount": "{count} selected paper",
+    "selectedPapersCountPlural": "{count} selected papers"
   },
   "languages": {
     "en": "English",
@@ -1128,6 +1181,8 @@
     "previewDescription": "See how your settings will look",
     "backToContent": "Back to Content",
     "machineLearningPreview": "Machine Learning Applications",
+    "authorsPreview": "Smith, J., Johnson, A., Williams, R. +3 more",
+    "score": "Score",
     "abstractPreview": "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows.",
     "pdf": "PDF",
     "original": "Original",

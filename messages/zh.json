@@ -240,6 +240,7 @@
     "searchModels": "搜索模型...",
     "credentials": "凭据",
     "apiKey": "API 密钥",
+    "apiKeyPlaceholder": "输入您的 {provider} API 密钥",
     "getApiKey": "获取您的 {provider} API 密钥",
     "per1MTokens": "每 100 万令牌",
     "models300Plus": "300+ 模型",
@@ -329,6 +330,9 @@
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",
+    "unexpectedErrorRetry": "发生意外错误。请重试。",
+    "unknownError": "未知错误",
+    "translationFailed": "翻译失败",
     "notFoundCode": "404",
     "pageNotFound": "页面未找到",
     "pageNotFoundDescription": "您查找的页面不存在或已被移动。",
@@ -422,6 +426,10 @@
     "sourceContextZoteroPapers": "Zotero 论文：",
     "sourceContextManualPapers": "手动添加论文：",
     "sourceContextAbstract": "摘要：",
+    "noDisagreementClusters": "未检测到此问题的有意义分歧簇。",
+    "noAnswerProfiles": "未检测到此问题的有意义答案档案。",
+    "suppressedSingletonProfiles": "已抑制 {count} 个单例档案以减少噪音。",
+    "sourceSummary": "{history} 历史 • {zotero} Zotero • {manual} 手动",
     "addedQuestions": "已添加 {count, plural, other {# 个新问题}}",
     "noNewQuestions": "未生成新问题",
     "apiKeyRequired": "需要 API 密钥",
@@ -450,6 +458,7 @@
     "rejectR": "拒绝 (R)",
     "clearReviewU": "清除审核 (U)",
     "confidence": "置信度",
+    "rawConfidenceTooltip": "原始 {confidence}：{value}%",
     "avgConf": "平均置信度",
     "effectiveConf": "有效置信度",
     "signInToViewInsights": "登录以查看此任务的洞察。",
@@ -645,7 +654,16 @@
     "fwciLabel": "FWCI：",
     "citedBy": "被引用",
     "cites": "引用",
-    "languageNotSet": "语言未设置"
+    "related": "相关",
+    "languageNotSet": "语言未设置",
+    "questionN": "问题 {n}：{question}",
+    "showDetailedScreeningResponses": "显示详细筛选响应",
+    "shortcutInTooltip": "（{shortcut}）",
+    "sdgWithScoreTooltip": "{name}（{scoreLabel}：{score}）",
+    "moreSdgs": "+{count} 更多",
+    "citedByCount": "被引用 {count}",
+    "relatedCount": "相关：{count}",
+    "score": "得分"
   },
   "bookmarksPage": {
     "description": "为常用搜索词创建快捷方式",
@@ -683,6 +701,7 @@
     "typeQueryToPreview": "输入带有 \"bookmark...\" 的查询以查看扩展预览",
     "noExpandableBookmarks": "未找到可扩展的书签。使用 \"bookmark...\" 格式。",
     "expanded": "已扩展：",
+    "expandedFrom": "从 \"{keyword}...\" 扩展",
     "someBookmarksNotFound": "扩展列表中未找到某些书签。",
     "bookmarksHighlighted": "书签在扩展时高亮显示",
     "useBookmarkFormat": "在搜索中使用 \"bookmark...\" 格式以自动扩展。",
@@ -722,7 +741,9 @@
     "searchSingular": "次搜索",
     "searchPlural": "次搜索",
     "bookmarkSingular": "个书签",
-    "bookmarkPlural": "个书签"
+    "bookmarkPlural": "个书签",
+    "jobSingular": "个任务",
+    "jobPlural": "个任务"
   },
   "admin": {
     "cleanupTitle": "管理员：清理重复订阅",
@@ -807,6 +828,7 @@
     "searchWithQuery": "使用此查询搜索",
     "removeFromHistory": "从历史记录中移除",
     "openDoi": "打开 DOI",
+    "doiTooltip": "DOI：{doi}",
     "resetToDefaults": "重置为默认值",
     "focusMode": "专注模式",
     "testQuestion": "测试问题",
@@ -838,7 +860,11 @@
     "connected": "Zotero 已连接",
     "connectionFailedWithError": "Zotero 连接失败：{error}",
     "connectDescription": "连接您的 Zotero 账户以选择项目。",
-    "connectZotero": "连接 Zotero"
+    "connectZotero": "连接 Zotero",
+    "selectGroupToLoad": "选择群组以加载集合和项目。",
+    "failedToLoadItems": "加载 Zotero 项目失败：{error}",
+    "noItemsFound": "未找到此选择的 Zotero 项目。",
+    "selectedCount": "已选 {count} 项"
   },
   "pdfViewer": {
     "loadingPdf": "加载 PDF 中...",
@@ -935,6 +961,14 @@
     "noManualItems": "尚无手动项目"
   },
   "jobStatus": {
+    "restart": "重新运行",
+    "papersCount": "{count} 篇论文",
+    "statusPending": "待处理",
+    "statusDownloadingPdfs": "下载 PDF 中",
+    "statusExtracting": "提取中",
+    "statusCompleted": "已完成",
+    "statusFailed": "失败",
+    "statusCancelled": "已取消",
     "jobCancelled": "任务已取消",
     "failedToCancel": "取消任务失败",
     "jobDeleted": "任务已删除",
@@ -947,7 +981,11 @@
     "successRate": "成功率",
     "extractionProgress": "提取进度",
     "noMatches": "没有符合当前筛选条件的匹配项",
-    "clearFilters": "清除筛选"
+    "clearFilters": "清除筛选",
+    "questions": "问题",
+    "progressOfPapers": "{processed} / {total} 篇论文",
+    "loadingExtractionResults": "正在加载提取结果...",
+    "appliedSavedView": "已应用保存的视图：{name}"
   },
   "reportBuilder": {
     "savedViews": "已保存的视图",
@@ -958,6 +996,11 @@
     "reportBuilderTitle": "报告生成器",
     "generateReportSnapshot": "生成报告快照",
     "generated": "生成于",
+    "generatedAt": "生成于：{date}",
+    "totalPapers": "总论文数",
+    "answeredRate": "已回答率",
+    "groundedRate": "有依据率",
+    "bestEffortRate": "尽力而为率",
     "exportJson": "导出 JSON",
     "exportMarkdown": "导出 Markdown",
     "answered": "已回答",
@@ -978,6 +1021,7 @@
     "noSavedViewsYet": "暂无已保存的视图。",
     "noTemplatesYet": "暂无模板。",
     "updated": "更新于",
+    "updatedAt": "更新于：{date}",
     "apply": "应用",
     "runAgain": "重新运行",
     "questionsCount": "{count} 个问题"
@@ -1040,7 +1084,10 @@
   },
   "filterDisplay": {
     "reviews": "审核",
-    "rated": "已评分"
+    "rated": "已评分",
+    "cites": "引用",
+    "citedBy": "被引用",
+    "relatedTo": "相关"
   },
   "extractionView": {
     "extractionResults": "提取结果",
@@ -1050,7 +1097,13 @@
     "overviewQuestions": "概览和问题",
     "results": "结果",
     "citation": "引用",
-    "review": "审核"
+    "review": "审核",
+    "extractionQuestions": "提取问题",
+    "schemaDefinedDescription": "为此提取任务定义的架构",
+    "filteredPapersCount": "{count} 篇已筛选论文",
+    "filteredPapersCountPlural": "{count} 篇已筛选论文",
+    "selectedPapersCount": "{count} 篇已选论文",
+    "selectedPapersCountPlural": "{count} 篇已选论文"
   },
   "languages": {
     "en": "英语",
@@ -1128,6 +1181,8 @@
     "previewDescription": "查看您的设置效果",
     "backToContent": "返回内容",
     "machineLearningPreview": "机器学习应用",
+    "authorsPreview": "Smith, J., Johnson, A., Williams, R. 等 3 人",
+    "score": "得分",
     "abstractPreview": "本研究探讨了机器学习算法对现代科学研究方法的变革性影响。我们分析自动化数据处理、模式识别和预测建模如何革新了多学科的假设生成和实验设计。我们的研究结果表明，当ML技术正确融入传统科学工作流程时，研究效率和发现率显著提高。",
     "pdf": "PDF",
     "original": "原文",

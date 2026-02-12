@@ -129,9 +129,10 @@ export function InsightsQuestionPanel({
             </Badge>
             <Badge
               variant="secondary"
-              title={`Raw ${t("confidence")}: ${Math.round(
-                (questionInsights.avgConfidence || 0) * 100
-              )}%`}
+              title={t("rawConfidenceTooltip", {
+                confidence: t("confidence"),
+                value: Math.round((questionInsights.avgConfidence || 0) * 100),
+              })}
             >
               {Math.round(
                 (questionInsights.avgEffectiveConfidence ?? questionInsights.avgConfidence) *

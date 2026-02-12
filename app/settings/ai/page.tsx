@@ -485,7 +485,7 @@ export default function AISettingsPage() {
               <Input
                 id="api-key"
                 type="password"
-                placeholder={providerConfig.apiKeyPlaceholder}
+                placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
                 value={apiKey}
                 disabled={isDisabled}
                 onChange={(e) => handleApiKeyChange(e.target.value)}

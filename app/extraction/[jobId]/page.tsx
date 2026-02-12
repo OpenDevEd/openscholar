@@ -71,6 +71,7 @@ export default function JobDetailPage() {
   const tJob = useTranslations('jobStatus');
   const tConfirm = useTranslations('confirmations');
   const tView = useTranslations('extractionView');
+  const tExtraction = useTranslations('extraction');
   const tc = useTranslations('common');
   const tPdf = useTranslations('pdfViewer');
   const locale = useLocale();
@@ -106,6 +107,13 @@ export default function JobDetailPage() {
   const [citationPanelPayload, setCitationPanelPayload] = useState<CitationPanelPayload | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
+
+  const questionTypeLabels = useMemo(() => ({
+    boolean: tExtraction('typeYesNo'),
+    string: tExtraction('typeText'),
+    number: tExtraction('typeNumber'),
+    array: tExtraction('typeList'),
+  }), [tExtraction]);
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -331,7 +339,7 @@ export default function JobDetailPage() {
       }
       setCurrentPage(1);
       setActiveTab("results");
-      appToast.success(`Applied saved view: ${view?.name || "view"}`);
+      appToast.success(tJob('appliedSavedView', { name: view?.name || tc('other') }));
     },
     [setViewMode]
   );
@@ -480,8 +488,17 @@ export default function JobDetailPage() {
                             : "bg-primary animate-pulse"
                         )}
                       />
-                      <span className="capitalize">
-                        {job.status.replace(/_/g, " ")}
+                      <span>
+                        {(
+                          {
+                            pending: tJob("statusPending"),
+                            downloading_pdfs: tJob("statusDownloadingPdfs"),
+                            extracting: tJob("statusExtracting"),
+                            completed: tJob("statusCompleted"),
+                            failed: tJob("statusFailed"),
+                            cancelled: tJob("statusCancelled"),
+                          } as Record<string, string>
+                        )[job.status] ?? job.status.replace(/_/g, " ")}
                       </span>
                     </div>
 
@@ -489,7 +506,7 @@ export default function JobDetailPage() {
 
                     <div className="flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>{job.totalPapers.toLocaleString()} papers</span>
+                      <span>{tJob('papersCount', { count: job.totalPapers.toLocaleString() })}</span>
                     </div>
 
                     <span className="w-1 h-1 rounded-full bg-border" />
@@ -515,7 +532,7 @@ export default function JobDetailPage() {
                   onClick={handleDuplicate}
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Restart
+                  {tJob('restart')}
                 </Button>
 
                 {isProcessing && (
@@ -625,7 +642,7 @@ export default function JobDetailPage() {
 
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Questions
+                  {tJob('questions')}
                 </p>
                 <p className="text-2xl lg:text-3xl font-bold text-foreground">
                   {questions.length}
@@ -638,8 +655,10 @@ export default function JobDetailPage() {
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-muted-foreground">{tJob('extractionProgress')}</span>
                 <span className="font-medium text-foreground">
-                  {resolvedProgress.processed + resolvedProgress.failed} of{" "}
-                  {resolvedProgress.total} papers
+                  {tJob('progressOfPapers', {
+                    processed: resolvedProgress.processed + resolvedProgress.failed,
+                    total: resolvedProgress.total,
+                  })}
                 </span>
               </div>
               <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -769,7 +788,7 @@ export default function JobDetailPage() {
                       <div className="flex flex-col items-center gap-3">
                         <Loader2 className="h-8 w-8 animate-spin text-primary/80" />
                         <p className="text-sm text-muted-foreground">
-                          Loading extraction results...
+                          {tJob('loadingExtractionResults')}
                         </p>
                       </div>
                     </div>
@@ -862,8 +881,12 @@ export default function JobDetailPage() {
                   questions={questions}
                   label={
                     exportMode === 'all'
-                      ? `${sortedPapers.length} filtered paper${sortedPapers.length !== 1 ? 's' : ''}`
-                      : `${selectedIds.size} selected paper${selectedIds.size !== 1 ? 's' : ''}`
+                      ? sortedPapers.length === 1
+                        ? tView('filteredPapersCount', { count: sortedPapers.length })
+                        : tView('filteredPapersCountPlural', { count: sortedPapers.length })
+                      : selectedIds.size === 1
+                        ? tView('selectedPapersCount', { count: selectedIds.size })
+                        : tView('selectedPapersCountPlural', { count: selectedIds.size })
                   }
                 />
               </ExtractionResultsShell>
@@ -946,10 +969,10 @@ export default function JobDetailPage() {
               <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/50">
                   <h3 className="text-lg font-semibold text-foreground">
-                    Extraction Questions
+                    {tView('extractionQuestions')}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Schema defined for this extraction job
+                    {tView('schemaDefinedDescription')}
                   </p>
                 </div>
                 <div className="divide-y divide-border">
@@ -969,7 +992,7 @@ export default function JobDetailPage() {
                           )}
                         </div>
                         <span className="px-3 py-1 bg-muted text-muted-foreground text-xs font-medium uppercase rounded-full">
-                          {q.type}
+                          {questionTypeLabels[q.type] ?? q.type}
                         </span>
                       </div>
                     </motion.div>

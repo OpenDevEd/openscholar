@@ -33,6 +33,7 @@ export function SearchCommandFooter({
   const t = useTranslations();
   const tv = useTranslations("validation");
   const tsc = useTranslations("searchCommand");
+  const te = useTranslations("errors");
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
 
@@ -108,7 +109,7 @@ Return a more inclusive version of this query.`;
         }),
         error: (error) => ({
           title: tsc("failedToBroaden"),
-          description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
+          description: getErrorMessage(error, te("unexpectedErrorRetry")),
         }),
       });
     } catch {
@@ -170,7 +171,7 @@ Return a more targeted version of this query.`;
         }),
         error: (error) => ({
           title: tsc("failedToNarrow"),
-          description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
+          description: getErrorMessage(error, te("unexpectedErrorRetry")),
         }),
       });
     } catch {

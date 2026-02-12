@@ -272,7 +272,11 @@ export function PaperCardListDetail({
                             <span
                               key={sdg.id}
                               className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 rounded-full text-xs border border-green-200 dark:border-green-800"
-                              title={`${sdg.display_name} (Score: ${sdg.score?.toFixed(2) || "N/A"})`}
+                              title={tp("sdgWithScoreTooltip", {
+                                name: sdg.display_name,
+                                scoreLabel: tp("score"),
+                                score: sdg.score?.toFixed(2) ?? tc("notAvailable"),
+                              })}
                             >
                               {sdg.display_name}
                               {sdg.score && (
@@ -301,7 +305,7 @@ export function PaperCardListDetail({
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="font-medium">{tp("fwciLabel")}</span>
                     <span className="text-foreground">
-                      {result.fwci ? result.fwci.toFixed(2) : "N/A"}
+                      {result.fwci ? result.fwci.toFixed(2) : tc("notAvailable")}
                     </span>
                   </div>
                 </div>
