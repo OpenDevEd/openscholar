@@ -72,6 +72,7 @@ function PaginationPrevious({
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
   const t = useTranslations("accessibility")
+  const tc = useTranslations("common")
   return (
     <PaginationLink
       aria-label={t("goToPreviousPage")}
@@ -80,7 +81,7 @@ function PaginationPrevious({
       {...props}
     >
       <ChevronLeftIcon />
-      <span className="hidden sm:block">Previous</span>
+      <span className="hidden sm:block">{tc("previous")}</span>
     </PaginationLink>
   )
 }
@@ -90,6 +91,7 @@ function PaginationNext({
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
   const t = useTranslations("accessibility")
+  const tc = useTranslations("common")
   return (
     <PaginationLink
       aria-label={t("goToNextPage")}
@@ -97,7 +99,7 @@ function PaginationNext({
       className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
       {...props}
     >
-      <span className="hidden sm:block">Next</span>
+      <span className="hidden sm:block">{tc("next")}</span>
       <ChevronRightIcon />
     </PaginationLink>
   )

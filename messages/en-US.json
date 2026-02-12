@@ -245,7 +245,52 @@
     "models300Plus": "300+ Models",
     "usingOwnApiKeys": "Using your own API keys",
     "usingCredits": "Using account credits",
-    "loadingOpenRouterModels": "Loading OpenRouter models"
+    "loadingOpenRouterModels": "Loading OpenRouter models",
+    "providerNames": {
+      "openai": "OpenAI",
+      "google": "Google",
+      "anthropic": "Anthropic",
+      "openrouter": "OpenRouter",
+      "deepseek": "DeepSeek",
+      "azure": "Azure"
+    },
+    "providerFamilies": {
+      "gpt": "GPT",
+      "gemini": "Gemini",
+      "claude": "Claude"
+    },
+    "providerGuidance": {
+      "openai": {
+        "whatIs": "Your OpenAI API key is a private token that lets this app send requests through your OpenAI account.",
+        "credits": "If your account has no prepaid balance (or no available free credits/quota), requests can stop until you add funds or your quota resets.",
+        "freeModels": "Free options (Jan 2026): OpenAI doesn't provide model-specific ':free' API variants in this app. OpenAI API usage is still subject to usage tiers and rate limits."
+      },
+      "google": {
+        "whatIs": "Your Google API key connects this app to your Gemini API project in AI Studio/Google Cloud.",
+        "credits": "If free-tier quota is exhausted or paid billing is not available, requests fail until quota resets or billing is enabled.",
+        "freeModels": "Free options (Jan 2026): gemini-2.5-pro, gemini-2.5-flash, and gemini-2.5-flash-lite have free-tier access, but with strict RPM/TPM/RPD limits."
+      },
+      "anthropic": {
+        "whatIs": "Your Anthropic API key authenticates calls to Claude models from your organization account.",
+        "credits": "Anthropic enforces monthly spend limits per tier; once reached, API usage pauses until your next cycle or a higher tier/deposit.",
+        "freeModels": "Free options (Jan 2026): no model-specific free Claude API variants are documented; Claude API models are metered and rate-limited."
+      },
+      "openrouter": {
+        "whatIs": "Your OpenRouter API key authorizes requests and applies usage to your OpenRouter account.",
+        "credits": "If your OpenRouter balance is negative, you may receive 402 errors, including for free models, until your balance is topped up.",
+        "freeModels": "Free options (Jan 2026): use openrouter/free (Free Models Router). Free variants have tighter limits."
+      },
+      "deepseek": {
+        "whatIs": "Your DeepSeek API key authenticates calls to DeepSeek models from your account.",
+        "credits": "DeepSeek API usage is metered; if your balance is exhausted, requests will fail until you add funds.",
+        "freeModels": "Free options: DeepSeek does not currently offer free API tiers."
+      },
+      "azure": {
+        "whatIs": "Your Azure API key connects this app to your Azure OpenAI Service deployment.",
+        "credits": "Azure OpenAI usage is billed through your Azure subscription; if your subscription or spending limit is reached, requests will fail.",
+        "freeModels": "Free options: Azure OpenAI does not offer free-tier API access; usage is billed per token."
+      }
+    }
   },
   "billingPage": {
     "billingAndPlans": "Billing & Plans",
@@ -373,6 +418,10 @@
     "aiNotConfigured": "AI Not Configured",
     "noSourceContext": "No source context",
     "selectSourcesFirst": "Please select sources in Step 2 first.",
+    "sourceContextSearchQueries": "Search queries:",
+    "sourceContextZoteroPapers": "Zotero papers:",
+    "sourceContextManualPapers": "Manual papers:",
+    "sourceContextAbstract": "Abstract:",
     "addedQuestions": "Added {count, plural, one {# new question} other {# new questions}}",
     "noNewQuestions": "No new questions generated",
     "apiKeyRequired": "API Key Required",
@@ -476,7 +525,31 @@
     "questionConversion": "Question conversion",
     "operationFailed": "{operation} failed",
     "thingCopied": "{thing} copied",
-    "failedToCopyThing": "Failed to copy {thing}"
+    "failedToCopyThing": "Failed to copy {thing}",
+    "entityQuery": "Query",
+    "entityExpansion": "Expansion",
+    "entityBookmark": "Bookmark",
+    "entitySearchEntry": "Search entry",
+    "entitySearchEntries": "Search entries",
+    "entityQueryEntry": "Query entry",
+    "entitySearchHistory": "Search history",
+    "entityJson": "JSON",
+    "entityCsv": "CSV",
+    "entityJsonFile": "JSON file",
+    "entityCsvFile": "CSV file",
+    "entityPdf": "PDF",
+    "entityBookmarks": "Bookmarks",
+    "entityQuestion": "Question",
+    "entityQuestionResponses": "Question responses",
+    "entityQuestions": "Questions",
+    "entityHistoryExport": "History export",
+    "entityItem": "Item",
+    "entityEssentialItem": "Essential item",
+    "entityResults": "Results",
+    "historyExportLabelJson": "{count} search entries (JSON)",
+    "historyExportLabelCsv": "{count} search entries (CSV)",
+    "uploadJsonFileFailed": "Failed to upload JSON file.",
+    "uploadCsvFileFailed": "Failed to upload CSV file."
   },
   "viewMode": {
     "simpleList": "Simple List",
@@ -696,6 +769,7 @@
     "selectAtLeastOneSource": "Please select at least one source",
     "completeAllSteps": "Please complete all steps",
     "noQueryToSave": "No query to save.",
+    "expansionTextEmpty": "Expansion text cannot be empty.",
     "noQueryToBroaden": "No active query to broaden.",
     "noQueryToNarrow": "No active query to narrow.",
     "noQuestionsToTest": "No questions to test.",
@@ -742,7 +816,10 @@
     "queryHistory": "Query History",
     "selectSearchScope": "Select search scope",
     "selectSortOrder": "Select sort order",
-    "levelN": "Level {n}"
+    "levelN": "Level {n}",
+    "pleaseSelect": "Please select",
+    "commandPalette": "Command Palette",
+    "commandSearchDescription": "Search for a command to run..."
   },
   "zotero": {
     "library": "Library",
@@ -759,7 +836,9 @@
     "missingBackendUrl": "Missing backend URL. Set NEXT_PUBLIC_CONVEX_SITE_URL",
     "connectionFailed": "Failed to start Zotero connection",
     "connected": "Zotero connected",
-    "connectionFailedWithError": "Zotero connection failed: {error}"
+    "connectionFailedWithError": "Zotero connection failed: {error}",
+    "connectDescription": "Connect your Zotero account to choose items.",
+    "connectZotero": "Connect Zotero"
   },
   "pdfViewer": {
     "loadingPdf": "Loading PDF...",
@@ -959,6 +1038,10 @@
     "sdgs": "SDGs",
     "original": "Original:"
   },
+  "filterDisplay": {
+    "reviews": "Reviews",
+    "rated": "Rated"
+  },
   "extractionView": {
     "extractionResults": "Extraction Results",
     "insights": "Insights",
@@ -1022,5 +1105,34 @@
     "builtBy": "Built by",
     "with": "with",
     "suffix": ""
+  },
+  "focusMode": {
+    "settingsTitle": "Focus Mode Settings",
+    "settingsSubtitle": "Customize your reading experience",
+    "typography": "Typography",
+    "typographyDescription": "Adjust text appearance for optimal readability",
+    "fontSize": "Font Size",
+    "lineHeight": "Line Height",
+    "layout": "Layout",
+    "layoutDescription": "Control content width and spacing - notice how this page width changes too!",
+    "contentWidth": "Content Width",
+    "appearance": "Appearance",
+    "appearanceDescription": "Customize the visual theme and information density",
+    "darkMode": "Dark Mode",
+    "darkModeDescription": "Switch to dark theme for better reading in low light",
+    "showMetadata": "Show Metadata",
+    "showMetadataDescription": "Display citation counts, topics, and other paper details",
+    "compactMode": "Compact Mode",
+    "compactModeDescription": "Reduce spacing for a denser layout",
+    "preview": "Preview",
+    "previewDescription": "See how your settings will look",
+    "backToContent": "Back to Content",
+    "machineLearningPreview": "Machine Learning Applications",
+    "abstractPreview": "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows.",
+    "pdf": "PDF",
+    "original": "Original",
+    "english": "English",
+    "showOriginal": "Show Original",
+    "showEnglishTranslation": "Show English Translation"
   }
 }

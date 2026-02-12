@@ -44,6 +44,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const ta = useTranslations('accessibility');
   const tl = useTranslations('languages');
   const tp = useTranslations('paperCard');
+  const tToast = useTranslations('toast');
   const locale = useLocale();
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
@@ -59,7 +60,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const handleCopyQuery = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      appToast.clipboard.copied("Query");
+      appToast.clipboard.copied(tToast("entityQuery"));
     } catch (err) {
       const textArea = document.createElement('textarea');
       textArea.value = query;
@@ -67,7 +68,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      appToast.clipboard.copied("Query");
+      appToast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -82,9 +83,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         };
       });
       downloadAsFile(JSON.stringify(data, null, 2), 'search_history.json', 'json');
-      appToast.entity.created("history export", `${data.length} search entries (JSON)`);
+      appToast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelJson", { count: data.length }));
     } catch (error) {
-      appToast.io.downloadFailed("JSON file");
+      appToast.io.downloadFailed(tToast("entityJsonFile"));
     }
   };
 
@@ -100,9 +101,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, 'search_history.csv', 'csv');
-      appToast.entity.created("history export", `${data.length} search entries (CSV)`);
+      appToast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelCsv", { count: data.length }));
     } catch (error) {
-      appToast.io.downloadFailed("CSV file");
+      appToast.io.downloadFailed(tToast("entityCsvFile"));
     }
   };
 
@@ -111,9 +112,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.json');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      appToast.io.importResult("search entries", importedCount);
+      appToast.io.importResult(tToast("entitySearchEntries"), importedCount);
     } catch (error) {
-      appToast.io.uploadFailed("JSON file", getErrorMessage(error, "Failed to upload JSON file."));
+      appToast.io.uploadFailed(tToast("entityJsonFile"), getErrorMessage(error, tToast("uploadJsonFileFailed")));
     }
   };
 
@@ -122,9 +123,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.csv');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      appToast.io.importResult("search entries", importedCount);
+      appToast.io.importResult(tToast("entitySearchEntries"), importedCount);
     } catch (error) {
-      appToast.io.uploadFailed("CSV file", getErrorMessage(error, "Failed to upload CSV file."));
+      appToast.io.uploadFailed(tToast("entityCsvFile"), getErrorMessage(error, tToast("uploadCsvFileFailed")));
     }
   };
 
@@ -134,9 +135,10 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       title: t('historyPage.deleteSearchEntry'),
       message: t('confirmations.deleteSearchConfirm', { query: truncatedQuery }),
       confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       onConfirm: () => {
         removeSearchResult(index);
-        appToast.entity.deleted("search entry");
+        appToast.entity.deleted(tToast("entitySearchEntry"));
       }
     });
   };
@@ -146,9 +148,10 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       title: t('historyPage.clearAllHistory'),
       message: t('confirmations.deleteAllHistory', { count: searchHistory.length }),
       confirmText: t('common.clearAll'),
+      cancelText: t('common.cancel'),
       onConfirm: () => {
         clearSearchHistory();
-        appToast.entity.cleared("search history");
+        appToast.entity.cleared(tToast("entitySearchHistory"));
       }
     });
   };
@@ -188,7 +191,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       updatedAt: new Date().toISOString()
     });
     
-    appToast.entity.deleted("query entry");
+    appToast.entity.deleted(tToast("entityQueryEntry"));
   };
 
   // Reusable Bookmark Form Component
@@ -225,7 +228,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     
       addKeyword(localBookmarkName.trim(), expandedQuery);
-      appToast.entity.created("bookmark", localBookmarkName);
+      appToast.entity.created(tToast("entityBookmark"), localBookmarkName);
       onSubmit(localBookmarkName);
       setLocalBookmarkName('');
     };

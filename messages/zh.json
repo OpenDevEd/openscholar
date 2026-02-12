@@ -245,7 +245,52 @@
     "models300Plus": "300+ 模型",
     "usingOwnApiKeys": "使用您自己的 API 密钥",
     "usingCredits": "使用账户积分",
-    "loadingOpenRouterModels": "加载 OpenRouter 模型中"
+    "loadingOpenRouterModels": "加载 OpenRouter 模型中",
+    "providerNames": {
+      "openai": "OpenAI",
+      "google": "Google",
+      "anthropic": "Anthropic",
+      "openrouter": "OpenRouter",
+      "deepseek": "DeepSeek",
+      "azure": "Azure"
+    },
+    "providerFamilies": {
+      "gpt": "GPT",
+      "gemini": "Gemini",
+      "claude": "Claude"
+    },
+    "providerGuidance": {
+      "openai": {
+        "whatIs": "您的 OpenAI API 密钥是一个私密令牌，允许本应用通过您的 OpenAI 账户发送请求。",
+        "credits": "如果您的账户没有预付费余额（或没有可用的免费额度/配额），请求可能会停止，直到您充值或配额重置。",
+        "freeModels": "免费选项（2026年1月）：OpenAI 在本应用中不提供模型特定的 ':free' API 变体。OpenAI API 使用仍受使用层级和速率限制的约束。"
+      },
+      "google": {
+        "whatIs": "您的 Google API 密钥将本应用连接到 AI Studio/Google Cloud 中的 Gemini API 项目。",
+        "credits": "如果免费层级配额用尽或未启用付费账单，请求将失败，直到配额重置或启用账单。",
+        "freeModels": "免费选项（2026年1月）：gemini-2.5-pro、gemini-2.5-flash 和 gemini-2.5-flash-lite 支持免费层级访问，但有严格的 RPM/TPM/RPD 限制。"
+      },
+      "anthropic": {
+        "whatIs": "您的 Anthropic API 密钥用于从您的组织账户验证对 Claude 模型的调用。",
+        "credits": "Anthropic 按层级强制执行每月支出限制；达到上限后，API 使用将暂停，直到下个周期或升级层级/充值。",
+        "freeModels": "免费选项（2026年1月）：尚无文档记录模型特定的免费 Claude API 变体；Claude API 模型按量计费并受速率限制。"
+      },
+      "openrouter": {
+        "whatIs": "您的 OpenRouter API 密钥用于授权请求并将使用量计入您的 OpenRouter 账户。",
+        "credits": "如果您的 OpenRouter 余额为负，您可能会收到 402 错误（包括免费模型），直到您充值余额。",
+        "freeModels": "免费选项（2026年1月）：使用 openrouter/free（免费模型路由器）。免费变体有更严格的限制。"
+      },
+      "deepseek": {
+        "whatIs": "您的 DeepSeek API 密钥用于从您的账户验证对 DeepSeek 模型的调用。",
+        "credits": "DeepSeek API 使用按量计费；如果您的余额用尽，请求将失败，直到您充值。",
+        "freeModels": "免费选项：DeepSeek 目前不提供免费 API 层级。"
+      },
+      "azure": {
+        "whatIs": "您的 Azure API 密钥将本应用连接到您的 Azure OpenAI 服务部署。",
+        "credits": "Azure OpenAI 使用通过您的 Azure 订阅计费；如果您的订阅或支出限额达到上限，请求将失败。",
+        "freeModels": "免费选项：Azure OpenAI 不提供免费层级 API 访问；使用按令牌计费。"
+      }
+    }
   },
   "billingPage": {
     "billingAndPlans": "账单和计划",
@@ -373,6 +418,10 @@
     "aiNotConfigured": "AI 未配置",
     "noSourceContext": "无来源上下文",
     "selectSourcesFirst": "请先在步骤 2 中选择来源。",
+    "sourceContextSearchQueries": "搜索查询：",
+    "sourceContextZoteroPapers": "Zotero 论文：",
+    "sourceContextManualPapers": "手动添加论文：",
+    "sourceContextAbstract": "摘要：",
     "addedQuestions": "已添加 {count, plural, other {# 个新问题}}",
     "noNewQuestions": "未生成新问题",
     "apiKeyRequired": "需要 API 密钥",
@@ -476,7 +525,31 @@
     "questionConversion": "问题转换",
     "operationFailed": "{operation} 失败",
     "thingCopied": "{thing} 已复制",
-    "failedToCopyThing": "复制 {thing} 失败"
+    "failedToCopyThing": "复制 {thing} 失败",
+    "entityQuery": "查询",
+    "entityExpansion": "扩展",
+    "entityBookmark": "书签",
+    "entitySearchEntry": "搜索条目",
+    "entitySearchEntries": "搜索条目",
+    "entityQueryEntry": "查询条目",
+    "entitySearchHistory": "搜索历史",
+    "entityJson": "JSON",
+    "entityCsv": "CSV",
+    "entityJsonFile": "JSON 文件",
+    "entityCsvFile": "CSV 文件",
+    "entityPdf": "PDF",
+    "entityBookmarks": "书签",
+    "entityQuestion": "问题",
+    "entityQuestionResponses": "问题回复",
+    "entityQuestions": "问题",
+    "entityHistoryExport": "历史导出",
+    "entityItem": "项目",
+    "entityEssentialItem": "Essential 项目",
+    "entityResults": "结果",
+    "historyExportLabelJson": "{count} 条搜索记录 (JSON)",
+    "historyExportLabelCsv": "{count} 条搜索记录 (CSV)",
+    "uploadJsonFileFailed": "上传 JSON 文件失败。",
+    "uploadCsvFileFailed": "上传 CSV 文件失败。"
   },
   "viewMode": {
     "simpleList": "简单列表",
@@ -696,6 +769,7 @@
     "selectAtLeastOneSource": "请至少选择一个来源",
     "completeAllSteps": "请完成所有步骤",
     "noQueryToSave": "没有查询可保存。",
+    "expansionTextEmpty": "扩展文本不能为空。",
     "noQueryToBroaden": "没有活动查询可扩展。",
     "noQueryToNarrow": "没有活动查询可缩小。",
     "noQuestionsToTest": "没有问题可测试。",
@@ -742,7 +816,10 @@
     "queryHistory": "查询历史",
     "selectSearchScope": "选择搜索范围",
     "selectSortOrder": "选择排序顺序",
-    "levelN": "级别 {n}"
+    "levelN": "级别 {n}",
+    "pleaseSelect": "请选择",
+    "commandPalette": "命令面板",
+    "commandSearchDescription": "搜索要运行的命令..."
   },
   "zotero": {
     "library": "库",
@@ -759,7 +836,9 @@
     "missingBackendUrl": "缺少后端 URL。设置 NEXT_PUBLIC_CONVEX_SITE_URL",
     "connectionFailed": "无法启动 Zotero 连接",
     "connected": "Zotero 已连接",
-    "connectionFailedWithError": "Zotero 连接失败：{error}"
+    "connectionFailedWithError": "Zotero 连接失败：{error}",
+    "connectDescription": "连接您的 Zotero 账户以选择项目。",
+    "connectZotero": "连接 Zotero"
   },
   "pdfViewer": {
     "loadingPdf": "加载 PDF 中...",
@@ -959,6 +1038,10 @@
     "sdgs": "SDGs",
     "original": "原文："
   },
+  "filterDisplay": {
+    "reviews": "审核",
+    "rated": "已评分"
+  },
   "extractionView": {
     "extractionResults": "提取结果",
     "insights": "洞察",
@@ -1022,5 +1105,34 @@
     "builtBy": "由",
     "with": "与",
     "suffix": "联合打造"
+  },
+  "focusMode": {
+    "settingsTitle": "专注模式设置",
+    "settingsSubtitle": "自定义您的阅读体验",
+    "typography": "排版",
+    "typographyDescription": "调整文字外观以获得最佳可读性",
+    "fontSize": "字体大小",
+    "lineHeight": "行高",
+    "layout": "布局",
+    "layoutDescription": "控制内容宽度和间距 - 注意此页面宽度也会随之变化！",
+    "contentWidth": "内容宽度",
+    "appearance": "外观",
+    "appearanceDescription": "自定义视觉主题和信息密度",
+    "darkMode": "深色模式",
+    "darkModeDescription": "在弱光环境下切换到深色主题以获得更好的阅读体验",
+    "showMetadata": "显示元数据",
+    "showMetadataDescription": "显示引用次数、主题及其他论文详情",
+    "compactMode": "紧凑模式",
+    "compactModeDescription": "减少间距以获得更紧凑的布局",
+    "preview": "预览",
+    "previewDescription": "查看您的设置效果",
+    "backToContent": "返回内容",
+    "machineLearningPreview": "机器学习应用",
+    "abstractPreview": "本研究探讨了机器学习算法对现代科学研究方法的变革性影响。我们分析自动化数据处理、模式识别和预测建模如何革新了多学科的假设生成和实验设计。我们的研究结果表明，当ML技术正确融入传统科学工作流程时，研究效率和发现率显著提高。",
+    "pdf": "PDF",
+    "original": "原文",
+    "english": "英文",
+    "showOriginal": "显示原文",
+    "showEnglishTranslation": "显示英文翻译"
   }
 }

@@ -336,7 +336,8 @@ export function QuestionBuilder() {
       .filter(Boolean);
     if (historyEntries.length > 0) {
       parts.push(
-        "Search queries:\n" +
+        t("sourceContextSearchQueries") +
+          "\n" +
           historyEntries.map((e) => `- "${e!.query}"`).join("\n")
       );
     }
@@ -348,9 +349,9 @@ export function QuestionBuilder() {
           ? item.abstract.slice(0, 200) +
             (item.abstract.length > 200 ? "..." : "")
           : "";
-        return `- "${item.title}"${abstract ? `\n  Abstract: ${abstract}` : ""}`;
+        return `- "${item.title}"${abstract ? `\n  ${t("sourceContextAbstract")} ${abstract}` : ""}`;
       });
-      parts.push("Zotero papers:\n" + snippets.join("\n"));
+      parts.push(t("sourceContextZoteroPapers") + "\n" + snippets.join("\n"));
     }
 
     if (draftJob.manualItems.length > 0) {
@@ -359,9 +360,9 @@ export function QuestionBuilder() {
           ? item.abstract.slice(0, 200) +
             (item.abstract.length > 200 ? "..." : "")
           : "";
-        return `- "${item.title}"${abstract ? `\n  Abstract: ${abstract}` : ""}`;
+        return `- "${item.title}"${abstract ? `\n  ${t("sourceContextAbstract")} ${abstract}` : ""}`;
       });
-      parts.push("Manual papers:\n" + snippets.join("\n"));
+      parts.push(t("sourceContextManualPapers") + "\n" + snippets.join("\n"));
     }
 
     return parts.join("\n\n");

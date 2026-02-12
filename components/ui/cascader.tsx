@@ -55,7 +55,7 @@ export function Cascader({
   value,
   defaultValue,
   onChange,
-  placeholder = "Please select",
+  placeholder,
   disabled = false,
   allowClear = true,
   className,
@@ -63,6 +63,8 @@ export function Cascader({
   expandTrigger = "click",
   displayRender,
 }: CascaderProps) {
+  const t = useTranslations("accessibility");
+  const resolvedPlaceholder = placeholder ?? t("pleaseSelect");
   const [open, setOpen] = React.useState(false)
   const [internalValue, setInternalValue] = React.useState<string[]>(defaultValue || [])
   const [expandedPath, setExpandedPath] = React.useState<string[]>([])
@@ -71,8 +73,6 @@ export function Cascader({
   const isMobile = useIsMobile()
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const columnRefs = React.useRef<Map<string, HTMLDivElement>>(new Map())
-
-  const t = useTranslations("accessibility")
   const selectedValue = value !== undefined ? value : internalValue
 
   const getColumns = React.useCallback(() => {
@@ -289,7 +289,7 @@ export function Cascader({
       }}
     >
       <span className="truncate flex-1 text-left font-normal">
-        {displayValue || placeholder}
+        {displayValue || resolvedPlaceholder}
       </span>
       <div className="flex items-center gap-1 shrink-0">
         {allowClear && displayValue && !disabled && (
@@ -311,7 +311,7 @@ export function Cascader({
       ref={scrollContainerRef}
       className={cn("flex", isMobile && "overflow-x-auto")}
       role="listbox"
-      aria-label={placeholder}
+      aria-label={resolvedPlaceholder}
     >
       {columns.map((column, columnIndex) => (
         <div
@@ -407,7 +407,7 @@ export function Cascader({
         </DrawerTrigger>
         <DrawerContent className={cn("px-0", popupClassName)}>
           <DrawerHeader className="pb-2">
-            <DrawerTitle className="text-sm font-medium">{placeholder}</DrawerTitle>
+            <DrawerTitle className="text-sm font-medium">{resolvedPlaceholder}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-6">{columnsContent}</div>
         </DrawerContent>

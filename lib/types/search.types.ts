@@ -37,10 +37,18 @@ export interface DownloadHandlers {
 }
 
 /**
- * Year range preset - key is used for i18n, range is [from, to]
+ * Year range preset - key is used for i18n (searchFilters namespace), range is [from, to]
  */
+export type YearPresetKey =
+  | "yearPresetThisYear"
+  | "yearPresetLastYear"
+  | "yearPresetLast5Years"
+  | "yearPresetLast10Years"
+  | "yearPresetLast15Years"
+  | "yearPresetLast20Years";
+
 export interface YearRangePreset {
-  key: string;
+  key: YearPresetKey;
   range: [number, number];
   /** @deprecated Use key with translations instead */
   label?: string;

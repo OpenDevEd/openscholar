@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 
 export function RatingRangePicker() {
   const tf = useTranslations("searchFilters");
+  const tc = useTranslations("common");
   const {
     ratingRange,
     onlyRatedPapers,
@@ -103,7 +104,7 @@ export function RatingRangePicker() {
               <div className="flex items-center gap-2">
                 {renderStars(ratingRange[0])}
               </div>
-              <span className="text-muted-foreground">to</span>
+              <span className="text-muted-foreground">{tc("to")}</span>
               <div className="flex items-center gap-2">
                 {renderStars(ratingRange[1])}
               </div>

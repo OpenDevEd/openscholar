@@ -65,12 +65,19 @@ export const getEssentialInfo = (item: any) => {
   };
 };
 
-export const downloadItem = async (item: any, format: 'json' | 'csv', searchState?: any) => {
+export type DownloadToastLabels = {
+  item?: string;
+  essentialItem?: string;
+  results?: string;
+};
+
+export const downloadItem = async (item: any, format: 'json' | 'csv', searchState?: any, labels?: DownloadToastLabels) => {
+  const formatLabel = labels?.item ?? 'item';
   try {
     const { ratings } = useRatingsStore.getState();
     
     if (!searchState) {
-      appToast.io.downloadFailed('item');
+      appToast.io.downloadFailed(formatLabel);
       return;
     }
     
@@ -86,14 +93,15 @@ export const downloadItem = async (item: any, format: 'json' | 'csv', searchStat
     await downloadWithMetadata(itemWithRating, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading item:', error);
-    appToast.io.downloadFailed('item');
+    appToast.io.downloadFailed(formatLabel);
   }
 };
 
-export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', searchState?: any) => {
+export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', searchState?: any, labels?: DownloadToastLabels) => {
+  const formatLabel = labels?.essentialItem ?? 'essential item';
   try {
     if (!searchState) {
-      appToast.io.downloadFailed('essential item');
+      appToast.io.downloadFailed(formatLabel);
       return;
     }
     
@@ -106,16 +114,17 @@ export const downloadEssentialItem = async (item: any, format: 'json' | 'csv', s
     await downloadWithMetadata(essentialInfo, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading essential item:', error);
-    appToast.io.downloadFailed('essential item');
+    appToast.io.downloadFailed(formatLabel);
   }
 };
 
-export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean = false, searchState?: any, results?: any[]) => {
+export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean = false, searchState?: any, results?: any[], labels?: DownloadToastLabels) => {
+  const formatLabel = labels?.results ?? 'results';
   try {
     const { ratings } = useRatingsStore.getState();
     
     if (!searchState || !results) {
-      appToast.io.downloadFailed('results');
+      appToast.io.downloadFailed(formatLabel);
       return;
     }
 
@@ -134,7 +143,7 @@ export const downloadAll = async (format: 'json' | 'csv', onlyEssential: boolean
     await downloadWithMetadata(dataToDownload, filename, format, metadata);
   } catch (error) {
     console.error('Error downloading all results:', error);
-    appToast.io.downloadFailed('results');
+    appToast.io.downloadFailed(formatLabel);
   }
 };
 

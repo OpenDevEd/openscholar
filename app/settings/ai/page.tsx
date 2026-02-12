@@ -31,60 +31,6 @@ import { appToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 
-const PROVIDER_API_KEY_GUIDANCE: Record<
-  AIProvider,
-  { whatIs: string; credits: string; freeModels: string }
-> = {
-  openai: {
-    whatIs:
-      "Your OpenAI API key is a private token that lets this app send requests through your OpenAI account.",
-    credits:
-      "If your account has no prepaid balance (or no available free credits/quota), requests can stop until you add funds or your quota resets.",
-    freeModels:
-      "Free options (Jan 2026): OpenAI doesn't provide model-specific ':free' API variants in this app. OpenAI API usage is still subject to usage tiers and rate limits.",
-  },
-  google: {
-    whatIs:
-      "Your Google API key connects this app to your Gemini API project in AI Studio/Google Cloud.",
-    credits:
-      "If free-tier quota is exhausted or paid billing is not available, requests fail until quota resets or billing is enabled.",
-    freeModels:
-      "Free options (Jan 2026): gemini-2.5-pro, gemini-2.5-flash, and gemini-2.5-flash-lite have free-tier access, but with strict RPM/TPM/RPD limits.",
-  },
-  anthropic: {
-    whatIs:
-      "Your Anthropic API key authenticates calls to Claude models from your organization account.",
-    credits:
-      "Anthropic enforces monthly spend limits per tier; once reached, API usage pauses until your next cycle or a higher tier/deposit.",
-    freeModels:
-      "Free options (Jan 2026): no model-specific free Claude API variants are documented; Claude API models are metered and rate-limited.",
-  },
-  openrouter: {
-    whatIs:
-      "Your OpenRouter API key authorizes requests and applies usage to your OpenRouter account.",
-    credits:
-      "If your OpenRouter balance is negative, you may receive 402 errors, including for free models, until your balance is topped up.",
-    freeModels:
-      "Free options (Jan 2026): use openrouter/free (Free Models Router). Free variants have tighter limits.",
-  },
-  deepseek: {
-    whatIs:
-      "Your DeepSeek API key authenticates calls to DeepSeek models from your account.",
-    credits:
-      "DeepSeek API usage is metered; if your balance is exhausted, requests will fail until you add funds.",
-    freeModels:
-      "Free options: DeepSeek does not currently offer free API tiers.",
-  },
-  azure: {
-    whatIs:
-      "Your Azure API key connects this app to your Azure OpenAI Service deployment.",
-    credits:
-      "Azure OpenAI usage is billed through your Azure subscription; if your subscription or spending limit is reached, requests will fail.",
-    freeModels:
-      "Free options: Azure OpenAI does not offer free-tier API access; usage is billed per token.",
-  },
-};
-
 export default function AISettingsPage() {
   const {
     provider,
@@ -188,8 +134,8 @@ export default function AISettingsPage() {
   }> = [
     {
       id: "openai",
-      name: "OpenAI",
-      family: "GPT",
+      name: t("providerNames.openai"),
+      family: t("providerFamilies.gpt"),
       icon: OpenAIIcon,
       color: "text-green-500",
       borderColor: "border-l-green-500",
@@ -197,8 +143,8 @@ export default function AISettingsPage() {
     },
     {
       id: "google",
-      name: "Google",
-      family: "Gemini",
+      name: t("providerNames.google"),
+      family: t("providerFamilies.gemini"),
       icon: GoogleIcon,
       color: "text-blue-500",
       borderColor: "border-l-blue-500",
@@ -206,8 +152,8 @@ export default function AISettingsPage() {
     },
     {
       id: "anthropic",
-      name: "Anthropic",
-      family: "Claude",
+      name: t("providerNames.anthropic"),
+      family: t("providerFamilies.claude"),
       icon: AnthropicIcon,
       color: "text-orange-500",
       borderColor: "border-l-orange-500",
@@ -215,7 +161,7 @@ export default function AISettingsPage() {
     },
     {
       id: "openrouter",
-      name: "OpenRouter",
+      name: t("providerNames.openrouter"),
       family: t("models300Plus"),
       icon: OpenRouterIcon,
       color: "text-purple-500",
@@ -557,9 +503,9 @@ export default function AISettingsPage() {
                 </a>
               </div>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p>{PROVIDER_API_KEY_GUIDANCE[provider].whatIs}</p>
-                <p>{PROVIDER_API_KEY_GUIDANCE[provider].credits}</p>
-                <p>{PROVIDER_API_KEY_GUIDANCE[provider].freeModels}</p>
+                <p>{t(`providerGuidance.${provider}.whatIs`)}</p>
+                <p>{t(`providerGuidance.${provider}.credits`)}</p>
+                <p>{t(`providerGuidance.${provider}.freeModels`)}</p>
               </div>
             </div>
           </div>

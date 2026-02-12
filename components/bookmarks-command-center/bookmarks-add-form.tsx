@@ -16,6 +16,7 @@ import posthog from "posthog-js";
 
 export function BookmarksAddForm() {
   const tb = useTranslations("bookmarksPage");
+  const tv = useTranslations("validation");
   const [name, setName] = useState("");
   const [expansion, setExpansion] = useState("");
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -38,12 +39,12 @@ export function BookmarksAddForm() {
     }
 
     if (!trimmedExpansion) {
-      appToast.validation.failed("Expansion text cannot be empty.");
+      appToast.validation.failed(tv("expansionTextEmpty"));
       return;
     }
 
     if (keywords[trimmedName]) {
-      appToast.validation.failed(`Bookmark "${trimmedName}" already exists.`);
+      appToast.validation.failed(tv("bookmarkNameExists", { name: trimmedName }));
       return;
     }
 

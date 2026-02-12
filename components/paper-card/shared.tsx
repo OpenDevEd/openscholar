@@ -326,12 +326,12 @@ export function ScreeningResponses({
                   const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
                   const statusText =
                     isQuestionAnswered === true
-                      ? "Yes"
+                      ? tc("yes")
                       : isQuestionAnswered === false
-                      ? "No"
+                      ? tc("no")
                       : isQuestionLoading
-                      ? "Loading..."
-                      : "?";
+                      ? tc("loading")
+                      : tc("unknown");
 
                   return (
                     <tr
@@ -525,6 +525,7 @@ export function DOIBadge({
   doi: string;
   compact?: boolean;
 }) {
+  const tAcc = useTranslations("accessibility");
   if (!doi) return null;
 
   const doiUrl = doi.startsWith("http") ? doi : `https://doi.org/${doi}`;
@@ -563,7 +564,7 @@ export function DOIBadge({
         }
       }}
       className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0"
-      title="Open DOI"
+      title={tAcc("openDoi")}
     >
       <ExternalLink className="h-3 w-3" />
       <span className="text-xs font-mono">{shortDoi}</span>

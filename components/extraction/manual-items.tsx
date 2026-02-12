@@ -18,13 +18,14 @@ const MAX_FILE_MB = 25;
 export function ManualItems() {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const tToast = useTranslations("toast");
   const { draftJob, addManualItem, updateManualItem, removeManualItem } = useExtractionStore();
   const generateUploadUrl = useMutation(api.extraction.uploads.generateUploadUrl);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
 
   const handleFileUpload = async (id: string, file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      appToast.validation.fileType("PDF");
+      appToast.validation.fileType(tToast("entityPdf"));
       return;
     }
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
@@ -41,13 +42,13 @@ export function ManualItems() {
         body: file,
       });
       if (!result.ok) {
-        appToast.io.uploadFailed("PDF");
+        appToast.io.uploadFailed(tToast("entityPdf"));
         return;
       }
       const { storageId } = await result.json();
       updateManualItem(id, { storageId, pdfUrl: undefined });
     } catch (error) {
-      appToast.io.uploadFailed("PDF");
+      appToast.io.uploadFailed(tToast("entityPdf"));
     } finally {
       setUploadingIds((prev) => prev.filter((itemId) => itemId !== id));
     }

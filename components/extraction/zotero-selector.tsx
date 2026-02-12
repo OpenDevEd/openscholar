@@ -207,7 +207,7 @@ export function ZoteroSelector() {
         <AlertCircle className="h-5 w-5 text-muted-foreground" />
         <div>
           <p className="font-medium text-foreground">{t('notConnected')}</p>
-          <p>Connect your Zotero account to choose items.</p>
+          <p>{t('connectDescription')}</p>
           <div className="mt-4">
             <Button
               size="sm"
@@ -231,7 +231,7 @@ export function ZoteroSelector() {
                 }
               }}
             >
-              Connect Zotero
+              {t('connectZotero')}
             </Button>
           </div>
         </div>

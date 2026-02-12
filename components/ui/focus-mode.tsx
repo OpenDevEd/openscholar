@@ -84,6 +84,7 @@ export function FocusMode({
   const tLineHeight = useTranslations("lineHeight");
   const tWidth = useTranslations("width");
   const tCommon = useTranslations("common");
+  const tFocus = useTranslations("focusMode");
 
   // Track focus mode time spent
   const focusModeStartTimeRef = useRef<number | null>(null);
@@ -452,7 +453,7 @@ export function FocusMode({
             className={cn("font-bold leading-tight mb-1", getFontSizeClass())}
           >
             {isPreview
-              ? "The Impact of Machine Learning on Scientific Research Discovery (2024)"
+              ? `${tFocus("machineLearningPreview")} (2024)`
               : showTranslated && translatedContent
               ? `${translatedContent.translatedTitle} (${paper.publication_year})`
               : `${paper.title} (${paper.publication_year})`}
@@ -554,7 +555,7 @@ export function FocusMode({
                   <span className="text-muted-foreground">{tLabels('topic')}:</span>
                   <span className="font-medium">
                     {isPreview
-                      ? "Machine Learning Applications"
+                      ? tFocus("machineLearningPreview")
                       : paper.primary_topic.display_name}
                   </span>
                 </span>
@@ -588,7 +589,7 @@ export function FocusMode({
                   
                   <>
                     <FileText className="h-3 w-3 text-green-600" />
-                    <span className="text-green-600 font-medium">PDF</span>
+                    <span className="text-green-600 font-medium">{tFocus("pdf")}</span>
                     {paper.open_access.oa_url && (
                       <>
                         <a
@@ -685,13 +686,13 @@ export function FocusMode({
         {(paper.abstract || isPreview) && (
           <div className="border-t pt-2">
             <div className="text-sm font-medium text-muted-foreground mb-1">
-              Abstract
+              {tCommon("abstract")}
             </div>
             <div
               className={cn("pr-2", getFontSizeClass(), getLineHeightClass())}
             >
-              {isPreview
-                ? "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows."
+            {isPreview
+              ? tFocus("abstractPreview")
                 : showTranslated && translatedContent
                 ? translatedContent.translatedAbstract
                 : paper.abstract}
@@ -818,8 +819,8 @@ export function FocusMode({
                         onClick={() => setShowTranslated(!showTranslated)}
                         title={
                           showTranslated
-                            ? "Show Original"
-                            : "Show English Translation"
+                            ? tFocus("showOriginal")
+                            : tFocus("showEnglishTranslation")
                         }
                         disabled={
                           !translatedContent ||
@@ -832,7 +833,7 @@ export function FocusMode({
                           <>
                             <Globe className="h-3 w-3 md:mr-1" />
                             <span className="hidden sm:inline">
-                              {showTranslated ? "Original" : "English"}
+                              {showTranslated ? tFocus("original") : tFocus("english")}
                             </span>
                           </>
                         )}
@@ -928,10 +929,10 @@ export function FocusMode({
                   <div className="flex items-center justify-between mb-8">
                     <div>
                       <h2 className="text-2xl font-bold tracking-tight">
-                        Focus Mode Settings
+                        {tFocus("settingsTitle")}
                       </h2>
                       <p className="text-muted-foreground mt-1">
-                        Customize your reading experience
+                        {tFocus("settingsSubtitle")}
                       </p>
                     </div>
                     <Button
@@ -942,7 +943,7 @@ export function FocusMode({
                       title={tAccessibility('resetToDefaults')}
                     >
                       <RotateCcw className="h-4 w-4" />
-                      Reset
+                      {tCommon("reset")}
                     </Button>
                   </div>
 
@@ -953,17 +954,17 @@ export function FocusMode({
                       <div className="space-y-6">
                         <div>
                           <h3 className="text-lg font-semibold mb-1">
-                            Typography
+                            {tFocus("typography")}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            Adjust text appearance for optimal readability
+                            {tFocus("typographyDescription")}
                           </p>
                         </div>
 
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">
-                              Font Size
+                              {tFocus("fontSize")}
                             </Label>
                             <Select
                               value={settings.fontSize}
@@ -987,7 +988,7 @@ export function FocusMode({
 
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">
-                              Line Height
+                              {tFocus("lineHeight")}
                             </Label>
                             <Select
                               value={settings.lineHeight}
@@ -1015,16 +1016,15 @@ export function FocusMode({
                       {/* Layout Section */}
                       <div className="space-y-6">
                         <div>
-                          <h3 className="text-lg font-semibold mb-1">Layout</h3>
+                          <h3 className="text-lg font-semibold mb-1">{tFocus("layout")}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Control content width and spacing - notice how this
-                            page width changes too!
+                            {tFocus("layoutDescription")}
                           </p>
                         </div>
 
                         <div className="space-y-2">
                           <Label className="text-sm font-medium">
-                            Content Width
+                            {tFocus("contentWidth")}
                           </Label>
                           <Select
                             value={settings.maxContentWidth}
@@ -1053,10 +1053,10 @@ export function FocusMode({
                       <div className="space-y-6">
                         <div>
                           <h3 className="text-lg font-semibold mb-1">
-                            Appearance
+                            {tFocus("appearance")}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            Customize the visual theme and information density
+                            {tFocus("appearanceDescription")}
                           </p>
                         </div>
 
@@ -1064,11 +1064,10 @@ export function FocusMode({
                           <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                             <div className="space-y-0.5">
                               <Label className="text-sm font-medium">
-                                Dark Mode
+                                {tFocus("darkMode")}
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Switch to dark theme for better reading in low
-                                light
+                                {tFocus("darkModeDescription")}
                               </p>
                             </div>
                             <Switch
@@ -1082,11 +1081,10 @@ export function FocusMode({
                           <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                             <div className="space-y-0.5">
                               <Label className="text-sm font-medium">
-                                Show Metadata
+                                {tFocus("showMetadata")}
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Display citation counts, topics, and other paper
-                                details
+                                {tFocus("showMetadataDescription")}
                               </p>
                             </div>
                             <Switch
@@ -1098,10 +1096,10 @@ export function FocusMode({
                           <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                             <div className="space-y-0.5">
                               <Label className="text-sm font-medium">
-                                Compact Mode
+                                {tFocus("compactMode")}
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Reduce spacing for a denser layout
+                                {tFocus("compactModeDescription")}
                               </p>
                             </div>
                             <Switch
@@ -1116,9 +1114,9 @@ export function FocusMode({
                     {/* Preview Section */}
                     <div className="space-y-6">
                       <div>
-                        <h3 className="text-lg font-semibold mb-1">Preview</h3>
+                        <h3 className="text-lg font-semibold mb-1">{tFocus("preview")}</h3>
                         <p className="text-sm text-muted-foreground">
-                          See how your settings will look
+                          {tFocus("previewDescription")}
                         </p>
                       </div>
 
@@ -1136,7 +1134,7 @@ export function FocusMode({
                       size="lg"
                     >
                       <ChevronLeft className="h-4 w-4" />
-                      Back to Content
+                      {tFocus("backToContent")}
                     </Button>
                   </div>
                 </div>

@@ -44,6 +44,12 @@ export default function ResultsPageContent({
   searchId,
 }: ResultsPageContentProps) {
   const tc = useTranslations("common");
+  const tToast = useTranslations("toast");
+  const downloadLabels = {
+    item: tToast("entityItem"),
+    essentialItem: tToast("entityEssentialItem"),
+    results: tToast("entityResults"),
+  };
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -132,22 +138,22 @@ export default function ResultsPageContent({
                       <main className="w-full">
                         <ResultsList
                           onDownloadItem={(item, format) =>
-                            downloadItem(item, format, searchState)
+                            downloadItem(item, format, searchState, downloadLabels)
                           }
                           onDownloadEssentialItem={(item, format) =>
-                            downloadEssentialItem(item, format, searchState)
+                            downloadEssentialItem(item, format, searchState, downloadLabels)
                           }
                           onDownloadAllJSON={() =>
-                            downloadAll("json", false, searchState, results)
+                            downloadAll("json", false, searchState, results, downloadLabels)
                           }
                           onDownloadAllCSV={() =>
-                            downloadAll("csv", false, searchState, results)
+                            downloadAll("csv", false, searchState, results, downloadLabels)
                           }
                           onDownloadAllEssentialJSON={() =>
-                            downloadAll("json", true, searchState, results)
+                            downloadAll("json", true, searchState, results, downloadLabels)
                           }
                           onDownloadAllEssentialCSV={() =>
-                            downloadAll("csv", true, searchState, results)
+                            downloadAll("csv", true, searchState, results, downloadLabels)
                           }
                           isLoading={isLoading}
                           isValidating={isValidating}
@@ -190,22 +196,22 @@ export default function ResultsPageContent({
               <main className="w-full">
                 <ResultsList
                   onDownloadItem={(item, format) =>
-                    downloadItem(item, format, searchState)
+                    downloadItem(item, format, searchState, downloadLabels)
                   }
                   onDownloadEssentialItem={(item, format) =>
-                    downloadEssentialItem(item, format, searchState)
+                    downloadEssentialItem(item, format, searchState, downloadLabels)
                   }
                   onDownloadAllJSON={() =>
-                    downloadAll("json", false, searchState, results)
+                    downloadAll("json", false, searchState, results, downloadLabels)
                   }
                   onDownloadAllCSV={() =>
-                    downloadAll("csv", false, searchState, results)
+                    downloadAll("csv", false, searchState, results, downloadLabels)
                   }
                   onDownloadAllEssentialJSON={() =>
-                    downloadAll("json", true, searchState, results)
+                    downloadAll("json", true, searchState, results, downloadLabels)
                   }
                   onDownloadAllEssentialCSV={() =>
-                    downloadAll("csv", true, searchState, results)
+                    downloadAll("csv", true, searchState, results, downloadLabels)
                   }
                   isLoading={isLoading}
                   isValidating={isValidating}

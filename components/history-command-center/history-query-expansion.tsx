@@ -43,6 +43,9 @@ export function HistoryQueryExpansion({
 }: HistoryQueryExpansionProps) {
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
+  const tAcc = useTranslations("accessibility");
+  const tv = useTranslations("validation");
+  const tToast = useTranslations("toast");
   const locale = useLocale();
   const [bookmarkingIndex, setBookmarkingIndex] = useState<number | null>(null);
   const [bookmarkName, setBookmarkName] = useState("");
@@ -57,9 +60,9 @@ export function HistoryQueryExpansion({
   const handleCopy = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      appToast.clipboard.copied("Query");
+      appToast.clipboard.copied(tToast("entityQuery"));
     } catch {
-      appToast.clipboard.copied("Query");
+      appToast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -75,26 +78,26 @@ export function HistoryQueryExpansion({
       queryHistory: updatedQueryHistory,
     });
 
-    appToast.entity.deleted("query entry");
+    appToast.entity.deleted(tToast("entityQueryEntry"));
   };
 
   const handleBookmarkSubmit = (query: string) => {
     if (!bookmarkName.trim()) {
-      appToast.validation.failed("Bookmark name is required.");
+      appToast.validation.failed(tv("bookmarkNameRequired"));
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      appToast.validation.failed("Only letters, numbers, and dashes are allowed.");
+      appToast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
     if (keywords[bookmarkName]) {
-      appToast.validation.failed(`Bookmark "${bookmarkName}" already exists.`);
+      appToast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    appToast.entity.created("bookmark", bookmarkName);
+    appToast.entity.created(tToast("entityBookmark"), bookmarkName);
     setBookmarkingIndex(null);
     setBookmarkName("");
   };
@@ -303,7 +306,7 @@ export function HistoryQueryExpansion({
                                   <Search className="h-3 w-3" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Use this query</TooltipContent>
+                              <TooltipContent>{tAcc("useThisQuery")}</TooltipContent>
                             </Tooltip>
                           )}
 

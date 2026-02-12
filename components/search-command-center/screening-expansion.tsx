@@ -29,6 +29,7 @@ interface ScreeningExpansionProps {
 export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps) {
   const t = useTranslations();
   const tv = useTranslations("validation");
+  const tToast = useTranslations("toast");
   const [newQuestion, setNewQuestion] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -82,7 +83,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       });
 
       setNewQuestion("");
-      appToast.entity.created("question");
+      appToast.entity.created(tToast("entityQuestion"));
     } catch {
       appToast.validation.failed(tv("failedToAddQuestion"));
     } finally {
@@ -93,7 +94,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   const handleDeleteQuestion = (index: number, question: string) => {
     const remainingQuestions = screeningQuestions.length - 1;
     removeScreeningQuestion(searchId, index);
-    appToast.entity.deleted("question");
+    appToast.entity.deleted(tToast("entityQuestion"));
 
     // Track screening question deletion
     posthog.capture("screening_question_deleted", {
@@ -105,7 +106,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   const handleTestQuestion = (question: string) => {
     removeScreeningQuestionFromAllPapers(searchId, question);
     incrementTestIndexPerQuestion(question);
-    appToast.entity.cleared("question responses");
+    appToast.entity.cleared(tToast("entityQuestionResponses"));
 
     // Track screening question test
     posthog.capture("screening_question_tested", {
@@ -125,7 +126,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       incrementTestIndexPerQuestion(q.question);
     });
 
-    appToast.entity.cleared("question responses", screeningQuestions.length);
+    appToast.entity.cleared(tToast("entityQuestionResponses"), screeningQuestions.length);
   };
 
   const handleClearAllQuestions = () => {
@@ -136,7 +137,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
     const questionsCleared = screeningQuestions.length;
     clearScreeningQuestions(searchId);
-    appToast.entity.cleared("questions", questionsCleared);
+    appToast.entity.cleared(tToast("entityQuestions"), questionsCleared);
 
     // Track screening questions cleared
     posthog.capture("screening_questions_cleared", {

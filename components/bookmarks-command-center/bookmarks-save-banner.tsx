@@ -17,6 +17,7 @@ export function BookmarksSaveBanner() {
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
   const tv = useTranslations("validation");
+  const tToast = useTranslations("toast");
   const [name, setName] = useState("");
   const [isDismissed, setIsDismissed] = useState(false);
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -27,9 +28,9 @@ export function BookmarksSaveBanner() {
   }
 
   const validateKeyword = (keyword: string): string | null => {
-    if (!keyword.trim()) return "Bookmark name cannot be empty";
-    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return "Bookmark name can only contain letters, numbers, and dashes";
-    if (keyword.includes(' ')) return "Bookmark name cannot contain spaces";
+    if (!keyword.trim()) return tv("bookmarkNameEmpty");
+    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return tv("bookmarkNameFormat");
+    if (keyword.includes(' ')) return tv("bookmarkNameNoSpaces");
     return null;
   };
 
@@ -48,7 +49,7 @@ export function BookmarksSaveBanner() {
     }
 
     if (keywords[trimmedName]) {
-      appToast.validation.failed(`Bookmark "${trimmedName}" already exists.`);
+      appToast.validation.failed(tv("bookmarkNameExists", { name: trimmedName }));
       return;
     }
 
@@ -58,7 +59,7 @@ export function BookmarksSaveBanner() {
     addKeyword(trimmedName, expandedQuery);
     setName("");
     setSuggestedQuery("");
-    appToast.entity.created("bookmark", trimmedName);
+    appToast.entity.created(tToast("entityBookmark"), trimmedName);
   };
 
   return (

@@ -51,6 +51,7 @@ export function HistoryItem({
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
   const tv = useTranslations("validation");
+  const tToast = useTranslations("toast");
   const tp = useTranslations("paperCard");
   const tl = useTranslations("languages");
   const locale = useLocale();
@@ -72,9 +73,9 @@ export function HistoryItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(item.query);
-      appToast.clipboard.copied("Query");
+      appToast.clipboard.copied(tToast("entityQuery"));
     } catch {
-      appToast.clipboard.copied("Query");
+      appToast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -83,9 +84,10 @@ export function HistoryItem({
       title: th("deleteSearchEntry"),
       message: th("deleteConfirm"),
       confirmText: tc("delete"),
+      cancelText: tc("cancel"),
       onConfirm: () => {
         removeSearchResult(actualIndex);
-        appToast.entity.deleted("search entry");
+        appToast.entity.deleted(tToast("entitySearchEntry"));
       },
     });
   };
@@ -106,7 +108,7 @@ export function HistoryItem({
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    appToast.entity.created("bookmark", bookmarkName);
+    appToast.entity.created(tToast("entityBookmark"), bookmarkName);
     setIsBookmarking(false);
     setBookmarkName("");
   };

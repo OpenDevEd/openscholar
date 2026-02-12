@@ -34,6 +34,7 @@ export function HistoryCommandCenter() {
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
   const tcc = useTranslations("commandCenter");
+  const tToast = useTranslations("toast");
 
   const SORT_OPTIONS: { value: HistorySortBy; label: string }[] = [
     { value: "recent", label: tc("recent") },
@@ -140,9 +141,9 @@ export function HistoryCommandCenter() {
         "search_history.json",
         "json",
       );
-      appToast.io.downloadSuccess(data.length, "search entries", "JSON");
+      appToast.io.downloadSuccess(data.length, tToast("entitySearchEntries"), tToast("entityJson"));
     } catch {
-      appToast.io.downloadFailed("JSON");
+      appToast.io.downloadFailed(tToast("entityJson"));
     }
   };
 
@@ -158,9 +159,9 @@ export function HistoryCommandCenter() {
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "search_history.csv", "csv");
-      appToast.io.downloadSuccess(data.length, "search entries", "CSV");
+      appToast.io.downloadSuccess(data.length, tToast("entitySearchEntries"), tToast("entityCsv"));
     } catch {
-      appToast.io.downloadFailed("CSV");
+      appToast.io.downloadFailed(tToast("entityCsv"));
     }
   };
 
@@ -170,12 +171,12 @@ export function HistoryCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
       if (importedCount > 0) {
-        appToast.io.uploadSuccess(importedCount, "search entries");
+        appToast.io.uploadSuccess(importedCount, tToast("entitySearchEntries"));
       } else {
-        appToast.io.uploadNoValid("search entries");
+        appToast.io.uploadNoValid(tToast("entitySearchEntries"));
       }
     } catch (error) {
-      appToast.io.uploadFailed("JSON", error);
+      appToast.io.uploadFailed(tToast("entityJson"), error);
     }
   };
 
@@ -185,12 +186,12 @@ export function HistoryCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
       if (importedCount > 0) {
-        appToast.io.uploadSuccess(importedCount, "search entries");
+        appToast.io.uploadSuccess(importedCount, tToast("entitySearchEntries"));
       } else {
-        appToast.io.uploadNoValid("search entries");
+        appToast.io.uploadNoValid(tToast("entitySearchEntries"));
       }
     } catch (error) {
-      appToast.io.uploadFailed("CSV", error);
+      appToast.io.uploadFailed(tToast("entityCsv"), error);
     }
   };
 
@@ -199,9 +200,10 @@ export function HistoryCommandCenter() {
       title: th("clearAllHistoryTitle"),
       message: th("clearAllHistoryConfirm", { count: searchHistory.length }),
       confirmText: tc("clearAll"),
+      cancelText: tc("cancel"),
       onConfirm: () => {
         clearSearchHistory();
-        appToast.entity.cleared("search history", searchHistory.length);
+        appToast.entity.cleared(tToast("entitySearchHistory"), searchHistory.length);
       },
     });
   };

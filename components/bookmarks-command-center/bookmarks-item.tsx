@@ -44,6 +44,7 @@ export function BookmarksItem({
 }: BookmarksItemProps) {
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
+  const tToast = useTranslations("toast");
   const locale = useLocale();
   const [editValue, setEditValue] = useState(bookmark.expansion);
   const router = useRouter();
@@ -68,9 +69,9 @@ export function BookmarksItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(bookmark.expansion);
-      appToast.clipboard.copied("Expansion");
+      appToast.clipboard.copied(tToast("entityExpansion"));
     } catch {
-      appToast.clipboard.copied("Expansion");
+      appToast.clipboard.copied(tToast("entityExpansion"));
     }
   };
 

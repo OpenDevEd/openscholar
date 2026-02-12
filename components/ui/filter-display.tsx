@@ -7,6 +7,7 @@
  */
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { Star } from "lucide-react";
@@ -128,6 +129,7 @@ function UnifiedBadge({ item, colorClass, baseClass, variant }: UnifiedBadgeProp
     );
   }
 
+  const t = useTranslations("filterDisplay");
   // Default rendering
   const displayText = isSidebar
     ? (item.type === "field" ? item.displayValue : (item.emoji ? `${item.emoji} ${item.displayValue}` : item.displayValue))
@@ -138,9 +140,9 @@ function UnifiedBadge({ item, colorClass, baseClass, variant }: UnifiedBadgeProp
     ? (item.type === "field" 
         ? item.displayValue 
         : item.type === "review" 
-          ? "Reviews"
+          ? t("reviews")
           : item.type === "onlyRated"
-            ? "Rated"
+            ? t("rated")
             : `${item.emoji || ""} ${item.displayValue}`.trim())
     : displayText;
 
