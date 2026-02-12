@@ -45,8 +45,8 @@ export const translateQuerySchema = z.object({
 })
 
 export const translatePaperContentSchema = z.object({
-  translatedTitle: z.string().describe('The paper title translated to English'),
-  translatedAbstract: z.string().describe('The paper abstract translated to English'),
+  translatedTitle: z.string().describe('The paper title translated to the target language'),
+  translatedAbstract: z.string().describe('The paper abstract translated to the target language'),
 })
 
 export const extractionQuestionsSchema = z.object({

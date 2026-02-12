@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
@@ -23,6 +24,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   const toast = useAppToast();
   const t = useTranslations();
   const tv = useTranslations("validation");
+  const locale = useLocale();
   const search = useSearch();
 
   // Use the new router hook
@@ -127,7 +129,7 @@ Please enhance this academic search query according to the user's specific instr
 
       const response = await enhanceQuery({
         query: enhancedPrompt,
-        language: urlLanguage || undefined,
+        language: urlLanguage || localeToLanguageCode(locale) || undefined,
       });
 
       search.setQuery(response.enhancedQuery);

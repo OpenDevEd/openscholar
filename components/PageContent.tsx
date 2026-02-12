@@ -23,13 +23,15 @@ import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 
 function PageContent() {
   const t = useTranslations("home");
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
   const tAccessibility = useTranslations("accessibility");
+  const locale = useLocale();
   const toast = useAppToast();
   const router = useRouter();
 
@@ -71,7 +73,7 @@ function PageContent() {
 
         // Convert research question to search query using AI
         // The router hook respects apiKeyMode - local mode uses store's API key, credits mode uses Convex
-        const result = await enhanceQuery({ query: originalQuery });
+        const result = await enhanceQuery({ query: originalQuery, language: localeToLanguageCode(locale) });
 
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;

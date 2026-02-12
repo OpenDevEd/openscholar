@@ -117,8 +117,7 @@ export function PaperCardListDetail({
         <div className="mb-4">
           {/* Translation toggle */}
           {selectedLanguage &&
-            selectedLanguage !== "en" &&
-            !(translatedContent && translatedContent.isAlreadyInEnglish) && (
+            !(translatedContent && translatedContent.noTranslationNeeded) && (
               <div className="flex items-center gap-2 mb-2">
                 {isTranslating && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -129,7 +128,7 @@ export function PaperCardListDetail({
 
                 {translatedContent &&
                   translatedContent.sourceLanguage === selectedLanguage &&
-                  !translatedContent.isAlreadyInEnglish && (
+                  !translatedContent.noTranslationNeeded && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -137,7 +136,7 @@ export function PaperCardListDetail({
                       }}
                       className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
                     >
-                      {showTranslated ? tc("showOriginal") : tc("showEnglish")}
+                      {showTranslated ? tc("showOriginal") : tc("showTranslation")}
                     </button>
                   )}
               </div>

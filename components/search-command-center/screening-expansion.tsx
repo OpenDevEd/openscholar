@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Wand2, Loader2, MoreHorizontal, Trash2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ interface ScreeningExpansionProps {
 export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps) {
   const t = useTranslations();
   const tv = useTranslations("validation");
+  const locale = useLocale();
   const toast = useAppToast();
   const tToast = useTranslations("toast");
   const [newQuestion, setNewQuestion] = useState("");
@@ -162,6 +164,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       const result = await generateQuestions({
         researchQuestion,
         existingQuestions: screeningQuestions.map((q) => q.question),
+        responseLanguage: localeToLanguageCode(locale),
       });
 
       let addedCount = 0;

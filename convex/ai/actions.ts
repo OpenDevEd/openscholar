@@ -38,6 +38,7 @@ export const generateScreeningQuestions = createAIAction(
   {
     researchQuestion: v.string(),
     existingQuestions: v.array(v.string()),
+    responseLanguage: v.optional(v.string()),
   },
   v.object({
     questions: v.array(v.string()),
@@ -54,6 +55,7 @@ export const generateExtractionQuestions = createAIAction(
     jobName: v.string(),
     sourceContext: v.string(),
     existingQuestions: v.array(v.string()),
+    responseLanguage: v.optional(v.string()),
   },
   v.object({
     questions: v.array(v.object({
@@ -87,12 +89,13 @@ export const translatePaperContent = createAIAction(
     title: v.string(),
     abstract: v.string(),
     sourceLanguage: v.string(),
+    targetLanguage: v.optional(v.string()),
   },
   v.object({
     translatedTitle: v.string(),
     translatedAbstract: v.string(),
     sourceLanguage: v.string(),
-    isAlreadyInEnglish: v.boolean(),
+    noTranslationNeeded: v.boolean(),
   }),
   "Translate paper content",
   getTranslatePaperContentConfig,
@@ -100,7 +103,7 @@ export const translatePaperContent = createAIAction(
     translatedTitle: output.translatedTitle,
     translatedAbstract: output.translatedAbstract,
     sourceLanguage: args.sourceLanguage,
-    isAlreadyInEnglish: false,
+    noTranslationNeeded: false,
   })
 );
 
@@ -136,6 +139,7 @@ export const generateBatchTranslations = action({
       })
     ),
     sourceLanguage: v.string(),
+    targetLanguage: v.optional(v.string()),
   },
   returns: v.object({
     results: v.record(
@@ -144,7 +148,7 @@ export const generateBatchTranslations = action({
         translatedTitle: v.string(),
         translatedAbstract: v.string(),
         sourceLanguage: v.string(),
-        isAlreadyInEnglish: v.boolean(),
+        noTranslationNeeded: v.boolean(),
       })
     ),
     errors: v.array(
@@ -155,9 +159,9 @@ export const generateBatchTranslations = action({
     ),
   }),
   handler: async (ctx, args) => {
-    const { papers, sourceLanguage } = args;
+    const { papers, sourceLanguage, targetLanguage } = args;
 
-    if (papers.length === 0 || !sourceLanguage || sourceLanguage === "en") {
+    if (papers.length === 0 || !sourceLanguage) {
       return { results: {}, errors: [] };
     }
 
@@ -171,6 +175,7 @@ export const generateBatchTranslations = action({
           model,
           papers,
           sourceLanguage,
+          targetLanguage,
         });
 
         return {

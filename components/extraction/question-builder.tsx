@@ -33,7 +33,8 @@ import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";
 import { useAppToast } from "@/lib/toast";
 import type { ExtractionQuestion, ExtractionQuestionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 
 const TYPE_ICON_MAP: Record<
   ExtractionQuestionType,
@@ -246,6 +247,7 @@ export function QuestionBuilder() {
   const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const locale = useLocale();
 
   const QUESTION_TYPES: { value: ExtractionQuestionType; label: string }[] = [
     { value: "string", label: t("typeText") },
@@ -387,6 +389,7 @@ export function QuestionBuilder() {
         jobName: draftJob.name,
         sourceContext,
         existingQuestions: draftJob.questions.map((q) => q.question),
+        responseLanguage: localeToLanguageCode(locale),
       });
 
       let addedCount = 0;

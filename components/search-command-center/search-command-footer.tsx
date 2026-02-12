@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
 import { motion } from "motion/react";
 import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
@@ -35,6 +36,7 @@ export function SearchCommandFooter({
   const tv = useTranslations("validation");
   const tsc = useTranslations("searchCommand");
   const te = useTranslations("errors");
+  const locale = useLocale();
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
 
@@ -90,7 +92,7 @@ Return a more inclusive version of this query.`;
       await runWithLoadingToast({
         loading: tsc("broadeningSearch"),
         run: async () => {
-          const result = await enhanceQuery({ query: broadenPrompt, language: currentLanguage || undefined });
+          const result = await enhanceQuery({ query: broadenPrompt, language: currentLanguage || localeToLanguageCode(locale) || undefined });
 
           if (search) {
             search.setQuery(result.enhancedQuery);
@@ -152,7 +154,7 @@ Return a more targeted version of this query.`;
       await runWithLoadingToast({
         loading: tsc("makingSearchSpecific"),
         run: async () => {
-          const result = await enhanceQuery({ query: narrowPrompt, language: currentLanguage || undefined });
+          const result = await enhanceQuery({ query: narrowPrompt, language: currentLanguage || localeToLanguageCode(locale) || undefined });
 
           if (search) {
             search.setQuery(result.enhancedQuery);

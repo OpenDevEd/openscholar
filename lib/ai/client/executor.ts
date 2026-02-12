@@ -88,7 +88,7 @@ export const translatePaperContent = createClientExecutor(
     translatedTitle: output.translatedTitle,
     translatedAbstract: output.translatedAbstract,
     sourceLanguage: params.sourceLanguage,
-    isAlreadyInEnglish: false,
+    noTranslationNeeded: false,
   })
 )
 
@@ -137,15 +137,16 @@ export async function generateBatchScreeningResponses(
 export interface BatchTranslationParams {
   papers: BatchPaper[]
   sourceLanguage: string
+  targetLanguage?: string
 }
 
 export async function generateBatchTranslations(
   params: BatchTranslationParams,
   config: AIConfig
 ): Promise<BatchTranslationResult> {
-  const { papers, sourceLanguage } = params
+  const { papers, sourceLanguage, targetLanguage } = params
 
-  if (papers.length === 0 || !sourceLanguage || sourceLanguage === 'en') {
+  if (papers.length === 0 || !sourceLanguage) {
     return { results: {}, errors: [] }
   }
 
@@ -159,6 +160,7 @@ export async function generateBatchTranslations(
     model,
     papers,
     sourceLanguage,
+    targetLanguage,
   })
 
   return { results, errors }

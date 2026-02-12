@@ -319,11 +319,7 @@ export function FocusMode({
         case "t":
         case "T":
           e.preventDefault();
-          if (
-            selectedLanguage &&
-            selectedLanguage !== "en" &&
-            translatedContent
-          ) {
+          if (selectedLanguage && translatedContent) {
             setShowTranslated(!showTranslated);
           }
           break;
@@ -814,7 +810,7 @@ export function FocusMode({
                 <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
 
                 <div className="flex items-center gap-1">
-                  {selectedLanguage && selectedLanguage !== "en" && (
+                  {selectedLanguage && (
                     <>
                       <Button
                         variant={showTranslated ? "outline-primary" : "outline"}
@@ -823,11 +819,11 @@ export function FocusMode({
                         title={
                           showTranslated
                             ? tFocus("showOriginal")
-                            : tFocus("showEnglishTranslation")
+                            : tFocus("showTranslation")
                         }
                         disabled={
                           !translatedContent ||
-                          translatedContent.isAlreadyInEnglish
+                          translatedContent.noTranslationNeeded
                         }
                       >
                         {isTranslating ? (
@@ -836,7 +832,7 @@ export function FocusMode({
                           <>
                             <Globe className="h-3 w-3 md:mr-1" />
                             <span className="hidden sm:inline">
-                              {showTranslated ? tFocus("original") : tFocus("english")}
+                              {showTranslated ? tFocus("original") : tFocus("translation")}
                             </span>
                           </>
                         )}

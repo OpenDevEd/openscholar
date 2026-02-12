@@ -133,7 +133,9 @@
     "medium": "Medium",
     "low": "Low",
     "showOriginal": "Show Original",
-    "showEnglish": "Show English",
+    "showTranslation": "Show Translation",
+    "originalShort": "Orig",
+    "translationShort": "Trans",
     "translating": "Translating...",
     "saveAsBookmark": "Save as Bookmark",
     "copyQuery": "Copy query",
@@ -1287,8 +1289,10 @@
     "abstractPreview": "This study examines the transformative impact of machine learning algorithms on modern scientific research methodologies. We analyze how automated data processing, pattern recognition, and predictive modeling have revolutionized hypothesis generation and experimental design across multiple disciplines. Our findings demonstrate significant improvements in research efficiency and discovery rates when ML techniques are properly integrated into traditional scientific workflows.",
     "pdf": "PDF",
     "original": "Original",
-    "english": "English",
+    "translation": "Translation",
     "showOriginal": "Show Original",
-    "showEnglishTranslation": "Show English Translation"
+    "showTranslation": "Show Translation",
+    "originalShort": "Orig",
+    "translationShort": "Trans"
   }
 }

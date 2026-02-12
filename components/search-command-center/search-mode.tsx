@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Search, Wand2, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { LanguageSelector } from "@/components/language-selector";
@@ -33,6 +34,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const tl = useTranslations("languages");
   const te = useTranslations("errors");
   const tValidation = useTranslations("validation");
+  const locale = useLocale();
   const search = useSearchOptional();
   const effectiveSearchId = useEffectiveSearchId();
 
@@ -120,7 +122,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       const currentSearchResult = getSearchResult(effectiveSearchId);
       const result = await enhanceQuery({
         query: questionToProcess,
-        language: currentSearchResult?.language,
+        language: currentSearchResult?.language ?? localeToLanguageCode(locale),
       });
 
       if (search) {

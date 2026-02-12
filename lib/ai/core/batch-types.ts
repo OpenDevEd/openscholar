@@ -54,7 +54,7 @@ export interface TranslationResultData {
   translatedTitle: string
   translatedAbstract: string
   sourceLanguage: string
-  isAlreadyInEnglish: boolean
+  noTranslationNeeded: boolean
 }
 
 export type BatchTranslationResult = BatchResult<TranslationResultData>

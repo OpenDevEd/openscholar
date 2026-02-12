@@ -2,11 +2,13 @@
 
 import { useCallback, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   useTranslationStore,
   useSearchHistoryStore,
 } from "@/lib/store";
 import { useSearchOptional } from "@/lib/search";
+import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { createCitationSearch } from "@/lib/search";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { ScreeningContext, TranslationContext } from "@/components/results-list";
@@ -42,7 +44,7 @@ export interface TranslationContent {
   translatedTitle: string;
   translatedAbstract: string;
   sourceLanguage: string;
-  isAlreadyInEnglish?: boolean;
+  noTranslationNeeded?: boolean;
 }
 
 // ==================== useTranslate ====================
@@ -58,10 +60,14 @@ export function useTranslate(
 ) {
   const search = useSearchOptional();
   const selectedLanguage = search?.params?.lang ?? '';
+  const locale = useLocale();
+  const targetLanguage = localeToLanguageCode(locale);
 
-  // Use selectors to subscribe to specific translation data
+  // Use selectors to subscribe to specific translation data (composite key: paperId:source:target)
   const translatedContent = useTranslationStore(
-    (state) => (data?.id ? state.translations[data.id] || null : null)
+    (state) => (data?.id && selectedLanguage && targetLanguage
+      ? state.getTranslation(data.id, selectedLanguage, targetLanguage)
+      : null)
   );
   const showTranslated = useTranslationStore(
     (state) => (data?.id ? state.showTranslations[data.id] || false : false)

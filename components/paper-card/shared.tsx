@@ -108,8 +108,8 @@ export function TranslationToggle({
   variant = "full",
 }: TranslationToggleProps) {
   const tc = useTranslations("common");
-  if (!selectedLanguage || selectedLanguage === "en") return null;
-  if (translatedContent && translatedContent.isAlreadyInEnglish) return null;
+  if (!selectedLanguage) return null;
+  if (translatedContent && translatedContent.noTranslationNeeded) return null;
 
   if (variant === "compact") {
     // Icon-only version for compact layouts
@@ -136,9 +136,9 @@ export function TranslationToggle({
             ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
             : "bg-muted text-muted-foreground hover:bg-muted/80"
         )}
-        title={showTranslated ? tc("showOriginal") : tc("showEnglish")}
+        title={showTranslated ? tc("showOriginal") : tc("showTranslation")}
       >
-        {showTranslated ? "EN" : "原"}
+        {showTranslated ? tc("originalShort") : tc("translationShort")}
       </button>
     );
   }
@@ -155,7 +155,7 @@ export function TranslationToggle({
 
       {translatedContent &&
         translatedContent.sourceLanguage === selectedLanguage &&
-        !translatedContent.isAlreadyInEnglish && (
+        !translatedContent.noTranslationNeeded && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -163,7 +163,7 @@ export function TranslationToggle({
             }}
             className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
           >
-            {showTranslated ? tc("showOriginal") : tc("showEnglish")}
+            {showTranslated ? tc("showOriginal") : tc("showTranslation")}
           </button>
         )}
     </div>

@@ -861,18 +861,23 @@ export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (ope
 }))
 
 // Translation Store - for storing translation data by paper ID
-interface TranslationData {
+export interface TranslationData {
   translatedTitle: string;
   translatedAbstract: string;
   sourceLanguage: string;
-  isAlreadyInEnglish: boolean;
+  noTranslationNeeded: boolean;
+  targetLanguage?: string;
+}
+
+function translationKey(paperId: string, sourceLanguage: string, targetLanguage: string): string {
+  return `${paperId}:${sourceLanguage}:${targetLanguage}`;
 }
 
 interface TranslationState {
   translations: Record<string, TranslationData>;
   showTranslations: Record<string, boolean>;
-  setTranslation: (id: string, data: TranslationData) => void;
-  getTranslation: (id: string) => TranslationData | null;
+  setTranslation: (paperId: string, data: TranslationData) => void;
+  getTranslation: (paperId: string, sourceLanguage?: string, targetLanguage?: string) => TranslationData | null;
   getShowTranslated: (id: string) => boolean;
   setShowTranslated: (id: string, show: boolean) => void;
   clearTranslation: (id: string) => void;
@@ -883,17 +888,26 @@ export const useTranslationStore = create<TranslationState>()(
   (set, get) => ({
     translations: {},
     showTranslations: {},
-    setTranslation: (id: string, data: TranslationData) => {
+    setTranslation: (paperId: string, data: TranslationData) => {
+      const target = data.targetLanguage ?? "en";
+      const key = translationKey(paperId, data.sourceLanguage, target);
       set((state) => ({
         translations: {
           ...state.translations,
-          [id]: data,
+          [key]: data,
         },
       }));
     },
 
-    getTranslation: (id: string) => {
-      return get().translations[id] || null;
+    getTranslation: (paperId: string, sourceLanguage?: string, targetLanguage?: string) => {
+      if (sourceLanguage && targetLanguage) {
+        const key = translationKey(paperId, sourceLanguage, targetLanguage);
+        return get().translations[key] || null;
+      }
+      // Fallback: find any translation for this paper (legacy)
+      const entries = Object.entries(get().translations);
+      const match = entries.find(([k]) => k.startsWith(`${paperId}:`));
+      return match ? match[1] : null;
     },
 
     getShowTranslated: (id: string) => {
@@ -909,10 +923,13 @@ export const useTranslationStore = create<TranslationState>()(
       }));
     },
 
-    clearTranslation: (id: string) => {
+    clearTranslation: (paperId: string) => {
       set((state) => {
         const newTranslations = { ...state.translations };
-        delete newTranslations[id];
+        const prefix = `${paperId}:`;
+        for (const key of Object.keys(newTranslations)) {
+          if (key.startsWith(prefix)) delete newTranslations[key];
+        }
         return { translations: newTranslations };
       });
     },

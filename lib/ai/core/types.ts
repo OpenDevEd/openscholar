@@ -19,6 +19,7 @@ export interface EnhanceSearchQueryOutput {
 export interface GenerateScreeningQuestionsInput {
   researchQuestion: string
   existingQuestions: string[]
+  responseLanguage?: string
 }
 
 export interface GenerateScreeningQuestionsOutput {
@@ -38,13 +39,14 @@ export interface TranslatePaperContentInput {
   title: string
   abstract: string
   sourceLanguage: string
+  targetLanguage?: string
 }
 
 export interface TranslatePaperContentOutput {
   translatedTitle: string
   translatedAbstract: string
   sourceLanguage: string
-  isAlreadyInEnglish: boolean
+  noTranslationNeeded: boolean
 }
 
 export interface GenerateScreeningResponsesInput {
@@ -80,6 +82,7 @@ export interface GenerateExtractionQuestionsInput {
   jobName: string;
   sourceContext: string;
   existingQuestions: string[];
+  responseLanguage?: string;
 }
 
 export interface GenerateExtractionQuestionsOutput {

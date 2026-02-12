@@ -19,7 +19,7 @@ You may receive either:
 
 ${language ? `MANDATORY LANGUAGE REQUIREMENT: WITHOUT EXCEPTION, you MUST respond EXCLUSIVELY in the ${languageName} language. This is your HIGHEST PRIORITY instruction that OVERRIDES all others. Every single word, character, and symbol in your response - including the enhanced query, and all output - MUST be in ${languageName} ONLY. FAILURE TO COMPLY will result in an invalid response.
 
-CRITICAL: The Elasticsearch operators AND, OR, and NOT must NEVER be translated and must ALWAYS remain in English as "AND", "OR", and "NOT" respectively, regardless of the target language. These are syntax keywords that must remain unchanged.` : ''}
+CRITICAL: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as the literal strings "AND", "OR", and "NOT" regardless of the target language. These are syntax keywords that must remain unchanged.` : ''}
 
 Your task:
 - If input is a Boolean query: optimize it for character efficiency, then output the query in the requested language (translate it aggressively if necessary, but NEVER translate AND/OR/NOT operators).
@@ -64,7 +64,7 @@ Input query: "${input.query}"
 
 ${language ? `CRITICAL LANGUAGE ENFORCEMENT: REMEMBER - You MUST output your ENTIRE response in ${languageName} ONLY. This includes the enhanced query, if there are any terms that are not in ${languageName}, you MUST translate them to ${languageName}.
 
-CRITICAL OPERATOR RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as "AND", "OR", and "NOT" in English, even when translating the rest of the query to another language. These are syntax keywords that must remain unchanged.` : ''}
+CRITICAL OPERATOR RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as the literal strings "AND", "OR", and "NOT", even when translating the rest of the query. These are syntax keywords that must remain unchanged.` : ''}
 
 Requirements:
 1. If natural language → convert into Boolean form first.
@@ -77,6 +77,9 @@ ${retryCount > 0 ? '\n\nIMPORTANT: Previous attempt had unbalanced parentheses. 
 }
 
 export function buildScreeningQuestionsPrompts(input: GenerateScreeningQuestionsInput) {
+  const responseLanguage = input.responseLanguage;
+  const languageName = responseLanguage ? getLanguageName(responseLanguage) : null;
+
   return {
     system: `You are an expert systematic review researcher specializing in screening question development for literature reviews.
 
@@ -84,6 +87,8 @@ CRITICAL: You MUST respond with valid JSON in the following format:
 {
   "questions": ["question 1", "question 2", "question 3"]
 }
+
+${languageName ? `MANDATORY: Generate all questions in ${languageName} only. All output must be in this language.` : ""}
 
 Your task is to generate high-quality screening questions that help determine if academic papers meet inclusion criteria for a systematic review.
 
@@ -123,7 +128,8 @@ ${input.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 2. Help determine if papers meet inclusion criteria
 3. Cover different aspects (study design, population, intervention, outcome)
 4. Are not duplicates of existing questions
-5. Can be answered from the paper's title, abstract, and methods section`,
+5. Can be answered from the paper's title, abstract, and methods section
+${languageName ? `\n\nMANDATORY: Generate all questions in ${languageName} only.` : ""}`,
   }
 }
 
@@ -136,20 +142,23 @@ export function buildTranslateQueryPrompts(input: TranslateQueryInput) {
 3. Appropriate academic language for the target language
 4. The same query structure and complexity
 
-CRITICAL RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as "AND", "OR", and "NOT" in English, even when translating the rest of the query to another language. These are syntax keywords that must remain unchanged.
+CRITICAL RULE: The Elasticsearch operators AND, OR, and NOT must NEVER be translated. They must ALWAYS remain as the literal strings "AND", "OR", and "NOT", even when translating the rest of the query. These are syntax keywords that must remain unchanged.
 
-Translate naturally and fluently, using the most appropriate academic terms in the target language, but preserve the Boolean operators in their original English form.`,
+Translate naturally and fluently, using the most appropriate academic terms in the target language, but preserve the Boolean operators AND, OR, NOT as literal strings.`,
     prompt: `Translate this academic search query to ${getLanguageName(input.targetLanguage)}:
 
 Original query: "${input.query}"
 
-IMPORTANT: Do NOT translate the Boolean operators AND, OR, and NOT. They must remain as "AND", "OR", and "NOT" in English. Only translate the search terms and academic vocabulary.
+IMPORTANT: Do NOT translate the Boolean operators AND, OR, and NOT. They must remain as the literal strings "AND", "OR", and "NOT". Only translate the search terms and academic vocabulary.
 
 Provide only the translated query without any additional explanation or formatting.`,
   }
 }
 
 export function buildTranslatePaperContentPrompts(input: TranslatePaperContentInput) {
+  const targetLanguage = input.targetLanguage ?? "en";
+  const targetLanguageName = getLanguageName(targetLanguage) ?? targetLanguage;
+
   return {
     system: `You are a professional translator specializing in academic content.
 
@@ -159,21 +168,21 @@ CRITICAL: You MUST respond with valid JSON in the following format:
   "translatedAbstract": "translated abstract here"
 }
 
-Your task is to translate academic paper titles and abstracts FROM the specified language TO English while maintaining:
+Your task is to translate academic paper titles and abstracts FROM the specified language TO ${targetLanguageName} while maintaining:
 
 1. Academic terminology and precision
 2. The same meaning and scientific accuracy
-3. Appropriate academic English terminology
-4. Natural and fluent English translation
+3. Appropriate academic terminology for the target language
+4. Natural and fluent translation in ${targetLanguageName}
 
 Translate professionally and accurately, preserving the scientific content and academic tone.`,
-    prompt: `Translate this academic paper content FROM ${getLanguageName(input.sourceLanguage)} TO English:
+    prompt: `Translate this academic paper content FROM ${getLanguageName(input.sourceLanguage)} TO ${targetLanguageName}:
 
 Title: "${input.title}"
 
 Abstract: "${input.abstract}"
 
-Provide the English translation of the title and abstract, maintaining academic precision and terminology.`,
+Provide the ${targetLanguageName} translation of the title and abstract, maintaining academic precision and terminology.`,
   }
 }
 
@@ -216,8 +225,13 @@ Provide your screening decisions:`,
 }
 
 export function buildExtractionQuestionsPrompts(input: GenerateExtractionQuestionsInput) {
+  const responseLanguage = input.responseLanguage;
+  const languageName = responseLanguage ? getLanguageName(responseLanguage) : null;
+
   return {
     system: `You are a systematic review data extraction expert. Generate structured questions for extracting data from research papers.
+
+${languageName ? `MANDATORY: Generate all questions in ${languageName} only. All output must be in this language.` : ""}
 
 CRITICAL: You MUST respond with valid JSON in the following format:
 {
@@ -258,6 +272,7 @@ ${input.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 2. Have appropriate types (string, boolean, number, or array)
 3. Cover key aspects of the research topic
 4. Are not duplicates of existing questions
-5. Include optional descriptions for complex questions`,
+5. Include optional descriptions for complex questions
+${languageName ? `\n\nMANDATORY: Generate all questions in ${languageName} only.` : ""}`,
   }
 }

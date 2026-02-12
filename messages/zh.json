@@ -133,7 +133,9 @@
     "medium": "中",
     "low": "低",
     "showOriginal": "显示原文",
-    "showEnglish": "显示英文",
+    "showTranslation": "显示翻译",
+    "originalShort": "原文",
+    "translationShort": "译",
     "translating": "翻译中...",
     "saveAsBookmark": "保存为书签",
     "copyQuery": "复制查询",
@@ -1287,8 +1289,10 @@
     "abstractPreview": "本研究探讨了机器学习算法对现代科学研究方法的变革性影响。我们分析自动化数据处理、模式识别和预测建模如何革新了多学科的假设生成和实验设计。我们的研究结果表明，当ML技术正确融入传统科学工作流程时，研究效率和发现率显著提高。",
     "pdf": "PDF",
     "original": "原文",
-    "english": "英文",
+    "translation": "翻译",
     "showOriginal": "显示原文",
-    "showEnglishTranslation": "显示英文翻译"
+    "showTranslation": "显示翻译",
+    "originalShort": "原文",
+    "translationShort": "译"
   }
 }
