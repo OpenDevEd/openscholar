@@ -81,15 +81,9 @@ export function SmartPagination({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
       {/* Left: Results info */}
       <p className="text-sm text-muted-foreground">
-        Showing{" "}
-        <span className="font-medium text-foreground">
-          {startIdx}-{endIdx}
-        </span>{" "}
-        of{" "}
-        <span className="font-medium text-foreground">{filteredCount}</span>{" "}
-        papers
+        {t("showingRange", { start: startIdx, end: endIdx, total: filteredCount })}
         {filteredCount < totalCount && (
-          <span className="text-xs ml-2">(filtered from {totalCount})</span>
+          <span className="text-xs ml-2">{t("filteredFrom", { total: totalCount })}</span>
         )}
       </p>
 
@@ -104,7 +98,7 @@ export function SmartPagination({
             disabled={currentPage === 1}
           >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Previous page</span>
+            <span className="sr-only">{t("previousPage")}</span>
           </Button>
 
           {getPageNumbers().map((page, index) =>
@@ -139,7 +133,7 @@ export function SmartPagination({
             disabled={currentPage === totalPages}
           >
             <ChevronRight className="h-4 w-4" />
-            <span className="sr-only">Next page</span>
+            <span className="sr-only">{t("nextPage")}</span>
           </Button>
         </div>
       )}

@@ -46,6 +46,8 @@ type ZoteroItem = {
 
 export function ZoteroSelector() {
   const t = useTranslations('zotero');
+  const te = useTranslations('extraction');
+  const tc = useTranslations('common');
   const { draftJob, setZoteroSelection } = useExtractionStore();
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
@@ -385,13 +387,13 @@ export function ZoteroSelector() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground truncate">{item.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.authors.slice(0, 3).join(", ") || "Unknown authors"}
+                    {item.authors.slice(0, 3).join(", ") || te('unknownAuthors')}
                     {item.year ? ` • ${item.year}` : ""}
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                     {item.hasPdfChild ? (
                       <span className="inline-flex items-center gap-1">
-                        <Paperclip className="h-3 w-3" /> PDF attached
+                        <Paperclip className="h-3 w-3" /> {tc('pdfAttached')}
                       </span>
                     ) : (
                       <></>

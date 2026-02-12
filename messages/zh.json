@@ -303,6 +303,11 @@
     "searchJobs": "搜索任务...",
     "noExtractionJobs": "无提取任务",
     "createJobToStart": "创建任务以开始。",
+    "extractDescription": "从研究论文中提取结构化数据",
+    "noSearchHistoryFound": "未找到搜索历史",
+    "performSearchesFirst": "请先执行一些搜索以创建提取任务。",
+    "screeningQuestionsLabel": "{count} 个筛选问题",
+    "unknownAuthors": "作者未知",
     "jobs": "任务",
     "exportResults": "导出结果",
     "exportDescription": "为 {label} 选择导出格式和选项",
@@ -429,7 +434,15 @@
     "reviewedRejected": "已审核：已拒绝",
     "reviewedFollowUp": "已审核：需要跟进",
     "failedToGenerateQuestions": "生成问题失败",
-    "genericSuffix": "（通用）"
+    "genericSuffix": "（通用）",
+    "disagreementShowLess": "显示较少",
+    "disagreementShowFull": "显示全部",
+    "disagreementPapers": "{count} 篇论文",
+    "disagreementAvgConfidence": "{percent}% 平均置信度",
+    "disagreementAnswer": "答案：",
+    "disagreementOpenPaper": "打开论文",
+    "disagreementShowMore": "显示更多",
+    "searchPlaceholder": "搜索..."
   },
   "toast": {
     "unexpectedError": "发生意外错误。请重试。",
@@ -700,6 +713,8 @@
     "closeDialog": "关闭",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "页码",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
     "pdfViewer": "PDF 查看器",
     "openPdfNewTab": "在新标签页中打开 PDF",
     "viewOptions": "查看选项",
@@ -749,6 +764,18 @@
   "pdfViewer": {
     "loadingPdf": "加载 PDF 中...",
     "noCitationSelected": "未选择引用",
+    "openCitationHint": "从结果行打开引用以查看支持证据。",
+    "checkingPdfAccess": "正在检查 PDF 访问权限...",
+    "noAccessToPaper": "您无权访问此论文。",
+    "signInToViewPdf": "请登录以查看此 PDF。",
+    "pdfUnavailable": "此论文的 PDF 不可用。",
+    "citationUnavailable": "此结果的引用不可用。",
+    "unknownError": "未知错误",
+    "unableToLoadPdf": "无法加载 PDF：{error}",
+    "noValidatedHighlight": "此结果无可用的已验证引用高亮。",
+    "highlightOnPage": "高亮位于第 {page} 页。请导航至该页查看证据。",
+    "citationRangeUnavailable": "此页的引用范围不可用。",
+    "keyboardNavHint": "使用方向键切换页面。Home/End 跳至首/末页。",
     "noResultsYet": "尚无结果",
     "noResultsDescription": "没有论文符合您的条件或提取失败。",
     "resultsWillAppear": "处理完成后结果将在此处显示。"
@@ -848,12 +875,46 @@
     "workflowTemplates": "工作流模板",
     "reportName": "报告名称（可选）",
     "templateName": "模板名称",
-    "viewName": "视图名称"
+    "viewName": "视图名称",
+    "reportBuilderTitle": "报告生成器",
+    "generateReportSnapshot": "生成报告快照",
+    "generated": "生成于",
+    "exportJson": "导出 JSON",
+    "exportMarkdown": "导出 Markdown",
+    "answered": "已回答",
+    "grounded": "有依据",
+    "bestEffort": "尽力而为",
+    "noReportSnapshots": "尚无报告快照。",
+    "changeAlerts": "变更提醒（运行差异）",
+    "selectBaselineRun": "选择基准运行",
+    "generateDiff": "生成差异",
+    "newAnswersCount": "新答案：{count}",
+    "changedAnswersCount": "已更改答案：{count}",
+    "removedAnswersCount": "已删除答案：{count}",
+    "confidenceShiftsCount": "置信度变化：{count}",
+    "newlyInsufficientCount": "新证据不足：{count}",
+    "noDiffGenerated": "尚未生成差异。",
+    "workflowTemplatesPro": "工作流模板适用于 Pro 计划。",
+    "changeAlertsPro": "变更提醒和运行差异适用于 Pro 计划。",
+    "noSavedViewsYet": "暂无已保存的视图。",
+    "noTemplatesYet": "暂无模板。",
+    "updated": "更新于",
+    "apply": "应用",
+    "runAgain": "重新运行",
+    "questionsCount": "{count} 个问题"
   },
   "filters": {
     "filterByStatus": "按状态筛选",
     "confidenceRange": "置信度范围",
-    "quickFilters": "快速筛选"
+    "quickFilters": "快速筛选",
+    "confidenceLabel": "置信度：{min}%-{max}%",
+    "status": "状态",
+    "hasPdf": "有 PDF",
+    "hasErrors": "有错误",
+    "highConfidence": "高置信度",
+    "lowConfidence": "低置信度",
+    "reviewed": "已审核",
+    "needsFollowUp": "需跟进"
   },
   "rating": {
     "noRating": "无评分",
@@ -861,7 +922,11 @@
     "nStar": "{count} 星"
   },
   "pagination": {
-    "perPage": "每页 {count} 条"
+    "perPage": "每页 {count} 条",
+    "showingRange": "显示第 {start}-{end} 条，共 {total} 篇论文",
+    "filteredFrom": "（从 {total} 篇中筛选）",
+    "previousPage": "上一页",
+    "nextPage": "下一页"
   },
   "fontSize": {
     "small": "小 (14px)",
@@ -901,6 +966,7 @@
     "reportBuilder": "报告生成器",
     "overviewQuestions": "概览和问题",
     "results": "结果",
+    "citation": "引用",
     "review": "审核"
   },
   "languages": {

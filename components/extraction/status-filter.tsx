@@ -26,19 +26,19 @@ interface StatusFilterProps {
   onChange: (selected: Set<string>) => void;
 }
 
-const options = [
-  { id: 'has-pdf', label: 'Has PDF', icon: FileText },
-  { id: 'abstract-only', label: 'Abstract Only', icon: FileText },
-  { id: 'open-access', label: 'Open Access', icon: Unlock },
-  { id: 'has-errors', label: 'Has Errors', icon: AlertCircle },
-  { id: 'high-confidence', label: 'High Confidence', icon: TrendingUp },
-  { id: 'low-confidence', label: 'Low Confidence', icon: TrendingDown },
-  { id: 'reviewed', label: 'Reviewed', icon: CheckCircle2 },
-  { id: 'needs-followup', label: 'Needs Follow-up', icon: AlertTriangle },
-];
-
 export function StatusFilter({ selected, onChange }: StatusFilterProps) {
   const t = useTranslations('filters');
+  const tc = useTranslations('common');
+  const options = [
+    { id: 'has-pdf', label: t('hasPdf'), icon: FileText },
+{ id: 'abstract-only', label: tc('abstractOnly'), icon: FileText },
+  { id: 'open-access', label: tc('openAccess'), icon: Unlock },
+    { id: 'has-errors', label: t('hasErrors'), icon: AlertCircle },
+    { id: 'high-confidence', label: t('highConfidence'), icon: TrendingUp },
+    { id: 'low-confidence', label: t('lowConfidence'), icon: TrendingDown },
+    { id: 'reviewed', label: t('reviewed'), icon: CheckCircle2 },
+    { id: 'needs-followup', label: t('needsFollowUp'), icon: AlertTriangle },
+  ];
   const toggleStatus = (id: string) => {
     const newSet = new Set(selected);
     if (newSet.has(id)) {
@@ -54,7 +54,7 @@ export function StatusFilter({ selected, onChange }: StatusFilterProps) {
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm">
           <Filter className="w-4 h-4 mr-2" />
-          Status
+          {t('status')}
           {selected.size > 0 && (
             <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px]">
               {selected.size}
@@ -91,7 +91,7 @@ export function StatusFilter({ selected, onChange }: StatusFilterProps) {
               onClick={() => onChange(new Set())}
               className="w-full mt-2"
             >
-              Clear All
+              {tc('clearAll')}
             </Button>
           )}
         </div>

@@ -7,10 +7,12 @@ import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Search, Calendar, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export function HistorySelector() {
   const locale = useLocale();
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const { draftJob, toggleHistorySelection } = useExtractionStore();
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
 
@@ -23,10 +25,10 @@ export function HistorySelector() {
       >
         <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
         <h3 className="text-lg font-semibold text-foreground mb-2">
-          No search history found
+          {t("noSearchHistoryFound")}
         </h3>
         <p className="text-muted-foreground">
-          Perform some searches first to create an extraction job.
+          {t("performSearchesFirst")}
         </p>
       </motion.div>
     );
@@ -81,14 +83,14 @@ export function HistorySelector() {
 
                   <div className="flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5" />
-                    <span>{entry.count?.toLocaleString() || 0} results</span>
+                    <span>{entry.count?.toLocaleString() || 0} {tc("results").toLowerCase()}</span>
                   </div>
 
                   {entry.screeningQuestions?.length > 0 && (
                     <>
                       <span className="w-1 h-1 rounded-full bg-border" />
                       <span>
-                        {entry.screeningQuestions.length} screening questions
+                        {t("screeningQuestionsLabel", { count: entry.screeningQuestions.length })}
                       </span>
                     </>
                   )}

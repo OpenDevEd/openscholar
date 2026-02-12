@@ -1,8 +1,11 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { isReviewed } from "@/lib/extraction/reviews";
+import { useTranslations } from "next-intl";
 
 const statusVariants = {
   error: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
@@ -40,6 +43,8 @@ interface PaperStatusBadgesProps {
 }
 
 export function PaperStatusBadges({ paper, showAbstract = true }: PaperStatusBadgesProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const hasAbstract =
     !!paper.abstract && paper.abstract.length > MIN_ABSTRACT_LENGTH;
   const hasPdfSource =
@@ -52,7 +57,7 @@ export function PaperStatusBadges({ paper, showAbstract = true }: PaperStatusBad
     !paper.ragEntryId &&
     paper.status !== "download_failed";
   const abstractLabel =
-    !paper.isOpenAccess && !hasPdfSource ? "Abstract Only" : "Abstract";
+    !paper.isOpenAccess && !hasPdfSource ? tc("abstractOnly") : tc("abstract");
   const showNoContent =
     paper.status === "download_failed" && !hasAbstract;
   const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
@@ -60,23 +65,23 @@ export function PaperStatusBadges({ paper, showAbstract = true }: PaperStatusBad
   return (
     <>
       {showNoContent ? (
-        <StatusBadge variant="error">No Content</StatusBadge>
+        <StatusBadge variant="error">{tc("noContent")}</StatusBadge>
       ) : null}
       {paper.isOpenAccess && (
-        <StatusBadge variant="success">Open Access</StatusBadge>
+        <StatusBadge variant="success">{tc("openAccess")}</StatusBadge>
       )}
       {paper.isIndexed || paper.ragEntryId ? (
-        <StatusBadge variant="accent">Indexed</StatusBadge>
+        <StatusBadge variant="accent">{tc("indexed")}</StatusBadge>
       ) : null}
       {paper.pdfContentUsed ? (
-        <StatusBadge variant="info">PDF Used</StatusBadge>
+        <StatusBadge variant="info">{tc("pdfUsed")}</StatusBadge>
       ) : null}
       {showAbstractBadge ? (
         <StatusBadge variant="neutral">{abstractLabel}</StatusBadge>
       ) : null}
       {reviewedCount > 0 ? (
         <StatusBadge variant="warning">
-          Reviewed {reviewedCount}/{paper.results.length}
+          {t("reviewed", { count: reviewedCount, total: paper.results.length })}
         </StatusBadge>
       ) : null}
     </>

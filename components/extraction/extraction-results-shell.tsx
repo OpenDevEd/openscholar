@@ -9,6 +9,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { PdfCitationPanel } from "@/components/extraction/pdf-citation-panel";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { subtleSpring } from "@/lib/animation-config";
+import { useTranslations } from "next-intl";
 
 type Direction = 1 | -1;
 
@@ -39,10 +40,12 @@ export function ExtractionResultsShell({
   panelPayload,
   mobilePane,
   onMobilePaneChange,
-  primaryLabel = "Results",
+  primaryLabel,
   children,
 }: ExtractionResultsShellProps) {
+  const t = useTranslations("extractionView");
   const isMobile = useIsMobile();
+  const label = primaryLabel ?? t("results");
   const hasActiveCitationPanel = panelPayload !== null;
   const prevPaneRef = useRef<"results" | "citation">(mobilePane);
   const directionRef = useRef<Direction>(1);
@@ -68,9 +71,9 @@ export function ExtractionResultsShell({
           <TabsList className="grid h-11 w-full grid-cols-2">
             <TabsTrigger value="results" className="gap-1.5">
               <FileText className="size-3.5" />
-              {primaryLabel}
+              {label}
             </TabsTrigger>
-            <TabsTrigger value="citation">Citation</TabsTrigger>
+            <TabsTrigger value="citation">{t("citation")}</TabsTrigger>
           </TabsList>
 
           <div className="relative min-h-[420px] flex-1 overflow-hidden">

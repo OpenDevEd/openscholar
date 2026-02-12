@@ -68,6 +68,7 @@ export function ReportBuilder({
   canUseRunDiff,
 }: ReportBuilderProps) {
   const t = useTranslations("reportBuilder");
+  const tc = useTranslations("common");
   const router = useRouter();
   const savedViewsQuery = useProtectedQuery(api.extraction.queries.getSavedViews, {
     jobId: jobId as any,
@@ -216,12 +217,12 @@ export function ReportBuilder({
               onClick={() => void handleSaveView()}
               disabled={busyAction !== null || !viewName.trim()}
             >
-              Save
+              {tc("save")}
             </Button>
           </div>
           <div className="space-y-2">
             {savedViewsData.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No saved views yet.</div>
+              <div className="text-sm text-muted-foreground">{t("noSavedViewsYet")}</div>
             ) : (
               savedViewsData.map((view: any) => (
                 <div
@@ -231,7 +232,7 @@ export function ReportBuilder({
                   <div>
                     <div className="font-medium text-sm">{view.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      Updated {new Date(view.updatedAt).toLocaleString()}
+                      {t("updated")} {new Date(view.updatedAt).toLocaleString()}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -241,7 +242,7 @@ export function ReportBuilder({
                       variant="outline"
                       onClick={() => onApplySavedView(view)}
                     >
-                      Apply
+                      {t("apply")}
                     </Button>
                     <Button
                       type="button"
@@ -249,7 +250,7 @@ export function ReportBuilder({
                       variant="ghost"
                       onClick={() => void deleteView({ viewId: view._id })}
                     >
-                      Delete
+                      {tc("delete")}
                     </Button>
                   </div>
                 </div>
@@ -273,12 +274,12 @@ export function ReportBuilder({
                   onClick={() => void handleSaveTemplate()}
                   disabled={busyAction !== null || !templateName.trim()}
                 >
-                  Save
+                  {tc("save")}
                 </Button>
               </div>
               <div className="space-y-2">
                 {(templates || []).length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No templates yet.</div>
+                  <div className="text-sm text-muted-foreground">{t("noTemplatesYet")}</div>
                 ) : (
                   (templates || []).map((template: any) => (
                     <div
@@ -288,7 +289,7 @@ export function ReportBuilder({
                       <div>
                         <div className="font-medium text-sm">{template.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {template.questions?.length || 0} questions
+                          {t("questionsCount", { count: template.questions?.length || 0 })}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -306,7 +307,7 @@ export function ReportBuilder({
                             }
                           }}
                         >
-                          Run again
+                          {t("runAgain")}
                         </Button>
                         <Button
                           type="button"
@@ -314,7 +315,7 @@ export function ReportBuilder({
                           variant="ghost"
                           onClick={() => void deleteTemplate({ templateId: template._id })}
                         >
-                          Delete
+                          {tc("delete")}
                         </Button>
                       </div>
                     </div>
@@ -324,14 +325,14 @@ export function ReportBuilder({
             </>
           ) : (
             <div className="text-sm text-muted-foreground">
-              Workflow templates are available on the Pro plan.
+              {t("workflowTemplatesPro")}
             </div>
           )}
         </div>
       </div>
 
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
-        <div className="text-sm font-medium">{t("reportBuilder")}</div>
+        <div className="text-sm font-medium">{t("reportBuilderTitle")}</div>
         <div className="flex flex-wrap gap-2">
           <Input
             placeholder={t("reportName")}
@@ -344,7 +345,7 @@ export function ReportBuilder({
             onClick={() => void handleCreateReport()}
             disabled={busyAction !== null}
           >
-            Generate report snapshot
+            {t("generateReportSnapshot")}
           </Button>
         </div>
         {latestReport ? (
@@ -353,7 +354,7 @@ export function ReportBuilder({
               <div>
                 <div className="font-medium">{latestReport.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  Generated {new Date(latestReport.generatedAt).toLocaleString()}
+                  {t("generated")} {new Date(latestReport.generatedAt).toLocaleString()}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -369,7 +370,7 @@ export function ReportBuilder({
                     )
                   }
                 >
-                  Export JSON
+                  {t("exportJson")}
                 </Button>
                 <Button
                   type="button"
@@ -383,19 +384,19 @@ export function ReportBuilder({
                     )
                   }
                 >
-                  Export Markdown
+                  {t("exportMarkdown")}
                 </Button>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
               <Badge variant="outline">
-                Answered {Math.round(latestReport.metrics.answeredRate * 100)}%
+                {t("answered")} {Math.round(latestReport.metrics.answeredRate * 100)}%
               </Badge>
               <Badge variant="outline">
-                Grounded {Math.round(latestReport.metrics.groundedRate * 100)}%
+                {t("grounded")} {Math.round(latestReport.metrics.groundedRate * 100)}%
               </Badge>
               <Badge variant="outline">
-                Best effort {Math.round(latestReport.metrics.bestEffortRate * 100)}%
+                {t("bestEffort")} {Math.round(latestReport.metrics.bestEffortRate * 100)}%
               </Badge>
             </div>
             <div className="space-y-3">
@@ -410,12 +411,12 @@ export function ReportBuilder({
             </div>
           </div>
         ) : (
-          <div className="text-sm text-muted-foreground">No report snapshots yet.</div>
+          <div className="text-sm text-muted-foreground">{t("noReportSnapshots")}</div>
         )}
       </div>
 
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
-        <div className="text-sm font-medium">Change Alerts (Run Diff)</div>
+        <div className="text-sm font-medium">{t("changeAlerts")}</div>
         {canUseRunDiff ? (
           <>
             <div className="flex flex-wrap items-center gap-2">
@@ -424,7 +425,7 @@ export function ReportBuilder({
                 onChange={(event) => setSelectedBaselineJobId(event.target.value)}
                 className="h-9 rounded-md border border-border bg-background px-3 text-sm"
               >
-                <option value="">Select baseline run</option>
+                <option value="">{t("selectBaselineRun")}</option>
                 {baselineOptions.map((job: any) => (
                   <option key={job._id} value={job._id}>
                     {job.name}
@@ -436,28 +437,28 @@ export function ReportBuilder({
                 onClick={() => void handleCreateDiff()}
                 disabled={!selectedBaselineJobId || busyAction !== null}
               >
-                Generate diff
+                {t("generateDiff")}
               </Button>
             </div>
             {latestDiffData ? (
               <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">New answers: {latestDiffData.summary.newAnswers}</Badge>
-                <Badge variant="outline">Changed answers: {latestDiffData.summary.changedAnswers}</Badge>
-                <Badge variant="outline">Removed answers: {latestDiffData.summary.removedAnswers}</Badge>
+                <Badge variant="outline">{t("newAnswersCount", { count: latestDiffData.summary.newAnswers })}</Badge>
+                <Badge variant="outline">{t("changedAnswersCount", { count: latestDiffData.summary.changedAnswers })}</Badge>
+                <Badge variant="outline">{t("removedAnswersCount", { count: latestDiffData.summary.removedAnswers })}</Badge>
                 <Badge variant="outline">
-                  Confidence shifts: {latestDiffData.summary.confidenceShifts}
+                  {t("confidenceShiftsCount", { count: latestDiffData.summary.confidenceShifts })}
                 </Badge>
                 <Badge variant="outline">
-                  Newly insufficient: {latestDiffData.summary.newlyInsufficientEvidence}
+                  {t("newlyInsufficientCount", { count: latestDiffData.summary.newlyInsufficientEvidence })}
                 </Badge>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">No diff generated yet.</div>
+              <div className="text-sm text-muted-foreground">{t("noDiffGenerated")}</div>
             )}
           </>
         ) : (
           <div className="text-sm text-muted-foreground">
-            Change alerts and run diffs are available on the Pro plan.
+            {t("changeAlertsPro")}
           </div>
         )}
       </div>

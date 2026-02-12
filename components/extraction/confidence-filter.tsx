@@ -17,15 +17,15 @@ interface ConfidenceFilterProps {
   onChange: (range: [number, number]) => void;
 }
 
-const presets = [
-  { label: 'All', value: [0, 100] as [number, number] },
-  { label: 'High', value: [80, 100] as [number, number] },
-  { label: 'Medium', value: [50, 80] as [number, number] },
-  { label: 'Low', value: [0, 50] as [number, number] },
-];
-
 export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
   const t = useTranslations('filters');
+  const tc = useTranslations('common');
+  const presets = [
+    { label: tc('all'), value: [0, 100] as [number, number] },
+    { label: tc('high'), value: [80, 100] as [number, number] },
+    { label: tc('medium'), value: [50, 80] as [number, number] },
+    { label: tc('low'), value: [0, 50] as [number, number] },
+  ];
   const isFiltered = range[0] !== 0 || range[1] !== 100;
 
   return (
@@ -33,7 +33,7 @@ export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className={cn(isFiltered && "border-primary")}>
           <Filter className="w-4 h-4 mr-2" />
-          Confidence: {range[0]}%-{range[1]}%
+          {t('confidenceLabel', { min: range[0], max: range[1] })}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">

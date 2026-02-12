@@ -5,6 +5,7 @@ import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { useTranslations } from "next-intl";
 
 interface SearchInputProps {
   value: string;
@@ -13,7 +14,9 @@ interface SearchInputProps {
   className?: string;
 }
 
-export function SearchInput({ value, onChange, placeholder = "Search...", className }: SearchInputProps) {
+export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
+  const t = useTranslations("extraction");
+  const resolvedPlaceholder = placeholder ?? t("searchPlaceholder");
   const [localValue, setLocalValue] = useState(value);
   const debouncedValue = useDebouncedValue(localValue, 300);
   const isInitialMount = useRef(true);
@@ -43,7 +46,7 @@ export function SearchInput({ value, onChange, placeholder = "Search...", classN
       <Input
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         className="pl-10 pr-10 h-9 bg-muted/30 dark:bg-muted/20 border-border/50 placeholder:text-muted-foreground/60"
       />
       {localValue && (

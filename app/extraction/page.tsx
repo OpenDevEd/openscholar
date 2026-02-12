@@ -15,6 +15,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 export default function ExtractionPage() {
   const router = useRouter();
   const tc = useTranslations('common');
+  const te = useTranslations('extraction');
   const { data: jobs, isDeferred } = useProtectedQuery(
     api.extraction.queries.getMyJobs,
     {},
@@ -31,7 +32,7 @@ export default function ExtractionPage() {
           <CommandCenterHeader
             icon={Database}
             title={tc("extraction")}
-            description="Extract structured data from research papers"
+            description={te("extractDescription")}
             count={jobs?.length ?? 0}
             singular="job"
             plural="jobs"

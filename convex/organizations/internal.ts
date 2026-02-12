@@ -83,6 +83,39 @@ export const updateOrgFromWorkos = internalMutation({
 });
 
 /**
+ * Handle deleted organizations from WorkOS webhook.
+ * We keep records for billing/audit history while revoking all access.
+ */
+export const markOrgDeletedFromWorkos = internalMutation({
+  args: {
+    workosId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("by_workos_id", (q) => q.eq("workosId", args.workosId))
+      .unique();
+
+    if (!org) return null;
+
+    const memberships = await ctx.db
+      .query("memberships")
+      .withIndex("by_organization", (q) => q.eq("organizationId", org._id))
+      .collect();
+
+    await Promise.all(memberships.map((membership) => ctx.db.delete(membership._id)));
+
+    await ctx.db.patch(org._id, {
+      name: org.name.startsWith("[Deleted] ") ? org.name : `[Deleted] ${org.name}`,
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
  * Link Stripe customer to organization
  */
 export const linkStripeCustomer = internalMutation({

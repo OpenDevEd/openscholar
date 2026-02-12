@@ -15,6 +15,7 @@ export const verifyWorkosWebhook = internalAction({
   returns: v.union(
     v.object({
       success: v.literal(true),
+      eventId: v.string(),
       event: v.string(),
       data: v.any(),
     }),
@@ -23,20 +24,37 @@ export const verifyWorkosWebhook = internalAction({
       error: v.string(),
     })
   ),
-  handler: async (ctx, args) => {
-    const workos = new WorkOS(process.env.WORKOS_API_KEY!);
+  handler: async (_ctx, args) => {
+    const apiKey = process.env.WORKOS_API_KEY;
+    if (!apiKey) {
+      return {
+        success: false as const,
+        error: "WORKOS_API_KEY is not configured for webhook verification.",
+      };
+    }
+
+    const webhookSecret = process.env.WORKOS_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      return {
+        success: false as const,
+        error:
+          "WORKOS_WEBHOOK_SECRET is not configured. Set it for local and deployed webhook verification.",
+      };
+    }
 
     try {
+      const workos = new WorkOS(apiKey);
       const payload = JSON.parse(args.payloadText) as Record<string, unknown>;
 
       const webhook = await workos.webhooks.constructEvent({
         payload,
         sigHeader: args.signature,
-        secret: process.env.WORKOS_WEBHOOK_SECRET!,
+        secret: webhookSecret,
       });
 
       return {
         success: true as const,
+        eventId: webhook.id as string,
         event: webhook.event as string,
         data: webhook.data as Record<string, unknown>,
       };
@@ -49,4 +67,3 @@ export const verifyWorkosWebhook = internalAction({
     }
   },
 });
-

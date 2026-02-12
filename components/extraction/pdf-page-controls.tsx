@@ -62,7 +62,7 @@ export function PdfPageControls({
   return (
     <div className="flex min-w-0 items-center gap-0.5">
       <IconButton
-        label="Previous page"
+        label={t('common.previousPage')}
         disabled={atStart}
         onClick={() => onPageChange(currentPage - 1)}
       >
@@ -87,7 +87,7 @@ export function PdfPageControls({
       </div>
 
       <IconButton
-        label="Next page"
+        label={t('common.nextPage')}
         disabled={atEnd}
         onClick={() => onPageChange(currentPage + 1)}
       >

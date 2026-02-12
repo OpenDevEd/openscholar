@@ -140,7 +140,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         error_message: getErrorMessage(error, "Unknown error"),
       });
 
-      appToast.ai.failed(t("searchCommand.enhancement"), error);
+      appToast.ai.failed(t("enhancement"), error);
     } finally {
       setIsEnhancing(false);
     }

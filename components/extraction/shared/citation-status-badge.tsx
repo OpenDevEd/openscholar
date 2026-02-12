@@ -1,19 +1,23 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 import type { CitationStatus } from "@/lib/extraction/citations";
 
-const citationLabels: Record<CitationStatus, string> = {
-  grounded: "Grounded",
-  best_effort: "Best effort",
-  insufficient_evidence: "Insufficient evidence",
-  extraction_error: "Extraction error",
+const citationKeyMap: Record<CitationStatus, "grounded" | "bestEffort" | "insufficientEvidence" | "extractionError"> = {
+  grounded: "grounded",
+  best_effort: "bestEffort",
+  insufficient_evidence: "insufficientEvidence",
+  extraction_error: "extractionError",
 };
 
 export function CitationStatusBadge({ status }: { status?: CitationStatus }) {
-  if (!status || !(status in citationLabels)) return null;
+  const tc = useTranslations("common");
+  if (!status || !(status in citationKeyMap)) return null;
 
   return (
     <Badge variant="outline" className="text-2xs font-medium">
-      {citationLabels[status]}
+      {tc(citationKeyMap[status])}
     </Badge>
   );
 }

@@ -303,6 +303,11 @@
     "searchJobs": "Search jobs...",
     "noExtractionJobs": "No extraction jobs",
     "createJobToStart": "Create a job to get started.",
+    "extractDescription": "Extract structured data from research papers",
+    "noSearchHistoryFound": "No search history found",
+    "performSearchesFirst": "Perform some searches first to create an extraction job.",
+    "screeningQuestionsLabel": "{count} screening questions",
+    "unknownAuthors": "Unknown authors",
     "jobs": "jobs",
     "exportResults": "Export Results",
     "exportDescription": "Choose export format and options for {label}",
@@ -429,7 +434,15 @@
     "reviewedRejected": "Reviewed: rejected",
     "reviewedFollowUp": "Reviewed: follow-up",
     "failedToGenerateQuestions": "Failed to generate questions",
-    "genericSuffix": "(generic)"
+    "genericSuffix": "(generic)",
+    "disagreementShowLess": "Show less",
+    "disagreementShowFull": "Show full",
+    "disagreementPapers": "{count} papers",
+    "disagreementAvgConfidence": "{percent}% avg confidence",
+    "disagreementAnswer": "Answer:",
+    "disagreementOpenPaper": "Open Paper",
+    "disagreementShowMore": "Show more",
+    "searchPlaceholder": "Search..."
   },
   "toast": {
     "unexpectedError": "An unexpected error occurred. Please try again.",
@@ -700,6 +713,8 @@
     "closeDialog": "Close",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "Page number",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "pdfViewer": "PDF viewer",
     "openPdfNewTab": "Open PDF in new tab",
     "viewOptions": "View options",
@@ -749,6 +764,18 @@
   "pdfViewer": {
     "loadingPdf": "Loading PDF...",
     "noCitationSelected": "No citation selected",
+    "openCitationHint": "Open a citation from a result row to inspect supporting evidence.",
+    "checkingPdfAccess": "Checking PDF access...",
+    "noAccessToPaper": "You do not have access to this paper.",
+    "signInToViewPdf": "Sign in to view this PDF.",
+    "pdfUnavailable": "PDF unavailable for this paper.",
+    "citationUnavailable": "Citation unavailable for this result.",
+    "unknownError": "Unknown error",
+    "unableToLoadPdf": "Unable to load PDF: {error}",
+    "noValidatedHighlight": "No validated citation highlight is available for this result.",
+    "highlightOnPage": "Highlight available on page {page}. Navigate there to inspect evidence.",
+    "citationRangeUnavailable": "Citation range unavailable for this page.",
+    "keyboardNavHint": "Use arrow keys for page navigation. Home/End jump to first/last page.",
     "noResultsYet": "No results yet",
     "noResultsDescription": "No papers matched your criteria or extraction failed.",
     "resultsWillAppear": "Results will appear here as they are processed."
@@ -848,12 +875,46 @@
     "workflowTemplates": "Workflow Templates",
     "reportName": "Report name (optional)",
     "templateName": "Template name",
-    "viewName": "View name"
+    "viewName": "View name",
+    "reportBuilderTitle": "Report Builder",
+    "generateReportSnapshot": "Generate report snapshot",
+    "generated": "Generated",
+    "exportJson": "Export JSON",
+    "exportMarkdown": "Export Markdown",
+    "answered": "Answered",
+    "grounded": "Grounded",
+    "bestEffort": "Best effort",
+    "noReportSnapshots": "No report snapshots yet.",
+    "changeAlerts": "Change Alerts (Run Diff)",
+    "selectBaselineRun": "Select baseline run",
+    "generateDiff": "Generate diff",
+    "newAnswersCount": "New answers: {count}",
+    "changedAnswersCount": "Changed answers: {count}",
+    "removedAnswersCount": "Removed answers: {count}",
+    "confidenceShiftsCount": "Confidence shifts: {count}",
+    "newlyInsufficientCount": "Newly insufficient: {count}",
+    "noDiffGenerated": "No diff generated yet.",
+    "workflowTemplatesPro": "Workflow templates are available on the Pro plan.",
+    "changeAlertsPro": "Change alerts and run diffs are available on the Pro plan.",
+    "noSavedViewsYet": "No saved views yet.",
+    "noTemplatesYet": "No templates yet.",
+    "updated": "Updated",
+    "apply": "Apply",
+    "runAgain": "Run again",
+    "questionsCount": "{count} questions"
   },
   "filters": {
     "filterByStatus": "Filter by Status",
     "confidenceRange": "Confidence Range",
-    "quickFilters": "Quick Filters"
+    "quickFilters": "Quick Filters",
+    "confidenceLabel": "Confidence: {min}%-{max}%",
+    "status": "Status",
+    "hasPdf": "Has PDF",
+    "hasErrors": "Has Errors",
+    "highConfidence": "High Confidence",
+    "lowConfidence": "Low Confidence",
+    "reviewed": "Reviewed",
+    "needsFollowUp": "Needs Follow-up"
   },
   "rating": {
     "noRating": "No Rating",
@@ -861,7 +922,11 @@
     "nStar": "{count} Star"
   },
   "pagination": {
-    "perPage": "{count} per page"
+    "perPage": "{count} per page",
+    "showingRange": "Showing {start}-{end} of {total} papers",
+    "filteredFrom": "(filtered from {total})",
+    "previousPage": "Previous page",
+    "nextPage": "Next page"
   },
   "fontSize": {
     "small": "Small (14px)",
@@ -901,6 +966,7 @@
     "reportBuilder": "Report Builder",
     "overviewQuestions": "Overview & Questions",
     "results": "Results",
+    "citation": "Citation",
     "review": "Review"
   },
   "languages": {

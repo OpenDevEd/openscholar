@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import { api } from "@/convex/_generated/api";
+import { createConvexAuthTokenFetcher } from "@/lib/auth/convex-token-fetcher";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const MAX_SYNC_RETRIES = 6;
@@ -44,120 +45,16 @@ const AuthReadinessContext = createContext<AuthReadinessContextValue | undefined
  * Custom hook to bridge WorkOS AuthKit with Convex authentication
  */
 function useAuthFromAuthKit() {
-  const { user, loading: isLoading } = useAuth();
-  const {
-    accessToken,
-    loading: tokenLoading,
-    error: tokenError,
-    getAccessToken,
-  } = useAccessToken();
-  const stableTokenRef = useRef<string | null>(null);
-  const [initialTokenProbeInFlight, setInitialTokenProbeInFlight] = useState(false);
-  const [resolvedAuthEpoch, setResolvedAuthEpoch] = useState<string | null>(null);
-  const authEpoch = user?.id ? `user:${user.id}` : "anonymous";
-
-  useEffect(() => {
-    if (accessToken) {
-      stableTokenRef.current = accessToken;
-    }
-  }, [accessToken]);
-
-  useEffect(() => {
-    if (tokenError) {
-      stableTokenRef.current = null;
-    }
-  }, [tokenError]);
-
-  useEffect(() => {
-    if ((isLoading ?? false) || (tokenLoading ?? false)) {
-      return;
-    }
-
-    if (resolvedAuthEpoch === authEpoch) {
-      return;
-    }
-
-    if (accessToken || stableTokenRef.current) {
-      setResolvedAuthEpoch(authEpoch);
-      return;
-    }
-
-    if (initialTokenProbeInFlight) {
-      return;
-    }
-
-    setInitialTokenProbeInFlight(true);
-    void getAccessToken()
-      .then((token) => {
-        stableTokenRef.current = token ?? null;
-      })
-      .catch(() => {
-        stableTokenRef.current = null;
-      })
-      .finally(() => {
-        setResolvedAuthEpoch(authEpoch);
-        setInitialTokenProbeInFlight(false);
-      });
-  }, [
-    accessToken,
-    authEpoch,
-    getAccessToken,
-    initialTokenProbeInFlight,
-    isLoading,
-    resolvedAuthEpoch,
-    tokenLoading,
-  ]);
-
-  useEffect(() => {
-    if (
-      (isLoading ?? false) ||
-      (tokenLoading ?? false) ||
-      initialTokenProbeInFlight
-    ) {
-      return;
-    }
-
-    if (resolvedAuthEpoch !== authEpoch) {
-      return;
-    }
-
-    if (!accessToken && !user) {
-      stableTokenRef.current = null;
-    }
-  }, [
-    accessToken,
-    authEpoch,
-    initialTokenProbeInFlight,
-    isLoading,
-    resolvedAuthEpoch,
-    tokenLoading,
-    user,
-  ]);
-
-  const initialTokenResolved = resolvedAuthEpoch === authEpoch;
-  const loading =
-    (isLoading ?? false) ||
-    (tokenLoading ?? false) ||
-    initialTokenProbeInFlight ||
-    !initialTokenResolved;
-  const stableAccessToken = accessToken ?? stableTokenRef.current;
-  const authenticated = !!stableAccessToken && !loading && !tokenError;
-
-  const fetchAccessToken = useCallback(async () => {
-    if (stableTokenRef.current) return stableTokenRef.current;
-    if (tokenError) return null;
-    try {
-      const token = await getAccessToken();
-      stableTokenRef.current = token ?? null;
-      return token ?? null;
-    } catch {
-      return null;
-    }
-  }, [getAccessToken, tokenError]);
+  const { user, loading: authLoading } = useAuth();
+  const { getAccessToken, refresh } = useAccessToken();
+  const fetchAccessToken = useMemo(
+    () => createConvexAuthTokenFetcher({ getAccessToken, refresh }),
+    [getAccessToken, refresh],
+  );
 
   return {
-    isLoading: loading,
-    isAuthenticated: authenticated,
+    isLoading: Boolean(authLoading),
+    isAuthenticated: Boolean(user),
     fetchAccessToken,
   };
 }
@@ -184,6 +81,7 @@ export function useAuthReadiness() {
 }
 
 function AuthReadinessProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const ensureUser = useMutation(api.users.mutations.ensureUser);
   const hasSynced = useRef(false);
@@ -207,7 +105,15 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   }, [clearRetryTimer]);
 
   useEffect(() => {
+    const hasAuthSession = Boolean(user) || authLoading;
+
     if (!isAuthenticated) {
+      // During token refresh / websocket re-auth, Convex can be temporarily
+      // unauthenticated while AuthKit still has an active session.
+      if (hasAuthSession) {
+        return;
+      }
+
       hasSynced.current = false;
       syncInFlight.current = false;
       retryAttemptRef.current = 0;
@@ -268,7 +174,16 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         syncInFlight.current = false;
       });
-  }, [clearRetryTimer, ensureUser, isAuthenticated, isLoading, syncAttempt, syncState]);
+  }, [
+    authLoading,
+    clearRetryTimer,
+    ensureUser,
+    isAuthenticated,
+    isLoading,
+    syncAttempt,
+    syncState,
+    user,
+  ]);
 
   const phase: AuthReadinessPhase = useMemo(() => {
     if (isAuthenticated && hasSynced.current) {
@@ -277,11 +192,14 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated && syncState === "error") {
       return "sync_error";
     }
-    if (isLoading || isAuthenticated) {
+    if (!user && !authLoading && !isLoading) {
+      return "anonymous";
+    }
+    if (authLoading || isLoading || Boolean(user) || isAuthenticated) {
       return "initializing";
     }
     return "anonymous";
-  }, [isAuthenticated, isLoading, syncState]);
+  }, [authLoading, isAuthenticated, isLoading, syncState, user]);
 
   const retryUserSync = useCallback(() => {
     if (!isAuthenticated) return;

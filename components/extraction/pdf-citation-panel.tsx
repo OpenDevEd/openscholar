@@ -54,13 +54,13 @@ export function PdfCitationPanel({
     !pdfUrlQuery.isDeferred && Boolean(pdfUrl) && Boolean(citation);
   const statusLabel =
     payload?.citationStatus === "grounded"
-      ? "Grounded"
+      ? t('common.grounded')
       : payload?.citationStatus === "best_effort"
-        ? "Best effort"
+        ? t('common.bestEffort')
         : payload?.citationStatus === "insufficient_evidence"
-          ? "Insufficient evidence"
+          ? t('common.insufficientEvidence')
           : payload?.citationStatus === "extraction_error"
-            ? "Extraction error"
+            ? t('common.extractionError')
             : null;
 
   const isLongCitation = (citation?.text?.length || 0) > 260;
@@ -71,7 +71,7 @@ export function PdfCitationPanel({
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">{t('pdfViewer.noCitationSelected')}</p>
           <p className="text-xs text-muted-foreground">
-            Open a citation from a result row to inspect supporting evidence.
+            {t('pdfViewer.openCitationHint')}
           </p>
         </div>
       </div>
@@ -82,7 +82,7 @@ export function PdfCitationPanel({
     <div className="@container/citation flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       <div className="border-b border-border/60 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/90">
         <div className="flex items-center gap-2">
-          <h3 className="min-w-0 truncate text-sm font-semibold">{payload.paperTitle || "Citation"}</h3>
+          <h3 className="min-w-0 truncate text-sm font-semibold">{payload.paperTitle || t('common.citation')}</h3>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             {statusLabel ? (
               <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wide">
@@ -127,12 +127,12 @@ export function PdfCitationPanel({
               >
                 {expandedCitation ? (
                   <>
-                    Collapse
+                    {t('common.showLess')}
                     <ChevronUp className="size-3" />
                   </>
                 ) : (
                   <>
-                    Expand
+                    {t('common.showMore')}
                     <ChevronDown className="size-3" />
                   </>
                 )}
@@ -167,20 +167,20 @@ export function PdfCitationPanel({
         {pdfUrlQuery.isDeferred ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Checking PDF access...
+            {t('pdfViewer.checkingPdfAccess')}
           </div>
         ) : null}
         {!pdfUrlQuery.isDeferred && !pdfUrl ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
             {pdfUrlResult?.status === "no_access"
-              ? "You do not have access to this paper."
+              ? t('pdfViewer.noAccessToPaper')
               : pdfUrlResult?.status === "unauthenticated"
-                ? "Sign in to view this PDF."
-                : "PDF unavailable for this paper."}
+                ? t('pdfViewer.signInToViewPdf')
+                : t('pdfViewer.pdfUnavailable')}
           </div>
         ) : !pdfUrlQuery.isDeferred && !citation ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
-            Citation unavailable for this result.
+            {t('pdfViewer.citationUnavailable')}
           </div>
         ) : shouldRenderPdfViewer ? (
           <PdfViewer

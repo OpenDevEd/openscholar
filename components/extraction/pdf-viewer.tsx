@@ -368,15 +368,15 @@ export function PdfViewer({
 
       <div className="border-b border-border/50 bg-muted/30 px-2 py-1 text-[11px] text-muted-foreground">
         {documentError ? (
-          <span className="text-destructive">Unable to load PDF: {documentError}</span>
+          <span className="text-destructive">{t("pdfViewer.unableToLoadPdf", { error: documentError })}</span>
         ) : !highlightValidated ? (
-          <span>No validated citation highlight is available for this result.</span>
+          <span>{t("pdfViewer.noValidatedHighlight")}</span>
         ) : !isCitationPage && highlightPage ? (
-          <span>Highlight available on page {highlightPage}. Navigate there to inspect evidence.</span>
+          <span>{t("pdfViewer.highlightOnPage", { page: highlightPage })}</span>
         ) : rangeUnavailable ? (
-          <span className="text-amber-600 dark:text-amber-400">Citation range unavailable for this page.</span>
+          <span className="text-amber-600 dark:text-amber-400">{t("pdfViewer.citationRangeUnavailable")}</span>
         ) : (
-          <span>Use arrow keys for page navigation. Home/End jump to first/last page.</span>
+          <span>{t("pdfViewer.keyboardNavHint")}</span>
         )}
       </div>
 
@@ -399,7 +399,7 @@ export function PdfViewer({
                 setPageInput(String(nextPage));
               }}
               onLoadError={(error) => {
-                setDocumentError(error.message || "Unknown error");
+                setDocumentError(error.message || t("pdfViewer.unknownError"));
               }}
             >
               <Page

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 type DisagreementCluster = {
   normalizedAnswer: string;
@@ -38,6 +39,7 @@ export function DisagreementList({
   maxInitial = 10,
   onJumpToExample,
 }: DisagreementListProps) {
+  const t = useTranslations("extraction");
   const [visibleCount, setVisibleCount] = useState(maxInitial);
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
 
@@ -101,14 +103,14 @@ export function DisagreementList({
                       }))
                     }
                   >
-                    {isExpanded ? "Show less" : "Show full"}
+                    {isExpanded ? t("disagreementShowLess") : t("disagreementShowFull")}
                   </button>
                 ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{cluster.count} papers</Badge>
+                <Badge variant="secondary">{t("disagreementPapers", { count: cluster.count })}</Badge>
                 <Badge variant="outline">
-                  {Math.round(cluster.avgConfidence * 100)}% avg confidence
+                  {t("disagreementAvgConfidence", { percent: Math.round(cluster.avgConfidence * 100) })}
                 </Badge>
               </div>
             </div>
@@ -122,7 +124,7 @@ export function DisagreementList({
                   <div className="min-w-0">
                     <div className="font-medium truncate">{example.title}</div>
                     <div className="text-xs text-muted-foreground">
-                      Answer:{" "}
+                      {t("disagreementAnswer")}{" "}
                       {Array.isArray(example.answer)
                         ? example.answer.join("; ")
                         : String(example.answer)}
@@ -135,7 +137,7 @@ export function DisagreementList({
                       variant="outline"
                       onClick={() => onJumpToExample(example.paperId)}
                     >
-                      Open Paper
+                      {t("disagreementOpenPaper")}
                     </Button>
                   ) : null}
                 </div>
@@ -153,7 +155,7 @@ export function DisagreementList({
             size="sm"
             onClick={() => setVisibleCount((prev) => prev + maxInitial)}
           >
-            Show more
+            {t("disagreementShowMore")}
           </Button>
         </div>
       ) : null}

@@ -77,6 +77,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - Client auth readiness is exposed via `useAuthReadiness()` from `components/providers/convex-provider.tsx`.
    - Use auth-aware query wrappers from `lib/auth/use-auth-query.ts` (`useProtectedQuery`, `useProtectedPaginatedQuery`, `useOptionalAuthQuery`) instead of direct `useQuery` calls in UI.
    - Configure your WorkOS webhook endpoint to `POST /webhooks/workos` on your Convex HTTP deployment URL.
+   - `WORKOS_WEBHOOK_SECRET` must be configured in every environment, including local development and deployed environments, or webhook verification will fail with `401`.
    - Public debug/test Convex endpoints are disabled by default; only enable with `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true`.
    - Public read-query auth/authorization states follow the safe contract documented in `docs/auth-error-contract.md`.
 

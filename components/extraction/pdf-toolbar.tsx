@@ -93,7 +93,7 @@ export function PdfToolbar({
         />
 
         <div className="ml-auto flex items-center gap-0.5">
-          <ToolbarIconButton label="Zoom out" onClick={onZoomOut} disabled={!canZoomOut}>
+          <ToolbarIconButton label={t('accessibility.zoomOut')} onClick={onZoomOut} disabled={!canZoomOut}>
             <ZoomOut className="size-3.5" />
           </ToolbarIconButton>
 
@@ -101,7 +101,7 @@ export function PdfToolbar({
             {scalePercent}%
           </span>
 
-          <ToolbarIconButton label="Zoom in" onClick={onZoomIn} disabled={!canZoomIn}>
+          <ToolbarIconButton label={t('accessibility.zoomIn')} onClick={onZoomIn} disabled={!canZoomIn}>
             <ZoomIn className="size-3.5" />
           </ToolbarIconButton>
 
