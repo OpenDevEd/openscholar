@@ -16,7 +16,7 @@ import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
 import useSWR from 'swr';
-import { appToast } from '@/lib/toast';
+import { useAppToast } from '@/lib/toast';
 
 import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
@@ -78,6 +78,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
  * SearchProvider - Wrap your results pages with this
  */
 export function SearchProvider({ children }: SearchProviderProps) {
+  const toast = useAppToast();
   const routeParams = useParams<{ searchId: string }>();
   const searchId = routeParams?.searchId ?? '';
   
@@ -305,7 +306,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
           }
         }
         
-        appToast.search.failed(err);
+        toast.search.failed(err);
       },
     }
   );

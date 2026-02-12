@@ -15,7 +15,7 @@ import {
   CreditCard,
   BookOpen,
 } from "lucide-react";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
@@ -45,6 +45,7 @@ type PlanConfig = {
 };
 
 export function Pricing() {
+  const toast = useAppToast();
   const t = useTranslations("pricing");
   const tc = useTranslations("common");
   const locale = useLocale();
@@ -103,7 +104,7 @@ export function Pricing() {
   useEffect(() => {
     if (error) {
       console.error("Failed to load Stripe prices", error);
-      appToast.error(t("failedToLoadPricing"), t("pleaseRefresh"));
+      toast.error(t("failedToLoadPricing"), t("pleaseRefresh"));
     }
   }, [error, t]);
 
@@ -139,7 +140,7 @@ export function Pricing() {
     const priceId = prices?.find((price) => price.plan === planType)?.id;
 
     if (!priceId) {
-      appToast.error(t("planUnavailable"), t("pricingNotConfigured"));
+      toast.error(t("planUnavailable"), t("pricingNotConfigured"));
       return;
     }
 
@@ -155,11 +156,11 @@ export function Pricing() {
       if (url) {
         window.location.href = url;
       } else {
-        appToast.billing.checkoutFailed();
+        toast.billing.checkoutFailed();
       }
     } catch (err) {
       console.error(err);
-      appToast.error(tc("somethingWentWrong"), t("couldNotInitiateCheckout"));
+      toast.error(tc("somethingWentWrong"), t("couldNotInitiateCheckout"));
     } finally {
       setLoadingPriceId(null);
     }
@@ -174,7 +175,7 @@ export function Pricing() {
       }
     } catch (err) {
       console.error(err);
-      appToast.billing.portalFailed();
+      toast.billing.portalFailed();
     } finally {
       setLoadingPriceId(null);
     }

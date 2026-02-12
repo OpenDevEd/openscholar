@@ -27,7 +27,7 @@ import {
 } from "@/lib/ai-models";
 import { fetchOpenRouterModels } from "@/app/actions/openrouter";
 import { useTranslations } from "next-intl";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 
@@ -48,6 +48,7 @@ export default function AISettingsPage() {
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelSectionExpanded, setModelSectionExpanded] = useState(false);
 
+  const toast = useAppToast();
   const t = useTranslations("aiSettings");
   const tc = useTranslations("common");
 
@@ -63,14 +64,14 @@ export default function AISettingsPage() {
     setModel(defaultModel);
     setModels([]);
     setModelSectionExpanded(false);
-    appToast.entity.updated(tc("provider"), newProvider);
+    toast.entity.updated(tc("provider"), newProvider);
   };
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel);
     setModelSectionExpanded(false);
     setModelSearch("");
-    appToast.entity.updated(tc("model"), newModel);
+    toast.entity.updated(tc("model"), newModel);
   };
 
   const handleApiKeyChange = (value: string) => {
@@ -85,7 +86,7 @@ export default function AISettingsPage() {
           const openRouterModels = await fetchOpenRouterModels();
           setModels(openRouterModels);
         } catch (error) {
-          appToast.ai.failed(t("loadingOpenRouterModels"), error);
+          toast.ai.failed(t("loadingOpenRouterModels"), error);
         } finally {
           setLoadingModels(false);
         }
@@ -198,7 +199,7 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("local");
-                appToast.entity.updated(tc("mode"), t("usingOwnApiKeys"));
+                toast.entity.updated(tc("mode"), t("usingOwnApiKeys"));
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
@@ -231,7 +232,7 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("credits");
-                appToast.entity.updated(tc("mode"), t("usingCredits"));
+                toast.entity.updated(tc("mode"), t("usingCredits"));
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}

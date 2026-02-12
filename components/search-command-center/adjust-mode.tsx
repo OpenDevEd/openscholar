@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { useSearch } from "@/lib/search";
 import { useSearchHistoryStore } from "@/lib/store";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { languageOptions } from "@/lib/ai/core/languages";
@@ -20,6 +20,7 @@ interface AdjustModeProps {
 }
 
 export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
+  const toast = useAppToast();
   const t = useTranslations();
   const tv = useTranslations("validation");
   const search = useSearch();
@@ -104,7 +105,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (!aiInstructions.trim() || !urlQuery.trim()) return;
 
     if (!isConfigured) {
-      appToast.ai.configRequired(tv("aiConfigRequired"));
+      toast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -135,11 +136,11 @@ Please enhance this academic search query according to the user's specific instr
       setQueryFlash(true);
       setTimeout(() => setQueryFlash(false), 1000);
 
-      appToast.ai.succeeded(t("searchCommand.queryEnhanced"), response.explanation || undefined);
+      toast.ai.succeeded(t("searchCommand.queryEnhanced"), response.explanation || undefined);
 
       setAiInstructions("");
     } catch (error) {
-      appToast.ai.failed(t("searchCommand.enhancement"), error);
+      toast.ai.failed(t("searchCommand.enhancement"), error);
     } finally {
       setIsEnhancing(false);
     }

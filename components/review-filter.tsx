@@ -4,17 +4,18 @@ import React from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCurrentSearchFormState, useUpdateSearchFilter } from '@/lib/hooks';
-import { appToast } from '@/lib/toast';
+import { useAppToast } from '@/lib/toast';
 import { useTranslations } from 'next-intl';
 
 export function ReviewFilter() {
+  const toast = useAppToast();
   const tf = useTranslations("searchFilters");
   const { reviewFilter } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
   const handleToggle = (checked: boolean) => {
     updateFilter({ reviewFilter: checked });
-    appToast.entity.updated(
+    toast.entity.updated(
       tf("reviewFilter"),
       checked ? tf("reviewFilterEnabled") : tf("reviewFilterDisabled")
     );

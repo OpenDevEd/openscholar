@@ -30,7 +30,7 @@ import {
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import type { ExtractionQuestion, ExtractionQuestionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -243,6 +243,7 @@ function QuestionRow({
 }
 
 export function QuestionBuilder() {
+  const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
 
@@ -370,13 +371,13 @@ export function QuestionBuilder() {
 
   const handleGenerateWithAI = async () => {
     if (!isConfigured) {
-      appToast.ai.configRequired(t("configureApiKey"));
+      toast.ai.configRequired(t("configureApiKey"));
       return;
     }
 
     const sourceContext = buildSourceContext();
     if (!sourceContext) {
-      appToast.error(t("noSourceContext"), t("selectSourcesFirst"));
+      toast.error(t("noSourceContext"), t("selectSourcesFirst"));
       return;
     }
 
@@ -410,9 +411,9 @@ export function QuestionBuilder() {
       }
 
       if (addedCount > 0) {
-        appToast.success(t("addedQuestions", { count: addedCount }));
+        toast.success(t("addedQuestions", { count: addedCount }));
       } else {
-        appToast.warning(t("noNewQuestions"));
+        toast.warning(t("noNewQuestions"));
       }
     } catch (error) {
       const message =
@@ -420,9 +421,9 @@ export function QuestionBuilder() {
           ? error.message
           : t("failedToGenerateQuestions");
       if (message === "API_KEY_REQUIRED") {
-        appToast.ai.configRequired(t("configureApiKey"));
+        toast.ai.configRequired(t("configureApiKey"));
       } else {
-        appToast.error(t("generationFailed"), message);
+        toast.error(t("generationFailed"), message);
       }
     } finally {
       setIsGenerating(false);

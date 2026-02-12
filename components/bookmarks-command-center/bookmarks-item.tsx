@@ -16,7 +16,7 @@ import {
 import { cn, createDefaultFilters } from "@/lib/utils";
 import { getIdColor } from "@/lib/format";
 import { ViewMode } from "@/lib/types";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { submitNewSearch } from "@/lib/search/actions";
 import { subtleSpring } from "@/lib/animation-config";
 import { type BookmarkEntry } from "./index";
@@ -42,6 +42,7 @@ export function BookmarksItem({
   onCancelEdit,
   onDelete,
 }: BookmarksItemProps) {
+  const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
@@ -69,9 +70,9 @@ export function BookmarksItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(bookmark.expansion);
-      appToast.clipboard.copied(tToast("entityExpansion"));
+      toast.clipboard.copied(tToast("entityExpansion"));
     } catch {
-      appToast.clipboard.copied(tToast("entityExpansion"));
+      toast.clipboard.copied(tToast("entityExpansion"));
     }
   };
 

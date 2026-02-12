@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CompactQuestionList } from "./components/compact-question-list";
 import { useSearchHistoryStore, useTransientScreeningStore } from "@/lib/store";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ interface ScreeningExpansionProps {
 export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps) {
   const t = useTranslations();
   const tv = useTranslations("validation");
+  const toast = useAppToast();
   const tToast = useTranslations("toast");
   const [newQuestion, setNewQuestion] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -59,7 +60,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) {
-      appToast.validation.failed(tv("pleaseEnterQuestion"));
+      toast.validation.failed(tv("pleaseEnterQuestion"));
       return;
     }
 
@@ -67,7 +68,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       (q) => q.question.toLowerCase() === newQuestion.trim().toLowerCase()
     );
     if (duplicate) {
-      appToast.validation.failed(tv("questionAlreadyExists"));
+      toast.validation.failed(tv("questionAlreadyExists"));
       return;
     }
 
@@ -83,9 +84,9 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       });
 
       setNewQuestion("");
-      appToast.entity.created(tToast("entityQuestion"));
+      toast.entity.created(tToast("entityQuestion"));
     } catch {
-      appToast.validation.failed(tv("failedToAddQuestion"));
+      toast.validation.failed(tv("failedToAddQuestion"));
     } finally {
       setIsAdding(false);
     }
@@ -94,7 +95,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   const handleDeleteQuestion = (index: number, question: string) => {
     const remainingQuestions = screeningQuestions.length - 1;
     removeScreeningQuestion(searchId, index);
-    appToast.entity.deleted(tToast("entityQuestion"));
+    toast.entity.deleted(tToast("entityQuestion"));
 
     // Track screening question deletion
     posthog.capture("screening_question_deleted", {
@@ -106,7 +107,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
   const handleTestQuestion = (question: string) => {
     removeScreeningQuestionFromAllPapers(searchId, question);
     incrementTestIndexPerQuestion(question);
-    appToast.entity.cleared(tToast("entityQuestionResponses"));
+    toast.entity.cleared(tToast("entityQuestionResponses"));
 
     // Track screening question test
     posthog.capture("screening_question_tested", {
@@ -117,7 +118,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleTestAllQuestions = () => {
     if (screeningQuestions.length === 0) {
-      appToast.validation.warning(tv("noQuestionsToTest"));
+      toast.validation.warning(tv("noQuestionsToTest"));
       return;
     }
 
@@ -126,18 +127,18 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       incrementTestIndexPerQuestion(q.question);
     });
 
-    appToast.entity.cleared(tToast("entityQuestionResponses"), screeningQuestions.length);
+    toast.entity.cleared(tToast("entityQuestionResponses"), screeningQuestions.length);
   };
 
   const handleClearAllQuestions = () => {
     if (screeningQuestions.length === 0) {
-      appToast.validation.warning(tv("noQuestionsToClear"));
+      toast.validation.warning(tv("noQuestionsToClear"));
       return;
     }
 
     const questionsCleared = screeningQuestions.length;
     clearScreeningQuestions(searchId);
-    appToast.entity.cleared(tToast("entityQuestions"), questionsCleared);
+    toast.entity.cleared(tToast("entityQuestions"), questionsCleared);
 
     // Track screening questions cleared
     posthog.capture("screening_questions_cleared", {
@@ -147,12 +148,12 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleGenerateWithAI = async () => {
     if (!isConfigured) {
-      appToast.ai.configRequired(tv("aiConfigRequired"));
+      toast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
     if (!researchQuestion.trim()) {
-      appToast.validation.failed(tv("noResearchQuestionAvailable"));
+      toast.validation.failed(tv("noResearchQuestionAvailable"));
       return;
     }
 
@@ -182,18 +183,18 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
           total_questions: screeningQuestions.length + addedCount,
         });
 
-        appToast.entity.created(
+        toast.entity.created(
           "screening questions",
           t("extraction.addedQuestions", { count: addedCount })
         );
       } else {
-        appToast.validation.warning(tv("noNewQuestionsGenerated"));
+        toast.validation.warning(tv("noNewQuestionsGenerated"));
       }
     } catch (error) {
       // Track generation failure
       posthog.capture("screening_questions_generation_failed", {});
 
-      appToast.ai.failed(t("searchCommand.questionGeneration"), error);
+      toast.ai.failed(t("searchCommand.questionGeneration"), error);
     } finally {
       setIsGenerating(false);
     }

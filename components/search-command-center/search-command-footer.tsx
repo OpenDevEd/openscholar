@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore } from "@/lib/store";
-import { appToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
+import { useAppToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ export function SearchCommandFooter({
   onScreeningToggle,
   isLoading,
 }: SearchCommandFooterProps) {
+  const toast = useAppToast();
   const t = useTranslations();
   const tv = useTranslations("validation");
   const tsc = useTranslations("searchCommand");
@@ -60,12 +61,12 @@ export function SearchCommandFooter({
 
   const handleBroadenQuery = async () => {
     if (!effectiveQuery.trim()) {
-      appToast.validation.failed(tv("noQueryToBroaden"));
+      toast.validation.failed(tv("noQueryToBroaden"));
       return;
     }
 
     if (!isConfigured) {
-      appToast.ai.configRequired(tv("aiConfigRequired"));
+      toast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -121,12 +122,12 @@ Return a more inclusive version of this query.`;
 
   const handleNarrowQuery = async () => {
     if (!effectiveQuery.trim()) {
-      appToast.validation.failed(tv("noQueryToNarrow"));
+      toast.validation.failed(tv("noQueryToNarrow"));
       return;
     }
 
     if (!isConfigured) {
-      appToast.ai.configRequired(tv("aiConfigRequired"));
+      toast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 

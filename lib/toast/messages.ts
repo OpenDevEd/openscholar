@@ -55,10 +55,10 @@ export const TOAST_MESSAGES = {
   },
 } as const;
 
-export function formatEntityName(entity: string): string {
+export function formatEntityName(entity: string, fallback = "Item"): string {
   const trimmed = entity.trim();
   if (!trimmed) {
-    return "Item";
+    return fallback;
   }
 
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;

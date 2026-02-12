@@ -20,6 +20,7 @@ import {
   SIDEBAR_BADGE_COLORS,
   HISTORY_BADGE_COLORS,
   getAllFilterItems,
+  type FilterT,
 } from "@/lib/filters";
 
 // ============ Unified Filter Badges (Single Source of Truth) ============
@@ -49,8 +50,9 @@ export function UnifiedFilterBadges({
   className,
   showAll = true,
 }: UnifiedFilterBadgesProps) {
+  const tFilters = useTranslations("searchFilters");
   // Get all filter items as a flat array
-  const filterItems = getAllFilterItems(result);
+  const filterItems = getAllFilterItems(result, tFilters as FilterT);
   
   if (filterItems.length === 0 && !showAll) return null;
 

@@ -32,7 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { ResultsToolbar, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
@@ -67,6 +67,7 @@ import {
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
 
 export default function JobDetailPage() {
+  const toast = useAppToast();
   const tError = useTranslations('errorPages');
   const tJob = useTranslations('jobStatus');
   const tConfirm = useTranslations('confirmations');
@@ -295,29 +296,29 @@ export default function JobDetailPage() {
   const handleCancel = async () => {
     try {
       await cancelJob({ jobId });
-      appToast.job.cancelled();
+      toast.job.cancelled();
     } catch (error) {
-      appToast.job.cancelFailed();
+      toast.job.cancelFailed();
     }
   };
 
   const handleDelete = async () => {
     try {
       await deleteJob({ jobId });
-      appToast.job.deleted();
+      toast.job.deleted();
       router.push("/extraction");
     } catch (error) {
-      appToast.job.deleteFailed();
+      toast.job.deleteFailed();
     }
   };
 
   const handleDuplicate = async () => {
     try {
       const result = await duplicateJob({ jobId });
-      appToast.job.created();
+      toast.job.created();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
-      appToast.job.createFailed();
+      toast.job.createFailed();
     }
   };
 
@@ -339,7 +340,7 @@ export default function JobDetailPage() {
       }
       setCurrentPage(1);
       setActiveTab("results");
-      appToast.success(tJob('appliedSavedView', { name: view?.name || tc('other') }));
+      toast.success(tJob('appliedSavedView', { name: view?.name || tc('other') }));
     },
     [setViewMode]
   );

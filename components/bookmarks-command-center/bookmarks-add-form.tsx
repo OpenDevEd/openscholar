@@ -10,13 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore } from "@/lib/store";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { subtleSpring } from "@/lib/animation-config";
 import posthog from "posthog-js";
 
 export function BookmarksAddForm() {
+  const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tv = useTranslations("validation");
+  const tToast = useTranslations("toast");
   const [name, setName] = useState("");
   const [expansion, setExpansion] = useState("");
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -34,17 +36,17 @@ export function BookmarksAddForm() {
 
     const validationError = validateKeyword(trimmedName);
     if (validationError) {
-      appToast.validation.failed(validationError);
+      toast.validation.failed(validationError);
       return;
     }
 
     if (!trimmedExpansion) {
-      appToast.validation.failed(tv("expansionTextEmpty"));
+      toast.validation.failed(tv("expansionTextEmpty"));
       return;
     }
 
     if (keywords[trimmedName]) {
-      appToast.validation.failed(tv("bookmarkNameExists", { name: trimmedName }));
+      toast.validation.failed(tv("bookmarkNameExists", { name: trimmedName }));
       return;
     }
 
@@ -60,7 +62,7 @@ export function BookmarksAddForm() {
 
     setName("");
     setExpansion("");
-    appToast.entity.created("bookmark", trimmedName);
+    toast.entity.created(tToast("entityBookmark"), trimmedName);
   };
 
   return (

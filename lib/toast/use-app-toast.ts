@@ -56,7 +56,7 @@ export function useAppToast() {
         });
       },
       failed: (operation: string, error: unknown) => {
-        const operationLabel = operation.trim() || "AI operation";
+        const operationLabel = operation.trim() || t("aiOperation");
         showStyledToast("error", t("operationFailed", { operation: operationLabel }), {
           description: getErrorMessage(error, t("unexpectedError")),
           action: {
@@ -116,6 +116,26 @@ export function useAppToast() {
           description: t("nothingImportedDescription", { entity }),
         });
       },
+      downloadSuccess: (count: number, entity: string, format: string) => {
+        showStyledToast("success", t("downloadSuccess"), {
+          description: t("downloadSuccessDescription", {
+            count: formatEntityWithCount(entity, count),
+            format,
+          }),
+        });
+      },
+      uploadSuccess: (count: number, entity: string) => {
+        showStyledToast("success", t("importCompleted"), {
+          description: t("uploadSuccessDescription", {
+            count: formatEntityWithCount(entity, count),
+          }),
+        });
+      },
+      uploadNoValid: (entity: string) => {
+        showStyledToast("warning", t("nothingImported"), {
+          description: t("nothingImportedDescription", { entity }),
+        });
+      },
     },
     clipboard: {
       copied: (thing: string) => {
@@ -136,20 +156,30 @@ export function useAppToast() {
       warning: (message: string) => {
         showStyledToast("warning", t("validationWarning"), { description: message });
       },
+      fileType: (allowedTypes?: string) => {
+        showStyledToast("error", t("fileTypeTitle"), {
+          description: allowedTypes ? t("onlyFilesSupported", { allowedTypes }) : t("fileTypeNotSupported"),
+        });
+      },
+      fileSize: (maxSizeMB: number) => {
+        showStyledToast("error", t("fileSizeTitle"), {
+          description: t("fileExceedsMaxSize", { maxSizeMB }),
+        });
+      },
     },
     entity: {
       created: (entity: string, label?: string) => {
-        showStyledToast("success", t("entityCreated", { entity: formatEntityName(entity) }), {
+        showStyledToast("success", t("entityCreated", { entity: formatEntityName(entity, t("entityItem")) }), {
           description: createEntityDescription("was created", label),
         });
       },
       updated: (entity: string, label?: string) => {
-        showStyledToast("success", t("entityUpdated", { entity: formatEntityName(entity) }), {
+        showStyledToast("success", t("entityUpdated", { entity: formatEntityName(entity, t("entityItem")) }), {
           description: createEntityDescription("was updated", label),
         });
       },
       deleted: (entity: string, label?: string) => {
-        showStyledToast("success", t("entityDeleted", { entity: formatEntityName(entity) }), {
+        showStyledToast("success", t("entityDeleted", { entity: formatEntityName(entity, t("entityItem")) }), {
           description: createEntityDescription("was deleted", label),
         });
       },
@@ -158,10 +188,40 @@ export function useAppToast() {
           typeof count === "number"
             ? t("clearedCount", { count: formatEntityWithCount(entity, count) })
             : undefined;
-        showStyledToast("success", t("entityCleared", { entity: formatEntityName(entity) }), {
+        showStyledToast("success", t("entityCleared", { entity: formatEntityName(entity, t("entityItem")) }), {
           description,
         });
       },
+    },
+    job: {
+      cancelled: () => showStyledToast("success", t("jobCancelled")),
+      cancelFailed: () => showStyledToast("error", t("jobCancelFailed")),
+      deleted: () => showStyledToast("success", t("jobDeleted")),
+      deleteFailed: () => showStyledToast("error", t("jobDeleteFailed")),
+      created: () => showStyledToast("success", t("jobCreated")),
+      createFailed: () => showStyledToast("error", t("jobCreateFailed")),
+      duplicated: () => showStyledToast("success", t("jobDuplicated")),
+      duplicateFailed: () => showStyledToast("error", t("jobDuplicateFailed")),
+    },
+    billing: {
+      cancelled: () => showStyledToast("success", t("billingCancelled")),
+      cancelFailed: () => showStyledToast("error", t("billingCancelFailed")),
+      portalFailed: () => showStyledToast("error", t("billingPortalFailed")),
+      checkoutFailed: () => showStyledToast("error", t("billingCheckoutFailed")),
+    },
+    zotero: {
+      connected: () => showStyledToast("success", t("zoteroConnected")),
+      failed: (error?: string) =>
+        showStyledToast("error", t("zoteroConnectionFailed"), { description: error }),
+    },
+    success: (title: string, description?: string) => {
+      showStyledToast("success", title, { description });
+    },
+    error: (title: string, description?: string, action?: { label: string; onClick: () => void; icon?: "settings" | "arrow-right" }) => {
+      showStyledToast("error", title, { description, action });
+    },
+    warning: (title: string, description?: string) => {
+      showStyledToast("warning", title, { description });
     },
     custom: customToast,
     dismiss: dismissToast,

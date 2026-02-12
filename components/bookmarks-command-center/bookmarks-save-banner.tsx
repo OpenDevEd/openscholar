@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useKeywordExpansionStore, useKeywordExpansionDialogStore } from "@/lib/store";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksSaveBanner() {
+  const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
   const tv = useTranslations("validation");
@@ -38,18 +39,18 @@ export function BookmarksSaveBanner() {
     const trimmedName = name.trim();
 
     if (!suggestedQuery.trim()) {
-      appToast.validation.failed(tv("noQueryToSave"));
+      toast.validation.failed(tv("noQueryToSave"));
       return;
     }
 
     const validationError = validateKeyword(trimmedName);
     if (validationError) {
-      appToast.validation.failed(validationError);
+      toast.validation.failed(validationError);
       return;
     }
 
     if (keywords[trimmedName]) {
-      appToast.validation.failed(tv("bookmarkNameExists", { name: trimmedName }));
+      toast.validation.failed(tv("bookmarkNameExists", { name: trimmedName }));
       return;
     }
 
@@ -59,7 +60,7 @@ export function BookmarksSaveBanner() {
     addKeyword(trimmedName, expandedQuery);
     setName("");
     setSuggestedQuery("");
-    appToast.entity.created(tToast("entityBookmark"), trimmedName);
+    toast.entity.created(tToast("entityBookmark"), trimmedName);
   };
 
   return (

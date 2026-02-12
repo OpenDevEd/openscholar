@@ -24,7 +24,7 @@ import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { BookmarkForm } from "@/components/command-center";
 import { QueryText } from "@/components/ui/query-text";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
@@ -33,7 +33,12 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
 import { subtleSpring } from "@/lib/animation-config";
 import type { SearchResult } from "@/lib/types";
-import { getFieldLabel, hasActiveFiltersFromResult } from "@/lib/filters";
+import {
+  getFieldLabel,
+  getSortLabel,
+  hasActiveFiltersFromResult,
+  type FilterT,
+} from "@/lib/filters";
 
 interface HistoryItemProps {
   item: SearchResult;
@@ -48,12 +53,14 @@ export function HistoryItem({
   viewMode,
   onSearchClick,
   }: HistoryItemProps) {
+  const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
   const tv = useTranslations("validation");
   const tToast = useTranslations("toast");
   const tp = useTranslations("paperCard");
   const tl = useTranslations("languages");
+  const tFilters = useTranslations("searchFilters");
   const locale = useLocale();
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [bookmarkName, setBookmarkName] = useState("");
@@ -73,9 +80,9 @@ export function HistoryItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(item.query);
-      appToast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copied(tToast("entityQuery"));
     } catch {
-      appToast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -87,28 +94,28 @@ export function HistoryItem({
       cancelText: tc("cancel"),
       onConfirm: () => {
         removeSearchResult(actualIndex);
-        appToast.entity.deleted(tToast("entitySearchEntry"));
+        toast.entity.deleted(tToast("entitySearchEntry"));
       },
     });
   };
 
   const handleBookmarkSubmit = () => {
     if (!bookmarkName.trim()) {
-      appToast.validation.failed(tv("bookmarkNameRequired"));
+      toast.validation.failed(tv("bookmarkNameRequired"));
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      appToast.validation.failed(tv("bookmarkNameFormat"));
+      toast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
     if (keywords[bookmarkName]) {
-      appToast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
+      toast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    appToast.entity.created(tToast("entityBookmark"), bookmarkName);
+    toast.entity.created(tToast("entityBookmark"), bookmarkName);
     setIsBookmarking(false);
     setBookmarkName("");
   };
@@ -390,7 +397,7 @@ export function HistoryItem({
                 {!isCompact && (
                   <>
                     <span className="opacity-40">•</span>
-                    <span>{getFieldLabel(item.field)}</span>
+                    <span>{getFieldLabel(item.field, tFilters as FilterT)}</span>
                   </>
                 )}
               </div>
@@ -562,11 +569,11 @@ export function HistoryItem({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
               <span>{formatTimeAgo(item.createdAt, locale)}</span>
               <span className="opacity-40">•</span>
-              <span>{getFieldLabel(item.field)}</span>
-              {item.sortBy && (
+              <span>{getFieldLabel(item.field, tFilters as FilterT)}</span>
+              {item.sortBy && getSortLabel(item.sortBy, tFilters as FilterT) && (
                 <>
                   <span className="opacity-40">•</span>
-                  <span className="capitalize">{item.sortBy}</span>
+                  <span>{getSortLabel(item.sortBy, tFilters as FilterT)}</span>
                 </>
               )}
             </div>

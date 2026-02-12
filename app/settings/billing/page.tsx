@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { useRouter } from "next/navigation";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -15,6 +15,7 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 
 export default function BillingPage() {
   const t = useTranslations("billingPage");
+  const toast = useAppToast();
   const tc = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
@@ -84,7 +85,7 @@ export default function BillingPage() {
       const { url } = await createPortalSession({});
       if (url) window.location.href = url;
     } catch (error) {
-      appToast.billing.portalFailed();
+      toast.billing.portalFailed();
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -102,10 +103,10 @@ export default function BillingPage() {
       setDetails(null);
       setErrorMsg(null);
       
-      appToast.billing.cancelled();
+      toast.billing.cancelled();
       // Full state update happens automatically via Convex reactivity
     } catch (error) {
-      appToast.billing.cancelFailed();
+      toast.billing.cancelFailed();
       console.error(error);
     } finally {
       setIsLoading(false);

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { subtleSpring } from "@/lib/animation-config";
 import type { QueryHistoryEntry } from "@/lib/types";
@@ -41,6 +41,7 @@ export function HistoryQueryExpansion({
   onQuerySelect,
   hideHeader = false,
 }: HistoryQueryExpansionProps) {
+  const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
   const tAcc = useTranslations("accessibility");
@@ -60,9 +61,9 @@ export function HistoryQueryExpansion({
   const handleCopy = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      appToast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copied(tToast("entityQuery"));
     } catch {
-      appToast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -78,26 +79,26 @@ export function HistoryQueryExpansion({
       queryHistory: updatedQueryHistory,
     });
 
-    appToast.entity.deleted(tToast("entityQueryEntry"));
+    toast.entity.deleted(tToast("entityQueryEntry"));
   };
 
   const handleBookmarkSubmit = (query: string) => {
     if (!bookmarkName.trim()) {
-      appToast.validation.failed(tv("bookmarkNameRequired"));
+      toast.validation.failed(tv("bookmarkNameRequired"));
       return;
     }
     if (!/^[a-zA-Z0-9-]+$/.test(bookmarkName.trim())) {
-      appToast.validation.failed(tv("bookmarkNameFormat"));
+      toast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
     if (keywords[bookmarkName]) {
-      appToast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
+      toast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    appToast.entity.created(tToast("entityBookmark"), bookmarkName);
+    toast.entity.created(tToast("entityBookmark"), bookmarkName);
     setBookmarkingIndex(null);
     setBookmarkName("");
   };

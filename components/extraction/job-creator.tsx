@@ -25,7 +25,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { QuestionBuilder } from "./question-builder";
 import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const stepVariants = {
@@ -48,6 +48,7 @@ const stepVariants = {
 
 export function JobCreator() {
   const router = useRouter();
+  const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const [stepRaw, setStepRaw] = useQueryState(
@@ -91,12 +92,12 @@ export function JobCreator() {
     const hasZotero = (draftJob.zoteroSelection?.items || []).length > 0;
     const hasManual = draftJob.manualItems.length > 0;
     if (!hasHistory && !hasZotero && !hasManual) {
-      appToast.validation.failed(t("pleaseSelectSource"));
+      toast.validation.failed(t("pleaseSelectSource"));
       return;
     }
 
     if (draftJob.questions.length === 0) {
-      appToast.validation.failed(t("pleaseCompleteSteps"));
+      toast.validation.failed(t("pleaseCompleteSteps"));
       return;
     }
 
@@ -105,7 +106,7 @@ export function JobCreator() {
       .filter(Boolean) as any[];
 
     if (hasHistory && historyEntries.length === 0) {
-      appToast.validation.failed(t("selectedHistoryNotFound"));
+      toast.validation.failed(t("selectedHistoryNotFound"));
       return;
     }
 
@@ -160,12 +161,12 @@ export function JobCreator() {
         })),
       });
 
-      appToast.job.created();
+      toast.job.created();
       clearDraftJob();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
       console.error("Failed to start extraction:", error);
-      appToast.job.createFailed();
+      toast.job.createFailed();
     } finally {
       setIsSubmitting(false);
     }

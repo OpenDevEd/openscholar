@@ -20,14 +20,19 @@ import {
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
 
-import { appToast, getErrorMessage } from "@/lib/toast";
+import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { showConfirmation } from "@/lib/confirmation";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { QueryText } from "@/components/ui/query-text";
-import { getFieldLabel, getSortLabel, hasActiveFiltersFromResult } from "@/lib/filters";
+import {
+  getFieldLabel,
+  getSortLabel,
+  hasActiveFiltersFromResult,
+  type FilterT,
+} from "@/lib/filters";
 
 interface SearchHistoryProps {
   onSearchResults: (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], filterType?: "date" | "year", index?: number) => void;
@@ -40,11 +45,13 @@ interface SearchHistoryProps {
 }
 
 export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false, onQuerySelect }: SearchHistoryProps) {
+  const toast = useAppToast();
   const t = useTranslations();
   const ta = useTranslations('accessibility');
   const tl = useTranslations('languages');
   const tp = useTranslations('paperCard');
   const tToast = useTranslations('toast');
+  const tFilters = useTranslations('searchFilters');
   const locale = useLocale();
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
@@ -60,7 +67,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const handleCopyQuery = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      appToast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copied(tToast("entityQuery"));
     } catch (err) {
       const textArea = document.createElement('textarea');
       textArea.value = query;
@@ -68,7 +75,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      appToast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -83,9 +90,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         };
       });
       downloadAsFile(JSON.stringify(data, null, 2), 'search_history.json', 'json');
-      appToast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelJson", { count: data.length }));
+      toast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelJson", { count: data.length }));
     } catch (error) {
-      appToast.io.downloadFailed(tToast("entityJsonFile"));
+      toast.io.downloadFailed(tToast("entityJsonFile"));
     }
   };
 
@@ -101,9 +108,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, 'search_history.csv', 'csv');
-      appToast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelCsv", { count: data.length }));
+      toast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelCsv", { count: data.length }));
     } catch (error) {
-      appToast.io.downloadFailed(tToast("entityCsvFile"));
+      toast.io.downloadFailed(tToast("entityCsvFile"));
     }
   };
 
@@ -112,9 +119,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.json');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      appToast.io.importResult(tToast("entitySearchEntries"), importedCount);
+      toast.io.importResult(tToast("entitySearchEntries"), importedCount);
     } catch (error) {
-      appToast.io.uploadFailed(tToast("entityJsonFile"), getErrorMessage(error, tToast("uploadJsonFileFailed")));
+      toast.io.uploadFailed(tToast("entityJsonFile"), getErrorMessage(error, tToast("uploadJsonFileFailed")));
     }
   };
 
@@ -123,9 +130,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.csv');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      appToast.io.importResult(tToast("entitySearchEntries"), importedCount);
+      toast.io.importResult(tToast("entitySearchEntries"), importedCount);
     } catch (error) {
-      appToast.io.uploadFailed(tToast("entityCsvFile"), getErrorMessage(error, tToast("uploadCsvFileFailed")));
+      toast.io.uploadFailed(tToast("entityCsvFile"), getErrorMessage(error, tToast("uploadCsvFileFailed")));
     }
   };
 
@@ -138,7 +145,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       cancelText: t('common.cancel'),
       onConfirm: () => {
         removeSearchResult(index);
-        appToast.entity.deleted(tToast("entitySearchEntry"));
+        toast.entity.deleted(tToast("entitySearchEntry"));
       }
     });
   };
@@ -151,7 +158,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       cancelText: t('common.cancel'),
       onConfirm: () => {
         clearSearchHistory();
-        appToast.entity.cleared(tToast("entitySearchHistory"));
+        toast.entity.cleared(tToast("entitySearchHistory"));
       }
     });
   };
@@ -191,7 +198,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       updatedAt: new Date().toISOString()
     });
     
-    appToast.entity.deleted(tToast("entityQueryEntry"));
+    toast.entity.deleted(tToast("entityQueryEntry"));
   };
 
   // Reusable Bookmark Form Component
@@ -220,7 +227,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     const handleSubmit = () => {
       const validationError = validateKeyword(localBookmarkName);
     if (validationError) {
-      appToast.validation.failed(validationError);
+      toast.validation.failed(validationError);
       return;
     }
 
@@ -228,7 +235,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     
       addKeyword(localBookmarkName.trim(), expandedQuery);
-      appToast.entity.created(tToast("entityBookmark"), localBookmarkName);
+      toast.entity.created(tToast("entityBookmark"), localBookmarkName);
       onSubmit(localBookmarkName);
       setLocalBookmarkName('');
     };
@@ -613,11 +620,11 @@ function ActionButtons({
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-tight">
                 <span>{formatTimeAgo(result.createdAt, locale)}</span>
                 <span className="opacity-50">•</span>
-                <span>{getFieldLabel(result.field)}</span>
-                {result.sortBy && getSortLabel(result.sortBy) && (
+                <span>{getFieldLabel(result.field, tFilters as FilterT)}</span>
+                {result.sortBy && getSortLabel(result.sortBy, tFilters as FilterT) && (
                   <>
                     <span className="opacity-50">•</span>
-                    <span>{getSortLabel(result.sortBy)}</span>
+                    <span>{getSortLabel(result.sortBy, tFilters as FilterT)}</span>
                   </>
                 )}
               </div>

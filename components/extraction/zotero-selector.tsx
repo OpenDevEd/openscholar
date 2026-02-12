@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { AlertCircle, Database, FileText, Library, Loader2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Cascader, type CascaderOption } from "@/components/ui/cascader";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { getConvexSiteUrl } from "@/lib/convex-site";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
@@ -45,6 +45,7 @@ type ZoteroItem = {
 };
 
 export function ZoteroSelector() {
+  const toast = useAppToast();
   const t = useTranslations('zotero');
   const te = useTranslations('extraction');
   const tc = useTranslations('common');
@@ -213,11 +214,11 @@ export function ZoteroSelector() {
               size="sm"
               onClick={async () => {
                 if (!me?._id) {
-                  appToast.validation.failed(t('signInToConnect'));
+                  toast.validation.failed(t('signInToConnect'));
                   return;
                 }
                 if (!callbackUrl) {
-                  appToast.error(t('missingBackendUrl'));
+                  toast.error(t('missingBackendUrl'));
                   return;
                 }
                 try {
@@ -227,7 +228,7 @@ export function ZoteroSelector() {
                   window.location.href = result.authorizeUrl;
                 } catch (error) {
                   console.error("Failed to start Zotero OAuth", error);
-                  appToast.zotero.failed();
+                  toast.zotero.failed();
                 }
               }}
             >

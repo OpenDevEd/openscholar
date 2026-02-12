@@ -8,6 +8,7 @@ import {
   downloadEssentialItem,
   downloadAll,
 } from "@/lib/search-actions";
+import { useAppToast } from "@/lib/toast";
 import { useSearch } from "@/lib/search";
 import { SearchSidebar } from "./search-sidebar";
 import { TwoColumnLayout } from "./layout/two-column-layout";
@@ -45,6 +46,7 @@ export default function ResultsPageContent({
 }: ResultsPageContentProps) {
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
+  const toast = useAppToast();
   const downloadLabels = {
     item: tToast("entityItem"),
     essentialItem: tToast("entityEssentialItem"),
@@ -138,22 +140,22 @@ export default function ResultsPageContent({
                       <main className="w-full">
                         <ResultsList
                           onDownloadItem={(item, format) =>
-                            downloadItem(item, format, searchState, downloadLabels)
+                            downloadItem(item, format, toast, searchState, downloadLabels)
                           }
                           onDownloadEssentialItem={(item, format) =>
-                            downloadEssentialItem(item, format, searchState, downloadLabels)
+                            downloadEssentialItem(item, format, toast, searchState, downloadLabels)
                           }
                           onDownloadAllJSON={() =>
-                            downloadAll("json", false, searchState, results, downloadLabels)
+                            downloadAll("json", toast, false, searchState, results, downloadLabels)
                           }
                           onDownloadAllCSV={() =>
-                            downloadAll("csv", false, searchState, results, downloadLabels)
+                            downloadAll("csv", toast, false, searchState, results, downloadLabels)
                           }
                           onDownloadAllEssentialJSON={() =>
-                            downloadAll("json", true, searchState, results, downloadLabels)
+                            downloadAll("json", toast, true, searchState, results, downloadLabels)
                           }
                           onDownloadAllEssentialCSV={() =>
-                            downloadAll("csv", true, searchState, results, downloadLabels)
+                            downloadAll("csv", toast, true, searchState, results, downloadLabels)
                           }
                           isLoading={isLoading}
                           isValidating={isValidating}
@@ -196,22 +198,22 @@ export default function ResultsPageContent({
               <main className="w-full">
                 <ResultsList
                   onDownloadItem={(item, format) =>
-                    downloadItem(item, format, searchState, downloadLabels)
+                    downloadItem(item, format, toast, searchState, downloadLabels)
                   }
                   onDownloadEssentialItem={(item, format) =>
-                    downloadEssentialItem(item, format, searchState, downloadLabels)
+                    downloadEssentialItem(item, format, toast, searchState, downloadLabels)
                   }
                   onDownloadAllJSON={() =>
-                    downloadAll("json", false, searchState, results, downloadLabels)
+                    downloadAll("json", toast, false, searchState, results, downloadLabels)
                   }
                   onDownloadAllCSV={() =>
-                    downloadAll("csv", false, searchState, results, downloadLabels)
+                    downloadAll("csv", toast, false, searchState, results, downloadLabels)
                   }
                   onDownloadAllEssentialJSON={() =>
-                    downloadAll("json", true, searchState, results, downloadLabels)
+                    downloadAll("json", toast, true, searchState, results, downloadLabels)
                   }
                   onDownloadAllEssentialCSV={() =>
-                    downloadAll("csv", true, searchState, results, downloadLabels)
+                    downloadAll("csv", toast, true, searchState, results, downloadLabels)
                   }
                   isLoading={isLoading}
                   isValidating={isValidating}

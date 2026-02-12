@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 import { Quote, Network, ExternalLink, X, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -63,6 +63,7 @@ export function WorkIdFilter({
   icon,
   colorScheme 
 }: WorkIdFilterProps) {
+  const toast = useAppToast();
   const t = useTranslations("workId");
   
   const {
@@ -130,7 +131,7 @@ export function WorkIdFilter({
   
   const handleApplyFilter = () => {
     if (!inputValue.trim()) {
-      appToast.validation.failed(t("pleaseEnterWorkId"));
+      toast.validation.failed(t("pleaseEnterWorkId"));
       return;
     }
     
@@ -145,21 +146,21 @@ export function WorkIdFilter({
     
     // Validate the ID format (should start with 'W' for works)
     if (!validatedId.match(/^W\d+$/)) {
-      appToast.validation.failed(t("workIdFormatHint"));
+      toast.validation.failed(t("workIdFormatHint"));
       return;
     }
     
     // Update the filter in the store
     setItemId(validatedId);
     
-    appToast.entity.updated(t("workIdFilter"), currentConfig.successDescription(validatedId));
+    toast.entity.updated(t("workIdFilter"), currentConfig.successDescription(validatedId));
   };
   
   const handleClearFilter = () => {
     setInputValue('');
     clearFilter();
     
-    appToast.entity.cleared(t("workIdFilter"));
+    toast.entity.cleared(t("workIdFilter"));
   };
   
   const handleInputChange = (value: string) => {

@@ -15,7 +15,7 @@ import {
   useKeywordExpansionDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
-import { appToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
+import { useAppToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ interface SearchModeProps {
 }
 
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
+  const toast = useAppToast();
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
   const tl = useTranslations("languages");
@@ -98,12 +99,12 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     e.preventDefault();
 
     if (!effectiveSearchId) {
-      appToast.validation.failed(tValidation('searchRequired'));
+      toast.validation.failed(tValidation('searchRequired'));
       return;
     }
 
     if (!isEnhanceConfigured) {
-      appToast.ai.configRequired(tValidation('aiConfigRequired'));
+      toast.ai.configRequired(tValidation('aiConfigRequired'));
       return;
     }
 
@@ -133,7 +134,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         language: currentSearchResult?.language || "en",
       });
 
-      appToast.ai.succeeded(t('questionConverted'), t('searchingFor', { query: result.enhancedQuery }));
+      toast.ai.succeeded(t('questionConverted'), t('searchingFor', { query: result.enhancedQuery }));
     } catch (error) {
       // Track enhancement error
       posthog.capture("ai_query_enhancement_failed", {
@@ -141,7 +142,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         error_message: getErrorMessage(error, te("unknownError")),
       });
 
-      appToast.ai.failed(t("enhancement"), error);
+      toast.ai.failed(t("enhancement"), error);
     } finally {
       setIsEnhancing(false);
     }
@@ -163,7 +164,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
     if (localInputValue.trim() && language) {
       if (!isTranslateConfigured) {
-        appToast.ai.configRequired(tValidation('aiConfigRequired'));
+        toast.ai.configRequired(tValidation('aiConfigRequired'));
         return;
       }
 

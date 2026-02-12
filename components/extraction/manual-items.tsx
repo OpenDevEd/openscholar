@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { FileUp, Plus, Trash2 } from "lucide-react";
 
 const ACCEPTED_TYPES = ["application/pdf"];
 const MAX_FILE_MB = 25;
 
 export function ManualItems() {
+  const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
@@ -25,11 +26,11 @@ export function ManualItems() {
 
   const handleFileUpload = async (id: string, file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      appToast.validation.fileType(tToast("entityPdf"));
+      toast.validation.fileType(tToast("entityPdf"));
       return;
     }
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      appToast.validation.fileSize(MAX_FILE_MB);
+      toast.validation.fileSize(MAX_FILE_MB);
       return;
     }
 
@@ -42,13 +43,13 @@ export function ManualItems() {
         body: file,
       });
       if (!result.ok) {
-        appToast.io.uploadFailed(tToast("entityPdf"));
+        toast.io.uploadFailed(tToast("entityPdf"));
         return;
       }
       const { storageId } = await result.json();
       updateManualItem(id, { storageId, pdfUrl: undefined });
     } catch (error) {
-      appToast.io.uploadFailed(tToast("entityPdf"));
+      toast.io.uploadFailed(tToast("entityPdf"));
     } finally {
       setUploadingIds((prev) => prev.filter((itemId) => itemId !== id));
     }

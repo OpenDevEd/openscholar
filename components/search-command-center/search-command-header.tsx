@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
 import { ViewModeToggleCompact } from "@/components/view-mode-toggle";
@@ -44,6 +44,7 @@ export function SearchCommandHeader({
 }: SearchCommandHeaderProps) {
   const tc = useTranslations("common");
   const td = useTranslations("downloads");
+  const toast = useAppToast();
   const tsc = useTranslations("searchCommand");
   const [isCopied, setIsCopied] = useState(false);
   const search = useSearchOptional();
@@ -61,10 +62,10 @@ export function SearchCommandHeader({
       const shareableUrl = getShareableUrl();
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);
-      appToast.clipboard.copied(tsc("link"));
+      toast.clipboard.copied(tsc("link"));
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
-      appToast.clipboard.copyFailed(tsc("link"));
+      toast.clipboard.copyFailed(tsc("link"));
     }
   };
 

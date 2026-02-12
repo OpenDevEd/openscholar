@@ -7,7 +7,7 @@ import { SearchHistory } from '@/components/search-history';
 import { useUIStore, useSearchHistoryStore } from '@/lib/store';
 import { useCurrentSearchFormState } from '@/lib/hooks';
 import { restoreFromHistory } from '@/lib/search/actions';
-import { appToast } from '@/lib/toast';
+import { useAppToast } from '@/lib/toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { History } from 'lucide-react';
 
@@ -17,6 +17,7 @@ interface HistoryPageProps {
 
 export default function HistoryPage({ params }: HistoryPageProps) {
   const router = useRouter();
+  const toast = useAppToast();
   const tc = useTranslations('common');
   const th = useTranslations('historyPage');
   const te = useTranslations('errorPages');
@@ -50,7 +51,7 @@ export default function HistoryPage({ params }: HistoryPageProps) {
     if (searchResult) {
       router.push(restoreFromHistory(searchResult));
     } else {
-      appToast.validation.failed(te("searchNotFound"));
+      toast.validation.failed(te("searchNotFound"));
     }
   };
 

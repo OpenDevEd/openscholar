@@ -34,7 +34,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningResponses } from "@/lib/types";
 import { FocusMode } from "./ui/focus-mode";
-import { downloadEssentialItem, downloadItem } from "@/lib/search-actions";
 import { useIsTablet } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
@@ -452,10 +451,8 @@ export function ResultsList({
         isOpen={isFocusModeOpen}
         onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
         papers={filteredResults}
-        onDownloadItem={(item, format) => downloadItem(item, format, searchState)}
-        onDownloadEssentialItem={(item, format) =>
-          downloadEssentialItem(item, format, searchState)
-        }
+        onDownloadItem={onDownloadItem}
+        onDownloadEssentialItem={onDownloadEssentialItem}
       />
       <div className="flex flex-col">
         {/* New Search Command Center */}

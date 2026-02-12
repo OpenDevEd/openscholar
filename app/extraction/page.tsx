@@ -9,7 +9,7 @@ import { ExtractionCommandCenter } from "@/components/extraction/extraction-comm
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer, CommandCenterHeader } from "@/components/command-center";
 import { useSearchParams } from "next/navigation";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 export default function ExtractionPage() {
@@ -56,18 +56,18 @@ export default function ExtractionPage() {
 
 function ZoteroCallbackToast() {
   const searchParams = useSearchParams();
-  const t = useTranslations('zotero');
+  const toast = useAppToast();
 
   useEffect(() => {
     const connected = searchParams.get("zotero_connected");
     const error = searchParams.get("zotero_error");
     if (connected) {
-      appToast.zotero.connected();
+      toast.zotero.connected();
     }
     if (error) {
-      appToast.zotero.failed(error);
+      toast.zotero.failed(error);
     }
-  }, [searchParams, t]);
+  }, [searchParams, toast]);
 
   return null;
 }

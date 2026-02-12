@@ -16,7 +16,7 @@ import {
   uploadFile,
 } from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { BookmarkSortBy } from "@/lib/types";
 import {
@@ -39,6 +39,7 @@ export interface BookmarkEntry {
 }
 
 export function BookmarksCommandCenter() {
+  const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
   const tcc = useTranslations("commandCenter");
@@ -143,7 +144,7 @@ export function BookmarksCommandCenter() {
 
     removeKeyword(name);
     if (editingBookmark === name) setEditingBookmark(null);
-    appToast.entity.deleted(tToast("entityBookmark"), name);
+    toast.entity.deleted(tToast("entityBookmark"), name);
   };
 
   // Download handlers
@@ -155,9 +156,9 @@ export function BookmarksCommandCenter() {
         createdAt: bookmark.createdAt,
       }));
       downloadAsFile(JSON.stringify(data, null, 2), "bookmarks.json", "json");
-      appToast.io.downloadSuccess(data.length, tToast("entityBookmarks"), tToast("entityJson"));
+      toast.io.downloadSuccess(data.length, tToast("entityBookmarks"), tToast("entityJson"));
     } catch {
-      appToast.io.downloadFailed(tToast("entityJson"));
+      toast.io.downloadFailed(tToast("entityJson"));
     }
   };
 
@@ -170,9 +171,9 @@ export function BookmarksCommandCenter() {
       }));
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "bookmarks.csv", "csv");
-      appToast.io.downloadSuccess(data.length, tToast("entityBookmarks"), tToast("entityCsv"));
+      toast.io.downloadSuccess(data.length, tToast("entityBookmarks"), tToast("entityCsv"));
     } catch {
-      appToast.io.downloadFailed(tToast("entityCsv"));
+      toast.io.downloadFailed(tToast("entityCsv"));
     }
   };
 
@@ -182,12 +183,12 @@ export function BookmarksCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importKeywords(data);
       if (importedCount > 0) {
-        appToast.io.uploadSuccess(importedCount, tToast("entityBookmarks"));
+        toast.io.uploadSuccess(importedCount, tToast("entityBookmarks"));
       } else {
-        appToast.io.uploadNoValid(tToast("entityBookmarks"));
+        toast.io.uploadNoValid(tToast("entityBookmarks"));
       }
     } catch (error) {
-      appToast.io.uploadFailed(tToast("entityJson"), error);
+      toast.io.uploadFailed(tToast("entityJson"), error);
     }
   };
 
@@ -197,12 +198,12 @@ export function BookmarksCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importKeywords(data);
       if (importedCount > 0) {
-        appToast.io.uploadSuccess(importedCount, tToast("entityBookmarks"));
+        toast.io.uploadSuccess(importedCount, tToast("entityBookmarks"));
       } else {
-        appToast.io.uploadNoValid(tToast("entityBookmarks"));
+        toast.io.uploadNoValid(tToast("entityBookmarks"));
       }
     } catch (error) {
-      appToast.io.uploadFailed(tToast("entityCsv"), error);
+      toast.io.uploadFailed(tToast("entityCsv"), error);
     }
   };
 
@@ -214,7 +215,7 @@ export function BookmarksCommandCenter() {
       cancelText: tc("cancel"),
       onConfirm: () => {
         clearKeywords();
-        appToast.entity.cleared(tToast("entityBookmarks"), bookmarksArray.length);
+        toast.entity.cleared(tToast("entityBookmarks"), bookmarksArray.length);
       },
     });
   };

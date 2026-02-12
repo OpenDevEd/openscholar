@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 
 export default function CleanupPage() {
+  const toast = useAppToast();
   const ta = useTranslations("admin");
   const cleanupDuplicates = useMutation(api.subscriptions.mutations.cleanupDuplicateSubscriptions);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,9 +23,9 @@ export default function CleanupPage() {
       setIsLoading(true);
       const res = await cleanupDuplicates({});
       setResult(res);
-      appToast.success(ta("cleanupSuccess", { count: res.cleaned }));
+      toast.success(ta("cleanupSuccess", { count: res.cleaned }));
     } catch (error: any) {
-      appToast.error(error.message || ta("cleanupFailed"));
+      toast.error(error.message || ta("cleanupFailed"));
       console.error(error);
     } finally {
       setIsLoading(false);

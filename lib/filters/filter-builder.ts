@@ -30,13 +30,44 @@ import {
   SORT_OPTIONS,
 } from "./filter-config";
 
+/** Translation function for filter strings (from useTranslations("searchFilters")) */
+export type FilterT = {
+  (key: string, values?: Record<string, string | number>): string;
+};
+
+const FIELD_KEY_MAP: Record<string, string> = {
+  title_and_abstract: "searchFieldTitleAndAbstract",
+  title: "searchFieldTitle",
+  abstract: "searchFieldAbstract",
+  fulltext: "searchFieldFulltext",
+  display_name: "searchFieldDisplayName",
+};
+
+const SORT_KEY_MAP: Record<string, string> = {
+  relevance_score: "sortRelevanceDefault",
+  publication_date: "filterSortPublicationDate",
+  cited_by_count: "filterSortCitations",
+  works_count: "filterSortWorksCount",
+};
+
+const SECTION_TITLE_KEYS: Record<FilterSectionType, string> = {
+  search: "filterSectionSearch",
+  time: "filterSectionTime",
+  geographic: "filterSectionGeographic",
+  content: "filterSectionContent",
+  ratings: "filterSectionRatings",
+  citations: "filterSectionCitations",
+};
+
 // ============ Helper Functions ============
 
 /**
  * Get human-readable label for a search field
  */
-export function getFieldLabel(field?: string): string {
-  if (!field) return "Title, abstract";
+export function getFieldLabel(field?: string, t?: FilterT): string {
+  if (!field) return t ? t("searchFieldTitleAndAbstract") : "Title, abstract";
+  const key = FIELD_KEY_MAP[field];
+  if (t && key) return t(key);
   const option = SEARCH_FIELDS.find((opt) => opt.value === field);
   return option?.label || field;
 }
@@ -44,8 +75,10 @@ export function getFieldLabel(field?: string): string {
 /**
  * Get human-readable label for a sort option
  */
-export function getSortLabel(sort?: string): string {
-  if (!sort) return "Relevance";
+export function getSortLabel(sort?: string, t?: FilterT): string {
+  if (!sort) return t ? t("sortRelevanceDefault") : "Relevance";
+  const key = SORT_KEY_MAP[sort];
+  if (t && key) return t(key);
   const option = SORT_OPTIONS.find((opt) => opt.value === sort);
   return option?.label || sort;
 }
@@ -69,23 +102,33 @@ export function countRegions(ids: string[]): number {
  */
 export function formatGeoSummary(
   regionCount: number,
-  countryCount: number
+  countryCount: number,
+  t?: FilterT
 ): string {
   const parts: string[] = [];
   if (regionCount > 0) {
-    parts.push(`${regionCount} region${regionCount > 1 ? "s" : ""}`);
+    parts.push(t ? t("filterRegionCount", { count: regionCount }) : `${regionCount} region${regionCount > 1 ? "s" : ""}`);
   }
   if (countryCount > 0) {
-    parts.push(`${countryCount} countr${countryCount > 1 ? "ies" : "y"}`);
+    parts.push(t ? t("filterCountryCount", { count: countryCount }) : `${countryCount} countr${countryCount > 1 ? "ies" : "y"}`);
   }
-  return parts.join(" + ");
+  const join = t ? t("filterGeoJoin") : " + ";
+  return parts.join(join);
 }
 
 /**
  * Format rating range for display (e.g., "3-5 stars")
  */
-export function formatRatingRange(range: [number, number]): string {
+export function formatRatingRange(
+  range: [number, number],
+  t?: FilterT
+): string {
   const [min, max] = range;
+  if (t) {
+    return min === max
+      ? t("filterRatingRangeSingle", { min })
+      : t("filterRatingRangeMulti", { min, max });
+  }
   if (min === max) {
     return `${min} star${min === 1 ? "" : "s"}`;
   }
@@ -97,19 +140,28 @@ export function formatRatingRange(range: [number, number]): string {
  */
 export function formatRatingSummary(
   range?: [number, number],
-  onlyRated?: boolean
+  onlyRated?: boolean,
+  t?: FilterT
 ): string {
   const parts: string[] = [];
   if (range && (range[0] > 0 || range[1] < 5)) {
     const [min, max] = range;
-    parts.push(
-      `${min === max ? min : `${min}-${max}`} star${min === 1 && max === 1 ? "" : "s"}`
-    );
+    if (t) {
+      parts.push(
+        min === max
+          ? t("filterRatingRangeSingle", { min })
+          : t("filterRatingRangeMulti", { min, max })
+      );
+    } else {
+      parts.push(
+        `${min === max ? min : `${min}-${max}`} star${min === 1 && max === 1 ? "" : "s"}`
+      );
+    }
   }
   if (onlyRated) {
-    parts.push("rated only");
+    parts.push(t ? t("filterRatedOnly") : "rated only");
   }
-  return parts.length > 0 ? parts.join(", ") : "filtered";
+  return parts.length > 0 ? parts.join(", ") : (t ? t("filterFiltered") : "filtered");
 }
 
 /**
@@ -146,12 +198,14 @@ export function hasActiveFiltersFromResult(result: {
 
 function createSection(
   type: FilterSectionType,
-  items: FilterItem[]
+  items: FilterItem[],
+  t?: FilterT
 ): FilterSection {
   const config = SECTION_CONFIG[type];
+  const title = t ? t(SECTION_TITLE_KEYS[type]) : config.title;
   return {
     id: type,
-    title: config.title,
+    title,
     tooltipColor: config.tooltipColor,
     badgeColor: config.badgeColor,
     items,
@@ -182,23 +236,36 @@ function createFilterItem(
  * Build structured filter data from search parameters
  * This is the single source of truth for filter display logic
  */
-export function buildFilterData(params: FilterParams): FilterSection[] {
+export function buildFilterData(
+  params: FilterParams,
+  t?: FilterT
+): FilterSection[] {
   const sections: FilterSection[] = [];
 
   // Search section (field + sort) - only include when different from defaults
   const searchItems: FilterItem[] = [];
   if (params.field && params.field !== DEFAULT_FILTERS.field) {
     searchItems.push(
-      createFilterItem("field", "field", getFieldLabel(params.field), "Field")
+      createFilterItem(
+        "field",
+        "field",
+        getFieldLabel(params.field, t),
+        t ? t("filterLabelField") : "Field"
+      )
     );
   }
   if (params.sortBy && params.sortBy !== DEFAULT_FILTERS.sortBy) {
     searchItems.push(
-      createFilterItem("sort", "sort", getSortLabel(params.sortBy), "Sort")
+      createFilterItem(
+        "sort",
+        "sort",
+        getSortLabel(params.sortBy, t),
+        t ? t("filterLabelSort") : "Sort"
+      )
     );
   }
   if (searchItems.length > 0) {
-    sections.push(createSection("search", searchItems));
+    sections.push(createSection("search", searchItems, t));
   }
 
   // Time section (year or date range)
@@ -214,19 +281,31 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
     if (params.filterType === "year" && params.yearRange) {
       const [from, to] = params.yearRange;
       const displayValue = from === to ? `${from}` : `${from} - ${to}`;
-      timeItems.push(createFilterItem("year", "year", displayValue, "Year"));
+      timeItems.push(
+        createFilterItem(
+          "year",
+          "year",
+          displayValue,
+          t ? t("filterLabelYear") : "Year"
+        )
+      );
     } else if (params.filterType === "date" && params.dateRange?.from) {
       const from = format(params.dateRange.from, "MMM dd, yyyy");
       const to = params.dateRange.to
         ? format(params.dateRange.to, "MMM dd, yyyy")
-        : "now";
+        : t ? t("filterNow") : "now";
       timeItems.push(
-        createFilterItem("date", "date", `${from} - ${to}`, "Date")
+        createFilterItem(
+          "date",
+          "date",
+          `${from} - ${to}`,
+          t ? t("filterLabelDate") : "Date"
+        )
       );
     }
   }
   if (timeItems.length > 0) {
-    sections.push(createSection("time", timeItems));
+    sections.push(createSection("time", timeItems, t));
   }
 
   // Geographic section (regions + country focus)
@@ -238,8 +317,8 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
       createFilterItem(
         "regions",
         "regions",
-        formatGeoSummary(regionCount, countryCodes.length),
-        "Institution location",
+        formatGeoSummary(regionCount, countryCodes.length, t),
+        t ? t("filterLabelInstitutionLocation") : "Institution location",
         { countryCodes }
       )
     );
@@ -251,25 +330,30 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
       createFilterItem(
         "countryFocus",
         "countryFocus",
-        formatGeoSummary(regionCount, countryCodes.length),
-        "Country focus",
+        formatGeoSummary(regionCount, countryCodes.length, t),
+        t ? t("filterLabelCountryFocus") : "Country focus",
         { countryCodes }
       )
     );
   }
   if (geoItems.length > 0) {
-    sections.push(createSection("geographic", geoItems));
+    sections.push(createSection("geographic", geoItems, t));
   }
 
   // Content section (review filter only - language is shown separately in history cards)
   const contentItems: FilterItem[] = [];
   if (isReviewFilterActive(params.reviewFilter)) {
     contentItems.push(
-      createFilterItem("review", "review", "Reviews only", "Reviews only")
+      createFilterItem(
+        "review",
+        "review",
+        t ? t("filterReviewsOnly") : "Reviews only",
+        t ? t("filterReviewsOnly") : "Reviews only"
+      )
     );
   }
   if (contentItems.length > 0) {
-    sections.push(createSection("content", contentItems));
+    sections.push(createSection("content", contentItems, t));
   }
 
   // Ratings section
@@ -283,32 +367,47 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
         createFilterItem(
           "rating",
           "rating",
-          formatRatingRange(params.ratingRange),
-          "Rating",
+          formatRatingRange(params.ratingRange, t),
+          t ? t("filterRating") : "Rating",
           { ratingRange: params.ratingRange }
         )
       );
     }
     if (params.onlyRatedPapers) {
       ratingItems.push(
-        createFilterItem("onlyRated", "onlyRated", "Rated only", "Rated only")
+        createFilterItem(
+          "onlyRated",
+          "onlyRated",
+          t ? t("filterRatedOnlyLabel") : "Rated only",
+          t ? t("filterRatedOnlyLabel") : "Rated only"
+        )
       );
     }
   }
   if (ratingItems.length > 0) {
-    sections.push(createSection("ratings", ratingItems));
+    sections.push(createSection("ratings", ratingItems, t));
   }
 
   // Citations section
   const citationItems: FilterItem[] = [];
   if (isCitesFilterActive(params.citesItemId)) {
     citationItems.push(
-      createFilterItem("cites", "cites", params.citesItemId!, "Cites")
+      createFilterItem(
+        "cites",
+        "cites",
+        params.citesItemId!,
+        t ? t("filterCites") : "Cites"
+      )
     );
   }
   if (isCitedByFilterActive(params.citedByItemId)) {
     citationItems.push(
-      createFilterItem("citedBy", "citedBy", params.citedByItemId!, "Cited by")
+      createFilterItem(
+        "citedBy",
+        "citedBy",
+        params.citedByItemId!,
+        t ? t("filterCitedBy") : "Cited by"
+      )
     );
   }
   if (isRelatedToFilterActive(params.relatedToItemId)) {
@@ -317,12 +416,12 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
         "relatedTo",
         "relatedTo",
         params.relatedToItemId!,
-        "Related to"
+        t ? t("filterRelatedTo") : "Related to"
       )
     );
   }
   if (citationItems.length > 0) {
-    sections.push(createSection("citations", citationItems));
+    sections.push(createSection("citations", citationItems, t));
   }
 
   return sections;
@@ -332,8 +431,8 @@ export function buildFilterData(params: FilterParams): FilterSection[] {
  * Count total active filters from params
  * Useful for displaying filter count badges
  */
-export function countActiveFilters(params: FilterParams): number {
-  const sections = buildFilterData(params);
+export function countActiveFilters(params: FilterParams, t?: FilterT): number {
+  const sections = buildFilterData(params, t);
   return sections.reduce((count, section) => count + section.items.length, 0);
 }
 
@@ -341,7 +440,10 @@ export function countActiveFilters(params: FilterParams): number {
  * Get all filter items as a flat array
  * Useful for rendering inline badges
  */
-export function getAllFilterItems(params: FilterParams): FilterItem[] {
-  const sections = buildFilterData(params);
+export function getAllFilterItems(
+  params: FilterParams,
+  t?: FilterT
+): FilterItem[] {
+  const sections = buildFilterData(params, t);
   return sections.flatMap((section) => section.items);
 }
