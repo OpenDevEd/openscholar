@@ -75,39 +75,30 @@ export function WorkIdFilter({
 
   const config = {
     cites: {
-      label: 'Citation filter',
-      description: 'Enter an OpenAlex work ID to find papers that cite that work',
-      applyText: 'Apply Filter',
-      successMessage: 'Cites filter applied',
-      successDescription: (id: string) => `Showing papers that cite work ${id}`,
-      clearMessage: 'Cites filter cleared',
-      statusText: 'Finding papers that cite: ',
+      description: t("descriptionCites"),
+      applyText: t("applyFilter"),
+      successDescription: (id: string) => t("successCites", { id }),
+      statusText: t("statusCites"),
       icon: Quote,
       itemId: citesItemId,
       isActive: isCitesFilterActive(citesItemId),
       updateField: 'citesItemId',
     },
     cited_by: {
-      label: 'Cited by filter',
-      description: 'Enter an OpenAlex work ID to find papers that are cited by that work',
-      applyText: 'Apply Filter',
-      successMessage: 'Cited by filter applied',
-      successDescription: (id: string) => `Showing papers cited by work ${id}`,
-      clearMessage: 'Cited by filter cleared',
-      statusText: 'Finding papers cited by: ',
+      description: t("descriptionCitedBy"),
+      applyText: t("applyFilter"),
+      successDescription: (id: string) => t("successCitedBy", { id }),
+      statusText: t("statusCitedBy"),
       icon: Quote,
       itemId: citedByItemId,
       isActive: isCitedByFilterActive(citedByItemId),
       updateField: 'citedByItemId',
     },
     related: {
-      label: 'Related works filter', 
-      description: 'Enter an OpenAlex work ID to find papers related to that work',
-      applyText: 'Apply Filter',
-      successMessage: 'Related works filter applied',
-      successDescription: (id: string) => `Showing papers related to work ${id}`,
-      clearMessage: 'Related works filter cleared',
-      statusText: 'Finding papers related to: ',
+      description: t("descriptionRelated"),
+      applyText: t("applyFilter"),
+      successDescription: (id: string) => t("successRelated", { id }),
+      statusText: t("statusRelated"),
       icon: Network,
       itemId: relatedToItemId,
       isActive: isRelatedToFilterActive(relatedToItemId),
@@ -139,7 +130,7 @@ export function WorkIdFilter({
   
   const handleApplyFilter = () => {
     if (!inputValue.trim()) {
-      appToast.validation.failed("Please enter a work ID.");
+      appToast.validation.failed(t("pleaseEnterWorkId"));
       return;
     }
     
@@ -154,23 +145,21 @@ export function WorkIdFilter({
     
     // Validate the ID format (should start with 'W' for works)
     if (!validatedId.match(/^W\d+$/)) {
-      appToast.validation.failed(
-        'Work IDs should start with "W" followed by numbers (e.g., W2741809807).'
-      );
+      appToast.validation.failed(t("workIdFormatHint"));
       return;
     }
     
     // Update the filter in the store
     setItemId(validatedId);
     
-    appToast.entity.updated("Work ID filter", currentConfig.successDescription(validatedId));
+    appToast.entity.updated(t("workIdFilter"), currentConfig.successDescription(validatedId));
   };
   
   const handleClearFilter = () => {
     setInputValue('');
     clearFilter();
     
-    appToast.entity.cleared("Work ID filter");
+    appToast.entity.cleared(t("workIdFilter"));
   };
   
   const handleInputChange = (value: string) => {
@@ -187,7 +176,7 @@ export function WorkIdFilter({
     <div className="space-y-3">
       <div className="space-y-2">
         <Label htmlFor={`${type}-input`} className="text-sm font-medium">
-          Work ID
+          {t("workIdLabel")}
         </Label>
         <div className="relative">
           <Input

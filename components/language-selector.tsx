@@ -33,10 +33,13 @@ export function LanguageSelector({
   onValueChange,
   disabled = false,
   className,
-  placeholder = "Language",
+  placeholder,
 }: LanguageSelectorProps) {
   const tf = useTranslations("searchFilters");
+  const tl = useTranslations("languages");
+  const tc = useTranslations("common");
   const selectedLanguage = languageOptions.find((lang) => lang.code === value);
+  const resolvedPlaceholder = placeholder ?? tc("language");
 
   return (
     <Tooltip>
@@ -62,12 +65,12 @@ export function LanguageSelector({
                     alt={`${selectedLanguage.name} flag`}
                     className="w-4 h-3 rounded-sm border border-gray-200"
                   />
-                  <span className="text-sm">{selectedLanguage.name}</span>
+                  <span className="text-sm">{tl(selectedLanguage.code as never) || selectedLanguage.name}</span>
                 </>
               ) : (
                 <>
                   <Languages className="h-4 w-4 text-muted-foreground" />
-                  <SelectValue placeholder={placeholder} />
+                  <SelectValue placeholder={resolvedPlaceholder} />
                 </>
               )}
             </div>
@@ -81,7 +84,7 @@ export function LanguageSelector({
                     alt={`${language.name} flag`}
                     className="w-4 h-3 rounded-sm border border-gray-200"
                   />
-                  <span>{language.name}</span>
+                  <span>{tl(language.code as never) || language.name}</span>
                 </div>
               </SelectItem>
             ))}

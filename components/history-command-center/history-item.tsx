@@ -51,6 +51,7 @@ export function HistoryItem({
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
   const tp = useTranslations("paperCard");
+  const tl = useTranslations("languages");
   const locale = useLocale();
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [bookmarkName, setBookmarkName] = useState("");
@@ -396,10 +397,10 @@ export function HistoryItem({
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs">
                   <img
                     src={languageInfo.flagUrl}
-                    alt={languageInfo.name}
+                    alt={tl(languageInfo.code as never) || languageInfo.name}
                     className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
                   />
-                  <span className="text-muted-foreground">{languageInfo.name}</span>
+                  <span className="text-muted-foreground">{tl(languageInfo.code as never) || languageInfo.name}</span>
                 </div>
               )}
             </div>
@@ -573,10 +574,10 @@ export function HistoryItem({
                 <>
                   <img
                     src={languageInfo.flagUrl}
-                    alt={languageInfo.name}
+                    alt={tl(languageInfo.code as never) || languageInfo.name}
                     className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
                   />
-                  <span className="text-foreground">{languageInfo.name}</span>
+                  <span className="text-foreground">{tl(languageInfo.code as never) || languageInfo.name}</span>
                 </>
               ) : (
                 <span className="text-muted-foreground flex items-center gap-1.5">

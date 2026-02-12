@@ -8,9 +8,55 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { isPublicPath } from "@/lib/auth/public-routes";
 import { useTranslations } from "next-intl";
 
+/** Renders auth gate panels with translations. Isolated so useTranslations runs only when gate is shown, avoiding hook-order issues during provider hydration. */
+function AuthGateContent({
+  phase,
+  onRetry,
+}: {
+  phase: "anonymous" | "sync_error" | "initializing";
+  onRetry: () => void;
+}) {
+  const t = useTranslations();
+
+  if (phase === "anonymous") {
+    return (
+      <AuthStatePanel
+        key="auth-gate-anonymous"
+        variant="sign_in_required"
+        primaryHref="/auth/signin"
+        primaryLabel={t("common.signIn")}
+        secondaryHref="/"
+        secondaryLabel={t("common.goHome")}
+        layout="fullscreen"
+      />
+    );
+  }
+
+  if (phase === "sync_error") {
+    return (
+      <AuthStatePanel
+        key="auth-gate-sync-error"
+        variant="sync_error_retry"
+        description={t("auth.syncErrorAccess")}
+        onRetry={onRetry}
+        secondaryHref="/"
+        secondaryLabel={t("common.goHome")}
+        layout="fullscreen"
+      />
+    );
+  }
+
+  return (
+    <AuthStatePanel
+      key="auth-gate-initializing"
+      variant="loading"
+      layout="fullscreen"
+      loadingStyle="spinner"
+    />
+  );
+}
+
 export function AuthRouteGate({ children }: { children: ReactNode }) {
-  const t = useTranslations("auth");
-  const tc = useTranslations("common");
   const pathname = usePathname() ?? "/";
   const { phase, retryUserSync } = useAuthReadiness();
 
@@ -20,34 +66,7 @@ export function AuthRouteGate({ children }: { children: ReactNode }) {
 
   return (
     <AnimatePresence initial={false} mode="wait">
-      {phase === "anonymous" ? (
-        <AuthStatePanel
-          key="auth-gate-anonymous"
-          variant="sign_in_required"
-          primaryHref="/auth/signin"
-          primaryLabel={tc("signIn")}
-          secondaryHref="/"
-          secondaryLabel={tc("goHome")}
-          layout="fullscreen"
-        />
-      ) : phase === "sync_error" ? (
-        <AuthStatePanel
-          key="auth-gate-sync-error"
-          variant="sync_error_retry"
-          description={t("syncErrorAccess")}
-          onRetry={retryUserSync}
-          secondaryHref="/"
-          secondaryLabel={tc("goHome")}
-          layout="fullscreen"
-        />
-      ) : (
-        <AuthStatePanel
-          key="auth-gate-initializing"
-          variant="loading"
-          layout="fullscreen"
-          loadingStyle="spinner"
-        />
-      )}
+      <AuthGateContent key={phase} phase={phase} onRetry={retryUserSync} />
     </AnimatePresence>
   );
 }

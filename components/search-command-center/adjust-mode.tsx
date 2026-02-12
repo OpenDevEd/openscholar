@@ -21,6 +21,7 @@ interface AdjustModeProps {
 
 export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
   const t = useTranslations();
+  const tv = useTranslations("validation");
   const search = useSearch();
 
   // Use the new router hook
@@ -103,7 +104,7 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
     if (!aiInstructions.trim() || !urlQuery.trim()) return;
 
     if (!isConfigured) {
-      appToast.ai.configRequired("Please configure your AI API key in settings.");
+      appToast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -134,11 +135,11 @@ Please enhance this academic search query according to the user's specific instr
       setQueryFlash(true);
       setTimeout(() => setQueryFlash(false), 1000);
 
-      appToast.ai.succeeded("Query enhanced", response.explanation || undefined);
+      appToast.ai.succeeded(t("searchCommand.queryEnhanced"), response.explanation || undefined);
 
       setAiInstructions("");
     } catch (error) {
-      appToast.ai.failed("Enhancement", error);
+      appToast.ai.failed(t("searchCommand.enhancement"), error);
     } finally {
       setIsEnhancing(false);
     }
@@ -175,7 +176,7 @@ Please enhance this academic search query according to the user's specific instr
               ) : (
                 <>
                   <Wand2 className="h-3 w-3" />
-                  Enhance
+                  {t("searchCommand.enhance")}
                 </>
               )}
             </Button>
@@ -196,7 +197,7 @@ Please enhance this academic search query according to the user's specific instr
                 "group-focus-within:text-primary"
               )}
             >
-              Current Query
+              {t("searchCommand.currentQuery")}
             </span>
             {queryHistory.length > 1 && (
               <div className="flex items-center gap-0.5 bg-background rounded px-1">
@@ -261,7 +262,7 @@ Please enhance this academic search query according to the user's specific instr
                 ) : (
                   <Search className="h-3.5 w-3.5 mr-1.5" />
                 )}
-                Search
+                {t("common.search")}
               </Button>
             </div>
           </div>

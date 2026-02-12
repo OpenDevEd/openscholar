@@ -42,6 +42,8 @@ interface SearchHistoryProps {
 export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false, onQuerySelect }: SearchHistoryProps) {
   const t = useTranslations();
   const ta = useTranslations('accessibility');
+  const tl = useTranslations('languages');
+  const tp = useTranslations('paperCard');
   const locale = useLocale();
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
@@ -625,21 +627,21 @@ function ActionButtons({
                     <>
                       <img 
                         src={lang.flagUrl}
-                        alt={lang.name}
+                        alt={tl(lang.code as never) || lang.name}
                         className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
                       />
-                      <span className="text-foreground">{lang.name}</span>
+                      <span className="text-foreground">{tl(lang.code as never) || lang.name}</span>
                     </>
                   ) : (
                     <span className="text-muted-foreground flex items-center gap-1.5">
                       <Languages className="h-3 w-3" />
-                      <span className="italic">Language not set</span>
+                      <span className="italic">{tp("languageNotSet")}</span>
                     </span>
                   );
                 })() : (
                   <span className="text-muted-foreground flex items-center gap-1.5">
                     <Languages className="h-3 w-3" />
-                    <span className="italic">Language not set</span>
+                    <span className="italic">{tp("languageNotSet")}</span>
                   </span>
                 )}
               </div>

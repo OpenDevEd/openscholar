@@ -32,6 +32,7 @@ export function SearchCommandFooter({
 }: SearchCommandFooterProps) {
   const t = useTranslations();
   const tv = useTranslations("validation");
+  const tsc = useTranslations("searchCommand");
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
 
@@ -63,7 +64,7 @@ export function SearchCommandFooter({
     }
 
     if (!isConfigured) {
-      appToast.ai.configRequired("Please configure your AI settings to broaden this query.");
+      appToast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -85,7 +86,7 @@ Return a more inclusive version of this query.`;
 
     try {
       await runWithLoadingToast({
-        loading: "Broadening search...",
+        loading: tsc("broadeningSearch"),
         run: async () => {
           const result = await enhanceQuery({ query: broadenPrompt, language: currentLanguage || undefined });
 
@@ -102,11 +103,11 @@ Return a more inclusive version of this query.`;
           return result;
         },
         success: (result) => ({
-          title: "Query broadened",
-          description: `New query: "${result.enhancedQuery}"`,
+          title: tsc("queryBroadened"),
+          description: tsc("newQuery", { query: result.enhancedQuery }),
         }),
         error: (error) => ({
-          title: "Failed to broaden query",
+          title: tsc("failedToBroaden"),
           description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
         }),
       });
@@ -124,7 +125,7 @@ Return a more inclusive version of this query.`;
     }
 
     if (!isConfigured) {
-      appToast.ai.configRequired("Please configure your AI settings to narrow this query.");
+      appToast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -147,7 +148,7 @@ Return a more targeted version of this query.`;
 
     try {
       await runWithLoadingToast({
-        loading: "Making search more specific...",
+        loading: tsc("makingSearchSpecific"),
         run: async () => {
           const result = await enhanceQuery({ query: narrowPrompt, language: currentLanguage || undefined });
 
@@ -164,11 +165,11 @@ Return a more targeted version of this query.`;
           return result;
         },
         success: (result) => ({
-          title: "Query made more specific",
-          description: `New query: "${result.enhancedQuery}"`,
+          title: tsc("queryMadeSpecific"),
+          description: tsc("newQuery", { query: result.enhancedQuery }),
         }),
         error: (error) => ({
-          title: "Failed to narrow query",
+          title: tsc("failedToNarrow"),
           description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
         }),
       });
@@ -193,7 +194,7 @@ Return a more targeted version of this query.`;
             value={totalCount}
             className="text-lg font-semibold text-foreground"
           />
-          <span className="text-muted-foreground">results</span>
+          <span className="text-muted-foreground">{t("common.results")}</span>
         </div>
 
         {/* Contextual broaden/narrow buttons */}
@@ -219,7 +220,7 @@ Return a more targeted version of this query.`;
                 ) : (
                   <Expand className="h-3 w-3" />
                 )}
-                Make broader
+                {tsc("makeBroader")}
               </Button>
             )}
             {showNarrowButton && (
@@ -242,7 +243,7 @@ Return a more targeted version of this query.`;
                 ) : (
                   <Minimize2 className="h-3 w-3" />
                 )}
-                Make specific
+                {tsc("makeSpecific")}
               </Button>
             )}
           </div>

@@ -37,11 +37,13 @@ export interface DownloadHandlers {
 }
 
 /**
- * Year range preset
+ * Year range preset - key is used for i18n, range is [from, to]
  */
 export interface YearRangePreset {
-  label: string;
+  key: string;
   range: [number, number];
+  /** @deprecated Use key with translations instead */
+  label?: string;
 }
 
 /**

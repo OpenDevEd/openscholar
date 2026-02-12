@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Share2, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,9 @@ export function SearchCommandHeader({
   onDownloadAllEssentialCSV,
   isLoading,
 }: SearchCommandHeaderProps) {
+  const tc = useTranslations("common");
+  const td = useTranslations("downloads");
+  const tsc = useTranslations("searchCommand");
   const [isCopied, setIsCopied] = useState(false);
   const search = useSearchOptional();
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
@@ -57,10 +61,10 @@ export function SearchCommandHeader({
       const shareableUrl = getShareableUrl();
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);
-      appToast.clipboard.copied("Link");
+      appToast.clipboard.copied(tsc("link"));
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
-      appToast.clipboard.copyFailed("link");
+      appToast.clipboard.copyFailed(tsc("link"));
     }
   };
 
@@ -94,22 +98,22 @@ export function SearchCommandHeader({
             <DropdownMenuContent align="end">
               {onDownloadAllJSON && (
                 <DropdownMenuItem onClick={onDownloadAllJSON}>
-                  Download as JSON
+                  {tc("downloadAsJson")}
                 </DropdownMenuItem>
               )}
               {onDownloadAllCSV && (
                 <DropdownMenuItem onClick={onDownloadAllCSV}>
-                  Download as CSV
+                  {tc("downloadAsCsv")}
                 </DropdownMenuItem>
               )}
               {onDownloadAllEssentialJSON && (
                 <DropdownMenuItem onClick={onDownloadAllEssentialJSON}>
-                  Download Essential Info (JSON)
+                  {td("downloadEssentialJSON")}
                 </DropdownMenuItem>
               )}
               {onDownloadAllEssentialCSV && (
                 <DropdownMenuItem onClick={onDownloadAllEssentialCSV}>
-                  Download Essential Info (CSV)
+                  {td("downloadEssentialCSV")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -133,7 +137,7 @@ export function SearchCommandHeader({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{isCopied ? "Copied!" : "Copy shareable link"}</p>
+            <p>{isCopied ? tsc("copied") : tsc("copyShareLink")}</p>
           </TooltipContent>
         </Tooltip>
       </div>

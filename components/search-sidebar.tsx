@@ -98,6 +98,7 @@ const FilterSection = React.memo(function FilterSection({
   children,
   onClear,
 }: FilterSectionProps) {
+  const tc = useTranslations("common");
   return (
     <motion.div
       initial={false}
@@ -150,7 +151,7 @@ const FilterSection = React.memo(function FilterSection({
               className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80"
             >
               <X className="h-3 w-3 mr-1" />
-              Clear
+              {tc("clear")}
             </Button>
           </motion.div>
         )}
@@ -408,10 +409,18 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
     updateFilter({ currentSearchField: DEFAULT_FILTERS.field });
   }, [updateFilter]);
 
-  // Find current field label
+  // Map field value to translation key (reuse keys, avoid duplicate strings)
+  const FIELD_KEY_MAP: Record<string, string> = {
+    title_and_abstract: "searchFieldTitleAndAbstract",
+    title: "searchFieldTitle",
+    abstract: "searchFieldAbstract",
+    fulltext: "searchFieldFulltext",
+    display_name: "searchFieldDisplayName",
+  };
   const currentFieldLabel =
-    SEARCH_FIELDS.find((f) => f.value === currentSearchField)?.label ||
-    tf("titleAndAbstract");
+    (currentSearchField && FIELD_KEY_MAP[currentSearchField]
+      ? tf(FIELD_KEY_MAP[currentSearchField] as never)
+      : null) || tf("titleAndAbstract");
 
   // Check if search field is not at default
   const isSearchFieldActive = currentSearchField !== DEFAULT_FILTERS.field;
@@ -432,7 +441,7 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
         <SelectContent>
           {SEARCH_FIELDS.map((field) => (
             <SelectItem key={field.value} value={field.value}>
-              {field.label}
+              {FIELD_KEY_MAP[field.value] ? tf(FIELD_KEY_MAP[field.value] as never) : field.label}
             </SelectItem>
           ))}
         </SelectContent>
@@ -456,9 +465,19 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
     updateFilter({ sortBy: DEFAULT_FILTERS.sortBy });
   }, [updateFilter]);
 
-  // Find current sort label
+  // Map sort value to translation key (reuse keys, avoid duplicate strings)
+  const SORT_KEY_MAP: Record<string, string> = {
+    "relevance_score:desc": "sortRelevance",
+    "cited_by_count:desc": "sortCitationsDesc",
+    "cited_by_count:asc": "sortCitationsAsc",
+    "publication_date:desc": "sortDateDesc",
+    "publication_date:asc": "sortDateAsc",
+    "display_name:desc": "sortTitleDesc",
+    "display_name:asc": "sortTitleAsc",
+  };
   const currentSortLabel =
-    sortOptions.find((o) => o.value === sortBy)?.label || "Relevance";
+    (sortBy && SORT_KEY_MAP[sortBy] ? tf(SORT_KEY_MAP[sortBy] as never) : null) ||
+    tf("sortRelevanceDefault");
 
   // Check if sort is not at default
   const isSortActive = sortBy !== DEFAULT_FILTERS.sortBy;
@@ -479,7 +498,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
         <SelectContent>
           {sortOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              {option.label}
+              {SORT_KEY_MAP[option.value] ? tf(SORT_KEY_MAP[option.value] as never) : option.label}
             </SelectItem>
           ))}
         </SelectContent>

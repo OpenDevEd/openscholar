@@ -58,7 +58,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleAddQuestion = async () => {
     if (!newQuestion.trim()) {
-      appToast.validation.failed("Please enter a question.");
+      appToast.validation.failed(tv("pleaseEnterQuestion"));
       return;
     }
 
@@ -66,7 +66,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       (q) => q.question.toLowerCase() === newQuestion.trim().toLowerCase()
     );
     if (duplicate) {
-      appToast.validation.failed("This question already exists.");
+      appToast.validation.failed(tv("questionAlreadyExists"));
       return;
     }
 
@@ -84,7 +84,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       setNewQuestion("");
       appToast.entity.created("question");
     } catch {
-      appToast.validation.failed("Failed to add question.");
+      appToast.validation.failed(tv("failedToAddQuestion"));
     } finally {
       setIsAdding(false);
     }
@@ -146,7 +146,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleGenerateWithAI = async () => {
     if (!isConfigured) {
-      appToast.ai.configRequired("Please configure your AI provider and API key first.");
+      appToast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -183,7 +183,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
         appToast.entity.created(
           "screening questions",
-          `${addedCount} new question${addedCount > 1 ? "s" : ""}`
+          t("extraction.addedQuestions", { count: addedCount })
         );
       } else {
         appToast.validation.warning(tv("noNewQuestionsGenerated"));
@@ -192,7 +192,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
       // Track generation failure
       posthog.capture("screening_questions_generation_failed", {});
 
-      appToast.ai.failed("Question generation", error);
+      appToast.ai.failed(t("searchCommand.questionGeneration"), error);
     } finally {
       setIsGenerating(false);
     }
@@ -219,7 +219,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
             {/* Header with actions */}
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
-                Screening Questions ({screeningQuestions.length})
+                {t("searchCommand.screeningQuestionsCount", { count: screeningQuestions.length })}
               </span>
 
               {screeningQuestions.length > 0 && (
@@ -232,14 +232,14 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={handleTestAllQuestions}>
                       <Play className="h-4 w-4 mr-2" />
-                      Test all questions
+                      {t("searchCommand.testAllQuestions")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={handleClearAllQuestions}
                       className="text-destructive focus:text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Clear all questions
+                      {t("searchCommand.clearAllQuestions")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

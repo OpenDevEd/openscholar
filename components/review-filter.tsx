@@ -5,16 +5,18 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useCurrentSearchFormState, useUpdateSearchFilter } from '@/lib/hooks';
 import { appToast } from '@/lib/toast';
+import { useTranslations } from 'next-intl';
 
 export function ReviewFilter() {
+  const tf = useTranslations("searchFilters");
   const { reviewFilter } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
   const handleToggle = (checked: boolean) => {
     updateFilter({ reviewFilter: checked });
     appToast.entity.updated(
-      "Review filter",
-      checked ? "Review filter is enabled." : "Review filter is disabled."
+      tf("reviewFilter"),
+      checked ? tf("reviewFilterEnabled") : tf("reviewFilterDisabled")
     );
   };
 
@@ -22,10 +24,10 @@ export function ReviewFilter() {
     <div className="flex items-center justify-between">
       <div className="space-y-1">
         <Label htmlFor="review-filter" className="text-sm font-medium">
-          Only show reviews
+          {tf("reviewFilterLabel")}
         </Label>
         <p className="text-xs text-muted-foreground">
-          Filter for review papers, syntheses, and meta-analyses
+          {tf("reviewFilterDescription")}
         </p>
       </div>
       <Switch

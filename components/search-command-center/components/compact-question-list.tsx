@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Plus, X, Play } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { X, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,11 +19,14 @@ export function CompactQuestionList({
   onDelete,
   disabled,
 }: CompactQuestionListProps) {
+  const t = useTranslations("emptyStates");
+  const ta = useTranslations("accessibility");
+
   if (questions.length === 0) {
     return (
       <div className="py-6 text-center text-muted-foreground">
-        <p className="text-sm">No screening questions yet</p>
-        <p className="text-xs mt-1">Add questions above to screen papers</p>
+        <p className="text-sm">{t("noScreeningQuestions")}</p>
+        <p className="text-xs mt-1">{t("addQuestionsAbove")}</p>
       </div>
     );
   }
@@ -72,7 +76,7 @@ export function CompactQuestionList({
                 "text-violet-700 dark:text-violet-300",
                 "transition-all duration-200"
               )}
-              title="Test question"
+              title={ta("testQuestion")}
             >
               <Play className="h-3 w-3" />
             </Button>
@@ -82,7 +86,7 @@ export function CompactQuestionList({
               onClick={() => onDelete(index, q.question)}
               disabled={disabled}
               className="h-7 w-7 text-destructive hover:text-destructive"
-              title="Delete question"
+              title={ta("deleteQuestion")}
             >
               <X className="h-3 w-3" />
             </Button>

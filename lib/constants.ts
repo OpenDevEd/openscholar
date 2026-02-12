@@ -21,12 +21,12 @@ export const MIN_YEAR = 1900;
 export const getYearRangePresets = (): YearRangePreset[] => {
   const currentYear = new Date().getFullYear();
   return [
-    { label: "This Year", range: [currentYear, currentYear] as [number, number] },
-    { label: "Last Year", range: [currentYear - 1, currentYear - 1] as [number, number] },
-    { label: "Last 5 Years", range: [currentYear - 5, currentYear] as [number, number] },
-    { label: "Last 10 Years", range: [currentYear - 10, currentYear] as [number, number] },
-    { label: "Last 15 Years", range: [currentYear - 15, currentYear] as [number, number] },
-    { label: "Last 20 Years", range: [currentYear - 20, currentYear] as [number, number] },
+    { key: "yearPresetThisYear", range: [currentYear, currentYear] as [number, number] },
+    { key: "yearPresetLastYear", range: [currentYear - 1, currentYear - 1] as [number, number] },
+    { key: "yearPresetLast5Years", range: [currentYear - 5, currentYear] as [number, number] },
+    { key: "yearPresetLast10Years", range: [currentYear - 10, currentYear] as [number, number] },
+    { key: "yearPresetLast15Years", range: [currentYear - 15, currentYear] as [number, number] },
+    { key: "yearPresetLast20Years", range: [currentYear - 20, currentYear] as [number, number] },
   ];
 }; 
 

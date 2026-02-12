@@ -238,14 +238,14 @@ export function YearRangePicker() {
             <div className="grid grid-cols-2 gap-2">
               {getYearRangePresets().map((preset) => (
                 <Button
-                  key={preset.label}
+                  key={preset.key}
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => applyYearPreset(preset.range)}
                   className="h-8 px-3 text-xs font-normal"
                 >
-                  {preset.label}
+                  {tf(preset.key)}
                 </Button>
               ))}
             </div>

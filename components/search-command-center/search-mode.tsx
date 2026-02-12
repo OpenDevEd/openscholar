@@ -29,6 +29,7 @@ interface SearchModeProps {
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
+  const tl = useTranslations("languages");
   const tValidation = useTranslations("validation");
   const search = useSearchOptional();
   const effectiveSearchId = useEffectiveSearchId();
@@ -139,7 +140,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         error_message: getErrorMessage(error, "Unknown error"),
       });
 
-      appToast.ai.failed("Enhancement", error);
+      appToast.ai.failed(t("searchCommand.enhancement"), error);
     } finally {
       setIsEnhancing(false);
     }
@@ -189,7 +190,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           },
           success: () => ({
             title: t('queryTranslated'),
-            description: t('translatedTo', { language }),
+            description: t('translatedTo', { language: tl(language as never) || language }),
           }),
           error: (error) => {
             // Track translation error
