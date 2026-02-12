@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { useTranslations, useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/format";
 import { FileText, Clock } from "lucide-react";
@@ -47,16 +49,19 @@ function getStatusStripeColor(status: string) {
   return STATUS_STRIPE_COLORS[status] ?? "bg-primary";
 }
 
-function getStatusLabel(status: string) {
-  switch (status) {
-    case "completed": return "Completed";
-    case "failed": return "Failed";
-    case "cancelled": return "Cancelled";
-    default: return status.replace(/_/g, " ");
-  }
-}
-
 export function JobListItem({ job, viewMode, index }: JobListItemProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+
+  const statusLabelMap: Record<string, string> = useMemo(() => ({
+    completed: tc("completed"),
+    failed: tc("failed"),
+    cancelled: tc("cancelled"),
+  }), [tc]);
+
+  const getStatusLabel = (status: string) =>
+    statusLabelMap[status] ?? status.replace(/_/g, " ");
   const progressPercentage =
     job.totalPapers > 0
       ? Math.round((job.processedPapers / job.totalPapers) * 100)
@@ -88,12 +93,12 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
           {/* Papers count */}
           <span className="text-xs text-muted-foreground shrink-0">
-            {job.processedPapers}/{job.totalPapers}
+            {t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}
           </span>
 
           {/* Time ago */}
           <span className="text-xs text-muted-foreground shrink-0">
-            {formatTimeAgo(new Date(job.createdAt))}
+            {formatTimeAgo(new Date(job.createdAt), locale)}
           </span>
         </motion.div>
       </Link>
@@ -158,14 +163,14 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" />
-                    <span>{job.processedPapers}/{job.totalPapers} papers</span>
+                    <span>{t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}</span>
                   </div>
 
                   <span className="w-1 h-1 rounded-full bg-border" />
 
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{formatTimeAgo(new Date(job.createdAt))}</span>
+                    <span>{formatTimeAgo(new Date(job.createdAt), locale)}</span>
                   </div>
                 </div>
               </div>
@@ -230,10 +235,10 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <FileText className="w-3 h-3" />
-              <span>{job.processedPapers}/{job.totalPapers}</span>
+              <span>{t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}</span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {formatTimeAgo(new Date(job.createdAt))}
+              {formatTimeAgo(new Date(job.createdAt), locale)}
             </span>
           </div>
         </div>

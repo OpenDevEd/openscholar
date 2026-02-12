@@ -30,16 +30,10 @@ import {
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import type { ExtractionQuestion, ExtractionQuestionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const QUESTION_TYPES: { value: ExtractionQuestionType; label: string }[] = [
-  { value: "string", label: "Text" },
-  { value: "boolean", label: "Yes/No" },
-  { value: "number", label: "Number" },
-  { value: "array", label: "List" },
-];
+import { useTranslations } from "next-intl";
 
 const TYPE_ICON_MAP: Record<
   ExtractionQuestionType,
@@ -71,6 +65,13 @@ interface QuestionRowProps {
   onUpdate: (key: string, updates: Partial<ExtractionQuestion>) => void;
   onRemove: (key: string) => void;
   onDeleteComplete: (key: string) => void;
+  questionTypes: { value: ExtractionQuestionType; label: string }[];
+  translations: {
+    enterQuestion: string;
+    editDescription: string;
+    addDescription: string;
+    aiContextPlaceholder: string;
+  };
 }
 
 function QuestionRow({
@@ -82,6 +83,8 @@ function QuestionRow({
   onUpdate,
   onRemove,
   onDeleteComplete,
+  questionTypes,
+  translations,
 }: QuestionRowProps) {
   const dragControls = useDragControls();
 
@@ -154,7 +157,7 @@ function QuestionRow({
               onChange={(e) =>
                 onUpdate(question.key, { question: e.target.value })
               }
-              placeholder="Enter your question..."
+              placeholder={translations.enterQuestion}
               className="font-medium"
             />
             <Select
@@ -174,13 +177,13 @@ function QuestionRow({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {QUESTION_TYPES.map((t) => {
-                  const Icon = TYPE_ICON_MAP[t.value];
+                {questionTypes.map((qt) => {
+                  const Icon = TYPE_ICON_MAP[qt.value];
                   return (
-                    <SelectItem key={t.value} value={t.value}>
+                    <SelectItem key={qt.value} value={qt.value}>
                       <span className="flex items-center gap-1.5">
                         <Icon className="w-3 h-3" />
-                        {t.label}
+                        {qt.label}
                       </span>
                     </SelectItem>
                   );
@@ -207,7 +210,7 @@ function QuestionRow({
                 isExpanded && "rotate-180"
               )}
             />
-            {question.description ? "Edit description" : "Add description"}
+            {question.description ? translations.editDescription : translations.addDescription}
           </button>
 
           {/* Animated description */}
@@ -228,7 +231,7 @@ function QuestionRow({
               onChange={(e) =>
                 onUpdate(question.key, { description: e.target.value })
               }
-              placeholder="Additional context for the AI (optional)..."
+              placeholder={translations.aiContextPlaceholder}
               className="text-sm"
               rows={2}
             />
@@ -240,6 +243,16 @@ function QuestionRow({
 }
 
 export function QuestionBuilder() {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+
+  const QUESTION_TYPES: { value: ExtractionQuestionType; label: string }[] = [
+    { value: "string", label: t("typeText") },
+    { value: "boolean", label: t("typeYesNo") },
+    { value: "number", label: t("typeNumber") },
+    { value: "array", label: t("typeList") },
+  ];
+
   const {
     draftJob,
     addQuestion,
@@ -356,21 +369,13 @@ export function QuestionBuilder() {
 
   const handleGenerateWithAI = async () => {
     if (!isConfigured) {
-      toast.error("AI Not Configured", {
-        description: "Please configure your AI API key first.",
-        action: {
-          label: "Configure",
-          onClick: () => (window.location.href = "/settings/ai"),
-        },
-      });
+      appToast.ai.configRequired(t("configureApiKey"));
       return;
     }
 
     const sourceContext = buildSourceContext();
     if (!sourceContext) {
-      toast.error("No source context", {
-        description: "Please select sources in Step 2 first.",
-      });
+      appToast.error(t("noSourceContext"), t("selectSourcesFirst"));
       return;
     }
 
@@ -404,27 +409,19 @@ export function QuestionBuilder() {
       }
 
       if (addedCount > 0) {
-        toast.success(
-          `Added ${addedCount} new question${addedCount > 1 ? "s" : ""}`
-        );
+        appToast.success(t("addedQuestions", { count: addedCount }));
       } else {
-        toast.warning("No new questions generated");
+        appToast.warning(t("noNewQuestions"));
       }
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Failed to generate questions";
+          : t("failedToGenerateQuestions");
       if (message === "API_KEY_REQUIRED") {
-        toast.error("API Key Required", {
-          description: "Please configure your AI API key.",
-          action: {
-            label: "Configure",
-            onClick: () => (window.location.href = "/settings/ai"),
-          },
-        });
+        appToast.ai.configRequired(t("configureApiKey"));
       } else {
-        toast.error("Generation failed", { description: message });
+        appToast.error(t("generationFailed"), message);
       }
     } finally {
       setIsGenerating(false);
@@ -464,13 +461,20 @@ export function QuestionBuilder() {
 
   const questionCount = draftJob.questions.length;
 
+  const rowTranslations = {
+    enterQuestion: t("enterQuestion"),
+    editDescription: t("editDescription"),
+    addDescription: t("addDescription"),
+    aiContextPlaceholder: t("aiContextPlaceholder"),
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
         <ClipboardList className="w-4 h-4 text-muted-foreground" />
         <span className="text-sm font-semibold text-foreground">
-          Questions
+          {tc("questions")}
         </span>
         <Badge variant="secondary">{questionCount}</Badge>
       </div>
@@ -482,14 +486,13 @@ export function QuestionBuilder() {
             <MessageSquarePlus className="w-8 h-8 text-primary" />
           </div>
           <h3 className="text-base font-semibold text-foreground mb-1">
-            No questions defined
+            {t("noQuestionsDefined")}
           </h3>
           <p className="text-sm text-muted-foreground mb-1">
-            Define what data to extract from each paper.
+            {t("defineWhatToExtract")}
           </p>
           <p className="text-xs text-muted-foreground/70">
-            Add questions manually below, or use AI to generate them from your
-            sources.
+            {t("addQuestionsManually")}
           </p>
         </div>
       ) : (
@@ -511,6 +514,8 @@ export function QuestionBuilder() {
                 onUpdate={updateQuestion}
                 onRemove={handleDelete}
                 onDeleteComplete={handleDeleteComplete}
+                questionTypes={QUESTION_TYPES}
+                translations={rowTranslations}
               />
             ))}
           </Reorder.Group>
@@ -526,7 +531,7 @@ export function QuestionBuilder() {
       >
         <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" />
-          Add New Question
+          {t("addNewQuestion")}
         </h4>
 
         <form onSubmit={handleAdd} className="space-y-3">
@@ -536,7 +541,7 @@ export function QuestionBuilder() {
             onChange={(e) =>
               setNewQuestion({ ...newQuestion, question: e.target.value })
             }
-            placeholder="e.g., What is the sample size?"
+            placeholder={t("sampleQuestion")}
           />
 
           {/* Collapsible description */}
@@ -553,8 +558,8 @@ export function QuestionBuilder() {
                 )}
               />
               {newQuestion.description
-                ? "Edit description"
-                : "Add description"}
+                ? t("editDescription")
+                : t("addDescription")}
             </button>
             <motion.div
               initial={false}
@@ -577,7 +582,7 @@ export function QuestionBuilder() {
                   })
                 }
                 onKeyDown={handleKeyDown}
-                placeholder="Additional context for the AI... (Ctrl+Enter to add)"
+                placeholder={t("aiContextCtrlEnter")}
                 className="text-sm mt-2"
                 rows={2}
               />
@@ -595,16 +600,16 @@ export function QuestionBuilder() {
               }
             >
               <SelectTrigger className="w-32">
-                <SelectValue placeholder="Type" />
+                <SelectValue placeholder={tc("type")} />
               </SelectTrigger>
               <SelectContent>
-                {QUESTION_TYPES.map((t) => {
-                  const Icon = TYPE_ICON_MAP[t.value];
+                {QUESTION_TYPES.map((qt) => {
+                  const Icon = TYPE_ICON_MAP[qt.value];
                   return (
-                    <SelectItem key={t.value} value={t.value}>
+                    <SelectItem key={qt.value} value={qt.value}>
                       <span className="flex items-center gap-1.5">
                         <Icon className="w-3 h-3" />
-                        {t.label}
+                        {qt.label}
                       </span>
                     </SelectItem>
                   );
@@ -617,7 +622,7 @@ export function QuestionBuilder() {
               disabled={!newQuestion.question.trim()}
             >
               <Plus className="w-4 h-4 mr-1" />
-              Add
+              {tc("add")}
             </Button>
 
             <Button
@@ -639,7 +644,7 @@ export function QuestionBuilder() {
               ) : (
                 <>
                   <Wand2 className="h-4 w-4" />
-                  Generate with AI
+                  {tc("generateWithAI")}
                 </>
               )}
             </Button>

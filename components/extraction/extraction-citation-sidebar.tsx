@@ -2,6 +2,7 @@
 
 import { FileSearch } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ type ExtractionCitationSidebarProps = {
 export function ExtractionCitationSidebar({
   panelPayload,
 }: ExtractionCitationSidebarProps) {
+  const t = useTranslations();
   const { isCollapsed, setCollapsed, toggle, _hasHydrated } =
     useExtractionCitationPanelStore();
   const { expandedWidth, collapsedWidth } =
@@ -68,7 +70,7 @@ export function ExtractionCitationSidebar({
                   size="icon"
                   onClick={() => setCollapsed(true)}
                   className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
-                  aria-label="Collapse citation panel"
+                  aria-label={t("accessibility.collapsePanel")}
                 >
                   <motion.div
                     animate={{ rotate: 0 }}
@@ -80,7 +82,7 @@ export function ExtractionCitationSidebar({
                 </Button>
               </motion.div>
             </TooltipTrigger>
-            <TooltipContent side="bottom">Collapse citation panel</TooltipContent>
+            <TooltipContent side="bottom">{t("accessibility.collapsePanel")}</TooltipContent>
           </Tooltip>
         </div>
 
@@ -112,7 +114,7 @@ export function ExtractionCitationSidebar({
                     size="icon"
                     onClick={toggle}
                     className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
-                    aria-label="Expand citation panel"
+                    aria-label={t("accessibility.expandPanel")}
                   >
                     <motion.div
                       animate={{ rotate: 0 }}
@@ -124,7 +126,7 @@ export function ExtractionCitationSidebar({
                   </Button>
                 </motion.div>
               </TooltipTrigger>
-              <TooltipContent side="left">Expand citation panel</TooltipContent>
+              <TooltipContent side="left">{t("accessibility.expandPanel")}</TooltipContent>
             </Tooltip>
 
             {/* Page number badge */}

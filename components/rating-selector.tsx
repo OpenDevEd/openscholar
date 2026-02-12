@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { useRatingsStore } from "@/lib/store";
 import posthog from "posthog-js";
+import { useTranslations } from "next-intl";
 
 interface RatingSelectorProps {
   paperId: string;
@@ -18,6 +19,7 @@ interface RatingSelectorProps {
 }
 
 export function RatingSelector({ paperId, variant = "default" }: RatingSelectorProps) {
+  const t = useTranslations('rating');
   const { ratings, setRating } = useRatingsStore();
 
   const handleRatingChange = (rating: string) => {
@@ -78,13 +80,13 @@ export function RatingSelector({ paperId, variant = "default" }: RatingSelectorP
           </div>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="no-rating">No Rating</SelectItem>
-          <SelectItem value="0">☆ 0 Stars</SelectItem>
-          <SelectItem value="1">⭐ 1 Star</SelectItem>
-          <SelectItem value="2">⭐⭐ 2 Stars</SelectItem>
-          <SelectItem value="3">⭐⭐⭐ 3 Stars</SelectItem>
-          <SelectItem value="4">⭐⭐⭐⭐ 4 Stars</SelectItem>
-          <SelectItem value="5">⭐⭐⭐⭐⭐ 5 Stars</SelectItem>
+          <SelectItem value="no-rating">{t('noRating')}</SelectItem>
+          <SelectItem value="0">☆ {t('nStars', { count: 0 })}</SelectItem>
+          <SelectItem value="1">⭐ {t('nStars', { count: 1 })}</SelectItem>
+          <SelectItem value="2">⭐⭐ {t('nStars', { count: 2 })}</SelectItem>
+          <SelectItem value="3">⭐⭐⭐ {t('nStars', { count: 3 })}</SelectItem>
+          <SelectItem value="4">⭐⭐⭐⭐ {t('nStars', { count: 4 })}</SelectItem>
+          <SelectItem value="5">⭐⭐⭐⭐⭐ {t('nStars', { count: 5 })}</SelectItem>
         </SelectContent>
       </Select>
     );
@@ -104,13 +106,13 @@ export function RatingSelector({ paperId, variant = "default" }: RatingSelectorP
           </div>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="no-rating">No Rating</SelectItem>
-          <SelectItem value="0">☆ 0 Stars</SelectItem>
-          <SelectItem value="1">⭐ 1 Star</SelectItem>
-          <SelectItem value="2">⭐⭐ 2 Stars</SelectItem>
-          <SelectItem value="3">⭐⭐⭐ 3 Stars</SelectItem>
-          <SelectItem value="4">⭐⭐⭐⭐ 4 Stars</SelectItem>
-          <SelectItem value="5">⭐⭐⭐⭐⭐ 5 Stars</SelectItem>
+          <SelectItem value="no-rating">{t('noRating')}</SelectItem>
+          <SelectItem value="0">☆ {t('nStars', { count: 0 })}</SelectItem>
+          <SelectItem value="1">⭐ {t('nStars', { count: 1 })}</SelectItem>
+          <SelectItem value="2">⭐⭐ {t('nStars', { count: 2 })}</SelectItem>
+          <SelectItem value="3">⭐⭐⭐ {t('nStars', { count: 3 })}</SelectItem>
+          <SelectItem value="4">⭐⭐⭐⭐ {t('nStars', { count: 4 })}</SelectItem>
+          <SelectItem value="5">⭐⭐⭐⭐⭐ {t('nStars', { count: 5 })}</SelectItem>
         </SelectContent>
       </Select>
     </div>

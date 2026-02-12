@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface ConfidenceFilterProps {
   range: [number, number];
@@ -24,6 +25,7 @@ const presets = [
 ];
 
 export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
+  const t = useTranslations('filters');
   const isFiltered = range[0] !== 0 || range[1] !== 100;
 
   return (
@@ -37,7 +39,7 @@ export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
       <PopoverContent className="w-80">
         <div className="space-y-4">
           <div>
-            <Label>Confidence Range</Label>
+            <Label>{t('confidenceRange')}</Label>
             <Slider
               value={range}
               onValueChange={(value) => onChange(value as [number, number])}
@@ -53,7 +55,7 @@ export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
           </div>
 
           <div className="space-y-1">
-            <Label>Quick Filters</Label>
+            <Label>{t('quickFilters')}</Label>
             <div className="flex gap-2">
               {presets.map(preset => (
                 <Button

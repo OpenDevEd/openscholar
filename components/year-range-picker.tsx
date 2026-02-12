@@ -16,8 +16,11 @@ import { Switch } from "@/components/ui/switch";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { isDateFilterActive } from "@/lib/utils";
 import { useYearRangePickerStore } from "@/lib/store";
+import { useTranslations } from "next-intl";
 
 export function YearRangePicker() {
+  const tf = useTranslations("searchFilters");
+  const tc = useTranslations("common");
   const {
     yearRange,
     dateRange,
@@ -84,7 +87,7 @@ export function YearRangePicker() {
         >
           <CalendarIcon className="mr-3 h-4 w-4" />
           <span className="truncate">
-            {isFilterActive ? `${yearRange[0]} → ${yearRange[1]}` : "Filter by year range"}
+            {isFilterActive ? `${yearRange[0]} → ${yearRange[1]}` : tf("filterByYearRange")}
           </span>
         </Button>
       </PopoverTrigger>
@@ -98,11 +101,11 @@ export function YearRangePicker() {
                 onCheckedChange={setIsYearRangeEnabled}
                 id="year-range-toggle"
               />
-              <label 
+              <label
                 htmlFor="year-range-toggle"
                 className="text-sm font-medium cursor-pointer"
               >
-                Filter by year range
+                {tf("filterByYearRange")}
               </label>
             </div>
             {isYearRangeEnabled && (
@@ -119,7 +122,7 @@ export function YearRangePicker() {
                 className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
               >
                 <RotateCcw className="h-3 w-3 mr-1" />
-                Reset
+                {tc("reset")}
               </Button>
             )}
           </div>
@@ -129,14 +132,14 @@ export function YearRangePicker() {
               {/* Header */}
               <div className="text-center">
                 <div className="text-sm font-medium text-muted-foreground">
-                  Year Range: {yearRange[0]} - {yearRange[1]}
+                  {tf("yearRangeLabel")} {yearRange[0]} - {yearRange[1]}
                 </div>
               </div>
               
               {/* Input Fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">From</label>
+                  <label className="text-xs font-medium text-muted-foreground">{tc("from")}</label>
                   <Input
                     type="number"
                     min={MIN_YEAR}
@@ -167,7 +170,7 @@ export function YearRangePicker() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">To</label>
+                  <label className="text-xs font-medium text-muted-foreground">{tc("to")}</label>
                   <Input
                     type="number"
                     min={MIN_YEAR}
@@ -222,16 +225,16 @@ export function YearRangePicker() {
           {!isYearRangeEnabled && (
             <div className="text-center py-4 text-muted-foreground">
               <CalendarIcon className="h-6 w-6 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Enable the toggle above to customize the year range</p>
+              <p className="text-sm">{tf("enableToggleToCustomize")}</p>
               <p className="text-xs mt-1">
-                By default, all years are included in your search
+                {tf("defaultAllYears")}
               </p>
             </div>
           )}
 
           {/* Quick Presets - Always visible */}
           <div className="space-y-3">
-            <div className="text-xs font-medium text-muted-foreground">Quick presets</div>
+            <div className="text-xs font-medium text-muted-foreground">{tf("quickPresets")}</div>
             <div className="grid grid-cols-2 gap-2">
               {getYearRangePresets().map((preset) => (
                 <Button

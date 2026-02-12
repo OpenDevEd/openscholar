@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useTranslations } from "next-intl";
 import { Document, Page, pdfjs } from "react-pdf";
 import type { PDFPageProxy } from "pdfjs-dist";
 import { buildPageTextFromItems } from "@/lib/extraction/pdfjs-text";
@@ -84,6 +85,7 @@ export function PdfViewer({
   highlightValidated,
   onPageChange,
 }: PdfViewerProps) {
+  const t = useTranslations();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -345,7 +347,7 @@ export function PdfViewer({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className="pdf-viewer-shell flex flex-col h-full min-h-0 min-w-0 max-w-full overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm"
-      aria-label="PDF viewer"
+      aria-label={t('accessibility.pdfViewer')}
     >
       <PdfToolbar
         currentPage={currentPage}
@@ -387,7 +389,7 @@ export function PdfViewer({
           >
             <Document
               file={pdfUrl}
-              loading={<div className="rounded-md border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">Loading PDF…</div>}
+              loading={<div className="rounded-md border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">{t('pdfViewer.loadingPdf')}</div>}
               onLoadSuccess={({ numPages: totalPages }) => {
                 const safePages = Math.max(1, totalPages);
                 setNumPages(safePages);

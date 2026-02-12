@@ -16,6 +16,7 @@ import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
 import { countActiveFilters } from "@/lib/filters";
 import { QueryText } from "@/components/ui/query-text";
+import { useLocale } from "next-intl";
 
 // Spring animation config consistent with sidebar
 const springConfig = {
@@ -95,8 +96,9 @@ export function SearchHistoryTab({
   onClick,
   index = 0,
 }: SearchHistoryTabProps) {
+  const locale = useLocale();
   const idColor = getIdColor(searchId);
-  const timeAgo = formatTimeAgo(createdAt);
+  const timeAgo = formatTimeAgo(createdAt, locale);
 
   // Use shared filter counting logic
   const totalCount = countActiveFilters({

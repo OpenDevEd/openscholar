@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export function CommandCenterPagination({
   itemsPerPage,
   itemLabel,
 }: CommandCenterPaginationProps) {
+  const tc = useTranslations("common");
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -73,12 +75,7 @@ export function CommandCenterPagination({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
       {/* Info text */}
       <p className="text-sm text-muted-foreground">
-        Showing{" "}
-        <span className="font-medium text-foreground">
-          {startItem}-{endItem}
-        </span>{" "}
-        of <span className="font-medium text-foreground">{totalItems}</span>{" "}
-        {itemLabel}
+        {tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
       </p>
 
       {/* Pagination controls */}
@@ -91,7 +88,7 @@ export function CommandCenterPagination({
           disabled={currentPage === 1}
         >
           <ChevronLeft className="h-4 w-4" />
-          <span className="sr-only">Previous page</span>
+          <span className="sr-only">{tc("previousPage")}</span>
         </Button>
 
         {getPageNumbers().map((page, index) =>
@@ -126,7 +123,7 @@ export function CommandCenterPagination({
           disabled={currentPage === totalPages}
         >
           <ChevronRight className="h-4 w-4" />
-          <span className="sr-only">Next page</span>
+          <span className="sr-only">{tc("nextPage")}</span>
         </Button>
       </div>
     </div>

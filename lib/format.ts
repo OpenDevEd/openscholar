@@ -11,13 +11,13 @@ export function formatNumber(num: number, locale?: string): string {
   return new Intl.NumberFormat(browserLocale).format(num);
 }
 
-export function formatTimeAgo(date: string | Date): string {
+export function formatTimeAgo(date: string | Date, locale?: string): string {
   const now = new Date();
   const past = new Date(date);
   const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
   
-  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
-  const rtf = new Intl.RelativeTimeFormat(browserLocale, { numeric: 'auto', style: 'short' });
+  const userLocale = locale || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+  const rtf = new Intl.RelativeTimeFormat(userLocale, { numeric: 'auto', style: 'short' });
   
   const intervals = [
     { unit: 'year', seconds: 31536000 },
@@ -35,7 +35,7 @@ export function formatTimeAgo(date: string | Date): string {
     }
   }
   
-  return 'just now';
+  return rtf.format(0, 'second');
 }
 
 const COLOR_PALETTE = [

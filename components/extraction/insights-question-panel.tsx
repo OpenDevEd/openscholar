@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { DisagreementList } from "@/components/extraction/disagreement-list";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useTranslations } from "next-intl";
 
 interface InsightsQuestionPanelProps {
   jobId: string;
@@ -34,6 +35,8 @@ export function InsightsQuestionPanel({
   onJumpToPaper,
   enabled = true,
 }: InsightsQuestionPanelProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const [arrayView, setArrayView] = useState<"entities" | "raw">("entities");
   const questionInsightsQuery = useProtectedQuery(
     api.extraction.queries.getQuestionInsights,
@@ -63,7 +66,7 @@ export function InsightsQuestionPanel({
   if (!questionKey) {
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
-        Select a question to inspect answer distributions and disagreements.
+        {t("selectQuestionToInspect")}
       </div>
     );
   }
@@ -84,12 +87,12 @@ export function InsightsQuestionPanel({
   if (!questionInsights || questionInsights.status !== "ok") {
     const message =
       questionInsights?.status === "not_found"
-        ? "Question insights are not available for that question."
+        ? t("questionInsightsUnavailable")
         : questionInsights?.status === "unauthenticated"
-          ? "Sign in to view question insights."
+          ? t("signInToViewQuestionInsights")
           : questionInsights?.status === "no_access"
-            ? "You do not have access to these question insights."
-            : "Question insights are unavailable.";
+            ? t("noAccessQuestionInsights")
+            : t("questionInsightsGenericUnavailable");
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
         {message}
@@ -104,8 +107,8 @@ export function InsightsQuestionPanel({
   const isArrayMode = questionInsights.insightMode === "array";
   const disagreementTitle =
     disagreementData?.status === "ok" && disagreementData.viewMode === "answer_profiles"
-      ? "Answer profiles"
-      : "Disagreement finder";
+      ? t("answerProfiles")
+      : t("disagreementFinder");
 
   return (
     <div className="space-y-4">
@@ -114,19 +117,19 @@ export function InsightsQuestionPanel({
           <div>
             <div className="font-medium">{questionInsights.question.question}</div>
             <div className="text-xs text-muted-foreground">
-              {questionInsights.question.type} question
+              {questionInsights.question.type} {t("questionSuffix")}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <Badge variant="outline">
-              {pct(questionInsights.answered / total)} answered
+              {pct(questionInsights.answered / total)} {tc("answered").toLowerCase()}
             </Badge>
             <Badge variant="outline">
-              {pct(questionInsights.grounded / total)} grounded
+              {pct(questionInsights.grounded / total)} {tc("grounded").toLowerCase()}
             </Badge>
             <Badge
               variant="secondary"
-              title={`Raw confidence: ${Math.round(
+              title={`Raw ${t("confidence")}: ${Math.round(
                 (questionInsights.avgConfidence || 0) * 100
               )}%`}
             >
@@ -134,21 +137,27 @@ export function InsightsQuestionPanel({
                 (questionInsights.avgEffectiveConfidence ?? questionInsights.avgConfidence) *
                   100
               )}
-              % effective conf
+              % {t("effectiveConf")}
             </Badge>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded border border-border/40 p-3">
-            <div className="text-xs font-medium mb-2">Confidence distribution</div>
+            <div className="text-xs font-medium mb-2">{t("confidenceDistribution")}</div>
             <div className="space-y-2 text-xs">
               {(["high", "medium", "low", "unknown"] as const).map((bucket) => {
                 const count = questionInsights.confidenceBuckets[bucket];
+                const bucketLabels: Record<string, string> = {
+                  high: tc("high"),
+                  medium: tc("medium"),
+                  low: tc("low"),
+                  unknown: tc("unknown"),
+                };
                 return (
                   <div key={bucket} className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="capitalize">{bucket}</span>
+                      <span>{bucketLabels[bucket]}</span>
                       <span>{count}</span>
                     </div>
                     <Bar value={count / total} />
@@ -159,7 +168,7 @@ export function InsightsQuestionPanel({
           </div>
 
           <div className="rounded border border-border/40 p-3">
-            <div className="text-xs font-medium mb-2">Citation status mix</div>
+            <div className="text-xs font-medium mb-2">{t("citationStatusMix")}</div>
             <div className="space-y-2 text-xs">
               {(
                 [
@@ -170,10 +179,16 @@ export function InsightsQuestionPanel({
                 ] as const
               ).map((status) => {
                 const count = questionInsights.citationStatusMix[status];
+                const citationLabels: Record<string, string> = {
+                  grounded: tc("grounded"),
+                  best_effort: tc("bestEffort"),
+                  insufficient_evidence: tc("insufficientEvidence"),
+                  extraction_error: tc("extractionError"),
+                };
                 return (
                   <div key={status} className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span>{status.replace("_", " ")}</span>
+                      <span>{citationLabels[status]}</span>
                       <span>{count}</span>
                     </div>
                     <Bar value={count / total} />
@@ -189,8 +204,8 @@ export function InsightsQuestionPanel({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-medium">
             {isArrayMode && arrayView === "entities"
-              ? "Top entities"
-              : "Answer distribution"}
+              ? t("topEntities")
+              : t("answerDistribution")}
           </div>
           {isArrayMode ? (
             <div className="flex items-center gap-2">
@@ -200,7 +215,7 @@ export function InsightsQuestionPanel({
                 variant={arrayView === "entities" ? "default" : "outline"}
                 onClick={() => setArrayView("entities")}
               >
-                Top entities
+                {t("topEntities")}
               </Button>
               <Button
                 type="button"
@@ -208,7 +223,7 @@ export function InsightsQuestionPanel({
                 variant={arrayView === "raw" ? "default" : "outline"}
                 onClick={() => setArrayView("raw")}
               >
-                Raw answers
+                {t("rawAnswers")}
               </Button>
             </div>
           ) : null}
@@ -217,7 +232,7 @@ export function InsightsQuestionPanel({
         {isArrayMode && arrayView === "entities" ? (
           entityDistribution.length === 0 ? (
             <div className="text-sm text-muted-foreground">
-              No entity-level values are available for this question yet.
+              {t("noEntityValues")}
             </div>
           ) : (
             <div className="space-y-3">
@@ -226,13 +241,13 @@ export function InsightsQuestionPanel({
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="truncate">
                       {entity.entity}
-                      {entity.generic ? " (generic)" : ""}
+                      {entity.generic ? ` ${t("genericSuffix")}` : ""}
                     </span>
                     <span className="text-muted-foreground">{entity.count}</span>
                   </div>
                   <Bar value={entity.count / total} />
                   <div className="text-[11px] text-muted-foreground">
-                    grounded {pct(entity.groundedRate || 0)} · avg conf{" "}
+                    {tc("grounded").toLowerCase()} {pct(entity.groundedRate || 0)} · {t("avgConf")}{" "}
                     {Math.round((entity.avgConfidence || 0) * 100)}%
                   </div>
                 </div>
@@ -241,7 +256,7 @@ export function InsightsQuestionPanel({
           )
         ) : rawAnswerDistribution.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            No answer values available for this question yet.
+            {t("noAnswerValues")}
           </div>
         ) : (
           <div className="space-y-3">

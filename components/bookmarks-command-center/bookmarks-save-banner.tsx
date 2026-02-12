@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,9 @@ import { appToast } from "@/lib/toast";
 import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksSaveBanner() {
+  const tb = useTranslations("bookmarksPage");
+  const tc = useTranslations("common");
+  const tv = useTranslations("validation");
   const [name, setName] = useState("");
   const [isDismissed, setIsDismissed] = useState(false);
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -33,7 +37,7 @@ export function BookmarksSaveBanner() {
     const trimmedName = name.trim();
 
     if (!suggestedQuery.trim()) {
-      appToast.validation.failed("No query to save.");
+      appToast.validation.failed(tv("noQueryToSave"));
       return;
     }
 
@@ -77,10 +81,10 @@ export function BookmarksSaveBanner() {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-              Save Current Search as Bookmark
+              {tb("saveCurrentSearch")}
             </h3>
             <p className="text-xs text-emerald-700 dark:text-emerald-300">
-              Save your search query for quick access later
+              {tb("saveSearchDescription")}
             </p>
           </div>
         </div>
@@ -106,13 +110,13 @@ export function BookmarksSaveBanner() {
             "text-emerald-700 dark:text-emerald-300",
             "focus:border-emerald-400 dark:focus:border-emerald-600"
           )}
-          placeholder="Edit the query that will be saved as bookmark..."
+          placeholder={tb("editQueryPlaceholder")}
         />
 
         {/* Name input and save button */}
         <div className="flex gap-3">
           <Input
-            placeholder="Enter bookmark name (e.g., my-search)"
+            placeholder={tb("enterBookmarkName")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             className={cn(
@@ -127,7 +131,7 @@ export function BookmarksSaveBanner() {
             className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 gap-1.5"
           >
             <Save className="h-4 w-4" />
-            Save
+            {tc("save")}
           </Button>
         </div>
       </div>

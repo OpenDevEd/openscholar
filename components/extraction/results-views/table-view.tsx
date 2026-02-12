@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslations } from "next-intl";
 import {
   Table,
   TableBody,
@@ -47,6 +48,8 @@ export const TableView = memo(function TableView({
   searchQuery = '',
   onOpenCitationPanel,
 }: TableViewProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const allSelected = papers.length > 0 && papers.every(p => selectedIds.has(p._id));
   const someSelected = papers.some(p => selectedIds.has(p._id)) && !allSelected;
 
@@ -81,7 +84,7 @@ export const TableView = memo(function TableView({
                   />
                 </TableHead>
                 <TableHead className="sticky left-0 w-[320px] min-w-[320px] bg-card/95 backdrop-blur-sm font-medium text-foreground">
-                  Paper
+                  {tc("paper")}
                 </TableHead>
                 {questions.map((q) => (
                   <TableHead
@@ -124,8 +127,8 @@ export const TableView = memo(function TableView({
                   paper.status !== "download_failed";
                 const abstractLabel =
                   !paper.isOpenAccess && !hasPdfSource
-                    ? "Abstract Only"
-                    : "Abstract";
+                    ? tc("abstractOnly")
+                    : tc("abstract");
                 const showNoContent =
                   paper.status === "download_failed" && !hasAbstract;
                 const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
@@ -185,7 +188,7 @@ export const TableView = memo(function TableView({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
                             >
-                              No Content
+                              {tc("noContent")}
                             </Badge>
                           ) : null}
                           {paper.isOpenAccess && (
@@ -193,7 +196,7 @@ export const TableView = memo(function TableView({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
                             >
-                              Open Access
+                              {tc("openAccess")}
                             </Badge>
                           )}
                           {paper.isIndexed || paper.ragEntryId ? (
@@ -201,7 +204,7 @@ export const TableView = memo(function TableView({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
                             >
-                              Indexed
+                              {tc("indexed")}
                             </Badge>
                           ) : null}
                           {paper.pdfContentUsed ? (
@@ -209,7 +212,7 @@ export const TableView = memo(function TableView({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
                             >
-                              PDF Used
+                              {tc("pdfUsed")}
                             </Badge>
                           ) : null}
                           {showAbstractBadge ? (
@@ -225,7 +228,7 @@ export const TableView = memo(function TableView({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
                             >
-                              Reviewed {reviewedCount}/{paper.results.length}
+                              {t("reviewed", { count: reviewedCount, total: paper.results.length })}
                             </Badge>
                           ) : null}
                         </div>
@@ -303,6 +306,8 @@ const ResultCell = memo(function ResultCell({
   searchQuery?: string;
   onCite?: () => void;
 }) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   if (!result) {
     return <span className="text-muted-foreground/30 text-xs">—</span>;
   }
@@ -347,18 +352,18 @@ const ResultCell = memo(function ResultCell({
               variant="default"
               className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
             >
-              Yes
+              {tc("yes")}
             </Badge>
           ) : answer === false ? (
             <Badge
               variant="secondary"
               className="font-normal bg-muted text-muted-foreground hover:bg-muted/80"
             >
-              No
+              {tc("no")}
             </Badge>
           ) : (
             <Badge variant="outline" className="font-normal text-muted-foreground">
-              Unknown
+              {tc("unknown")}
             </Badge>
           )
         ) : Array.isArray(answer) ? (
@@ -399,27 +404,27 @@ const ResultCell = memo(function ResultCell({
         )}
         {citationStatus === "grounded" ? (
           <Badge variant="outline" className="text-[10px] font-medium">
-            Grounded
+            {tc("grounded")}
           </Badge>
         ) : null}
         {citationStatus === "best_effort" ? (
           <Badge variant="outline" className="text-[10px] font-medium">
-            Best effort
+            {tc("bestEffort")}
           </Badge>
         ) : null}
         {citationStatus === "insufficient_evidence" ? (
           <Badge variant="outline" className="text-[10px] font-medium">
-            Insufficient evidence
+            {tc("insufficientEvidence")}
           </Badge>
         ) : null}
         {citationStatus === "extraction_error" ? (
           <Badge variant="outline" className="text-[10px] font-medium">
-            Extraction error
+            {tc("extractionError")}
           </Badge>
         ) : null}
         {reviewLabel && reviewState !== "unreviewed" ? (
           <Badge variant="outline" className="text-[10px] font-medium">
-            {reviewLabel}
+            {t(reviewLabel)}
           </Badge>
         ) : null}
 
@@ -437,7 +442,7 @@ const ResultCell = memo(function ResultCell({
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4 text-xs leading-relaxed">
                 <div className="space-y-1">
-                  <h4 className="font-medium">Reasoning</h4>
+                  <h4 className="font-medium">{tc("reasoning")}</h4>
                   <p
                     className="text-muted-foreground"
                     dangerouslySetInnerHTML={{
@@ -455,7 +460,7 @@ const ResultCell = memo(function ResultCell({
               size="icon"
               onClick={onCite}
               className="h-5 w-5 text-muted-foreground/60 hover:text-foreground transition-colors"
-              title="View citation"
+              title={tc("viewCitation")}
             >
               <Quote className="h-3 w-3" />
             </Button>

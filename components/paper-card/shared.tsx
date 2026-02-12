@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useScreening } from "./hooks";
 import { useUIStore } from "@/lib/store";
+import { useTranslations } from "next-intl";
 
 // ==================== Types ====================
 
@@ -106,6 +107,7 @@ export function TranslationToggle({
   setShowTranslated,
   variant = "full",
 }: TranslationToggleProps) {
+  const tc = useTranslations("common");
   if (!selectedLanguage || selectedLanguage === "en") return null;
   if (translatedContent && translatedContent.isAlreadyInEnglish) return null;
 
@@ -114,7 +116,7 @@ export function TranslationToggle({
     if (!translatedContent || translatedContent.sourceLanguage !== selectedLanguage) {
       if (isTranslating) {
         return (
-          <div className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30" title="Translating...">
+          <div className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30" title={tc("translating")}>
             <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
           </div>
         );
@@ -134,7 +136,7 @@ export function TranslationToggle({
             ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
             : "bg-muted text-muted-foreground hover:bg-muted/80"
         )}
-        title={showTranslated ? "Show Original" : "Show English"}
+        title={showTranslated ? tc("showOriginal") : tc("showEnglish")}
       >
         {showTranslated ? "EN" : "原"}
       </button>
@@ -147,7 +149,7 @@ export function TranslationToggle({
       {isTranslating && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-          <span>Translating...</span>
+          <span>{tc("translating")}</span>
         </div>
       )}
 
@@ -161,7 +163,7 @@ export function TranslationToggle({
             }}
             className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
           >
-            {showTranslated ? "Show Original" : "Show English"}
+            {showTranslated ? tc("showOriginal") : tc("showEnglish")}
           </button>
         )}
     </div>
@@ -177,6 +179,8 @@ export function ScreeningResponses({
   expandShortcut?: string;
   variant?: "default" | "mobile" | "icons-only";
 }) {
+  const tp = useTranslations("paperCard");
+  const tc = useTranslations("common");
   const {
     screeningQuestions,
     myExistingResponses,
@@ -282,7 +286,7 @@ export function ScreeningResponses({
           }`}
         >
           <Table className="h-3 w-3" />
-          {showExpandedView ? "Hide" : "Details"}
+          {showExpandedView ? tc("hide") : tc("details")}
           {expandShortcut && (
             <span className="text-xs bg-black/10 dark:bg-white/10 px-1 rounded hidden md:inline">
               {expandShortcut.toUpperCase()}
@@ -296,7 +300,7 @@ export function ScreeningResponses({
         <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
           <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <Table className="h-4 w-4" />
-            Screening Responses
+            {tp("screeningResponses")}
           </h4>
 
           <div className={variant === "mobile" ? "overflow-hidden" : "overflow-x-auto"}>
@@ -307,10 +311,10 @@ export function ScreeningResponses({
                     #
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">
-                    Question
+                    {tc("question")}
                   </th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">
-                    Response
+                    {tc("response")}
                   </th>
                 </tr>
               </thead>
@@ -470,6 +474,7 @@ export function OpenAccessBadge({
   oaUrl?: string;
   compact?: boolean;
 }) {
+  const tc = useTranslations("common");
   if (!isOA || !oaUrl) return null;
 
   if (compact) {
@@ -486,7 +491,7 @@ export function OpenAccessBadge({
           }
         }}
         className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
-        title="Open Access PDF"
+        title={tc("openAccessPdf")}
       >
         <FileText className="h-4 w-4" />
       </div>
@@ -505,10 +510,10 @@ export function OpenAccessBadge({
         }
       }}
       className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
-      title="Open Access PDF"
+      title={tc("openAccessPdf")}
     >
       <FileText className="h-4 w-4" />
-      <span>PDF</span>
+      <span>{tc("pdf")}</span>
     </Button>
   );
 }
@@ -617,6 +622,7 @@ export function JournalLine({
   biblio?: { volume?: string; issue?: string; first_page?: string; last_page?: string };
   className?: string;
 }) {
+  const tp = useTranslations("paperCard");
   if (!source?.display_name) return null;
 
   return (
@@ -624,11 +630,11 @@ export function JournalLine({
       <BookOpen className="h-4 w-4 flex-shrink-0 mt-0.5" />
       <span className="italic line-clamp-1">
         {source.display_name}
-        {biblio?.volume && `, Vol. ${biblio.volume}`}
+        {biblio?.volume && `, ${tp("vol")} ${biblio.volume}`}
         {biblio?.issue && ` (${biblio.issue})`}
         {biblio?.first_page && (
           <>
-            {`, pp. ${biblio.first_page}`}
+            {`, ${tp("pp")} ${biblio.first_page}`}
             {biblio?.last_page && `-${biblio.last_page}`}
           </>
         )}

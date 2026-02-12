@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface SmartPaginationProps {
   currentPage: number;
@@ -31,6 +32,7 @@ export function SmartPagination({
   totalCount,
   filteredCount,
 }: SmartPaginationProps) {
+  const t = useTranslations('pagination');
   const startIdx = (currentPage - 1) * pageSize + 1;
   const endIdx = Math.min(currentPage * pageSize, filteredCount);
 
@@ -151,10 +153,10 @@ export function SmartPagination({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="25">25 per page</SelectItem>
-          <SelectItem value="50">50 per page</SelectItem>
-          <SelectItem value="100">100 per page</SelectItem>
-          <SelectItem value="200">200 per page</SelectItem>
+          <SelectItem value="25">{t('perPage', { count: 25 })}</SelectItem>
+          <SelectItem value="50">{t('perPage', { count: 50 })}</SelectItem>
+          <SelectItem value="100">{t('perPage', { count: 100 })}</SelectItem>
+          <SelectItem value="200">{t('perPage', { count: 200 })}</SelectItem>
         </SelectContent>
       </Select>
     </div>

@@ -1,25 +1,32 @@
-import { Metadata } from "next";
 import PageContent from '@/components/PageContent';
 import { PageWrapper } from '@/components/PageWrapper';
+import { getTranslations } from 'next-intl/server';
+import { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "OpenScholar - Academic Paper Search",
-  alternates: {
-    canonical: "https://openscholar.ai",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('metadata');
+  
+  return {
+    title: t('defaultTitle'),
+    alternates: {
+      canonical: t('siteUrl'),
+    },
+  };
+}
 
-export default function Home() {
+export default async function Home() {
+  const t = await getTranslations('metadata');
+  
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "OpenScholar",
-    "url": "https://openscholar.ai",
+    "name": t('siteName'),
+    "url": t('siteUrl'),
     "potentialAction": {
       "@type": "SearchAction",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": "https://openscholar.ai/results?q={search_term_string}"
+        "urlTemplate": `${t('siteUrl')}/results?q={search_term_string}`
       },
       "query-input": "required name=search_term_string"
     }

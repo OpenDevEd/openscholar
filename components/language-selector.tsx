@@ -16,6 +16,7 @@ import {
 import { Languages } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
+import { useTranslations } from "next-intl";
 
 export { languageOptions } from "@/lib/ai/core/languages";
 
@@ -34,6 +35,7 @@ export function LanguageSelector({
   className,
   placeholder = "Language",
 }: LanguageSelectorProps) {
+  const tf = useTranslations("searchFilters");
   const selectedLanguage = languageOptions.find((lang) => lang.code === value);
 
   return (
@@ -87,7 +89,7 @@ export function LanguageSelector({
         </Select>
       </TooltipTrigger>
       <TooltipContent>
-        <p>Select search language</p>
+        <p>{tf("selectSearchLanguage")}</p>
       </TooltipContent>
     </Tooltip>
   );

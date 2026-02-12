@@ -19,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useTranslations } from "next-intl";
 
 interface StatusFilterProps {
   selected: Set<string>;
@@ -37,6 +38,7 @@ const options = [
 ];
 
 export function StatusFilter({ selected, onChange }: StatusFilterProps) {
+  const t = useTranslations('filters');
   const toggleStatus = (id: string) => {
     const newSet = new Set(selected);
     if (newSet.has(id)) {
@@ -62,7 +64,7 @@ export function StatusFilter({ selected, onChange }: StatusFilterProps) {
       </PopoverTrigger>
       <PopoverContent className="w-64">
         <div className="space-y-2">
-          <Label>Filter by Status</Label>
+          <Label>{t('filterByStatus')}</Label>
           {options.map(option => {
             const Icon = option.icon;
             return (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Download } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExportDialog } from "./export-dialog";
@@ -21,6 +22,8 @@ export function BulkActionsBar({
   questions,
   onClearSelection,
 }: BulkActionsBarProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   return (
@@ -36,8 +39,7 @@ export function BulkActionsBar({
             <Card className="shadow-2xl border-primary/20 py-4">
               <CardContent className="flex items-center gap-4 px-6">
                 <span className="text-sm font-medium">
-                  {selectedIds.size} paper
-                  {selectedIds.size !== 1 ? "s" : ""} selected
+                  {t("nPapersSelected", { count: selectedIds.size })}
                 </span>
                 <div className="h-6 w-px bg-border" />
                 <Button
@@ -45,7 +47,7 @@ export function BulkActionsBar({
                   onClick={() => setExportDialogOpen(true)}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Export Selected
+                  {t("exportSelected")}
                 </Button>
                 <div className="h-6 w-px bg-border" />
                 <Button
@@ -53,7 +55,7 @@ export function BulkActionsBar({
                   variant="ghost"
                   onClick={onClearSelection}
                 >
-                  Clear
+                  {tc("clear")}
                 </Button>
               </CardContent>
             </Card>
@@ -66,7 +68,7 @@ export function BulkActionsBar({
         onOpenChange={setExportDialogOpen}
         papers={papers}
         questions={questions}
-        label={`${selectedIds.size} selected paper${selectedIds.size !== 1 ? "s" : ""}`}
+        label={tc("paperCount", { count: selectedIds.size })}
       />
     </>
   );

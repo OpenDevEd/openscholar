@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, LucideIcon } from "lucide-react"
 
@@ -39,6 +40,7 @@ export function PageHeader({
   stats, // Keep for backwards compatibility but ignore
   infoItems = []
 }: PageHeaderProps) {
+  const t = useTranslations();
   return (
     <div className="mb-8">
       {/* Header content - consistent layout for mobile and desktop */}
@@ -53,7 +55,7 @@ export function PageHeader({
               className="gap-2 flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back</span>
+              <span className="hidden sm:inline">{t("common.back")}</span>
             </Button>
           )}
           

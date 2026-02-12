@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { Clock, Search, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useSearchHistoryStore, useUIStore } from "@/lib/store";
 import { restoreFromHistory } from "@/lib/search/actions";
@@ -15,7 +16,7 @@ import {
   triggerFileUpload,
 } from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
-import { toasts } from "@/lib/toast-utils";
+import { appToast } from "@/lib/toast";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { SearchResult, HistorySortBy } from "@/lib/types";
@@ -29,14 +30,17 @@ import {
 import { HistoryItem } from "./history-item";
 import posthog from "posthog-js";
 
-const SORT_OPTIONS: { value: HistorySortBy; label: string }[] = [
-  { value: "recent", label: "Recent" },
-  { value: "oldest", label: "Oldest" },
-  { value: "most", label: "Most Results" },
-  { value: "least", label: "Least Results" },
-];
-
 export function HistoryCommandCenter() {
+  const th = useTranslations("historyPage");
+  const tc = useTranslations("common");
+  const tcc = useTranslations("commandCenter");
+
+  const SORT_OPTIONS: { value: HistorySortBy; label: string }[] = [
+    { value: "recent", label: tc("recent") },
+    { value: "oldest", label: tc("oldest") },
+    { value: "most", label: th("mostResults") },
+    { value: "least", label: th("leastResults") },
+  ];
   const router = useRouter();
   const [searchFilter, setSearchFilter] = useState("");
   const [currentPage, setCurrentPage] = useQueryState(
@@ -136,9 +140,9 @@ export function HistoryCommandCenter() {
         "search_history.json",
         "json",
       );
-      toasts.download.success(data.length, "search entries", "JSON");
+      appToast.io.downloadSuccess(data.length, "search entries", "JSON");
     } catch {
-      toasts.download.error("JSON");
+      appToast.io.downloadFailed("JSON");
     }
   };
 
@@ -154,9 +158,9 @@ export function HistoryCommandCenter() {
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "search_history.csv", "csv");
-      toasts.download.success(data.length, "search entries", "CSV");
+      appToast.io.downloadSuccess(data.length, "search entries", "CSV");
     } catch {
-      toasts.download.error("CSV");
+      appToast.io.downloadFailed("CSV");
     }
   };
 
@@ -166,12 +170,12 @@ export function HistoryCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
       if (importedCount > 0) {
-        toasts.upload.success(importedCount, "search entries");
+        appToast.io.uploadSuccess(importedCount, "search entries");
       } else {
-        toasts.upload.noValid("search entries");
+        appToast.io.uploadNoValid("search entries");
       }
     } catch (error) {
-      toasts.upload.error(error);
+      appToast.io.uploadFailed("JSON", error);
     }
   };
 
@@ -181,23 +185,23 @@ export function HistoryCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
       if (importedCount > 0) {
-        toasts.upload.success(importedCount, "search entries");
+        appToast.io.uploadSuccess(importedCount, "search entries");
       } else {
-        toasts.upload.noValid("search entries");
+        appToast.io.uploadNoValid("search entries");
       }
     } catch (error) {
-      toasts.upload.error(error);
+      appToast.io.uploadFailed("CSV", error);
     }
   };
 
   const handleClearAll = () => {
     showConfirmation({
-      title: "Clear All Search History",
-      message: `Are you sure you want to delete all ${searchHistory.length} search entries? This action cannot be undone.`,
-      confirmText: "Clear All",
+      title: th("clearAllHistoryTitle"),
+      message: th("clearAllHistoryConfirm", { count: searchHistory.length }),
+      confirmText: tc("clearAll"),
       onConfirm: () => {
         clearSearchHistory();
-        toasts.history.cleared();
+        appToast.entity.cleared("search history", searchHistory.length);
       },
     });
   };
@@ -207,11 +211,12 @@ export function HistoryCommandCenter() {
       {/* Header */}
       <CommandCenterHeader
         icon={Clock}
-        title="Search History"
-        description="View and revisit your previous searches"
+        title={tc("searchHistory")}
+        description={th("description")}
         count={sortedHistory.length}
         singular="search"
         plural="searches"
+        countLabel={tcc("searchCount", { count: sortedHistory.length })}
       />
 
       {/* Toolbar */}
@@ -223,13 +228,13 @@ export function HistoryCommandCenter() {
         onSortChange={setHistorySortBy}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
-        placeholder="Search your history..."
+        placeholder={th("searchPlaceholder")}
         onDownloadJSON={handleDownloadJSON}
         onDownloadCSV={handleDownloadCSV}
         onUploadJSON={handleUploadJSON}
         onUploadCSV={handleUploadCSV}
         onClearAll={handleClearAll}
-        clearTooltip="Clear all history"
+        clearTooltip={th("clearAllHistory")}
         totalCount={searchHistory.length}
       />
 
@@ -240,13 +245,13 @@ export function HistoryCommandCenter() {
           viewMode={historyViewMode}
           keyExtractor={(item) => item.id}
           emptyIcon={Clock}
-          emptyTitle="No search history yet"
-          emptyDescription="Start searching for academic papers and your search history will appear here."
+          emptyTitle={th("noHistoryYet")}
+          emptyDescription={th("noHistoryDescription")}
           emptyAction={
             <Button asChild className="gap-2">
               <Link href="/">
                 <Search className="h-4 w-4" />
-                Start a Search
+                {th("startSearch")}
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

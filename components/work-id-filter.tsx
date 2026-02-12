@@ -8,6 +8,7 @@ import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { appToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 import { Quote, Network, ExternalLink, X, type LucideIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'cited_by' | 'related';
@@ -62,6 +63,8 @@ export function WorkIdFilter({
   icon,
   colorScheme 
 }: WorkIdFilterProps) {
+  const t = useTranslations("workId");
+  
   const {
     citesItemId,
     citedByItemId,
@@ -189,7 +192,7 @@ export function WorkIdFilter({
         <div className="relative">
           <Input
             id={`${type}-input`}
-            placeholder="e.g., W2741809807 or https://openalex.org/W2741809807"
+            placeholder={t("placeholder")}
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyPress={handleKeyPress}

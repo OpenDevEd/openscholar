@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { formatTimeAgo } from "@/lib/format";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslations, useLocale } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
 import { QueryText } from "@/components/ui/query-text";
 
@@ -39,6 +40,8 @@ export function QueryEvolution({
   currentQuery,
   className,
 }: QueryEvolutionProps) {
+  const t = useTranslations("historyPage");
+  const locale = useLocale();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Don't render if there's only one or no queries
@@ -71,7 +74,7 @@ export function QueryEvolution({
 
         {isExpanded ? (
           <span className="text-[10px] text-muted-foreground font-medium">
-            Query Evolution
+            {t("queryEvolution")}
           </span>
         ) : (
           <div className="flex-1 min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -138,7 +141,7 @@ export function QueryEvolution({
                         )}
                       />
                       <span className="text-[9px] pl-2 text-muted-foreground/50">
-                        {formatTimeAgo(entry.timestamp)}
+                        {formatTimeAgo(entry.timestamp, locale)}
                       </span>
                     </div>
                   </motion.div>

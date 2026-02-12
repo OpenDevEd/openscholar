@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CommandCenterMode } from "../index";
+import { useTranslations } from "next-intl";
 
 const tabSpring = {
   type: "spring" as const,
@@ -19,12 +20,13 @@ interface ModeTabsProps {
   disabled?: boolean;
 }
 
-const tabs: { id: CommandCenterMode; label: string; icon: typeof Search }[] = [
-  { id: "search", label: "Search", icon: Search },
-  { id: "adjust", label: "Adjust", icon: SlidersHorizontal },
-];
-
 export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
+  const ts = useTranslations("search");
+  const tc = useTranslations("common");
+  const tabs: { id: CommandCenterMode; label: string; icon: typeof Search }[] = [
+    { id: "search", label: tc("search"), icon: Search },
+    { id: "adjust", label: ts("adjustTab"), icon: SlidersHorizontal },
+  ];
   return (
     <div className="relative flex bg-muted/50 rounded-lg p-1 gap-0.5">
       {tabs.map((tab) => {

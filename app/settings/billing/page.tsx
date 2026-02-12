@@ -5,7 +5,8 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { useTranslations, useLocale } from "next-intl";
+import { appToast } from "@/lib/toast";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { useRouter } from "next/navigation";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -13,6 +14,9 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 
 export default function BillingPage() {
+  const t = useTranslations("billingPage");
+  const tc = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
@@ -51,12 +55,12 @@ export default function BillingPage() {
             setErrorMsg(null);
           } else {
             console.error("Stripe fetch error:", result.error);
-            setErrorMsg(result.error || "Failed to load details");
+            setErrorMsg(result.error || t("failedToLoadDetails"));
           }
         })
         .catch((err) => {
           console.error("Failed to fetch details", err);
-          setErrorMsg("Network error fetching details");
+          setErrorMsg(t("networkErrorFetchingDetails"));
         })
         .finally(() => setIsFetchingDetails(false));
     } else if (subscription && subscription.plan === "free") {
@@ -80,7 +84,7 @@ export default function BillingPage() {
       const { url } = await createPortalSession({});
       if (url) window.location.href = url;
     } catch (error) {
-      toast.error("Failed to redirect to billing portal");
+      appToast.billing.portalFailed();
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -88,7 +92,7 @@ export default function BillingPage() {
   };
 
   const handleCancelImmediately = async () => {
-    if (!confirm("Are you sure you want to cancel immediately? You will lose access to paid features instantly.")) return;
+    if (!confirm(t("cancelConfirm"))) return;
     
     try {
       setIsLoading(true);
@@ -98,10 +102,10 @@ export default function BillingPage() {
       setDetails(null);
       setErrorMsg(null);
       
-      toast.success("Subscription cancelled immediately");
+      appToast.billing.cancelled();
       // Full state update happens automatically via Convex reactivity
     } catch (error) {
-      toast.error("Failed to cancel subscription");
+      appToast.billing.cancelFailed();
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -118,8 +122,8 @@ export default function BillingPage() {
         <AuthStatePanel
           variant="loading"
           loadingStyle="panel"
-          title="Loading billing details"
-          description="Fetching your subscription and credit balance."
+          title={t("loadingBillingDetails")}
+          description={t("fetchingSubscription")}
         />
       </div>
     );
@@ -136,9 +140,17 @@ export default function BillingPage() {
   }
   const isFree = currentPlan === "free";
 
+  const statusLabels: Record<string, string> = {
+    active: tc("active"),
+    inactive: tc("inactive"),
+    past_due: t("statusPastDue"),
+    canceled: t("statusCanceled"),
+    trialing: t("statusTrialing"),
+  };
+
   // Format currency
   const formatPrice = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: currency.toUpperCase(),
     }).format(amount / 100);
@@ -150,10 +162,10 @@ export default function BillingPage() {
       <div className="px-6 py-5 border-b border-border/40 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            Billing & Plans
+            {t("billingAndPlans")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Manage your subscription and usage.
+            {t("manageSubscription")}
           </p>
         </div>
         <Button
@@ -163,7 +175,7 @@ export default function BillingPage() {
           size="sm"
         >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isFree ? "Upgrade Plan" : "Manage Subscription"}
+          {isFree ? t("upgradePlan") : t("manageSubscriptionBtn")}
         </Button>
       </div>
 
@@ -173,19 +185,19 @@ export default function BillingPage() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
             <CreditCard className="w-4 h-4" />
-            <span>Subscription</span>
+            <span>{t("subscription")}</span>
           </div>
 
           <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-border/40 min-h-[80px]">
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold capitalize">
-                  {currentPlan} Plan
+                  {t("planLabel", { plan: currentPlan })}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${status === "active" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}
                 >
-                  {status}
+                  {statusLabels[status] ?? status}
                 </span>
               </div>
               {isFetchingDetails ? (
@@ -200,7 +212,11 @@ export default function BillingPage() {
                       {formatPrice(details.amount, details.currency)}
                     </div>
                     <div className="text-xs text-muted-foreground uppercase">
-                      / {details.interval}
+                      {t("perInterval", {
+                        interval: details.interval === "year"
+                          ? t("intervalYear")
+                          : t("intervalMonth"),
+                      })}
                     </div>
                   </div>
                 )
@@ -236,8 +252,8 @@ export default function BillingPage() {
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span className="text-muted-foreground">
                           {details.cancelAtPeriodEnd
-                            ? "Expires on"
-                            : "Renews on"}
+                            ? t("expiresOn")
+                            : t("renewsOn")}
                         </span>
                         <span className="font-medium">
                           {new Date(
@@ -267,7 +283,7 @@ export default function BillingPage() {
             {isFree && (
               <div className="bg-background/50 p-4 text-sm text-muted-foreground flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
-                Upgrade to Pro to unlock higher limits and features.
+                {t("upgradeToProDescription")}
               </div>
             )}
           </div>
@@ -287,15 +303,15 @@ export default function BillingPage() {
         {!isFree && (
           <div className="pt-8 border-t border-border/40 space-y-4">
             <h3 className="text-sm font-medium text-red-600 uppercase tracking-wider">
-              Danger Zone
+              {t("dangerZone")}
             </h3>
             <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <div className="font-medium text-red-900 dark:text-red-200">
-                  Cancel Subscription Immediately
+                  {t("cancelSubscriptionTitle")}
                 </div>
                 <div className="text-sm text-red-700/80 dark:text-red-300/70 mt-1">
-                  This will immediately end your subscription and downgrade you to the Free plan.
+                  {t("cancelDescription")}
                 </div>
               </div>
               <Button
@@ -304,7 +320,7 @@ export default function BillingPage() {
                 onClick={handleCancelImmediately}
                 disabled={isLoading}
               >
-                Cancel Immediately
+                {t("cancelImmediately")}
               </Button>
             </div>
           </div>

@@ -26,6 +26,7 @@ import {
   getModelsForProvider,
 } from "@/lib/ai-models";
 import { fetchOpenRouterModels } from "@/app/actions/openrouter";
+import { useTranslations } from "next-intl";
 import { appToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
@@ -101,6 +102,9 @@ export default function AISettingsPage() {
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelSectionExpanded, setModelSectionExpanded] = useState(false);
 
+  const t = useTranslations("aiSettings");
+  const tc = useTranslations("common");
+
   const providerConfig = getProviderConfig(provider);
 
   const handleProviderChange = (newProvider: AIProvider) => {
@@ -113,14 +117,14 @@ export default function AISettingsPage() {
     setModel(defaultModel);
     setModels([]);
     setModelSectionExpanded(false);
-    appToast.entity.updated("Provider", newProvider);
+    appToast.entity.updated(tc("provider"), newProvider);
   };
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel);
     setModelSectionExpanded(false);
     setModelSearch("");
-    appToast.entity.updated("Model", newModel);
+    appToast.entity.updated(tc("model"), newModel);
   };
 
   const handleApiKeyChange = (value: string) => {
@@ -135,7 +139,7 @@ export default function AISettingsPage() {
           const openRouterModels = await fetchOpenRouterModels();
           setModels(openRouterModels);
         } catch (error) {
-          appToast.ai.failed("Loading OpenRouter models", error);
+          appToast.ai.failed(t("loadingOpenRouterModels"), error);
         } finally {
           setLoadingModels(false);
         }
@@ -159,16 +163,17 @@ export default function AISettingsPage() {
   const filteredGroupedModels: Record<string, AIModel[]> = {};
   filteredModels.forEach((m) => {
     if (provider === "openrouter") {
-      const category = m.category || "Other";
+      const category = m.category || tc("other");
       if (!filteredGroupedModels[category]) {
         filteredGroupedModels[category] = [];
       }
       filteredGroupedModels[category].push(m);
     } else {
-      if (!filteredGroupedModels["All"]) {
-        filteredGroupedModels["All"] = [];
+      const allLabel = tc("all");
+      if (!filteredGroupedModels[allLabel]) {
+        filteredGroupedModels[allLabel] = [];
       }
-      filteredGroupedModels["All"].push(m);
+      filteredGroupedModels[allLabel].push(m);
     }
   });
 
@@ -211,7 +216,7 @@ export default function AISettingsPage() {
     {
       id: "openrouter",
       name: "OpenRouter",
-      family: "300+ Models",
+      family: t("models300Plus"),
       icon: OpenRouterIcon,
       color: "text-purple-500",
       borderColor: "border-l-purple-500",
@@ -226,10 +231,10 @@ export default function AISettingsPage() {
       {/* Header */}
       <div className="px-6 py-5 border-b border-border/40">
         <h2 className="text-lg font-semibold tracking-tight">
-          AI Configuration
+          {t("aiConfiguration")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Configure your AI provider and model preferences
+          {t("configurePreferences")}
         </p>
       </div>
 
@@ -239,7 +244,7 @@ export default function AISettingsPage() {
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
             <Bot className="w-4 h-4" />
-            <span>Mode</span>
+            <span>{tc("mode")}</span>
           </div>
 
           <div className="space-y-3">
@@ -247,7 +252,7 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("local");
-                appToast.entity.updated("Mode", "Using your own API keys");
+                appToast.entity.updated(tc("mode"), t("usingOwnApiKeys"));
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
@@ -269,9 +274,9 @@ export default function AISettingsPage() {
                 )}
               </div>
               <div className="flex-1 text-left">
-                <div className="font-semibold text-base">Use My API Keys</div>
+                <div className="font-semibold text-base">{t("useMyApiKeys")}</div>
                 <div className="text-sm text-muted-foreground">
-                  Bring your own provider & model
+                  {t("bringYourOwn")}
                 </div>
               </div>
             </motion.button>
@@ -280,7 +285,7 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("credits");
-                appToast.entity.updated("Mode", "Using account credits");
+                appToast.entity.updated(tc("mode"), t("usingCredits"));
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
@@ -302,9 +307,9 @@ export default function AISettingsPage() {
                 )}
               </div>
               <div className="flex-1 text-left">
-                <div className="font-semibold text-base">Use Credits</div>
+                <div className="font-semibold text-base">{t("useCredits")}</div>
                 <div className="text-sm text-muted-foreground">
-                  Your account balance
+                  {t("accountBalance")}
                 </div>
               </div>
             </motion.button>
@@ -328,9 +333,7 @@ export default function AISettingsPage() {
               <div className="rounded-xl border border-border/50 bg-muted/30 p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-muted-foreground">
-                  When using credits, AI configuration is managed by us. Your
-                  provider, model, and API key settings are not used in this
-                  mode.
+                  {t("creditsInfoBanner")}
                 </div>
               </div>
             </motion.div>
@@ -345,7 +348,7 @@ export default function AISettingsPage() {
           )}
         >
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <span>Provider</span>
+            <span>{tc("provider")}</span>
           </div>
 
           <div className="space-y-2">
@@ -393,7 +396,7 @@ export default function AISettingsPage() {
           )}
         >
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <span>Model</span>
+            <span>{tc("model")}</span>
           </div>
 
           <div className="space-y-2">
@@ -405,12 +408,12 @@ export default function AISettingsPage() {
             >
               <div className="flex-1 text-left">
                 <div className="font-semibold text-base">
-                  {selectedModel?.name || "Select a model"}
+                  {selectedModel?.name || tc("selectAModel")}
                 </div>
                 {selectedModel && (
                   <div className="text-sm text-muted-foreground">
                     ${selectedModel.pricing.input.toFixed(2)} / $
-                    {selectedModel.pricing.output.toFixed(2)} per 1M tokens
+                    {selectedModel.pricing.output.toFixed(2)} {t("per1MTokens")}
                   </div>
                 )}
               </div>
@@ -439,7 +442,7 @@ export default function AISettingsPage() {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Search models..."
+                          placeholder={t("searchModels")}
                           value={modelSearch}
                           onChange={(e) => setModelSearch(e.target.value)}
                           className="pl-9 h-9"
@@ -452,11 +455,11 @@ export default function AISettingsPage() {
                       {loadingModels ? (
                         <div className="py-8 text-center text-sm text-muted-foreground">
                           <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-2" />
-                          Loading models...
+                          {tc("loadingModels")}
                         </div>
                       ) : filteredModels.length === 0 ? (
                         <div className="py-8 text-center text-sm text-muted-foreground">
-                          No models found
+                          {tc("noModelsFound")}
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -524,14 +527,14 @@ export default function AISettingsPage() {
           )}
         >
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            <span>Credentials</span>
+            <span>{t("credentials")}</span>
           </div>
 
           <div className="space-y-4">
             {/* API Key */}
             <div className="space-y-2">
               <Label htmlFor="api-key" className="text-sm font-medium">
-                API Key
+                {t("apiKey")}
               </Label>
               <Input
                 id="api-key"
@@ -549,7 +552,7 @@ export default function AISettingsPage() {
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  Get your {providerConfig.name} API key
+                  {t("getApiKey", { provider: providerConfig.name })}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>

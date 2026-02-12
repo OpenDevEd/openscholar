@@ -1,4 +1,7 @@
+"use client";
+
 import React from 'react';
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -29,20 +32,24 @@ interface CountrySelectorProps {
   description?: string;
   className?: string;
   triggerClassName?: string;
-  showCountryNames?: boolean; // If true, returns country names instead of codes
-  bypassLimit?: boolean; // If true, bypasses the 100 country limit check
+  showCountryNames?: boolean;
+  bypassLimit?: boolean;
 }
 
 export function CountrySelector({
   selectedRegions,
   onSelectionChange,
-  placeholder = "Select countries or regions",
-  description = "Choose regions or countries",
+  placeholder,
+  description,
   className,
   triggerClassName,
   showCountryNames = false,
   bypassLimit = false
 }: CountrySelectorProps) {
+  const tf = useTranslations("searchFilters");
+  const tc = useTranslations("common");
+  const resolvedPlaceholder = placeholder ?? tf("selectRegionsOrCountries");
+  const resolvedDescription = description ?? tf("chooseRegionsToFilter");
   const [isOpen, setIsOpen] = React.useState(false);
   const [expandedNodes, setExpandedNodes] = React.useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -265,10 +272,10 @@ export function CountrySelector({
             {isSelected ? (
               <>
                 <Check className="h-3 w-3 mr-1" />
-                Selected
+                {tc("selected")}
               </>
             ) : (
-              "Select"
+              tc("select")
             )}
           </Button>
         </div>
@@ -308,21 +315,21 @@ export function CountrySelector({
                     const regions = selectedRegions.filter(id => !(id.length === 2 && COUNTRIES[id]));
                     const countries = selectedRegions.filter(id => id.length === 2 && COUNTRIES[id]);
                     const parts = [];
-                    
+
                     if (regions.length > 0) {
-                      parts.push(`${regions.length} region${regions.length > 1 ? 's' : ''}`);
+                      parts.push(`${regions.length} ${tc("regions")}`);
                     }
                     if (countries.length > 0) {
-                      parts.push(`${countries.length} countr${countries.length > 1 ? 'ies' : 'y'}`);
+                      parts.push(`${countries.length} ${tc("countries")}`);
                     }
-                    
+
                     const displayCount = showCountryNames ? displayData.length : countryData.countries.length;
-                    return parts.length > 0 
-                      ? `${parts.join(' + ')} (${displayCount} ${showCountryNames ? 'countries' : 'codes'} total)`
-                      : "No selections";
+                    return parts.length > 0
+                      ? `${parts.join(' + ')} (${displayCount} ${showCountryNames ? tc("countries") : tc("codes")} ${tc("total")})`
+                      : tc("noSelections");
                   })()
                 ) : (
-                  placeholder
+                  resolvedPlaceholder
                 )}
               </span>
               {countryData.isLimitExceeded && (
@@ -333,14 +340,14 @@ export function CountrySelector({
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0" align="start">
           <div className="p-4 border-b border-border">
-            <h4 className="font-medium">Select Regions or Countries</h4>
+            <h4 className="font-medium">{tf("selectRegionsOrCountries")}</h4>
             <p className="text-sm text-muted-foreground mt-1">
-              {description}
+              {resolvedDescription}
             </p>
             <div className="mt-3 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search countries or regions..."
+                placeholder={tf("searchCountriesPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -354,8 +361,8 @@ export function CountrySelector({
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No matches found</p>
-                  <p className="text-xs mt-1">Try a different search term</p>
+                  <p>{tc("noMatchesFound")}</p>
+                  <p className="text-xs mt-1">{tf("tryDifferentSearch")}</p>
                 </div>
               )}
             </div>
@@ -368,7 +375,7 @@ export function CountrySelector({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">
-              Selected {showCountryNames ? 'countries' : 'regions'}:
+              {tf("selectedItems", { items: showCountryNames ? tc("countries") : tc("regions") })}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -404,7 +411,7 @@ export function CountrySelector({
                   </Badge>
                   {index < selectedRegions.length - 1 && (
                     <span className="text-xs text-muted-foreground font-medium bg-muted px-2 py-1 rounded flex-shrink-0">
-                      OR
+                      {tc("or")}
                     </span>
                   )}
                 </React.Fragment>
@@ -412,9 +419,9 @@ export function CountrySelector({
             })}
           </div>
           <p className="text-xs text-muted-foreground">
-            {showCountryNames 
-              ? `${displayData.length} countries selected for search focus`
-              : `Filtering by ${countryData.countries.length} countries total`
+            {showCountryNames
+              ? tf("countriesSelectedForFocus", { count: displayData.length })
+              : tf("filteringByCountries", { count: countryData.countries.length })
             }
           </p>
         </div>

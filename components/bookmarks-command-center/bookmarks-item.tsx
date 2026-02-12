@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Trash2, Pencil, Check, X, Calendar, Copy, Search } from "lucide-react";
@@ -41,6 +42,8 @@ export function BookmarksItem({
   onCancelEdit,
   onDelete,
 }: BookmarksItemProps) {
+  const tb = useTranslations("bookmarksPage");
+  const tc = useTranslations("common");
   const [editValue, setEditValue] = useState(bookmark.expansion);
   const router = useRouter();
   const idColor = getIdColor(bookmark.name);
@@ -164,7 +167,7 @@ export function BookmarksItem({
                       <Copy className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Copy expansion</TooltipContent>
+                  <TooltipContent>{tb("copyExpansion")}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -178,7 +181,7 @@ export function BookmarksItem({
                       <Search className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Use in search</TooltipContent>
+                  <TooltipContent>{tb("useInSearchTooltip")}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -192,7 +195,7 @@ export function BookmarksItem({
                       <Pencil className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
+                  <TooltipContent>{tc("edit")}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -206,7 +209,7 @@ export function BookmarksItem({
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
+                  <TooltipContent>{tc("delete")}</TooltipContent>
                 </Tooltip>
               </div>
             </>
@@ -251,7 +254,7 @@ export function BookmarksItem({
                 className="text-[10px] opacity-70 mt-1"
                 style={{ color: idColor.text }}
               >
-                bookmark
+                {tc("bookmark")}
               </span>
             </div>
 
@@ -259,7 +262,7 @@ export function BookmarksItem({
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
               {/* Label */}
               <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-                Expands to
+                {tb("expandsTo")}
               </span>
 
               {/* Expansion */}
@@ -278,7 +281,7 @@ export function BookmarksItem({
                       className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
                     >
                       <Check className="h-4 w-4" />
-                      Save
+                      {tc("save")}
                     </Button>
                     <Button
                       size="sm"
@@ -286,7 +289,7 @@ export function BookmarksItem({
                       onClick={handleCancel}
                       className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
                     >
-                      Cancel
+                      {tc("cancel")}
                     </Button>
                   </div>
                 </div>
@@ -320,7 +323,7 @@ export function BookmarksItem({
                       <Copy className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Copy expansion</TooltipContent>
+                  <TooltipContent>{tb("copyExpansion")}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -334,7 +337,7 @@ export function BookmarksItem({
                       <Search className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Use in search</TooltipContent>
+                  <TooltipContent>{tb("useInSearchTooltip")}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -348,7 +351,7 @@ export function BookmarksItem({
                       <Pencil className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
+                  <TooltipContent>{tc("edit")}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -362,7 +365,7 @@ export function BookmarksItem({
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
+                  <TooltipContent>{tc("delete")}</TooltipContent>
                 </Tooltip>
               </div>
             </div>
@@ -425,7 +428,7 @@ export function BookmarksItem({
                 className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
               >
                 <Check className="h-4 w-4" />
-                Save
+                {tc("save")}
               </Button>
               <Button
                 size="sm"
@@ -433,7 +436,7 @@ export function BookmarksItem({
                 onClick={handleCancel}
                 className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
               >
-                Cancel
+                {tc("cancel")}
               </Button>
             </div>
           </div>
@@ -476,7 +479,7 @@ export function BookmarksItem({
                   <Copy className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Copy</TooltipContent>
+              <TooltipContent>{tb("copyExpansion")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -490,7 +493,7 @@ export function BookmarksItem({
                   <Search className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Use in search</TooltipContent>
+              <TooltipContent>{tb("useInSearchTooltip")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -504,7 +507,7 @@ export function BookmarksItem({
                   <Pencil className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Edit</TooltipContent>
+              <TooltipContent>{tc("edit")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -518,7 +521,7 @@ export function BookmarksItem({
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete</TooltipContent>
+              <TooltipContent>{tc("delete")}</TooltipContent>
             </Tooltip>
           </div>
         </div>

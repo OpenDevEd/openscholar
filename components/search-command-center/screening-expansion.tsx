@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Wand2, Loader2, MoreHorizontal, Trash2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,8 @@ interface ScreeningExpansionProps {
 }
 
 export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps) {
+  const t = useTranslations();
+  const tv = useTranslations("validation");
   const [newQuestion, setNewQuestion] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -113,7 +116,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleTestAllQuestions = () => {
     if (screeningQuestions.length === 0) {
-      appToast.validation.warning("No questions to test.");
+      appToast.validation.warning(tv("noQuestionsToTest"));
       return;
     }
 
@@ -127,7 +130,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
 
   const handleClearAllQuestions = () => {
     if (screeningQuestions.length === 0) {
-      appToast.validation.warning("No questions to clear.");
+      appToast.validation.warning(tv("noQuestionsToClear"));
       return;
     }
 
@@ -148,7 +151,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
     }
 
     if (!researchQuestion.trim()) {
-      appToast.validation.failed("No research question available.");
+      appToast.validation.failed(tv("noResearchQuestionAvailable"));
       return;
     }
 
@@ -183,7 +186,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
           `${addedCount} new question${addedCount > 1 ? "s" : ""}`
         );
       } else {
-        appToast.validation.warning("No new questions generated.");
+        appToast.validation.warning(tv("noNewQuestionsGenerated"));
       }
     } catch (error) {
       // Track generation failure
@@ -249,7 +252,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
                 value={newQuestion}
                 onChange={(e) => setNewQuestion(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Add a screening question..."
+                placeholder={t("searchCommand.placeholder.screeningQuestion")}
                 disabled={isAdding || isGenerating}
                 className="flex-1 h-9"
               />
@@ -285,7 +288,7 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
                 ) : (
                   <>
                     <Wand2 className="h-3 w-3 sm:mr-0.5" />
-                    <span className="hidden sm:inline">Generate</span>
+                    <span className="hidden sm:inline">{t("common.generate")}</span>
                   </>
                 )}
               </Button>

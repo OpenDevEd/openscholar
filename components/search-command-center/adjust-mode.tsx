@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
@@ -19,6 +20,7 @@ interface AdjustModeProps {
 }
 
 export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
+  const t = useTranslations();
   const search = useSearch();
 
   // Use the new router hook
@@ -147,8 +149,8 @@ Please enhance this academic search query according to the user's specific instr
       {/* AI Enhancement Input */}
       <form onSubmit={handleAiEnhancement}>
         <FloatingInput
-          label="Enhance with AI"
-          placeholder="e.g., make it more specific about clinical trials..."
+          label={t("searchCommand.enhanceWithAI")}
+          placeholder={t("searchCommand.placeholder.enhance")}
           value={aiInstructions}
           onChange={(e) => setAiInstructions(e.target.value)}
           disabled={isFormDisabled}
@@ -240,7 +242,7 @@ Please enhance this academic search query according to the user's specific instr
           >
             <textarea
               className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-muted-foreground/60 min-h-[60px]"
-              placeholder="No query set..."
+              placeholder={t("searchCommand.noQuerySet")}
               value={editableQuery}
               onChange={(e) => setEditableQuery(e.target.value)}
               disabled={isFormDisabled}

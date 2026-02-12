@@ -15,6 +15,7 @@ import { Clock } from "lucide-react";
 import { UnifiedFilterBadges } from "@/components/ui/filter-display";
 import { QueryEvolution } from "@/components/ui/query-evolution";
 import { QueryText } from "@/components/ui/query-text";
+import { useLocale } from "next-intl";
 
 interface SearchTooltipContentProps {
   id: string;
@@ -63,7 +64,8 @@ export function SearchTooltipContent({
   relatedToItemId,
   queryHistory,
 }: SearchTooltipContentProps) {
-  const timeAgo = formatTimeAgo(createdAt);
+  const locale = useLocale();
+  const timeAgo = formatTimeAgo(createdAt, locale);
 
   // Build filter params for UnifiedFilterBadges
   const filterParams = {

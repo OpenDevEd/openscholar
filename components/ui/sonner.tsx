@@ -98,12 +98,14 @@ function CustomToast({
   title, 
   description, 
   action,
+  confirm,
   closeToast 
 }: { 
   type: keyof typeof toastTypes
   title: string
   description?: string
   action?: { label: string; onClick: () => void; icon?: "settings" | "arrow-right" }
+  confirm?: { confirmText: string; cancelText: string; onConfirm: () => void; onCancel?: () => void; variant?: 'destructive' | 'default' }
   closeToast: () => void
 }) {
   const config = toastTypes[type]
@@ -137,7 +139,7 @@ function CustomToast({
             {description}
           </span>
         )}
-        {action && (
+        {action && !confirm && (
           <button
             onClick={() => {
               action.onClick()
@@ -160,23 +162,59 @@ function CustomToast({
             {action.label}
           </button>
         )}
+        {confirm && (
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={() => {
+                confirm.onCancel?.()
+                closeToast()
+              }}
+              className={cn(
+                "inline-flex items-center justify-center h-7 px-3 text-xs font-medium",
+                "rounded-md border border-border bg-background text-foreground",
+                "hover:bg-accent transition-all duration-150 cursor-pointer",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+            >
+              {confirm.cancelText}
+            </button>
+            <button
+              onClick={() => {
+                confirm.onConfirm()
+                closeToast()
+              }}
+              className={cn(
+                "inline-flex items-center justify-center h-7 px-3 text-xs font-medium",
+                "rounded-md transition-all duration-150 cursor-pointer",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                confirm.variant === 'destructive' 
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              )}
+            >
+              {confirm.confirmText}
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Close button - appears on hover */}
-      <button
-        onClick={closeToast}
-        className={cn(
-          "absolute top-2 right-2 flex items-center justify-center w-6 h-6 p-0 rounded-md",
-          "bg-transparent text-muted-foreground opacity-0 scale-90",
-          "transition-all duration-150 cursor-pointer border-0",
-          "hover:bg-accent hover:text-accent-foreground",
-          "focus-visible:opacity-100 focus-visible:scale-100 focus-visible:outline-none",
-          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          "group-hover:opacity-100 group-hover:scale-100"
-        )}
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      {!confirm && (
+        <button
+          onClick={closeToast}
+          className={cn(
+            "absolute top-2 right-2 flex items-center justify-center w-6 h-6 p-0 rounded-md",
+            "bg-transparent text-muted-foreground opacity-0 scale-90",
+            "transition-all duration-150 cursor-pointer border-0",
+            "hover:bg-accent hover:text-accent-foreground",
+            "focus-visible:opacity-100 focus-visible:scale-100 focus-visible:outline-none",
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "group-hover:opacity-100 group-hover:scale-100"
+          )}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   )
 }
@@ -185,7 +223,12 @@ function CustomToast({
 function showStyledToast(
   type: keyof typeof toastTypes,
   title: string,
-  options?: { description?: string; duration?: number; action?: { label: string; onClick: () => void; icon?: "settings" | "arrow-right" } }
+  options?: { 
+    description?: string; 
+    duration?: number; 
+    action?: { label: string; onClick: () => void; icon?: "settings" | "arrow-right" };
+    confirm?: { confirmText: string; cancelText: string; onConfirm: () => void; onCancel?: () => void; variant?: 'destructive' | 'default' }
+  }
 ) {
   return toast.custom(
     (t) => (
@@ -194,10 +237,45 @@ function showStyledToast(
         title={title}
         description={options?.description}
         action={options?.action}
+        confirm={options?.confirm}
         closeToast={() => toast.dismiss(t)}
       />
     ),
-    { duration: options?.duration ?? 4000 }
+    { duration: options?.confirm ? Infinity : (options?.duration ?? 4000) }
+  )
+}
+
+// Confirmation toast using the same component
+export function showConfirmationToast({
+  title,
+  description,
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  variant = 'destructive',
+  onConfirm,
+  onCancel
+}: {
+  title: string;
+  description: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'destructive' | 'default';
+  onConfirm: () => void;
+  onCancel?: () => void;
+}) {
+  return showStyledToast(
+    variant === 'destructive' ? 'error' : 'warning',
+    title,
+    {
+      description,
+      confirm: {
+        confirmText,
+        cancelText,
+        onConfirm,
+        onCancel,
+        variant
+      }
+    }
   )
 }
 

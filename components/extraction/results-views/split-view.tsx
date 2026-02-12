@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, memo } from "react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Quote, ExternalLink, FileText } from "lucide-react";
@@ -24,6 +25,8 @@ interface SplitViewProps {
 }
 
 export const SplitView = memo(function SplitView({ papers, questions, onOpenCitationPanel }: SplitViewProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(
     papers.length > 0 ? papers[0]._id : null
   );
@@ -64,7 +67,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
                         variant="outline"
                         className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
                       >
-                        Reviewed {reviewedCount}/{paper.results.length}
+                        {t("reviewed", { count: reviewedCount, total: paper.results.length })}
                       </Badge>
                     ) : null}
                   </div>
@@ -143,7 +146,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <p className="text-sm text-muted-foreground">Select a paper to view details</p>
+                <p className="text-sm text-muted-foreground">{t("selectPaperToView")}</p>
               </div>
             )}
           </div>
@@ -173,8 +176,10 @@ function ConfidenceBadge({ value, size = "md", className }: { value: number; siz
 }
 
 function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type: string }) {
-  if (!result) return <span className="text-muted-foreground/50 text-sm">No result</span>;
-  
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+  if (!result) return <span className="text-muted-foreground/50 text-sm">{tc("noResultsFound")}</span>;
+
   const { answer } = result;
   const citationStatus = getCitationStatus(result);
   const reviewState = getReviewState(result);
@@ -185,15 +190,15 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       {type === "boolean" ? (
         answer === true ? (
           <Badge className="bg-primary/10 text-primary">
-            Yes
+            {tc("yes")}
           </Badge>
         ) : answer === false ? (
           <Badge className="bg-muted text-muted-foreground">
-            No
+            {tc("no")}
           </Badge>
         ) : (
           <Badge variant="outline" className="text-muted-foreground">
-            Unknown
+            {tc("unknown")}
           </Badge>
         )
       ) : Array.isArray(answer) ? (
@@ -205,27 +210,27 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       )}
       {citationStatus === "grounded" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Grounded
+          {tc("grounded")}
         </Badge>
       ) : null}
       {citationStatus === "best_effort" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Best effort
+          {tc("bestEffort")}
         </Badge>
       ) : null}
       {citationStatus === "insufficient_evidence" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Insufficient evidence
+          {tc("insufficientEvidence")}
         </Badge>
       ) : null}
       {citationStatus === "extraction_error" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Extraction error
+          {tc("extractionError")}
         </Badge>
       ) : null}
       {reviewLabel && reviewState !== "unreviewed" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          {reviewLabel}
+          {t(reviewLabel)}
         </Badge>
       ) : null}
     </div>
@@ -239,16 +244,17 @@ function CitationPreview({
   citation: CitationLocation;
   onClick: () => void;
 }) {
+  const tc = useTranslations("common");
   return (
     <div className="bg-muted/30 rounded-lg border border-border/40 p-3 space-y-2 cursor-pointer hover:bg-muted/50" onClick={onClick}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Citation</span>
+        <span className="text-xs font-medium text-muted-foreground">{tc("citation")}</span>
         <Quote className="w-3 h-3 text-muted-foreground" />
       </div>
       <p className="text-xs text-muted-foreground line-clamp-4">
         {citation.text}
       </p>
-      <Button variant="link" size="sm" className="h-auto p-0 text-xs">View in PDF</Button>
+      <Button variant="link" size="sm" className="h-auto p-0 text-xs">{tc("viewInPdf")}</Button>
     </div>
   );
 }

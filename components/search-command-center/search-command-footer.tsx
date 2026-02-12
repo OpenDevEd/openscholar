@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import posthog from "posthog-js";
 import { motion } from "motion/react";
 import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
@@ -29,6 +30,8 @@ export function SearchCommandFooter({
   onScreeningToggle,
   isLoading,
 }: SearchCommandFooterProps) {
+  const t = useTranslations();
+  const tv = useTranslations("validation");
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
 
@@ -55,7 +58,7 @@ export function SearchCommandFooter({
 
   const handleBroadenQuery = async () => {
     if (!effectiveQuery.trim()) {
-      appToast.validation.failed("No active query to broaden.");
+      appToast.validation.failed(tv("noQueryToBroaden"));
       return;
     }
 
@@ -116,7 +119,7 @@ Return a more inclusive version of this query.`;
 
   const handleNarrowQuery = async () => {
     if (!effectiveQuery.trim()) {
-      appToast.validation.failed("No active query to narrow.");
+      appToast.validation.failed(tv("noQueryToNarrow"));
       return;
     }
 
@@ -257,7 +260,7 @@ Return a more targeted version of this query.`;
         )}
       >
         <Eye className="h-4 w-4" />
-        <span className="hidden sm:inline">Screen</span>
+        <span className="hidden sm:inline">{t("common.screen")}</span>
         <motion.div
           animate={{ rotate: isScreeningOpen ? 180 : 0 }}
           transition={subtleSpring}

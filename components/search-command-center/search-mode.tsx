@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Search, Wand2, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { LanguageSelector } from "@/components/language-selector";
@@ -26,6 +27,9 @@ interface SearchModeProps {
 }
 
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
+  const t = useTranslations("searchCommand");
+  const tc = useTranslations("common");
+  const tValidation = useTranslations("validation");
   const search = useSearchOptional();
   const effectiveSearchId = useEffectiveSearchId();
 
@@ -92,12 +96,12 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     e.preventDefault();
 
     if (!effectiveSearchId) {
-      appToast.validation.failed("Please perform a search first.");
+      appToast.validation.failed(tValidation('searchRequired'));
       return;
     }
 
     if (!isEnhanceConfigured) {
-      appToast.ai.configRequired("Please configure your AI settings first.");
+      appToast.ai.configRequired(tValidation('aiConfigRequired'));
       return;
     }
 
@@ -127,7 +131,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         language: currentSearchResult?.language || "en",
       });
 
-      appToast.ai.succeeded("Question converted to keywords", `Searching for: "${result.enhancedQuery}"`);
+      appToast.ai.succeeded(t('questionConverted'), t('searchingFor', { query: result.enhancedQuery }));
     } catch (error) {
       // Track enhancement error
       posthog.capture("ai_query_enhancement_failed", {
@@ -157,7 +161,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
     if (localInputValue.trim() && language) {
       if (!isTranslateConfigured) {
-        appToast.ai.configRequired("Please configure your AI settings to translate queries.");
+        appToast.ai.configRequired(tValidation('aiConfigRequired'));
         return;
       }
 
@@ -165,7 +169,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
         await runWithLoadingToast({
-          loading: "Translating query...",
+          loading: t('translatingQuery'),
           run: async () => {
             const result = await translateQueryFn({
               query: expandedQuery,
@@ -184,8 +188,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
             return result;
           },
           success: () => ({
-            title: "Query translated",
-            description: `Translated to ${language}`,
+            title: t('queryTranslated'),
+            description: t('translatedTo', { language }),
           }),
           error: (error) => {
             // Track translation error
@@ -196,7 +200,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
             });
 
             return {
-              title: "Translation failed",
+              title: t('translationFailed'),
               description: getErrorMessage(error, "An unexpected error occurred. Please try again."),
             };
           },
@@ -214,8 +218,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       {/* Research Question Input */}
       <form onSubmit={handleQuestionSubmit}>
         <FloatingInput
-          label="Research Question"
-          placeholder="What are the effects of mindfulness on anxiety?"
+          label={t('researchQuestion')}
+          placeholder={t('placeholder.researchQuestion')}
           value={currentQuestion}
           onChange={(e) => setCurrentQuestion(e.target.value)}
           disabled={isFormDisabled}
@@ -240,7 +244,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               ) : (
                 <>
                   <Wand2 className="h-3 w-3" />
-                  Ask AI
+                  {t('askAI')}
                 </>
               )}
             </Button>
@@ -252,8 +256,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       {/* Keywords Input */}
       <form onSubmit={handleSearchSubmit}>
         <FloatingInput
-          label="Keywords"
-          placeholder={isTranslating ? "Translating..." : "mindfulness AND (anxiety OR stress)"}
+          label={t('keywords')}
+          placeholder={isTranslating ? tc('translating') : t('placeholder.keywords')}
           value={localInputValue}
           onChange={(e) => handleQueryChange(e.target.value)}
           disabled={isFormDisabled}
@@ -276,7 +280,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 ) : (
                   <>
                     <Search className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Search</span>
+                    <span className="hidden sm:inline">{tc('search')}</span>
                   </>
                 )}
               </Button>

@@ -12,6 +12,7 @@ import { Loader2, Quote } from "lucide-react";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useTranslations } from "next-intl";
 
 type ReviewState = "unreviewed" | "accepted" | "rejected" | "needs_followup";
 
@@ -48,6 +49,9 @@ export function ReviewQueue({
   onOpenCitationPanel: (payload: CitationPanelPayload) => void;
   enabled?: boolean;
 }) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+
   const [selectedStates, setSelectedStates] = useState<Set<ReviewState>>(
     new Set(defaultStates)
   );
@@ -175,27 +179,35 @@ export function ReviewQueue({
     <div className="space-y-4">
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">Queue: {counts?.total ?? 0}</Badge>
-          <Badge variant="outline">Unreviewed: {counts?.unreviewed ?? 0}</Badge>
-          <Badge variant="outline">Needs follow-up: {counts?.needsFollowup ?? 0}</Badge>
-          <Badge variant="outline">Insufficient evidence: {counts?.insufficientEvidence ?? 0}</Badge>
+          <Badge variant="outline">{tc("queue")}: {counts?.total ?? 0}</Badge>
+          <Badge variant="outline">{tc("unreviewed")}: {counts?.unreviewed ?? 0}</Badge>
+          <Badge variant="outline">{t("needsFollowUp")}: {counts?.needsFollowup ?? 0}</Badge>
+          <Badge variant="outline">{tc("insufficientEvidence")}: {counts?.insufficientEvidence ?? 0}</Badge>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          {(["unreviewed", "accepted", "rejected", "needs_followup"] as const).map((state) => (
-            <label key={state} className="inline-flex items-center gap-2">
-              <Checkbox
-                checked={selectedStates.has(state)}
-                onCheckedChange={() => toggleState(state)}
-              />
-              <span>{state.replace("_", " ")}</span>
-            </label>
-          ))}
+          {(["unreviewed", "accepted", "rejected", "needs_followup"] as const).map((state) => {
+            const reviewStateLabels: Record<ReviewState, string> = {
+              unreviewed: tc("unreviewed"),
+              accepted: tc("accepted"),
+              rejected: tc("rejected"),
+              needs_followup: t("needsFollowUp"),
+            };
+            return (
+              <label key={state} className="inline-flex items-center gap-2">
+                <Checkbox
+                  checked={selectedStates.has(state)}
+                  onCheckedChange={() => toggleState(state)}
+                />
+                <span>{reviewStateLabels[state]}</span>
+              </label>
+            );
+          })}
           <label className="inline-flex items-center gap-2">
             <Checkbox
               checked={onlyInsufficientEvidence}
               onCheckedChange={(checked) => setOnlyInsufficientEvidence(Boolean(checked))}
             />
-            <span>Only insufficient evidence</span>
+            <span>{t("onlyInsufficientEvidence")}</span>
           </label>
         </div>
       </div>
@@ -207,66 +219,80 @@ export function ReviewQueue({
       ) : queue.status !== "ok" ? (
         <div className="rounded-lg border border-border/50 bg-muted/20 p-6 text-sm text-muted-foreground">
           {queue.status === "unauthenticated"
-            ? "Sign in to review extraction results."
+            ? t("signInToReview")
             : queue.status === "no_access"
-              ? "You do not have access to this review queue."
-              : "Review queue is unavailable."}
+              ? t("noAccessReview")
+              : t("reviewUnavailable")}
         </div>
       ) : !current ? (
         <div className="rounded-lg border border-border/50 bg-muted/20 p-6 text-sm text-muted-foreground">
-          No items match the current review queue filters.
+          {t("noItemsMatch")}
         </div>
       ) : (
         <div className="rounded-lg border border-border/50 bg-card p-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-xs text-muted-foreground">
-                Item {index + 1} of {items.length}
+                {tc("itemOfTotal", { current: index + 1, total: items.length })}
               </div>
               <div className="font-medium">{current.paperTitle}</div>
               <div className="text-sm text-muted-foreground">{current.question}</div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="outline">{current.citationStatus?.replace("_", " ")}</Badge>
+              <Badge variant="outline">{
+                ({
+                  grounded: tc("grounded"),
+                  best_effort: tc("bestEffort"),
+                  insufficient_evidence: tc("insufficientEvidence"),
+                  extraction_error: tc("extractionError"),
+                } as Record<string, string>)[current.citationStatus ?? ""] ?? current.citationStatus
+              }</Badge>
               <Badge variant="secondary">
-                {Math.round((current.confidence || 0) * 100)}% confidence
+                {Math.round((current.confidence || 0) * 100)}% {t("confidence")}
               </Badge>
-              <Badge variant="outline">{current.reviewState?.replace("_", " ")}</Badge>
+              <Badge variant="outline">{
+                ({
+                  unreviewed: tc("unreviewed"),
+                  accepted: tc("accepted"),
+                  rejected: tc("rejected"),
+                  needs_followup: t("needsFollowUp"),
+                } as Record<string, string>)[current.reviewState ?? ""] ?? current.reviewState
+              }</Badge>
             </div>
           </div>
 
           <div className="rounded border border-border/40 bg-muted/20 p-3">
-            <div className="text-xs text-muted-foreground mb-1">Answer</div>
+            <div className="text-xs text-muted-foreground mb-1">{tc("answer")}</div>
             <div className="text-sm">
               {Array.isArray(current.answer)
                 ? current.answer.join("; ")
                 : current.answer === null || current.answer === undefined
-                  ? "Unknown"
+                  ? tc("unknown")
                   : String(current.answer)}
             </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-xs font-medium">Reviewer note</label>
+              <label className="text-xs font-medium">{t("reviewerNote")}</label>
               <Textarea
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
                 rows={4}
-                placeholder="Add context for your review decision"
+                placeholder={t("reviewNotePlaceholder")}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Corrected answer (optional)</label>
+              <label className="text-xs font-medium">{t("correctedAnswer")}</label>
               <Input
                 value={correctedAnswer}
                 onChange={(event) => setCorrectedAnswer(event.target.value)}
                 placeholder={
                   current.questionType === "array"
-                    ? "item1, item2"
+                    ? t("correctedAnswerList")
                     : current.questionType === "boolean"
-                      ? "yes / no"
-                      : "Corrected answer"
+                      ? t("correctedAnswerYesNo")
+                      : t("correctedAnswerDefault")
                 }
               />
               {citations.length > 0 ? (
@@ -290,7 +316,7 @@ export function ReviewQueue({
                   className="w-full"
                 >
                   <Quote className="mr-2 h-3 w-3" />
-                  Open citation
+                  {tc("viewCitation")}
                 </Button>
               ) : null}
             </div>
@@ -303,7 +329,7 @@ export function ReviewQueue({
               onClick={() => void handleSaveState("accepted")}
               disabled={saving}
             >
-              Accept (A)
+              {t("acceptA")}
             </Button>
             <Button
               type="button"
@@ -312,7 +338,7 @@ export function ReviewQueue({
               onClick={() => void handleSaveState("needs_followup")}
               disabled={saving}
             >
-              Needs follow-up (F)
+              {t("needsFollowUpF")}
             </Button>
             <Button
               type="button"
@@ -321,7 +347,7 @@ export function ReviewQueue({
               onClick={() => void handleSaveState("rejected")}
               disabled={saving}
             >
-              Reject (R)
+              {t("rejectR")}
             </Button>
             <Button
               type="button"
@@ -330,7 +356,7 @@ export function ReviewQueue({
               onClick={() => void handleSaveState("unreviewed")}
               disabled={saving}
             >
-              Clear review (U)
+              {t("clearReviewU")}
             </Button>
             <div className="ml-auto flex items-center gap-2">
               <Button
@@ -340,7 +366,7 @@ export function ReviewQueue({
                 onClick={() => setIndex((value) => Math.max(value - 1, 0))}
                 disabled={index === 0}
               >
-                Previous
+                {tc("previous")}
               </Button>
               <Button
                 type="button"
@@ -349,7 +375,7 @@ export function ReviewQueue({
                 onClick={() => setIndex((value) => Math.min(value + 1, items.length - 1))}
                 disabled={index >= items.length - 1}
               >
-                Next
+                {tc("next")}
               </Button>
             </div>
           </div>

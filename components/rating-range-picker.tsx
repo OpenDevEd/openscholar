@@ -7,13 +7,15 @@ import { Switch } from "@/components/ui/switch";
 import { Star, X } from "lucide-react";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { cn, isRatingFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export function RatingRangePicker() {
+  const tf = useTranslations("searchFilters");
   const {
     ratingRange,
     onlyRatedPapers,
   } = useCurrentSearchFormState();
-  
+
   const updateFilter = useUpdateSearchFilter();
 
   // Computed filter active state
@@ -39,8 +41,8 @@ export function RatingRangePicker() {
   };
 
   const getRatingLabel = (rating: number) => {
-    if (rating === 0) return "0 stars";
-    return `${rating} star${rating > 1 ? 's' : ''}`;
+    if (rating === 0) return tf("zeroStars");
+    return tf("nStars", { count: rating });
   };
 
   const renderStars = (rating: number) => {
@@ -80,10 +82,10 @@ export function RatingRangePicker() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <label className="text-sm font-medium text-foreground">
-            Only show rated papers
+            {tf("onlyShowRated")}
           </label>
           <p className="text-xs text-muted-foreground">
-            Hide papers you haven't rated yet
+            {tf("hideUnrated")}
           </p>
         </div>
         <Switch
@@ -145,9 +147,9 @@ export function RatingRangePicker() {
           <div className="inline-flex items-center gap-2 text-xs text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/30 px-3 py-2 rounded-full">
             <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
             <span>
-              {onlyRatedPapers 
-                ? `Showing ${getRatingLabel(ratingRange[0])} to ${getRatingLabel(ratingRange[1])}`
-                : "Filter active"
+              {onlyRatedPapers
+                ? tf("showingRange", { range: `${getRatingLabel(ratingRange[0])} to ${getRatingLabel(ratingRange[1])}` })
+                : tf("filterActive")
               }
             </span>
           </div>

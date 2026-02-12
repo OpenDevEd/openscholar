@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { parseAsInteger, useQueryState } from 'nuqs';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, Trash2, Copy, Clock, ChevronLeft, ChevronRight, History, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, Languages } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
@@ -40,6 +40,9 @@ interface SearchHistoryProps {
 }
 
 export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false, onQuerySelect }: SearchHistoryProps) {
+  const t = useTranslations();
+  const ta = useTranslations('accessibility');
+  const locale = useLocale();
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -126,9 +129,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const handleDeleteItem = (index: number, query: string) => {
     const truncatedQuery = query.length > 50 ? query.substring(0, 50) + '...' : query;
     showConfirmation({
-      title: "Delete Search Entry",
-      message: `Are you sure you want to delete "${truncatedQuery}"?`,
-      confirmText: "Delete",
+      title: t('historyPage.deleteSearchEntry'),
+      message: t('confirmations.deleteSearchConfirm', { query: truncatedQuery }),
+      confirmText: t('common.delete'),
       onConfirm: () => {
         removeSearchResult(index);
         appToast.entity.deleted("search entry");
@@ -138,9 +141,9 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
 
   const handleClearAll = () => {
     showConfirmation({
-      title: "Clear All Search History",
-      message: `Are you sure you want to delete all ${searchHistory.length} search entries? This action cannot be undone.`,
-      confirmText: "Clear All",
+      title: t('historyPage.clearAllHistory'),
+      message: t('confirmations.deleteAllHistory', { count: searchHistory.length }),
+      confirmText: t('common.clearAll'),
       onConfirm: () => {
         clearSearchHistory();
         appToast.entity.cleared("search history");
@@ -149,10 +152,10 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   };
 
   const validateKeyword = (keyword: string): string | null => {
-    if (!keyword.trim()) return "Bookmark name cannot be empty";
-    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return "Bookmark name can only contain letters, numbers, and dashes";
-    if (keyword.includes(' ')) return "Bookmark name cannot contain spaces";
-    if (keywords[keyword]) return `Bookmark "${keyword}" already exists`;
+    if (!keyword.trim()) return t('validation.bookmarkNameEmpty');
+    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return t('validation.bookmarkNameFormat');
+    if (keyword.includes(' ')) return t('validation.bookmarkNameNoSpaces');
+    if (keywords[keyword]) return t('validation.bookmarkNameExists', { name: keyword });
     return null;
   };
 
@@ -202,10 +205,10 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     const { addKeyword, keywords } = useKeywordExpansionStore();
 
     const validateKeyword = (keyword: string): string | null => {
-      if (!keyword.trim()) return 'Bookmark name is required';
-      if (!/^[a-zA-Z0-9-]+$/.test(keyword.trim())) return 'Only letters, numbers, and dashes allowed';
-      if (keyword.includes(' ')) return 'Bookmark name cannot contain spaces';
-      if (keywords[keyword]) return `Bookmark "${keyword}" already exists`;
+      if (!keyword.trim()) return t('validation.bookmarkNameRequired');
+      if (!/^[a-zA-Z0-9-]+$/.test(keyword.trim())) return t('validation.bookmarkNameFormat');
+      if (keyword.includes(' ')) return t('validation.bookmarkNameNoSpaces');
+      if (keywords[keyword]) return t('validation.bookmarkNameExists', { name: keyword });
       return null;
     };
 
@@ -265,7 +268,7 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         
         <div className={cn(variant === 'full' ? 'space-y-2' : 'space-y-1')}>
           <Input
-            placeholder={variant === 'full' ? "Enter bookmark name (e.g., ai-research)" : "Enter bookmark name (e.g., ml-research)"}
+            placeholder={t('bookmarksPage.enterBookmarkName')}
             value={localBookmarkName}
             onChange={(e) => setLocalBookmarkName(e.target.value)}
             className={cn(
@@ -356,7 +359,7 @@ function ActionButtons({
             e.stopPropagation();
             onCopy(query);
           }}
-          title="Copy query"
+          title={ta("copyQuery")}
         >
           <Copy className={cn(
             variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
@@ -375,7 +378,7 @@ function ActionButtons({
           if (index !== undefined) onBookmark(index);
         }}
           disabled={!query.trim()}
-          title="Save as bookmark"
+          title={ta("saveAsBookmark")}
         >
           <BookmarkPlus className={cn(
             variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
@@ -394,7 +397,7 @@ function ActionButtons({
             onSearch(query);
           }}
           disabled={isLoading}
-          title="Search with this query"
+          title={ta("searchWithQuery")}
         >
           {isLoading ? (
             <Loader2 className={cn(
@@ -420,7 +423,7 @@ function ActionButtons({
             e.stopPropagation();
             if (index !== undefined) onDelete(index, query);
           }}
-            title="Remove from history"
+            title={ta("removeFromHistory")}
           >
             <Trash2 className={cn(
               variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5'
@@ -513,10 +516,9 @@ function ActionButtons({
           <History className="h-8 w-8 text-muted-foreground" />
         </div>
       </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">No search history yet</h3>
+      <h3 className="text-lg font-semibold text-foreground mb-2">{t('emptyStates.noSearchHistory')}</h3>
       <p className="text-muted-foreground text-sm max-w-md mx-auto">
-        Start searching for academic papers and your search history will appear here. 
-        This helps you quickly revisit previous searches and track your research progress.
+        {t('emptyStates.startSearching')}
       </p>
     </div>
   );
@@ -604,7 +606,7 @@ function ActionButtons({
               
               {/* Row 3: Metadata */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-tight">
-                <span>{formatTimeAgo(result.createdAt)}</span>
+                <span>{formatTimeAgo(result.createdAt, locale)}</span>
                 <span className="opacity-50">•</span>
                 <span>{getFieldLabel(result.field)}</span>
                 {result.sortBy && getSortLabel(result.sortBy) && (
@@ -677,7 +679,7 @@ function ActionButtons({
                     variant === 'compact' ? 'h-7 px-2' : 'h-8 px-2'
                   )}
                   onClick={() => setIsQueryHistoryExpanded(!isQueryHistoryExpanded)}
-                  title="Query History"
+                  title={ta("queryHistory")}
                 >
                   <History className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
                   <span className={cn(variant === 'compact' ? 'text-xs' : 'text-xs')}>{queryHistoryCount}</span>
@@ -767,7 +769,7 @@ function QueryHistoryDisplay({
           const isMostRecent = index === 0;
           const originalIndex = queryHistory.length - 1 - index;
           const date = new Date(entry.timestamp);
-          const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+          const timeAgo = formatTimeAgo(date, locale);
           const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
           const canDelete = !isMostRecent;
           
@@ -830,7 +832,7 @@ function QueryHistoryDisplay({
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => onCopyQuery?.(entry.query)}
-                          title="Copy query"
+                          title={ta("copyQuery")}
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -840,7 +842,7 @@ function QueryHistoryDisplay({
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleQueryBookmarkClick(originalIndex)}
-                          title="Save as bookmark"
+                          title={ta("saveAsBookmark")}
                         >
                           <BookmarkPlus className="h-3 w-3" />
                         </Button>
@@ -851,7 +853,7 @@ function QueryHistoryDisplay({
                             size="icon"
                             className="h-7 w-7"
                             onClick={() => handleQueryClick(entry.query)}
-                            title="Switch to this query"
+                            title={ta("searchWithQuery")}
                           >
                             <Search className="h-3 w-3" />
                           </Button>
@@ -863,7 +865,7 @@ function QueryHistoryDisplay({
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive"
                             onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-                            title="Remove from history"
+                            title={ta("removeFromHistory")}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
@@ -949,7 +951,7 @@ function QueryHistoryDisplay({
             const isMostRecent = index === 0;
             const originalIndex = queryHistory.length - 1 - index;
             const date = new Date(entry.timestamp);
-            const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+            const timeAgo = formatTimeAgo(date, locale);
             const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
             const canDelete = !isMostRecent;
             
@@ -1012,7 +1014,7 @@ function QueryHistoryDisplay({
                             size="icon"
                             className="h-7 w-7"
                             onClick={() => onCopyQuery?.(entry.query)}
-                            title="Copy query"
+                            title={ta("copyQuery")}
                           >
                             <Copy className="h-3 w-3" />
           </Button>
@@ -1022,7 +1024,7 @@ function QueryHistoryDisplay({
             size="icon"
                             className="h-7 w-7"
                             onClick={() => handleQueryBookmarkClick(originalIndex)}
-            title="Save as bookmark"
+            title={ta("saveAsBookmark")}
           >
                             <BookmarkPlus className="h-3 w-3" />
           </Button>
@@ -1033,7 +1035,7 @@ function QueryHistoryDisplay({
             size="icon"
                               className="h-7 w-7"
                               onClick={() => handleQueryClick(entry.query)}
-                              title="Switch to this query"
+                              title={ta("searchWithQuery")}
                             >
                               <Search className="h-3 w-3" />
           </Button>
@@ -1045,7 +1047,7 @@ function QueryHistoryDisplay({
             size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
                               onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-            title="Remove from history"
+            title={ta("removeFromHistory")}
           >
                               <Trash2 className="h-3 w-3" />
           </Button>

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import {
   Search,
   X,
@@ -83,6 +84,7 @@ export function CommandCenterToolbar<TSort extends string>({
   totalCount,
   extraActions,
 }: CommandCenterToolbarProps<TSort>) {
+  const tc = useTranslations("common");
   const currentSortOption = sortOptions.find((o) => o.value === currentSort);
   const hasDownloadUpload = onDownloadJSON || onDownloadCSV || onUploadJSON || onUploadCSV;
 
@@ -195,7 +197,7 @@ export function CommandCenterToolbar<TSort extends string>({
                   disabled={totalCount === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download as JSON
+                  {tc("downloadAsJson")}
                 </DropdownMenuItem>
               )}
               {onDownloadCSV && (
@@ -204,7 +206,7 @@ export function CommandCenterToolbar<TSort extends string>({
                   disabled={totalCount === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download as CSV
+                  {tc("downloadAsCsv")}
                 </DropdownMenuItem>
               )}
               {(onDownloadJSON || onDownloadCSV) && (onUploadJSON || onUploadCSV) && (
@@ -213,13 +215,13 @@ export function CommandCenterToolbar<TSort extends string>({
               {onUploadJSON && (
                 <DropdownMenuItem onClick={onUploadJSON}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload JSON
+                  {tc("uploadJson")}
                 </DropdownMenuItem>
               )}
               {onUploadCSV && (
                 <DropdownMenuItem onClick={onUploadCSV}>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload CSV
+                  {tc("uploadCsv")}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

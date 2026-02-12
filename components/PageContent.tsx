@@ -6,7 +6,7 @@ import {
   useUIStore,
   useCurrentQueryStore,
 } from "@/lib/store";
-import { appToast } from "@/lib/toast";
+import { useAppToast } from "@/lib/toast";
 import {
   useQueryChangeHandler,
   useCreateSearchFilters,
@@ -23,8 +23,14 @@ import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
+import { useTranslations } from "next-intl";
 
 function PageContent() {
+  const t = useTranslations("home");
+  const tc = useTranslations("common");
+  const tToast = useTranslations("toast");
+  const tAccessibility = useTranslations("accessibility");
+  const toast = useAppToast();
   const router = useRouter();
 
   const { loadingResultIndex, setLoadingResultIndex } = useUIStore();
@@ -70,11 +76,11 @@ function PageContent() {
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;
 
-        appToast.ai.succeeded("Research question processed", `Converted to search query: "${searchQuery}"`);
+        toast.ai.succeeded(tToast("researchQuestionProcessed"), tToast("convertedToSearchQuery", { query: searchQuery }));
 
       } catch (error) {
         console.error("Failed to convert research question:", error);
-        appToast.ai.failed("Question conversion", error);
+        toast.ai.failed(tToast("questionConversion"), error);
         return;
       } finally {
         // End AI enhancement loading state
@@ -132,7 +138,7 @@ function PageContent() {
               <div className="relative">
                 <Image
                   src="/icon.svg"
-                  alt="OpenScholar"
+                  alt={tAccessibility("logoAlt")}
                   width={64}
                   height={64}
                   className="w-14 h-14 md:w-16 md:h-16"
@@ -149,7 +155,7 @@ function PageContent() {
                   <span className="text-base md:text-lg font-medium text-muted-foreground">.ai</span>
                 </h1>
                 <p className="text-sm md:text-base text-muted-foreground mt-1">
-                  Search millions of academic papers and research articles
+                  {t("tagline")}
                 </p>
               </div>
             </motion.div>
@@ -170,7 +176,7 @@ function PageContent() {
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 dark:bg-orange-950/30 dark:border-orange-800">
                     <Loader2 className="h-4 w-4 animate-spin text-orange-600 dark:text-orange-400" />
                     <span className="text-sm text-orange-700 dark:text-orange-300">
-                      Converting research question to search query...
+                      {t("convertingQuestion")}
                     </span>
                   </div>
                 </motion.div>
@@ -183,7 +189,7 @@ function PageContent() {
                 <Textarea
                   name="query"
                   value={currentQuery}
-                  placeholder="Search for papers, topics... or ask a research question ending with ?"
+                  placeholder={t("searchPlaceholder")}
                   className="w-full border border-border/50 bg-background/50 rounded-xl resize-none min-h-[100px] max-h-40 focus-visible:ring-1 focus-visible:ring-primary/50 focus-visible:ring-offset-0 text-base md:text-lg placeholder:text-muted-foreground/60 p-4"
                   disabled={isFormDisabled}
                   onChange={(e) => handleQueryChange(e.target.value)}
@@ -210,12 +216,12 @@ function PageContent() {
                   {isEnhancingQuestion ? (
                     <>
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      <span>Processing...</span>
+                      <span>{tc("processing")}</span>
                     </>
                   ) : (
                     <>
                       <Search className="h-4 w-4" />
-                      <span>Search</span>
+                      <span>{tc("search")}</span>
                     </>
                   )}
                 </Button>
@@ -226,8 +232,13 @@ function PageContent() {
           {/* Footer - Keyboard Hints */}
           <div className={cn("relative px-4 md:px-6 py-3", "border-t border-border/40", "bg-muted/20")}>
             <p className="text-center text-xs text-muted-foreground">
-              Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Enter</kbd> to search,{" "}
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">Shift+Enter</kbd> for new line
+              {t.rich("enterToSearch", {
+                kbd: (chunks) => (
+                  <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-xs font-mono">
+                    {chunks}
+                  </kbd>
+                ),
+              })}
             </p>
           </div>
         </motion.div>

@@ -7,6 +7,7 @@ import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { LanguageSwitcher } from "./language-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -44,6 +45,7 @@ import {
   Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslations } from "next-intl";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -263,6 +265,8 @@ function NavItem({
 }
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const tc = useTranslations("common");
+  const ts = useTranslations("sidebar");
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -348,7 +352,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <NavItem
             href="/"
             icon={Home}
-            label="Home"
+            label={tc("home")}
             isActive={currentPageValue === "home"}
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
@@ -358,7 +362,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <NavItem
             href="/bookmarks"
             icon={BookOpen}
-            label="Bookmarks"
+            label={tc("bookmarks")}
             isActive={currentPageValue === "bookmarks"}
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
@@ -374,7 +378,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <NavItem
             href="/history"
             icon={Clock}
-            label="History"
+            label={tc("history")}
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
             index={2}
@@ -383,7 +387,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <NavItem
             href="/extraction"
             icon={Database}
-            label="Extraction"
+            label={tc("extraction")}
             isActive={currentPageValue === "extraction"}
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
@@ -477,7 +481,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                         currentPage > 1 && "hover:bg-sidebar-accent/80",
                       )}
                       title={
-                        isCollapsed && !isMobile ? "Previous page" : undefined
+                        isCollapsed && !isMobile ? tc("previousPage") : undefined
                       }
                     >
                       <motion.div
@@ -491,7 +495,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                               <ChevronLeft className="h-4 w-4" />
                             </TooltipTrigger>
                             <TooltipContent side="right">
-                              Previous page
+                              {tc("previousPage")}
                             </TooltipContent>
                           </Tooltip>
                         ) : (
@@ -499,7 +503,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             <ChevronLeft className="h-4 w-4" />
                             {!isCollapsed ||
                               (isMobile && (
-                                <span className="sr-only">Previous</span>
+                                <span className="sr-only">{tc("previous")}</span>
                               ))}
                           </>
                         )}
@@ -535,7 +539,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                               </span>
                             </TooltipTrigger>
                             <TooltipContent side="right">
-                              Page {currentPage} of {totalPages}
+                              {tc("pageOf", { current: currentPage, total: totalPages })}
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -553,7 +557,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                         currentPage < totalPages &&
                           "hover:bg-sidebar-accent/80",
                       )}
-                      title={isCollapsed && !isMobile ? "Next page" : undefined}
+                      title={isCollapsed && !isMobile ? tc("nextPage") : undefined}
                     >
                       <motion.div
                         whileHover={{ scale: 1.1 }}
@@ -566,7 +570,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                               <ChevronRight className="h-4 w-4" />
                             </TooltipTrigger>
                             <TooltipContent side="right">
-                              Next page
+                              {tc("nextPage")}
                             </TooltipContent>
                           </Tooltip>
                         ) : (
@@ -574,7 +578,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             <ChevronRight className="h-4 w-4" />
                             {!isCollapsed ||
                               (isMobile && (
-                                <span className="sr-only">Next</span>
+                                <span className="sr-only">{tc("next")}</span>
                               ))}
                           </>
                         )}
@@ -604,17 +608,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       >
         {!isCollapsed || isMobile ? (
           <motion.div
-            className="flex items-center justify-between w-full gap-2"
+            className="flex flex-col w-full gap-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <LanguageSwitcher isCollapsed={false} />
+            </div>
             <AuthButton isCollapsed={false} />
           </motion.div>
         ) : (
           <>
             <ThemeToggle />
+            <LanguageSwitcher isCollapsed={true} />
             <AuthButton isCollapsed={true} />
           </>
         )}
@@ -624,6 +632,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 }
 
 export function AppSidebar() {
+  const ts = useTranslations("sidebar");
   const isMobile = useIsMobile();
   const { isOpen, setOpen, isCollapsed, toggle, setCollapsed, _hasHydrated } =
     useSidebarStore();
@@ -756,8 +765,8 @@ export function AppSidebar() {
           </TooltipTrigger>
           <TooltipContent side="right">
             {isCollapsed
-              ? "Expand sidebar (Ctrl+B)"
-              : "Collapse sidebar (Ctrl+B)"}
+              ? ts("expandSidebar")
+              : ts("collapseSidebar")}
           </TooltipContent>
         </Tooltip>
       </div>

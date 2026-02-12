@@ -1,6 +1,7 @@
 "use client"
 import React from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks';
 
@@ -19,6 +20,7 @@ export function Logo({
   iconOnly = false,
   context = 'general'
 }: LogoProps) {
+  const t = useTranslations("accessibility");
   const isMobile = useIsMobile();
   
   // Determine if we should show icon only
@@ -39,7 +41,7 @@ export function Logo({
     )}>
       <img
         src="/icon.svg"
-        alt="OpenScholar.ai"
+        alt={t("logoAlt")}
         className={cn(
           'object-contain flex',
           size === 'sm' && 'w-8 h-8',

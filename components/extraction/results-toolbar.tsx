@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, Dispatch, SetStateAction } from "react";
+import { useCallback, useMemo, Dispatch, SetStateAction } from "react";
 import {
   Table2,
   LayoutGrid,
@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Download,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,26 +24,12 @@ import { StatusFilter } from "./status-filter";
 import { cn } from "@/lib/utils";
 import type { FilterState, Question } from "@/lib/extraction/filtering";
 
-const RESULTS_VIEW_OPTIONS = [
-  { mode: "table" as const, icon: Table2, label: "Table" },
-  { mode: "cards" as const, icon: LayoutGrid, label: "Cards" },
-  { mode: "split" as const, icon: PanelLeft, label: "Split" },
-];
-
 export type ResultsSortBy =
   | "default"
   | "title-asc"
   | "title-desc"
   | "confidence-high"
   | "confidence-low";
-
-const SORT_OPTIONS: { value: ResultsSortBy; label: string }[] = [
-  { value: "default", label: "Default" },
-  { value: "title-asc", label: "Title A-Z" },
-  { value: "title-desc", label: "Title Z-A" },
-  { value: "confidence-high", label: "Confidence High-Low" },
-  { value: "confidence-low", label: "Confidence Low-High" },
-];
 
 interface ResultsToolbarProps {
   filters: FilterState;
@@ -69,6 +56,23 @@ export function ResultsToolbar({
   onSortChange,
   onExportAll,
 }: ResultsToolbarProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+
+  const RESULTS_VIEW_OPTIONS = useMemo(() => [
+    { mode: "table" as const, icon: Table2, label: tc("table") },
+    { mode: "cards" as const, icon: LayoutGrid, label: tc("cards") },
+    { mode: "split" as const, icon: PanelLeft, label: tc("split") },
+  ], [tc]);
+
+  const SORT_OPTIONS: { value: ResultsSortBy; label: string }[] = useMemo(() => [
+    { value: "default", label: tc("defaultSort") },
+    { value: "title-asc", label: tc("aToZ") },
+    { value: "title-desc", label: tc("zToA") },
+    { value: "confidence-high", label: t("confidenceHighLow") },
+    { value: "confidence-low", label: t("confidenceLowHigh") },
+  ], [t, tc]);
+
   const handleSearchChange = useCallback(
     (q: string) => {
       onFiltersChange((prev) => ({ ...prev, searchQuery: q }));
@@ -125,7 +129,7 @@ export function ResultsToolbar({
         <SearchInput
           value={filters.searchQuery}
           onChange={handleSearchChange}
-          placeholder="Search papers, answers, citations..."
+          placeholder={t("searchPapersPlaceholder")}
         />
 
         {/* Sort dropdown */}
@@ -166,7 +170,7 @@ export function ResultsToolbar({
             disabled={filteredCount === 0}
           >
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">{tc("export")}</span>
           </Button>
         </div>
       </div>
@@ -182,7 +186,7 @@ export function ResultsToolbar({
           onChange={handleStatusChange}
         />
         <Badge variant="outline" className="ml-auto">
-          {filteredCount} of {totalCount} papers
+          {t("filteredOfTotal", { filtered: filteredCount, total: totalCount })}
         </Badge>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { Database, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,13 +23,6 @@ interface ExtractionCommandCenterProps {
   onNewJob: () => void;
 }
 
-const SORT_OPTIONS: { value: ExtractionSortBy; label: string }[] = [
-  { value: "recent", label: "Recent" },
-  { value: "oldest", label: "Oldest" },
-  { value: "name", label: "Name" },
-  { value: "status", label: "Status" },
-];
-
 const STATUS_ORDER: Record<string, number> = {
   pending: 0,
   downloading_pdfs: 1,
@@ -39,6 +33,15 @@ const STATUS_ORDER: Record<string, number> = {
 };
 
 export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCenterProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+
+  const SORT_OPTIONS: { value: ExtractionSortBy; label: string }[] = [
+    { value: "recent", label: tc("recent") },
+    { value: "oldest", label: tc("oldest") },
+    { value: "name", label: tc("name") },
+    { value: "status", label: tc("status") },
+  ];
   const [searchFilter, setSearchFilter] = useState("");
   const [currentPage, setCurrentPage] = useQueryState(
     "page",
@@ -106,11 +109,11 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
         onSortChange={setExtractionSortBy}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
-        placeholder="Search jobs..."
+        placeholder={t("searchJobs")}
         extraActions={
           <Button size="sm" className="h-9 gap-1.5" onClick={onNewJob}>
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">New</span>
+            <span className="hidden sm:inline">{tc("new")}</span>
           </Button>
         }
       />
@@ -122,8 +125,8 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
           viewMode={extractionViewMode}
           keyExtractor={(job) => job._id}
           emptyIcon={Database}
-          emptyTitle="No extraction jobs"
-          emptyDescription="Create a job to get started."
+          emptyTitle={t("noExtractionJobs")}
+          emptyDescription={t("createJobToStart")}
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
           renderItem={(job, index) => (
@@ -143,7 +146,7 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
             onPageChange={setCurrentPage}
             totalItems={sortedJobs.length}
             itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
-            itemLabel="jobs"
+            itemLabel={t("jobs")}
           />
         )}
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -8,24 +9,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { FileUp, Plus, Trash2 } from "lucide-react";
 
 const ACCEPTED_TYPES = ["application/pdf"];
 const MAX_FILE_MB = 25;
 
 export function ManualItems() {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const { draftJob, addManualItem, updateManualItem, removeManualItem } = useExtractionStore();
   const generateUploadUrl = useMutation(api.extraction.uploads.generateUploadUrl);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
 
   const handleFileUpload = async (id: string, file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      toast.error("Only PDF files are supported");
+      appToast.validation.fileType("PDF");
       return;
     }
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      toast.error(`PDF must be under ${MAX_FILE_MB}MB`);
+      appToast.validation.fileSize(MAX_FILE_MB);
       return;
     }
 
@@ -38,13 +41,13 @@ export function ManualItems() {
         body: file,
       });
       if (!result.ok) {
-        toast.error("Upload failed. Please try again.");
+        appToast.io.uploadFailed("PDF");
         return;
       }
       const { storageId } = await result.json();
       updateManualItem(id, { storageId, pdfUrl: undefined });
     } catch (error) {
-      toast.error("Upload failed. Please try again.");
+      appToast.io.uploadFailed("PDF");
     } finally {
       setUploadingIds((prev) => prev.filter((itemId) => itemId !== id));
     }
@@ -54,16 +57,16 @@ export function ManualItems() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Add papers manually with optional PDF upload.
+          {t("addPapersDescription")}
         </div>
         <Button size="sm" variant="secondary" onClick={() => addManualItem()}>
-          <Plus className="h-4 w-4 mr-2" /> Add paper
+          <Plus className="h-4 w-4 mr-2" /> {t("addPaper")}
         </Button>
       </div>
 
       {draftJob.manualItems.length === 0 && (
         <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-          No manual items yet.
+          {t("noManualItems")}
         </div>
       )}
 
@@ -81,19 +84,19 @@ export function ManualItems() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-3">
                   <Input
-                    placeholder="Paper title"
+                    placeholder={t("paperTitle")}
                     value={item.title}
                     onChange={(e) => updateManualItem(item.id, { title: e.target.value })}
                   />
                   <Textarea
-                    placeholder="Abstract (optional)"
+                    placeholder={t("abstractOptional")}
                     value={item.abstract || ""}
                     rows={3}
                     onChange={(e) => updateManualItem(item.id, { abstract: e.target.value })}
                   />
                   <div className="grid gap-3 md:grid-cols-2">
                     <Input
-                      placeholder="Authors (comma-separated)"
+                      placeholder={t("authorsCommaSeparated")}
                       value={item.authors?.join(", ") || ""}
                       onChange={(e) =>
                         updateManualItem(item.id, {
@@ -105,7 +108,7 @@ export function ManualItems() {
                       }
                     />
                     <Input
-                      placeholder="Publication year"
+                      placeholder={t("publicationYear")}
                       type="number"
                       value={item.year ?? ""}
                       onChange={(e) => {
@@ -114,12 +117,12 @@ export function ManualItems() {
                       }}
                     />
                     <Input
-                      placeholder="DOI"
+                      placeholder={t("doi")}
                       value={item.doi || ""}
                       onChange={(e) => updateManualItem(item.id, { doi: e.target.value })}
                     />
                     <Input
-                      placeholder="PDF URL (optional)"
+                      placeholder={t("pdfUrlOptional")}
                       value={item.pdfUrl || ""}
                       onChange={(e) => updateManualItem(item.id, { pdfUrl: e.target.value, storageId: undefined })}
                     />
@@ -128,7 +131,7 @@ export function ManualItems() {
                     <Button asChild variant="outline" size="sm" disabled={isUploading}>
                       <label className="cursor-pointer">
                         <FileUp className="h-4 w-4 mr-2" />
-                        {item.storageId ? "Replace PDF" : "Attach PDF"}
+                        {item.storageId ? t("replacePdf") : t("attachPdf")}
                         <input
                           type="file"
                           accept="application/pdf"
@@ -143,7 +146,7 @@ export function ManualItems() {
                       </label>
                     </Button>
                     {item.storageId && (
-                      <span className="text-xs text-muted-foreground">PDF attached</span>
+                      <span className="text-xs text-muted-foreground">{tc("pdfAttached")}</span>
                     )}
                   </div>
                 </div>

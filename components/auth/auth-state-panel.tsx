@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion
 import { Loader2, LogIn, RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 export type AuthStateVariant =
   | "loading"
@@ -88,25 +89,6 @@ const REDUCED_SPINNER_VARIANTS: Variants = {
   exit: { opacity: 0, transition: { duration: 0.1 } },
 };
 
-const DEFAULT_COPY: Record<AuthStateVariant, { title: string; description: string }> = {
-  loading: {
-    title: "Loading workspace",
-    description: "Preparing your authenticated workspace.",
-  },
-  sign_in_required: {
-    title: "Sign in required",
-    description: "Sign in to continue to this page.",
-  },
-  no_access: {
-    title: "Access restricted",
-    description: "You do not have permission to view this resource.",
-  },
-  sync_error_retry: {
-    title: "Session sync issue",
-    description: "We could not finish initializing your account. Retry to continue.",
-  },
-};
-
 const ICON_TREATMENT: Record<AuthStateVariant, string> = {
   loading: "bg-primary/10 text-primary",
   sign_in_required: "bg-primary/12 text-primary",
@@ -143,6 +125,7 @@ export function AuthStatePanel({
   layout = "inline",
   loadingStyle = "spinner",
 }: AuthStatePanelProps) {
+  const t = useTranslations("auth");
   const prefersReducedMotion = useReducedMotion();
   const panelVariants = prefersReducedMotion ? REDUCED_PANEL_VARIANTS : PANEL_VARIANTS;
   const itemVariants = prefersReducedMotion ? REDUCED_ITEM_VARIANTS : ITEM_VARIANTS;
@@ -150,8 +133,15 @@ export function AuthStatePanel({
     ? REDUCED_SPINNER_VARIANTS
     : SPINNER_VARIANTS;
 
-  const resolvedTitle = title ?? DEFAULT_COPY[variant].title;
-  const resolvedDescription = description ?? DEFAULT_COPY[variant].description;
+  const defaultCopy: Record<AuthStateVariant, { title: string; description: string }> = {
+    loading: { title: t("loadingTitle"), description: t("loadingDescription") },
+    sign_in_required: { title: t("signInRequiredTitle"), description: t("signInRequiredDescription") },
+    no_access: { title: t("noAccessTitle"), description: t("noAccessDescription") },
+    sync_error_retry: { title: t("syncErrorTitle"), description: t("syncErrorDescription") },
+  };
+
+  const resolvedTitle = title ?? defaultCopy[variant].title;
+  const resolvedDescription = description ?? defaultCopy[variant].description;
 
   const isSpinnerOnlyLoading = variant === "loading" && loadingStyle === "spinner";
 
@@ -176,7 +166,7 @@ export function AuthStatePanel({
           <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card/85 shadow-lg backdrop-blur-sm">
             <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
           </div>
-          <span className="sr-only">Loading authenticated session</span>
+          <span className="sr-only">{t("loadingSession")}</span>
         </div>
       </motion.section>
     );
@@ -185,7 +175,7 @@ export function AuthStatePanel({
   const primaryButton =
     variant === "sync_error_retry" && onRetry ? (
       <Button type="button" onClick={onRetry}>
-        Retry Sync
+        {t("retrySync")}
       </Button>
     ) : primaryHref && primaryLabel ? (
       <Button asChild>

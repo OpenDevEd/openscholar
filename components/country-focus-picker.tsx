@@ -6,8 +6,10 @@ import { isCountryFocusActive } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
 import { CountrySelector } from "./country-selector";
 import { useCountryFilter } from "@/hooks/use-country-filter";
+import { useTranslations } from "next-intl";
 
 export function CountryFocusPicker() {
+  const tf = useTranslations("searchFilters");
   const { selectedValues, handleSelectionChange } = useCountryFilter('selectedCountryFocus');
 
   // Computed filter active state
@@ -32,8 +34,8 @@ export function CountryFocusPicker() {
       <CountrySelector
         selectedRegions={selectedValues}
         onSelectionChange={handleSelectionChange}
-        placeholder="Add country focus to search"
-        description="Choose countries to add to your search query"
+        placeholder={tf("addCountryFocus")}
+        description={tf("chooseCountriesToAdd")}
         showCountryNames={true}
         bypassLimit={true}
       />
@@ -45,10 +47,10 @@ export function CountryFocusPicker() {
             <Focus className="h-4 w-4 text-sidebar-primary mt-0.5 flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-foreground mb-1">
-                Search Focus Active
+                {tf("searchFocusActive")}
               </p>
               <p className="text-xs text-muted-foreground mb-2">
-                Search results will be enhanced to focus on papers mentioning:
+                {tf("searchFocusDescription")}
               </p>
               <div className="flex flex-wrap gap-1">
                 {countryNames.slice(0, 10).map((countryName, index) => (
@@ -61,12 +63,12 @@ export function CountryFocusPicker() {
                 ))}
                 {countryNames.length > 10 && (
                   <span className="text-xs text-muted-foreground px-2 py-1">
-                    +{countryNames.length - 10} more
+                    {tf("nMore", { count: countryNames.length - 10 })}
                   </span>
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                This enhances your search behind the scenes without changing your query text.
+                {tf("enhancesSearchBehindScenes")}
               </p>
             </div>
           </div>
@@ -76,8 +78,7 @@ export function CountryFocusPicker() {
       {/* Info about the difference */}
       {(isCountryFocusFilterActive || selectedValues.length > 0) && (
         <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-          <strong>Tip:</strong> Country focus enhances your search to include papers about these countries, 
-          while Institution location filters by author affiliations. Use both for comprehensive results!
+          {tf("countryFocusTip")}
         </div>
       )}
     </div>

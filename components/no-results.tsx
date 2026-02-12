@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { SearchX, ArrowRight, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface NoResultsProps {
   query?: string;
@@ -10,6 +11,8 @@ interface NoResultsProps {
 }
 
 export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
+  const t = useTranslations("search");
+  const tc = useTranslations("common");
   return (
     <div className="flex items-center justify-center py-16 md:py-24">
       <motion.div
@@ -36,18 +39,13 @@ export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-            No results
+            {tc("noResultsFound")}
           </h2>
           <p className="text-base text-muted-foreground leading-relaxed">
             {query ? (
-              <>
-                Nothing matched{" "}
-                <span className="font-medium text-foreground/80">
-                  &ldquo;{query}&rdquo;
-                </span>
-              </>
+              t("nothingMatched", { query })
             ) : (
-              "We couldn't find any papers with your current filters"
+              t("noResultsNoFilter")
             )}
           </p>
         </motion.div>
@@ -60,13 +58,13 @@ export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
           transition={{ duration: 0.3, delay: 0.15 }}
         >
           <span className="px-2.5 py-1 rounded-full bg-muted/50">
-            Try broader terms
+            {t("tryBroaderTerms")}
           </span>
           <span className="hidden sm:inline-block px-2.5 py-1 rounded-full bg-muted/50">
-            Check spelling
+            {t("checkSpelling")}
           </span>
           <span className="px-2.5 py-1 rounded-full bg-muted/50">
-            Adjust filters
+            {t("adjustFilters")}
           </span>
         </motion.div>
 
@@ -81,7 +79,7 @@ export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
             variant="outline"
             className="group gap-2 h-10 px-5"
           >
-            New search
+            {tc("newSearch")}
             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
           </Button>
         </motion.div>
@@ -91,6 +89,7 @@ export function NoResults({ query, onTryNewSearch }: NoResultsProps) {
 }
 
 export function LoadingResults() {
+  const t = useTranslations("search");
   return (
     <div className="flex items-center justify-center py-16 md:py-24">
       <motion.div
@@ -117,10 +116,10 @@ export function LoadingResults() {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-            Searching
+            {t("searching")}
           </h2>
           <p className="text-base text-muted-foreground leading-relaxed">
-            Looking through millions of papers...
+            {t("searchingDescription")}
           </p>
         </motion.div>
       </motion.div>

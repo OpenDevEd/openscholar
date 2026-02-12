@@ -1,34 +1,38 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { SidebarNav } from "@/components/settings/sidebar-nav";
 import { PageWrapper } from "@/components/PageWrapper";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
 
-const sidebarNavItems = [
-  {
-    title: "General",
-    href: "/settings",
-    icon: Settings2,
-  },
-  {
-    title: "AI",
-    href: "/settings/ai",
-    icon: Bot,
-  },
-  {
-    title: "Billing",
-    href: "/settings/billing",
-    icon: CreditCard,
-  },
-];
-
 export default function SettingsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations("settings");
+  const tc = useTranslations("common");
+
+  const sidebarNavItems = [
+    {
+      title: tc("general"),
+      href: "/settings",
+      icon: Settings2,
+    },
+    {
+      title: tc("ai"),
+      href: "/settings/ai",
+      icon: Bot,
+    },
+    {
+      title: tc("billing"),
+      href: "/settings/billing",
+      icon: CreditCard,
+    },
+  ];
+
   return (
     <PageWrapper>
       <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
@@ -56,7 +60,7 @@ export default function SettingsLayout({
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm">
                   <Settings className="w-5 h-5 text-primary" />
                 </div>
-                <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+                <h1 className="text-xl font-bold tracking-tight">{tc("settings")}</h1>
               </div>
               <SidebarNav items={sidebarNavItems} />
             </motion.div>

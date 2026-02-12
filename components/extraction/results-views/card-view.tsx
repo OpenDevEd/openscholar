@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ export const CardView = memo(function CardView({
   onSelectionChange,
   onOpenCitationPanel,
 }: CardViewProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -117,7 +120,7 @@ export const CardView = memo(function CardView({
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
                           >
-                            No Content
+                            {tc("noContent")}
                           </Badge>
                         ) : null}
                         {paper.isOpenAccess && (
@@ -125,7 +128,7 @@ export const CardView = memo(function CardView({
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
                           >
-                            Open Access
+                            {tc("openAccess")}
                           </Badge>
                         )}
                         {paper.isIndexed || paper.ragEntryId ? (
@@ -133,7 +136,7 @@ export const CardView = memo(function CardView({
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
                           >
-                            Indexed
+                            {tc("indexed")}
                           </Badge>
                         ) : null}
                         {paper.pdfContentUsed ? (
@@ -141,7 +144,7 @@ export const CardView = memo(function CardView({
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
                           >
-                            PDF Used
+                            {tc("pdfUsed")}
                           </Badge>
                         ) : null}
                         {reviewedCount > 0 ? (
@@ -149,7 +152,7 @@ export const CardView = memo(function CardView({
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
                           >
-                            Reviewed {reviewedCount}/{paper.results.length}
+                            {t("reviewed", { count: reviewedCount, total: paper.results.length })}
                           </Badge>
                         ) : null}
                       </div>
@@ -207,6 +210,8 @@ export const CardView = memo(function CardView({
 });
 
 function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type: string }) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   if (!result) {
     return <span className="text-muted-foreground/30 text-xs">—</span>;
   }
@@ -234,18 +239,18 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
               variant="default"
               className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
             >
-              Yes
+              {tc("yes")}
             </Badge>
           ) : answer === false ? (
             <Badge
               variant="secondary"
               className="font-normal bg-muted text-muted-foreground hover:bg-muted/80"
             >
-              No
+              {tc("no")}
             </Badge>
           ) : (
             <Badge variant="outline" className="font-normal text-muted-foreground">
-              Unknown
+              {tc("unknown")}
             </Badge>
           )
         ) : Array.isArray(answer) ? (
@@ -275,27 +280,27 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
       )}
       {citationStatus === "grounded" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Grounded
+          {tc("grounded")}
         </Badge>
       ) : null}
       {citationStatus === "best_effort" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Best effort
+          {tc("bestEffort")}
         </Badge>
       ) : null}
       {citationStatus === "insufficient_evidence" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Insufficient evidence
+          {tc("insufficientEvidence")}
         </Badge>
       ) : null}
       {citationStatus === "extraction_error" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          Extraction error
+          {tc("extractionError")}
         </Badge>
       ) : null}
       {reviewLabel && reviewState !== "unreviewed" ? (
         <Badge variant="outline" className="text-[10px] font-medium">
-          {reviewLabel}
+          {t(reviewLabel)}
         </Badge>
       ) : null}
     </div>
@@ -309,6 +314,7 @@ function ResultActions({
   result?: Doc<"extractionResults">;
   onCite?: () => void;
 }) {
+  const tc = useTranslations("common");
   if (!result) return null;
 
   const { reasoning } = result;
@@ -329,7 +335,7 @@ function ResultActions({
           </PopoverTrigger>
           <PopoverContent className="w-80 p-4 text-xs leading-relaxed">
             <div className="space-y-1">
-              <h4 className="font-medium">Reasoning</h4>
+              <h4 className="font-medium">{tc("reasoning")}</h4>
               <p className="text-muted-foreground">{reasoning}</p>
             </div>
           </PopoverContent>
@@ -341,7 +347,7 @@ function ResultActions({
           size="icon"
           onClick={onCite}
           className="h-6 w-6 text-muted-foreground/60 hover:text-foreground transition-colors"
-          title="View citation"
+          title={tc("viewCitation")}
         >
           <Quote className="h-3 w-3" />
         </Button>

@@ -3,6 +3,7 @@
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -31,7 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { ResultsToolbar, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
@@ -66,6 +67,14 @@ import {
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
 
 export default function JobDetailPage() {
+  const tError = useTranslations('errorPages');
+  const tJob = useTranslations('jobStatus');
+  const tConfirm = useTranslations('confirmations');
+  const tView = useTranslations('extractionView');
+  const tc = useTranslations('common');
+  const tPdf = useTranslations('pdfViewer');
+  const locale = useLocale();
+  
   const params = useParams();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -278,29 +287,29 @@ export default function JobDetailPage() {
   const handleCancel = async () => {
     try {
       await cancelJob({ jobId });
-      toast.success("Job cancelled");
+      appToast.job.cancelled();
     } catch (error) {
-      toast.error("Failed to cancel job");
+      appToast.job.cancelFailed();
     }
   };
 
   const handleDelete = async () => {
     try {
       await deleteJob({ jobId });
-      toast.success("Job deleted");
+      appToast.job.deleted();
       router.push("/extraction");
     } catch (error) {
-      toast.error("Failed to delete job");
+      appToast.job.deleteFailed();
     }
   };
 
   const handleDuplicate = async () => {
     try {
       const result = await duplicateJob({ jobId });
-      toast.success("New job created");
+      appToast.job.created();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
-      toast.error("Failed to create new job");
+      appToast.job.createFailed();
     }
   };
 
@@ -322,7 +331,7 @@ export default function JobDetailPage() {
       }
       setCurrentPage(1);
       setActiveTab("results");
-      toast.success(`Applied saved view: ${view?.name || "view"}`);
+      appToast.success(`Applied saved view: ${view?.name || "view"}`);
     },
     [setViewMode]
   );
@@ -341,11 +350,11 @@ export default function JobDetailPage() {
         <div className="container mx-auto max-w-4xl p-6">
           <AuthStatePanel
             variant="sign_in_required"
-            description="You need to sign in to view extraction job details."
+            description={tError('signInToView')}
             primaryHref="/auth/signin"
-            primaryLabel="Sign In"
+            primaryLabel={tc('signIn')}
             secondaryHref="/extraction"
-            secondaryLabel="Back to Jobs"
+            secondaryLabel={tError('backToJobs')}
           />
         </div>
       </PageWrapper>
@@ -358,9 +367,9 @@ export default function JobDetailPage() {
         <div className="container mx-auto max-w-4xl p-6">
           <AuthStatePanel
             variant="no_access"
-            description="You do not have access to this extraction job."
+            description={tError('noAccess')}
             primaryHref="/extraction"
-            primaryLabel="Back to Jobs"
+            primaryLabel={tError('backToJobs')}
           />
         </div>
       </PageWrapper>
@@ -431,7 +440,7 @@ export default function JobDetailPage() {
                 className="hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <ChevronLeft className="w-4 h-4" />
-                Extraction Jobs
+                {tc('extraction')}
               </Link>
               <span>/</span>
               <span className="text-foreground truncate max-w-[200px]">{job.name}</span>
@@ -487,7 +496,7 @@ export default function JobDetailPage() {
 
                     <div className="flex items-center gap-1.5">
                       <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
-                      <span>Updated {formatTimeAgo(new Date(job.updatedAt))}</span>
+                      <span>{tJob('updated', { timeAgo: formatTimeAgo(new Date(job.updatedAt), locale) })}</span>
                     </div>
                   </motion.div>
                 </div>
@@ -518,24 +527,23 @@ export default function JobDetailPage() {
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
-                        Cancel
+                        {tc('cancel')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel this job?</AlertDialogTitle>
+                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will stop processing remaining papers. Partial
-                          results will be saved.
+                          {tConfirm('cancelJobDescription')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Keep Running</AlertDialogCancel>
+                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={handleCancel}
                           className="bg-destructive hover:bg-destructive/90"
                         >
-                          Yes, Cancel
+                          {tConfirm('yesCancel')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -550,24 +558,23 @@ export default function JobDetailPage() {
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
+                      {tc('delete')}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this job?</AlertDialogTitle>
+                      <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete the job and all extracted data.
-                        This action cannot be undone.
+                        {tConfirm('deleteJobDescription')}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleDelete}
                         className="bg-destructive hover:bg-destructive/90"
                       >
-                        Delete Permanently
+                        {tConfirm('yesDelete')}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -586,7 +593,7 @@ export default function JobDetailPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Total Papers
+                  {tJob('totalPapers')}
                 </p>
                 <p className="text-2xl lg:text-3xl font-bold text-foreground">
                   {job.totalPapers.toLocaleString()}
@@ -595,7 +602,7 @@ export default function JobDetailPage() {
 
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Processed
+                  {tJob('processed')}
                 </p>
                 <p className="text-2xl lg:text-3xl font-bold text-foreground">
                   {resolvedProgress.processed.toLocaleString()}
@@ -604,7 +611,7 @@ export default function JobDetailPage() {
 
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Success Rate
+                  {tJob('successRate')}
                 </p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl lg:text-3xl font-bold text-primary">
@@ -629,7 +636,7 @@ export default function JobDetailPage() {
             {/* Progress Bar */}
             <div className="mt-6">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Extraction Progress</span>
+                <span className="text-muted-foreground">{tJob('extractionProgress')}</span>
                 <span className="font-medium text-foreground">
                   {resolvedProgress.processed + resolvedProgress.failed} of{" "}
                   {resolvedProgress.total} papers
@@ -658,7 +665,7 @@ export default function JobDetailPage() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                Extraction Results
+                {tView('extractionResults')}
               </button>
               {extractionFeatureFlags.insights && hasProFeatures ? (
                 <button
@@ -670,11 +677,11 @@ export default function JobDetailPage() {
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Insights
+                  {tView('insights')}
                 </button>
               ) : extractionFeatureFlags.insights && isSubscriptionSettling ? (
                 <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
-                  Insights
+                  {tView('insights')}
                 </span>
               ) : null}
               {extractionFeatureFlags.reviewQueue && hasProFeatures ? (
@@ -687,11 +694,11 @@ export default function JobDetailPage() {
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Review Queue
+                  {tView('reviewQueue')}
                 </button>
               ) : extractionFeatureFlags.reviewQueue && isSubscriptionSettling ? (
                 <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
-                  Review Queue
+                  {tView('reviewQueue')}
                 </span>
               ) : null}
               {extractionFeatureFlags.reportBuilder && hasProFeatures ? (
@@ -704,11 +711,11 @@ export default function JobDetailPage() {
                       : "border-transparent text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Report Builder
+                  {tView('reportBuilder')}
                 </button>
               ) : extractionFeatureFlags.reportBuilder && isSubscriptionSettling ? (
                 <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
-                  Report Builder
+                  {tView('reportBuilder')}
                 </span>
               ) : null}
               <button
@@ -720,7 +727,7 @@ export default function JobDetailPage() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                Overview & Questions
+                {tView('overviewQuestions')}
               </button>
             </div>
           </div>
@@ -738,7 +745,7 @@ export default function JobDetailPage() {
                 panelPayload={citationPanelPayload}
                 mobilePane={mobilePane}
                 onMobilePaneChange={setMobilePane}
-                primaryLabel="Results"
+                primaryLabel={tView('results')}
               >
                 <ResultsToolbar
                   filters={filters}
@@ -770,19 +777,19 @@ export default function JobDetailPage() {
                     resultsRenderState === "filtered_empty" ? (
                     <div className="my-6 flex flex-col items-center justify-center rounded-xl border border-border bg-muted py-24 text-center">
                       <FileText className="mb-4 h-16 w-16 text-muted-foreground/50" />
-                      <h3 className="mb-2 text-xl font-semibold text-foreground">
+                       <h3 className="mb-2 text-xl font-semibold text-foreground">
                         {resultsRenderState === "filtered_empty"
-                          ? "No matches for current filters"
-                          : "No results found"}
+                          ? tJob('noMatches')
+                          : tc('noResultsFound')}
                       </h3>
                       <p className="max-w-md text-muted-foreground">
                         {resultsRenderState === "filtered_empty"
-                          ? "Try adjusting your filters to see more results."
-                          : papersWithResults.length === 0
+                          ? tc('tryAdjustingSearch')
+                          :                           papersWithResults.length === 0
                           ? job.status === "completed"
-                            ? "No papers matched your criteria or extraction failed."
-                            : "Results will appear here as they are processed."
-                          : "No results are available yet."}
+                            ? tPdf('noResultsDescription')
+                            : tPdf('resultsWillAppear')
+                          : tPdf('resultsWillAppear')}
                       </p>
                       {resultsRenderState === "filtered_empty" && (
                         <Button
@@ -790,7 +797,7 @@ export default function JobDetailPage() {
                           className="mt-6"
                           onClick={() => setFilters(defaultFilters)}
                         >
-                          Clear Filters
+                          {tJob('clearFilters')}
                         </Button>
                       )}
                     </div>
@@ -902,7 +909,7 @@ export default function JobDetailPage() {
                 panelPayload={citationPanelPayload}
                 mobilePane={mobilePane}
                 onMobilePaneChange={setMobilePane}
-                primaryLabel="Review"
+                primaryLabel={tView('review')}
               >
                 <ReviewQueue
                   jobId={jobId}

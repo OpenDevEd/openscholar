@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,9 @@ export function CreditBalanceCard({
   freeCreditCap = 10000,
   className,
 }: CreditBalanceCardProps) {
+  const tc = useTranslations("common");
+  const t = useTranslations("billingPage");
+
   // Calculate free credit usage percentage (for progress bar)
   const freeCreditsPercentage = creditsPerMonth > 0 
     ? Math.min((freeBalance / creditsPerMonth) * 100, 100)
@@ -33,14 +37,14 @@ export function CreditBalanceCard({
     <div className={cn("space-y-4", className)}>
       <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
         <Zap className="w-4 h-4" />
-        <span>Credits</span>
+        <span>{tc("credits")}</span>
       </div>
 
       <div className="space-y-6 rounded-xl border border-border/50 bg-muted/30 p-5">
         {/* Total Balance */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Total Balance</span>
+            <span className="text-sm font-medium">{t("totalBalance")}</span>
             <span className="text-2xl font-bold font-mono">
               {totalBalance.toLocaleString()}
             </span>
@@ -51,10 +55,10 @@ export function CreditBalanceCard({
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium flex items-center gap-2">
-              Free Credits
+              {t("freeCredits")}
               {creditsPerMonth > 0 && (
                 <span className="text-xs text-muted-foreground font-normal">
-                  ({creditsPerMonth.toLocaleString()}/month)
+                  {t("perMonth", { amount: creditsPerMonth.toLocaleString() })}
                 </span>
               )}
             </span>
@@ -68,7 +72,7 @@ export function CreditBalanceCard({
           />
           {freeCapPercentage >= 100 && (
             <p className="text-xs text-amber-600">
-              Free credit cap reached. Purchase additional credits for unlimited balance.
+              {t("freeCapReached")}
             </p>
           )}
         </div>
@@ -77,20 +81,20 @@ export function CreditBalanceCard({
         {paidBalance > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Purchased Credits</span>
+              <span className="font-medium">{t("purchasedCredits")}</span>
               <span className="text-muted-foreground font-mono">
                 {paidBalance.toLocaleString()}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              No expiration or cap
+              {t("noExpiration")}
             </div>
           </div>
         )}
 
         {/* Help Text */}
         <div className="pt-2 border-t border-border/40 text-xs text-muted-foreground">
-          Credits are consumed in this order: free first, then purchased.
+          {t("creditsOrder")}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,14 +15,15 @@ import { subtleSpring } from "@/lib/animation-config";
 import posthog from "posthog-js";
 
 export function BookmarksAddForm() {
+  const tb = useTranslations("bookmarksPage");
   const [name, setName] = useState("");
   const [expansion, setExpansion] = useState("");
   const { keywords, addKeyword } = useKeywordExpansionStore();
 
   const validateKeyword = (keyword: string): string | null => {
-    if (!keyword.trim()) return "Bookmark name cannot be empty";
-    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return "Bookmark name can only contain letters, numbers, and dashes";
-    if (keyword.includes(' ')) return "Bookmark name cannot contain spaces";
+    if (!keyword.trim()) return tb("nameCannotBeEmpty");
+    if (!/^[a-zA-Z0-9-]+$/.test(keyword)) return tb("nameOnlyLettersNumbersDashes");
+    if (keyword.includes(' ')) return tb("nameNoSpaces");
     return null;
   };
 
@@ -75,11 +77,11 @@ export function BookmarksAddForm() {
         {/* Name input */}
         <div className="space-y-1.5">
           <Label htmlFor="bookmark-name" className="text-xs text-muted-foreground">
-            Bookmark Name
+            {tb("bookmarkName")}
           </Label>
           <Input
             id="bookmark-name"
-            placeholder="e.g., ml, ai-terms, my-search"
+            placeholder={tb("bookmarkNamePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             className={cn(
@@ -90,18 +92,18 @@ export function BookmarksAddForm() {
             )}
           />
           <p className="text-xs text-muted-foreground">
-            Letters, numbers, and dashes only
+            {tb("lettersNumbersDashes")}
           </p>
         </div>
 
         {/* Expansion input */}
         <div className="space-y-1.5">
           <Label htmlFor="bookmark-expansion" className="text-xs text-muted-foreground">
-            Expands To
+            {tb("expandsTo")}
           </Label>
           <Input
             id="bookmark-expansion"
-            placeholder={`e.g., AI OR ML OR "artificial intelligence"`}
+            placeholder={tb("expandsToPlaceholder")}
             value={expansion}
             onChange={(e) => setExpansion(e.target.value)}
             className={cn(
@@ -112,7 +114,7 @@ export function BookmarksAddForm() {
             )}
           />
           <p className="text-xs text-muted-foreground">
-            Use <code className="bg-muted px-1 rounded">name...</code> in search to expand
+            {tb("useInSearch")}
           </p>
         </div>
       </div>
@@ -125,7 +127,7 @@ export function BookmarksAddForm() {
           className="w-full md:w-auto gap-1.5"
         >
           <Plus className="h-4 w-4" />
-          Add Bookmark
+          {tb("addBookmark")}
         </Button>
       </div>
     </motion.div>

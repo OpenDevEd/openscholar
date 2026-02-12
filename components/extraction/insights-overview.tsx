@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useTranslations } from "next-intl";
 
 interface InsightsOverviewProps {
   jobId: string;
@@ -25,6 +26,8 @@ export function InsightsOverview({
   onRerun,
   enabled = true,
 }: InsightsOverviewProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const insightsQuery = useProtectedQuery(
     api.extraction.queries.getJobInsights,
     enabled ? ({ jobId: jobId as any } as any) : "skip",
@@ -44,10 +47,10 @@ export function InsightsOverview({
   if (!insights || insights.status !== "ok") {
     const message =
       insights?.status === "unauthenticated"
-        ? "Sign in to view insights for this job."
+        ? t("signInToViewInsights")
         : insights?.status === "no_access"
-          ? "You do not have access to insights for this job."
-          : "Insights are unavailable for this job.";
+          ? t("noAccessInsights")
+          : t("insightsUnavailable");
     return (
       <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
         {message}
@@ -61,19 +64,19 @@ export function InsightsOverview({
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">Answered</div>
+          <div className="text-xs text-muted-foreground">{tc("answered")}</div>
           <div className="text-xl font-semibold">{pct(summary.answeredRate)}</div>
         </div>
         <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">Grounded</div>
+          <div className="text-xs text-muted-foreground">{tc("grounded")}</div>
           <div className="text-xl font-semibold">{pct(summary.groundedRate)}</div>
         </div>
         <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">Best effort</div>
+          <div className="text-xs text-muted-foreground">{tc("bestEffort")}</div>
           <div className="text-xl font-semibold">{pct(summary.bestEffortRate)}</div>
         </div>
         <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">No-content papers</div>
+          <div className="text-xs text-muted-foreground">{tc("noContentPapers")}</div>
           <div className="text-xl font-semibold">{summary.noContentCount}</div>
         </div>
       </div>
@@ -81,14 +84,14 @@ export function InsightsOverview({
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="font-medium">No-content diagnostics</div>
+            <div className="font-medium">{t("noContentDiagnostics")}</div>
             <div className="text-xs text-muted-foreground">
-              Papers with no usable PDF and no abstract: {summary.noContentCount}
+              {t("noContentDiagnosticsDescription")}{summary.noContentCount}
             </div>
           </div>
           {onRerun ? (
             <Button type="button" size="sm" variant="outline" onClick={onRerun}>
-              Re-run with source changes
+              {t("reRunWithSourceChanges")}
             </Button>
           ) : null}
         </div>
@@ -109,7 +112,7 @@ export function InsightsOverview({
 
       <div className="rounded-lg border border-border/50 bg-card">
         <div className="border-b border-border/50 px-4 py-3 text-sm font-medium">
-          Question-level insights
+          {t("questionLevelInsights")}
         </div>
         <div className="divide-y divide-border/40">
           {questions.map((question: any) => (
@@ -123,9 +126,9 @@ export function InsightsOverview({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="font-medium">{question.question}</div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <Badge variant="outline">{pct(question.answered / Math.max(question.total, 1))} answered</Badge>
-                  <Badge variant="outline">{pct(question.grounded / Math.max(question.total, 1))} grounded</Badge>
-                  <Badge variant="secondary">{Math.round(question.avgConfidence * 100)}% avg conf</Badge>
+                  <Badge variant="outline">{pct(question.answered / Math.max(question.total, 1))} {tc("answered").toLowerCase()}</Badge>
+                  <Badge variant="outline">{pct(question.grounded / Math.max(question.total, 1))} {tc("grounded").toLowerCase()}</Badge>
+                  <Badge variant="secondary">{Math.round(question.avgConfidence * 100)}% {t("avgConf")}</Badge>
                 </div>
               </div>
             </button>

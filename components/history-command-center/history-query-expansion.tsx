@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { formatDistanceToNow } from "date-fns";
+import { useTranslations, useLocale } from "next-intl";
+import { formatTimeAgo } from "@/lib/format";
 import {
   Copy,
   BookmarkPlus,
@@ -40,6 +41,9 @@ export function HistoryQueryExpansion({
   onQuerySelect,
   hideHeader = false,
 }: HistoryQueryExpansionProps) {
+  const th = useTranslations("historyPage");
+  const tc = useTranslations("common");
+  const locale = useLocale();
   const [bookmarkingIndex, setBookmarkingIndex] = useState<number | null>(null);
   const [bookmarkName, setBookmarkName] = useState("");
 
@@ -126,7 +130,7 @@ export function HistoryQueryExpansion({
           <div className="px-3 py-2 border-b border-border/40 bg-muted/40">
             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              <span>Query History ({queryHistory.length})</span>
+              <span>{th("queryHistoryCount", { count: queryHistory.length })}</span>
             </div>
           </div>
         )}
@@ -137,7 +141,7 @@ export function HistoryQueryExpansion({
             const isCurrent = index === 0;
             const originalIndex = queryHistory.length - 1 - index;
             const date = new Date(entry.timestamp);
-            const timeAgo = formatDistanceToNow(date, { addSuffix: true });
+            const timeAgo = formatTimeAgo(date, locale);
             const canDelete = !isCurrent;
             const isBookmarking = bookmarkingIndex === originalIndex;
 
@@ -166,11 +170,11 @@ export function HistoryQueryExpansion({
                       <div className="flex items-center gap-2 text-amber-600 mb-2">
                         <BookmarkPlus className="h-4 w-4" />
                         <span className="text-sm font-medium">
-                          Save as Bookmark
+                          {tc("saveAsBookmark")}
                         </span>
                       </div>
                       <Input
-                        placeholder="bookmark-name"
+                        placeholder={th("bookmarkNamePlaceholder")}
                         value={bookmarkName}
                         onChange={(e) => setBookmarkName(e.target.value)}
                         onKeyDown={(e) => handleBookmarkKeyDown(e, entry.query)}
@@ -185,7 +189,7 @@ export function HistoryQueryExpansion({
                           disabled={!bookmarkName.trim()}
                         >
                           <Check className="h-3 w-3 mr-1" />
-                          Save
+                          {tc("save")}
                         </Button>
                         <Button
                           size="sm"
@@ -196,7 +200,7 @@ export function HistoryQueryExpansion({
                             setBookmarkName("");
                           }}
                         >
-                          Cancel
+                          {tc("cancel")}
                         </Button>
                       </div>
                     </motion.div>
@@ -250,7 +254,7 @@ export function HistoryQueryExpansion({
                               <>
                                 <span className="opacity-40">•</span>
                                 <span className="text-primary font-medium">
-                                  Current
+                                  {th("current")}
                                 </span>
                               </>
                             )}
@@ -270,7 +274,7 @@ export function HistoryQueryExpansion({
                                 <Copy className="h-3 w-3" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Copy</TooltipContent>
+                            <TooltipContent>{tc("copy")}</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -284,7 +288,7 @@ export function HistoryQueryExpansion({
                                 <BookmarkPlus className="h-3 w-3" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Bookmark</TooltipContent>
+                            <TooltipContent>{tc("bookmark")}</TooltipContent>
                           </Tooltip>
 
                           {!isCurrent && onQuerySelect && (
@@ -315,7 +319,7 @@ export function HistoryQueryExpansion({
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Remove</TooltipContent>
+                              <TooltipContent>{tc("remove")}</TooltipContent>
                             </Tooltip>
                           )}
                         </div>

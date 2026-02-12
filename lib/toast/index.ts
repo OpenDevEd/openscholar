@@ -105,18 +105,49 @@ type AppToastApi = {
     downloadFailed: (formatLabel: string) => void;
     uploadFailed: (formatLabel: string, error?: unknown) => void;
     importResult: (entity: string, count: number) => void;
+    downloadSuccess: (count: number, entity: string, format: string) => void;
+    uploadSuccess: (count: number, entity: string) => void;
+    uploadNoValid: (entity: string) => void;
   };
   clipboard: {
     copied: (thing: string) => void;
     copyFailed: (thing: string) => void;
   };
-  validation: { failed: (message: string) => void; warning: (message: string) => void };
+  validation: { 
+    failed: (message: string) => void; 
+    warning: (message: string) => void;
+    fileType: (allowedTypes?: string) => void;
+    fileSize: (maxSizeMB: number) => void;
+  };
   entity: {
     created: (entity: string, label?: string) => void;
     updated: (entity: string, label?: string) => void;
     deleted: (entity: string, label?: string) => void;
     cleared: (entity: string, count?: number) => void;
   };
+  job: {
+    cancelled: () => void;
+    cancelFailed: () => void;
+    deleted: () => void;
+    deleteFailed: () => void;
+    created: () => void;
+    createFailed: () => void;
+    duplicated: () => void;
+    duplicateFailed: () => void;
+  };
+  billing: {
+    cancelled: () => void;
+    cancelFailed: () => void;
+    portalFailed: () => void;
+    checkoutFailed: () => void;
+  };
+  zotero: {
+    connected: () => void;
+    failed: (error?: string) => void;
+  };
+  success: (title: string, description?: string) => void;
+  error: (title: string, description?: string, action?: ToastAction) => void;
+  warning: (title: string, description?: string) => void;
   custom: typeof customToast;
   dismiss: typeof dismissToast;
 };
@@ -190,6 +221,21 @@ export const appToast: AppToastApi = {
         description: `No valid ${entity} found in the file.`,
       });
     },
+    downloadSuccess: (count: number, entity: string, format: string) => {
+      showStyledToast("success", TOAST_MESSAGES.io.downloadSuccessTitle, {
+        description: `Downloaded ${formatEntityWithCount(entity, count)} as ${format}.`,
+      });
+    },
+    uploadSuccess: (count: number, entity: string) => {
+      showStyledToast("success", TOAST_MESSAGES.io.importCompletedTitle, {
+        description: `Successfully imported ${formatEntityWithCount(entity, count)}.`,
+      });
+    },
+    uploadNoValid: (entity: string) => {
+      showStyledToast("warning", TOAST_MESSAGES.io.importSkippedTitle, {
+        description: `No valid ${entity} found in the file.`,
+      });
+    },
   },
   clipboard: {
     copied: (thing: string) => {
@@ -212,6 +258,16 @@ export const appToast: AppToastApi = {
     warning: (message: string) => {
       showStyledToast("warning", TOAST_MESSAGES.validation.warningTitle, {
         description: message,
+      });
+    },
+    fileType: (allowedTypes?: string) => {
+      showStyledToast("error", TOAST_MESSAGES.validation.fileTypeTitle, {
+        description: allowedTypes ? `Only ${allowedTypes} files are supported.` : "File type not supported.",
+      });
+    },
+    fileSize: (maxSizeMB: number) => {
+      showStyledToast("error", TOAST_MESSAGES.validation.fileSizeTitle, {
+        description: `File exceeds the maximum size of ${maxSizeMB}MB.`,
       });
     },
   },
@@ -242,8 +298,68 @@ export const appToast: AppToastApi = {
       });
     },
   },
+  job: {
+    cancelled: () => {
+      showStyledToast("success", TOAST_MESSAGES.job.cancelledTitle);
+    },
+    cancelFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.job.cancelFailedTitle);
+    },
+    deleted: () => {
+      showStyledToast("success", TOAST_MESSAGES.job.deletedTitle);
+    },
+    deleteFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.job.deleteFailedTitle);
+    },
+    created: () => {
+      showStyledToast("success", TOAST_MESSAGES.job.createdTitle);
+    },
+    createFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.job.createFailedTitle);
+    },
+    duplicated: () => {
+      showStyledToast("success", TOAST_MESSAGES.job.duplicatedTitle);
+    },
+    duplicateFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.job.duplicateFailedTitle);
+    },
+  },
+  billing: {
+    cancelled: () => {
+      showStyledToast("success", TOAST_MESSAGES.billing.cancelledTitle);
+    },
+    cancelFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.billing.cancelFailedTitle);
+    },
+    portalFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.billing.portalFailedTitle);
+    },
+    checkoutFailed: () => {
+      showStyledToast("error", TOAST_MESSAGES.billing.checkoutFailedTitle);
+    },
+  },
+  zotero: {
+    connected: () => {
+      showStyledToast("success", TOAST_MESSAGES.zotero.connectedTitle);
+    },
+    failed: (error?: string) => {
+      showStyledToast("error", TOAST_MESSAGES.zotero.connectionFailedTitle, {
+        description: error,
+      });
+    },
+  },
+  success: (title: string, description?: string) => {
+    showStyledToast("success", title, { description });
+  },
+  error: (title: string, description?: string, action?: ToastAction) => {
+    showStyledToast("error", title, { description, action });
+  },
+  warning: (title: string, description?: string) => {
+    showStyledToast("warning", title, { description });
+  },
   custom: customToast,
   dismiss: dismissToast,
 };
 
+export { useAppToast } from "./use-app-toast";
 export type { ToastKind, ToastAction, AppToastPayload, LoadingToastOptions };

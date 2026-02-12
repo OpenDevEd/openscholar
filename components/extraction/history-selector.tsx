@@ -7,8 +7,10 @@ import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Search, Calendar, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useLocale } from "next-intl";
 
 export function HistorySelector() {
+  const locale = useLocale();
   const { draftJob, toggleHistorySelection } = useExtractionStore();
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
 
@@ -72,7 +74,7 @@ export function HistorySelector() {
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{formatTimeAgo(new Date(entry.createdAt))}</span>
+                    <span>{formatTimeAgo(new Date(entry.createdAt), locale)}</span>
                   </div>
 
                   <span className="w-1 h-1 rounded-full bg-border" />

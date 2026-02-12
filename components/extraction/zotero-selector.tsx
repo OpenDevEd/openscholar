@@ -12,9 +12,10 @@ import { cn } from "@/lib/utils";
 import { AlertCircle, Database, FileText, Library, Loader2, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Cascader, type CascaderOption } from "@/components/ui/cascader";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { getConvexSiteUrl } from "@/lib/convex-site";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useTranslations } from "next-intl";
 
 type ZoteroGroup = {
   id: string;
@@ -44,6 +45,7 @@ type ZoteroItem = {
 };
 
 export function ZoteroSelector() {
+  const t = useTranslations('zotero');
   const { draftJob, setZoteroSelection } = useExtractionStore();
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
@@ -192,7 +194,7 @@ export function ZoteroSelector() {
   ) {
     return (
       <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-        Loading Zotero status…
+        {t('loadingStatus')}
       </div>
     );
   }
@@ -202,18 +204,18 @@ export function ZoteroSelector() {
       <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground flex items-start gap-4">
         <AlertCircle className="h-5 w-5 text-muted-foreground" />
         <div>
-          <p className="font-medium text-foreground">Zotero not connected</p>
+          <p className="font-medium text-foreground">{t('notConnected')}</p>
           <p>Connect your Zotero account to choose items.</p>
           <div className="mt-4">
             <Button
               size="sm"
               onClick={async () => {
                 if (!me?._id) {
-                  toast.error("Please sign in to connect Zotero.");
+                  appToast.validation.failed(t('signInToConnect'));
                   return;
                 }
                 if (!callbackUrl) {
-                  toast.error("Missing backend URL. Set NEXT_PUBLIC_CONVEX_SITE_URL.");
+                  appToast.error(t('missingBackendUrl'));
                   return;
                 }
                 try {
@@ -223,7 +225,7 @@ export function ZoteroSelector() {
                   window.location.href = result.authorizeUrl;
                 } catch (error) {
                   console.error("Failed to start Zotero OAuth", error);
-                  toast.error("Failed to start Zotero connection.");
+                  appToast.zotero.failed();
                 }
               }}
             >
@@ -254,14 +256,14 @@ export function ZoteroSelector() {
             });
           }}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Library" />
+              <SelectValue placeholder={t('library')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="user">
-                <div className="flex items-center gap-2"><Library className="h-4 w-4" />My Library</div>
+                <div className="flex items-center gap-2"><Library className="h-4 w-4" />{t('myLibrary')}</div>
               </SelectItem>
               <SelectItem value="group">
-                <div className="flex items-center gap-2"><Database className="h-4 w-4" />Group Library</div>
+                <div className="flex items-center gap-2"><Database className="h-4 w-4" />{t('groupLibrary')}</div>
               </SelectItem>
             </SelectContent>
           </Select>
@@ -281,7 +283,7 @@ export function ZoteroSelector() {
               });
             }}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select group" />
+                <SelectValue placeholder={t('selectGroup')} />
               </SelectTrigger>
               <SelectContent>
                 {(groups.data as ZoteroGroup[] | undefined)?.map((group) => (
@@ -294,7 +296,7 @@ export function ZoteroSelector() {
           <Cascader
             options={collectionOptions}
             value={selectedCollectionPath}
-            placeholder={requiresGroupSelection ? "Select a group first" : "All items"}
+            placeholder={requiresGroupSelection ? t('selectGroupFirst') : t('allItems')}
             disabled={requiresGroupSelection}
             className="w-full sm:col-span-2 lg:col-span-1"
             popupClassName="p-0"
@@ -343,7 +345,7 @@ export function ZoteroSelector() {
 
       {isLoading && (
         <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading Zotero items…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingItems')}
         </div>
       )}
 
@@ -409,7 +411,7 @@ export function ZoteroSelector() {
             onClick={() => items.setSize(items.size + 1)}
             disabled={items.isValidating}
           >
-            {items.isValidating ? "Loading..." : "Load more"}
+            {items.isValidating ? t('loadingItems') : t('loadMore')}
           </Button>
         </div>
       )}

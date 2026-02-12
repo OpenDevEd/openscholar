@@ -40,6 +40,7 @@ import {
   ScreeningResponses,
 } from "./shared";
 import posthog from "posthog-js";
+import { useTranslations } from "next-intl";
 
 export function PaperCardListDetail({
   result,
@@ -47,6 +48,8 @@ export function PaperCardListDetail({
   onDownloadItem,
   onDownloadEssentialItem,
 }: PaperCardProps) {
+  const tp = useTranslations("paperCard");
+  const tc = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const { expandedAbstracts, toggleAbstract } = useResultsStore();
@@ -120,7 +123,7 @@ export function PaperCardListDetail({
                 {isTranslating && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                    <span>Translating...</span>
+                    <span>{tc("translating")}</span>
                   </div>
                 )}
 
@@ -134,7 +137,7 @@ export function PaperCardListDetail({
                       }}
                       className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
                     >
-                      {showTranslated ? "Show Original" : "Show English"}
+                      {showTranslated ? tc("showOriginal") : tc("showEnglish")}
                     </button>
                   )}
               </div>
@@ -190,7 +193,7 @@ export function PaperCardListDetail({
                 {result.cited_by_percentile_year && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Award className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="font-medium">Citation Percentile:</span>
+                    <span className="font-medium">{tp("citationPercentile")}</span>
                     <span className="text-foreground">
                       {result.cited_by_percentile_year.min}-
                       {result.cited_by_percentile_year.max}%
@@ -202,7 +205,7 @@ export function PaperCardListDetail({
                 {result.type && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <FileText className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="font-medium">Type:</span>
+                    <span className="font-medium">{tp("typeLabel")}</span>
                     <span className="text-foreground capitalize">
                       {result.type.replace(/-/g, " ")}
                     </span>
@@ -213,7 +216,7 @@ export function PaperCardListDetail({
                 {result.primary_topic && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Target className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="font-medium">Topic:</span>
+                    <span className="font-medium">{tp("topicLabel")}</span>
                     <span className="text-foreground">
                       {result.primary_topic.display_name}
                     </span>
@@ -224,7 +227,7 @@ export function PaperCardListDetail({
                 {result.primary_topic?.subfield && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Layers className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="font-medium">Subfield:</span>
+                    <span className="font-medium">{tp("subfieldLabel")}</span>
                     <span className="text-foreground">
                       {result.primary_topic.subfield.display_name}
                     </span>
@@ -235,7 +238,7 @@ export function PaperCardListDetail({
                 {result.primary_topic?.field && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <BookOpen className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="font-medium">Field:</span>
+                    <span className="font-medium">{tp("fieldLabel")}</span>
                     <span className="text-foreground">
                       {result.primary_topic.field.display_name}
                     </span>
@@ -246,7 +249,7 @@ export function PaperCardListDetail({
                 {result.primary_topic?.domain && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Building className="h-3.5 w-3.5 text-primary/70" />
-                    <span className="font-medium">Domain:</span>
+                    <span className="font-medium">{tp("domainLabel")}</span>
                     <span className="text-foreground">
                       {result.primary_topic.domain.display_name}
                     </span>
@@ -258,7 +261,7 @@ export function PaperCardListDetail({
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Leaf className="h-3.5 w-3.5 mt-0.5 text-green-600" />
                     <div>
-                      <span className="font-medium">SDGs:</span>
+                      <span className="font-medium">{tp("sdgsLabel")}</span>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
                         {result.sustainable_development_goals.map(
                           (sdg: {
@@ -289,14 +292,14 @@ export function PaperCardListDetail({
                 <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1.5">
                     <Quote className="h-3.5 w-3.5" />
-                    <span className="font-medium">References:</span>
+                    <span className="font-medium">{tp("referencesLabel")}</span>
                     <span className="text-foreground">
                       {result.referenced_works_count || 0}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <BarChart3 className="h-3.5 w-3.5" />
-                    <span className="font-medium">FWCI:</span>
+                    <span className="font-medium">{tp("fwciLabel")}</span>
                     <span className="text-foreground">
                       {result.fwci ? result.fwci.toFixed(2) : "N/A"}
                     </span>
@@ -313,12 +316,12 @@ export function PaperCardListDetail({
               {isExpanded ? (
                 <>
                   <ChevronUp className="h-4 w-4" />
-                  Show Less
+                  {tc("showLess")}
                 </>
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  Show More
+                  {tc("showMore")}
                 </>
               )}
             </button>
@@ -359,7 +362,7 @@ export function PaperCardListDetail({
               >
                 <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 mb-1">
                   <Quote className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">Cited by</span>
+                  <span className="text-xs font-medium">{tp("citedBy")}</span>
                 </div>
                 <div className="text-lg font-bold text-orange-700 dark:text-orange-300">
                   {result.cited_by_count || 0}
@@ -373,7 +376,7 @@ export function PaperCardListDetail({
               >
                 <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 mb-1">
                   <Quote className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">Cites</span>
+                  <span className="text-xs font-medium">{tp("cites")}</span>
                 </div>
                 <div className="text-lg font-bold text-green-700 dark:text-green-300">
                   {result.referenced_works_count || 0}
@@ -387,7 +390,7 @@ export function PaperCardListDetail({
               >
                 <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
                   <Network className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">Related</span>
+                  <span className="text-xs font-medium">{tc("related")}</span>
                 </div>
                 <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
                   {result.related_works?.length || 0}
@@ -426,19 +429,19 @@ export function PaperCardListDetail({
             <div className="flex items-center gap-1 w-full bg-muted/50 dark:bg-muted/30 rounded-xl p-1.5">
               <CitationBadge
                 count={result.cited_by_count || 0}
-                label="Cited by"
+                label={tp("citedBy")}
                 color="orange"
                 onClick={handleCitesSearch}
               />
               <CitationBadge
                 count={result.referenced_works_count || 0}
-                label="Cites"
+                label={tp("cites")}
                 color="green"
                 onClick={handleCitedBySearch}
               />
               <CitationBadge
                 count={result.related_works?.length || 0}
-                label="Related"
+                label={tc("related")}
                 color="blue"
                 onClick={handleRelatedSearch}
               />

@@ -32,12 +32,15 @@ import { useState } from "react";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useTranslations } from "next-intl";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
 }
 
 export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const { user } = useAuth();
   const { phase } = useAuthReadiness();
   const router = useRouter();
@@ -62,7 +65,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         size="sm"
         className={cn(
           "transition-all duration-200",
-          isCollapsed ? "h-8 w-8 px-0" : "flex-1 justify-start px-2 h-9 gap-2",
+          isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
         )}
         disabled
       >
@@ -75,7 +78,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             aria-hidden
           />
         )}
-        <span className="sr-only">Loading account controls</span>
+        <span className="sr-only">{tc("loadingAccountControls")}</span>
       </Button>
     );
   }
@@ -88,14 +91,14 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         size="sm"
         className={cn(
           "transition-all duration-200 hover:bg-sidebar-accent/80",
-          isCollapsed ? "h-8 w-8 px-0" : "flex-1 justify-start px-2 h-9 gap-2",
+          isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
         )}
         onClick={() => router.push("/auth/signin")}
-        title={isCollapsed ? undefined : "Sign In"}
+        title={isCollapsed ? undefined : tc("signIn")}
       >
         <LogIn className="h-[1.2rem] w-[1.2rem] shrink-0" />
-        {!isCollapsed && <span className="text-sm font-medium">Sign In</span>}
-        <span className="sr-only">Sign In</span>
+        {!isCollapsed && <span className="text-sm font-medium">{tc("signIn")}</span>}
+        <span className="sr-only">{tc("signIn")}</span>
       </Button>
     );
 
@@ -103,7 +106,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
       return (
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent side="right">Sign In</TooltipContent>
+          <TooltipContent side="right">{tc("signIn")}</TooltipContent>
         </Tooltip>
       );
     }
@@ -123,7 +126,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   };
   const displayName = profile.firstName
     ? `${profile.firstName}${profile.lastName ? ` ${profile.lastName}` : ""}`
-    : profile.email?.split("@")[0] || "User";
+    : profile.email?.split("@")[0] || tc("user");
 
   const initials =
     profile.firstName && profile.lastName
@@ -148,7 +151,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
       size="sm"
       className={cn(
         "transition-all duration-200 hover:bg-sidebar-accent/80",
-        isCollapsed ? "h-8 w-8 px-0" : "flex-1 justify-start px-2 h-9 gap-2",
+        isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
       )}
     >
       <User className="h-[1.2rem] w-[1.2rem] shrink-0" />
@@ -199,7 +202,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         <div className="px-2 py-1.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">
-              Plan
+              {tc("plan")}
             </span>
             {isSubscriptionLoading ? (
               <span
@@ -218,7 +221,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           {creditsQuery.settlement === "ready" && credits && credits.total > 0 && (
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
-                Credits
+                {tc("credits")}
               </span>
               <span className="text-sm font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                 {credits.total}
@@ -235,7 +238,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                 router.push("/pricing");
               }}
             >
-              Upgrade to Pro
+              {tc("upgradeTo", { plan: "Pro" })}
             </Button>
           )}
         </div>
@@ -250,7 +253,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           className="cursor-pointer"
         >
           <CreditCard className="h-4 w-4 mr-2" />
-          Plans
+          {tc("plans")}
         </DropdownMenuItem>
 
         <DropdownMenuItem
@@ -261,7 +264,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           className="cursor-pointer"
         >
           <Settings className="h-4 w-4 mr-2" />
-          Settings
+          {tc("settings")}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
@@ -273,7 +276,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
+          {tc("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

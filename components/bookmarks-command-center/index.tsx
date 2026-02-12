@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { BookOpen } from "lucide-react";
 import {
@@ -15,7 +16,7 @@ import {
   uploadFile,
 } from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
-import { toasts } from "@/lib/toast-utils";
+import { appToast } from "@/lib/toast";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { BookmarkSortBy } from "@/lib/types";
 import {
@@ -37,14 +38,17 @@ export interface BookmarkEntry {
   createdAt: number;
 }
 
-const SORT_OPTIONS: { value: BookmarkSortBy; label: string }[] = [
-  { value: "recent", label: "Recent" },
-  { value: "oldest", label: "Oldest" },
-  { value: "alpha", label: "A → Z" },
-  { value: "alpha-desc", label: "Z → A" },
-];
-
 export function BookmarksCommandCenter() {
+  const tb = useTranslations("bookmarksPage");
+  const tc = useTranslations("common");
+  const tcc = useTranslations("commandCenter");
+
+  const SORT_OPTIONS: { value: BookmarkSortBy; label: string }[] = [
+    { value: "recent", label: tc("recent") },
+    { value: "oldest", label: tc("oldest") },
+    { value: "alpha", label: tc("aToZ") },
+    { value: "alpha-desc", label: tc("zToA") },
+  ];
   const [searchFilter, setSearchFilter] = useState("");
   const [editingBookmark, setEditingBookmark] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useQueryState(
@@ -138,6 +142,7 @@ export function BookmarksCommandCenter() {
 
     removeKeyword(name);
     if (editingBookmark === name) setEditingBookmark(null);
+    appToast.entity.deleted("bookmark", name);
   };
 
   // Download handlers
@@ -149,9 +154,9 @@ export function BookmarksCommandCenter() {
         createdAt: bookmark.createdAt,
       }));
       downloadAsFile(JSON.stringify(data, null, 2), "bookmarks.json", "json");
-      toasts.download.success(data.length, "bookmarks", "JSON");
+      appToast.io.downloadSuccess(data.length, "bookmarks", "JSON");
     } catch {
-      toasts.download.error("JSON");
+      appToast.io.downloadFailed("JSON");
     }
   };
 
@@ -164,9 +169,9 @@ export function BookmarksCommandCenter() {
       }));
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "bookmarks.csv", "csv");
-      toasts.download.success(data.length, "bookmarks", "CSV");
+      appToast.io.downloadSuccess(data.length, "bookmarks", "CSV");
     } catch {
-      toasts.download.error("CSV");
+      appToast.io.downloadFailed("CSV");
     }
   };
 
@@ -176,12 +181,12 @@ export function BookmarksCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importKeywords(data);
       if (importedCount > 0) {
-        toasts.upload.success(importedCount, "bookmarks");
+        appToast.io.uploadSuccess(importedCount, "bookmarks");
       } else {
-        toasts.upload.noValid("bookmarks");
+        appToast.io.uploadNoValid("bookmarks");
       }
     } catch (error) {
-      toasts.upload.error(error);
+      appToast.io.uploadFailed("JSON", error);
     }
   };
 
@@ -191,23 +196,23 @@ export function BookmarksCommandCenter() {
       const data = await uploadFile(file);
       const importedCount = importKeywords(data);
       if (importedCount > 0) {
-        toasts.upload.success(importedCount, "bookmarks");
+        appToast.io.uploadSuccess(importedCount, "bookmarks");
       } else {
-        toasts.upload.noValid("bookmarks");
+        appToast.io.uploadNoValid("bookmarks");
       }
     } catch (error) {
-      toasts.upload.error(error);
+      appToast.io.uploadFailed("CSV", error);
     }
   };
 
   const handleClearAll = () => {
     showConfirmation({
-      title: "Clear All Bookmarks",
-      message: `Are you sure you want to delete all ${bookmarksArray.length} bookmarks? This action cannot be undone.`,
-      confirmText: "Clear All",
+      title: tb("clearAllBookmarksTitle"),
+      message: tb("clearAllBookmarksConfirm", { count: bookmarksArray.length }),
+      confirmText: tc("clearAll"),
       onConfirm: () => {
         clearKeywords();
-        toasts.bookmarks.cleared();
+        appToast.entity.cleared("bookmarks", bookmarksArray.length);
       },
     });
   };
@@ -217,8 +222,8 @@ export function BookmarksCommandCenter() {
       {/* Header */}
       <CommandCenterHeader
         icon={BookOpen}
-        title="Bookmarks"
-        description="Create shortcuts for commonly used search terms"
+        title={tc("bookmarks")}
+        description={tb("description")}
         count={sortedBookmarks.length}
         singular="bookmark"
         plural="bookmarks"
@@ -239,13 +244,13 @@ export function BookmarksCommandCenter() {
         onSortChange={setBookmarkSortBy}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
-        placeholder="Search bookmarks..."
+        placeholder={tb("searchPlaceholder")}
         onDownloadJSON={handleDownloadJSON}
         onDownloadCSV={handleDownloadCSV}
         onUploadJSON={handleUploadJSON}
         onUploadCSV={handleUploadCSV}
         onClearAll={handleClearAll}
-        clearTooltip="Clear all bookmarks"
+        clearTooltip={tb("clearAllBookmarks")}
         totalCount={bookmarksArray.length}
       />
 
@@ -256,8 +261,8 @@ export function BookmarksCommandCenter() {
           viewMode={bookmarkViewMode}
           keyExtractor={(bookmark) => bookmark.name}
           emptyIcon={BookOpen}
-          emptyTitle="No bookmarks yet"
-          emptyDescription="Add your first bookmark using the form above."
+          emptyTitle={tb("noBookmarksYet")}
+          emptyDescription={tb("addFirstBookmark")}
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
           renderItem={(bookmark, index) => (

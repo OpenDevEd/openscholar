@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
+import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { QuestionBuilder } from "./question-builder";
 import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const stepVariants = {
@@ -47,6 +48,8 @@ const stepVariants = {
 
 export function JobCreator() {
   const router = useRouter();
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const [stepRaw, setStepRaw] = useQueryState(
     "step",
     parseAsInteger.withDefault(1).withOptions({ history: "push" }),
@@ -60,11 +63,11 @@ export function JobCreator() {
   const startExtraction = useMutation(api.extraction.mutations.startExtraction);
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
 
-  const steps = [
-    { id: 1, title: "Job Details", icon: Layers, description: "Name your extraction" },
-    { id: 2, title: "Select Papers", icon: FileText, description: "Choose from history" },
-    { id: 3, title: "Define Questions", icon: Zap, description: "What to extract" },
-  ];
+  const steps = useMemo(() => [
+    { id: 1, title: t("jobDetails"), icon: Layers, description: t("nameYourJob") },
+    { id: 2, title: t("selectPapers"), icon: FileText, description: t("chooseFromHistory") },
+    { id: 3, title: t("defineQuestions"), icon: Zap, description: t("whatToExtract") },
+  ], [t]);
 
   const handleNext = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -88,12 +91,12 @@ export function JobCreator() {
     const hasZotero = (draftJob.zoteroSelection?.items || []).length > 0;
     const hasManual = draftJob.manualItems.length > 0;
     if (!hasHistory && !hasZotero && !hasManual) {
-      toast.error("Please select at least one source");
+      appToast.validation.failed(t("pleaseSelectSource"));
       return;
     }
 
     if (draftJob.questions.length === 0) {
-      toast.error("Please complete all steps");
+      appToast.validation.failed(t("pleaseCompleteSteps"));
       return;
     }
 
@@ -102,7 +105,7 @@ export function JobCreator() {
       .filter(Boolean) as any[];
 
     if (hasHistory && historyEntries.length === 0) {
-      toast.error("Selected history entries not found");
+      appToast.validation.failed(t("selectedHistoryNotFound"));
       return;
     }
 
@@ -133,7 +136,7 @@ export function JobCreator() {
       }));
 
       const result = await startExtraction({
-        name: draftJob.name || "Untitled Extraction Job",
+        name: draftJob.name || t("untitledJob"),
         sourceType: hasHistory && !hasZotero && !hasManual
           ? "history"
           : hasZotero && !hasHistory && !hasManual
@@ -157,12 +160,12 @@ export function JobCreator() {
         })),
       });
 
-      toast.success("Extraction job started!");
+      appToast.job.created();
       clearDraftJob();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
       console.error("Failed to start extraction:", error);
-      toast.error("Failed to start extraction job");
+      appToast.job.createFailed();
     } finally {
       setIsSubmitting(false);
     }
@@ -199,11 +202,11 @@ export function JobCreator() {
           onClick={() => router.push("/extraction")}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Cancel
+          {tc("cancel")}
         </Button>
 
         <div className="text-sm text-muted-foreground">
-          Step {validStep} of 3
+          {t("stepOfThree", { step: validStep, total: 3 })}
         </div>
       </motion.div>
 
@@ -301,10 +304,10 @@ export function JobCreator() {
                   className="text-center mb-8"
                 >
                   <h2 className="text-2xl font-bold text-foreground mb-2">
-                    Name your extraction job
+                    {t("nameYourJob")}
                   </h2>
                   <p className="text-muted-foreground">
-                    Give this job a descriptive name to help you identify it later.
+                    {t("nameYourJobDescription")}
                   </p>
                 </motion.div>
 
@@ -316,11 +319,11 @@ export function JobCreator() {
                 >
                   <div className="space-y-2">
                     <Label htmlFor="name">
-                      Job Name
+                      {t("jobName")}
                     </Label>
                     <Input
                       id="name"
-                      placeholder="e.g., RCT Data Extraction for Review 2024"
+                      placeholder={t("jobNamePlaceholder")}
                       value={draftJob.name}
                       onChange={(e) => setDraftJobName(e.target.value)}
                       className="h-14 text-lg"
@@ -340,10 +343,10 @@ export function JobCreator() {
                   className="mb-6"
                 >
                   <h2 className="text-2xl font-bold text-foreground mb-2">
-                    Select Papers
+                    {t("selectPapers")}
                   </h2>
                  <p className="text-muted-foreground">
-                   Combine sources from history, Zotero, or manual entries.
+                   {t("combineSources")}
                  </p>
                  <SourceSummary />
                 </motion.div>
@@ -361,10 +364,10 @@ export function JobCreator() {
                   className="mb-6"
                 >
                   <h2 className="text-2xl font-bold text-foreground mb-2">
-                    Define Questions
+                    {t("defineQuestions")}
                   </h2>
                   <p className="text-muted-foreground">
-                    What data points do you want to extract from each paper?
+                    {t("whatDataPoints")}
                   </p>
                 </motion.div>
 
@@ -388,7 +391,7 @@ export function JobCreator() {
           disabled={isSubmitting}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          {validStep === 1 ? "Cancel" : "Back"}
+          {validStep === 1 ? tc("cancel") : tc("back")}
         </Button>
 
         <Button
@@ -400,16 +403,16 @@ export function JobCreator() {
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Starting...
+              {tc("starting")}
             </>
           ) : validStep === 3 ? (
             <>
-              Start Extraction
+              {t("startExtraction")}
               <Zap className="ml-2 h-4 w-4" />
             </>
           ) : (
             <>
-              Continue
+              {tc("continue")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}

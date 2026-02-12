@@ -48,6 +48,7 @@ import { DownloadMenu } from "../download-menu";
 import { useTheme } from "next-themes";
 import { RatingSelector } from "../rating-selector";
 import { useIsMobile } from "@/lib/hooks";
+import { useTranslations } from "next-intl";
 
 import { ScreeningResponses, useTranslate } from "../paper-card";
 
@@ -76,6 +77,13 @@ export function FocusMode({
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+
+  const tLabels = useTranslations("labels");
+  const tAccessibility = useTranslations("accessibility");
+  const tFontSize = useTranslations("fontSize");
+  const tLineHeight = useTranslations("lineHeight");
+  const tWidth = useTranslations("width");
+  const tCommon = useTranslations("common");
 
   // Track focus mode time spent
   const focusModeStartTimeRef = useRef<number | null>(null);
@@ -503,26 +511,26 @@ export function FocusMode({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               {!isPreview && paper.type && (
                 <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Type:</span>
+                  <span className="text-muted-foreground">{tLabels('type')}:</span>
                   <span className="font-medium capitalize">
                     {paper.type.replace(/-/g, ' ')}
                   </span>
                 </span>
               )}
               <span className="flex items-center gap-1">
-                <span className="text-muted-foreground">Refs:</span>
+                <span className="text-muted-foreground">{tLabels('refs')}:</span>
                 <span className="font-medium">
                   {isPreview ? "127" : paper.referenced_works_count || 0}
                 </span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="text-muted-foreground">Cited:</span>
+                <span className="text-muted-foreground">{tLabels('cited')}:</span>
                 <span className="font-medium">
                   {isPreview ? "89" : paper.cited_by_count || 0}
                 </span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="text-muted-foreground">FWCI:</span>
+                <span className="text-muted-foreground">{tLabels('fwci')}:</span>
                 <span className="font-medium">
                   {isPreview
                     ? "2.34"
@@ -543,7 +551,7 @@ export function FocusMode({
               )}
               {(isPreview || paper.primary_topic) && (
                 <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Topic:</span>
+                  <span className="text-muted-foreground">{tLabels('topic')}:</span>
                   <span className="font-medium">
                     {isPreview
                       ? "Machine Learning Applications"
@@ -553,7 +561,7 @@ export function FocusMode({
               )}
               {!isPreview && paper.primary_topic?.field && (
                 <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Field:</span>
+                  <span className="text-muted-foreground">{tLabels('field')}:</span>
                   <span className="font-medium">
                     {paper.primary_topic.field.display_name}
                   </span>
@@ -561,7 +569,7 @@ export function FocusMode({
               )}
               {!isPreview && paper.primary_topic?.subfield && (
                 <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Subfield:</span>
+                  <span className="text-muted-foreground">{tLabels('subfield')}:</span>
                   <span className="font-medium">
                     {paper.primary_topic.subfield.display_name}
                   </span>
@@ -569,7 +577,7 @@ export function FocusMode({
               )}
               {!isPreview && paper.primary_topic?.domain && (
                 <span className="flex items-center gap-1">
-                  <span className="text-muted-foreground">Domain:</span>
+                  <span className="text-muted-foreground">{tLabels('domain')}:</span>
                   <span className="font-medium">
                     {paper.primary_topic.domain.display_name}
                   </span>
@@ -610,7 +618,7 @@ export function FocusMode({
                       window.open(doiUrl, "_blank");
                     }}
                     className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
-                    title="Open DOI"
+                    title={tAccessibility('openDoi')}
                   >
                     <ExternalLink className="h-3 w-3" />
                     <span className="font-mono">
@@ -635,10 +643,10 @@ export function FocusMode({
                 : "mb-2 text-xs space-y-1"
             )}
           >
-            {paper.sustainable_development_goals &&
-              paper.sustainable_development_goals.length > 0 && (
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-muted-foreground">SDGs:</span>
+              {paper.sustainable_development_goals &&
+                paper.sustainable_development_goals.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-muted-foreground">{tLabels('sdgs')}:</span>
                   {paper.sustainable_development_goals
                     .slice(0, 2)
                     .map(
@@ -709,7 +717,7 @@ export function FocusMode({
               {/* First row: Focus Mode title + rating */}
               <div className="flex items-center justify-between md:justify-start gap-3">
                 <div className="flex items-center gap-3">
-                  <SheetTitle className="text-lg">Focus Mode</SheetTitle>
+                  <SheetTitle className="text-lg">{tAccessibility('focusMode')}</SheetTitle>
                   <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                     {currentIndex + 1} / {papers.length}
                   </div>
@@ -931,7 +939,7 @@ export function FocusMode({
                       size="sm"
                       onClick={settings.resetSettings}
                       className="gap-2"
-                      title="Reset to defaults"
+                      title={tAccessibility('resetToDefaults')}
                     >
                       <RotateCcw className="h-4 w-4" />
                       Reset
@@ -965,13 +973,13 @@ export function FocusMode({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="sm">Small (14px)</SelectItem>
+                                <SelectItem value="sm">{tFontSize('small')}</SelectItem>
                                 <SelectItem value="base">
-                                  Medium (16px)
+                                  {tFontSize('medium')}
                                 </SelectItem>
-                                <SelectItem value="lg">Large (18px)</SelectItem>
+                                <SelectItem value="lg">{tFontSize('large')}</SelectItem>
                                 <SelectItem value="xl">
-                                  Extra Large (20px)
+                                  {tFontSize('extraLarge')}
                                 </SelectItem>
                               </SelectContent>
                             </Select>
@@ -990,13 +998,13 @@ export function FocusMode({
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="tight">
-                                  Tight (1.25)
+                                  {tLineHeight('tight')}
                                 </SelectItem>
                                 <SelectItem value="normal">
-                                  Normal (1.5)
+                                  {tLineHeight('normal')}
                                 </SelectItem>
                                 <SelectItem value="relaxed">
-                                  Relaxed (1.75)
+                                  {tLineHeight('relaxed')}
                                 </SelectItem>
                               </SelectContent>
                             </Select>
@@ -1026,16 +1034,16 @@ export function FocusMode({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="narrow">
-                                Narrow (600px)
-                              </SelectItem>
-                              <SelectItem value="medium">
-                                Medium (800px)
-                              </SelectItem>
-                              <SelectItem value="wide">
-                                Wide (1000px)
-                              </SelectItem>
-                              <SelectItem value="full">Full Width</SelectItem>
+                                <SelectItem value="narrow">
+                                  {tWidth('narrow')}
+                                </SelectItem>
+                                <SelectItem value="medium">
+                                  {tWidth('medium')}
+                                </SelectItem>
+                                <SelectItem value="wide">
+                                  {tWidth('wide')}
+                                </SelectItem>
+                                <SelectItem value="full">{tWidth('fullWidth')}</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

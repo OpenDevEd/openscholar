@@ -15,30 +15,14 @@ import {
   CreditCard,
   BookOpen,
 } from "lucide-react";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
-
-const FEATURES = {
-  free: ["10,000 free credits", "Basic search", "Limited queries"],
-  go: ["100 Queries/mo", "Basic Search", "Standard Support"],
-  pro: [
-    "Unlimited Queries",
-    "Advanced Search",
-    "Priority Support",
-    "AI Analysis",
-  ],
-  enterprise: [
-    "Everything in Pro",
-    "Custom Seats",
-    "SSO & Audit Logs",
-    "Dedicated Manager",
-  ],
-};
+import { useTranslations, useLocale } from "next-intl";
 
 type PlanPrice = {
   id: string;
@@ -60,43 +44,25 @@ type PlanConfig = {
   popular?: boolean;
 };
 
-const PLANS: PlanConfig[] = [
-  {
-    id: "free",
-    name: "Free",
-    icon: BookOpen,
-    description: "Try OpenScholar",
-    features: FEATURES.free,
-    tier: 0,
-  },
-  {
-    id: "go",
-    name: "Go",
-    icon: Rocket,
-    description: "Perfect for getting started",
-    features: FEATURES.go,
-    tier: 10,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    icon: Zap,
-    description: "For power users who need more",
-    features: FEATURES.pro,
-    tier: 20,
-    popular: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    icon: Building2,
-    description: "Scaling your entire organization",
-    features: FEATURES.enterprise,
-    tier: 30,
-  },
-];
-
 export function Pricing() {
+  const t = useTranslations("pricing");
+  const tc = useTranslations("common");
+  const locale = useLocale();
+
+  const FEATURES = useMemo(() => ({
+    free: [t("freeFeature1"), t("freeFeature2"), t("freeFeature3")],
+    go: [t("goFeature1"), t("goFeature2"), t("goFeature3")],
+    pro: [t("proFeature1"), t("proFeature2"), t("proFeature3"), t("proFeature4")],
+    enterprise: [t("enterpriseFeature1"), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
+  }), [t]);
+
+  const PLANS: PlanConfig[] = useMemo(() => [
+    { id: "free", name: t("freePlanName"), icon: BookOpen, description: t("freeDescription"), features: FEATURES.free, tier: 0 },
+    { id: "go", name: t("goPlanName"), icon: Rocket, description: t("goDescription"), features: FEATURES.go, tier: 10 },
+    { id: "pro", name: t("proPlanName"), icon: Zap, description: t("proDescription"), features: FEATURES.pro, tier: 20, popular: true },
+    { id: "enterprise", name: t("enterprisePlanName"), icon: Building2, description: t("enterpriseDescription"), features: FEATURES.enterprise, tier: 30 },
+  ], [t, FEATURES]);
+
   const getPlans = useAction(api.subscriptions.actions.getPlans);
   const createCheckoutSession = useAction(
     api.subscriptions.actions.createCheckoutSession,
@@ -137,11 +103,9 @@ export function Pricing() {
   useEffect(() => {
     if (error) {
       console.error("Failed to load Stripe prices", error);
-      toast.error("Failed to load pricing", {
-        description: "Please refresh and try again.",
-      });
+      appToast.error(t("failedToLoadPricing"), t("pleaseRefresh"));
     }
-  }, [error]);
+  }, [error, t]);
 
   // Mobile detection
   useEffect(() => {
@@ -164,7 +128,7 @@ export function Pricing() {
       ];
     }
     return PLANS;
-  }, [isMobile]);
+  }, [isMobile, PLANS]);
 
   const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
     if (phase !== "authenticated") {
@@ -175,9 +139,7 @@ export function Pricing() {
     const priceId = prices?.find((price) => price.plan === planType)?.id;
 
     if (!priceId) {
-      toast.error("Plan unavailable", {
-        description: "Pricing is not configured for this plan.",
-      });
+      appToast.error(t("planUnavailable"), t("pricingNotConfigured"));
       return;
     }
 
@@ -193,13 +155,11 @@ export function Pricing() {
       if (url) {
         window.location.href = url;
       } else {
-        toast.error("Failed to start checkout");
+        appToast.billing.checkoutFailed();
       }
     } catch (err) {
       console.error(err);
-      toast.error("Something went wrong", {
-        description: "Could not initiate checkout. Please try again.",
-      });
+      appToast.error(tc("somethingWentWrong"), t("couldNotInitiateCheckout"));
     } finally {
       setLoadingPriceId(null);
     }
@@ -214,7 +174,7 @@ export function Pricing() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to open billing portal");
+      appToast.billing.portalFailed();
     } finally {
       setLoadingPriceId(null);
     }
@@ -226,7 +186,7 @@ export function Pricing() {
     const price = prices?.find((p) => p.plan === planType);
     if (!price || !price.amount)
       return <Loader2 className="h-4 w-4 animate-spin" />;
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: price.currency,
       minimumFractionDigits: 0,
@@ -237,7 +197,7 @@ export function Pricing() {
     if (isAuthLoading || isSubscriptionLoading) {
       return {
         disabled: true,
-        label: "Loading...",
+        label: tc("loading"),
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -246,7 +206,7 @@ export function Pricing() {
     if (isAnonymous || phase !== "authenticated") {
       return {
         disabled: false,
-        label: "Sign in to Subscribe",
+        label: tc("signInToSubscribe"),
         variant: "default" as const,
         onClick: () => router.push("/auth/signin"),
       };
@@ -255,7 +215,7 @@ export function Pricing() {
     if (!hasResolvedSubscription || !resolvedPlan || resolvedTier === null) {
       return {
         disabled: true,
-        label: "Loading...",
+        label: tc("loading"),
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -270,7 +230,7 @@ export function Pricing() {
     if (isCurrent) {
       return {
         disabled: true,
-        label: "Current Plan",
+        label: tc("currentPlan"),
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -279,7 +239,7 @@ export function Pricing() {
     if (plan.id === "enterprise") {
       return {
         disabled: false,
-        label: "Contact Support",
+        label: tc("contactSupport"),
         variant: "outline" as const,
         onClick: handleOpenPortal,
       };
@@ -288,7 +248,7 @@ export function Pricing() {
     if (isUpgrade) {
       return {
         disabled: false,
-        label: `Upgrade to ${plan.name}`,
+        label: tc("upgradeTo", { plan: plan.name }),
         variant: "default" as const,
         onClick: () => handleSubscribe(plan.id as "go" | "pro"),
       };
@@ -298,7 +258,7 @@ export function Pricing() {
     if (isDowngrade) {
       return {
         disabled: true,
-        label: "Not Available",
+        label: tc("notAvailable"),
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -307,7 +267,7 @@ export function Pricing() {
     // Fallback (shouldn't reach here)
     return {
       disabled: true,
-      label: "Not Available",
+      label: tc("notAvailable"),
       variant: "outline" as const,
       onClick: () => {},
     };
@@ -318,11 +278,11 @@ export function Pricing() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <AuthStatePanel
           variant="sync_error_retry"
-          title="Session setup issue"
-          description="Retry session sync to continue with billing actions."
+          title={t("sessionSetupIssue")}
+          description={t("retrySyncToContinue")}
           onRetry={retryUserSync}
           secondaryHref="/"
-          secondaryLabel="Go Home"
+          secondaryLabel={tc("goHome")}
           className="max-w-lg"
         />
       </div>
@@ -362,12 +322,12 @@ export function Pricing() {
               "bg-clip-text text-transparent",
             )}
           >
-            Choose Your Plan
+            {t("chooseYourPlan")}
           </h1>
 
           {/* Subtitle */}
           <p className="text-sm md:text-lg text-muted-foreground max-w-xl mx-auto">
-            Scale from free to enterprise with transparent pricing
+            {t("subtitle")}
           </p>
         </motion.div>
       </div>
@@ -405,7 +365,7 @@ export function Pricing() {
               {isCurrent && (
                 <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center">
                   <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">
-                    Current Plan
+                    {tc("currentPlan")}
                   </span>
                 </div>
               )}
@@ -414,7 +374,7 @@ export function Pricing() {
               {plan.popular && !isCurrent && (
                 <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
                   <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                    Most Popular
+                    {tc("mostPopular")}
                   </span>
                 </div>
               )}
@@ -429,13 +389,13 @@ export function Pricing() {
                 {/* Price Display */}
                 <div className="mb-2">
                   {plan.id === "free" ? (
-                    <div className="text-4xl font-bold">Free</div>
+                    <div className="text-4xl font-bold">{t("freePlanName")}</div>
                   ) : plan.id === "enterprise" ? (
-                    <div className="text-4xl font-bold">Custom</div>
+                    <div className="text-4xl font-bold">{tc("custom")}</div>
                   ) : (
                     <div className="text-4xl font-bold">
                       {getPriceDisplay(plan.id as "go" | "pro")}
-                      <span className="text-lg text-muted-foreground">/mo</span>
+                      <span className="text-lg text-muted-foreground">{t("perMonth")}</span>
                     </div>
                   )}
                 </div>

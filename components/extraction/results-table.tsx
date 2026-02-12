@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { FileText, Info, Loader2, Maximize2, ExternalLink, Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { PdfCitationDrawer } from "@/components/extraction/pdf-citation-drawer";
@@ -52,6 +53,8 @@ export function ResultsTable({
   loadMore,
   status,
 }: ResultsTableProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedPaperId, setSelectedPaperId] = useState<Doc<"extractionPapers">["_id"] | null>(null);
   const [selectedPaperTitle, setSelectedPaperTitle] = useState<string | null>(null);
@@ -64,11 +67,11 @@ export function ResultsTable({
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center border rounded-xl bg-muted/20 border-border/40">
         <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
-        <h3 className="text-lg font-medium">No results yet</h3>
+        <h3 className="text-lg font-medium">{t("noResultsYet")}</h3>
         <p className="text-sm text-muted-foreground max-w-sm mt-2">
           {status === "completed"
-            ? "No papers matched your criteria or extraction failed."
-            : "Results will appear here as they are processed."}
+            ? t("noResultsDescription")
+            : t("resultsWillAppear")}
         </p>
       </div>
     );
@@ -92,7 +95,7 @@ export function ResultsTable({
             <TableHeader className="bg-muted/30">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[300px] min-w-[300px] pl-6 font-medium text-foreground">
-                  Paper
+                  {tc("paper")}
                 </TableHead>
                 {questions.map((q) => (
                   <TableHead
@@ -134,8 +137,8 @@ export function ResultsTable({
                   paper.status !== "download_failed";
                 const abstractLabel =
                   !paper.isOpenAccess && !hasPdfSource
-                    ? "Abstract Only"
-                    : "Abstract";
+                    ? tc("abstractOnly")
+                    : tc("abstract");
                 const showNoContent =
                   paper.status === "download_failed" && !hasAbstract;
                 const reviewedCount = paper.results.filter((result) => isReviewed(result)).length;
@@ -180,7 +183,7 @@ export function ResultsTable({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
                             >
-                              No Content
+                              {tc("noContent")}
                             </Badge>
                           ) : null}
                           {paper.isOpenAccess && (
@@ -188,7 +191,7 @@ export function ResultsTable({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
                             >
-                              Open Access
+                              {tc("openAccess")}
                             </Badge>
                           )}
                           {paper.isIndexed || paper.ragEntryId ? (
@@ -196,7 +199,7 @@ export function ResultsTable({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
                             >
-                              Indexed
+                              {tc("indexed")}
                             </Badge>
                           ) : null}
                           {paper.pdfContentUsed ? (
@@ -204,7 +207,7 @@ export function ResultsTable({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
                             >
-                              PDF Used
+                              {tc("pdfUsed")}
                             </Badge>
                           ) : null}
                           {showAbstractBadge ? (
@@ -220,7 +223,7 @@ export function ResultsTable({
                               variant="outline"
                               className="h-4 px-1 text-[9px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
                             >
-                              Reviewed {reviewedCount}/{paper.results.length}
+                              {t("reviewed", { count: reviewedCount, total: paper.results.length })}
                             </Badge>
                           ) : null}
                         </div>
@@ -279,10 +282,10 @@ export function ResultsTable({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Loading...
+                {tc("loading")}
               </>
             ) : (
-              "Load more papers"
+              t("loadMorePapers")
             )}
           </Button>
         </div>
@@ -300,6 +303,8 @@ function ResultCell({
   type: string;
   onCite?: () => void;
 }) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   if (!result) {
     return <span className="text-muted-foreground/30 text-xs">—</span>;
   }
@@ -328,18 +333,18 @@ function ResultCell({
               variant="default"
               className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
             >
-              Yes
+              {tc("yes")}
             </Badge>
           ) : answer === false ? (
             <Badge
               variant="secondary"
               className="font-normal bg-muted text-muted-foreground hover:bg-muted/80"
             >
-              No
+              {tc("no")}
             </Badge>
           ) : (
             <Badge variant="outline" className="font-normal text-muted-foreground">
-              Unknown
+              {tc("unknown")}
             </Badge>
           )
         ) : Array.isArray(answer) ? (
@@ -371,27 +376,27 @@ function ResultCell({
           )}
           {citationStatus === "grounded" ? (
             <Badge variant="outline" className="text-[10px] font-medium">
-              Grounded
+              {tc("grounded")}
             </Badge>
           ) : null}
           {citationStatus === "best_effort" ? (
             <Badge variant="outline" className="text-[10px] font-medium">
-              Best effort
+              {tc("bestEffort")}
             </Badge>
           ) : null}
           {citationStatus === "insufficient_evidence" ? (
             <Badge variant="outline" className="text-[10px] font-medium">
-              Insufficient evidence
+              {tc("insufficientEvidence")}
             </Badge>
           ) : null}
           {citationStatus === "extraction_error" ? (
             <Badge variant="outline" className="text-[10px] font-medium">
-              Extraction error
+              {tc("extractionError")}
             </Badge>
           ) : null}
           {reviewLabel && reviewState !== "unreviewed" ? (
             <Badge variant="outline" className="text-[10px] font-medium">
-              {reviewLabel}
+              {t(reviewLabel)}
             </Badge>
           ) : null}
           {reasoning && (
@@ -407,7 +412,7 @@ function ResultCell({
               </PopoverTrigger>
               <PopoverContent className="w-80 p-4 text-xs leading-relaxed bg-popover/95 backdrop-blur shadow-xl border-border/50">
                 <div className="space-y-1">
-                  <h4 className="font-medium text-foreground">Reasoning</h4>
+                  <h4 className="font-medium text-foreground">{tc("reasoning")}</h4>
                   <p className="text-muted-foreground">{reasoning}</p>
                 </div>
               </PopoverContent>
@@ -419,7 +424,7 @@ function ResultCell({
               size="icon"
               onClick={onCite}
               className="h-5 w-5 text-muted-foreground/60 hover:text-foreground transition-colors"
-              title="Open citation"
+              title={tc("viewCitation")}
             >
               <Quote className="h-3 w-3" />
             </Button>

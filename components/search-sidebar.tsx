@@ -71,6 +71,7 @@ import { useFilterSidebarStore, getFilterSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { motion, AnimatePresence } from "motion/react";
 import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
+import { useTranslations } from "next-intl";
 
 interface SearchSidebarProps {
   isOpen?: boolean;
@@ -163,6 +164,7 @@ const FilterSection = React.memo(function FilterSection({
 
 // Date Filter Component
 const DateFilterPanel = React.memo(function DateFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { dateRange, filterType, isYearRangeEnabled, yearRange } =
     useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -228,7 +230,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
 
   return (
     <FilterSection
-      title="Publication timeframe"
+      title={tf("publicationTimeframe")}
       icon={Clock}
       isActive={isDateActive}
       onClear={isDateActive ? handleClearFilter : undefined}
@@ -245,7 +247,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Year range
+            {tf("yearRange")}
           </button>
           <button
             onClick={() => handleFilterTypeChange("date")}
@@ -256,7 +258,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            Date range
+            {tf("dateRange")}
           </button>
         </div>
 
@@ -290,7 +292,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
                   )
                 ) : (
                   <span className="text-muted-foreground text-sm">
-                    Choose date range
+                    {tf("chooseDateRange")}
                   </span>
                 )}
               </Button>
@@ -319,6 +321,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
 
 // Rating Filter Component
 const RatingFilterPanel = React.memo(function RatingFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { ratingRange, onlyRatedPapers } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isRatingActive = isRatingFilterActive(ratingRange, onlyRatedPapers);
@@ -332,7 +335,7 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
 
   return (
     <FilterSection
-      title="Rating filter"
+      title={tf("ratingFilter")}
       icon={Star}
       isActive={isRatingActive}
       onClear={isRatingActive ? handleClearRatingFilter : undefined}
@@ -344,6 +347,7 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
 
 // Institution Location Filter Component
 const InstitutionLocationFilterPanel = React.memo(function InstitutionLocationFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { selectedRegions } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isCountryActive = isCountryFilterActive(selectedRegions);
@@ -354,7 +358,7 @@ const InstitutionLocationFilterPanel = React.memo(function InstitutionLocationFi
 
   return (
     <FilterSection
-      title="Institution location"
+      title={tf("institutionLocation")}
       icon={Globe}
       isActive={isCountryActive}
       onClear={isCountryActive ? handleClearFilter : undefined}
@@ -366,6 +370,7 @@ const InstitutionLocationFilterPanel = React.memo(function InstitutionLocationFi
 
 // Country Focus Filter Component
 const CountryFocusFilterPanel = React.memo(function CountryFocusFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { selectedCountryFocus } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   
@@ -378,7 +383,7 @@ const CountryFocusFilterPanel = React.memo(function CountryFocusFilterPanel() {
 
   return (
     <FilterSection
-      title="Country focus"
+      title={tf("countryFocus")}
       icon={Focus}
       isActive={isCountryFocusFilterActive}
       onClear={isCountryFocusFilterActive ? handleClearFilter : undefined}
@@ -390,6 +395,8 @@ const CountryFocusFilterPanel = React.memo(function CountryFocusFilterPanel() {
 
 // Search Field Component - now a dropdown select
 const SearchFieldPanel = React.memo(function SearchFieldPanel() {
+  const tf = useTranslations("searchFilters");
+  const ta = useTranslations("accessibility");
   const { currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
@@ -404,21 +411,21 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   // Find current field label
   const currentFieldLabel =
     SEARCH_FIELDS.find((f) => f.value === currentSearchField)?.label ||
-    "Title & Abstract";
+    tf("titleAndAbstract");
 
   // Check if search field is not at default
   const isSearchFieldActive = currentSearchField !== DEFAULT_FILTERS.field;
 
   return (
     <FilterSection
-      title="Search scope"
+      title={tf("searchScope")}
       icon={Target}
       isActive={isSearchFieldActive}
       onClear={isSearchFieldActive ? handleClearFilter : undefined}
     >
       <Select value={currentSearchField} onValueChange={handleSearchFieldChange}>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select search scope">
+          <SelectValue placeholder={ta("selectSearchScope")}>
             {currentFieldLabel}
           </SelectValue>
         </SelectTrigger>
@@ -436,6 +443,8 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
 
 // Sort Options Component - now a dropdown select
 const SortOptionsPanel = React.memo(function SortOptionsPanel() {
+  const tf = useTranslations("searchFilters");
+  const ta = useTranslations("accessibility");
   const { sortBy } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
@@ -456,14 +465,14 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
 
   return (
     <FilterSection
-      title="Sort results by"
+      title={tf("sortResultsBy")}
       icon={SortAsc}
       isActive={isSortActive}
       onClear={isSortActive ? handleClearFilter : undefined}
     >
       <Select value={sortBy} onValueChange={handleSortChange}>
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select sort order">
+          <SelectValue placeholder={ta("selectSortOrder")}>
             {currentSortLabel}
           </SelectValue>
         </SelectTrigger>
@@ -481,6 +490,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
 
 // Cites Filter Component
 const CitesFilterPanel = React.memo(function CitesFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { citesItemId } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isCitesActive = isCitesFilterActive(citesItemId);
@@ -491,7 +501,7 @@ const CitesFilterPanel = React.memo(function CitesFilterPanel() {
 
   return (
     <FilterSection
-      title="Citation filter"
+      title={tf("citationFilter")}
       icon={Quote}
       isActive={isCitesActive}
       onClear={isCitesActive ? handleClearCitesFilter : undefined}
@@ -503,6 +513,7 @@ const CitesFilterPanel = React.memo(function CitesFilterPanel() {
 
 // Cited By Filter Component
 const CitedByFilterPanel = React.memo(function CitedByFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { citedByItemId } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isCitedByActive = isCitedByFilterActive(citedByItemId);
@@ -513,7 +524,7 @@ const CitedByFilterPanel = React.memo(function CitedByFilterPanel() {
 
   return (
     <FilterSection
-      title="Cited by filter"
+      title={tf("citedByFilter")}
       icon={Quote}
       isActive={isCitedByActive}
       onClear={isCitedByActive ? handleClearCitedByFilter : undefined}
@@ -525,6 +536,7 @@ const CitedByFilterPanel = React.memo(function CitedByFilterPanel() {
 
 // Related To Filter Component
 const RelatedToFilterPanel = React.memo(function RelatedToFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { relatedToItemId } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
@@ -535,7 +547,7 @@ const RelatedToFilterPanel = React.memo(function RelatedToFilterPanel() {
 
   return (
     <FilterSection
-      title="Related works filter"
+      title={tf("relatedWorksFilter")}
       icon={Network}
       isActive={isRelatedToActive}
       onClear={isRelatedToActive ? handleClearRelatedToFilter : undefined}
@@ -547,6 +559,7 @@ const RelatedToFilterPanel = React.memo(function RelatedToFilterPanel() {
 
 // Review Filter Component
 const ReviewFilterPanel = React.memo(function ReviewFilterPanel() {
+  const tf = useTranslations("searchFilters");
   const { reviewFilter } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isReviewActive = isReviewFilterActive(reviewFilter);
@@ -557,7 +570,7 @@ const ReviewFilterPanel = React.memo(function ReviewFilterPanel() {
 
   return (
     <FilterSection
-      title="Review filter"
+      title={tf("reviewFilter")}
       icon={FileText}
       isActive={isReviewActive}
       onClear={isReviewActive ? handleClearReviewFilter : undefined}
@@ -587,12 +600,14 @@ const SidebarContent = React.memo(function SidebarContent({
   isRelatedToActive,
   onClearAllFilters,
 }: SidebarContentProps) {
+  const tf = useTranslations("searchFilters");
+  const tc = useTranslations("common");
   return (
     <div className={cn("space-y-4", isMobileSheet ? "p-4" : "p-4 pt-15")}>
       {/* Simple Header - hidden when using panel mode with external header */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Filters</h2>
+          <h2 className="text-lg font-semibold text-foreground">{tc("filters")}</h2>
           {activeFiltersCount > 0 && (
             <Button
               variant="ghost"
@@ -600,7 +615,7 @@ const SidebarContent = React.memo(function SidebarContent({
               onClick={onClearAllFilters}
               className="text-xs h-7 px-3 text-muted-foreground hover:text-foreground"
             >
-              Clear all ({activeFiltersCount})
+              {tf("clearAllCount", { count: activeFiltersCount })}
             </Button>
           )}
         </div>
@@ -650,6 +665,7 @@ export function SearchSidebar({
   isMobile = false,
   mode = "sidebar",
 }: SearchSidebarProps) {
+  const tf = useTranslations("searchFilters");
   const toggle = useFilterSidebarStore((s) => s.toggle);
 
   // Keyboard shortcut: Ctrl+Shift+F to toggle filter sidebar
@@ -735,7 +751,7 @@ export function SearchSidebar({
           className="w-80 p-0 bg-background border-r overflow-hidden flex flex-col"
         >
           <SheetHeader className="px-4 py-3 border-b bg-background">
-            <SheetTitle>Search Filters</SheetTitle>
+            <SheetTitle>{tf("searchFiltersTitle")}</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto">
             <SidebarContent
@@ -839,7 +855,7 @@ export function SearchSidebar({
                       </motion.div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      Clear all filters
+                      {tf("clearAllFilters")}
                     </TooltipContent>
                   </Tooltip>
                 </motion.div>
@@ -869,7 +885,7 @@ export function SearchSidebar({
                 </motion.div>
               </TooltipTrigger>
               <TooltipContent side="left">
-                {isCollapsed ? "Expand" : "Collapse"} filters (Ctrl+Shift+F)
+                {isCollapsed ? tf("expandFilters") : tf("expandCollapseFilters")}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -921,7 +937,7 @@ export function SearchSidebar({
                   </motion.div>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  Expand filters (Ctrl+Shift+F)
+                  {tf("expandFilters")}
                 </TooltipContent>
               </Tooltip>
 
@@ -955,7 +971,7 @@ export function SearchSidebar({
                       </motion.div>
                     </TooltipTrigger>
                     <TooltipContent side="left">
-                      Clear all filters
+                      {tf("clearAllFilters")}
                     </TooltipContent>
                   </Tooltip>
                 </motion.div>

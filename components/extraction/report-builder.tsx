@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export function ReportBuilder({
   canUseTemplates,
   canUseRunDiff,
 }: ReportBuilderProps) {
+  const t = useTranslations("reportBuilder");
   const router = useRouter();
   const savedViewsQuery = useProtectedQuery(api.extraction.queries.getSavedViews, {
     jobId: jobId as any,
@@ -202,10 +204,10 @@ export function ReportBuilder({
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
-          <div className="text-sm font-medium">Saved Views</div>
+          <div className="text-sm font-medium">{t("savedViews")}</div>
           <div className="flex gap-2">
             <Input
-              placeholder="View name"
+              placeholder={t("viewName")}
               value={viewName}
               onChange={(event) => setViewName(event.target.value)}
             />
@@ -257,12 +259,12 @@ export function ReportBuilder({
         </div>
 
         <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
-          <div className="text-sm font-medium">Workflow Templates</div>
+          <div className="text-sm font-medium">{t("workflowTemplates")}</div>
           {canUseTemplates ? (
             <>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Template name"
+                  placeholder={t("templateName")}
                   value={templateName}
                   onChange={(event) => setTemplateName(event.target.value)}
                 />
@@ -329,10 +331,10 @@ export function ReportBuilder({
       </div>
 
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
-        <div className="text-sm font-medium">Report Builder</div>
+        <div className="text-sm font-medium">{t("reportBuilder")}</div>
         <div className="flex flex-wrap gap-2">
           <Input
-            placeholder="Report name (optional)"
+            placeholder={t("reportName")}
             value={reportName}
             onChange={(event) => setReportName(event.target.value)}
             className="max-w-sm"

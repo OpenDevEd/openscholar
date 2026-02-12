@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "motion/react";
+import { useTranslations, useLocale } from "next-intl";
 import {
   Copy,
   Search,
@@ -46,7 +47,11 @@ export function HistoryItem({
   index,
   viewMode,
   onSearchClick,
-}: HistoryItemProps) {
+  }: HistoryItemProps) {
+  const th = useTranslations("historyPage");
+  const tc = useTranslations("common");
+  const tp = useTranslations("paperCard");
+  const locale = useLocale();
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [bookmarkName, setBookmarkName] = useState("");
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
@@ -72,12 +77,10 @@ export function HistoryItem({
   };
 
   const handleDelete = () => {
-    const truncatedQuery =
-      item.query.length > 50 ? item.query.substring(0, 50) + "..." : item.query;
     showConfirmation({
-      title: "Delete Search Entry",
-      message: `Are you sure you want to delete "${truncatedQuery}"?`,
-      confirmText: "Delete",
+      title: th("deleteSearchEntry"),
+      message: th("deleteConfirm"),
+      confirmText: tc("delete"),
       onConfirm: () => {
         removeSearchResult(actualIndex);
         appToast.entity.deleted("search entry");
@@ -154,7 +157,7 @@ export function HistoryItem({
 
           {/* Time ago */}
           <span className="shrink-0 text-xs text-muted-foreground hidden sm:block">
-            {formatTimeAgo(item.createdAt)}
+            {formatTimeAgo(item.createdAt, locale)}
           </span>
 
           {/* Actions - always visible */}
@@ -174,7 +177,7 @@ export function HistoryItem({
                     <History className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Query history ({queryHistoryCount})</TooltipContent>
+                <TooltipContent>{th("queryHistoryCount", { count: queryHistoryCount })}</TooltipContent>
               </Tooltip>
             )}
 
@@ -189,7 +192,7 @@ export function HistoryItem({
                   <Copy className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Copy query</TooltipContent>
+              <TooltipContent>{tc("copyQuery")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -203,7 +206,7 @@ export function HistoryItem({
                   <BookmarkPlus className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Save as bookmark</TooltipContent>
+              <TooltipContent>{tc("saveAsBookmark")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -217,7 +220,7 @@ export function HistoryItem({
                   <Search className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open search</TooltipContent>
+              <TooltipContent>{tc("openSearch")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -231,7 +234,7 @@ export function HistoryItem({
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete</TooltipContent>
+              <TooltipContent>{tc("delete")}</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -292,7 +295,7 @@ export function HistoryItem({
             >
               <div className="flex items-center gap-2">
                 <History className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium">Query History</span>
+                <span className="text-xs font-medium">{th("queryHistory")}</span>
                 <span className="text-xs text-muted-foreground">
                   ({queryHistoryCount})
                 </span>
@@ -331,7 +334,7 @@ export function HistoryItem({
                 onClick={() => setIsQueryHistoryOpen(false)}
               >
                 <ChevronLeft className="h-3 w-3" />
-                Back to card
+                {th("backToCard")}
               </Button>
             </div>
           </>
@@ -359,7 +362,7 @@ export function HistoryItem({
                 className="text-xs ml-1.5 opacity-70"
                 style={{ color: idColor.text }}
               >
-                results
+                {tc("results").toLowerCase()}
               </span>
             </div>
 
@@ -379,7 +382,7 @@ export function HistoryItem({
 
               {/* Metadata */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                <span>{formatTimeAgo(item.createdAt)}</span>
+                <span>{formatTimeAgo(item.createdAt, locale)}</span>
                 {!isCompact && (
                   <>
                     <span className="opacity-40">•</span>
@@ -420,7 +423,7 @@ export function HistoryItem({
                       <History className="h-3 w-3" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>History ({queryHistoryCount})</TooltipContent>
+                  <TooltipContent>{th("queryHistoryCount", { count: queryHistoryCount })}</TooltipContent>
                 </Tooltip>
               )}
 
@@ -430,7 +433,7 @@ export function HistoryItem({
                     <Copy className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Copy</TooltipContent>
+                <TooltipContent>{tc("copy")}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -444,7 +447,7 @@ export function HistoryItem({
                     <BookmarkPlus className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Bookmark</TooltipContent>
+                <TooltipContent>{tc("bookmark")}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -458,7 +461,7 @@ export function HistoryItem({
                     <Search className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Open</TooltipContent>
+                <TooltipContent>{tc("open")}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -472,7 +475,7 @@ export function HistoryItem({
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
+                <TooltipContent>{tc("delete")}</TooltipContent>
               </Tooltip>
             </div>
           </>
@@ -530,7 +533,7 @@ export function HistoryItem({
               className="text-[10px] opacity-70 mt-0.5"
               style={{ color: idColor.text }}
             >
-              results
+              {tc("results").toLowerCase()}
             </span>
           </div>
 
@@ -553,7 +556,7 @@ export function HistoryItem({
 
             {/* Metadata */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              <span>{formatTimeAgo(item.createdAt)}</span>
+              <span>{formatTimeAgo(item.createdAt, locale)}</span>
               <span className="opacity-40">•</span>
               <span>{getFieldLabel(item.field)}</span>
               {item.sortBy && (
@@ -578,7 +581,7 @@ export function HistoryItem({
               ) : (
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Languages className="h-3 w-3" />
-                  <span className="italic">Language not set</span>
+                  <span className="italic">{tp("languageNotSet")}</span>
                 </span>
               )}
             </div>
@@ -628,7 +631,7 @@ export function HistoryItem({
                   <Copy className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Copy query</TooltipContent>
+              <TooltipContent>{tc("copyQuery")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -642,7 +645,7 @@ export function HistoryItem({
                   <BookmarkPlus className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Save as bookmark</TooltipContent>
+              <TooltipContent>{tc("saveAsBookmark")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -656,7 +659,7 @@ export function HistoryItem({
                   <Search className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open search</TooltipContent>
+              <TooltipContent>{tc("openSearch")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -670,7 +673,7 @@ export function HistoryItem({
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Delete</TooltipContent>
+              <TooltipContent>{tc("delete")}</TooltipContent>
             </Tooltip>
           </div>
         </div>

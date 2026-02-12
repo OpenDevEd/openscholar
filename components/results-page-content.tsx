@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListFilter, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { subtleSpring } from "@/lib/animation-config";
+import { useTranslations } from "next-intl";
 
 type Direction = 1 | -1;
 
@@ -42,6 +43,7 @@ interface ResultsPageContentProps {
 export default function ResultsPageContent({
   searchId,
 }: ResultsPageContentProps) {
+  const tc = useTranslations("common");
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -101,14 +103,14 @@ export default function ResultsPageContent({
               className="flex-1 h-full rounded-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground"
             >
               <FileText className="h-4 w-4 mr-2" />
-              Results
+              {tc("results")}
             </TabsTrigger>
             <TabsTrigger 
               value="filters" 
               className="flex-1 h-full rounded-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground"
             >
               <ListFilter className="h-4 w-4 mr-2" />
-              Filters
+              {tc("filters")}
             </TabsTrigger>
           </TabsList>
           

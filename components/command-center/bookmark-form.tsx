@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { BookmarkPlus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,8 @@ export function BookmarkForm({
   onSubmit,
   onCancel,
 }: BookmarkFormProps) {
+  const tb = useTranslations("bookmarksPage");
+  const tc = useTranslations("common");
   const { expandedQuery } = validateAndExpandKeywordsSilently(query);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -42,7 +45,7 @@ export function BookmarkForm({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-amber-600">
               <BookmarkPlus className="h-4 w-4" />
-              <span className="text-sm font-medium">Save as Bookmark</span>
+              <span className="text-sm font-medium">{tc("saveAsBookmark")}</span>
             </div>
             <Button
               variant="ghost"
@@ -56,7 +59,7 @@ export function BookmarkForm({
 
           {/* Explanation */}
           <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-            Use &quot;bookmark...&quot; in search to expand automatically.
+            {tb("useBookmarkFormat")}
           </p>
 
           {/* Expanded query preview */}
@@ -66,7 +69,7 @@ export function BookmarkForm({
 
           {/* Input */}
           <Input
-            placeholder="Enter bookmark name (e.g., ai-research)"
+            placeholder={tb("enterBookmarkName")}
             value={bookmarkName}
             onChange={(e) => onNameChange(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -76,7 +79,7 @@ export function BookmarkForm({
 
           {/* Validation hint */}
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            Letters, numbers, and dashes only. No spaces.
+            {tb("lettersNumbersDashes")}
           </p>
 
           {/* Actions */}
@@ -88,7 +91,7 @@ export function BookmarkForm({
               className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               <Check className="h-3 w-3 mr-1" />
-              Save
+              {tc("save")}
             </Button>
             <Button
               size="sm"
@@ -96,7 +99,7 @@ export function BookmarkForm({
               onClick={onCancel}
               className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
             >
-              Cancel
+              {tc("cancel")}
             </Button>
           </div>
         </div>
@@ -109,11 +112,11 @@ export function BookmarkForm({
     <div className="space-y-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
       <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
         <BookmarkPlus className="h-4 w-4" />
-        <span className="text-sm font-medium">Save as Bookmark</span>
+        <span className="text-sm font-medium">{tc("saveAsBookmark")}</span>
       </div>
 
       <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-        Use the format &quot;bookmark...&quot; in your search to expand automatically.
+        {tb("useBookmarkFormat")}
       </p>
 
       <div className="text-xs text-amber-700 dark:text-amber-300 font-mono break-all p-2 rounded border border-amber-200 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/50">
@@ -121,7 +124,7 @@ export function BookmarkForm({
       </div>
 
       <Input
-        placeholder="Enter bookmark name (e.g., ai-research)"
+        placeholder={tb("enterBookmarkName")}
         value={bookmarkName}
         onChange={(e) => onNameChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -130,7 +133,7 @@ export function BookmarkForm({
       />
 
       <p className="text-xs text-amber-600 dark:text-amber-400">
-        Letters, numbers, and dashes only. No spaces.
+        {tb("lettersNumbersDashes")}
       </p>
 
       <div className="flex gap-2">
@@ -141,7 +144,7 @@ export function BookmarkForm({
           className="bg-amber-600 hover:bg-amber-700 text-white"
         >
           <Check className="h-3 w-3 mr-1" />
-          Save
+          {tc("save")}
         </Button>
         <Button
           size="sm"
@@ -149,7 +152,7 @@ export function BookmarkForm({
           onClick={onCancel}
           className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
         >
-          Cancel
+          {tc("cancel")}
         </Button>
       </div>
     </div>

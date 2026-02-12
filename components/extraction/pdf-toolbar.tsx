@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { ZoomIn, ZoomOut, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +79,7 @@ export function PdfToolbar({
   onSetScaleMode,
   onResetZoom,
 }: PdfToolbarProps) {
+  const t = useTranslations();
   return (
     <div className="pdf-viewer-toolbar border-b border-border/70 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
       <div className="flex flex-wrap items-center gap-1 px-1.5 py-1.5">
@@ -105,14 +107,14 @@ export function PdfToolbar({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="icon" className="h-7 w-7" aria-label="View options">
+              <Button type="button" variant="outline" size="icon" className="h-7 w-7" aria-label={t('accessibility.viewOptions')}>
                 <MoreHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => onSetScaleMode("fit-page")}>Fit page</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onSetScaleMode("fit-width")}>Fit width</DropdownMenuItem>
-              <DropdownMenuItem onClick={onResetZoom}>Reset view</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSetScaleMode("fit-page")}>{t('accessibility.fitPage')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onSetScaleMode("fit-width")}>{t('accessibility.fitWidth')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={onResetZoom}>{t('accessibility.resetView')}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

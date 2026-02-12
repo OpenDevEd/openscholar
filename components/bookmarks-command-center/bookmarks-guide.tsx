@@ -1,17 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "motion/react";
 import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 
 export function BookmarksGuide() {
+  const tb = useTranslations("bookmarksPage");
   const [isOpen, setIsOpen] = useState(false);
 
   const tips = [
     {
-      title: "Using bookmarks in search",
+      title: tb("usingBookmarksInSearch"),
       description: (
         <>
           Type your bookmark name followed by <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">...</code> in the search box.
@@ -20,22 +22,22 @@ export function BookmarksGuide() {
       ),
     },
     {
-      title: "Auto-expansion",
+      title: tb("autoExpansion"),
       description: (
         <>
           Your bookmark will automatically expand to the full search terms.
           Example: <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">ml...</code> becomes{" "}
-          <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">AI OR ML OR "artificial intelligence"</code>
+          <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">AI OR ML OR &quot;artificial intelligence&quot;</code>
         </>
       ),
     },
     {
-      title: "Naming rules",
-      description: "Bookmarks are case-sensitive and can only contain letters, numbers, and dashes. No spaces allowed.",
+      title: tb("namingRules"),
+      description: tb("namingRulesDescription"),
     },
     {
-      title: "Missing bookmarks",
-      description: "You'll see a warning if you use a bookmark that doesn't exist. The original text will be kept unchanged.",
+      title: tb("missingBookmarks"),
+      description: tb("missingBookmarksDescription"),
     },
   ];
 
@@ -66,7 +68,7 @@ export function BookmarksGuide() {
         <div className="flex items-center gap-2">
           <HelpCircle className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">
-            How to use bookmarks
+            {tb("howToUseBookmarks")}
           </span>
         </div>
         {isOpen ? (

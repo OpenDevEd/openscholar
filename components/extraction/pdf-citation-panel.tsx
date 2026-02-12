@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ type PdfCitationPanelProps = {
 export function PdfCitationPanel({
   payload,
 }: PdfCitationPanelProps) {
+  const t = useTranslations();
   const pdfUrlQuery = useProtectedQuery(
     api.extraction.queries.getPaperPdfUrl,
     payload?.paperId ? { paperId: payload.paperId } : "skip",
@@ -67,7 +69,7 @@ export function PdfCitationPanel({
     return (
       <div className="flex h-full min-h-0 items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">No citation selected</p>
+          <p className="text-sm font-medium text-foreground">{t('pdfViewer.noCitationSelected')}</p>
           <p className="text-xs text-muted-foreground">
             Open a citation from a result row to inspect supporting evidence.
           </p>
@@ -98,7 +100,7 @@ export function PdfCitationPanel({
                 size="icon"
                 onClick={() => window.open(pdfUrl, "_blank", "noopener,noreferrer")}
                 className="h-7 w-7"
-                aria-label="Open PDF in new tab"
+                aria-label={t('accessibility.openPdfNewTab')}
               >
                 <ExternalLink className="size-3" />
               </Button>

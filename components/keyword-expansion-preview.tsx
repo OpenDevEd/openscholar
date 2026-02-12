@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import { useTranslations } from "next-intl"
 import { useKeywordExpansionStore } from "@/lib/store"
 import { Badge } from "@/components/ui/badge"
 
@@ -9,14 +10,16 @@ interface KeywordExpansionPreviewProps {
 }
 
 export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps) {
+  const tb = useTranslations("bookmarksPage")
+  const tl = useTranslations("labels")
   const { expandQuery, keywords } = useKeywordExpansionStore()
   
   if (!query.trim()) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">Bookmark Expansion Preview</p>
+        <p className="text-sm font-medium">{tb("bookmarkExpansionPreview")}</p>
         <p className="text-xs text-muted-foreground">
-          Type a query with "bookmark..." to see expansion preview
+          {tb("typeQueryToPreview")}
         </p>
       </div>
     )
@@ -28,13 +31,13 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
   if (!hasKeywords) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">Bookmark Expansion Preview</p>
+        <p className="text-sm font-medium">{tb("bookmarkExpansionPreview")}</p>
         <div className="p-2 bg-muted/50 rounded text-xs">
-          <span className="text-muted-foreground">Original: </span>
+          <span className="text-muted-foreground">{tl("original")}: </span>
           <span>{query}</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          No expandable bookmarks found. Use "bookmark..." format.
+          {tb("noExpandableBookmarks")}
         </p>
       </div>
     )
@@ -72,17 +75,17 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Bookmark Expansion Preview</p>
+      <p className="text-sm font-medium">{tb("bookmarkExpansionPreview")}</p>
       
       <div className="space-y-2">
         <div className="p-2 bg-muted/30 rounded-md">
-          <p className="text-xs text-muted-foreground mb-1">Original:</p>
+          <p className="text-xs text-muted-foreground mb-1">{tl("original")}:</p>
           <p className="text-sm font-mono">{query}</p>
         </div>
         
         {hasExpansions && (
           <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
-            <p className="text-xs text-muted-foreground mb-2">Expanded:</p>
+            <p className="text-xs text-muted-foreground mb-2">{tb("expanded")}</p>
             <div className="flex flex-wrap gap-1 text-sm break-words">
               {parts.map((part, index) => (
                 <span key={index} className="inline-flex">
@@ -106,12 +109,12 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
       
       {!hasExpansions && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
-          Some bookmarks were not found in your expansion list.
+          {tb("someBookmarksNotFound")}
         </p>
       )}
       
       <div className="text-xs text-muted-foreground pt-1 border-t">
-        <p>💡 Bookmarks are highlighted when expanded</p>
+        <p>{tb("bookmarksHighlighted")}</p>
       </div>
     </div>
   )

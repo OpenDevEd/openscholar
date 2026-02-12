@@ -2,17 +2,19 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { Database, Loader2 } from "lucide-react";
 import { ExtractionCommandCenter } from "@/components/extraction/extraction-command-center";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer, CommandCenterHeader } from "@/components/command-center";
 import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { appToast } from "@/lib/toast";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 export default function ExtractionPage() {
   const router = useRouter();
+  const tc = useTranslations('common');
   const { data: jobs, isDeferred } = useProtectedQuery(
     api.extraction.queries.getMyJobs,
     {},
@@ -28,7 +30,7 @@ export default function ExtractionPage() {
         <CommandCenterContainer>
           <CommandCenterHeader
             icon={Database}
-            title="Extraction Jobs"
+            title={tc("extraction")}
             description="Extract structured data from research papers"
             count={jobs?.length ?? 0}
             singular="job"
@@ -52,17 +54,18 @@ export default function ExtractionPage() {
 
 function ZoteroCallbackToast() {
   const searchParams = useSearchParams();
+  const t = useTranslations('zotero');
 
   useEffect(() => {
     const connected = searchParams.get("zotero_connected");
     const error = searchParams.get("zotero_error");
     if (connected) {
-      toast.success("Zotero connected.");
+      appToast.zotero.connected();
     }
     if (error) {
-      toast.error(`Zotero connection failed: ${error}`);
+      appToast.zotero.failed(error);
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   return null;
 }

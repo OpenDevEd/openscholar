@@ -13,6 +13,7 @@ interface CommandCenterHeaderProps {
   count: number;
   singular: string;
   plural: string;
+  countLabel?: string;
 }
 
 /**
@@ -26,6 +27,7 @@ export function CommandCenterHeader({
   count,
   singular,
   plural,
+  countLabel,
 }: CommandCenterHeaderProps) {
   return (
     <div
@@ -83,18 +85,32 @@ export function CommandCenterHeader({
               "flex items-center gap-1.5"
             )}
           >
-            <motion.span
-              key={count}
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={subtleSpring}
-              className="text-sm font-semibold text-foreground tabular-nums"
-            >
-              {count}
-            </motion.span>
-            <span className="text-sm text-muted-foreground">
-              {count === 1 ? singular : plural}
-            </span>
+            {countLabel ? (
+              <motion.span
+                key={count}
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={subtleSpring}
+                className="text-sm font-semibold text-foreground tabular-nums"
+              >
+                {countLabel}
+              </motion.span>
+            ) : (
+              <>
+                <motion.span
+                  key={count}
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={subtleSpring}
+                  className="text-sm font-semibold text-foreground tabular-nums"
+                >
+                  {count}
+                </motion.span>
+                <span className="text-sm text-muted-foreground">
+                  {count === 1 ? singular : plural}
+                </span>
+              </>
+            )}
           </div>
         </motion.div>
       </div>

@@ -21,6 +21,7 @@ export const TOAST_MESSAGES = {
     importCompletedTitle: "Import completed",
     importSkippedTitle: "Nothing imported",
     importSkippedDescription: "No valid entries were found in the file.",
+    downloadSuccessTitle: "Download complete",
   },
   clipboard: {
     copiedDescription: "Copied to clipboard.",
@@ -29,6 +30,28 @@ export const TOAST_MESSAGES = {
   validation: {
     failedTitle: "Validation failed",
     warningTitle: "Validation warning",
+    fileTypeTitle: "Invalid file type",
+    fileSizeTitle: "File too large",
+  },
+  job: {
+    cancelledTitle: "Job cancelled",
+    cancelFailedTitle: "Failed to cancel",
+    deletedTitle: "Job deleted",
+    deleteFailedTitle: "Failed to delete",
+    createdTitle: "Job started",
+    createFailedTitle: "Failed to start",
+    duplicatedTitle: "Job duplicated",
+    duplicateFailedTitle: "Failed to duplicate",
+  },
+  billing: {
+    cancelledTitle: "Subscription cancelled",
+    cancelFailedTitle: "Failed to cancel",
+    portalFailedTitle: "Failed to open billing portal",
+    checkoutFailedTitle: "Failed to start checkout",
+  },
+  zotero: {
+    connectedTitle: "Connected to Zotero",
+    connectionFailedTitle: "Connection failed",
   },
 } as const;
 

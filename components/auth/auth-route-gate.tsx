@@ -6,8 +6,11 @@ import { usePathname } from "next/navigation";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { isPublicPath } from "@/lib/auth/public-routes";
+import { useTranslations } from "next-intl";
 
 export function AuthRouteGate({ children }: { children: ReactNode }) {
+  const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const pathname = usePathname() ?? "/";
   const { phase, retryUserSync } = useAuthReadiness();
 
@@ -21,21 +24,20 @@ export function AuthRouteGate({ children }: { children: ReactNode }) {
         <AuthStatePanel
           key="auth-gate-anonymous"
           variant="sign_in_required"
-          description="Sign in to access this page."
           primaryHref="/auth/signin"
-          primaryLabel="Sign In"
+          primaryLabel={tc("signIn")}
           secondaryHref="/"
-          secondaryLabel="Go Home"
+          secondaryLabel={tc("goHome")}
           layout="fullscreen"
         />
       ) : phase === "sync_error" ? (
         <AuthStatePanel
           key="auth-gate-sync-error"
           variant="sync_error_retry"
-          description="Your session is valid, but account sync is incomplete. Retry to continue."
+          description={t("syncErrorAccess")}
           onRetry={retryUserSync}
           secondaryHref="/"
-          secondaryLabel="Go Home"
+          secondaryLabel={tc("goHome")}
           layout="fullscreen"
         />
       ) : (

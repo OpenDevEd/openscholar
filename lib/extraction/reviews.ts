@@ -22,10 +22,15 @@ export function isReviewed(result: any): boolean {
   return state === "accepted" || state === "rejected" || state === "needs_followup";
 }
 
-export function getReviewLabel(state?: ReviewState): string | null {
+export type ReviewLabelKey =
+  | "reviewedAccepted"
+  | "reviewedRejected"
+  | "reviewedFollowUp";
+
+export function getReviewLabel(state?: ReviewState): ReviewLabelKey | null {
   if (!state) return null;
-  if (state === "accepted") return "Reviewed: accepted";
-  if (state === "rejected") return "Reviewed: rejected";
-  if (state === "needs_followup") return "Reviewed: follow-up";
-  return "Unreviewed";
+  if (state === "accepted") return "reviewedAccepted";
+  if (state === "rejected") return "reviewedRejected";
+  if (state === "needs_followup") return "reviewedFollowUp";
+  return null;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +55,7 @@ export function PdfPageControls({
   onPageInputCommit,
   onPageChange,
 }: PdfPageControlsProps) {
+  const t = useTranslations();
   const atStart = currentPage <= 1;
   const atEnd = numPages <= 0 || currentPage >= numPages;
 
@@ -78,7 +80,7 @@ export function PdfPageControls({
             }
           }}
           inputMode="numeric"
-          aria-label="Page number"
+          aria-label={t('accessibility.pageNumberInput')}
           className="h-7 w-10 text-center text-xs"
         />
         <span className="whitespace-nowrap text-[11px] text-muted-foreground">/ {Math.max(1, numPages)}</span>

@@ -5,6 +5,7 @@ import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
 import { useUIStore } from "@/lib/store";
 import { ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 interface ViewModeOption {
   mode: ViewMode;
@@ -13,36 +14,17 @@ interface ViewModeOption {
   shortLabel: string;
 }
 
-const viewModeOptions: ViewModeOption[] = [
-  {
-    mode: "list-simple",
-    icon: <List className="h-4 w-4" />,
-    label: "Simple List",
-    shortLabel: "Simple",
-  },
-  {
-    mode: "list-detail",
-    icon: <LayoutList className="h-4 w-4" />,
-    label: "Detailed List",
-    shortLabel: "Detail",
-  },
-  {
-    mode: "grid-2",
-    icon: <LayoutGrid className="h-4 w-4" />,
-    label: "2 Column Grid",
-    shortLabel: "2×2",
-  },
-  {
-    mode: "grid-3",
-    icon: <Grid3X3 className="h-4 w-4" />,
-    label: "3 Column Grid",
-    shortLabel: "3×3",
-  },
-];
-
 // Compact version for tight spaces
 export function ViewModeToggleCompact() {
   const { viewMode, setViewMode } = useUIStore();
+  const t = useTranslations("viewMode");
+
+  const viewModeOptions: ViewModeOption[] = [
+    { mode: "list-simple", icon: <List className="h-4 w-4" />, label: t("simpleList"), shortLabel: t("simple") },
+    { mode: "list-detail", icon: <LayoutList className="h-4 w-4" />, label: t("detailedList"), shortLabel: t("detail") },
+    { mode: "grid-2", icon: <LayoutGrid className="h-4 w-4" />, label: t("twoColumnGrid"), shortLabel: "2×2" },
+    { mode: "grid-3", icon: <Grid3X3 className="h-4 w-4" />, label: t("threeColumnGrid"), shortLabel: "3×3" },
+  ];
 
   return (
     <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">

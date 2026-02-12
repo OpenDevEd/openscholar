@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ export function CommandCenterList<T>({
   hasFilter,
   onClearFilter,
 }: CommandCenterListProps<T>) {
+  const tc = useTranslations("common");
   // Empty state
   if (items.length === 0) {
     return (
@@ -66,18 +68,18 @@ export function CommandCenterList<T>({
         </div>
 
         <h3 className="text-lg font-semibold text-foreground mb-2">
-          {hasFilter ? "No matches found" : emptyTitle}
+          {hasFilter ? tc("noMatchesFound") : emptyTitle}
         </h3>
 
         <p className="text-sm text-muted-foreground text-center max-w-sm mb-6">
           {hasFilter
-            ? "Try adjusting your search filter to find what you're looking for."
+            ? tc("tryAdjustingSearch")
             : emptyDescription}
         </p>
 
         {hasFilter ? (
           <Button variant="outline" onClick={onClearFilter} className="gap-2">
-            Clear Filter
+            {tc("clearFilter")}
           </Button>
         ) : (
           emptyAction

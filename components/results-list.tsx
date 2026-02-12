@@ -39,6 +39,7 @@ import { downloadEssentialItem, downloadItem } from "@/lib/search-actions";
 import { useIsTablet } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
+import { useTranslations } from "next-intl";
 
 interface PapersListProps {
   results: any[];
@@ -107,6 +108,8 @@ function PapersList({
   resultsContainerRef,
   viewMode,
 }: PapersListProps) {
+  const ts = useTranslations("search");
+  const tc = useTranslations("common");
   const [showInitialLoading, setShowInitialLoading] = React.useState(true);
 
   // Show initial loading for first 5 seconds, even if there are no results
@@ -171,12 +174,12 @@ function PapersList({
           <div className="text-center py-12">
             <p className="text-lg text-muted-foreground">
               {isRatingFilterActive(ratingRange, onlyRatedPapers)
-                ? "No results match your filters"
-                : "No results found"}
+                ? ts("noResultsMatchFilters")
+                : tc("noResultsFound")}
             </p>
             {isRatingFilterActive(ratingRange, onlyRatedPapers) && (
               <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your filter settings
+                {tc("tryAdjustingSearch")}
               </p>
             )}
           </div>
@@ -350,6 +353,7 @@ export function ResultsList({
 
   const pathname = usePathname();
 
+  const ts = useTranslations("search");
   const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
   const isMobile = useIsTablet();
   
@@ -541,9 +545,9 @@ export function ResultsList({
                 <div className="flex items-center gap-3">
                   <Loader2 className="h-5 w-5 text-primary animate-spin" />
                   <div className="flex-1">
-                    <p className="font-medium text-foreground">Updating results...</p>
+                    <p className="font-medium text-foreground">{ts("updatingResults")}</p>
                     <p className="text-sm text-muted-foreground">
-                      Applying your search parameters
+                      {ts("applyingParameters")}
                     </p>
                   </div>
                 </div>

@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { exportToCSV, exportToJSON, exportToExcel } from "@/lib/extraction/export";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
+import { useTranslations } from "next-intl";
 
 interface ExportDialogProps {
   open: boolean;
@@ -32,6 +33,9 @@ export function ExportDialog({
   questions,
   label,
 }: ExportDialogProps) {
+  const t = useTranslations("extraction");
+  const tc = useTranslations("common");
+
   const [format, setFormat] = useState<"csv" | "json" | "excel">("csv");
   const [includeMetadata, setIncludeMetadata] = useState(true);
   const [includeConfidence, setIncludeConfidence] = useState(true);
@@ -58,20 +62,20 @@ export function ExportDialog({
   };
 
   const displayLabel =
-    label ?? `${papers.length} paper${papers.length !== 1 ? "s" : ""}`;
+    label ?? tc("paperCount", { count: papers.length });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Export Results</DialogTitle>
+          <DialogTitle>{t("exportResults")}</DialogTitle>
           <DialogDescription>
-            Choose export format and options for {displayLabel}
+            {t("exportDescription", { label: displayLabel })}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Export format</Label>
+            <Label>{t("exportFormat")}</Label>
             <RadioGroup
               value={format}
               onValueChange={(v) => setFormat(v as "csv" | "json" | "excel")}
@@ -83,7 +87,7 @@ export function ExportDialog({
                   className="font-normal cursor-pointer flex items-center gap-2"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  CSV (Excel-compatible)
+                  {t("csvLabel")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -93,7 +97,7 @@ export function ExportDialog({
                   className="font-normal cursor-pointer flex items-center gap-2"
                 >
                   <FileSpreadsheet className="w-4 h-4" />
-                  Excel (.xlsx) with summary
+                  {t("excelLabel")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -103,13 +107,13 @@ export function ExportDialog({
                   className="font-normal cursor-pointer flex items-center gap-2"
                 >
                   <FileJson className="w-4 h-4" />
-                  JSON (for processing)
+                  {t("jsonLabel")}
                 </Label>
               </div>
             </RadioGroup>
           </div>
           <div className="space-y-2">
-            <Label>Include</Label>
+            <Label>{tc("include")}</Label>
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -123,7 +127,7 @@ export function ExportDialog({
                   htmlFor="export-metadata"
                   className="font-normal cursor-pointer"
                 >
-                  Paper metadata (authors, DOI, year)
+                  {t("paperMetadata")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
@@ -138,7 +142,7 @@ export function ExportDialog({
                   htmlFor="export-confidence"
                   className="font-normal cursor-pointer"
                 >
-                  Confidence scores
+                  {t("confidenceScores")}
                 </Label>
               </div>
               {format === "json" && (
@@ -155,7 +159,7 @@ export function ExportDialog({
                       htmlFor="export-reasoning"
                       className="font-normal cursor-pointer"
                     >
-                      AI reasoning
+                      {t("aiReasoning")}
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -170,7 +174,7 @@ export function ExportDialog({
                       htmlFor="export-citations"
                       className="font-normal cursor-pointer"
                     >
-                      Citation text
+                      {t("citationText")}
                     </Label>
                   </div>
                 </>
@@ -180,9 +184,9 @@ export function ExportDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {tc("cancel")}
           </Button>
-          <Button onClick={handleExport}>Export {displayLabel}</Button>
+          <Button onClick={handleExport}>{t("exportButton", { label: displayLabel })}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

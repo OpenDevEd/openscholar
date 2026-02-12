@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslations } from "next-intl"
 import { ChevronDown, ChevronRight, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -71,6 +72,7 @@ export function Cascader({
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const columnRefs = React.useRef<Map<string, HTMLDivElement>>(new Map())
 
+  const t = useTranslations("accessibility")
   const selectedValue = value !== undefined ? value : internalValue
 
   const getColumns = React.useCallback(() => {
@@ -294,7 +296,7 @@ export function Cascader({
           <X
             className="h-4 w-4 opacity-50 hover:opacity-100 cursor-pointer"
             onClick={handleClear}
-            aria-label="Clear selection"
+            aria-label={t("clearSelection")}
           />
         )}
         <ChevronDown className="h-4 w-4 opacity-50" aria-hidden="true" />
@@ -315,7 +317,7 @@ export function Cascader({
         <div
           key={columnIndex}
           role="group"
-          aria-label={`Level ${columnIndex + 1}`}
+          aria-label={t("levelN", { n: columnIndex + 1 })}
           className={cn(
             "min-w-[180px] max-h-[300px] overflow-auto py-1 shrink-0",
             columnIndex !== columns.length - 1 && "border-r border-border"

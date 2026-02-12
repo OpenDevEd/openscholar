@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { SearchHistory } from '@/components/search-history';
 import { useUIStore, useSearchHistoryStore } from '@/lib/store';
 import { useCurrentSearchFormState } from '@/lib/hooks';
@@ -16,6 +17,7 @@ interface HistoryPageProps {
 
 export default function HistoryPage({ params }: HistoryPageProps) {
   const router = useRouter();
+  const tc = useTranslations('common');
   const { currentSearchField } = useCurrentSearchFormState();
   const { loadingResultIndex } = useUIStore();
   const { searchHistory } = useSearchHistoryStore();
@@ -67,7 +69,7 @@ export default function HistoryPage({ params }: HistoryPageProps) {
   return (
     <div className="container mx-auto p-6">
       <PageHeader
-        title="Search History"
+        title={tc("history")}
         description="View and manage your previous searches"
         icon={History}
         showBackButton={true}

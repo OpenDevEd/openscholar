@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import posthog from "posthog-js";
+import { useTranslations } from "next-intl";
 
 interface DownloadMenuProps {
   onDownloadJSON?: () => void;
@@ -28,6 +29,9 @@ export function DownloadMenu({
   variant = "icon",
   size = "default"
 }: DownloadMenuProps) {
+  const t = useTranslations("downloads");
+  const tc = useTranslations("common");
+
   const TriggerButton = variant === "icon" ? (
     <Button variant="ghost" size="icon">
       <Download className="h-4 w-4" />
@@ -35,7 +39,7 @@ export function DownloadMenu({
   ) : (
     <Button variant="outline" size={size}>
       <Download className="h-4 w-4 mr-2" />
-      Download All
+      {t("downloadAll")}
     </Button>
   );
 
@@ -53,7 +57,7 @@ export function DownloadMenu({
             });
             onDownloadJSON();
           }}>
-            Download as JSON
+            {tc("downloadAsJson")}
           </DropdownMenuItem>
         )}
         {onDownloadCSV && (
@@ -64,7 +68,7 @@ export function DownloadMenu({
             });
             onDownloadCSV();
           }}>
-            Download as CSV
+            {tc("downloadAsCsv")}
           </DropdownMenuItem>
         )}
         {onDownloadEssentialJSON && (
@@ -75,7 +79,7 @@ export function DownloadMenu({
             });
             onDownloadEssentialJSON();
           }}>
-            Download Essential Info as JSON
+            {t("downloadEssentialJSON")}
           </DropdownMenuItem>
         )}
         {onDownloadEssentialCSV && (
@@ -86,10 +90,10 @@ export function DownloadMenu({
             });
             onDownloadEssentialCSV();
           }}>
-            Download Essential Info as CSV
+            {t("downloadEssentialCSV")}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
-} 
+}

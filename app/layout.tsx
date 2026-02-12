@@ -11,6 +11,8 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -23,70 +25,76 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://openscholar.ai"),
-  title: "OpenScholar - Academic Paper Search",
-  description:
-    "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
-  appleWebApp: {
-    title: "OpenScholar.ai",
-  },
-  openGraph: {
-    title: "OpenScholar - Academic Paper Search",
-    description:
-      "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
-    url: "https://openscholar.ai",
-    siteName: "OpenScholar",
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "OpenScholar - Academic Paper Search",
-    description:
-      "Search millions of academic papers and research articles with OpenScholar. Find, explore, and download scholarly content with advanced filtering and citation tools.",
-    creator: "@OpenScholarAI",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  alternates: {
-    canonical: "/",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
 
-export default function RootLayout({
+  return {
+    metadataBase: new URL(t("siteUrl")),
+    title: t("defaultTitle"),
+    description: t("defaultDescription"),
+    appleWebApp: {
+      title: t("siteName"),
+    },
+    openGraph: {
+      title: t("defaultTitle"),
+      description: t("defaultDescription"),
+      url: t("siteUrl"),
+      siteName: t("siteName"),
+      locale: t("locale"),
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("defaultTitle"),
+      description: t("defaultDescription"),
+      creator: t("twitterCreator"),
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+    alternates: {
+      canonical: "/",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
-      <body>
-        <ConvexClientProvider>
-          <ConfigProvider>
-            <ThemeProvider>
-              <NuqsAdapter>
-                <QuerySyncProvider>
-                  <div className="flex min-h-screen">
-                    {/* Sidebar */}
-                    <AppSidebar />
-                    
-                    {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col min-w-0 min-h-0">
-                      {/* Mobile Navbar */}
-                      <MobileNavbar />
+  const locale = await getLocale();
+  const messages = await getMessages();
 
-                      <AuthRouteGate>{children}</AuthRouteGate>
+  return (
+    <html lang={locale} suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
+      <body>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ConvexClientProvider>
+            <ConfigProvider>
+              <ThemeProvider>
+                <NuqsAdapter>
+                  <QuerySyncProvider>
+                    <div className="flex min-h-screen">
+                      {/* Sidebar */}
+                      <AppSidebar />
+
+                      {/* Main Content Area */}
+                      <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                        {/* Mobile Navbar */}
+                        <MobileNavbar />
+
+                        <AuthRouteGate>{children}</AuthRouteGate>
+                      </div>
                     </div>
-                  </div>
-                  <Toaster />
-                </QuerySyncProvider>
-              </NuqsAdapter>
-            </ThemeProvider>
-          </ConfigProvider>
-        </ConvexClientProvider>
+                    <Toaster />
+                  </QuerySyncProvider>
+                </NuqsAdapter>
+              </ThemeProvider>
+            </ConfigProvider>
+          </ConvexClientProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
