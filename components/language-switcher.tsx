@@ -15,12 +15,12 @@ import { cn } from "@/lib/utils";
 import { locales, type Locale } from "@/i18n/config";
 import { setLocale } from "@/i18n/locale";
 
-const localeLabels: Record<Locale, string> = {
-  "en-US": "English (US)",
-  "en-GB": "English (UK)",
-  zh: "中文",
-  fr: "Français",
-  hi: "हिन्दी",
+const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
+  "en-US": "enUS",
+  "en-GB": "enGB",
+  zh: "zh",
+  fr: "fr",
+  hi: "hi",
 };
 
 const localeFlags: Record<Locale, string> = {
@@ -38,6 +38,8 @@ interface LanguageSwitcherProps {
 export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
   const t = useTranslations("common");
   const currentLocale = useLocale() as Locale;
+  const getLocaleLabel = (locale: Locale) =>
+    t(`localeLabels.${LOCALE_TO_LABEL_KEY[locale]}` as "localeLabels.enUS");
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
@@ -63,7 +65,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
       >
         <Globe className="h-[1.2rem] w-[1.2rem]" />
         {!isCollapsed && (
-          <span className="ml-2 text-sm">{localeLabels[currentLocale]}</span>
+          <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
         )}
       </Button>
     );
@@ -89,7 +91,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               {localeFlags[currentLocale]}
             </span>
             {!isCollapsed && (
-              <span className="ml-2 text-sm">{localeLabels[currentLocale]}</span>
+              <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
             )}
           </Button>
         </motion.div>
@@ -115,7 +117,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               whileTap={{ scale: 0.98 }}
             >
               <span className="text-base leading-none">{localeFlags[locale]}</span>
-              <span className="flex-1 text-left">{localeLabels[locale]}</span>
+              <span className="flex-1 text-left">{getLocaleLabel(locale)}</span>
               <AnimatePresence>
                 {currentLocale === locale && (
                   <motion.div

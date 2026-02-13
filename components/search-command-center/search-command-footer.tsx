@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
 import { motion } from "motion/react";
@@ -37,6 +37,7 @@ export function SearchCommandFooter({
   const tsc = useTranslations("searchCommand");
   const te = useTranslations("errors");
   const locale = useLocale();
+  const format = useFormatter();
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
 
@@ -138,7 +139,7 @@ Return a more inclusive version of this query.`;
     setIsNarrowing(true);
 
     const narrowPrompt = `Current query: "${expandedQuery}"
-Current results: ${totalCount.toLocaleString()} papers found
+Current results: ${format.number(totalCount)} papers found
 ${currentQuestion ? `Research Question: "${currentQuestion}"` : ""}
 ${currentLanguage ? `Language Context: "${currentLanguage}"` : ""}
 

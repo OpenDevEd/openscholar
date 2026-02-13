@@ -16,6 +16,7 @@ import { useParams } from 'next/navigation';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
 import useSWR from 'swr';
+import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
 import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
@@ -79,6 +80,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
  */
 export function SearchProvider({ children }: SearchProviderProps) {
   const toast = useAppToast();
+  const tValidation = useTranslations("validation");
   const routeParams = useParams<{ searchId: string }>();
   const searchId = routeParams?.searchId ?? '';
   
@@ -248,11 +250,15 @@ export function SearchProvider({ children }: SearchProviderProps) {
       query: params.q || '',
       filters,
     };
-    
-    const result = await getSearchResultsWithFilters(searchParams);
+
+    const result = await getSearchResultsWithFilters(searchParams, {
+      getMessage: (key, params) =>
+        tValidation(key as "singleCharSearch", params as Record<string, string>),
+      onWarning: (msg) => toast.validation.warning(msg),
+    });
     // Attach the paramsKey and requestId for outcome tracking
     return { ...result, paramsKey: paramsJson, requestId };
-  }, [searchId, getSearchResult]);
+  }, [searchId, getSearchResult, toast, tValidation]);
   
   // Single SWR instance
   const { data, error, isLoading, isValidating, mutate } = useSWR(

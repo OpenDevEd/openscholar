@@ -7,7 +7,7 @@
  */
 
 import React from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 import { cn } from "@/lib/utils";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { Star } from "lucide-react";
@@ -51,8 +51,11 @@ export function UnifiedFilterBadges({
   showAll = true,
 }: UnifiedFilterBadgesProps) {
   const tFilters = useTranslations("searchFilters");
+  const format = useFormatter();
+  const formatDateTime = (d: Date, opts?: Intl.DateTimeFormatOptions) =>
+    format.dateTime(d, opts as Parameters<typeof format.dateTime>[1]);
   // Get all filter items as a flat array
-  const filterItems = getAllFilterItems(result, tFilters as FilterT);
+  const filterItems = getAllFilterItems(result, tFilters as FilterT, formatDateTime);
   
   if (filterItems.length === 0 && !showAll) return null;
 

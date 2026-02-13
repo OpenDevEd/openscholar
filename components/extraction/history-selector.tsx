@@ -3,14 +3,15 @@
 import { motion } from "motion/react";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useSearchHistoryStore } from "@/lib/store";
-import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { Search, Calendar, FileText } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale, useTranslations, useFormatter, useNow } from "next-intl";
 
 export function HistorySelector() {
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const { draftJob, toggleHistorySelection } = useExtractionStore();
@@ -76,14 +77,14 @@ export function HistorySelector() {
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{formatTimeAgo(new Date(entry.createdAt), locale)}</span>
+                    <span>{format.relativeTime(new Date(entry.createdAt), now)}</span>
                   </div>
 
                   <span className="w-1 h-1 rounded-full bg-border" />
 
                   <div className="flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5" />
-                    <span>{entry.count?.toLocaleString() || 0} {tc("results").toLowerCase()}</span>
+                    <span>{format.number(entry.count ?? 0)} {tc("results").toLowerCase()}</span>
                   </div>
 
                   {entry.screeningQuestions?.length > 0 && (

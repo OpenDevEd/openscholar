@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useScreening } from "./hooks";
 import { useUIStore } from "@/lib/store";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 
 // ==================== Types ====================
 
@@ -427,6 +427,7 @@ export function CitationBadge({
   onClick?: () => void;
   compact?: boolean;
 }) {
+  const format = useFormatter();
   const colorClasses = {
     orange: "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
     green: "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50",
@@ -446,7 +447,7 @@ export function CitationBadge({
         title={label}
       >
         <Icon className="h-3 w-3" />
-        <span>{count}</span>
+        <span>{format.number(count)}</span>
       </button>
     );
   }
@@ -460,7 +461,7 @@ export function CitationBadge({
       title={label}
     >
       <Icon className="h-4 w-4" />
-      <span className="text-sm">{label}: {count}</span>
+      <span className="text-sm">{label}: {format.number(count)}</span>
     </Button>
   );
 }

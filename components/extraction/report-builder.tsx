@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,10 @@ function reportToMarkdown(
     answeredRate: string;
     groundedRate: string;
     bestEffortRate: string;
-  }
+  },
+  formatDateTime: (d: Date) => string
 ) {
-  const dateStr = new Date(report.generatedAt).toLocaleString();
+  const dateStr = formatDateTime(new Date(report.generatedAt));
   const header = [
     `# ${report.name}`,
     "",
@@ -79,6 +80,7 @@ export function ReportBuilder({
 }: ReportBuilderProps) {
   const t = useTranslations("reportBuilder");
   const tc = useTranslations("common");
+  const format = useFormatter();
   const router = useRouter();
   const savedViewsQuery = useProtectedQuery(api.extraction.queries.getSavedViews, {
     jobId: jobId as any,
@@ -242,7 +244,7 @@ export function ReportBuilder({
                   <div>
                     <div className="font-medium text-sm">{view.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {t("updatedAt", { date: new Date(view.updatedAt).toLocaleString() })}
+                      {t("updatedAt", { date: format.dateTime(new Date(view.updatedAt), { dateStyle: "medium", timeStyle: "short" }) })}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -364,7 +366,7 @@ export function ReportBuilder({
               <div>
                 <div className="font-medium">{latestReport.name}</div>
                 <div className="text-xs text-muted-foreground">
-                  {t("generatedAt", { date: new Date(latestReport.generatedAt).toLocaleString() })}
+                  {t("generatedAt", { date: format.dateTime(new Date(latestReport.generatedAt), { dateStyle: "medium", timeStyle: "short" }) })}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -388,13 +390,17 @@ export function ReportBuilder({
                   variant="outline"
                   onClick={() =>
                     downloadFile(
-                      reportToMarkdown(latestReport, {
+                      reportToMarkdown(
+                      latestReport,
+                      {
                         generatedAt: (p) => t("generatedAt", p),
                         totalPapers: t("totalPapers"),
                         answeredRate: t("answeredRate"),
                         groundedRate: t("groundedRate"),
                         bestEffortRate: t("bestEffortRate"),
-                      }),
+                      },
+                      (d) => format.dateTime(d, { dateStyle: "medium", timeStyle: "short" })
+                    ),
                       `report-${latestReport._id}.md`,
                       "text/markdown"
                     )

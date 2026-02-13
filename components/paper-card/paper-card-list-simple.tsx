@@ -2,7 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 import { workToCoins } from "@/lib/utils";
 import { useUIStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
@@ -30,6 +30,7 @@ export function PaperCardListSimple({
 }: PaperCardProps) {
   const pathname = usePathname();
   const tp = useTranslations("paperCard");
+  const format = useFormatter();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
@@ -123,10 +124,10 @@ export function PaperCardListSimple({
                   }
                 }}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
-                title={tp("citedByCount", { count: result.cited_by_count || 0 })}
+                title={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}
               >
                 <Quote className="h-3 w-3" />
-                <span>{result.cited_by_count || 0}</span>
+                <span>{format.number(result.cited_by_count ?? 0)}</span>
               </div>
             </div>
 
@@ -164,7 +165,7 @@ export function PaperCardListSimple({
             onClick={(e) => e.stopPropagation()}
           >
             <Quote className="h-3 w-3" />
-            <span className="font-medium">{result.cited_by_count || 0}</span>
+            <span className="font-medium">{format.number(result.cited_by_count ?? 0)}</span>
           </div>
         </div>
       </div>

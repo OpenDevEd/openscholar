@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useFormatter } from "next-intl";
 import { cn } from "@/lib/utils";
 
 interface AnimatedCountProps {
@@ -10,6 +11,7 @@ interface AnimatedCountProps {
 }
 
 export function AnimatedCount({ value, className }: AnimatedCountProps) {
+  const format = useFormatter();
   return (
     <div className={cn("relative overflow-hidden", className)}>
       <AnimatePresence mode="popLayout">
@@ -21,7 +23,7 @@ export function AnimatedCount({ value, className }: AnimatedCountProps) {
           transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
           className="inline-block tabular-nums"
         >
-          {value.toLocaleString()}
+          {format.number(value)}
         </motion.span>
       </AnimatePresence>
     </div>

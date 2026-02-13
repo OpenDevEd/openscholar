@@ -7,7 +7,6 @@
  */
 
 import React from "react";
-import { formatNumber, formatTimeAgo } from "@/lib/format";
 import { SearchField, QueryHistoryEntry } from "@/lib/types/search.types";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -15,7 +14,7 @@ import { Clock } from "lucide-react";
 import { UnifiedFilterBadges } from "@/components/ui/filter-display";
 import { QueryEvolution } from "@/components/ui/query-evolution";
 import { QueryText } from "@/components/ui/query-text";
-import { useLocale } from "next-intl";
+import { useLocale, useFormatter, useNow } from "next-intl";
 
 interface SearchTooltipContentProps {
   id: string;
@@ -65,7 +64,9 @@ export function SearchTooltipContent({
   queryHistory,
 }: SearchTooltipContentProps) {
   const locale = useLocale();
-  const timeAgo = formatTimeAgo(createdAt, locale);
+  const format = useFormatter();
+  const now = useNow();
+  const timeAgo = format.relativeTime(new Date(createdAt), now);
 
   // Build filter params for UnifiedFilterBadges
   const filterParams = {
@@ -96,7 +97,7 @@ export function SearchTooltipContent({
             className="text-sm font-medium break-words flex-1 leading-snug"
           />
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
-            {formatNumber(count)}
+            {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
           </span>
         </div>
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">

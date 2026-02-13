@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useTranslations, useLocale } from "next-intl";
-import { formatTimeAgo } from "@/lib/format";
+import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import {
   Copy,
   BookmarkPlus,
@@ -48,6 +47,8 @@ export function HistoryQueryExpansion({
   const tv = useTranslations("validation");
   const tToast = useTranslations("toast");
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   const [bookmarkingIndex, setBookmarkingIndex] = useState<number | null>(null);
   const [bookmarkName, setBookmarkName] = useState("");
 
@@ -145,7 +146,7 @@ export function HistoryQueryExpansion({
             const isCurrent = index === 0;
             const originalIndex = queryHistory.length - 1 - index;
             const date = new Date(entry.timestamp);
-            const timeAgo = formatTimeAgo(date, locale);
+            const timeAgo = format.relativeTime(date, now);
             const canDelete = !isCurrent;
             const isBookmarking = bookmarkingIndex === originalIndex;
 
@@ -248,11 +249,7 @@ export function HistoryQueryExpansion({
                             <span>{timeAgo}</span>
                             <span className="opacity-40">•</span>
                             <span>
-                              {date.toLocaleDateString(locale)}{" "}
-                              {date.toLocaleTimeString(locale, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {format.dateTime(date, { dateStyle: "short", timeStyle: "short" })}
                             </span>
                             {isCurrent && (
                               <>

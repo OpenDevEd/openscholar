@@ -112,7 +112,10 @@ interface KeywordExpansionState {
   updateKeyword: (shorthand: string, expansion: string) => void
   removeKeyword: (shorthand: string) => void
   clearKeywords: () => void
-  expandQuery: (query: string) => { expandedQuery: string; warnings: string[] }
+  expandQuery: (query: string) => {
+    expandedQuery: string;
+    warnings: Array<{ key: string; params?: Record<string, string> }>;
+  }
   importKeywords: (data: any[]) => number
 }
 
@@ -630,13 +633,13 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
       clearKeywords: () => set({ keywords: {} }),
       expandQuery: (query) => {
         const { keywords } = get();
-        const warnings: string[] = [];
+        const warnings: Array<{ key: string; params?: Record<string, string> }> = [];
         const expandedQuery = query.replace(/(\w[\w-]*)\.\.\./g, (match, keyword) => {
           const bookmarkData = keywords[keyword];
           if (bookmarkData?.expansion) {
             return bookmarkData.expansion;
           } else {
-            warnings.push(`Bookmark "${keyword}" not found`);
+            warnings.push({ key: 'bookmarkNotFound', params: { keyword } });
             return match;
           }
         });

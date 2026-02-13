@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { useRouter } from "next/navigation";
@@ -17,7 +17,7 @@ export default function BillingPage() {
   const t = useTranslations("billingPage");
   const toast = useAppToast();
   const tc = useTranslations("common");
-  const locale = useLocale();
+  const format = useFormatter();
   const router = useRouter();
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
@@ -151,10 +151,10 @@ export default function BillingPage() {
 
   // Format currency
   const formatPrice = (amount: number, currency: string) => {
-    return new Intl.NumberFormat(locale, {
+    return format.number(amount / 100, {
       style: "currency",
       currency: currency.toUpperCase(),
-    }).format(amount / 100);
+    });
   };
 
   return (
@@ -257,9 +257,11 @@ export default function BillingPage() {
                             : t("renewsOn")}
                         </span>
                         <span className="font-medium">
-                          {new Date(
-                            details.currentPeriodEnd,
-                          ).toLocaleDateString()}
+                          {format.dateTime(new Date(details.currentPeriodEnd), {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </span>
                       </div>
 

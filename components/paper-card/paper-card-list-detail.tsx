@@ -40,7 +40,7 @@ import {
   ScreeningResponses,
 } from "./shared";
 import posthog from "posthog-js";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 
 export function PaperCardListDetail({
   result,
@@ -50,6 +50,7 @@ export function PaperCardListDetail({
 }: PaperCardProps) {
   const tp = useTranslations("paperCard");
   const tc = useTranslations("common");
+  const format = useFormatter();
   const router = useRouter();
   const pathname = usePathname();
   const { expandedAbstracts, toggleAbstract } = useResultsStore();
@@ -368,7 +369,7 @@ export function PaperCardListDetail({
                   <span className="text-xs font-medium">{tp("citedBy")}</span>
                 </div>
                 <div className="text-lg font-bold text-orange-700 dark:text-orange-300">
-                  {result.cited_by_count || 0}
+                  {format.number(result.cited_by_count ?? 0)}
                 </div>
                 <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-orange-400 opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
@@ -382,7 +383,7 @@ export function PaperCardListDetail({
                   <span className="text-xs font-medium">{tp("cites")}</span>
                 </div>
                 <div className="text-lg font-bold text-green-700 dark:text-green-300">
-                  {result.referenced_works_count || 0}
+                  {format.number(result.referenced_works_count ?? 0)}
                 </div>
                 <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-green-400 opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
@@ -396,7 +397,7 @@ export function PaperCardListDetail({
                   <span className="text-xs font-medium">{tc("related")}</span>
                 </div>
                 <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                  {result.related_works?.length || 0}
+                  {format.number(result.related_works?.length ?? 0)}
                 </div>
                 <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
@@ -431,19 +432,19 @@ export function PaperCardListDetail({
             {/* Citation buttons bar */}
             <div className="flex items-center gap-1 w-full bg-muted/50 dark:bg-muted/30 rounded-xl p-1.5">
               <CitationBadge
-                count={result.cited_by_count || 0}
+                count={result.cited_by_count ?? 0}
                 label={tp("citedBy")}
                 color="orange"
                 onClick={handleCitesSearch}
               />
               <CitationBadge
-                count={result.referenced_works_count || 0}
+                count={result.referenced_works_count ?? 0}
                 label={tp("cites")}
                 color="green"
                 onClick={handleCitedBySearch}
               />
               <CitationBadge
-                count={result.related_works?.length || 0}
+                count={result.related_works?.length ?? 0}
                 label={tc("related")}
                 color="blue"
                 onClick={handleRelatedSearch}

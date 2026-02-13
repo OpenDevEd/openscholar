@@ -8,10 +8,9 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { formatTimeAgo } from "@/lib/format";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
 import { QueryText } from "@/components/ui/query-text";
 
@@ -42,6 +41,8 @@ export function QueryEvolution({
 }: QueryEvolutionProps) {
   const t = useTranslations("historyPage");
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Don't render if there's only one or no queries
@@ -141,7 +142,7 @@ export function QueryEvolution({
                         )}
                       />
                       <span className="text-[9px] pl-2 text-muted-foreground/50">
-                        {formatTimeAgo(entry.timestamp, locale)}
+                        {format.relativeTime(new Date(entry.timestamp), now)}
                       </span>
                     </div>
                   </motion.div>

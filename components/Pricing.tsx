@@ -22,7 +22,7 @@ import { subtleSpring } from "@/lib/animation-config";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 
 type PlanPrice = {
   id: string;
@@ -48,7 +48,7 @@ export function Pricing() {
   const toast = useAppToast();
   const t = useTranslations("pricing");
   const tc = useTranslations("common");
-  const locale = useLocale();
+  const format = useFormatter();
 
   const FEATURES = useMemo(() => ({
     free: [t("freeFeature1"), t("freeFeature2"), t("freeFeature3")],
@@ -187,11 +187,11 @@ export function Pricing() {
     const price = prices?.find((p) => p.plan === planType);
     if (!price || !price.amount)
       return <Loader2 className="h-4 w-4 animate-spin" />;
-    return new Intl.NumberFormat(locale, {
+    return format.number(price.amount / 100, {
       style: "currency",
       currency: price.currency,
       minimumFractionDigits: 0,
-    }).format(price.amount / 100);
+    });
   };
 
   const getButtonConfig = (plan: PlanConfig) => {

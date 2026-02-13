@@ -160,7 +160,16 @@
     "response": "响应",
     "bookmark": "书签",
     "generate": "生成",
-    "screen": "屏幕"
+    "screen": "屏幕",
+    "redirecting": "正在跳转...",
+    "questionPrefix": "问:",
+    "localeLabels": {
+      "enUS": "英语（美国）",
+      "enGB": "英语（英国）",
+      "zh": "中文",
+      "fr": "法语",
+      "hi": "印地语"
+    }
   },
   "home": {
     "tagline": "搜索数百万学术论文和研究文章",
@@ -892,7 +901,8 @@
     "noNewQuestionsGenerated": "未生成新问题。",
     "pleaseEnterQuestion": "请输入问题。",
     "questionAlreadyExists": "此问题已存在。",
-    "failedToAddQuestion": "添加问题失败。"
+    "failedToAddQuestion": "添加问题失败。",
+    "bookmarkNotFound": "未找到书签「{keyword}」"
   },
   "accessibility": {
     "toggleTheme": "切换主题",

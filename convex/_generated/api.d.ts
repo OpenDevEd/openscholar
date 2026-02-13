@@ -78,6 +78,7 @@ import type * as users_mutations from "../users/mutations.js";
 import type * as users_queries from "../users/queries.js";
 import type * as webhooks_actions from "../webhooks/actions.js";
 import type * as webhooks_workos from "../webhooks/workos.js";
+import type * as webhooks_workos_mappers from "../webhooks/workos_mappers.js";
 import type * as workflow from "../workflow.js";
 import type * as workpool from "../workpool.js";
 import type * as zotero_actions from "../zotero/actions.js";
@@ -162,6 +163,7 @@ declare const fullApi: ApiFromModules<{
   "users/queries": typeof users_queries;
   "webhooks/actions": typeof webhooks_actions;
   "webhooks/workos": typeof webhooks_workos;
+  "webhooks/workos_mappers": typeof webhooks_workos_mappers;
   workflow: typeof workflow;
   workpool: typeof workpool;
   "zotero/actions": typeof zotero_actions;

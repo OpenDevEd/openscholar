@@ -22,7 +22,6 @@ import {
   FileText,
   Focus,
 } from "lucide-react";
-import { format } from "date-fns";
 import {
   cn,
   isDateFilterActive,
@@ -71,7 +70,7 @@ import { useFilterSidebarStore, getFilterSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { motion, AnimatePresence } from "motion/react";
 import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 
 interface SearchSidebarProps {
   isOpen?: boolean;
@@ -166,6 +165,7 @@ const FilterSection = React.memo(function FilterSection({
 // Date Filter Component
 const DateFilterPanel = React.memo(function DateFilterPanel() {
   const tf = useTranslations("searchFilters");
+  const format = useFormatter();
   const { dateRange, filterType, isYearRangeEnabled, yearRange } =
     useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -283,12 +283,12 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
                 {isDateActive && dateRange?.from ? (
                   dateRange.to ? (
                     <span className="truncate text-sm">
-                      {format(dateRange.from, "MMM dd, yyyy")} →{" "}
-                      {format(dateRange.to, "MMM dd, yyyy")}
+                      {format.dateTime(dateRange.from, { year: "numeric", month: "short", day: "numeric" })} →{" "}
+                      {format.dateTime(dateRange.to, { year: "numeric", month: "short", day: "numeric" })}
                     </span>
                   ) : (
                     <span className="truncate text-sm">
-                      From {format(dateRange.from, "MMM dd, yyyy")}
+                      From {format.dateTime(dateRange.from, { year: "numeric", month: "short", day: "numeric" })}
                     </span>
                   )
                 ) : (

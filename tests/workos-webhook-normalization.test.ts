@@ -4,7 +4,7 @@ import {
   mapWorkosMembershipToSyncArgs,
   mapWorkosRole,
   mapWorkosUserToSyncArgs,
-} from "../convex/webhooks/workos-mappers";
+} from "../convex/webhooks/workos_mappers";
 
 describe("workos webhook normalization", () => {
   it("normalizes user.updated payload fields to Convex mutation args", () => {

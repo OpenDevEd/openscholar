@@ -9,6 +9,11 @@ export interface SearchWithFiltersParams {
   filters: SearchFilters;
 }
 
+export interface GetSearchResultsWithFiltersOptions {
+  getMessage?: (key: string, params?: Record<string, string>) => string;
+  onWarning?: (message: string) => void;
+}
+
 export interface EnhancedSearchResult {
   originalQuery: string;
   enhancedQuery: string;
@@ -38,7 +43,8 @@ function cleanCountryNameForAPI(countryName: string): string {
  * query enhancement, and country filtering logic.
  */
 export async function getSearchResultsWithFilters(
-  params: SearchWithFiltersParams
+  params: SearchWithFiltersParams,
+  options?: GetSearchResultsWithFiltersOptions
 ): Promise<EnhancedSearchResult> {
   const { query, filters } = params;
 
@@ -88,7 +94,10 @@ export async function getSearchResultsWithFilters(
   const countryNames = getCountryNames();
 
   // Validate and expand keywords on the original query first
-  const validation = validateAndExpandKeywords(query);
+  const validation = validateAndExpandKeywords(query, {
+    getMessage: options?.getMessage,
+    onWarning: options?.onWarning,
+  });
   if (!validation.isValid) {
     // Return early with error state instead of throwing
     return {

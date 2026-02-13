@@ -160,7 +160,16 @@
     "response": "Response",
     "bookmark": "Bookmark",
     "generate": "Generate",
-    "screen": "Screen"
+    "screen": "Screen",
+    "redirecting": "Redirecting...",
+    "questionPrefix": "Q:",
+    "localeLabels": {
+      "enUS": "English (US)",
+      "enGB": "English (UK)",
+      "zh": "Chinese",
+      "fr": "French",
+      "hi": "Hindi"
+    }
   },
   "home": {
     "tagline": "Search millions of academic papers and research articles",
@@ -892,7 +901,8 @@
     "noNewQuestionsGenerated": "No new questions generated.",
     "pleaseEnterQuestion": "Please enter a question.",
     "questionAlreadyExists": "This question already exists.",
-    "failedToAddQuestion": "Failed to add question."
+    "failedToAddQuestion": "Failed to add question.",
+    "bookmarkNotFound": "Bookmark \"{keyword}\" not found"
   },
   "accessibility": {
     "toggleTheme": "Toggle theme",

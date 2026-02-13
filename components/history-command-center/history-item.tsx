@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import {
   Copy,
   Search,
@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
+import { getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
@@ -62,6 +62,8 @@ export function HistoryItem({
   const tl = useTranslations("languages");
   const tFilters = useTranslations("searchFilters");
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   const [isBookmarking, setIsBookmarking] = useState(false);
   const [bookmarkName, setBookmarkName] = useState("");
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
@@ -158,7 +160,7 @@ export function HistoryItem({
               border: `1px solid ${idColor.border}`,
             }}
           >
-            {formatNumber(item.count)}
+            {format.number(item.count, item.count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
           </div>
 
           {/* Query text */}
@@ -168,7 +170,7 @@ export function HistoryItem({
 
           {/* Time ago */}
           <span className="shrink-0 text-xs text-muted-foreground hidden sm:block">
-            {formatTimeAgo(item.createdAt, locale)}
+            {format.relativeTime(new Date(item.createdAt), now)}
           </span>
 
           {/* Actions - always visible */}
@@ -367,7 +369,7 @@ export function HistoryItem({
                 )}
                 style={{ color: idColor.text }}
               >
-                {formatNumber(item.count)}
+                {format.number(item.count, item.count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
               </span>
               <span
                 className="text-xs ml-1.5 opacity-70"
@@ -393,7 +395,7 @@ export function HistoryItem({
 
               {/* Metadata */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                <span>{formatTimeAgo(item.createdAt, locale)}</span>
+                <span>{format.relativeTime(new Date(item.createdAt), now)}</span>
                 {!isCompact && (
                   <>
                     <span className="opacity-40">•</span>
@@ -538,7 +540,7 @@ export function HistoryItem({
               className="text-xl font-bold tabular-nums leading-none"
               style={{ color: idColor.text }}
             >
-              {formatNumber(item.count)}
+              {format.number(item.count, item.count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
             </span>
             <span
               className="text-[10px] opacity-70 mt-0.5"
@@ -561,13 +563,13 @@ export function HistoryItem({
                 className="text-xs text-muted-foreground leading-tight truncate"
                 title={latestQuestion}
               >
-                <span className="opacity-60">Q:</span> {latestQuestion}
+                <span className="opacity-60">{tc("questionPrefix")}</span> {latestQuestion}
               </p>
             )}
 
             {/* Metadata */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              <span>{formatTimeAgo(item.createdAt, locale)}</span>
+              <span>{format.relativeTime(new Date(item.createdAt), now)}</span>
               <span className="opacity-40">•</span>
               <span>{getFieldLabel(item.field, tFilters as FilterT)}</span>
               {item.sortBy && getSortLabel(item.sortBy, tFilters as FilterT) && (

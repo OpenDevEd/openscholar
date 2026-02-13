@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
+import { getIdColor } from "@/lib/format";
 import { SearchField, QueryHistoryEntry, QuestionHistoryEntry } from "@/lib/types/search.types";
 import { ScreeningQuestionEntry, ScreeningResponses } from "@/lib/types/screening.types";
 import { DateRange } from "react-day-picker";
@@ -16,7 +16,7 @@ import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
 import { countActiveFilters } from "@/lib/filters";
 import { QueryText } from "@/components/ui/query-text";
-import { useLocale } from "next-intl";
+import { useLocale, useFormatter, useNow } from "next-intl";
 
 // Spring animation config consistent with sidebar
 const springConfig = {
@@ -97,8 +97,10 @@ export function SearchHistoryTab({
   index = 0,
 }: SearchHistoryTabProps) {
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   const idColor = getIdColor(searchId);
-  const timeAgo = formatTimeAgo(createdAt, locale);
+  const timeAgo = format.relativeTime(new Date(createdAt), now);
 
   // Use shared filter counting logic
   const totalCount = countActiveFilters({
@@ -169,7 +171,7 @@ export function SearchHistoryTab({
                 borderRadius: '9999px'
               }}
             >
-              {formatNumber(count)}
+              {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
             </motion.span>
           </div>
         ) : (
@@ -211,7 +213,7 @@ export function SearchHistoryTab({
                 borderRadius: '9999px'
               }}
             >
-              {formatNumber(count)}
+              {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
             </motion.span>
           </motion.div>
         )}

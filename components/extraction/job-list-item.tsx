@@ -3,9 +3,8 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import { cn } from "@/lib/utils";
-import { formatTimeAgo } from "@/lib/format";
 import { FileText, Clock } from "lucide-react";
 import Link from "next/link";
 import type { ViewMode } from "@/lib/types";
@@ -53,6 +52,8 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
 
   const statusLabelMap: Record<string, string> = useMemo(() => ({
     completed: tc("completed"),
@@ -98,7 +99,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
           {/* Time ago */}
           <span className="text-xs text-muted-foreground shrink-0">
-            {formatTimeAgo(new Date(job.createdAt), locale)}
+            {format.relativeTime(new Date(job.createdAt), now)}
           </span>
         </motion.div>
       </Link>
@@ -170,7 +171,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{formatTimeAgo(new Date(job.createdAt), locale)}</span>
+                    <span>{format.relativeTime(new Date(job.createdAt), now)}</span>
                   </div>
                 </div>
               </div>
@@ -238,7 +239,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
               <span>{t("paperProgress", { processed: job.processedPapers, total: job.totalPapers })}</span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {formatTimeAgo(new Date(job.createdAt), locale)}
+              {format.relativeTime(new Date(job.createdAt), now)}
             </span>
           </div>
         </div>

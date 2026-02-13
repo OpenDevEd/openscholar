@@ -7,7 +7,7 @@ import {
   mapWorkosMembershipToRemoveArgs,
   mapWorkosMembershipToSyncArgs,
   mapWorkosUserToSyncArgs,
-} from "./workos-mappers";
+} from "./workos_mappers";
 
 export const workosWebhook = httpAction(async (ctx, req) => {
   const payloadText = await req.text();

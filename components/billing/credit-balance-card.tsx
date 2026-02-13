@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useFormatter } from "next-intl";
 import { Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ export function CreditBalanceCard({
 }: CreditBalanceCardProps) {
   const tc = useTranslations("common");
   const t = useTranslations("billingPage");
+  const format = useFormatter();
 
   // Calculate free credit usage percentage (for progress bar)
   const freeCreditsPercentage = creditsPerMonth > 0 
@@ -46,7 +47,7 @@ export function CreditBalanceCard({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{t("totalBalance")}</span>
             <span className="text-2xl font-bold font-mono">
-              {totalBalance.toLocaleString()}
+              {format.number(totalBalance)}
             </span>
           </div>
         </div>
@@ -58,12 +59,12 @@ export function CreditBalanceCard({
               {t("freeCredits")}
               {creditsPerMonth > 0 && (
                 <span className="text-xs text-muted-foreground font-normal">
-                  {t("perMonth", { amount: creditsPerMonth.toLocaleString() })}
+                  {t("perMonth", { amount: format.number(creditsPerMonth) })}
                 </span>
               )}
             </span>
             <span className="text-muted-foreground font-mono">
-              {freeBalance.toLocaleString()} / {freeCreditCap.toLocaleString()}
+              {format.number(freeBalance)} / {format.number(freeCreditCap)}
             </span>
           </div>
           <Progress 
@@ -83,7 +84,7 @@ export function CreditBalanceCard({
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{t("purchasedCredits")}</span>
               <span className="text-muted-foreground font-mono">
-                {paidBalance.toLocaleString()}
+                {format.number(paidBalance)}
               </span>
             </div>
             <div className="text-xs text-muted-foreground">

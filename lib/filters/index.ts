@@ -23,7 +23,7 @@ export {
 } from "./filter-config";
 
 // Builder functions
-export type { FilterT } from "./filter-builder";
+export type { FilterT, FormatDateTimeFn } from "./filter-builder";
 export {
   buildFilterData,
   countActiveFilters,

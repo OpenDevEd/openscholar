@@ -43,8 +43,17 @@ const FIELD_KEY_MAP: Record<string, string> = {
   display_name: "searchFieldDisplayName",
 };
 
+/** Maps sortBy values (e.g. relevance_score:desc) to searchFilters translation keys */
 const SORT_KEY_MAP: Record<string, string> = {
   relevance_score: "sortRelevanceDefault",
+  "relevance_score:desc": "sortRelevance",
+  "relevance_score:asc": "sortRelevance",
+  "cited_by_count:desc": "sortCitationsDesc",
+  "cited_by_count:asc": "sortCitationsAsc",
+  "publication_date:desc": "sortDateDesc",
+  "publication_date:asc": "sortDateAsc",
+  "display_name:desc": "sortTitleDesc",
+  "display_name:asc": "sortTitleAsc",
   publication_date: "filterSortPublicationDate",
   cited_by_count: "filterSortCitations",
   works_count: "filterSortWorksCount",
@@ -232,13 +241,20 @@ function createFilterItem(
 
 // ============ Main Builder Function ============
 
+/** Optional date formatter for localized date display (e.g. from useFormatter().dateTime) */
+export type FormatDateTimeFn = (
+  date: Date,
+  options?: Intl.DateTimeFormatOptions
+) => string;
+
 /**
  * Build structured filter data from search parameters
  * This is the single source of truth for filter display logic
  */
 export function buildFilterData(
   params: FilterParams,
-  t?: FilterT
+  t?: FilterT,
+  formatDateTime?: FormatDateTimeFn
 ): FilterSection[] {
   const sections: FilterSection[] = [];
 
@@ -290,9 +306,14 @@ export function buildFilterData(
         )
       );
     } else if (params.filterType === "date" && params.dateRange?.from) {
-      const from = format(params.dateRange.from, "MMM dd, yyyy");
+      const dateOpts: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
+      const from = formatDateTime
+        ? formatDateTime(params.dateRange.from, dateOpts)
+        : format(params.dateRange.from, "MMM dd, yyyy");
       const to = params.dateRange.to
-        ? format(params.dateRange.to, "MMM dd, yyyy")
+        ? formatDateTime
+          ? formatDateTime(params.dateRange.to, dateOpts)
+          : format(params.dateRange.to, "MMM dd, yyyy")
         : t ? t("filterNow") : "now";
       timeItems.push(
         createFilterItem(
@@ -431,8 +452,12 @@ export function buildFilterData(
  * Count total active filters from params
  * Useful for displaying filter count badges
  */
-export function countActiveFilters(params: FilterParams, t?: FilterT): number {
-  const sections = buildFilterData(params, t);
+export function countActiveFilters(
+  params: FilterParams,
+  t?: FilterT,
+  formatDateTime?: FormatDateTimeFn
+): number {
+  const sections = buildFilterData(params, t, formatDateTime);
   return sections.reduce((count, section) => count + section.items.length, 0);
 }
 
@@ -442,8 +467,9 @@ export function countActiveFilters(params: FilterParams, t?: FilterT): number {
  */
 export function getAllFilterItems(
   params: FilterParams,
-  t?: FilterT
+  t?: FilterT,
+  formatDateTime?: FormatDateTimeFn
 ): FilterItem[] {
-  const sections = buildFilterData(params, t);
+  const sections = buildFilterData(params, t, formatDateTime);
   return sections.flatMap((section) => section.items);
 }

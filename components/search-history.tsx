@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { parseAsInteger, useQueryState } from 'nuqs';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations, useLocale, useFormatter, useNow } from 'next-intl';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search, Loader2, Trash2, Copy, Clock, ChevronLeft, ChevronRight, History, FileDown, FileUp, MoreVertical, BookmarkPlus, Check, ChevronDown, ChevronUp, Languages } from "lucide-react";
-import { formatNumber, formatTimeAgo, getIdColor } from "@/lib/format";
+import { getIdColor } from "@/lib/format";
 import { jsonToCSV, downloadAsFile, uploadFile, triggerFileUpload } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
-import { sortOptions, COUNTRIES } from "@/lib/constants";
+import { COUNTRIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -47,12 +47,15 @@ interface SearchHistoryProps {
 export function SearchHistory({ onSearchResults, loadingResultIndex, currentSearchField, compact = false, currentSearchId, hideHeader = false, onQuerySelect }: SearchHistoryProps) {
   const toast = useAppToast();
   const t = useTranslations();
+  const tc = useTranslations("common");
   const ta = useTranslations('accessibility');
   const tl = useTranslations('languages');
   const tp = useTranslations('paperCard');
   const tToast = useTranslations('toast');
   const tFilters = useTranslations('searchFilters');
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
   const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
   const { keywords, addKeyword } = useKeywordExpansionStore();
@@ -589,7 +592,7 @@ function ActionButtons({
                 )}
                 style={{ color: idColor.text }}
               >
-                {formatNumber(result.count)}
+                {format.number(result.count, result.count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
               </div>
               <div 
                 className="text-[10px] opacity-70 leading-none mt-0.5"
@@ -612,13 +615,13 @@ function ActionButtons({
               {/* Row 2: Research Question (if available) */}
               {result.questionHistory?.length > 0 && (
                 <p className="text-xs text-muted-foreground leading-tight truncate" title={result.questionHistory[result.questionHistory.length - 1]?.question}>
-                  <span className="opacity-60">Q:</span> {result.questionHistory[result.questionHistory.length - 1]?.question}
+                  <span className="opacity-60">{tc("questionPrefix")}</span> {result.questionHistory[result.questionHistory.length - 1]?.question}
                 </p>
               )}
               
               {/* Row 3: Metadata */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-tight">
-                <span>{formatTimeAgo(result.createdAt, locale)}</span>
+                <span>{format.relativeTime(new Date(result.createdAt), now)}</span>
                 <span className="opacity-50">•</span>
                 <span>{getFieldLabel(result.field, tFilters as FilterT)}</span>
                 {result.sortBy && getSortLabel(result.sortBy, tFilters as FilterT) && (
@@ -785,7 +788,7 @@ function QueryHistoryDisplay({
           const isMostRecent = index === 0;
           const originalIndex = queryHistory.length - 1 - index;
           const date = new Date(entry.timestamp);
-          const timeAgo = formatTimeAgo(date, locale);
+          const timeAgo = format.relativeTime(date, now);
           const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
           const canDelete = !isMostRecent;
           
@@ -837,7 +840,7 @@ function QueryHistoryDisplay({
                           <Clock className="h-3 w-3" />
                           <span>{timeAgo}</span>
                           <span>•</span>
-                          <span>{date.toLocaleDateString(locale)} {date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{format.dateTime(date, { dateStyle: 'short', timeStyle: 'short' })}</span>
                         </div>
                       </div>
                       
@@ -967,7 +970,7 @@ function QueryHistoryDisplay({
             const isMostRecent = index === 0;
             const originalIndex = queryHistory.length - 1 - index;
             const date = new Date(entry.timestamp);
-            const timeAgo = formatTimeAgo(date, locale);
+            const timeAgo = format.relativeTime(date, now);
             const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
             const canDelete = !isMostRecent;
             
@@ -1019,7 +1022,7 @@ function QueryHistoryDisplay({
                             <Clock className="h-3 w-3" />
                             <span>{timeAgo}</span>
                             <span>•</span>
-                            <span>{date.toLocaleDateString(locale)} {date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>{format.dateTime(date, { dateStyle: 'short', timeStyle: 'short' })}</span>
                           </div>
                         </div>
                         

@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams, useRouter } from "next/navigation";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -18,7 +18,6 @@ import { motion } from "motion/react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
-import { formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -76,6 +75,8 @@ export default function JobDetailPage() {
   const tc = useTranslations('common');
   const tPdf = useTranslations('pdfViewer');
   const locale = useLocale();
+  const format = useFormatter();
+  const now = useNow();
   
   const params = useParams();
   const router = useRouter();
@@ -507,14 +508,14 @@ export default function JobDetailPage() {
 
                     <div className="flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5" />
-                      <span>{tJob('papersCount', { count: job.totalPapers.toLocaleString() })}</span>
+                      <span>{tJob('papersCount', { count: format.number(job.totalPapers) })}</span>
                     </div>
 
                     <span className="w-1 h-1 rounded-full bg-border" />
 
                     <div className="flex items-center gap-1.5">
                       <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
-                      <span>{tJob('updated', { timeAgo: formatTimeAgo(new Date(job.updatedAt), locale) })}</span>
+                      <span>{tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}</span>
                     </div>
                   </motion.div>
                 </div>
@@ -614,7 +615,7 @@ export default function JobDetailPage() {
                   {tJob('totalPapers')}
                 </p>
                 <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {job.totalPapers.toLocaleString()}
+                  {format.number(job.totalPapers)}
                 </p>
               </div>
 
@@ -623,7 +624,7 @@ export default function JobDetailPage() {
                   {tJob('processed')}
                 </p>
                 <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {resolvedProgress.processed.toLocaleString()}
+                  {format.number(resolvedProgress.processed)}
                 </p>
               </div>
 

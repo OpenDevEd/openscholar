@@ -158,7 +158,18 @@
     "response": "Response",
     "bookmark": "Bookmark",
     "generate": "Generate",
-    "screen": "Screen"
+    "screen": "Screen",
+    "redirecting": "Redirecting...",
+    "questionPrefix": "Q:",
+    "localeLabels": {
+      "enUS": "English (US)",
+      "enGB": "English (UK)",
+      "zh": "Chinese",
+      "fr": "French",
+      "hi": "Hindi"
+    },
+    "noTitle": "No Title",
+    "noAbstract": "No Abstract"
   },
   "home": {
     "tagline": "Search millions of academic papers and research articles",
@@ -560,7 +571,30 @@
     "historyExportLabelJson": "{count} search entries (JSON)",
     "historyExportLabelCsv": "{count} search entries (CSV)",
     "uploadJsonFileFailed": "Failed to upload JSON file.",
-    "uploadCsvFileFailed": "Failed to upload CSV file."
+    "uploadCsvFileFailed": "Failed to upload CSV file.",
+    "aiOperation": "AI operation",
+    "jobCancelled": "Job cancelled",
+    "jobCancelFailed": "Failed to cancel",
+    "jobDeleted": "Job deleted",
+    "jobDeleteFailed": "Failed to delete",
+    "jobCreated": "Job started",
+    "jobCreateFailed": "Failed to start",
+    "jobDuplicated": "Job duplicated",
+    "jobDuplicateFailed": "Failed to duplicate",
+    "billingCancelled": "Subscription cancelled",
+    "billingCancelFailed": "Failed to cancel",
+    "billingPortalFailed": "Failed to open billing portal",
+    "billingCheckoutFailed": "Failed to start checkout",
+    "zoteroConnected": "Connected to Zotero",
+    "zoteroConnectionFailed": "Connection failed",
+    "fileTypeTitle": "Invalid file type",
+    "onlyFilesSupported": "Only {allowedTypes} files are supported.",
+    "fileTypeNotSupported": "File type not supported.",
+    "fileSizeTitle": "File too large",
+    "fileExceedsMaxSize": "File exceeds the maximum size of {maxSizeMB}MB.",
+    "downloadSuccess": "Download complete",
+    "downloadSuccessDescription": "Downloaded {count} as {format}.",
+    "uploadSuccessDescription": "Successfully imported {count}."
   },
   "viewMode": {
     "simpleList": "Simple List",
@@ -669,7 +703,43 @@
       "melanesia": "Melanesia",
       "micronesia": "Micronesia",
       "polynesia": "Polynesia"
-    }
+    },
+    "filterSectionSearch": "Search",
+    "filterSectionTime": "Time",
+    "filterSectionGeographic": "Geographic",
+    "filterSectionContent": "Content",
+    "filterSectionRatings": "Ratings",
+    "filterSectionCitations": "Citations",
+    "filterLabelField": "Field",
+    "filterLabelSort": "Sort",
+    "filterLabelYear": "Year",
+    "filterLabelDate": "Date",
+    "filterLabelInstitutionLocation": "Institution location",
+    "filterLabelCountryFocus": "Country focus",
+    "filterRegion": "region",
+    "filterRegions": "regions",
+    "filterCountry": "country",
+    "filterCountries": "countries",
+    "filterRegionCount": "{count, plural, one {# region} other {# regions}}",
+    "filterCountryCount": "{count, plural, one {# country} other {# countries}}",
+    "filterGeoJoin": " + ",
+    "filterRatedOnly": "rated only",
+    "filterFiltered": "filtered",
+    "filterRelevance": "Relevance",
+    "filterNow": "now",
+    "filterReviewsOnly": "Reviews only",
+    "filterRatedOnlyLabel": "Rated only",
+    "filterRating": "Rating",
+    "filterCites": "Cites",
+    "filterCitedBy": "Cited by",
+    "filterRelatedTo": "Related to",
+    "filterStar": "star",
+    "filterStars": "stars",
+    "filterRatingRangeSingle": "{min, plural, one {# star} other {# stars}}",
+    "filterRatingRangeMulti": "{min}-{max} stars",
+    "filterSortPublicationDate": "Publication date",
+    "filterSortCitations": "Citations",
+    "filterSortWorksCount": "Works count"
   },
   "paperCard": {
     "screeningResponses": "Screening Responses",
@@ -831,7 +901,8 @@
     "noNewQuestionsGenerated": "No new questions generated.",
     "pleaseEnterQuestion": "Please enter a question.",
     "questionAlreadyExists": "This question already exists.",
-    "failedToAddQuestion": "Failed to add question."
+    "failedToAddQuestion": "Failed to add question.",
+    "bookmarkNotFound": "Bookmark \"{keyword}\" not found"
   },
   "accessibility": {
     "toggleTheme": "Toggle theme",
@@ -905,7 +976,7 @@
     "noItemsFound": "No Zotero items found for this selection.",
     "selectedCount": "{count} selected"
   },
-"pdfViewer": {
+  "pdfViewer": {
     "loadingPdf": "Loading PDF...",
     "noCitationSelected": "No citation selected",
     "openCitationHint": "Open a citation from a result row to inspect supporting evidence.",
@@ -988,7 +1059,17 @@
     "clearAllBookmarks": "Clear All Bookmarks",
     "clearBookmarksConfirm": "Are you sure you want to delete all {count} bookmarks? This action cannot be undone.",
     "clearAllHistory": "Clear All Search History",
-    "clearHistoryConfirm": "Are you sure you want to delete all {count} search entries? This action cannot be undone."
+    "clearHistoryConfirm": "Are you sure you want to delete all {count} search entries? This action cannot be undone.",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "clearAll": "Clear All",
+    "confirmAction": "Confirm Action",
+    "deleteTitle": "Delete {itemName}",
+    "deleteMessage": "Are you sure you want to delete \"{itemName}\"? This action cannot be undone.",
+    "clearAllTitle": "Clear All {itemType}",
+    "clearAllMessage": "Are you sure you want to delete all {count} {itemType}? This action cannot be undone.",
+    "actionMessage": "Are you sure you want to {actionDescription}?"
   },
   "emptyStates": {
     "noSearchHistory": "No search history yet",
