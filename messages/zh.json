@@ -337,6 +337,11 @@
     "statusPastDue": "逾期",
     "statusCanceled": "已取消",
     "statusTrialing": "试用中",
+    "statusIncomplete": "未完成",
+    "statusIncompleteExpired": "未完成已过期",
+    "statusUnpaid": "未支付",
+    "statusPaused": "已暂停",
+    "gracePeriodNotice": "检测到账单问题。我们重试扣款期间，你仍可暂时访问。",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年"

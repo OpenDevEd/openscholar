@@ -3,12 +3,106 @@ import { httpAction } from "./_generated/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { workosWebhook } from "./webhooks/workos";
+import { normalizeStripeSubscriptionStatus } from "./subscriptions/lib/stripeStatus";
+import { isSubscriptionScheduledToCancel } from "./subscriptions/lib/cancellation";
+import type Stripe from "stripe";
 
 const http = httpRouter();
+const internalApi = internal as any;
 const FRONTEND_URL =
   process.env.NEXT_PUBLIC_APP_URL ||
   process.env.NEXT_PUBLIC_URL ||
   "http://localhost:3000";
+
+function getStripeObjectId(event: Stripe.Event): string | undefined {
+  const object = event.data.object as { id?: unknown };
+  return typeof object.id === "string" ? object.id : undefined;
+}
+
+function getStripeApiVersion(event: Stripe.Event): string | undefined {
+  return typeof event.api_version === "string" ? event.api_version : undefined;
+}
+
+async function recordStripeEventFailure(
+  ctx: any,
+  event: Stripe.Event,
+  error: unknown,
+): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  try {
+    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventFailed, {
+      stripeEventId: event.id,
+      eventType: event.type,
+      stripeObjectId: getStripeObjectId(event),
+      stripeApiVersion: getStripeApiVersion(event),
+      classification: "webhook_handler_failure",
+      errorMessage: message,
+    });
+  } catch (markError) {
+    console.error("Failed to mark Stripe event as failed", markError);
+  }
+}
+
+async function runAuditedStripeHandler(
+  ctx: any,
+  event: Stripe.Event,
+  handler: () => Promise<void>,
+): Promise<void> {
+  try {
+    await handler();
+    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventProcessed, {
+      stripeEventId: event.id,
+      eventType: event.type,
+      stripeObjectId: getStripeObjectId(event),
+      stripeApiVersion: getStripeApiVersion(event),
+      classification: "processed",
+    });
+  } catch (error) {
+    await recordStripeEventFailure(ctx, event, error);
+    throw error;
+  }
+}
+
+async function processInvoiceForGrantNonBlocking(
+  ctx: any,
+  event: Stripe.Event,
+  invoice: any,
+): Promise<void> {
+  const args = {
+    stripeInvoiceId: invoice.id,
+    stripeEventId: event.id,
+    stripeEventType: event.type,
+    trigger: `webhook:${event.type}`,
+    retryCount: 0,
+  };
+
+  try {
+    await ctx.runAction(internalApi.credits.actions.processInvoiceForGrant, args);
+  } catch (error) {
+    const retryDelayMs = 60_000;
+    const retryAt = Date.now() + retryDelayMs;
+    const message = error instanceof Error ? error.message : String(error);
+
+    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventRetrying, {
+      stripeEventId: event.id,
+      eventType: event.type,
+      stripeObjectId: getStripeObjectId(event),
+      stripeApiVersion: getStripeApiVersion(event),
+      classification: "retry_invoice_grant_process",
+      retryAt,
+      reason: `Failed to process invoice grant action: ${message}`,
+    });
+
+    await ctx.scheduler.runAfter(
+      retryDelayMs,
+      internalApi.credits.actions.processInvoiceForGrant,
+      {
+        ...args,
+        retryCount: 1,
+      },
+    );
+  }
+}
 
 // WorkOS webhook for user/org/membership sync
 http.route({
@@ -37,166 +131,192 @@ http.route({
       });
 
       if (!result.success) {
-        // Redirect to error page
         return Response.redirect(
           `${FRONTEND_URL}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
-          302
+          302,
         );
       }
 
-      // Redirect to success page
       return Response.redirect(`${FRONTEND_URL}/?zotero_connected=true`, 302);
     } catch (error) {
       console.error("Zotero OAuth callback error:", error);
       return Response.redirect(
         `${FRONTEND_URL}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
-        302
+        302,
       );
     }
   }),
 });
 
-// Stripe webhook via component
 registerRoutes(http, components.stripe, {
   webhookPath: "/webhooks/stripe",
-  
-  // Custom handlers for your credit/subscription logic
+
   events: {
     "checkout.session.completed": async (ctx, event) => {
-      const session = event.data.object as any;
-      console.log(`[Webhook] checkout.session.completed - Mode: ${session.mode}, Customer: ${session.customer}`);
-      
-      if (session.mode === "payment") {
-        // One-time credit purchase
-        console.log(`[Webhook] Processing one-time payment: ${session.id}`);
-        await ctx.runMutation(internal.credits.internal.handleCreditPurchase, {
-          stripeCustomerId: session.customer as string,
-          amountPaid: session.amount_total ?? 0,
-          metadata: session.metadata ?? {},
-          stripeInvoiceId: session.id,
-        });
-      }
-      // NOTE: For subscription mode, we rely on customer.subscription.created/updated events
-      // This follows Stripe's best practice of using subscription events as the source of truth
-      // checkout.session.completed is only used for one-time payments
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const session = event.data.object as Stripe.Checkout.Session;
+        console.log(
+          `[StripeWebhook] checkout.session.completed - id=${session.id} mode=${session.mode}`,
+        );
+
+        if (session.mode === "subscription") {
+          const stripeCustomerId =
+            typeof session.customer === "string" ? session.customer : session.customer?.id;
+          if (stripeCustomerId) {
+            try {
+              await ctx.runAction(
+                internalApi.credits.actions.reconcileRecentPaidInvoicesFromStripe,
+                {
+                  stripeCustomerId,
+                  trigger: "checkout.session.completed",
+                },
+              );
+            } catch (error) {
+              console.error(
+                "[StripeWebhook] failed to trigger immediate reconcile after checkout",
+                error,
+              );
+            }
+          }
+        }
+      });
     },
-    
+
+    "invoice.created": async (ctx, event) => {
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const invoice = event.data.object as any;
+        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+      });
+    },
+
+    "invoice.finalized": async (ctx, event) => {
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const invoice = event.data.object as any;
+        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+      });
+    },
+
     "invoice.paid": async (ctx, event) => {
-      const invoice = event.data.object as any;
-      
-      // Handle subscription ID - could be string or object depending on API version
-      let subscriptionId: string | null = null;
-      if (typeof invoice.subscription === "string") {
-        subscriptionId = invoice.subscription;
-      } else if (invoice.subscription?.id) {
-        subscriptionId = invoice.subscription.id;
-      }
-      
-      console.log(`[StripeWebhook] Processing invoice.paid: ${invoice.id}, Sub: ${subscriptionId}, Customer: ${invoice.customer}`);
-      
-      if (subscriptionId || invoice.customer) {
-        console.log(`[StripeWebhook] Granting credits for subscription: ${subscriptionId ?? "(fallback by customer)"}`);
-        await ctx.runMutation(internal.credits.internal.grantMonthlyCredits, {
-          stripeSubscriptionId: subscriptionId ?? undefined,
-          stripeCustomerId: invoice.customer as string | undefined,
-          stripeInvoiceId: invoice.id,
-          amountPaid: invoice.amount_paid,
-        });
-      } else {
-        console.log(`[StripeWebhook] Skipping credit grant: No subscription or customer on invoice ${invoice.id}`);
-      }
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const invoice = event.data.object as any;
+        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+      });
+    },
+
+    "invoice.payment_succeeded": async (ctx, event) => {
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const invoice = event.data.object as any;
+        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+      });
     },
 
     "invoice.payment_failed": async (ctx, event) => {
-      const invoice = event.data.object as any;
-      console.log(`[StripeWebhook] Payment failed for invoice: ${invoice.id}`);
-      if (invoice.subscription) {
-        const failedSubscriptionId = typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id;
-        if (failedSubscriptionId) {
-          await ctx.runMutation(internal.subscriptions.internal.handlePaymentFailed, {
-            stripeSubscriptionId: failedSubscriptionId,
-          });
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const invoice = event.data.object as any;
+        const failedSubscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription?.id;
+
+        if (!failedSubscriptionId) {
+          return;
         }
-      }
+
+        await ctx.runMutation(internalApi.subscriptions.internal.handlePaymentFailed, {
+          stripeSubscriptionId: failedSubscriptionId,
+        });
+      });
     },
 
     "customer.subscription.created": async (ctx, event) => {
-      const subscription = event.data.object as any;
-      const currentPeriodStart = (subscription.current_period_start as number) ?? Math.floor(Date.now() / 1000);
-      const currentPeriodEnd = (subscription.current_period_end as number) ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
-      const items = subscription.items as { data?: Array<{ price?: { id?: string }; quantity?: number }> };
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const subscription = event.data.object as any;
+        const item = subscription.items.data[0];
+        const stripeCustomerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+        const currentPeriodEnd =
+          subscription.current_period_end ??
+          item?.current_period_end ??
+          Math.floor(Date.now() / 1000);
 
-      console.log(`[Webhook] customer.subscription.created - ID: ${subscription.id}, Customer: ${subscription.customer}, Status: ${subscription.status}, Price: ${items.data?.[0]?.price?.id}`);
-
-      await ctx.runMutation(internal.subscriptions.internal.syncSubscription, {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: subscription.customer as string,
-        status: mapStripeStatus(subscription.status),
-        currentPeriodStart: currentPeriodStart * 1000,
-        currentPeriodEnd: currentPeriodEnd * 1000,
-        cancelAtPeriodEnd: (subscription.cancel_at_period_end as boolean) ?? false,
-        priceId: items.data?.[0]?.price?.id,
-        quantity: items.data?.[0]?.quantity,
-        metadata: subscription.metadata as Record<string, string>,
+        await ctx.runMutation(internalApi.subscriptions.internal.syncSubscription, {
+          stripeSubscriptionId: subscription.id,
+          stripeCustomerId,
+          status: normalizeStripeSubscriptionStatus(subscription.status),
+          currentPeriodStart:
+            (subscription.current_period_start ?? item?.current_period_start ?? Math.floor(Date.now() / 1000)) *
+            1000,
+          currentPeriodEnd:
+            currentPeriodEnd *
+            1000,
+          cancelAtPeriodEnd: isSubscriptionScheduledToCancel({
+            cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+            cancelAt: subscription.cancel_at ?? null,
+            currentPeriodEnd,
+          }),
+          priceId: item?.price?.id,
+          quantity: item?.quantity,
+          metadata: subscription.metadata as Record<string, string>,
+        });
       });
     },
 
     "customer.subscription.updated": async (ctx, event) => {
-      const subscription = event.data.object as any;
-      const currentPeriodStart = (subscription.current_period_start as number) ?? Math.floor(Date.now() / 1000);
-      const currentPeriodEnd = (subscription.current_period_end as number) ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
-      const items = subscription.items as { data?: Array<{ price?: { id?: string }; quantity?: number }> };
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const subscription = event.data.object as any;
+        const item = subscription.items.data[0];
+        const stripeCustomerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer.id;
+        const currentPeriodEnd =
+          subscription.current_period_end ??
+          item?.current_period_end ??
+          Math.floor(Date.now() / 1000);
 
-      console.log(`[Webhook] customer.subscription.updated - ID: ${subscription.id}, Status: ${subscription.status}, Price: ${items.data?.[0]?.price?.id}, CancelAtPeriodEnd: ${subscription.cancel_at_period_end}`);
-
-      await ctx.runMutation(internal.subscriptions.internal.syncSubscription, {
-        stripeSubscriptionId: subscription.id,
-        stripeCustomerId: subscription.customer as string,
-        status: mapStripeStatus(subscription.status),
-        currentPeriodStart: currentPeriodStart * 1000,
-        currentPeriodEnd: currentPeriodEnd * 1000,
-        cancelAtPeriodEnd: (subscription.cancel_at_period_end as boolean) ?? false,
-        priceId: items.data?.[0]?.price?.id,
-        quantity: items.data?.[0]?.quantity,
-        metadata: subscription.metadata as Record<string, string>,
+        await ctx.runMutation(internalApi.subscriptions.internal.syncSubscription, {
+          stripeSubscriptionId: subscription.id,
+          stripeCustomerId,
+          status: normalizeStripeSubscriptionStatus(subscription.status),
+          currentPeriodStart:
+            (subscription.current_period_start ?? item?.current_period_start ?? Math.floor(Date.now() / 1000)) *
+            1000,
+          currentPeriodEnd:
+            currentPeriodEnd *
+            1000,
+          cancelAtPeriodEnd: isSubscriptionScheduledToCancel({
+            cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+            cancelAt: subscription.cancel_at ?? null,
+            currentPeriodEnd,
+          }),
+          priceId: item?.price?.id,
+          quantity: item?.quantity,
+          metadata: subscription.metadata as Record<string, string>,
+        });
       });
     },
 
     "customer.subscription.deleted": async (ctx, event) => {
-      const subscription = event.data.object as any;
-      console.log(`[Webhook] customer.subscription.deleted - ID: ${subscription.id}`);
-      await ctx.runMutation(internal.subscriptions.internal.handleSubscriptionCanceled, {
-        stripeSubscriptionId: subscription.id,
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const subscription = event.data.object as any;
+        await ctx.runMutation(internalApi.subscriptions.internal.handleSubscriptionCanceled, {
+          stripeSubscriptionId: subscription.id,
+        });
       });
     },
   },
-  
+
   onEvent: async (ctx, event) => {
-    console.log("Stripe event:", event.type, event.id);
+    await ctx.runMutation(internalApi.subscriptions.internal.recordStripeEventReceived, {
+      stripeEventId: event.id,
+      eventType: event.type,
+      stripeObjectId: getStripeObjectId(event),
+      stripeApiVersion: getStripeApiVersion(event),
+      classification: "received",
+    });
   },
 });
 
 export default http;
-
-function mapStripeStatus(
-  status: string
-): "active" | "past_due" | "canceled" | "trialing" {
-  switch (status) {
-    case "active":
-      return "active";
-    case "past_due":
-      return "past_due";
-    case "trialing":
-      return "trialing";
-    case "canceled":
-    case "unpaid":
-    case "incomplete_expired":
-    case "paused":
-    case "incomplete":
-      return "canceled";
-    default:
-      return "active";
-  }
-}

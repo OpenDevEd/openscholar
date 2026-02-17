@@ -3,8 +3,11 @@
 import { getPlanTier } from "@/convex/lib/constants";
 import { api } from "@/convex/_generated/api";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
-
-type SubscriptionPlan = "free" | "go" | "pro" | "enterprise";
+import {
+  isEntitledSubscription,
+  resolveEffectivePlan,
+  type SubscriptionPlan,
+} from "@/lib/billing/entitlements";
 
 export function useSubscriptionState() {
   const query = useOptionalAuthQuery(api.subscriptions.queries.getMy, {});
@@ -15,10 +18,11 @@ export function useSubscriptionState() {
   const isSettling = isAuthLoading || isQueryLoading;
   const isAnonymous = query.settlement === "anonymous";
   const isReady = query.settlement === "ready";
+  const isEntitled = isReady ? isEntitledSubscription(subscription) : false;
 
   let resolvedPlan: SubscriptionPlan | null = null;
   if (isReady) {
-    resolvedPlan = subscription ? subscription.plan : "free";
+    resolvedPlan = resolveEffectivePlan(subscription);
   }
   const resolvedTier = resolvedPlan ? getPlanTier(resolvedPlan) : null;
 
@@ -30,6 +34,7 @@ export function useSubscriptionState() {
     isSettling,
     isAnonymous,
     isReady,
+    isEntitled,
     resolvedPlan,
     resolvedTier,
   };

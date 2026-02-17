@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { isEntitledStatus } from "@/lib/billing/entitlements";
 
 export default function BillingPage() {
   const t = useTranslations("billingPage");
@@ -22,14 +23,19 @@ export default function BillingPage() {
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
   const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
+  const grantDiagnosticsQuery = useProtectedQuery(
+    (api as any).credits.queries.getLatestGrantStatus,
+    {},
+  );
   const creditBalance = creditBalanceQuery.data;
+  const grantDiagnostics = grantDiagnosticsQuery.data;
   const createPortalSession = useAction(
     api.subscriptions.actions.createPortalSession,
   );
+  const changePlan = useAction((api as any).subscriptions.actions.changePlan);
   const getSubscriptionDetails = useAction(
     api.subscriptions.actions.getSubscriptionDetails,
   );
-  const cancelImmediately = useAction(api.subscriptions.actions.cancelImmediately);
 
   const [isLoading, setIsLoading] = useState(false);
   const [details, setDetails] = useState<{
@@ -37,8 +43,15 @@ export default function BillingPage() {
     currency: string;
     interval: string;
     currentPeriodEnd: number;
+    currentPriceId: string;
     status: string;
+    entitlementState: "entitled" | "payment_pending" | "not_entitled";
+    entitlementMessage?: string;
     cancelAtPeriodEnd: boolean;
+    hasPendingChange: boolean;
+    pendingTargetPriceId?: string;
+    pendingTargetPlan?: "free" | "go" | "pro" | "enterprise";
+    pendingEffectiveDate?: number;
     cardBrand?: string;
     cardLast4?: string;
   } | null>(null);
@@ -73,8 +86,9 @@ export default function BillingPage() {
   }, [subscription]); // Intentional dependency for 'getSubscriptionDetails' omission to avoid loops if reference unstable
 
   const handleManageSubscription = async () => {
-    // If user is on free plan, redirect to pricing page
-    if (isFree) {
+    // Route truly free users to pricing. If a Stripe subscription/customer is linked,
+    // always prefer portal management (including non-entitled states like unpaid).
+    if (showUpgradeCta) {
       router.push("/pricing");
       return;
     }
@@ -92,21 +106,20 @@ export default function BillingPage() {
     }
   };
 
-  const handleCancelImmediately = async () => {
-    if (!confirm(t("cancelConfirm"))) return;
-    
+  const handleKeepCurrentPlan = async () => {
+    if (!details?.currentPriceId) return;
+
     try {
       setIsLoading(true);
-      await cancelImmediately({});
-      
-      // Clear Stripe details immediately for better UX
-      setDetails(null);
-      setErrorMsg(null);
-      
-      toast.billing.cancelled();
-      // Full state update happens automatically via Convex reactivity
+      const result = await changePlan({ targetPriceId: details.currentPriceId });
+      toast.success("Plan updated", result.message);
+
+      const refreshed = await getSubscriptionDetails({});
+      if (refreshed.status === "success" && refreshed.data) {
+        setDetails(refreshed.data);
+      }
     } catch (error) {
-      toast.billing.cancelFailed();
+      toast.error(tc("somethingWentWrong"), t("failedToLoadDetails"));
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -130,16 +143,23 @@ export default function BillingPage() {
     );
   }
 
-  let currentPlan: "free" | "go" | "pro" | "enterprise" = "free";
-  let status = "inactive";
-  let creditsPerMonth = 0;
-
-  if (subscription) {
-    currentPlan = subscription.plan;
-    status = subscription.status;
-    creditsPerMonth = subscription.creditsPerMonth ?? 0;
+  let displayPlan: "free" | "go" | "pro" | "enterprise" = "free";
+  if (subscription?.plan) {
+    displayPlan = subscription.plan;
   }
-  const isFree = currentPlan === "free";
+  const effectivePlan: "free" | "go" | "pro" | "enterprise" =
+    subscriptionState.resolvedPlan ?? "free";
+  let status = "inactive";
+  if (subscription?.status) {
+    status = subscription.status;
+  }
+  const hasBillingLink = Boolean(
+    subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
+  );
+  const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
+  const creditsPerMonth = subscriptionState.isEntitled
+    ? (subscription?.creditsPerMonth ?? 0)
+    : 0;
 
   const statusLabels: Record<string, string> = {
     active: tc("active"),
@@ -147,7 +167,18 @@ export default function BillingPage() {
     past_due: t("statusPastDue"),
     canceled: t("statusCanceled"),
     trialing: t("statusTrialing"),
+    incomplete: t("statusIncomplete"),
+    incomplete_expired: t("statusIncompleteExpired"),
+    unpaid: t("statusUnpaid"),
+    paused: t("statusPaused"),
   };
+  const inGracePeriod = isEntitledStatus(status) && status !== "active" && status !== "trialing";
+  const hasPendingChange = Boolean(details?.hasPendingChange);
+  const isPaymentPending =
+    status === "incomplete" || details?.entitlementState === "payment_pending";
+  const paymentPendingMessage =
+    details?.entitlementMessage ||
+    "Payment is pending. Complete payment in Stripe Billing Portal to activate credits.";
 
   // Format currency
   const formatPrice = (amount: number, currency: string) => {
@@ -170,13 +201,13 @@ export default function BillingPage() {
           </p>
         </div>
         <Button
-          variant={isFree ? "default" : "outline"}
+          variant={showUpgradeCta ? "default" : "outline"}
           onClick={handleManageSubscription}
           disabled={isLoading}
           size="sm"
         >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isFree ? t("upgradePlan") : t("manageSubscriptionBtn")}
+          {showUpgradeCta ? t("upgradePlan") : t("manageSubscriptionBtn")}
         </Button>
       </div>
 
@@ -193,7 +224,7 @@ export default function BillingPage() {
             <div className="p-4 flex items-center justify-between border-b border-border/40 min-h-[80px]">
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold capitalize">
-                  {t("planLabel", { plan: currentPlan })}
+                  {t("planLabel", { plan: displayPlan })}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${status === "active" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}
@@ -225,15 +256,69 @@ export default function BillingPage() {
             </div>
 
             {/* Error State */}
-            {errorMsg && !isFree && (
+            {errorMsg && !showUpgradeCta && (
               <div className="bg-red-500/10 p-3 text-red-600 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
+            {inGracePeriod && (
+              <div className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                <span>{t("gracePeriodNotice")}</span>
+              </div>
+            )}
+
+            {isPaymentPending && (
+              <div className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{paymentPendingMessage}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManageSubscription}
+                  disabled={isLoading}
+                >
+                  Open billing portal
+                </Button>
+              </div>
+            )}
+
+            {hasPendingChange && details && (
+              <div className="bg-blue-500/10 p-3 text-blue-700 text-sm flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>
+                    Scheduled change to{" "}
+                    <span className="font-semibold">
+                      {details.pendingTargetPlan ?? "another plan"}
+                    </span>
+                    {details.pendingEffectiveDate
+                      ? ` on ${format.dateTime(new Date(details.pendingEffectiveDate), {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}`
+                      : ""}
+                    .
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleKeepCurrentPlan}
+                  disabled={isLoading || !details.currentPriceId}
+                >
+                  Keep current plan
+                </Button>
+              </div>
+            )}
+
             {/* Detailed Info (Only for Paid Plans) */}
-            {!isFree && (
+            {!showUpgradeCta && (
               <div className="bg-background/50 p-4 min-h-[60px]">
                 {isFetchingDetails ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -283,7 +368,7 @@ export default function BillingPage() {
             )}
 
             {/* Free Plan Empty State */}
-            {isFree && (
+            {showUpgradeCta && (
               <div className="bg-background/50 p-4 text-sm text-muted-foreground flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {t("upgradeToProDescription")}
@@ -302,32 +387,38 @@ export default function BillingPage() {
           />
         )}
 
-        {/* Danger Zone */}
-        {!isFree && (
-          <div className="pt-8 border-t border-border/40 space-y-4">
-            <h3 className="text-sm font-medium text-red-600 uppercase tracking-wider">
-              {t("dangerZone")}
-            </h3>
-            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="font-medium text-red-900 dark:text-red-200">
-                  {t("cancelSubscriptionTitle")}
-                </div>
-                <div className="text-sm text-red-700/80 dark:text-red-300/70 mt-1">
-                  {t("cancelDescription")}
-                </div>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleCancelImmediately}
-                disabled={isLoading}
-              >
-                {t("cancelImmediately")}
-              </Button>
+        {grantDiagnostics && (
+          <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">
+            <div className="font-medium mb-1">Last credit grant status</div>
+            <div className="text-muted-foreground">
+              Event status:{" "}
+              <span className="font-medium text-foreground">
+                {grantDiagnostics.latestEventStatus ?? "unknown"}
+              </span>
+              {grantDiagnostics.latestEventClassification
+                ? ` (${grantDiagnostics.latestEventClassification})`
+                : ""}
             </div>
+            {grantDiagnostics.lastGrantAt ? (
+              <div className="text-muted-foreground">
+                Last successful grant:{" "}
+                {format.dateTime(new Date(grantDiagnostics.lastGrantAt), {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+            ) : (
+              <div className="text-muted-foreground">No successful grant recorded yet.</div>
+            )}
+            {grantDiagnostics.latestEventError && (
+              <div className="text-red-600 mt-1">{grantDiagnostics.latestEventError}</div>
+            )}
           </div>
         )}
+
       </div>
     </div>
   );

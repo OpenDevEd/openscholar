@@ -12,8 +12,10 @@ export function selectCanonicalSubscription(
     return null;
   }
 
-  const active = subscriptions.filter((subscription) => subscription.status !== "canceled");
-  const activePaidWithStripe = active.find(
+  const nonCanceled = subscriptions.filter(
+    (subscription) => subscription.status !== "canceled",
+  );
+  const activePaidWithStripe = nonCanceled.find(
     (subscription) =>
       subscription.plan !== "free" && Boolean(subscription.stripeSubscriptionId),
   );
@@ -21,14 +23,26 @@ export function selectCanonicalSubscription(
     return activePaidWithStripe;
   }
 
-  const activePaid = active.find((subscription) => subscription.plan !== "free");
+  const activePaid = nonCanceled.find((subscription) => subscription.plan !== "free");
   if (activePaid) {
     return activePaid;
   }
 
-  const activeFree = active.find((subscription) => subscription.plan === "free");
+  const activeFree = nonCanceled.find((subscription) => subscription.plan === "free");
   if (activeFree) {
     return activeFree;
+  }
+
+  const anyFree = subscriptions.find((subscription) => subscription.plan === "free");
+  if (anyFree) {
+    return anyFree;
+  }
+
+  const anyPaidWithStripe = subscriptions.find((subscription) =>
+    Boolean(subscription.stripeSubscriptionId),
+  );
+  if (anyPaidWithStripe) {
+    return anyPaidWithStripe;
   }
 
   return subscriptions[0] ?? null;

@@ -337,6 +337,11 @@
     "statusPastDue": "En retard",
     "statusCanceled": "Annulé",
     "statusTrialing": "En essai",
+    "statusIncomplete": "Incomplet",
+    "statusIncompleteExpired": "Incomplet expiré",
+    "statusUnpaid": "Impayé",
+    "statusPaused": "En pause",
+    "gracePeriodNotice": "Un problème de facturation a été détecté. Vous conservez temporairement l'accès pendant les nouvelles tentatives de paiement.",
     "perInterval": "/ {interval}",
     "intervalMonth": "mois",
     "intervalYear": "an"

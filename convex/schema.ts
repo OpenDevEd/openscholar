@@ -116,7 +116,11 @@ export default defineSchema({
       v.literal("active"),
       v.literal("past_due"),
       v.literal("canceled"),
-      v.literal("trialing")
+      v.literal("trialing"),
+      v.literal("incomplete"),
+      v.literal("incomplete_expired"),
+      v.literal("unpaid"),
+      v.literal("paused")
     ),
     currentPeriodStart: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
@@ -131,6 +135,43 @@ export default defineSchema({
     .index("by_stripe_sub", ["stripeSubscriptionId"])
     .index("by_stripe_customer", ["stripeCustomerId"])
     .index("by_status", ["status"]),
+
+  // Durable user -> Stripe customer identity mapping.
+  billingCustomers: defineTable({
+    userId: v.string(),
+    stripeCustomerId: v.string(),
+    linkedFrom: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_stripe_customer", ["stripeCustomerId"]),
+
+  // Stripe webhook event audit + retry control
+  stripeEventLogs: defineTable({
+    stripeEventId: v.string(),
+    eventType: v.string(),
+    stripeObjectId: v.optional(v.string()),
+    stripeApiVersion: v.optional(v.string()),
+    classification: v.optional(v.string()),
+    status: v.union(
+      v.literal("received"),
+      v.literal("processed"),
+      v.literal("retrying"),
+      v.literal("failed"),
+      v.literal("ignored")
+    ),
+    attemptCount: v.number(),
+    lastError: v.optional(v.string()),
+    nextRetryAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastProcessedAt: v.optional(v.number()),
+  })
+    .index("by_stripe_event_id", ["stripeEventId"])
+    .index("by_status_next_retry", ["status", "nextRetryAt"])
+    .index("by_object_created", ["stripeObjectId", "createdAt"])
+    .index("by_event_type_created", ["eventType", "createdAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // API KEYS - BYOK (Bring Your Own Key) storage

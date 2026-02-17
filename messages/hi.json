@@ -337,6 +337,11 @@
     "statusPastDue": "बकाया",
     "statusCanceled": "रद्द",
     "statusTrialing": "परीक्षण",
+    "statusIncomplete": "अपूर्ण",
+    "statusIncompleteExpired": "अपूर्ण समाप्त",
+    "statusUnpaid": "अवैतनिक",
+    "statusPaused": "रुका हुआ",
+    "gracePeriodNotice": "बिलिंग समस्या का पता चला है। भुगतान पुनः प्रयास के दौरान आपको अस्थायी पहुंच बनी रहेगी।",
     "perInterval": "/ {interval}",
     "intervalMonth": "महीना",
     "intervalYear": "वर्ष"

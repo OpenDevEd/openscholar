@@ -4,6 +4,7 @@ import { getCurrentUser } from "../lib/auth";
 import { getPlanTier } from "../lib/constants";
 import { subscriptionValidator } from "../lib/validators";
 import { selectCanonicalSubscription } from "./lib/selectCanonicalSubscription";
+import { resolveEffectivePlan } from "../../lib/billing/entitlements";
 
 /**
  * Get current user's subscription
@@ -91,8 +92,6 @@ export const getTier = query({
 
     const subscription = selectCanonicalSubscription(subscriptions);
 
-    if (!subscription) return 0;
-
-    return getPlanTier(subscription.plan);
+    return getPlanTier(resolveEffectivePlan(subscription));
   },
 });

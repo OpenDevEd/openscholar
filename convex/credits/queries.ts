@@ -2,6 +2,28 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
+import { components } from "../_generated/api";
+
+const componentApi = components as any;
+
+export const TRACKED_GRANT_EVENT_TYPES = [
+  "invoice.paid",
+  "invoice.payment_succeeded",
+  "invoice.reconcile",
+  "invoice.reconcile.pull",
+] as const;
+
+export function selectLatestTrackedGrantEvent<T extends { eventType: string; updatedAt: number }>(
+  events: T[],
+) {
+  return events
+    .filter((row) =>
+      TRACKED_GRANT_EVENT_TYPES.includes(
+        row.eventType as (typeof TRACKED_GRANT_EVENT_TYPES)[number],
+      ),
+    )
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+}
 
 /**
  * Get current user's credit balance (free + paid)
@@ -168,6 +190,132 @@ export const checkBalance = query({
       total,
       required: args.requiredAmount,
       deficit: Math.max(0, args.requiredAmount - total),
+    };
+  },
+});
+
+export const getLatestGrantStatus = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      lastGrantAt: v.optional(v.number()),
+      lastGrantInvoiceId: v.optional(v.string()),
+      latestEventStatus: v.optional(v.string()),
+      latestEventClassification: v.optional(v.string()),
+      latestEventError: v.optional(v.string()),
+      latestEventUpdatedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const credits = await ctx.db
+      .query("credits")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id).eq("ownerType", "user"))
+      .unique();
+    const grantTransactions = credits
+      ? await ctx.db
+          .query("creditTransactions")
+          .withIndex("by_credits", (q) => q.eq("creditsId", credits._id))
+          .order("desc")
+          .take(100)
+      : [];
+
+    const lastGrant = grantTransactions.find((tx) => tx.type === "grant");
+
+    const invoiceIds = new Set<string>();
+    const subscriptionIds = new Set<string>();
+
+    const subscriptions = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id).eq("ownerType", "user"))
+      .order("desc")
+      .take(10);
+
+    for (const subscription of subscriptions) {
+      if (subscription.stripeSubscriptionId) {
+        subscriptionIds.add(subscription.stripeSubscriptionId);
+      }
+    }
+
+    const billingCustomers = await ctx.db
+      .query("billingCustomers")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const stripeCustomerIds = new Set<string>();
+    for (const billingCustomer of billingCustomers) {
+      stripeCustomerIds.add(billingCustomer.stripeCustomerId);
+    }
+
+    for (const tx of grantTransactions) {
+      if (tx.stripeInvoiceId) {
+        invoiceIds.add(tx.stripeInvoiceId);
+      }
+    }
+
+    try {
+      const mirroredInvoices: Array<{ stripeInvoiceId: string }> = await ctx.runQuery(
+        componentApi.stripe.public.listInvoicesByUserId,
+        {
+          userId: user._id,
+        },
+      );
+      for (const invoice of mirroredInvoices) {
+        invoiceIds.add(invoice.stripeInvoiceId);
+      }
+    } catch (error) {
+      console.warn("[getLatestGrantStatus] Failed to query Stripe invoice mirror", error);
+    }
+
+    const objectIds = new Set<string>(invoiceIds);
+    for (const subscriptionId of subscriptionIds) {
+      objectIds.add(subscriptionId);
+    }
+    for (const stripeCustomerId of stripeCustomerIds) {
+      objectIds.add(stripeCustomerId);
+    }
+
+    const eventRowsByObject = (
+      await Promise.all(
+        Array.from(objectIds).map((stripeObjectId) =>
+          ctx.db
+            .query("stripeEventLogs")
+            .withIndex("by_object_created", (q) => q.eq("stripeObjectId", stripeObjectId))
+            .order("desc")
+            .take(10),
+        ),
+      )
+    ).flat();
+
+    const eventRowsBySyntheticId = (
+      await Promise.all(
+        Array.from(invoiceIds).flatMap((invoiceId) => [
+          ctx.db
+            .query("stripeEventLogs")
+            .withIndex("by_stripe_event_id", (q) => q.eq("stripeEventId", `invoice.reconcile:${invoiceId}`))
+            .collect(),
+          ctx.db
+            .query("stripeEventLogs")
+            .withIndex("by_stripe_event_id", (q) => q.eq("stripeEventId", `reconcile.pull:${invoiceId}`))
+            .collect(),
+        ]),
+      )
+    ).flat();
+
+    const latestEvents = [...eventRowsByObject, ...eventRowsBySyntheticId];
+
+    const latestEvent = selectLatestTrackedGrantEvent(latestEvents);
+
+    return {
+      lastGrantAt: lastGrant?.createdAt,
+      lastGrantInvoiceId: lastGrant?.stripeInvoiceId,
+      latestEventStatus: latestEvent?.status,
+      latestEventClassification: latestEvent?.classification,
+      latestEventError: latestEvent?.lastError,
+      latestEventUpdatedAt: latestEvent?.updatedAt,
     };
   },
 });

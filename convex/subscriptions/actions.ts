@@ -1,10 +1,9 @@
 "use node";
 
-import { action } from "../_generated/server";
+import { action, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { requireActionAuth } from "../lib/auth";
-import { internal } from "../_generated/api";
-import { components } from "../_generated/api";
+import { internal, components } from "../_generated/api";
 import { stripeClient } from "../stripe";
 import {
   assertPlanPriceConfig,
@@ -16,6 +15,23 @@ import {
 } from "../lib/constants";
 import { planValidator } from "../lib/validators";
 import Stripe from "stripe";
+import { normalizeStripeSubscriptionStatus } from "./lib/stripeStatus";
+import { isSubscriptionScheduledToCancel } from "./lib/cancellation";
+import {
+  buildDowngradeSchedulePhases,
+  determineChangeType,
+  findPendingScheduleChange,
+  getScheduleId,
+  isReleasableScheduleStatus,
+  resolveCurrentPhaseBounds,
+  shouldReleaseScheduleForChange,
+  type ChangeType,
+  type ScheduleLike,
+} from "./lib/schedulePlanning";
+import { isEntitledStatus } from "../../lib/billing/entitlements";
+
+const internalApi = internal as any;
+const componentApi = components as any;
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
   apiVersion: "2026-01-28.clover",
@@ -26,14 +42,86 @@ const DOMAIN =
   process.env.NEXT_PUBLIC_URL ||
   "http://localhost:3000";
 
+function getStripeCustomerId(subscription: any): string | null {
+  if (!subscription.customer) return null;
+  if (typeof subscription.customer === "string") return subscription.customer;
+  return subscription.customer.id ?? null;
+}
+
+function clearPendingPlanMetadata(
+  metadata: Record<string, string> | Stripe.Metadata | null | undefined,
+): Record<string, string> {
+  return {
+    ...(metadata ?? {}),
+    pendingPlanChange: "",
+    pendingTargetPriceId: "",
+    pendingTargetPlan: "",
+  };
+}
+
+async function getAttachedSchedule(
+  subscription: any,
+): Promise<Stripe.SubscriptionSchedule | null> {
+  const scheduleRef = subscription.schedule;
+  const scheduleId = getScheduleId(scheduleRef);
+  if (!scheduleId) return null;
+
+  if (
+    typeof scheduleRef !== "string" &&
+    scheduleRef &&
+    typeof scheduleRef === "object" &&
+    scheduleRef.id
+  ) {
+    return scheduleRef as Stripe.SubscriptionSchedule;
+  }
+
+  return await stripe.subscriptionSchedules.retrieve(scheduleId);
+}
+
+async function syncLocalSubscriptionFromStripe(
+  ctx: ActionCtx,
+  subscription: any,
+): Promise<void> {
+  const item = subscription.items.data[0];
+  const stripeCustomerId = getStripeCustomerId(subscription);
+
+  if (!item?.price?.id || !stripeCustomerId) {
+    throw new Error("Stripe subscription is missing required item or customer data");
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const currentPeriodEndSec =
+    subscription.current_period_end ??
+    item.current_period_end ??
+    nowSec + 30 * 24 * 60 * 60;
+  const currentPeriodStartSec =
+    subscription.current_period_start ?? item.current_period_start ?? nowSec;
+  const cancelAtPeriodEnd = isSubscriptionScheduledToCancel({
+    cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+    cancelAt: subscription.cancel_at ?? null,
+    currentPeriodEnd: currentPeriodEndSec,
+    nowUnixSeconds: nowSec,
+  });
+
+  await ctx.runMutation(internalApi.subscriptions.internal.syncSubscription, {
+    stripeSubscriptionId: subscription.id,
+    stripeCustomerId,
+    status: normalizeStripeSubscriptionStatus(subscription.status),
+    currentPeriodStart: currentPeriodStartSec * 1000,
+    currentPeriodEnd: currentPeriodEndSec * 1000,
+    cancelAtPeriodEnd,
+    priceId: item.price.id,
+    quantity: item.quantity,
+    metadata: subscription.metadata as Record<string, string>,
+  });
+}
+
 /**
- * Create a Stripe Checkout session for a subscription or one-time payment
+ * Create a Stripe Checkout session for a first-time subscription purchase.
  */
 export const createCheckoutSession = action({
   args: {
     priceId: v.string(),
-    mode: v.union(v.literal("subscription"), v.literal("payment")),
-    organizationId: v.optional(v.id("organizations")),
     quantity: v.optional(v.number()),
   },
   returns: v.object({
@@ -41,46 +129,56 @@ export const createCheckoutSession = action({
   }),
   handler: async (ctx, args): Promise<{ url: string | null }> => {
     const identity = await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
     assertPlanPriceConfig();
 
-    if (args.organizationId) {
-      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
-        userId: user._id,
-        organizationId: args.organizationId,
-        requiredRole: "admin",
-      });
+    if (!isAllowedPriceId(args.priceId)) {
+      throw new Error("Invalid price ID");
+    }
+
+    const targetPlan = getPlanFromPriceId(args.priceId);
+    if (targetPlan === "free") {
+      throw new Error("Cannot create checkout session for free plan");
+    }
+
+    const existingSubscription = await ctx.runQuery(
+      internalApi.subscriptions.internal.getSubscriptionByOwner,
+      {
+        ownerId: user._id,
+        ownerType: "user",
+      },
+    );
+
+    if (existingSubscription?.stripeSubscriptionId && existingSubscription.status !== "canceled") {
+      throw new Error("Existing Stripe subscription found. Use changePlan or billing portal.");
     }
 
     const customer = await stripeClient.getOrCreateCustomer(ctx, {
-      userId: args.organizationId ?? user._id,
+      userId: user._id,
       email: identity.email,
       name: identity.name,
+    });
+
+    await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+      userId: user._id,
+      stripeCustomerId: customer.customerId,
+      linkedFrom: "checkout_session",
     });
 
     const metadata: Record<string, string> = {
       userId: user._id,
     };
 
-    if (args.organizationId) {
-      metadata.organizationId = args.organizationId;
-    }
-
-    if (!isAllowedPriceId(args.priceId)) {
-      throw new Error("Invalid price ID");
-    }
-
     const session = await stripeClient.createCheckoutSession(ctx, {
       priceId: args.priceId,
       customerId: customer.customerId,
-      mode: args.mode,
+      mode: "subscription",
       quantity: args.quantity ?? 1,
       successUrl: `${DOMAIN}/settings/billing?success=true`,
       cancelUrl: `${DOMAIN}/settings/billing?canceled=true`,
       metadata,
-      subscriptionMetadata: args.mode === "subscription" ? metadata : undefined,
-      paymentIntentMetadata: args.mode === "payment" ? metadata : undefined,
+      subscriptionMetadata: metadata,
     });
 
     return { url: session.url };
@@ -100,15 +198,16 @@ export const getPlans = action({
       nickname: v.union(v.string(), v.null()),
       metadata: v.record(v.string(), v.string()),
       plan: planValidator,
-    })
+    }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const defaultPriceIds = Object.values(getPlanPriceIds()).filter((id) =>
-      isAllowedPriceId(id)
+      isAllowedPriceId(id),
     );
-    const priceIds = args.priceIds && args.priceIds.length > 0
-      ? args.priceIds.filter((id) => isAllowedPriceId(id))
-      : defaultPriceIds;
+    const priceIds =
+      args.priceIds && args.priceIds.length > 0
+        ? args.priceIds.filter((id) => isAllowedPriceId(id))
+        : defaultPriceIds;
 
     if (priceIds.length === 0) {
       return [];
@@ -132,7 +231,7 @@ export const getPlans = action({
           console.error(`Failed to fetch price ${id}:`, error);
           return null;
         }
-      })
+      }),
     );
 
     return prices.filter((price): price is Exclude<typeof price, null> => price !== null);
@@ -140,87 +239,61 @@ export const getPlans = action({
 });
 
 /**
- * Create a Stripe Customer Portal session for managing subscriptions
+ * Create a Stripe Customer Portal session for managing subscriptions.
  */
 export const createPortalSession = action({
-  args: {
-    organizationId: v.optional(v.id("organizations")),
-  },
+  args: {},
   returns: v.object({
     url: v.string(),
   }),
-  handler: async (ctx, args): Promise<{ url: string }> => {
+  handler: async (ctx): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
-    if (args.organizationId) {
-      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
+    const billingCustomer = await ctx.runQuery(
+      internalApi.subscriptions.internal.getBillingCustomerByUser,
+      {
         userId: user._id,
-        organizationId: args.organizationId,
-        requiredRole: "member",
+      },
+    );
+
+    const subscription = await ctx.runQuery(
+      internalApi.subscriptions.internal.getSubscriptionByOwner,
+      {
+        ownerId: user._id,
+        ownerType: "user",
+      },
+    );
+
+    let stripeCustomerId =
+      billingCustomer?.stripeCustomerId ?? subscription?.stripeCustomerId;
+
+    if (!stripeCustomerId) {
+      const componentSubscriptions = await ctx.runQuery(
+        componentApi.stripe.public.listSubscriptionsByUserId,
+        { userId: user._id },
+      );
+      stripeCustomerId = componentSubscriptions[0]?.stripeCustomerId;
+    }
+
+    if (stripeCustomerId) {
+      await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+        userId: user._id,
+        stripeCustomerId,
+        linkedFrom: "portal_session",
       });
     }
 
-    const ownerId = args.organizationId ?? user._id;
-
-    const subscriptions = await ctx.runQuery(
-      components.stripe.public.listSubscriptionsByUserId,
-      { userId: ownerId }
-    );
-
-    if (subscriptions.length === 0) {
-      throw new Error("No subscription found");
+    if (!stripeCustomerId) {
+      throw new Error("No subscription customer found");
     }
 
     const portal = await stripeClient.createCustomerPortalSession(ctx, {
-      customerId: subscriptions[0].stripeCustomerId,
+      customerId: stripeCustomerId,
       returnUrl: `${DOMAIN}/settings/billing`,
     });
 
     return { url: portal.url };
-  },
-});
-
-/**
- * Cancel subscription immediately
- */
-export const cancelImmediately = action({
-  args: {
-    organizationId: v.optional(v.id("organizations")),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
-
-    if (args.organizationId) {
-      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
-        userId: user._id,
-        organizationId: args.organizationId,
-        requiredRole: "admin",
-      });
-    }
-
-    const ownerId = args.organizationId ?? user._id;
-    const ownerType = args.organizationId ? "organization" : "user";
-
-    const subscription = await ctx.runQuery(
-      internal.subscriptions.internal.getSubscriptionByOwner,
-      {
-        ownerId,
-        ownerType,
-      }
-    );
-
-    if (!subscription || !subscription.stripeSubscriptionId) {
-      throw new Error("No active subscription found to cancel");
-    }
-
-    await stripe.subscriptions.cancel(subscription.stripeSubscriptionId, {
-      prorate: true,
-    });
-
-    return null;
   },
 });
 
@@ -234,11 +307,22 @@ export const getSubscriptionDetails = action({
         currency: v.string(),
         interval: v.string(),
         currentPeriodEnd: v.number(),
+        currentPriceId: v.string(),
         status: v.string(),
+        entitlementState: v.union(
+          v.literal("entitled"),
+          v.literal("payment_pending"),
+          v.literal("not_entitled"),
+        ),
+        entitlementMessage: v.optional(v.string()),
         cancelAtPeriodEnd: v.boolean(),
+        hasPendingChange: v.boolean(),
+        pendingTargetPriceId: v.optional(v.string()),
+        pendingTargetPlan: v.optional(planValidator),
+        pendingEffectiveDate: v.optional(v.number()),
         cardBrand: v.optional(v.string()),
         cardLast4: v.optional(v.string()),
-      })
+      }),
     ),
     error: v.optional(v.string()),
   }),
@@ -249,48 +333,74 @@ export const getSubscriptionDetails = action({
       currency: string;
       interval: string;
       currentPeriodEnd: number;
+      currentPriceId: string;
       status: string;
+      entitlementState: "entitled" | "payment_pending" | "not_entitled";
+      entitlementMessage?: string;
       cancelAtPeriodEnd: boolean;
+      hasPendingChange: boolean;
+      pendingTargetPriceId?: string;
+      pendingTargetPlan?: "free" | "go" | "pro" | "enterprise";
+      pendingEffectiveDate?: number;
       cardBrand?: string;
       cardLast4?: string;
     };
     error?: string;
   }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
     const subscription = await ctx.runQuery(
-      internal.subscriptions.internal.getSubscriptionByOwner,
+      internalApi.subscriptions.internal.getSubscriptionByOwner,
       {
         ownerId: user._id,
         ownerType: "user",
-      }
+      },
     );
 
     if (!subscription || !subscription.stripeSubscriptionId) {
-      console.error("No stripeSubscriptionId found for user", user._id);
       return { status: "error", error: "No subscription linked." };
     }
 
     try {
-      const stripeSub = await stripe.subscriptions.retrieve(
-        subscription.stripeSubscriptionId,
-        {
-          expand: ["default_payment_method"],
-        }
-      );
+      const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId, {
+        expand: ["default_payment_method", "schedule"],
+      });
 
       const sub = stripeSub as any;
 
       if (!sub.items?.data?.[0]?.price) {
-        console.error("Missing price data structure", sub);
         return { status: "error", error: "No price data in subscription." };
       }
 
       const price = sub.items.data[0].price;
       const paymentMethod = sub.default_payment_method as Stripe.PaymentMethod | null;
-
       const currentPeriodEnd = sub.current_period_end || sub.items.data[0].current_period_end;
+      const cancelAtPeriodEnd = isSubscriptionScheduledToCancel({
+        cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+        cancelAt: sub.cancel_at ?? null,
+        currentPeriodEnd,
+      });
+      const schedule = await getAttachedSchedule(sub);
+      const pendingChange = findPendingScheduleChange({
+        schedule: schedule as unknown as ScheduleLike,
+        currentPriceId: price.id,
+      });
+      const pendingTargetPlan = pendingChange.targetPriceId
+        ? getPlanFromPriceId(pendingChange.targetPriceId)
+        : undefined;
+      const entitlementState: "entitled" | "payment_pending" | "not_entitled" =
+        sub.status === "incomplete"
+          ? "payment_pending"
+          : isEntitledStatus(sub.status)
+            ? "entitled"
+            : "not_entitled";
+      const entitlementMessage =
+        entitlementState === "payment_pending"
+          ? "Payment is pending. Complete payment in Stripe Billing Portal to activate credits."
+          : entitlementState === "not_entitled"
+            ? "Subscription is not currently entitled."
+            : undefined;
 
       return {
         status: "success",
@@ -299,8 +409,18 @@ export const getSubscriptionDetails = action({
           currency: price.currency,
           interval: price.recurring?.interval || "month",
           currentPeriodEnd: currentPeriodEnd ? currentPeriodEnd * 1000 : Date.now(),
+          currentPriceId: price.id,
           status: sub.status,
-          cancelAtPeriodEnd: sub.cancel_at_period_end,
+          entitlementState,
+          entitlementMessage,
+          cancelAtPeriodEnd,
+          hasPendingChange: pendingChange.hasPendingChange,
+          pendingTargetPriceId: pendingChange.targetPriceId,
+          pendingTargetPlan,
+          pendingEffectiveDate:
+            typeof pendingChange.effectiveDate === "number"
+              ? pendingChange.effectiveDate * 1000
+              : undefined,
           cardBrand: paymentMethod?.card?.brand,
           cardLast4: paymentMethod?.card?.last4,
         },
@@ -330,98 +450,224 @@ export const getSubscriptionDetails = action({
 });
 
 /**
- * Schedule a downgrade to a lower tier plan
- * Cancels current subscription at period end and schedules new subscription
+ * Change plan for an existing subscription.
+ * - Upgrades are applied immediately with proration.
+ * - Downgrades are scheduled to apply at period end.
  */
-export const scheduleDowngrade = action({
+export const changePlan = action({
   args: {
     targetPriceId: v.string(),
-    organizationId: v.optional(v.id("organizations")),
   },
   returns: v.object({
     success: v.boolean(),
+    mode: v.union(v.literal("updated"), v.literal("scheduled")),
+    changeType: v.union(
+      v.literal("upgraded_immediately"),
+      v.literal("downgrade_scheduled"),
+      v.literal("pending_change_cleared"),
+      v.literal("no_change"),
+    ),
     message: v.string(),
     effectiveDate: v.optional(v.number()),
   }),
   handler: async (ctx, args): Promise<{
     success: boolean;
+    mode: "updated" | "scheduled";
+    changeType: ChangeType;
     message: string;
     effectiveDate?: number;
   }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
-    if (args.organizationId) {
-      await ctx.runQuery(internal.memberships.internal.getMembershipForUser, {
-        userId: user._id,
-        organizationId: args.organizationId,
-        requiredRole: "admin",
-      });
-    }
-
-    // Verify target price ID is valid
     if (!isAllowedPriceId(args.targetPriceId)) {
-      return { success: false, message: "Invalid target price ID" };
+      throw new Error("Invalid target price ID");
     }
 
-    const ownerId = args.organizationId ?? user._id;
-    const ownerType = args.organizationId ? "organization" : "user";
-
-    // Get current subscription
-    const subscription = await ctx.runQuery(
-      internal.subscriptions.internal.getSubscriptionByOwner,
-      {
-        ownerId,
-        ownerType,
-      }
-    );
-
-    if (!subscription || !subscription.stripeSubscriptionId) {
-      return { success: false, message: "No active subscription found" };
-    }
-
-    // Verify this is actually a downgrade
-    const currentTier = getPlanTier(subscription.plan);
     const targetPlan = getPlanFromPriceId(args.targetPriceId);
-    const targetTier = getPlanTier(targetPlan);
-
-    if (targetTier >= currentTier) {
-      return { success: false, message: "Target plan is not a downgrade. Use upgrade flow instead." };
+    if (targetPlan === "free") {
+      throw new Error("Use billing portal to cancel to free plan");
     }
 
     try {
-      // Get current Stripe subscription to access metadata and period end
-      const stripeSubscription = await stripe.subscriptions.retrieve(
-        subscription.stripeSubscriptionId
+      const subscription = await ctx.runQuery(
+        internalApi.subscriptions.internal.getSubscriptionByOwner,
+        {
+          ownerId: user._id,
+          ownerType: "user",
+        },
       );
 
-      // Update Stripe subscription to cancel at period end
-      const updatedSubscription = await stripe.subscriptions.update(
+      if (!subscription || !subscription.stripeSubscriptionId) {
+        throw new Error("No active Stripe subscription found");
+      }
+
+      const stripeSubscription: any = await stripe.subscriptions.retrieve(
         subscription.stripeSubscriptionId,
         {
-          cancel_at_period_end: true,
-          metadata: {
-            ...(stripeSubscription.metadata || {}),
-            pendingDowngrade: "true",
-            targetPriceId: args.targetPriceId,
-            targetPlan: targetPlan,
-          },
-        }
+          expand: ["schedule"],
+        },
       );
 
-      const effectiveDate = ((updatedSubscription as any).current_period_end || 0) * 1000;
+      const item = stripeSubscription.items.data[0];
+      if (!item?.id || !item.price?.id) {
+        throw new Error("Current subscription item not found");
+      }
+
+      const currentPlan = getPlanFromPriceId(item.price.id || undefined);
+      const currentTier = getPlanTier(currentPlan);
+      const targetTier = getPlanTier(targetPlan);
+
+      let schedule = await getAttachedSchedule(stripeSubscription);
+      const pendingChange = findPendingScheduleChange({
+        schedule: schedule as unknown as ScheduleLike,
+        currentPriceId: item.price.id,
+      });
+      const hasClearablePendingChange =
+        pendingChange.hasPendingChange &&
+        Boolean(
+          schedule &&
+            shouldReleaseScheduleForChange({
+              changeType: "pending_change_cleared",
+              scheduleStatus: schedule.status,
+            }),
+        );
+
+      const changeType = determineChangeType({
+        currentTier,
+        targetTier,
+        hasPendingScheduledChange: hasClearablePendingChange,
+      });
+
+      if (changeType === "no_change") {
+        return {
+          success: true,
+          mode: "updated",
+          changeType,
+          message: `You are already on the ${targetPlan} plan.`,
+        };
+      }
+
+      if (changeType === "pending_change_cleared") {
+        if (
+          schedule &&
+          shouldReleaseScheduleForChange({
+            changeType,
+            scheduleStatus: schedule.status,
+          })
+        ) {
+          await stripe.subscriptionSchedules.release(schedule.id);
+        }
+
+        const metadataCleared = await stripe.subscriptions.update(stripeSubscription.id, {
+          metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
+        });
+        await syncLocalSubscriptionFromStripe(ctx, metadataCleared);
+
+        return {
+          success: true,
+          mode: "updated",
+          changeType,
+          message: `Pending plan change cleared. You remain on ${targetPlan}.`,
+        };
+      }
+
+      if (changeType === "upgraded_immediately") {
+        if (
+          schedule &&
+          shouldReleaseScheduleForChange({
+            changeType,
+            scheduleStatus: schedule.status,
+          })
+        ) {
+          await stripe.subscriptionSchedules.release(schedule.id);
+        }
+
+        const updated = await stripe.subscriptions.update(stripeSubscription.id, {
+          items: [
+            {
+              id: item.id,
+              price: args.targetPriceId,
+              quantity: item.quantity ?? 1,
+            },
+          ],
+          proration_behavior: "create_prorations",
+          cancel_at_period_end: false,
+          metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
+        });
+
+        await syncLocalSubscriptionFromStripe(ctx, updated);
+
+        return {
+          success: true,
+          mode: "updated",
+          changeType,
+          message: `Plan changed to ${targetPlan}.`,
+        };
+      }
+
+      if (!schedule || !isReleasableScheduleStatus(schedule.status)) {
+        schedule = await stripe.subscriptionSchedules.create({
+          from_subscription: stripeSubscription.id,
+        });
+      }
+
+      const fallbackCurrentPeriodEnd =
+        stripeSubscription.current_period_end ?? item.current_period_end;
+      if (!fallbackCurrentPeriodEnd) {
+        throw new Error("Unable to determine current period end for downgrade");
+      }
+
+      const fallbackCurrentPeriodStart =
+        stripeSubscription.current_period_start ??
+        item.current_period_start ??
+        Math.floor(Date.now() / 1000);
+      const { startDate, endDate } = resolveCurrentPhaseBounds({
+        schedule: schedule as unknown as ScheduleLike,
+        fallbackStart: fallbackCurrentPeriodStart,
+        fallbackEnd: fallbackCurrentPeriodEnd,
+      });
+
+      await stripe.subscriptionSchedules.update(schedule.id, {
+        end_behavior: "release",
+        proration_behavior: "none",
+        phases: buildDowngradeSchedulePhases({
+          currentPhaseStart: startDate,
+          currentPhaseEnd: endDate,
+          currentPriceId: item.price.id,
+          currentQuantity: item.quantity,
+          targetPriceId: args.targetPriceId,
+          targetQuantity: item.quantity,
+        }),
+      });
+
+      const metadataCleared = await stripe.subscriptions.update(stripeSubscription.id, {
+        metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
+      });
+      await syncLocalSubscriptionFromStripe(ctx, metadataCleared);
 
       return {
         success: true,
-        message: `Downgrade scheduled. Your ${targetPlan} plan will begin on ${new Date(effectiveDate).toLocaleDateString()}`,
-        effectiveDate,
+        mode: "scheduled",
+        changeType,
+        message: `Downgrade to ${targetPlan} scheduled for period end.`,
+        effectiveDate: endDate * 1000,
       };
     } catch (error: any) {
-      console.error("Failed to schedule downgrade:", error);
-      return {
-        success: false,
-        message: error.message || "Failed to schedule downgrade",
-      };
+      if (error instanceof Stripe.errors.StripeInvalidRequestError) {
+        console.error("[changePlan] Stripe invalid request", {
+          requestId: error.requestId,
+          code: error.code,
+          param: error.param,
+          message: error.message,
+          targetPriceId: args.targetPriceId,
+          userId: user._id,
+        });
+        throw new Error(
+          "Unable to update your plan due to a Stripe billing conflict. Please retry or use the billing portal.",
+        );
+      }
+      throw error;
     }
   },
 });

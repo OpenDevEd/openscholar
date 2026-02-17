@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { getPlanTier } from "@/convex/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -44,6 +45,24 @@ type PlanConfig = {
   popular?: boolean;
 };
 
+type SubscriptionDetails = {
+  amount: number;
+  currency: string;
+  interval: string;
+  currentPeriodEnd: number;
+  currentPriceId: string;
+  status: string;
+  entitlementState: "entitled" | "payment_pending" | "not_entitled";
+  entitlementMessage?: string;
+  cancelAtPeriodEnd: boolean;
+  hasPendingChange: boolean;
+  pendingTargetPriceId?: string;
+  pendingTargetPlan?: "free" | "go" | "pro" | "enterprise";
+  pendingEffectiveDate?: number;
+  cardBrand?: string;
+  cardLast4?: string;
+};
+
 export function Pricing() {
   const toast = useAppToast();
   const t = useTranslations("pricing");
@@ -66,14 +85,19 @@ export function Pricing() {
 
   const getPlans = useAction(api.subscriptions.actions.getPlans);
   const createCheckoutSession = useAction(
-    api.subscriptions.actions.createCheckoutSession,
+    (api as any).subscriptions.actions.createCheckoutSession,
   );
+  const changePlan = useAction((api as any).subscriptions.actions.changePlan);
   const createPortalSession = useAction(
-    api.subscriptions.actions.createPortalSession,
+    (api as any).subscriptions.actions.createPortalSession,
+  );
+  const getSubscriptionDetails = useAction(
+    (api as any).subscriptions.actions.getSubscriptionDetails,
   );
 
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null);
 
   // Fetch current subscription
   const { phase, retryUserSync } = useAuthReadiness();
@@ -82,6 +106,7 @@ export function Pricing() {
   const isSubscriptionLoading = subscriptionState.isQueryLoading;
   const isAnonymous = subscriptionState.isAnonymous;
   const hasResolvedSubscription = subscriptionState.isReady;
+  const isEntitled = subscriptionState.isEntitled;
   const resolvedPlan = subscriptionState.resolvedPlan;
   const resolvedTier = subscriptionState.resolvedTier;
 
@@ -108,6 +133,35 @@ export function Pricing() {
     }
   }, [error, t]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const stripeSubscriptionId = subscriptionState.subscription?.stripeSubscriptionId;
+
+    if (phase !== "authenticated" || !stripeSubscriptionId) {
+      setSubscriptionDetails(null);
+      return;
+    }
+
+    getSubscriptionDetails({})
+      .then((result: any) => {
+        if (cancelled) return;
+        if (result.status === "success" && result.data) {
+          setSubscriptionDetails(result.data as SubscriptionDetails);
+          return;
+        }
+        setSubscriptionDetails(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        console.error("Failed to fetch subscription details for pricing page", err);
+        setSubscriptionDetails(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, subscriptionState.subscription?.stripeSubscriptionId, getSubscriptionDetails]);
+
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -131,9 +185,49 @@ export function Pricing() {
     return PLANS;
   }, [isMobile, PLANS]);
 
+  const pendingTargetTier = subscriptionDetails?.pendingTargetPlan
+    ? getPlanTier(subscriptionDetails.pendingTargetPlan)
+    : null;
+  const isPaymentPending =
+    subscriptionState.subscription?.status === "incomplete" ||
+    subscriptionDetails?.entitlementState === "payment_pending";
+  const hasPendingDowngrade = Boolean(
+    subscriptionDetails?.hasPendingChange &&
+      pendingTargetTier !== null &&
+      resolvedTier !== null &&
+      pendingTargetTier < resolvedTier,
+  );
+
+  const handleKeepCurrentPlan = async () => {
+    if (!subscriptionDetails?.currentPriceId) {
+      return;
+    }
+
+    try {
+      setLoadingPriceId("keep-current");
+      const result = await changePlan({ targetPriceId: subscriptionDetails.currentPriceId });
+      toast.success("Plan updated", result.message);
+
+      const refreshed = await getSubscriptionDetails({});
+      if (refreshed.status === "success" && refreshed.data) {
+        setSubscriptionDetails(refreshed.data as SubscriptionDetails);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(tc("somethingWentWrong"), t("couldNotInitiateCheckout"));
+    } finally {
+      setLoadingPriceId(null);
+    }
+  };
+
   const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
     if (phase !== "authenticated") {
       router.push("/auth/signin");
+      return;
+    }
+
+    if (isPaymentPending) {
+      await handleOpenPortal();
       return;
     }
 
@@ -146,17 +240,37 @@ export function Pricing() {
 
     try {
       setLoadingPriceId(priceId);
+      const hasLinkedStripeSubscription = Boolean(
+        subscriptionState.subscription?.stripeSubscriptionId,
+      );
 
-      const { url } = await createCheckoutSession({
-        priceId,
-        mode: "subscription",
-        quantity: 1,
-      });
+      if (isEntitled && resolvedPlan && resolvedPlan !== "free") {
+        const result = await changePlan({ targetPriceId: priceId });
+        toast.success("Plan updated", result.message);
 
-      if (url) {
-        window.location.href = url;
+        const refreshed = await getSubscriptionDetails({});
+        if (refreshed.status === "success" && refreshed.data) {
+          setSubscriptionDetails(refreshed.data as SubscriptionDetails);
+        }
       } else {
-        toast.billing.checkoutFailed();
+        if (hasLinkedStripeSubscription) {
+          const { url } = await createPortalSession({});
+          if (url) {
+            window.location.href = url;
+          }
+          return;
+        }
+
+        const { url } = await createCheckoutSession({
+          priceId,
+          quantity: 1,
+        });
+
+        if (url) {
+          window.location.href = url;
+        } else {
+          toast.billing.checkoutFailed();
+        }
       }
     } catch (err) {
       console.error(err);
@@ -222,18 +336,65 @@ export function Pricing() {
       };
     }
 
+    if (isPaymentPending) {
+      if (plan.id === "free") {
+        return {
+          disabled: true,
+          label: "Payment pending",
+          variant: "outline" as const,
+          onClick: () => {},
+        };
+      }
+      return {
+        disabled: false,
+        label: "Complete payment in billing portal",
+        variant: "outline" as const,
+        onClick: handleOpenPortal,
+      };
+    }
+
     const currentPlan = resolvedPlan;
     const currentTier = resolvedTier;
     const isCurrent = currentPlan === plan.id;
     const isUpgrade = plan.tier > currentTier;
     const isDowngrade = plan.tier < currentTier;
+    const isScheduledTarget =
+      subscriptionDetails?.hasPendingChange &&
+      subscriptionDetails.pendingTargetPlan === plan.id;
 
-    if (isCurrent) {
+    if (isCurrent && hasPendingDowngrade) {
+      return {
+        disabled: false,
+        label: "Cancel scheduled downgrade",
+        variant: "outline" as const,
+        onClick: handleKeepCurrentPlan,
+      };
+    }
+
+    if (isCurrent && !hasPendingDowngrade) {
       return {
         disabled: true,
         label: tc("currentPlan"),
         variant: "outline" as const,
         onClick: () => {},
+      };
+    }
+
+    if (isScheduledTarget) {
+      return {
+        disabled: true,
+        label: "Scheduled",
+        variant: "outline" as const,
+        onClick: () => {},
+      };
+    }
+
+    if (plan.id === "free") {
+      return {
+        disabled: false,
+        label: "Manage in Billing Portal",
+        variant: "outline" as const,
+        onClick: handleOpenPortal,
       };
     }
 
@@ -251,17 +412,16 @@ export function Pricing() {
         disabled: false,
         label: tc("upgradeTo", { plan: plan.name }),
         variant: "default" as const,
-        onClick: () => handleSubscribe(plan.id as "go" | "pro"),
+        onClick: () => handleSubscribe(plan.id as "go" | "pro" | "enterprise"),
       };
     }
 
-    // Downgrades not allowed - disable button
     if (isDowngrade) {
       return {
-        disabled: true,
-        label: tc("notAvailable"),
+        disabled: false,
+        label: `Downgrade to ${plan.name}`,
         variant: "outline" as const,
-        onClick: () => {},
+        onClick: () => handleSubscribe(plan.id as "go" | "pro"),
       };
     }
 
@@ -334,6 +494,50 @@ export function Pricing() {
       </div>
 
       {/* Plans Grid */}
+      {isPaymentPending && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 flex items-center justify-between gap-3">
+          <span>
+            {subscriptionDetails?.entitlementMessage ??
+              "Payment is pending. Complete payment in Stripe Billing Portal to activate your plan and credits."}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenPortal}
+            disabled={loadingPriceId !== null}
+          >
+            Open billing portal
+          </Button>
+        </div>
+      )}
+
+      {hasPendingDowngrade && subscriptionDetails && (
+        <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 flex items-center justify-between gap-3">
+          <span>
+            Downgrade scheduled to{" "}
+            <span className="font-semibold">
+              {subscriptionDetails.pendingTargetPlan ?? "another plan"}
+            </span>
+            {subscriptionDetails.pendingEffectiveDate
+              ? ` on ${format.dateTime(new Date(subscriptionDetails.pendingEffectiveDate), {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}`
+              : ""}
+            .
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleKeepCurrentPlan}
+            disabled={loadingPriceId !== null || !subscriptionDetails.currentPriceId}
+          >
+            Keep current plan
+          </Button>
+        </div>
+      )}
+
       <div
         className={cn(
           "grid gap-6",
@@ -347,6 +551,9 @@ export function Pricing() {
           const buttonConfig = getButtonConfig(plan);
           const planPriceId = prices?.find((p) => p.plan === plan.id)?.id;
           const Icon = plan.icon;
+          const isScheduledTarget =
+            subscriptionDetails?.hasPendingChange &&
+            subscriptionDetails.pendingTargetPlan === plan.id;
 
           return (
             <motion.div
@@ -376,6 +583,14 @@ export function Pricing() {
                 <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
                   <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                     {tc("mostPopular")}
+                  </span>
+                </div>
+              )}
+
+              {isScheduledTarget && !isCurrent && (
+                <div className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+                    Scheduled
                   </span>
                 </div>
               )}
@@ -425,7 +640,8 @@ export function Pricing() {
                   onClick={buttonConfig.onClick}
                 >
                   {loadingPriceId === planPriceId ||
-                  loadingPriceId === "portal" ? (
+                  loadingPriceId === "portal" ||
+                  loadingPriceId === "keep-current" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     buttonConfig.label

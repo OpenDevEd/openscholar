@@ -337,6 +337,11 @@
     "statusPastDue": "Past due",
     "statusCanceled": "Canceled",
     "statusTrialing": "Trialing",
+    "statusIncomplete": "Incomplete",
+    "statusIncompleteExpired": "Incomplete expired",
+    "statusUnpaid": "Unpaid",
+    "statusPaused": "Paused",
+    "gracePeriodNotice": "Billing issue detected. You still have temporary access while we retry payment.",
     "perInterval": "/ {interval}",
     "intervalMonth": "month",
     "intervalYear": "year"

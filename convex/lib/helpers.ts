@@ -1,5 +1,6 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
+import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
 
 /**
  * Resolve owner ID and type from user and optional organization ID
@@ -38,10 +39,12 @@ export async function getSubscriptionForOwner(
   ownerId: string,
   ownerType: "user" | "organization"
 ): Promise<Doc<"subscriptions"> | null> {
-  return await ctx.db
+  const subscriptions = await ctx.db
     .query("subscriptions")
     .withIndex("by_owner", (q) =>
       q.eq("ownerId", ownerId).eq("ownerType", ownerType)
     )
-    .unique();
+    .order("desc")
+    .collect();
+  return selectCanonicalSubscription(subscriptions);
 }

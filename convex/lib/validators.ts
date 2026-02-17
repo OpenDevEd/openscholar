@@ -21,13 +21,27 @@ export const planValidator = v.union(
   v.literal("pro"),
   v.literal("enterprise")
 );
+export type PlanType = "free" | "go" | "pro" | "enterprise";
 
 export const subscriptionStatusValidator = v.union(
   v.literal("active"),
   v.literal("past_due"),
   v.literal("canceled"),
-  v.literal("trialing")
+  v.literal("trialing"),
+  v.literal("incomplete"),
+  v.literal("incomplete_expired"),
+  v.literal("unpaid"),
+  v.literal("paused")
 );
+export type SubscriptionStatus =
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "trialing"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "paused";
 
 export const userStateValidator = v.union(
   v.literal("active"),

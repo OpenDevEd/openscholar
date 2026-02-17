@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
 import { userValidator, subscriptionValidator, creditsValidator, orgWithMembershipValidator } from "../lib/validators";
+import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
 
 /**
  * Get the current authenticated user
@@ -89,12 +90,15 @@ export const getMySubscription = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
-    return await ctx.db
+    const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_owner", (q) =>
         q.eq("ownerId", user._id).eq("ownerType", "user")
       )
-      .unique();
+      .order("desc")
+      .collect();
+
+    return selectCanonicalSubscription(subscriptions);
   },
 });
 

@@ -4,7 +4,6 @@ import { ConvexReactClient, ConvexProviderWithAuth, useConvexAuth, useMutation }
 import {
   AuthKitProvider,
   useAuth,
-  useAccessToken,
 } from "@workos-inc/authkit-nextjs/components";
 import {
   createContext,
@@ -46,7 +45,31 @@ const AuthReadinessContext = createContext<AuthReadinessContextValue | undefined
  */
 function useAuthFromAuthKit() {
   const { user, loading: authLoading } = useAuth();
-  const { getAccessToken, refresh } = useAccessToken();
+  const fetchAccessTokenFromRoute = useCallback(async (): Promise<string | undefined> => {
+    if (!user) return undefined;
+
+    try {
+      const response = await fetch("/auth/access-token", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Cache-Control": "no-store" },
+      });
+
+      if (!response.ok) {
+        return undefined;
+      }
+
+      const payload = (await response.json()) as { accessToken?: string | null };
+      return typeof payload.accessToken === "string" && payload.accessToken.length > 0
+        ? payload.accessToken
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [user?.id]);
+  const getAccessToken = useCallback(() => fetchAccessTokenFromRoute(), [fetchAccessTokenFromRoute]);
+  const refresh = useCallback(() => fetchAccessTokenFromRoute(), [fetchAccessTokenFromRoute]);
   const fetchAccessToken = useMemo(
     () => createConvexAuthTokenFetcher({ getAccessToken, refresh }),
     [getAccessToken, refresh],

@@ -64,6 +64,7 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
+import { resolveEffectivePlan } from "@/lib/billing/entitlements";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -416,9 +417,7 @@ export default function JobDetailPage() {
     job.status === "extracting";
   const resolvedPlan =
     subscriptionSettlement === "ready"
-      ? subscription
-        ? subscription.plan
-        : "free"
+      ? resolveEffectivePlan(subscription ?? null)
       : null;
   const hasProFeatures =
     resolvedPlan === "pro" || resolvedPlan === "enterprise";
