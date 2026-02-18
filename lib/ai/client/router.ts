@@ -3,6 +3,7 @@
 import { api } from '@/convex/_generated/api'
 import * as clientExecutor from './executor'
 import { createAIHook } from './hook-factory'
+import { decodeQuestionResponseMap } from '../core/question-key-codec'
 
 // Import types from their canonical locations
 import type {
@@ -62,12 +63,28 @@ export const useTranslatePaperContent = createAIHook(
 
 export const useGenerateScreeningResponses = createAIHook(
   api.ai.actions.generateScreeningResponses,
-  clientExecutor.generateScreeningResponses
+  clientExecutor.generateScreeningResponses,
+  (result) => ({
+    ...result,
+    responses: decodeQuestionResponseMap(result.responses),
+  })
 )
 
 export const useBatchScreeningResponses = createAIHook(
   api.ai.actions.generateBatchScreeningResponses,
-  clientExecutor.generateBatchScreeningResponses
+  clientExecutor.generateBatchScreeningResponses,
+  (result) => ({
+    ...result,
+    results: Object.fromEntries(
+      Object.entries(result.results).map(([paperId, data]) => [
+        paperId,
+        {
+          ...data,
+          responses: decodeQuestionResponseMap(data.responses),
+        },
+      ])
+    ),
+  })
 )
 
 export const useBatchTranslations = createAIHook(

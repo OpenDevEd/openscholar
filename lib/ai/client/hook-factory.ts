@@ -31,7 +31,8 @@ function useLocalConfig(): AIConfig {
 
 export function createAIHook<TParams extends Record<string, any>, TResult>(
   actionRef: FunctionReference<'action', 'public', TParams, TResult>,
-  executorFn: (params: TParams, config: AIConfig) => Promise<TResult>
+  executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
+  transformCreditsResult?: (result: TResult, params: TParams) => TResult
 ): () => AIHookResult<TParams, TResult> {
   return function useAIOperation() {
     const [isLoading, setIsLoading] = useState(false)
@@ -50,7 +51,10 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
 
         try {
           if (apiKeyMode === 'credits') {
-            return await convexAction(params as any)
+            const result = await convexAction(params as any)
+            return transformCreditsResult
+              ? transformCreditsResult(result, params)
+              : result
           } else {
             return await executorFn(params, localConfig)
           }

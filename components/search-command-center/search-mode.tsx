@@ -57,6 +57,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const selectedLanguage = search?.params?.lang ?? "";
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
+  const isLanguageSelectorDisabled = isTranslating || isEnhancing;
 
   // Sync local input when URL query changes
   useEffect(() => {
@@ -272,7 +273,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               <LanguageSelector
                 value={selectedLanguage}
                 onValueChange={handleLanguageChange}
-                disabled={isFormDisabled}
+                disabled={isLanguageSelectorDisabled}
               />
               <Button
                 type="submit"

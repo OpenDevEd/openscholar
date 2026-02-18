@@ -16,6 +16,7 @@ import {
   aggregateUsage,
 } from "../../lib/ai/core";
 import { createAIAction, getModel, withAuthAndCreditsBatch } from "./helpers";
+import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -120,7 +121,10 @@ export const generateScreeningResponses = createAIAction(
   "Generate screening responses",
   getScreeningResponsesConfig,
   (output) => ({
-    responses: output.responses as Record<string, boolean | null>,
+    // Convex requires ASCII-only object keys, so encode question text keys.
+    responses: encodeQuestionResponseMap(
+      output.responses as Record<string, boolean | null>
+    ),
     confidence: output.confidence,
   })
 );
@@ -237,8 +241,18 @@ export const generateBatchScreeningResponses = action({
           questions,
         });
 
+        const encodedResults = Object.fromEntries(
+          Object.entries(results).map(([paperId, result]) => [
+            paperId,
+            {
+              ...result,
+              responses: encodeQuestionResponseMap(result.responses),
+            },
+          ])
+        );
+
         return {
-          result: { results, errors },
+          result: { results: encodedResults, errors },
           totalUsage: aggregateUsage(usages),
         };
       }
