@@ -3,6 +3,9 @@ export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/pricing",
   "/results/:path*",
   "/auth/:path*",
+  "/bookmarks",
+  "/history",
+  "/settings/ai",
 ] as const;
 
 function normalizePathname(pathname: string) {

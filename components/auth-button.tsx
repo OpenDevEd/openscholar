@@ -10,6 +10,8 @@ import {
   CreditCard,
   Settings,
   Loader2,
+  Bot,
+  MoreVertical,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -41,6 +43,7 @@ interface AuthButtonProps {
 export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const t = useTranslations("auth");
   const tc = useTranslations("common");
+  const tai = useTranslations("aiSettings");
   const { user } = useAuth();
   const { phase } = useAuthReadiness();
   const router = useRouter();
@@ -83,9 +86,9 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     );
   }
 
-  // Not signed in
+  // Not signed in - show dropdown with Sign In and AI Settings
   if (!isSignedIn) {
-    const button = (
+    const signedOutTrigger = (
       <Button
         variant="ghost"
         size="sm"
@@ -93,25 +96,65 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           "transition-all duration-200 hover:bg-sidebar-accent/80",
           isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
         )}
-        onClick={() => router.push("/auth/signin")}
-        title={isCollapsed ? undefined : tc("signIn")}
       >
-        <LogIn className="h-[1.2rem] w-[1.2rem] shrink-0" />
-        {!isCollapsed && <span className="text-sm font-medium">{tc("signIn")}</span>}
-        <span className="sr-only">{tc("signIn")}</span>
+        <MoreVertical className="h-[1.2rem] w-[1.2rem] shrink-0" />
+        {!isCollapsed && (
+          <span className="text-sm font-medium">{tc("more")}</span>
+        )}
+        <span className="sr-only">{tc("more")}</span>
       </Button>
     );
 
-    if (isCollapsed) {
-      return (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>{button}</TooltipTrigger>
-          <TooltipContent side="right">{tc("signIn")}</TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return button;
+    return (
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        {isCollapsed ? (
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>{signedOutTrigger}</DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">{tc("more")}</TooltipContent>
+          </Tooltip>
+        ) : (
+          <DropdownMenuTrigger asChild>{signedOutTrigger}</DropdownMenuTrigger>
+        )}
+        <DropdownMenuContent
+          side={isCollapsed ? "right" : "top"}
+          align="start"
+          className="w-72"
+        >
+          <DropdownMenuItem
+            onClick={() => {
+              setOpen(false);
+              router.push("/auth/signin");
+            }}
+            className="cursor-pointer flex items-start gap-3 py-2.5"
+          >
+            <LogIn className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
+              <span className="font-medium">{tc("signIn")}</span>
+              <span className="text-xs text-muted-foreground leading-snug">
+                {tc("signInCreditsDescription")}
+              </span>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setOpen(false);
+              router.push("/settings/ai");
+            }}
+            className="cursor-pointer flex items-start gap-3 py-2.5"
+          >
+            <Bot className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
+              <span className="font-medium">{tai("aiConfiguration")}</span>
+              <span className="text-xs text-muted-foreground leading-snug">
+                {tai("configurePreferences")}
+              </span>
+            </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   }
 
   // Signed in - get display info

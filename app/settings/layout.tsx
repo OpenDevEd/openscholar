@@ -6,32 +6,24 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 export default function SettingsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const t = useTranslations("settings");
   const tc = useTranslations("common");
+  const { phase } = useAuthReadiness();
+  const isSignedIn = phase === "authenticated";
 
-  const sidebarNavItems = [
-    {
-      title: tc("general"),
-      href: "/settings",
-      icon: Settings2,
-    },
-    {
-      title: tc("ai"),
-      href: "/settings/ai",
-      icon: Bot,
-    },
-    {
-      title: tc("billing"),
-      href: "/settings/billing",
-      icon: CreditCard,
-    },
-  ];
+  const sidebarNavItems = isSignedIn
+    ? [
+        { title: tc("general"), href: "/settings", icon: Settings2 },
+        { title: tc("ai"), href: "/settings/ai", icon: Bot },
+        { title: tc("billing"), href: "/settings/billing", icon: CreditCard },
+      ]
+    : [{ title: tc("ai"), href: "/settings/ai", icon: Bot }];
 
   return (
     <PageWrapper>

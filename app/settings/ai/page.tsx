@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ import { fetchOpenRouterModels } from "@/app/actions/openrouter";
 import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 
 export default function AISettingsPage() {
@@ -42,6 +44,10 @@ export default function AISettingsPage() {
     apiKeyMode,
     setApiKeyMode,
   } = useAIConfigStore();
+
+  const { phase } = useAuthReadiness();
+  const isSignedIn = phase === "authenticated";
+  const router = useRouter();
 
   const [models, setModels] = useState<AIModel[]>([]);
   const [modelSearch, setModelSearch] = useState("");
@@ -77,6 +83,13 @@ export default function AISettingsPage() {
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
   };
+
+  // Reset credits mode when signed out (persisted store may have credits selected)
+  useEffect(() => {
+    if (!isSignedIn && apiKeyMode === "credits") {
+      setApiKeyMode("local");
+    }
+  }, [isSignedIn, apiKeyMode, setApiKeyMode]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -231,16 +244,22 @@ export default function AISettingsPage() {
             <motion.button
               type="button"
               onClick={() => {
+                if (!isSignedIn) {
+                  toast.validation.failed(t("signInToUseCredits"));
+                  router.push("/auth/signin");
+                  return;
+                }
                 setApiKeyMode("credits");
                 toast.entity.updated(tc("mode"), t("usingCredits"));
               }}
-              whileHover={{ scale: 1.01 }}
+              whileHover={isSignedIn ? { scale: 1.01 } : undefined}
               transition={{ duration: 0.2 }}
               className={cn(
                 "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
                 apiKeyMode === "credits"
                   ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
                   : "border-border/50 hover:border-border/80 hover:bg-muted/30",
+                !isSignedIn && "opacity-60",
               )}
             >
               <div
