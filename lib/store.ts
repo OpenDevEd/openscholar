@@ -961,7 +961,7 @@ export const useSidebarStore = create<SidebarState>()(
   persist(
     (set, get) => ({
       isOpen: false,
-      isCollapsed: false,
+      isCollapsed: true,
       _hasHydrated: false,
       setOpen: (open) => set({ isOpen: open }),
       setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),

@@ -6,6 +6,7 @@ export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/bookmarks",
   "/history",
   "/settings/ai",
+  "/data/:path*", // PostHog proxy - must work when signed out
 ] as const;
 
 function normalizePathname(pathname: string) {

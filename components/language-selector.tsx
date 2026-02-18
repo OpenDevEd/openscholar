@@ -13,7 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Languages, Sparkles, ArrowRight } from "lucide-react";
+import { Languages, Wand2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -85,7 +85,7 @@ export function LanguageSelector({
             </p>
             <div className="space-y-1.5">
               <div className="flex items-start gap-2 text-xs">
-                <Sparkles className="h-3.5 w-3.5 mt-0.5 text-background/95" />
+                <Wand2 className="h-3.5 w-3.5 mt-0.5 text-background/95" />
                 <span className="text-background/85">
                   {tf("languageTooltipPreserveIntent")}
                 </span>
