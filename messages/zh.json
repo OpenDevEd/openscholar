@@ -176,9 +176,16 @@
   },
   "home": {
     "tagline": "搜索数百万学术论文和研究文章",
-    "searchPlaceholder": "搜索论文、主题...或以?结尾的研究问题",
+    "searchPlaceholder": "输入关键词（例如：机器学习 AND 神经网络）",
+    "researchPlaceholder": "用通俗语言描述您要查找的内容",
     "convertingQuestion": "将研究问题转换为搜索查询...",
-    "enterToSearch": "按 <kbd>Enter</kbd> 搜索，<kbd>Shift+Enter</kbd> 换行"
+    "enterToSearch": "按 <kbd>Enter</kbd> 搜索，<kbd>Shift+Enter</kbd> 换行",
+    "searchMode": "关键词",
+    "researchMode": "问题",
+    "toSubmit": "提交",
+    "newLine": "换行",
+    "forResearch": "切换到提问模式",
+    "researchModeDescription": "我们会将您的问题转化为搜索，找到相关论文。"
   },
   "search": {
     "nothingMatched": "未找到与 \"{query}\" 匹配的内容",

@@ -176,9 +176,16 @@
   },
   "home": {
     "tagline": "Recherchez des millions d'articles académiques et de recherche",
-    "searchPlaceholder": "Rechercher des articles, sujets... ou posez une question de recherche terminée par ?",
+    "searchPlaceholder": "Saisissez des mots-clés (ex. machine learning AND réseaux de neurones)",
+    "researchPlaceholder": "Décrivez ce que vous recherchez en langage naturel",
     "convertingQuestion": "Conversion de la question de recherche en requête...",
-    "enterToSearch": "Appuyez sur <kbd>Entrée</kbd> pour rechercher, <kbd>Maj+Entrée</kbd> pour nouvelle ligne"
+    "enterToSearch": "Appuyez sur <kbd>Entrée</kbd> pour rechercher, <kbd>Maj+Entrée</kbd> pour nouvelle ligne",
+    "searchMode": "Mots-clés",
+    "researchMode": "Question",
+    "toSubmit": "pour envoyer",
+    "newLine": "nouvelle ligne",
+    "forResearch": "pour passer en mode question",
+    "researchModeDescription": "Nous transformons votre question en recherche et trouvons les bons articles."
   },
   "search": {
     "nothingMatched": "Rien ne correspond à \"{query}\"",

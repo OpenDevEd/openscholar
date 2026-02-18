@@ -176,9 +176,16 @@
   },
   "home": {
     "tagline": "लाखों अकादमिक पेपर और शोध लेख खोजें",
-    "searchPlaceholder": "पेपर, विषय खोजें... या ? से समाप्त होने वाला शोध प्रश्न पूछें",
+    "searchPlaceholder": "कीवर्ड लिखें (जैसे machine learning AND neural networks)",
+    "researchPlaceholder": "सादी भाषा में बताएं कि आप क्या ढूंढ रहे हैं",
     "convertingQuestion": "शोध प्रश्न को खोज क्वेरी में परिवर्तित कर रहे हैं...",
-    "enterToSearch": "खोजने के लिए <kbd>Enter</kbd> दबाएं, नई लाइन के लिए <kbd>Shift+Enter</kbd>"
+    "enterToSearch": "खोजने के लिए <kbd>Enter</kbd> दबाएं, नई लाइन के लिए <kbd>Shift+Enter</kbd>",
+    "searchMode": "कीवर्ड",
+    "researchMode": "प्रश्न",
+    "toSubmit": "जमा करने के लिए",
+    "newLine": "नई लाइन",
+    "forResearch": "प्रश्न मोड में स्विच करने के लिए",
+    "researchModeDescription": "हम आपके प्रश्न को खोज में बदलकर सही पेपर ढूंढेंगे।"
   },
   "search": {
     "nothingMatched": "\"{query}\" से कुछ मेल नहीं खाया",

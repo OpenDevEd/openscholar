@@ -176,16 +176,16 @@
   },
   "home": {
     "tagline": "Search millions of academic papers and research articles",
-    "searchPlaceholder": "Search for papers, topics...",
-    "researchPlaceholder": "Ask a research question...",
+    "searchPlaceholder": "Type keywords (e.g. machine learning AND neural networks)",
+    "researchPlaceholder": "Describe what you're looking for in plain language",
     "convertingQuestion": "Converting research question to search query...",
     "enterToSearch": "Press <kbd>Enter</kbd> to search, <kbd>Shift+Enter</kbd> for new line",
-    "searchMode": "Search",
-    "researchMode": "Research",
+    "searchMode": "Keywords",
+    "researchMode": "Question",
     "toSubmit": "to submit",
     "newLine": "new line",
-    "forResearch": "for research request",
-    "researchModeDescription": "Research mode uses AI to understand your question and find the most relevant papers."
+    "forResearch": "to switch to question mode",
+    "researchModeDescription": "We'll turn your question into a search and find the right papers."
   },
   "search": {
     "nothingMatched": "Nothing matched \"{query}\"",
