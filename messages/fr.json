@@ -188,7 +188,8 @@
     "researchModeDescription": "Nous transformons votre question en recherche et trouvons les bons articles.",
     "enterKey": "Entrée",
     "shiftEnterKey": "Maj + Entrée",
-    "researchButton": "Recherche"
+    "researchButton": "Recherche",
+    "questionShortcutHint": "Appuyez sur ? pour le mode question"
   },
   "search": {
     "nothingMatched": "Rien ne correspond à \"{query}\"",

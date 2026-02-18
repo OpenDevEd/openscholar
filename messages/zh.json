@@ -188,7 +188,8 @@
     "researchModeDescription": "我们会将您的问题转化为搜索，找到相关论文。",
     "enterKey": "Enter",
     "shiftEnterKey": "Shift + Enter",
-    "researchButton": "研究"
+    "researchButton": "研究",
+    "questionShortcutHint": "按 ? 切换到提问模式"
   },
   "search": {
     "nothingMatched": "未找到与 \"{query}\" 匹配的内容",

@@ -188,7 +188,8 @@
     "researchModeDescription": "हम आपके प्रश्न को खोज में बदलकर सही पेपर ढूंढेंगे।",
     "enterKey": "Enter",
     "shiftEnterKey": "Shift + Enter",
-    "researchButton": "अनुसंधान"
+    "researchButton": "अनुसंधान",
+    "questionShortcutHint": "प्रश्न मोड के लिए ? दबाएं"
   },
   "search": {
     "nothingMatched": "\"{query}\" से कुछ मेल नहीं खाया",
