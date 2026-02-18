@@ -35,6 +35,13 @@ import {
 } from "@/lib/filters";
 import { SearchHistoryBookmarkForm } from "@/components/search-history-bookmark-form";
 import { SearchHistoryActionButtons } from "@/components/search-history-action-buttons";
+import { SearchHistoryActionDropdown } from "@/components/search-history-action-dropdown";
+import { SearchHistoryClearAllButton } from "@/components/search-history-clear-all-button";
+import { SearchHistoryHeaderSection } from "@/components/search-history-header-section";
+import { SearchHistoryHeaderButtons } from "@/components/search-history-header-buttons";
+import { SearchHistoryEmptyState } from "@/components/search-history-empty-state";
+import { SearchHistoryItem } from "@/components/search-history-item";
+import { SearchHistoryPagination } from "@/components/search-history-pagination";
 
 interface SearchHistoryProps {
   onSearchResults: (query: string, searchField: SearchField, dateRange?: DateRange, sortBy?: string, yearRange?: [number, number], filterType?: "date" | "year", index?: number) => void;
@@ -206,866 +213,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
     toast.entity.deleted(tToast("entityQueryEntry"));
   };
 
-  // Sub-components
-  const ActionDropdown = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleDownloadJSON}>
-          <FileDown className="h-4 w-4 mr-2" />
-          {t('common.downloadAsJson')}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDownloadCSV}>
-          <FileDown className="h-4 w-4 mr-2" />
-          {t('common.downloadAsCsv')}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleUploadJSON}>
-          <FileUp className="h-4 w-4 mr-2" />
-          {t('common.uploadJson')}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleUploadCSV}>
-          <FileUp className="h-4 w-4 mr-2" />
-          {t('common.uploadCsv')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
-  const ClearAllButton = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handleClearAll}
-      disabled={searchHistory.length === 0}
-      className={cn(
-        'text-muted-foreground hover:text-destructive transition-colors self-start sm:self-auto',
-        searchHistory.length === 0 && 'opacity-50'
-      )}
-    >
-      <Trash2 className="h-4 w-4" />
-    </Button>
-  );
-
-  const HeaderSection = ({ title, count, variant = 'compact' }: { title: string; count: number; variant?: 'compact' | 'full' }) => (
-    <div className="flex items-center gap-2">
-      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-        <Clock className="h-4 w-4 text-white" />
-      </div>
-      {variant === 'compact' ? (
-        <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-      ) : (
-        <CardTitle className="text-xl">{title}</CardTitle>
-      )}
-      <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded-full">
-        {count}{variant === 'full' ? ` ${t('commandCenter.searchPlural')}` : ''}
-      </span>
-    </div>
-  );
-
-  const HeaderButtons = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => (
-    <div className={cn(
-      "flex items-center",
-      variant === 'compact' ? 'gap-2' : 'gap-2 sm:gap-3 justify-center sm:justify-end'
-    )}>
-      <ActionDropdown variant={variant} />
-      <ClearAllButton variant={variant} />
-    </div>
-  );
-
-  const EmptyState = () => (
-    <div className="text-center py-12">
-      <div className="flex justify-center mb-4">
-        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500/10 to-purple-600/10 flex items-center justify-center">
-          <History className="h-8 w-8 text-muted-foreground" />
-        </div>
-      </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">{t('emptyStates.noSearchHistory')}</h3>
-      <p className="text-muted-foreground text-sm max-w-md mx-auto">
-        {t('emptyStates.startSearching')}
-      </p>
-    </div>
-  );
-
-  const SearchItem = ({ result, index, actualIndex, variant = 'compact' }: { 
-    result: any; 
-    index: number; 
-    actualIndex: number; 
-    variant?: 'compact' | 'full' 
-  }) => {
-    const isCurrentSearch = currentSearchId && result.id === currentSearchId;
-    const idColor = getIdColor(result.id);
-    const [isQueryHistoryExpanded, setIsQueryHistoryExpanded] = useState(false);
-    const queryHistoryCount = result.queryHistory?.length || 0;
-    
-    return (
-      <div
-        key={actualIndex}
-        className={cn(
-          "group relative overflow-hidden rounded-xl border transition-all duration-200",
-          isCurrentSearch 
-            ? 'border-primary/50 bg-primary/5 shadow-md ring-1 ring-primary/20' 
-            : cn(
-                "border-border/50 hover:border-border",
-                variant === 'compact' 
-                  ? 'bg-card/50 backdrop-blur-sm hover:bg-card/80 hover:shadow-md' 
-                  : 'bg-card/30 backdrop-blur-sm hover:bg-card/60 hover:shadow-lg'
-              )
-        )}
-      >
-        <div className={cn(variant === 'compact' ? 'p-4' : 'p-5', !isQueryHistoryExpanded && "pb-2")}>
-          
-          {/* === HERO SECTION: Result Count + Info Rows === */}
-          <div className={cn(
-            "flex gap-3 items-stretch",
-            variant === 'compact' ? 'flex-col sm:flex-row' : 'flex-row'
-          )}>
-            
-            {/* Result Count Block - stretches to fill height */}
-            <div 
-              className={cn(
-                "flex-shrink-0 rounded-lg flex flex-col items-center justify-center",
-                variant === 'compact' 
-                  ? 'px-3 py-2 min-w-[72px]' 
-                  : 'px-4 py-2 min-w-[88px]'
-              )}
-              style={{ 
-                backgroundColor: idColor.bg,
-                border: `1px solid ${idColor.border}` 
-              }}
-            >
-              <div 
-                className={cn(
-                  "font-bold leading-none",
-                  variant === 'compact' ? 'text-lg' : 'text-xl'
-                )}
-                style={{ color: idColor.text }}
-              >
-                {format.number(result.count, result.count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
-              </div>
-              <div 
-                className="text-[10px] opacity-70 leading-none mt-0.5"
-                style={{ color: idColor.text }}
-              >
-                {t('common.results').toLowerCase()}
-              </div>
-            </div>
-            
-            {/* Info Rows - tight line height, equal gaps */}
-            <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-              {/* Row 1: Query Text */}
-              <p className={cn(
-                "break-words leading-tight",
-                variant === 'compact' ? 'text-sm font-medium' : 'text-base font-semibold'
-              )}>
-                <QueryText query={result.query} />
-              </p>
-              
-              {/* Row 2: Research Question (if available) */}
-              {result.questionHistory?.length > 0 && (
-                <p className="text-xs text-muted-foreground leading-tight truncate" title={result.questionHistory[result.questionHistory.length - 1]?.question}>
-                  <span className="opacity-60">{tc("questionPrefix")}</span> {result.questionHistory[result.questionHistory.length - 1]?.question}
-                </p>
-              )}
-              
-              {/* Row 3: Metadata */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground leading-tight">
-                <span>{format.relativeTime(new Date(result.createdAt), now)}</span>
-                <span className="opacity-50">•</span>
-                <span>{getFieldLabel(result.field, tFilters as FilterT)}</span>
-                {result.sortBy && getSortLabel(result.sortBy, tFilters as FilterT) && (
-                  <>
-                    <span className="opacity-50">•</span>
-                    <span>{getSortLabel(result.sortBy, tFilters as FilterT)}</span>
-                  </>
-                )}
-              </div>
-              
-              {/* Row 4: Language */}
-              <div className="flex items-center gap-1.5 text-xs leading-tight">
-                {result.language ? (() => {
-                  const lang = languageOptions.find(l => l.code === result.language);
-                  return lang ? (
-                    <>
-                      <img 
-                        src={lang.flagUrl}
-                        alt={tl(lang.code as never) || lang.name}
-                        className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
-                      />
-                      <span className="text-foreground">{tl(lang.code as never) || lang.name}</span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Languages className="h-3 w-3" />
-                      <span className="italic">{tp("languageNotSet")}</span>
-                    </span>
-                  );
-                })() : (
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Languages className="h-3 w-3" />
-                    <span className="italic">{tp("languageNotSet")}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* === BOOKMARK FORM (inline, when active) === */}
-          {bookmarkingIndex === actualIndex && (
-            <div className="mt-4">
-              <SearchHistoryBookmarkForm
-                query={result.query}
-                onSubmit={() => setBookmarkingIndex(null)}
-                onCancel={handleBookmarkCancel}
-                variant="full"
-              />
-            </div>
-          )}
-          
-          {/* === FOOTER: Filters + History + Actions (single row) === */}
-          <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
-            {/* Left: Filters (scrollable) */}
-            <div className="flex-1 overflow-x-auto scrollbar-hover">
-              {hasActiveFiltersFromResult(result) && (
-                <HistoryFilterBadges result={result} variant={variant} />
-              )}
-            </div>
-            
-            {/* Right: History Toggle + Action Buttons */}
-            <div className="flex items-center gap-1 shrink-0">
-              {/* History Toggle - only show if count > 1 */}
-              {queryHistoryCount > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "text-muted-foreground hover:text-foreground gap-1",
-                    variant === 'compact' ? 'h-7 px-2' : 'h-8 px-2'
-                  )}
-                  onClick={() => setIsQueryHistoryExpanded(!isQueryHistoryExpanded)}
-                  title={ta("queryHistory")}
-                >
-                  <History className={cn(variant === 'compact' ? 'h-3 w-3' : 'h-3.5 w-3.5')} />
-                  <span className={cn(variant === 'compact' ? 'text-xs' : 'text-xs')}>{queryHistoryCount}</span>
-                </Button>
-              )}
-              
-              {/* Action Buttons */}
-              <SearchHistoryActionButtons
-                query={result.query}
-                searchId={result.id}
-                index={actualIndex}
-                variant={variant}
-                isLoading={loadingResultIndex === actualIndex}
-                canDelete={true}
-                onCopy={handleCopyQuery}
-                onBookmark={handleBookmarkClick}
-                onSearch={(query) => onSearchResults(query, result.field || currentSearchField, result.dateRange, result.sortBy, result.yearRange, result.filterType, actualIndex)}
-                onDelete={handleDeleteItem}
-              />
-            </div>
-          </div>
-          
-          {/* === EXPANDED QUERY HISTORY === */}
-          {isQueryHistoryExpanded && queryHistoryCount > 1 && (
-            <div className="mt-3">
-              <QueryHistoryDisplay 
-                queryHistory={result.queryHistory} 
-                currentQuery={result.query}
-                searchId={result.id}
-                onQuerySelect={onQuerySelect}
-                onCopyQuery={handleCopyQuery}
-                onDeleteQueryEntry={handleQueryDelete}
-                initiallyExpanded={true}
-              />
-            </div>
-          )}
-          
-        </div>
-      </div>
-    );
-  };
-
-// Component to display query history for a search item
-function QueryHistoryDisplay({ 
-  queryHistory, 
-  currentQuery, 
-  searchId, 
-  onQuerySelect,
-  onCopyQuery,
-  onDeleteQueryEntry,
-  initiallyExpanded = false
-}: { 
-  queryHistory: any[], 
-  currentQuery: string,
-  searchId?: string,
-  onQuerySelect?: (searchId: string, query: string) => void,
-  onCopyQuery?: (query: string) => void,
-  onDeleteQueryEntry?: (searchId: string, queryIndex: number) => void,
-  initiallyExpanded?: boolean
-}) {
-  const t = useTranslations();
-  const ta = useTranslations("accessibility");
-  const th = useTranslations("historyPage");
-  const locale = useLocale();
-  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
-  const [bookmarkingQueryIndex, setBookmarkingQueryIndex] = useState<number | null>(null);
-  
-  if (!queryHistory || queryHistory.length <= 1) {
-    return null;
-  }
-
-  const handleQueryClick = (query: string) => {
-    if (onQuerySelect && searchId && query !== currentQuery) {
-      onQuerySelect(searchId, query);
-    }
-  };
-
-  const handleQueryBookmarkClick = (queryIndex: number) => {
-    setBookmarkingQueryIndex(queryIndex);
-  };
-
-  const handleQueryBookmarkCancel = () => {
-    setBookmarkingQueryIndex(null);
-  };
-
-  // If controlled by parent (initiallyExpanded), skip the toggle and show content directly
-  if (initiallyExpanded) {
-    return (
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {queryHistory.slice().reverse().map((entry, index) => {
-          const isMostRecent = index === 0;
-          const originalIndex = queryHistory.length - 1 - index;
-          const date = new Date(entry.timestamp);
-          const timeAgo = format.relativeTime(date, now);
-          const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
-          const canDelete = !isMostRecent;
-          
-          return (
-            <div
-              key={index}
-              className={cn(
-                "rounded-lg border overflow-hidden",
-                isMostRecent 
-                  ? "bg-primary/5 border-primary/30" 
-                  : "bg-card border-border/60"
-              )}
-            >
-              {/* Current indicator */}
-              {isMostRecent && (
-                <div className="h-1 bg-primary" />
-              )}
-              
-              {bookmarkingQueryIndex === originalIndex ? (
-                <div className="p-3">
-                  <SearchHistoryBookmarkForm
-                    query={entry.query}
-                    onSubmit={() => setBookmarkingQueryIndex(null)}
-                    onCancel={handleQueryBookmarkCancel}
-                    variant="compact"
-                  />
-                </div>
-              ) : (
-                <div>
-                  {/* Main content */}
-                  <div className="p-3">
-                    <div className="flex items-start gap-2">
-                      <Search className={cn(
-                        "h-4 w-4 mt-0.5 flex-shrink-0",
-                        isMostRecent ? "text-primary" : "text-muted-foreground"
-                      )} />
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="mb-1">
-                          <p className={cn(
-                            "text-sm font-mono break-all",
-                            isMostRecent ? "text-primary font-medium" : "text-foreground"
-                          )}>
-                            {entry.query}
-                          </p>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{timeAgo}</span>
-                          <span>•</span>
-                          <span>{format.dateTime(date, { dateStyle: 'short', timeStyle: 'short' })}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Desktop action buttons */}
-                      <div className="hidden md:flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => onCopyQuery?.(entry.query)}
-                          title={ta("copyQuery")}
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => handleQueryBookmarkClick(originalIndex)}
-                          title={ta("saveAsBookmark")}
-                        >
-                          <BookmarkPlus className="h-3 w-3" />
-                        </Button>
-                        
-                        {isClickable && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => handleQueryClick(entry.query)}
-                            title={ta("searchWithQuery")}
-                          >
-                            <Search className="h-3 w-3" />
-                          </Button>
-                        )}
-                        
-                        {canDelete && onDeleteQueryEntry && searchId && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive"
-                            onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-                            title={ta("removeFromHistory")}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Mobile action buttons */}
-                  <div className="md:hidden border-t bg-muted/30 px-3 py-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => onCopyQuery?.(entry.query)}
-                        >
-                          <Copy className="h-3 w-3 mr-1" />
-                          {t("common.copy")}
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => handleQueryBookmarkClick(originalIndex)}
-                        >
-                          <BookmarkPlus className="h-3 w-3 mr-1" />
-                          {t("common.save")}
-                        </Button>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        {isClickable && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-xs"
-                            onClick={() => handleQueryClick(entry.query)}
-                          >
-                            <Search className="h-3 w-3 mr-1" />
-                            {ta("switchQuery")}
-                          </Button>
-                        )}
-                        
-                        {canDelete && onDeleteQueryEntry && searchId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-xs text-destructive hover:text-destructive"
-                            onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            {t("common.delete")}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-2 border-t pt-2">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        {th("queryHistoryCount", { count: queryHistory.length })}
-      </button>
-      
-      {isExpanded && (
-        <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-          {queryHistory.slice().reverse().map((entry, index) => {
-            const isMostRecent = index === 0;
-            const originalIndex = queryHistory.length - 1 - index;
-            const date = new Date(entry.timestamp);
-            const timeAgo = format.relativeTime(date, now);
-            const isClickable = onQuerySelect && searchId && entry.query !== currentQuery;
-            const canDelete = !isMostRecent;
-            
-            return (
-              <div
-                key={index}
-            className={cn(
-                  "rounded-lg border overflow-hidden",
-                  isMostRecent 
-                    ? "bg-primary/5 border-primary/30" 
-                    : "bg-card border-border/60"
-                )}
-              >
-                {/* Current indicator */}
-                {isMostRecent && (
-                  <div className="h-1 bg-primary" />
-                )}
-                
-                {bookmarkingQueryIndex === originalIndex ? (
-                  <div className="p-3">
-                    <SearchHistoryBookmarkForm
-                      query={entry.query}
-                      onSubmit={() => setBookmarkingQueryIndex(null)}
-                      onCancel={handleQueryBookmarkCancel}
-                      variant="compact"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    {/* Main content */}
-                    <div className="p-3">
-                      <div className="flex items-start gap-2">
-                        <Search className={cn(
-                          "h-4 w-4 mt-0.5 flex-shrink-0",
-                          isMostRecent ? "text-primary" : "text-muted-foreground"
-                        )} />
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="mb-1">
-                            <p className={cn(
-                              "text-sm font-mono break-all",
-                              isMostRecent ? "text-primary font-medium" : "text-foreground"
-                            )}>
-                              {entry.query}
-                            </p>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{timeAgo}</span>
-                            <span>•</span>
-                            <span>{format.dateTime(date, { dateStyle: 'short', timeStyle: 'short' })}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Desktop action buttons */}
-                        <div className="hidden md:flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => onCopyQuery?.(entry.query)}
-                            title={ta("copyQuery")}
-                          >
-                            <Copy className="h-3 w-3" />
-          </Button>
-                          
-          <Button
-            variant="ghost"
-            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => handleQueryBookmarkClick(originalIndex)}
-            title={ta("saveAsBookmark")}
-          >
-                            <BookmarkPlus className="h-3 w-3" />
-          </Button>
-                          
-                          {isClickable && (
-          <Button
-            variant="ghost"
-            size="icon"
-                              className="h-7 w-7"
-                              onClick={() => handleQueryClick(entry.query)}
-                              title={ta("searchWithQuery")}
-                            >
-                              <Search className="h-3 w-3" />
-          </Button>
-                          )}
-                          
-                          {canDelete && onDeleteQueryEntry && searchId && (
-          <Button
-            variant="ghost"
-            size="icon"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-            title={ta("removeFromHistory")}
-          >
-                              <Trash2 className="h-3 w-3" />
-          </Button>
-                          )}
-        </div>
-      </div>
-              </div>
-                    
-                    {/* Mobile action buttons */}
-                    <div className="md:hidden border-t bg-muted/30 px-3 py-2">
-                      <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <Button
-                            variant="ghost"
-                    size="sm"
-                            className="h-8 px-2 text-xs"
-                            onClick={() => onCopyQuery?.(entry.query)}
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            {t("common.copy")}
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-xs"
-                            onClick={() => handleQueryBookmarkClick(originalIndex)}
-                          >
-                            <BookmarkPlus className="h-3 w-3 mr-1" />
-                            {t("common.save")}
-                          </Button>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          {isClickable && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-xs"
-                              onClick={() => handleQueryClick(entry.query)}
-                            >
-                              <Search className="h-3 w-3 mr-1" />
-                              {ta("switchQuery")}
-                            </Button>
-                          )}
-                          
-                          {canDelete && onDeleteQueryEntry && searchId && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-xs text-destructive hover:text-destructive"
-                              onClick={() => onDeleteQueryEntry(searchId, originalIndex)}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              {t("common.delete")}
-                            </Button>
-                          )}
-                </div>
-              </div>
-            </div>
-            </div>
-          )}
-        </div>
-            );
-          })}
-      </div>
-      )}
-    </div>
-  );
-}
-
-  const Pagination = ({ variant = 'compact' }: { variant?: 'compact' | 'full' }) => {
-  const { searchHistory } = useSearchHistoryStore();
-  const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
-  const itemsPerPage = variant === 'compact' ? 5 : 10;
-  
-    const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
-    const goToPage = (page: number) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-
-    if (totalPages <= 1) return null;
-
-    if (variant === 'compact') {
-      return (
-        <>
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="h-9 w-9 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            {/* Mobile pagination - show 3 pages */}
-            <div className="flex items-center gap-1 sm:hidden">
-              {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 2) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 1) {
-                  pageNum = totalPages - 2 + i;
-                } else {
-                  pageNum = currentPage - 1 + i;
-                }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => goToPage(pageNum)}
-                    className="h-9 w-9 p-0 text-xs"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            {/* Desktop pagination - show 5 pages */}
-            <div className="hidden sm:flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => goToPage(pageNum)}
-                    className="h-9 w-9 p-0 text-xs"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="h-9 w-9 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {searchHistory.length > itemsPerPage && (
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                {t('common.showingStartEnd', {
-                  start: (currentPage - 1) * itemsPerPage + 1,
-                  end: Math.min(currentPage * itemsPerPage, searchHistory.length),
-                  total: searchHistory.length,
-                  label: t('commandCenter.searchPlural'),
-                })}
-              </p>
-            </div>
-          )}
-        </>
-      );
-    }
-
-    return (
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6">
-        <p className="text-sm text-muted-foreground text-center sm:text-left">
-          {t('common.showingStartEnd', {
-            start: (currentPage - 1) * itemsPerPage + 1,
-            end: Math.min(currentPage * itemsPerPage, searchHistory.length),
-            total: searchHistory.length,
-            label: t('commandCenter.searchPlural'),
-          })}
-        </p>
-        <div className="flex items-center gap-2 justify-center sm:justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="flex items-center gap-1"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="hidden xs:inline">{t('common.previous')}</span>
-            <span className="xs:hidden">{t('common.previous')}</span>
-          </Button>
-          <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 7) {
-                pageNum = i + 1;
-              } else if (currentPage <= 4) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 3) {
-                pageNum = totalPages - 6 + i;
-              } else {
-                pageNum = currentPage - 3 + i;
-              }
-              
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => goToPage(pageNum)}
-                  className="h-9 w-9 p-0"
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-1"
-          >
-            <span className="hidden xs:inline">{t('common.next')}</span>
-            <span className="xs:hidden">{t('common.next')}</span>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
-
   // Main render logic
   const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -1076,29 +223,48 @@ function QueryHistoryDisplay({
     return (
       <div className="w-full space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <HeaderSection title={t('historyPage.recentSearches')} count={searchHistory.length} variant="compact" />
-          <HeaderButtons variant="compact" />
+          <SearchHistoryHeaderSection title={t('historyPage.recentSearches')} count={searchHistory.length} variant="compact" />
+          <SearchHistoryHeaderButtons
+            variant="compact"
+            onDownloadJSON={handleDownloadJSON}
+            onDownloadCSV={handleDownloadCSV}
+            onUploadJSON={handleUploadJSON}
+            onUploadCSV={handleUploadCSV}
+            onClearAll={handleClearAll}
+            isClearDisabled={searchHistory.length === 0}
+          />
         </div>
         
         {searchHistory.length === 0 ? (
-          <EmptyState />
+          <SearchHistoryEmptyState />
         ) : (
           <>
             <div className="space-y-3">
               {displayHistory.map((result, index) => {
                 const actualIndex = startIndex + index;
                 return (
-                  <SearchItem 
+                  <SearchHistoryItem
                     key={actualIndex}
-                    result={result} 
-                    index={index} 
-                    actualIndex={actualIndex} 
-                    variant="compact" 
+                    result={result}
+                    index={index}
+                    actualIndex={actualIndex}
+                    variant="compact"
+                    currentSearchId={currentSearchId}
+                    currentSearchField={currentSearchField}
+                    bookmarkingIndex={bookmarkingIndex}
+                    loadingResultIndex={loadingResultIndex}
+                    onBookmarkClick={handleBookmarkClick}
+                    onBookmarkCancel={handleBookmarkCancel}
+                    onCopyQuery={handleCopyQuery}
+                    onDeleteItem={handleDeleteItem}
+                    onQueryDelete={handleQueryDelete}
+                    onSearchResults={onSearchResults}
+                    onQuerySelect={onQuerySelect}
                   />
                 );
               })}
             </div>
-            <Pagination variant="compact" />
+            <SearchHistoryPagination variant="compact" />
           </>
         )}
       </div>
@@ -1109,7 +275,7 @@ function QueryHistoryDisplay({
     return (
       <div className="w-full space-y-4">
         {searchHistory.length === 0 ? (
-          <EmptyState />
+          <SearchHistoryEmptyState />
         ) : (
           <>
             {/* Clean mobile-first header */}
@@ -1121,13 +287,29 @@ function QueryHistoryDisplay({
                 </span>
                 {/* Mobile actions on same line */}
                 <div className="sm:hidden">
-                  <HeaderButtons variant="compact" />
+                  <SearchHistoryHeaderButtons
+                    variant="compact"
+                    onDownloadJSON={handleDownloadJSON}
+                    onDownloadCSV={handleDownloadCSV}
+                    onUploadJSON={handleUploadJSON}
+                    onUploadCSV={handleUploadCSV}
+                    onClearAll={handleClearAll}
+                    isClearDisabled={searchHistory.length === 0}
+                  />
                 </div>
               </div>
               
               {/* Desktop actions */}
               <div className="hidden sm:flex">
-                <HeaderButtons variant="compact" />
+                <SearchHistoryHeaderButtons
+                  variant="compact"
+                  onDownloadJSON={handleDownloadJSON}
+                  onDownloadCSV={handleDownloadCSV}
+                  onUploadJSON={handleUploadJSON}
+                  onUploadCSV={handleUploadCSV}
+                  onClearAll={handleClearAll}
+                  isClearDisabled={searchHistory.length === 0}
+                />
               </div>
             </div>
             
@@ -1135,17 +317,28 @@ function QueryHistoryDisplay({
               {displayHistory.map((result, index) => {
                 const actualIndex = startIndex + index;
                 return (
-                  <SearchItem 
+                  <SearchHistoryItem
                     key={actualIndex}
-                    result={result} 
-                    index={index} 
-                    actualIndex={actualIndex} 
-                    variant="full" 
+                    result={result}
+                    index={index}
+                    actualIndex={actualIndex}
+                    variant="full"
+                    currentSearchId={currentSearchId}
+                    currentSearchField={currentSearchField}
+                    bookmarkingIndex={bookmarkingIndex}
+                    loadingResultIndex={loadingResultIndex}
+                    onBookmarkClick={handleBookmarkClick}
+                    onBookmarkCancel={handleBookmarkCancel}
+                    onCopyQuery={handleCopyQuery}
+                    onDeleteItem={handleDeleteItem}
+                    onQueryDelete={handleQueryDelete}
+                    onSearchResults={onSearchResults}
+                    onQuerySelect={onQuerySelect}
                   />
                 );
               })}
             </div>
-            <Pagination variant="full" />
+            <SearchHistoryPagination variant="full" />
           </>
         )}
       </div>
@@ -1156,30 +349,49 @@ function QueryHistoryDisplay({
     <Card suppressHydrationWarning className="w-full">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <HeaderSection title={t('common.searchHistory')} count={searchHistory.length} variant="full" />
-          <HeaderButtons variant="full" />
+          <SearchHistoryHeaderSection title={t('common.searchHistory')} count={searchHistory.length} variant="full" />
+          <SearchHistoryHeaderButtons
+          variant="full"
+          onDownloadJSON={handleDownloadJSON}
+          onDownloadCSV={handleDownloadCSV}
+          onUploadJSON={handleUploadJSON}
+          onUploadCSV={handleUploadCSV}
+          onClearAll={handleClearAll}
+          isClearDisabled={searchHistory.length === 0}
+        />
         </div>
       </CardHeader>
       <CardContent>
         {searchHistory.length === 0 ? (
-          <EmptyState />
+          <SearchHistoryEmptyState />
         ) : (
           <>
             <div className="space-y-3">
               {displayHistory.map((result, index) => {
                 const actualIndex = startIndex + index;
                 return (
-                  <SearchItem 
+                  <SearchHistoryItem
                     key={actualIndex}
-                    result={result} 
-                    index={index} 
-                    actualIndex={actualIndex} 
-                    variant="full" 
+                    result={result}
+                    index={index}
+                    actualIndex={actualIndex}
+                    variant="full"
+                    currentSearchId={currentSearchId}
+                    currentSearchField={currentSearchField}
+                    bookmarkingIndex={bookmarkingIndex}
+                    loadingResultIndex={loadingResultIndex}
+                    onBookmarkClick={handleBookmarkClick}
+                    onBookmarkCancel={handleBookmarkCancel}
+                    onCopyQuery={handleCopyQuery}
+                    onDeleteItem={handleDeleteItem}
+                    onQueryDelete={handleQueryDelete}
+                    onSearchResults={onSearchResults}
+                    onQuerySelect={onQuerySelect}
                   />
                 );
               })}
             </div>
-            <Pagination variant="full" />
+            <SearchHistoryPagination variant="full" />
           </>
         )}
       </CardContent>

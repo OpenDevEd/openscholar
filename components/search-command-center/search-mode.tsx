@@ -46,24 +46,23 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const setSuggestedQuery = useKeywordExpansionDialogStore((state) => state.setSuggestedQuery);
   // Keyword search state - also sync with global store for real-time tooltip updates
   const { setCurrentQuery } = useCurrentQueryStore();
-  const [localInputValue, setLocalInputValue] = useState(search?.params?.q ?? "");
+  const urlQuery = search?.params?.q ?? "";
+  const [localInputValue, setLocalInputValue] = useState(urlQuery);
   const [isTranslating, setIsTranslating] = useState(false);
+
+  // Sync URL query to global store (used by app-sidebar, home page). Parent key handles localInputValue remount on URL change.
+  useEffect(() => {
+    setCurrentQuery(urlQuery);
+  }, [urlQuery, setCurrentQuery]);
 
   // Use the new router hooks
   const { execute: enhanceQuery, isConfigured: isEnhanceConfigured } = useEnhanceSearchQuery();
   const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
 
-  const urlQuery = search?.params?.q ?? "";
   const selectedLanguage = search?.params?.lang ?? "";
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
   const isLanguageSelectorDisabled = isTranslating || isEnhancing;
-
-  // Sync local input when URL query changes
-  useEffect(() => {
-    setLocalInputValue(urlQuery);
-    setCurrentQuery(urlQuery);
-  }, [urlQuery, setCurrentQuery]);
 
   // Sync question from history when search changes
   useEffect(() => {

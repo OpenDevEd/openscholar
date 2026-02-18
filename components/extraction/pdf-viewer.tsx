@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // PDF sync effects: initial page, text layer, page proxy reset on deps change
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";

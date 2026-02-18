@@ -19,7 +19,7 @@ import { ViewMode } from "@/lib/types";
 import { useAppToast } from "@/lib/toast";
 import { submitNewSearch } from "@/lib/search/actions";
 import { subtleSpring } from "@/lib/animation-config";
-import { type BookmarkEntry } from "./index";
+import type { BookmarkEntry } from "./types";
 
 interface BookmarksItemProps {
   bookmark: BookmarkEntry;

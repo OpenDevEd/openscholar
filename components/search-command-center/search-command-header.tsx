@@ -20,7 +20,7 @@ import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
 import { ViewModeToggleCompact } from "@/components/view-mode-toggle";
 import { useIsTablet } from "@/lib/hooks";
-import type { CommandCenterMode } from "./index";
+import type { CommandCenterMode } from "./types";
 import { cn } from "@/lib/utils";
 
 interface SearchCommandHeaderProps {

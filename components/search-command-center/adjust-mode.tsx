@@ -34,8 +34,13 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   const urlQuery = search.params.q;
   const urlLanguage = search.params.lang ?? "";
 
-  // Local state for editing
+  // Local state for editing; kept in sync with urlQuery when URL changes (e.g. prev/next)
   const [editableQuery, setEditableQuery] = useState(urlQuery);
+
+  // Sync editableQuery when urlQuery changes (prev/next navigation, external updates)
+  useEffect(() => {
+    setEditableQuery(urlQuery);
+  }, [urlQuery]);
   const [aiInstructions, setAiInstructions] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [queryFlash, setQueryFlash] = useState(false);
@@ -51,11 +56,6 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   );
 
   const isFormDisabled = isLoading || isValidating || isEnhancing;
-
-  // Sync editable query when URL query changes
-  useEffect(() => {
-    setEditableQuery(urlQuery);
-  }, [urlQuery]);
 
   // Track previous history length to detect new additions
   const prevHistoryLengthRef = useRef(queryHistory.length);

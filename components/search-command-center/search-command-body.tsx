@@ -4,12 +4,13 @@ import React from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { SearchMode } from "./search-mode";
 import { AdjustMode } from "./adjust-mode";
-import type { CommandCenterMode } from "./index";
+import type { CommandCenterMode } from "./types";
 import { subtleSpring } from "@/lib/animation-config";
 
 interface SearchCommandBodyProps {
   mode: CommandCenterMode;
   searchId: string;
+  currentQuery: string;
   isLoading?: boolean;
   isValidating?: boolean;
 }
@@ -35,6 +36,7 @@ const slideVariants = {
 export function SearchCommandBody({
   mode,
   searchId,
+  currentQuery,
   isLoading,
   isValidating,
 }: SearchCommandBodyProps) {
@@ -55,6 +57,7 @@ export function SearchCommandBody({
         >
           {mode === "search" ? (
             <SearchMode
+              key={currentQuery}
               isLoading={isLoading}
               isValidating={isValidating}
             />

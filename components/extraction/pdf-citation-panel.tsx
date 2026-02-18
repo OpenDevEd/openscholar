@@ -189,6 +189,7 @@ export function PdfCitationPanel({
           </div>
         ) : shouldRenderPdfViewer ? (
           <PdfViewer
+            key={`${pdfUrl}-${citation!.page}-${citation!.charRange?.[0] ?? 0}`}
             pdfUrl={pdfUrl!}
             initialPageNumber={citation!.page}
             highlightPage={citation!.page}

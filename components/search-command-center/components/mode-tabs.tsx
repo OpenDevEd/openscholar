@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "motion/react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CommandCenterMode } from "../index";
+import type { CommandCenterMode } from "../types";
 import { useTranslations } from "next-intl";
 
 const tabSpring = {

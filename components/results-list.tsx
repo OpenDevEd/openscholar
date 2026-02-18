@@ -25,7 +25,7 @@ import {
   useUIStore,
 } from "@/lib/store";
 import { ViewMode } from "@/lib/types";
-import { PaperCard } from "./paper-card/index";
+import { PaperCard } from "./paper-card";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 

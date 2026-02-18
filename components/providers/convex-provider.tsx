@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // ConvexProviderWithAuth requires passing a hook; auth sync effect uses setState in subscription pattern
 
 import { ConvexReactClient, ConvexProviderWithAuth, useConvexAuth, useMutation } from "convex/react";
 import {
@@ -68,7 +69,7 @@ function useAuthFromAuthKit() {
     } catch {
       return undefined;
     }
-  }, [user?.id]);
+  }, [user]);
   const getAccessToken = useCallback(() => fetchAccessTokenFromRoute(), [fetchAccessTokenFromRoute]);
   const refresh = useCallback(() => fetchAccessTokenFromRoute(), [fetchAccessTokenFromRoute]);
   const fetchAccessToken = useMemo(

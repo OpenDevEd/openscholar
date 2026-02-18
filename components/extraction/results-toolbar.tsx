@@ -33,6 +33,7 @@ export type ResultsSortBy =
 
 interface ResultsToolbarProps {
   filters: FilterState;
+  searchQueryResetKey?: number;
   onFiltersChange: Dispatch<SetStateAction<FilterState>>;
   viewMode: "table" | "cards" | "split";
   onViewModeChange: (mode: "table" | "cards" | "split") => void;
@@ -46,6 +47,7 @@ interface ResultsToolbarProps {
 
 export function ResultsToolbar({
   filters,
+  searchQueryResetKey = 0,
   onFiltersChange,
   viewMode,
   onViewModeChange,
@@ -127,6 +129,7 @@ export function ResultsToolbar({
 
         {/* Search */}
         <SearchInput
+          key={searchQueryResetKey}
           value={filters.searchQuery}
           onChange={handleSearchChange}
           placeholder={t("searchPapersPlaceholder")}

@@ -19,24 +19,19 @@ import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { BookmarkSortBy } from "@/lib/types";
-import {
-  CommandCenterContainer,
-  CommandCenterHeader,
-  CommandCenterToolbar,
-  CommandCenterList,
-  CommandCenterPagination,
-} from "@/components/command-center";
+import { CommandCenterContainer } from "@/components/command-center/command-center-container";
+import { CommandCenterHeader } from "@/components/command-center/command-center-header";
+import { CommandCenterToolbar } from "@/components/command-center/command-center-toolbar";
+import { CommandCenterList } from "@/components/command-center/command-center-list";
+import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { BookmarksItem } from "./bookmarks-item";
 import { BookmarksAddForm } from "./bookmarks-add-form";
 import { BookmarksSaveBanner } from "./bookmarks-save-banner";
 import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
+import type { BookmarkEntry } from "./types";
 
-export interface BookmarkEntry {
-  name: string;
-  expansion: string;
-  createdAt: number;
-}
+export type { BookmarkEntry } from "./types";
 
 export function BookmarksCommandCenter() {
   const toast = useAppToast();

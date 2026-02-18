@@ -33,12 +33,7 @@ export function SearchInput({ value, onChange, placeholder, className }: SearchI
     }
   }, [debouncedValue]); // Intentionally omit onChange and value to prevent loop
 
-  // Sync local value with external value changes
-  useEffect(() => {
-    if (value !== localValue && value !== debouncedValue) {
-      setLocalValue(value);
-    }
-  }, [value]); // Intentionally omit localValue and debouncedValue
+  // Parent uses key={searchQueryResetKey} to remount when filters are reset; no sync effect needed
 
   return (
     <div className={`relative flex-1 ${className}`}>

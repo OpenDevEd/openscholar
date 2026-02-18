@@ -9,7 +9,8 @@ import { SearchCommandBody } from "./search-command-body";
 import { SearchCommandFooter } from "./search-command-footer";
 import { ScreeningExpansion } from "./screening-expansion";
 
-export type CommandCenterMode = "search" | "adjust";
+export type { CommandCenterMode } from "./types";
+import type { CommandCenterMode } from "./types";
 
 interface SearchCommandCenterProps {
   searchId: string;
@@ -71,6 +72,7 @@ export function SearchCommandCenter({
       <SearchCommandBody
         mode={mode}
         searchId={searchId}
+        currentQuery={currentQuery}
         isLoading={isLoading}
         isValidating={isValidating}
       />

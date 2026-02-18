@@ -10,6 +10,8 @@ interface InfoItem {
   color: string
 }
 
+const EMPTY_INFO_ITEMS: InfoItem[] = [];
+
 interface PageHeaderProps {
   /** The main page title */
   title: string
@@ -38,7 +40,7 @@ export function PageHeader({
   showBackButton = false,
   onBack,
   stats, // Keep for backwards compatibility but ignore
-  infoItems = []
+  infoItems = EMPTY_INFO_ITEMS
 }: PageHeaderProps) {
   const t = useTranslations();
   return (
@@ -81,7 +83,7 @@ export function PageHeader({
         <div className="p-3 sm:p-4 bg-muted/30 rounded-lg border">
           <div className="grid grid-cols-1 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-4">
             {infoItems.map((item, index) => (
-              <React.Fragment key={index}>
+              <React.Fragment key={`${item.label}-${item.color}`}>
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                   <div className={`w-2 h-2 rounded-full ${item.color} flex-shrink-0`}></div>
                   <span className="break-words">{item.label}</span>

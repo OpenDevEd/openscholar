@@ -95,6 +95,7 @@ export default function JobDetailPage() {
   );
 
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
+  const [searchQueryResetKey, setSearchQueryResetKey] = useState(0);
   const debouncedFilters = useDebouncedValue(filters, 150);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -338,6 +339,7 @@ export default function JobDetailPage() {
       }
       setCurrentPage(1);
       setActiveTab("results");
+      setSearchQueryResetKey((k) => k + 1);
       toast.success(tJob('appliedSavedView', { name: view?.name || tc('other') }));
     },
     [setViewMode, setFilters, setResultsSortBy, toast, tJob, tc]
@@ -765,6 +767,7 @@ export default function JobDetailPage() {
               >
                 <ResultsToolbar
                   filters={filters}
+                  searchQueryResetKey={searchQueryResetKey}
                   onFiltersChange={(f) => {
                     setFilters(f);
                     setCurrentPage(1);
@@ -817,6 +820,7 @@ export default function JobDetailPage() {
                           onClick={() => {
                           setFilters(defaultFilters);
                           setCurrentPage(1);
+                          setSearchQueryResetKey((k) => k + 1);
                         }}
                         >
                           {tJob('clearFilters')}
