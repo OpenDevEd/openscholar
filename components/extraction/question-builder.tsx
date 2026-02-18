@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import { useState, useRef, useEffect } from "react";
 import { motion, Reorder, useDragControls } from "motion/react";

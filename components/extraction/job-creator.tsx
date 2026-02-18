@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -74,14 +75,14 @@ export function JobCreator() {
     e?.preventDefault();
     if (validStep < 3 && canProceed()) {
       setDirection(1);
-      setStepRaw(validStep + 1);
+      setStepRaw((prev) => Math.min(prev + 1, 3));
     }
   };
 
   const handleBack = () => {
     if (validStep > 1) {
       setDirection(-1);
-      setStepRaw(validStep - 1);
+      setStepRaw((prev) => Math.max(prev - 1, 1));
     } else {
       router.push("/extraction");
     }

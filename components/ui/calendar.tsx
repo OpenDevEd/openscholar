@@ -1,4 +1,5 @@
-"use client"
+"use client";
+"use no memo"; // try/finally in handlers
 
 import * as React from "react"
 import {

@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";

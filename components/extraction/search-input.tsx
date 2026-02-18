@@ -17,7 +17,7 @@ interface SearchInputProps {
 export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
   const t = useTranslations("extraction");
   const resolvedPlaceholder = placeholder ?? t("searchPlaceholder");
-  const [localValue, setLocalValue] = useState(value);
+  const [localValue, setLocalValue] = useState(() => value);
   const debouncedValue = useDebouncedValue(localValue, 300);
   const isInitialMount = useRef(true);
 

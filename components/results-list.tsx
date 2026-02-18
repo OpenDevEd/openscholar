@@ -115,7 +115,7 @@ function PapersGrid({
           );
           return (
             <PaperCard
-              key={`${result.id}-${index}`}
+              key={result.id}
               result={result}
               resultIndex={originalIndex}
               onDownloadItem={onDownloadItem}

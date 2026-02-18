@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import React, { useEffect, Suspense } from "react";
 import Link from "next/link";

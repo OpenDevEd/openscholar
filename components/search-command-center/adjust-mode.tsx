@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // Sync effect for editableQuery when urlQuery changes (prev/next); try/finally in enhance handler
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";

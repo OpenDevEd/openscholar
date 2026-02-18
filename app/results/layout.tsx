@@ -1,26 +1,21 @@
-"use client";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { ResultsClientLayout } from "./results-client-layout";
 
-import React, { Suspense } from "react";
-import { SearchProvider, SearchInitializer } from "@/lib/search";
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  const tc = await getTranslations("common");
 
-interface ResultsLayoutProps {
-  children: React.ReactNode;
+  return {
+    title: `${tc("results")} | ${t("siteName")}`,
+    description: t("defaultDescription"),
+  };
 }
 
-export default function ResultsLayout({ children }: ResultsLayoutProps) {
-  return (
-    <Suspense
-      fallback={
-        <div className="bg-background min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-        </div>
-      }
-    >
-      <SearchInitializer>
-        <SearchProvider>
-          {children}
-        </SearchProvider>
-      </SearchInitializer>
-    </Suspense>
-  );
+export default async function ResultsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <ResultsClientLayout>{children}</ResultsClientLayout>;
 }

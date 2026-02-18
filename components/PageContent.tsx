@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";

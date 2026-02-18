@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useAction } from "convex/react";

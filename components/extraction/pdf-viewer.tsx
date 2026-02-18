@@ -92,8 +92,8 @@ export function PdfViewer({
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [numPages, setNumPages] = useState(1);
-  const [currentPage, setCurrentPage] = useState(Math.max(1, initialPageNumber || 1));
-  const [pageInput, setPageInput] = useState(String(Math.max(1, initialPageNumber || 1)));
+  const [currentPage, setCurrentPage] = useState(() => Math.max(1, initialPageNumber || 1));
+  const [pageInput, setPageInput] = useState(() => String(Math.max(1, initialPageNumber || 1)));
 
   const [textLayerReady, setTextLayerReady] = useState(false);
   const [pageProxy, setPageProxy] = useState<PDFPageProxy | null>(null);
@@ -198,13 +198,21 @@ export function PdfViewer({
 
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      setPage(currentPage + 1);
+      setCurrentPage((prev) => {
+        const next = clampPage(prev + 1, numPages);
+        setPageInput(String(next));
+        return next;
+      });
       return;
     }
 
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      setPage(currentPage - 1);
+      setCurrentPage((prev) => {
+        const next = clampPage(prev - 1, numPages);
+        setPageInput(String(next));
+        return next;
+      });
       return;
     }
 

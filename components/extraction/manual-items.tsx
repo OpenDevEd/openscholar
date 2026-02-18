@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";

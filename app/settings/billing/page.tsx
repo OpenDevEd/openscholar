@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // try/finally in handlers
 
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";

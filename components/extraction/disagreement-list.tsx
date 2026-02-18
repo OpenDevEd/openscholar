@@ -40,7 +40,7 @@ export function DisagreementList({
   onJumpToExample,
 }: DisagreementListProps) {
   const t = useTranslations("extraction");
-  const [visibleCount, setVisibleCount] = useState(maxInitial);
+  const [visibleCount, setVisibleCount] = useState(() => maxInitial);
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
 
   const visibleClusters = useMemo(

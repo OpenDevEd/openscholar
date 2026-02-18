@@ -31,7 +31,8 @@ export function QueryHistoryDisplay({
   const th = useTranslations("historyPage");
   const format = useFormatter();
   const now = useNow();
-  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const isExpanded = initiallyExpanded ? true : internalExpanded;
   const [bookmarkingQueryIndex, setBookmarkingQueryIndex] = useState<number | null>(null);
 
   if (!queryHistory || queryHistory.length <= 1) {
@@ -217,7 +218,7 @@ export function QueryHistoryDisplay({
     <div className="mt-2 border-t pt-2">
       <button
         type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => setInternalExpanded((prev) => !prev)}
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
