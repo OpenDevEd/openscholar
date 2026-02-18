@@ -208,6 +208,7 @@ function NavItem({
               ? "w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
               : "flex items-center gap-2"
           }
+          arrowClassName={customTooltipContent ? "bg-background fill-background" : undefined}
         >
           {customTooltipContent ? (
             <div className="p-3">{customTooltipContent}</div>
@@ -246,6 +247,7 @@ function NavItem({
         <TooltipContent
           side="right"
           className="w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
+          arrowClassName="bg-background fill-background"
         >
           <div className="p-3">{customTooltipContent}</div>
         </TooltipContent>

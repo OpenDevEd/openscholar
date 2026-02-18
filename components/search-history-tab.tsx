@@ -226,7 +226,11 @@ export function SearchHistoryTab({
       <TooltipTrigger asChild>
         {buttonContent}
       </TooltipTrigger>
-      <TooltipContent side="right" className="w-80 bg-background text-foreground border shadow-lg p-0 max-h-96 overflow-y-auto">
+      <TooltipContent
+        side="right"
+        className="w-80 bg-background text-foreground border shadow-lg p-0 max-h-96 overflow-y-auto"
+        arrowClassName="bg-background fill-background"
+      >
         <div className="p-3">
           <SearchTooltipContent
             id={id || searchId}

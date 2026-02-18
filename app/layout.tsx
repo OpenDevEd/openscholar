@@ -11,6 +11,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
@@ -76,19 +77,21 @@ export default async function RootLayout({
               <ThemeProvider>
                 <NuqsAdapter>
                   <QuerySyncProvider>
-                    <div className="flex min-h-screen">
-                      {/* Sidebar */}
-                      <AppSidebar />
+                    <TooltipProvider>
+                      <div className="flex min-h-screen">
+                        {/* Sidebar */}
+                        <AppSidebar />
 
-                      {/* Main Content Area */}
-                      <div className="flex-1 flex flex-col min-w-0 min-h-0">
-                        {/* Mobile Navbar */}
-                        <MobileNavbar />
+                        {/* Main Content Area */}
+                        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                          {/* Mobile Navbar */}
+                          <MobileNavbar />
 
-                        <AuthRouteGate>{children}</AuthRouteGate>
+                          <AuthRouteGate>{children}</AuthRouteGate>
+                        </div>
                       </div>
-                    </div>
-                    <Toaster />
+                      <Toaster />
+                    </TooltipProvider>
                   </QuerySyncProvider>
                 </NuqsAdapter>
               </ThemeProvider>

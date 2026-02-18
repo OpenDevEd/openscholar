@@ -6,20 +6,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
-import { enUS, enGB, zhCN, fr, hi } from "react-day-picker/locale"
+import {
+  DayPicker,
+  getDefaultClassNames,
+  type DayButton,
+} from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { useLocale } from "next-intl"
-
-const LOCALE_MAP: Record<string, (typeof enUS)> = {
-  "en-US": enUS,
-  "en-GB": enGB,
-  zh: zhCN,
-  fr,
-  hi,
-}
 
 function Calendar({
   className,
@@ -29,18 +23,14 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
-  locale: localeProp,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
-  const nextIntlLocale = useLocale()
-  const dateFnsLocale = localeProp ?? LOCALE_MAP[nextIntlLocale] ?? enUS
   const defaultClassNames = getDefaultClassNames()
 
   return (
     <DayPicker
-      locale={dateFnsLocale}
       showOutsideDays={showOutsideDays}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
@@ -49,7 +39,11 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
-      formatters={formatters}
+      formatters={{
+        formatMonthDropdown: (date) =>
+          date.toLocaleString("default", { month: "short" }),
+        ...formatters,
+      }}
       classNames={{
         root: cn("w-fit", defaultClassNames.root),
         months: cn(
@@ -110,7 +104,10 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "relative w-full h-full p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none",
+          "relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none",
+          props.showWeekNumber
+            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
+            : "[&:first-child[data-selected=true]_button]:rounded-l-md",
           defaultClassNames.day
         ),
         range_start: cn(
