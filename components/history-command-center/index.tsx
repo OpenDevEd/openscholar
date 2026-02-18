@@ -1,4 +1,5 @@
 "use client";
+"use no memo"; // createHistoryListItem + Date.now in posthog handler
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -28,6 +29,29 @@ import {
   CommandCenterPagination,
 } from "@/components/command-center";
 import { HistoryItem } from "./history-item";
+import type { ViewMode } from "@/lib/types";
+
+function createHistoryListItem(
+  viewMode: ViewMode,
+  onSearchClick: (item: SearchResult) => void
+) {
+  return function HistoryListItem({
+    item,
+    index,
+  }: {
+    item: SearchResult;
+    index: number;
+  }) {
+    return (
+      <HistoryItem
+        item={item}
+        index={index}
+        viewMode={viewMode}
+        onSearchClick={onSearchClick}
+      />
+    );
+  };
+}
 import posthog from "posthog-js";
 
 export function HistoryCommandCenter() {
@@ -261,13 +285,9 @@ export function HistoryCommandCenter() {
           }
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
-          renderItem={(item, index) => (
-            <HistoryItem
-              item={item}
-              index={index}
-              viewMode={historyViewMode}
-              onSearchClick={handleSearchClick}
-            />
+          ItemComponent={createHistoryListItem(
+            historyViewMode,
+            handleSearchClick
           )}
         />
 

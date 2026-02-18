@@ -87,8 +87,8 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
           <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
             <p className="text-xs text-muted-foreground mb-2">{tb("expanded")}</p>
             <div className="flex flex-wrap gap-1 text-sm break-words">
-              {parts.map((part, index) => (
-                <span key={`${part.originalKeyword ?? ""}-${part.text}-${index}`} className="inline-flex">
+              {parts.map((part) => (
+                <span key={`${part.originalKeyword ?? ""}-${part.text}`} className="inline-flex">
                   {part.isExpanded ? (
                     <Badge 
                       variant="secondary" 

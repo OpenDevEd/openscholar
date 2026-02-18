@@ -74,7 +74,12 @@ export function PaperCardListSimple({
       >
         <div className="flex items-center gap-3 p-3 @sm/card:p-4">
           {/* Rating - always visible */}
-          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div
+            role="group"
+            className="flex-shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <RatingSelector paperId={result.id} variant="compact" />
           </div>
 
@@ -98,17 +103,21 @@ export function PaperCardListSimple({
             </div>
 
             {/* Screening badges - icon only */}
-            <div 
+            <div
+              role="group"
               className="hidden @md/card:flex items-center gap-1 flex-wrap flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               <ScreeningResponses data={result} variant="icons-only" />
             </div>
 
             {/* Citation count badge */}
-            <div 
+            <div
+              role="group"
               className="hidden @sm/card:flex items-center gap-1 flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               <div
                 role="button"
@@ -118,7 +127,8 @@ export function PaperCardListSimple({
                   handleCitesSearch();
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     e.stopPropagation();
                     handleCitesSearch();
                   }
@@ -132,9 +142,11 @@ export function PaperCardListSimple({
             </div>
 
             {/* Quick actions */}
-            <div 
+            <div
+              role="group"
               className="hidden @md/card:flex items-center gap-1 flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               <TranslationToggle
                 isTranslating={isTranslating}
@@ -160,9 +172,11 @@ export function PaperCardListSimple({
           </div>
 
           {/* Mobile citation count */}
-          <div 
+          <div
+            role="group"
             className="@sm/card:hidden flex items-center gap-1 flex-shrink-0 text-xs text-orange-600 dark:text-orange-400"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <Quote className="h-3 w-3" />
             <span className="font-medium">{format.number(result.cited_by_count ?? 0)}</span>

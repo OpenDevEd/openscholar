@@ -231,9 +231,17 @@ export function CountrySelector({
     return (
       <div key={node.id} className="w-full">
         <div className="flex items-center gap-2 py-1">
-          <div 
+          <div
+            role="button"
+            tabIndex={0}
             className="flex items-center gap-2 flex-1 cursor-pointer hover:bg-muted/50 rounded-md px-2 py-1"
             onClick={() => toggleNode(node.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleNode(node.id);
+              }
+            }}
           >
             {hasChildren && (
               <ChevronRight 

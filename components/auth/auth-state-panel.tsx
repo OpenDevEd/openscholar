@@ -96,19 +96,16 @@ const ICON_TREATMENT: Record<AuthStateVariant, string> = {
   sync_error_retry: "bg-primary/14 text-primary",
 };
 
-function renderVariantIcon(variant: AuthStateVariant) {
+function AuthStateVariantIcon({ variant }: { variant: AuthStateVariant }) {
   if (variant === "loading") {
     return <Loader2 className="h-5 w-5 animate-spin" aria-hidden />;
   }
-
   if (variant === "sign_in_required") {
     return <LogIn className="h-5 w-5" aria-hidden />;
   }
-
   if (variant === "sync_error_retry") {
     return <RefreshCw className="h-5 w-5" aria-hidden />;
   }
-
   return <ShieldAlert className="h-5 w-5" aria-hidden />;
 }
 
@@ -204,7 +201,7 @@ export function AuthStatePanel({
           )}
           variants={itemVariants}
         >
-          {renderVariantIcon(variant)}
+          <AuthStateVariantIcon variant={variant} />
         </motion.div>
 
         <motion.h2

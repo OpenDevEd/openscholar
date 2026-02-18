@@ -2,6 +2,23 @@
 
 import React from 'react';
 import { Star } from "lucide-react";
+
+function CompactStarDisplay({ currentRating }: { currentRating: number | undefined | null }) {
+  if (currentRating === undefined || currentRating === null) {
+    return (
+      <div className="relative">
+        <Star className="h-3 w-3 text-muted-foreground" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-3 h-px bg-muted-foreground rotate-45"></div>
+        </div>
+      </div>
+    );
+  }
+  if (currentRating === 0) {
+    return <Star className="h-3 w-3 text-muted-foreground" />;
+  }
+  return <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />;
+}
 import {
   Select,
   SelectContent,
@@ -46,26 +63,6 @@ export function RatingSelector({ paperId, variant = "default" }: RatingSelectorP
   
   // Compact variant for mobile focus mode
   if (variant === "compact") {
-    const renderCompactStar = () => {
-      if (currentRating === undefined) {
-        // No rating - star with diagonal line
-        return (
-          <div className="relative">
-            <Star className="h-3 w-3 text-muted-foreground" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3 h-px bg-muted-foreground rotate-45"></div>
-            </div>
-          </div>
-        );
-      } else if (currentRating === 0) {
-        // 0 stars - empty star
-        return <Star className="h-3 w-3 text-muted-foreground" />;
-      } else {
-        // 1-5 stars - filled yellow star
-        return <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />;
-      }
-    };
-
     return (
       <Select
         value={currentRating?.toString() || "no-rating"}
@@ -73,7 +70,7 @@ export function RatingSelector({ paperId, variant = "default" }: RatingSelectorP
       >
         <SelectTrigger className="h-8 w-auto min-w-[4rem] px-2">
           <div className="flex items-center gap-1">
-            {renderCompactStar()}
+            <CompactStarDisplay currentRating={currentRating} />
             <span className="text-xs">
               {currentRating === undefined ? "—" : currentRating}
             </span>

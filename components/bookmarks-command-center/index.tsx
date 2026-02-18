@@ -25,6 +25,37 @@ import { CommandCenterToolbar } from "@/components/command-center/command-center
 import { CommandCenterList } from "@/components/command-center/command-center-list";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { BookmarksItem } from "./bookmarks-item";
+import type { ViewMode } from "@/lib/types";
+
+function createBookmarkListItem(
+  viewMode: ViewMode,
+  editingBookmark: string | null,
+  onEdit: (name: string) => void,
+  onSaveEdit: (name: string, newExpansion: string) => void,
+  onCancelEdit: () => void,
+  onDelete: (name: string) => void
+) {
+  return function BookmarkListItem({
+    item,
+    index,
+  }: {
+    item: BookmarkEntry;
+    index: number;
+  }) {
+    return (
+      <BookmarksItem
+        bookmark={item}
+        index={index}
+        viewMode={viewMode}
+        isEditing={editingBookmark === item.name}
+        onEdit={() => onEdit(item.name)}
+        onSaveEdit={(newExpansion) => onSaveEdit(item.name, newExpansion)}
+        onCancelEdit={onCancelEdit}
+        onDelete={() => onDelete(item.name)}
+      />
+    );
+  };
+}
 import { BookmarksAddForm } from "./bookmarks-add-form";
 import { BookmarksSaveBanner } from "./bookmarks-save-banner";
 import { BookmarksGuide } from "./bookmarks-guide";
@@ -264,19 +295,13 @@ export function BookmarksCommandCenter() {
           emptyDescription={tb("addFirstBookmark")}
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
-          renderItem={(bookmark, index) => (
-            <BookmarksItem
-              bookmark={bookmark}
-              index={index}
-              viewMode={bookmarkViewMode}
-              isEditing={editingBookmark === bookmark.name}
-              onEdit={() => handleEdit(bookmark.name)}
-              onSaveEdit={(newExpansion) =>
-                handleSaveEdit(bookmark.name, newExpansion)
-              }
-              onCancelEdit={handleCancelEdit}
-              onDelete={() => handleDelete(bookmark.name)}
-            />
+          ItemComponent={createBookmarkListItem(
+            bookmarkViewMode,
+            editingBookmark,
+            handleEdit,
+            handleSaveEdit,
+            handleCancelEdit,
+            handleDelete
           )}
         />
 

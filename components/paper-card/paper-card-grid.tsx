@@ -90,9 +90,11 @@ export function PaperCardGrid({
               {result.publication_year}
             </span>
             
-            <div 
+            <div
+              role="group"
               className="flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               <TranslationToggle
                 isTranslating={isTranslating}
@@ -146,9 +148,11 @@ export function PaperCardGrid({
 
           {/* Screening badges - icon only */}
           {screeningQuestions.length > 0 && (
-            <div 
+            <div
+              role="group"
               className="flex items-center gap-1 flex-wrap mb-2"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               {screeningQuestions.map((question, index) => {
                 const isQuestionAnswered = myExistingResponses[question.question];
@@ -173,9 +177,11 @@ export function PaperCardGrid({
           <div className="flex-1" />
 
           {/* Footer: Rating and citations */}
-          <div 
+          <div
+            role="group"
             className="flex items-center justify-between pt-3 mt-auto border-t border-border/50"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <RatingSelector paperId={result.id} variant="compact" />
             

@@ -15,6 +15,19 @@ import {
   CommandCenterPagination,
 } from "@/components/command-center";
 import { JobListItem } from "./job-list-item";
+import type { ViewMode } from "@/lib/types";
+
+function createExtractionJobListItem(viewMode: ViewMode) {
+  return function ExtractionJobListItem({
+    item,
+    index,
+  }: {
+    item: ExtractionJob;
+    index: number;
+  }) {
+    return <JobListItem job={item} viewMode={viewMode} index={index} />;
+  };
+}
 
 type ExtractionJob = Doc<"extractionJobs">;
 
@@ -129,13 +142,7 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
           emptyDescription={t("createJobToStart")}
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
-          renderItem={(job, index) => (
-            <JobListItem
-              job={job}
-              viewMode={extractionViewMode}
-              index={index}
-            />
-          )}
+          ItemComponent={createExtractionJobListItem(extractionViewMode)}
         />
 
         {/* Pagination */}

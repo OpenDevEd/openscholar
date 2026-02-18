@@ -14,7 +14,9 @@ import type { LucideIcon } from "lucide-react";
 interface CommandCenterListProps<T> {
   items: T[];
   viewMode: ViewMode;
-  renderItem: (item: T, index: number) => React.ReactNode;
+  /** Use ItemComponent for proper reconciliation; renderItem is legacy */
+  renderItem?: (item: T, index: number) => React.ReactNode;
+  ItemComponent?: React.ComponentType<{ item: T; index: number }>;
   keyExtractor: (item: T) => string;
   // Empty state
   emptyIcon: LucideIcon;
@@ -34,6 +36,7 @@ export function CommandCenterList<T>({
   items,
   viewMode,
   renderItem,
+  ItemComponent,
   keyExtractor,
   emptyIcon: EmptyIcon,
   emptyTitle,
@@ -92,7 +95,11 @@ export function CommandCenterList<T>({
     <div className={cn(GRID_CLASSES[viewMode])}>
       {items.map((item, index) => (
         <React.Fragment key={keyExtractor(item)}>
-          {renderItem(item, index)}
+          {ItemComponent ? (
+            <ItemComponent item={item} index={index} />
+          ) : (
+            renderItem!(item, index)
+          )}
         </React.Fragment>
       ))}
     </div>

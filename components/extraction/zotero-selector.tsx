@@ -376,7 +376,15 @@ export function ZoteroSelector() {
           return (
             <div
               key={item.key}
+              role="button"
+              tabIndex={0}
               onClick={() => toggleItem(item)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggleItem(item);
+                }
+              }}
               className={cn(
                 "cursor-pointer transition-all duration-200 p-4",
                 index % 2 === 0 ? "bg-background" : "bg-muted/30",

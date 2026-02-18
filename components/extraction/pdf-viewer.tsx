@@ -353,6 +353,7 @@ export function PdfViewer({
   return (
     <div
       ref={rootRef}
+      role="application"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       className="pdf-viewer-shell flex flex-col h-full min-h-0 min-w-0 max-w-full overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm"

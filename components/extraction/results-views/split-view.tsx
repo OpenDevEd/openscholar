@@ -46,7 +46,15 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
               return (
                 <div
                   key={paper._id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedPaperId(paper._id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedPaperId(paper._id);
+                    }
+                  }}
                   className={cn(
                     "p-4 border-b border-border/40 cursor-pointer hover:bg-muted/50 transition-colors",
                     isSelected && "bg-primary/5 border-l-2 border-l-primary"
@@ -246,7 +254,18 @@ function CitationPreview({
 }) {
   const tc = useTranslations("common");
   return (
-    <div className="bg-muted/30 rounded-lg border border-border/40 p-3 space-y-2 cursor-pointer hover:bg-muted/50" onClick={onClick}>
+    <div
+      role="button"
+      tabIndex={0}
+      className="bg-muted/30 rounded-lg border border-border/40 p-3 space-y-2 cursor-pointer hover:bg-muted/50"
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">{tc("citation")}</span>
         <Quote className="w-3 h-3 text-muted-foreground" />

@@ -677,6 +677,8 @@ export function CardContainer({
 }) {
   return (
     <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={cn(
         cardContainerClasses.base,
         cardContainerClasses.hover,
@@ -685,6 +687,16 @@ export function CardContainer({
         className
       )}
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
     >
       {children}
     </div>

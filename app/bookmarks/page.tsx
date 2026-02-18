@@ -37,8 +37,8 @@ function BookmarksFallback() {
           </div>
           {/* List skeleton */}
           <div className="p-6 space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={`skeleton-${i}`} className="h-20 bg-muted rounded-xl"></div>
+            {[1, 2, 3].map((id) => (
+              <div key={`skeleton-item-${id}`} className="h-20 bg-muted rounded-xl"></div>
             ))}
           </div>
         </div>

@@ -9,6 +9,34 @@ import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { cn, isRatingFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
+function StarRatingDisplay({ rating }: { rating: number }) {
+  if (rating === 0) {
+    return (
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={`star-slot-${i}`}
+            className="h-4 w-4 text-muted-foreground/20"
+          />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }, (_, i) => (
+        <Star
+          key={`star-slot-${i}`}
+          className={cn(
+            "h-4 w-4",
+            i < rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function RatingRangePicker() {
   const tf = useTranslations("searchFilters");
   const tc = useTranslations("common");
@@ -46,37 +74,6 @@ export function RatingRangePicker() {
     return tf("nStars", { count: rating });
   };
 
-  const renderStars = (rating: number) => {
-    if (rating === 0) {
-      return (
-        <div className="flex items-center gap-0.5">
-          {Array.from({ length: 5 }, (_, i) => (
-            <Star
-              key={`star-empty-${i}`}
-              className="h-4 w-4 text-muted-foreground/20"
-            />
-          ))}
-        </div>
-      );
-    }
-    
-    return (
-      <div className="flex items-center gap-0.5">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Star
-            key={`star-${rating}-${i}`}
-            className={cn(
-              "h-4 w-4",
-              i < rating 
-                ? 'fill-yellow-400 text-yellow-400' 
-                : 'text-muted-foreground/20'
-            )}
-          />
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Toggle for Only Rated Papers */}
@@ -102,11 +99,11 @@ export function RatingRangePicker() {
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-4">
               <div className="flex items-center gap-2">
-                {renderStars(ratingRange[0])}
+                <StarRatingDisplay rating={ratingRange[0]} />
               </div>
               <span className="text-muted-foreground">{tc("to")}</span>
               <div className="flex items-center gap-2">
-                {renderStars(ratingRange[1])}
+                <StarRatingDisplay rating={ratingRange[1]} />
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
