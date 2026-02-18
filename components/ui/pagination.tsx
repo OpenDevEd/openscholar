@@ -13,7 +13,6 @@ function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   const t = useTranslations("accessibility")
   return (
     <nav
-      role="navigation"
       aria-label={t("pagination")}
       data-slot="pagination"
       className={cn("mx-auto flex w-full justify-center", className)}

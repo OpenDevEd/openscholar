@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("metadata");
-  const tc = await getTranslations("common");
-  const te = await getTranslations("extraction");
+  const [t, tc, te] = await Promise.all([
+    getTranslations("metadata"),
+    getTranslations("common"),
+    getTranslations("extraction"),
+  ]);
 
   return {
     title: `${tc("new")} | ${t("siteName")}`,

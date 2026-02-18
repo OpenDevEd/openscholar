@@ -114,25 +114,19 @@ export function Pricing() {
   // Fetch prices using SWR
   const {
     data: prices,
-    error,
     isLoading: isPricesLoading,
   } = useSWR<PlanPrice[]>(
     "stripe-prices",
-    async () => {
-      return await getPlans({});
-    },
+    async () => getPlans({}),
     {
       revalidateOnFocus: false,
       revalidateOnMount: true, // Always fetch real Stripe prices on mount
+      onError: (err) => {
+        console.error("Failed to load Stripe prices", err);
+        toast.error(t("failedToLoadPricing"), t("pleaseRefresh"));
+      },
     },
   );
-
-  useEffect(() => {
-    if (error) {
-      console.error("Failed to load Stripe prices", error);
-      toast.error(t("failedToLoadPricing"), t("pleaseRefresh"));
-    }
-  }, [error, t]);
 
   useEffect(() => {
     let cancelled = false;

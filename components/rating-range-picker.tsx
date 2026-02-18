@@ -9,13 +9,15 @@ import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { cn, isRatingFilterActive, DEFAULT_FILTERS } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
+const STAR_SLOT_IDS = ["star-0", "star-1", "star-2", "star-3", "star-4"] as const;
+
 function StarRatingDisplay({ rating }: { rating: number }) {
   if (rating === 0) {
     return (
       <div className="flex items-center gap-0.5">
-        {Array.from({ length: 5 }, (_, i) => (
+        {STAR_SLOT_IDS.map((id) => (
           <Star
-            key={`star-slot-${i}`}
+            key={id}
             className="h-4 w-4 text-muted-foreground/20"
           />
         ))}
@@ -24,9 +26,9 @@ function StarRatingDisplay({ rating }: { rating: number }) {
   }
   return (
     <div className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }, (_, i) => (
+      {STAR_SLOT_IDS.map((id, i) => (
         <Star
-          key={`star-slot-${i}`}
+          key={id}
           className={cn(
             "h-4 w-4",
             i < rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"

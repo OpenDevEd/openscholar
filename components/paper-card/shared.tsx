@@ -675,30 +675,31 @@ export function CardContainer({
   className?: string;
   onClick?: () => void;
 }) {
-  return (
-    <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      className={cn(
-        cardContainerClasses.base,
-        cardContainerClasses.hover,
-        cardContainerClasses.focus,
-        "@container/card",
-        className
-      )}
-      onClick={onClick}
-      onKeyDown={
-        onClick
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick();
-              }
-            }
-          : undefined
-      }
-    >
-      {children}
-    </div>
+  const containerClassName = cn(
+    cardContainerClasses.base,
+    cardContainerClasses.hover,
+    cardContainerClasses.focus,
+    "@container/card",
+    className
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={cn(containerClassName, "w-full text-left appearance-none")}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return <div className={containerClassName}>{children}</div>;
 }

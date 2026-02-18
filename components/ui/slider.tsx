@@ -5,6 +5,8 @@ import { Slider as SliderPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+const THUMB_IDS = ["thumb-0", "thumb-1", "thumb-2", "thumb-3", "thumb-4", "thumb-5"] as const
+
 function Slider({
   className,
   defaultValue,
@@ -49,10 +51,10 @@ function Slider({
           )}
         />
       </SliderPrimitive.Track>
-      {Array.from({ length: _values.length }, (_, index) => (
+      {THUMB_IDS.slice(0, _values.length).map((id) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
-          key={`thumb-pos-${index}`}
+          key={id}
           className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-white shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
