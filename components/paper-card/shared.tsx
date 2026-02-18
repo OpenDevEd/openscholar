@@ -646,7 +646,7 @@ export function JournalLine({
 }
 
 // Card container styles matching the design language
-export const cardContainerClasses = {
+const cardContainerClasses = {
   base: cn(
     "relative group rounded-2xl border transition-all duration-200",
     "bg-background/80 dark:bg-background/60",

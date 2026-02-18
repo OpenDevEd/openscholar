@@ -73,6 +73,7 @@ export function Cascader({
   const isMobile = useIsMobile()
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const columnRefs = React.useRef<Map<string, HTMLDivElement>>(new Map())
+  const listboxId = React.useId()
   const selectedValue = value !== undefined ? value : internalValue
 
   const getColumns = React.useCallback(() => {
@@ -270,6 +271,7 @@ export function Cascader({
       role="combobox"
       aria-expanded={open}
       aria-haspopup="listbox"
+      aria-controls={listboxId}
       aria-disabled={disabled}
       tabIndex={disabled ? -1 : 0}
       className={cn(
@@ -308,6 +310,7 @@ export function Cascader({
 
   const columnsContent = (
     <div
+      id={listboxId}
       ref={scrollContainerRef}
       className={cn("flex", isMobile && "overflow-x-auto")}
       role="listbox"

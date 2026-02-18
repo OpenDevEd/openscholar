@@ -520,7 +520,6 @@
     "noResultsYet": "結果はまだありません",
     "noResultsDescription": "条件に一致する論文がないか、抽出に失敗しました。",
     "resultsWillAppear": "処理されると結果がここに表示されます。",
-    "loadMorePapers": "さらに論文を読み込む",
     "paperProgress": "{processed}/{total} 論文",
     "reviewedAccepted": "確認済み：承認",
     "reviewedRejected": "確認済み：却下",

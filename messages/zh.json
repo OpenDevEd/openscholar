@@ -520,7 +520,6 @@
     "noResultsYet": "尚无结果",
     "noResultsDescription": "没有论文符合您的条件或提取失败。",
     "resultsWillAppear": "处理完成后结果将在此处显示。",
-    "loadMorePapers": "加载更多论文",
     "paperProgress": "{processed}/{total} 篇论文",
     "reviewedAccepted": "已审核：已接受",
     "reviewedRejected": "已审核：已拒绝",

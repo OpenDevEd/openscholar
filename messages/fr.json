@@ -520,7 +520,6 @@
     "noResultsYet": "Pas encore de résultats",
     "noResultsDescription": "Aucun article ne correspond à vos critères ou l'extraction a échoué.",
     "resultsWillAppear": "Les résultats apparaîtront ici au fur et à mesure du traitement.",
-    "loadMorePapers": "Charger plus d'articles",
     "paperProgress": "{processed}/{total} articles",
     "reviewedAccepted": "Examiné : accepté",
     "reviewedRejected": "Examiné : rejeté",

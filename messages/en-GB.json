@@ -520,7 +520,6 @@
     "noResultsYet": "No results yet",
     "noResultsDescription": "No papers matched your criteria or extraction failed.",
     "resultsWillAppear": "Results will appear here as they are processed.",
-    "loadMorePapers": "Load more papers",
     "paperProgress": "{processed}/{total} papers",
     "reviewedAccepted": "Reviewed: accepted",
     "reviewedRejected": "Reviewed: rejected",

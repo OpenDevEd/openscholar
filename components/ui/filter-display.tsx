@@ -99,6 +99,7 @@ interface UnifiedBadgeProps {
 
 function UnifiedBadge({ item, colorClass, baseClass, variant }: UnifiedBadgeProps) {
   const isSidebar = variant === "sidebar";
+  const t = useTranslations("filterDisplay");
   
   // Special rendering for geographic filters with flags
   if (
@@ -134,7 +135,6 @@ function UnifiedBadge({ item, colorClass, baseClass, variant }: UnifiedBadgeProp
     );
   }
 
-  const t = useTranslations("filterDisplay");
   const labelMap: Record<string, string> = {
     cites: t("cites"),
     citedBy: t("citedBy"),

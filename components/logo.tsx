@@ -1,9 +1,39 @@
 "use client"
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks';
+
+interface LogoIconProps {
+  effectiveSize: 'sm' | 'md' | 'lg' | 'xl';
+  alt: string;
+  className?: string;
+}
+
+function LogoIcon({ effectiveSize, alt, className }: LogoIconProps) {
+  return (
+    <div className={cn(
+      'relative flex items-center justify-center shrink-0',
+      className
+    )}>
+      <Image
+        src="/icon.svg"
+        alt={alt}
+        width={effectiveSize === 'sm' ? 32 : effectiveSize === 'md' ? 40 : effectiveSize === 'lg' ? 48 : 64}
+        height={effectiveSize === 'sm' ? 32 : effectiveSize === 'md' ? 40 : effectiveSize === 'lg' ? 48 : 64}
+        className={cn(
+          'object-contain flex',
+          effectiveSize === 'sm' && 'w-8 h-8',
+          effectiveSize === 'md' && 'w-10 h-10',
+          effectiveSize === 'lg' && 'w-12 h-12',
+          effectiveSize === 'xl' && 'w-16 h-16'
+        )}
+      />
+    </div>
+  );
+}
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -42,29 +72,9 @@ export function Logo({
     xl: 'text-6xl'
   };
 
-  // Orange branded academic icon
-  const LogoIcon = ({ className: iconClassName }: { className?: string }) => (
-    <div className={cn(
-      'relative flex items-center justify-center shrink-0',
-      iconClassName
-    )}>
-      <img
-        src="/icon.svg"
-        alt={t("logoAlt")}
-        className={cn(
-          'object-contain flex',
-          effectiveSize === 'sm' && 'w-8 h-8',
-          effectiveSize === 'md' && 'w-10 h-10',
-          effectiveSize === 'lg' && 'w-12 h-12',
-          effectiveSize === 'xl' && 'w-16 h-16'
-        )}
-      />
-    </div>
-  );
-
   const logoContent = (
     <div className={cn('flex items-center gap-2 sm:gap-3 shrink-0', className)}>
-      <LogoIcon />
+      <LogoIcon effectiveSize={effectiveSize} alt={t("logoAlt")} />
       {!shouldShowIconOnly && (
         <div className="flex items-baseline shrink-0">
           <span className={cn(

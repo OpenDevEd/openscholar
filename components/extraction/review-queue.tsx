@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -75,8 +75,6 @@ export function ReviewQueue({
   const queue = queueQuery.data;
   const setReviewState = useMutation(api.extraction.mutations.setResultReviewState);
 
-  if (!enabled) return null;
-
   const items = queue?.status === "ok" ? queue.items || [] : [];
   const current = items[index] || null;
 
@@ -97,6 +95,25 @@ export function ReviewQueue({
     }
     setCorrectedAnswer(String(current.correctedAnswer));
   }, [current?.resultId]);
+
+  const handleSaveState = useCallback(
+    async (state: ReviewState) => {
+      if (!current || saving) return;
+      setSaving(true);
+      try {
+        await setReviewState({
+          resultId: current.resultId,
+          state,
+          note: note.trim() || undefined,
+          correctedAnswer: parseCorrectedAnswer(correctedAnswer, current.questionType),
+        } as any);
+        setIndex((value) => Math.min(value + 1, Math.max(items.length - 1, 0)));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [current, saving, note, correctedAnswer, items.length, setReviewState]
+  );
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -132,7 +149,7 @@ export function ReviewQueue({
 
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [current, items.length, note, correctedAnswer]);
+  }, [current, items.length, note, correctedAnswer, handleSaveState]);
 
   const counts = queue?.status === "ok" ? queue.counts : undefined;
 
@@ -149,21 +166,7 @@ export function ReviewQueue({
     }));
   }, [current]);
 
-  async function handleSaveState(state: ReviewState) {
-    if (!current || saving) return;
-    setSaving(true);
-    try {
-      await setReviewState({
-        resultId: current.resultId,
-        state,
-        note: note.trim() || undefined,
-        correctedAnswer: parseCorrectedAnswer(correctedAnswer, current.questionType),
-      } as any);
-      setIndex((value) => Math.min(value + 1, Math.max(items.length - 1, 0)));
-    } finally {
-      setSaving(false);
-    }
-  }
+  if (!enabled) return null;
 
   function toggleState(state: ReviewState) {
     setSelectedStates((prev) => {

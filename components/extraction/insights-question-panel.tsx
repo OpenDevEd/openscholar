@@ -49,9 +49,8 @@ export function InsightsQuestionPanel({
   const questionInsights = questionInsightsQuery.data;
   const disagreementData = disagreementQuery.data;
 
-  if (!enabled) return null;
-
   useEffect(() => {
+    if (!enabled) return;
     if (questionInsights?.status !== "ok") {
       setArrayView("raw");
       return;
@@ -61,7 +60,9 @@ export function InsightsQuestionPanel({
     } else {
       setArrayView("raw");
     }
-  }, [questionInsights, questionKey]);
+  }, [enabled, questionInsights, questionKey]);
+
+  if (!enabled) return null;
 
   if (!questionKey) {
     return (

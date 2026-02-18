@@ -43,6 +43,11 @@ export function DisagreementList({
   const [visibleCount, setVisibleCount] = useState(maxInitial);
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({});
 
+  const visibleClusters = useMemo(
+    () => clusters.slice(0, visibleCount),
+    [clusters, visibleCount]
+  );
+
   useEffect(() => {
     setVisibleCount(maxInitial);
     setExpandedAnswers({});
@@ -64,11 +69,6 @@ export function DisagreementList({
       </div>
     );
   }
-
-  const visibleClusters = useMemo(
-    () => clusters.slice(0, visibleCount),
-    [clusters, visibleCount]
-  );
 
   return (
     <div className="space-y-3">

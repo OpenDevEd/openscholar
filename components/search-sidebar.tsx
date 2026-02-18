@@ -686,6 +686,8 @@ export function SearchSidebar({
 }: SearchSidebarProps) {
   const tf = useTranslations("searchFilters");
   const toggle = useFilterSidebarStore((s) => s.toggle);
+  const isMobileView = useIsMobile();
+  const panelStore = useFilterSidebarStore();
 
   // Keyboard shortcut: Ctrl+Shift+F to toggle filter sidebar
   useEffect(() => {
@@ -805,14 +807,11 @@ export function SearchSidebar({
   }
 
   if (mode === "panel") {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const isMobile = useIsMobile();
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { isCollapsed, toggle, _hasHydrated } = useFilterSidebarStore();
+    const { isCollapsed, _hasHydrated } = panelStore;
     const { expandedWidth, collapsedWidth } = getFilterSidebarDimensions(isCollapsed);
 
     // Don't render until hydrated or on mobile
-    if (!_hasHydrated || isMobile) return null;
+    if (!_hasHydrated || isMobileView) return null;
 
     // Calculate translateX - when collapsed, slide left so only collapsedWidth is visible
     const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;

@@ -14,7 +14,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
+    <html lang="en">
       <body>
         <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "24px" }}>
           <section style={{ maxWidth: 540, textAlign: "center", fontFamily: "system-ui, sans-serif" }}>

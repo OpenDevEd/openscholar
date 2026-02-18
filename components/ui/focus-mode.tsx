@@ -238,6 +238,42 @@ export function FocusMode({
     }
   }, [currentIndex, isOpen, showSettings]);
 
+  const goToNext = () => {
+    const idx = useUIStore.getState().focusModeIndex;
+    if (idx < papers.length - 1) {
+      if (isMobile) {
+        setSwipeDirection("left");
+      }
+      const nextPaper = papers[idx + 1];
+      setCurrentIndex(idx + 1);
+
+      // Track focus mode navigation
+      posthog.capture("focus_mode_navigation", {
+        direction: "next",
+        current_paper_id: currentPaper?.id,
+        next_paper_id: nextPaper?.id,
+      });
+    }
+  };
+
+  const goToPrevious = () => {
+    const idx = useUIStore.getState().focusModeIndex;
+    if (idx > 0) {
+      if (isMobile) {
+        setSwipeDirection("right");
+      }
+      const previousPaper = papers[idx - 1];
+      setCurrentIndex(idx - 1);
+
+      // Track focus mode navigation
+      posthog.capture("focus_mode_navigation", {
+        direction: "previous",
+        current_paper_id: currentPaper?.id,
+        next_paper_id: previousPaper?.id,
+      });
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -337,40 +373,6 @@ export function FocusMode({
     translatedContent,
     showTranslated,
   ]);
-
-  const goToNext = () => {
-    if (currentIndex < papers.length - 1) {
-      if (isMobile) {
-        setSwipeDirection("left");
-      }
-      const nextPaper = papers[currentIndex + 1];
-      setCurrentIndex(currentIndex + 1);
-
-      // Track focus mode navigation
-      posthog.capture("focus_mode_navigation", {
-        direction: "next",
-        current_paper_id: currentPaper?.id,
-        next_paper_id: nextPaper?.id,
-      });
-    }
-  };
-
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      if (isMobile) {
-        setSwipeDirection("right");
-      }
-      const previousPaper = papers[currentIndex - 1];
-      setCurrentIndex(currentIndex - 1);
-
-      // Track focus mode navigation
-      posthog.capture("focus_mode_navigation", {
-        direction: "previous",
-        current_paper_id: currentPaper?.id,
-        next_paper_id: previousPaper?.id,
-      });
-    }
-  };
 
   const goToIndex = (index: number) => {
     if (index !== currentIndex) {

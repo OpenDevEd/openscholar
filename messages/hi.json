@@ -520,7 +520,6 @@
     "noResultsYet": "अभी तक कोई परिणाम नहीं",
     "noResultsDescription": "कोई पेपर आपके मानदंडों से मेल नहीं खाता या एक्सट्रैक्शन विफल।",
     "resultsWillAppear": "परिणाम यहां प्रक्रिया होने पर दिखाई देंगे।",
-    "loadMorePapers": "और पेपर लोड करें",
     "paperProgress": "{processed}/{total} पेपर",
     "reviewedAccepted": "समीक्षित: स्वीकृत",
     "reviewedRejected": "समीक्षित: अस्वीकृत",
