@@ -37,7 +37,6 @@ export function InsightsQuestionPanel({
 }: InsightsQuestionPanelProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const [arrayView, setArrayView] = useState<"entities" | "raw">("entities");
   const questionInsightsQuery = useProtectedQuery(
     api.extraction.queries.getQuestionInsights,
     enabled && questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip",
@@ -49,18 +48,8 @@ export function InsightsQuestionPanel({
   const questionInsights = questionInsightsQuery.data;
   const disagreementData = disagreementQuery.data;
 
-  useEffect(() => {
-    if (!enabled) return;
-    if (questionInsights?.status !== "ok") {
-      setArrayView("raw");
-      return;
-    }
-    if (questionInsights.insightMode === "array") {
-      setArrayView("entities");
-    } else {
-      setArrayView("raw");
-    }
-  }, [enabled, questionInsights, questionKey]);
+  // arrayView: user toggle when in array mode; key on parent resets when question changes
+  const [arrayView, setArrayView] = useState<"entities" | "raw">("entities");
 
   if (!enabled) return null;
 
@@ -106,6 +95,7 @@ export function InsightsQuestionPanel({
     questionInsights.rawAnswerDistribution || questionInsights.topAnswers || [];
   const entityDistribution = questionInsights.entityDistribution || [];
   const isArrayMode = questionInsights.insightMode === "array";
+  const effectiveArrayView = isArrayMode ? arrayView : "raw";
   const disagreementTitle =
     disagreementData?.status === "ok" && disagreementData.viewMode === "answer_profiles"
       ? t("answerProfiles")
@@ -205,7 +195,7 @@ export function InsightsQuestionPanel({
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-medium">
-            {isArrayMode && arrayView === "entities"
+            {isArrayMode && effectiveArrayView === "entities"
               ? t("topEntities")
               : t("answerDistribution")}
           </div>
@@ -214,7 +204,7 @@ export function InsightsQuestionPanel({
               <Button
                 type="button"
                 size="sm"
-                variant={arrayView === "entities" ? "default" : "outline"}
+                variant={effectiveArrayView === "entities" ? "default" : "outline"}
                 onClick={() => setArrayView("entities")}
               >
                 {t("topEntities")}
@@ -222,7 +212,7 @@ export function InsightsQuestionPanel({
               <Button
                 type="button"
                 size="sm"
-                variant={arrayView === "raw" ? "default" : "outline"}
+                variant={effectiveArrayView === "raw" ? "default" : "outline"}
                 onClick={() => setArrayView("raw")}
               >
                 {t("rawAnswers")}
@@ -231,7 +221,7 @@ export function InsightsQuestionPanel({
           ) : null}
         </div>
 
-        {isArrayMode && arrayView === "entities" ? (
+        {isArrayMode && effectiveArrayView === "entities" ? (
           entityDistribution.length === 0 ? (
             <div className="text-sm text-muted-foreground">
               {t("noEntityValues")}
@@ -278,6 +268,7 @@ export function InsightsQuestionPanel({
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="text-sm font-medium">{disagreementTitle}</div>
         <DisagreementList
+          key={`${(disagreementData?.status === "ok" ? disagreementData.clusters ?? [] : []).length}-${disagreementData?.status === "ok" ? disagreementData.viewMode : ""}`}
           viewMode={disagreementData?.status === "ok" ? disagreementData.viewMode : undefined}
           suppressedSingletonCount={
             disagreementData?.status === "ok" ? disagreementData.suppressedSingletonCount || 0 : 0

@@ -448,6 +448,7 @@ export function ResultsList({
       }}
     >
       <FocusMode
+        key={isFocusModeOpen ? "open" : "closed"}
         isOpen={isFocusModeOpen}
         onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
         papers={filteredResults}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ResultsList } from "./results-list";
 import {
@@ -82,18 +82,10 @@ export default function ResultsPageContent({
     router.push("/");
   };
 
-  // Tab state and animation direction tracking (for mobile)
+  // Tab state and animation direction (for mobile)
   const [activeTab, setActiveTab] = useState<"results" | "filters">("results");
-  const prevTabRef = useRef<"results" | "filters">(activeTab);
-  const directionRef = useRef<Direction>(1);
-
-  useEffect(() => {
-    if (prevTabRef.current !== activeTab) {
-      // results → filters = going right (1), filters → results = going left (-1)
-      directionRef.current = activeTab === "filters" ? 1 : -1;
-      prevTabRef.current = activeTab;
-    }
-  }, [activeTab]);
+  // results → filters = going right (1), filters → results = going left (-1)
+  const direction: Direction = activeTab === "filters" ? 1 : -1;
 
   // Mobile tab-based layout
   if (isMobile) {
@@ -123,11 +115,11 @@ export default function ResultsPageContent({
           </TabsList>
           
           <div className="flex-1 relative overflow-hidden">
-            <AnimatePresence initial={false} mode="popLayout" custom={directionRef.current}>
+            <AnimatePresence initial={false} mode="popLayout" custom={direction}>
               {activeTab === "results" ? (
                 <motion.div
                   key="results"
-                  custom={directionRef.current}
+                  custom={direction}
                   variants={slideVariants}
                   initial="enter"
                   animate="center"
@@ -169,7 +161,7 @@ export default function ResultsPageContent({
               ) : (
                 <motion.div
                   key="filters"
-                  custom={directionRef.current}
+                  custom={direction}
                   variants={slideVariants}
                   initial="enter"
                   animate="center"

@@ -53,6 +53,9 @@ interface PendingSearchRequest {
 
 const SEARCH_FETCH_PARAM_KEY_SET = new Set<SearchParamKey>(SEARCH_FETCH_PARAM_KEYS);
 
+// Module-level cache for params snapshots (avoids ref access during render)
+const paramsSnapshotByKey = new Map<string, SearchParams>();
+
 function parseSearchErrorType(message: string): string {
   const statusMatch = message.match(/\b(\d{3})\b/);
   if (statusMatch) {
@@ -93,7 +96,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const currentParams = urlParams as SearchParams;
   const previousTrackedParamsRef = useRef<SearchParams | null>(null);
   const pendingRequestsRef = useRef<Map<string, PendingSearchRequest>>(new Map());
-  const paramsSnapshotByKeyRef = useRef<Map<string, SearchParams>>(new Map());
   
   // Get store methods for updating history entry
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
@@ -132,17 +134,18 @@ export function SearchProvider({ children }: SearchProviderProps) {
       review: urlParams.review,
     });
 
-    paramsSnapshotByKeyRef.current.set(key, cloneSearchParams(currentParams));
+    paramsSnapshotByKey.set(key, cloneSearchParams(currentParams));
 
-    if (paramsSnapshotByKeyRef.current.size > 40) {
-      const oldestKey = paramsSnapshotByKeyRef.current.keys().next().value;
+    if (paramsSnapshotByKey.size > 40) {
+      const oldestKey = paramsSnapshotByKey.keys().next().value;
       if (oldestKey) {
-        paramsSnapshotByKeyRef.current.delete(oldestKey);
+        paramsSnapshotByKey.delete(oldestKey);
       }
     }
 
     return key;
   }, [
+    currentParams,
     urlParams.q,
     urlParams.field,
     urlParams.sort,
@@ -174,7 +177,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   // Single SWR fetcher - all data comes from the key
   const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
     const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
-    const snapshotParams = paramsSnapshotByKeyRef.current.get(paramsJson);
+    const snapshotParams = paramsSnapshotByKey.get(paramsJson);
     const params: SearchParams = snapshotParams
       ? cloneSearchParams(snapshotParams)
       : {

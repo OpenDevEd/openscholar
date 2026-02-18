@@ -88,7 +88,7 @@ export function ExtractionCitationSidebar({
 
         {/* Scrollable content */}
         <div className="flex-1 min-h-0 overflow-hidden p-2">
-          <PdfCitationPanel payload={panelPayload} />
+          <PdfCitationPanel key={`${panelPayload?.paperId ?? ""}-${panelPayload?.questionText ?? ""}`} payload={panelPayload} />
         </div>
       </motion.aside>
 
@@ -132,9 +132,9 @@ export function ExtractionCitationSidebar({
             {/* Page number badge */}
             {panelPayload?.citations?.[0]?.page != null && (
               <motion.div
-                initial={{ scale: 0, opacity: 0 }}
+                initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
+                exit={{ scale: 0.95, opacity: 0 }}
                 transition={{ duration: 0.15, delay: 0.1 }}
               >
                 <span className="flex items-center justify-center h-7 min-w-7 px-2 text-xs font-medium rounded-md bg-primary/15 text-primary border border-primary/20">

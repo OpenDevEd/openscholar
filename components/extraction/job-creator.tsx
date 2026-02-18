@@ -238,7 +238,7 @@ export function JobCreator() {
             return (
               <motion.div
                 key={s.id}
-                initial={{ scale: 0, opacity: 0 }}
+                initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.3, delay: i * 0.1 }}
                 className="relative z-10 flex flex-col items-center"

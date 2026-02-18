@@ -11,6 +11,49 @@ import { cn } from "@/lib/utils";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
+function CitationTextBlock({
+  citation,
+  isLongCitation,
+}: {
+  citation: { text: string };
+  isLongCitation: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const t = useTranslations();
+  return (
+    <div className="mt-1.5">
+      <p
+        className={cn(
+          "text-[11px] leading-relaxed text-muted-foreground",
+          !expanded && "line-clamp-2"
+        )}
+      >
+        {citation.text}
+      </p>
+      {isLongCitation ? (
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto p-0 text-[11px]"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? (
+            <>
+              {t("common.showLess")}
+              <ChevronUp className="size-3" />
+            </>
+          ) : (
+            <>
+              {t("common.showMore")}
+              <ChevronDown className="size-3" />
+            </>
+          )}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 const PdfViewer = dynamic(
   () => import("@/components/extraction/pdf-viewer").then((mod) => mod.PdfViewer),
   { ssr: false },
@@ -32,24 +75,11 @@ export function PdfCitationPanel({
   const pdfUrl = pdfUrlResult?.status === "ok" ? pdfUrlResult.pdfUrl : null;
 
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [expandedCitation, setExpandedCitation] = useState(false);
+  const effectiveSelectedIndex = payload
+    ? Math.min(selectedIndex, Math.max(0, payload.citations.length - 1))
+    : 0;
 
-  useEffect(() => {
-    setSelectedIndex(0);
-    setExpandedCitation(false);
-  }, [payload?.paperId, payload?.questionText]);
-
-  useEffect(() => {
-    if (!payload) return;
-    if (selectedIndex < payload.citations.length) return;
-    setSelectedIndex(0);
-  }, [payload, selectedIndex]);
-
-  useEffect(() => {
-    setExpandedCitation(false);
-  }, [selectedIndex]);
-
-  const citation = payload?.citations[selectedIndex] || null;
+  const citation = payload?.citations[effectiveSelectedIndex] || null;
   const shouldRenderPdfViewer =
     !pdfUrlQuery.isDeferred && Boolean(pdfUrl) && Boolean(citation);
   const statusLabel =
@@ -109,36 +139,11 @@ export function PdfCitationPanel({
         </div>
 
         {citation?.text ? (
-          <div className="mt-1.5">
-            <p
-              className={cn(
-                "text-[11px] leading-relaxed text-muted-foreground",
-                !expandedCitation && "line-clamp-2",
-              )}
-            >
-              {citation.text}
-            </p>
-            {isLongCitation ? (
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-[11px]"
-                onClick={() => setExpandedCitation((value) => !value)}
-              >
-                {expandedCitation ? (
-                  <>
-                    {t('common.showLess')}
-                    <ChevronUp className="size-3" />
-                  </>
-                ) : (
-                  <>
-                    {t('common.showMore')}
-                    <ChevronDown className="size-3" />
-                  </>
-                )}
-              </Button>
-            ) : null}
-          </div>
+          <CitationTextBlock
+            key={effectiveSelectedIndex}
+            citation={citation}
+            isLongCitation={isLongCitation}
+          />
         ) : null}
 
         {payload.citations.length > 1 ? (
@@ -149,7 +154,7 @@ export function PdfCitationPanel({
                 type="button"
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
-                  index === selectedIndex
+                  index === effectiveSelectedIndex
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80",
                 )}

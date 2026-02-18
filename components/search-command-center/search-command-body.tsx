@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { SearchMode } from "./search-mode";
 import { AdjustMode } from "./adjust-mode";
@@ -38,23 +38,15 @@ export function SearchCommandBody({
   isLoading,
   isValidating,
 }: SearchCommandBodyProps) {
-  const prevModeRef = useRef<CommandCenterMode>(mode);
-  const directionRef = useRef<Direction>(1);
-
-  useEffect(() => {
-    if (prevModeRef.current !== mode) {
-      // search → adjust = going right (1), adjust → search = going left (-1)
-      directionRef.current = mode === "adjust" ? 1 : -1;
-      prevModeRef.current = mode;
-    }
-  }, [mode]);
+  // search → adjust = going right (1), adjust → search = going left (-1)
+  const direction: Direction = mode === "adjust" ? 1 : -1;
 
   return (
     <div className="relative overflow-hidden">
-      <AnimatePresence initial={false} mode="popLayout" custom={directionRef.current}>
+      <AnimatePresence initial={false} mode="popLayout" custom={direction}>
         <motion.div
           key={mode}
-          custom={directionRef.current}
+          custom={direction}
           variants={slideVariants}
           initial="enter"
           animate="center"

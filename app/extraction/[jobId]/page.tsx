@@ -183,11 +183,10 @@ export default function JobDetailPage() {
     }));
   }, [jobDetails]);
 
-  useEffect(() => {
-    if (!questions.length) return;
-    if (selectedInsightsQuestion) return;
-    setSelectedInsightsQuestion(questions[0].key);
-  }, [questions, selectedInsightsQuestion]);
+  const effectiveSelectedInsightsQuestion =
+    selectedInsightsQuestion && questions.some((q) => q.key === selectedInsightsQuestion)
+      ? selectedInsightsQuestion
+      : questions[0]?.key;
 
   const papersWithResults = useMemo(
     () => allPapers as PaperWithResults[],
@@ -261,9 +260,6 @@ export default function JobDetailPage() {
     [sortedPapers, currentPage, pageSize]
   );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filters]);
 
   const paperIds = useMemo(
     () => papersWithResults.map(p => p._id),
@@ -344,7 +340,7 @@ export default function JobDetailPage() {
       setActiveTab("results");
       toast.success(tJob('appliedSavedView', { name: view?.name || tc('other') }));
     },
-    [setViewMode]
+    [setViewMode, setFilters, setResultsSortBy, toast, tJob, tc]
   );
 
   if (jobDetailsQuery.isDeferred || isResultsDeferred || jobDetails === undefined) {
@@ -769,7 +765,10 @@ export default function JobDetailPage() {
               >
                 <ResultsToolbar
                   filters={filters}
-                  onFiltersChange={setFilters}
+                  onFiltersChange={(f) => {
+                    setFilters(f);
+                    setCurrentPage(1);
+                  }}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                   totalCount={papersWithResults.length}
@@ -815,7 +814,10 @@ export default function JobDetailPage() {
                         <Button
                           variant="outline"
                           className="mt-6"
-                          onClick={() => setFilters(defaultFilters)}
+                          onClick={() => {
+                          setFilters(defaultFilters);
+                          setCurrentPage(1);
+                        }}
                         >
                           {tJob('clearFilters')}
                         </Button>
@@ -901,14 +903,15 @@ export default function JobDetailPage() {
             >
               <InsightsOverview
                 jobId={jobId}
-                selectedQuestionKey={selectedInsightsQuestion}
+                selectedQuestionKey={effectiveSelectedInsightsQuestion}
                 onSelectQuestion={setSelectedInsightsQuestion}
                 onRerun={handleDuplicate}
                 enabled={canReadJob}
               />
               <InsightsQuestionPanel
+                key={effectiveSelectedInsightsQuestion}
                 jobId={jobId}
-                questionKey={selectedInsightsQuestion}
+                questionKey={effectiveSelectedInsightsQuestion}
                 enabled={canReadJob}
                 onJumpToPaper={(paperId) => {
                   const target = papersWithResults.find((paper) => paper._id === paperId);

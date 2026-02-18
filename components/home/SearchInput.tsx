@@ -38,8 +38,8 @@ export function SearchInput({
   const shouldReduceMotion = useReducedMotion();
 
   // Detect mode based on input ("?" at end) or manual toggle
-  // Initialize with "search" but sync with query
   const [mode, setMode] = useState<SearchMode>("search");
+  const effectiveMode = query.trim().endsWith("?") ? "research" : mode;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Autofocus on desktop (avoid on mobile to prevent keyboard popup)
@@ -52,13 +52,6 @@ export function SearchInput({
     }
   }, []);
 
-  // Auto-switch to research mode if query ends with '?'
-  useEffect(() => {
-    if (query.trim().endsWith("?")) {
-      setMode("research");
-    }
-  }, [query]);
-
   const handleModeChange = (newMode: SearchMode) => {
     setMode(newMode);
     // Focus textarea on toggle? Maybe.
@@ -66,7 +59,7 @@ export function SearchInput({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(e, mode);
+    onSubmit(e, effectiveMode);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -74,7 +67,7 @@ export function SearchInput({
       e.preventDefault();
       handleSubmit(e);
     }
-    if (e.key === "?" && !e.shiftKey && mode === "search") {
+    if (e.key === "?" && !e.shiftKey && effectiveMode === "search") {
       e.preventDefault();
       setMode("research");
     }
@@ -107,7 +100,7 @@ export function SearchInput({
         {/* Mode Toggle */}
         <div className="flex justify-center">
           <ModeToggle
-            mode={mode}
+            mode={effectiveMode}
             onModeChange={handleModeChange}
             disabled={disabled}
           />
@@ -118,7 +111,7 @@ export function SearchInput({
           layout
           className={cn(
             "relative rounded-2xl p-1 transition-all duration-300",
-            mode === "research"
+            effectiveMode === "research"
               ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-[0_0_30px_-5px_oklch(0.7_0.17_54/0.2)]"
               : "bg-background/40 shadow-xl border border-white/20 dark:border-white/5",
           )}
@@ -129,7 +122,7 @@ export function SearchInput({
               name="query"
               value={query}
               placeholder={
-                mode === "research"
+                effectiveMode === "research"
                   ? t("researchPlaceholder")
                   : t("searchPlaceholder")
               }
@@ -160,7 +153,7 @@ export function SearchInput({
                 size="lg"
                 className={cn(
                   "rounded-xl px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
-                  mode === "research"
+                  effectiveMode === "research"
                     ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                     : "bg-foreground hover:bg-foreground/90 text-background",
                 )}
@@ -180,7 +173,7 @@ export function SearchInput({
                     }}
                   >
                     <AnimatePresence mode="popLayout">
-                      {mode === "research" ? (
+                      {effectiveMode === "research" ? (
                         <motion.span
                           key="research"
                           layout
@@ -256,7 +249,7 @@ export function SearchInput({
           style={{ position: "relative" }}
         >
           <AnimatePresence mode="popLayout">
-            {mode === "search" ? (
+            {effectiveMode === "search" ? (
               <motion.button
                 key="search-hint"
                 type="button"

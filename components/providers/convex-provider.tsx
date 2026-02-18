@@ -210,7 +210,7 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   ]);
 
   const phase: AuthReadinessPhase = useMemo(() => {
-    if (isAuthenticated && hasSynced.current) {
+    if (isAuthenticated && syncState === "synced") {
       return "authenticated";
     }
     if (isAuthenticated && syncState === "error") {

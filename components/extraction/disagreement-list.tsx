@@ -48,11 +48,6 @@ export function DisagreementList({
     [clusters, visibleCount]
   );
 
-  useEffect(() => {
-    setVisibleCount(maxInitial);
-    setExpandedAnswers({});
-  }, [clusters, maxInitial, viewMode]);
-
   const isAnswerProfiles = viewMode === "answer_profiles";
   if (viewMode === "disagreement" && clusters.length <= 1) {
     return (

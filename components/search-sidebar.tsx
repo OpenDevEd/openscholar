@@ -846,9 +846,9 @@ export function SearchSidebar({
             <AnimatePresence>
               {activeFiltersCount > 0 && (
                 <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
                   transition={{ duration: 0.15 }}
                   className="flex items-center gap-1"
                 >
@@ -962,9 +962,9 @@ export function SearchSidebar({
               {/* Filter count badge and clear button */}
               {activeFiltersCount > 0 && (
                 <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
                   transition={{ duration: 0.15, delay: 0.1 }}
                   className="flex flex-col items-center gap-2"
                 >

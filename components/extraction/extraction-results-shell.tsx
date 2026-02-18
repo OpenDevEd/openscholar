@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -47,14 +46,8 @@ export function ExtractionResultsShell({
   const isMobile = useIsMobile();
   const label = primaryLabel ?? t("results");
   const hasActiveCitationPanel = panelPayload !== null;
-  const prevPaneRef = useRef<"results" | "citation">(mobilePane);
-  const directionRef = useRef<Direction>(1);
-
-  useEffect(() => {
-    if (prevPaneRef.current === mobilePane) return;
-    directionRef.current = mobilePane === "citation" ? 1 : -1;
-    prevPaneRef.current = mobilePane;
-  }, [mobilePane]);
+  // results → citation = going right (1), citation → results = going left (-1)
+  const direction: Direction = mobilePane === "citation" ? 1 : -1;
 
   if (isMobile) {
     if (!hasActiveCitationPanel) {
@@ -77,11 +70,11 @@ export function ExtractionResultsShell({
           </TabsList>
 
           <div className="relative min-h-[420px] flex-1 overflow-hidden">
-            <AnimatePresence initial={false} mode="popLayout" custom={directionRef.current}>
+            <AnimatePresence initial={false} mode="popLayout" custom={direction}>
               {mobilePane === "results" ? (
                 <motion.div
                   key="results"
-                  custom={directionRef.current}
+                  custom={direction}
                   variants={slideVariants}
                   initial="enter"
                   animate="center"
@@ -94,7 +87,7 @@ export function ExtractionResultsShell({
               ) : (
                 <motion.div
                   key="citation"
-                  custom={directionRef.current}
+                  custom={direction}
                   variants={slideVariants}
                   initial="enter"
                   animate="center"
@@ -103,7 +96,7 @@ export function ExtractionResultsShell({
                   className="absolute inset-0 overflow-auto"
                 >
                   <div className="h-full min-h-[420px]">
-                    <PdfCitationPanel payload={panelPayload} />
+                    <PdfCitationPanel key={`${panelPayload?.paperId ?? ""}-${panelPayload?.questionText ?? ""}`} payload={panelPayload} />
                   </div>
                 </motion.div>
               )}

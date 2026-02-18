@@ -130,7 +130,7 @@ function NavItem({
           {/* Badge overlay when collapsed */}
           {isCollapsed && badge !== undefined && badge > 0 && (
             <motion.span
-              initial={{ scale: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1 }}
               className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
             >
@@ -217,7 +217,7 @@ function NavItem({
               {label}
               {badge !== undefined && badge > 0 && (
                 <motion.span
-                  initial={{ scale: 0 }}
+                  initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1 }}
                   className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
                 >
