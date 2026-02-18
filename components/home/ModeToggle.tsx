@@ -17,7 +17,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
   const t = useTranslations("home");
 
   return (
-    <div className="flex p-1 bg-muted/50 backdrop-blur-sm rounded-full border border-border/50 relative">
+    <div className="flex flex-nowrap p-1 bg-muted/50 backdrop-blur-sm rounded-full border border-border/50 relative">
       <div className="absolute inset-0 bg-background/50 rounded-full shadow-inner" />
 
       {/* Background slide animation */}
@@ -37,7 +37,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
         onClick={() => onModeChange("search")}
         disabled={disabled}
         className={cn(
-          "flex-1 relative z-20 flex items-center justify-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-colors",
+          "flex-1 shrink-0 relative z-20 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors whitespace-nowrap",
           mode === "search"
             ? "text-foreground"
             : "text-muted-foreground hover:text-foreground/80",
@@ -52,7 +52,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
         onClick={() => onModeChange("research")}
         disabled={disabled}
         className={cn(
-          "flex-1 relative z-20 flex items-center justify-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-colors",
+          "flex-1 shrink-0 relative z-20 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors whitespace-nowrap",
           mode === "research"
             ? "text-primary"
             : "text-muted-foreground hover:text-foreground/80",

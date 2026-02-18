@@ -185,7 +185,10 @@
     "toSubmit": "pour envoyer",
     "newLine": "nouvelle ligne",
     "forResearch": "pour passer en mode question",
-    "researchModeDescription": "Nous transformons votre question en recherche et trouvons les bons articles."
+    "researchModeDescription": "Nous transformons votre question en recherche et trouvons les bons articles.",
+    "enterKey": "Entrée",
+    "shiftEnterKey": "Maj + Entrée",
+    "researchButton": "Recherche"
   },
   "search": {
     "nothingMatched": "Rien ne correspond à \"{query}\"",

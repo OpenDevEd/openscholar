@@ -33,7 +33,7 @@ export function FooterBanner() {
 export function Footer() {
   return (
     <footer className="py-8 shrink-0">
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center">
           <FooterBanner />
         </div>

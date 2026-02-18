@@ -26,6 +26,15 @@ export function Logo({
   // Determine if we should show icon only
   const shouldShowIconOnly = iconOnly || (context === 'navbar' && isMobile);
   
+  // On home context + mobile, use one size down for better fit
+  const sizeStepDown: Record<typeof size, typeof size> = {
+    xl: 'lg',
+    lg: 'md',
+    md: 'sm',
+    sm: 'sm',
+  };
+  const effectiveSize = context === 'home' && isMobile ? sizeStepDown[size] : size;
+  
   const sizeClasses = {
     sm: 'text-lg',
     md: 'text-2xl',
@@ -44,10 +53,10 @@ export function Logo({
         alt={t("logoAlt")}
         className={cn(
           'object-contain flex',
-          size === 'sm' && 'w-8 h-8',
-          size === 'md' && 'w-10 h-10',
-          size === 'lg' && 'w-12 h-12',
-          size === 'xl' && 'w-16 h-16'
+          effectiveSize === 'sm' && 'w-8 h-8',
+          effectiveSize === 'md' && 'w-10 h-10',
+          effectiveSize === 'lg' && 'w-12 h-12',
+          effectiveSize === 'xl' && 'w-16 h-16'
         )}
       />
     </div>
@@ -60,16 +69,16 @@ export function Logo({
         <div className="flex items-baseline shrink-0">
           <span className={cn(
             'font-bold text-foreground leading-tight whitespace-nowrap',
-            sizeClasses[size]
+            sizeClasses[effectiveSize]
           )}>
             OpenScholar
           </span>
           <span className={cn(
             'font-medium text-muted-foreground leading-tight whitespace-nowrap',
-            size === 'sm' && 'text-xs',
-            size === 'md' && 'text-sm',
-            size === 'lg' && 'text-base',
-            size === 'xl' && 'text-lg'
+            effectiveSize === 'sm' && 'text-xs',
+            effectiveSize === 'md' && 'text-sm',
+            effectiveSize === 'lg' && 'text-base',
+            effectiveSize === 'xl' && 'text-lg'
           )}>
             .ai
           </span>

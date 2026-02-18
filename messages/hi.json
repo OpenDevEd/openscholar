@@ -185,7 +185,10 @@
     "toSubmit": "जमा करने के लिए",
     "newLine": "नई लाइन",
     "forResearch": "प्रश्न मोड में स्विच करने के लिए",
-    "researchModeDescription": "हम आपके प्रश्न को खोज में बदलकर सही पेपर ढूंढेंगे।"
+    "researchModeDescription": "हम आपके प्रश्न को खोज में बदलकर सही पेपर ढूंढेंगे।",
+    "enterKey": "Enter",
+    "shiftEnterKey": "Shift + Enter",
+    "researchButton": "अनुसंधान"
   },
   "search": {
     "nothingMatched": "\"{query}\" से कुछ मेल नहीं खाया",

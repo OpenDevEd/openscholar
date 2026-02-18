@@ -185,7 +185,10 @@
     "toSubmit": "to submit",
     "newLine": "new line",
     "forResearch": "to switch to question mode",
-    "researchModeDescription": "We'll turn your question into a search and find the right papers."
+    "researchModeDescription": "We'll turn your question into a search and find the right papers.",
+    "enterKey": "Enter",
+    "shiftEnterKey": "Shift + Enter",
+    "researchButton": "Research"
   },
   "search": {
     "nothingMatched": "Nothing matched \"{query}\"",

@@ -108,10 +108,10 @@ function PageContent() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center min-h-[80vh] px-4 overflow-hidden relative">
+    <div className="flex-1 flex flex-col items-center justify-center min-h-[80vh] px-4 sm:px-6 overflow-hidden relative">
       <AmbientBackground />
 
-      <div className="w-full max-w-4xl flex flex-col items-center gap-8 relative z-10">
+      <div className="w-full max-w-4xl flex flex-col items-center gap-6 sm:gap-8 relative z-10">
         <HomeHero />
 
         <SearchInput

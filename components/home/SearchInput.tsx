@@ -92,22 +92,22 @@ export function SearchInput({
                 ? t("researchPlaceholder")
                 : t("searchPlaceholder")
             }
-            className="w-full border-none bg-transparent resize-none min-h-[100px] max-h-40 text-lg md:text-xl placeholder:text-muted-foreground/50 p-3 focus-visible:ring-0"
+            className="w-full border-none bg-transparent resize-none min-h-[80px] sm:min-h-[100px] max-h-40 text-base sm:text-lg md:text-xl placeholder:text-muted-foreground/50 p-3 focus-visible:ring-0"
             disabled={disabled}
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
           />
 
           {/* Bottom Action Bar */}
-          <div className="flex items-center justify-end md:justify-between p-3 pl-5 gap-4">
-            <div className="text-xs text-muted-foreground hidden md:flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center justify-end md:justify-between p-3 px-4 sm:pl-5 gap-4">
+            <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0">
               <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
-                Enter
+                {t("enterKey")}
               </span>
               {t("toSubmit")}
               <span className="mx-1 opacity-20">|</span>
               <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
-                Shift + Enter
+                {t("shiftEnterKey")}
               </span>
               {t("newLine")}
               {mode === "search" && (
@@ -127,7 +127,7 @@ export function SearchInput({
               disabled={disabled || !query.trim()}
               size="lg"
               className={cn(
-                "rounded-xl px-6 transition-all duration-300 gap-2",
+                "rounded-xl px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2",
                 mode === "research"
                   ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                   : "bg-foreground hover:bg-foreground/90 text-background",
@@ -145,7 +145,7 @@ export function SearchInput({
                   ) : (
                     <Search className="h-4 w-4" />
                   )}
-                  {mode === "research" ? "Research" : tc("search")}
+                  {mode === "research" ? t("researchButton") : tc("search")}
                 </>
               )}
             </Button>
