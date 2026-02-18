@@ -17,6 +17,14 @@ import { getProviderModel } from "../../lib/ai/client/providers";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType } from "convex/values";
+import { captureAIGenerationServer } from "../../lib/posthog-server";
+
+const MAX_TRACKING_CONTENT_LENGTH = 2000;
+
+function truncateForTracking(s: string): string {
+  if (s.length <= MAX_TRACKING_CONTENT_LENGTH) return s;
+  return s.slice(0, MAX_TRACKING_CONTENT_LENGTH) + "...[truncated]";
+}
 
 export async function getModel() {
   const provider = SERVER_AI_CONFIG.provider;
@@ -51,7 +59,9 @@ export async function withAuthAndCreditsBatch<T>(
     throw new AIInsufficientCreditsError();
   }
 
+  const start = Date.now();
   const { result, totalUsage } = await handler(user);
+  const latencyMs = Date.now() - start;
 
   const costDollars = calculateCostInDollars(
     totalUsage,
@@ -59,6 +69,20 @@ export async function withAuthAndCreditsBatch<T>(
     SERVER_AI_CONFIG.model,
   );
   const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
+
+  await captureAIGenerationServer({
+    distinctId: user.workosId,
+    provider: SERVER_AI_CONFIG.provider as AIProvider,
+    modelId: SERVER_AI_CONFIG.model,
+    feature: operation,
+    usage: {
+      inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+      outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+    },
+    latencyMs,
+    input: `Batch: ${operation}`,
+    output: "Completed",
+  });
 
   await ctx.runMutation(internal.credits.internal.deductCredits, {
     userId: user._id,
@@ -94,7 +118,9 @@ export async function withUserCreditsBatch<T>(
     throw new AIInsufficientCreditsError();
   }
 
+  const start = Date.now();
   const { result, totalUsage } = await handler();
+  const latencyMs = Date.now() - start;
 
   const costDollars = calculateCostInDollars(
     totalUsage,
@@ -102,6 +128,20 @@ export async function withUserCreditsBatch<T>(
     SERVER_AI_CONFIG.model,
   );
   const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
+
+  await captureAIGenerationServer({
+    distinctId: user.workosId,
+    provider: SERVER_AI_CONFIG.provider as AIProvider,
+    modelId: SERVER_AI_CONFIG.model,
+    feature: operation,
+    usage: {
+      inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+      outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+    },
+    latencyMs,
+    input: `Batch: ${operation}`,
+    output: "Completed",
+  });
 
   await ctx.runMutation(internal.credits.internal.deductCredits, {
     userId,
@@ -162,19 +202,57 @@ export function createAIAction<
     args: argsValidator,
     returns: returnsValidator,
     handler: async (ctx, args: ObjectType<Args>) => {
-      return withAuthAndCredits(ctx, description, async () => {
+      return withAuthAndCredits(ctx, description, async (user) => {
         const model = await getModel();
         const config = configFactory(args);
+        const prompts = config.buildPrompts(config.input, 0);
+        const inputForTracking = truncateForTracking(
+          `[system] ${prompts.system}\n[user] ${prompts.prompt}`
+        );
 
-        const { output, usage } = await executeAIOperation({
-          model,
-          ...config,
-        });
+        const start = Date.now();
+        try {
+          const { output, usage } = await executeAIOperation({
+            model,
+            ...config,
+          });
+          const latencyMs = Date.now() - start;
+          const outputForTracking = truncateForTracking(JSON.stringify(output));
 
-        return {
-          result: formatOutput(output, args),
-          usage,
-        };
+          await captureAIGenerationServer({
+            distinctId: user.workosId,
+            provider: SERVER_AI_CONFIG.provider as AIProvider,
+            modelId: SERVER_AI_CONFIG.model,
+            feature: description,
+            usage: {
+              inputTokens: usage.inputTokens ?? usage.promptTokens ?? 0,
+              outputTokens: usage.outputTokens ?? usage.completionTokens ?? 0,
+            },
+            latencyMs,
+            input: inputForTracking,
+            output: outputForTracking,
+          });
+
+          return {
+            result: formatOutput(output, args),
+            usage,
+          };
+        } catch (error) {
+          const latencyMs = Date.now() - start;
+          await captureAIGenerationServer({
+            distinctId: user.workosId,
+            provider: SERVER_AI_CONFIG.provider as AIProvider,
+            modelId: SERVER_AI_CONFIG.model,
+            feature: description,
+            usage: { inputTokens: 0, outputTokens: 0 },
+            latencyMs,
+            input: inputForTracking,
+            output: "",
+            isError: true,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
       });
     },
   });

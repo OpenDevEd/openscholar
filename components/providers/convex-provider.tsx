@@ -17,6 +17,7 @@ import {
 } from "react";
 import { api } from "@/convex/_generated/api";
 import { createConvexAuthTokenFetcher } from "@/lib/auth/convex-token-fetcher";
+import { PostHogIdentify } from "@/components/posthog-identify";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const MAX_SYNC_RETRIES = 6;
@@ -246,6 +247,7 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthReadinessContext.Provider value={contextValue}>
+      <PostHogIdentify />
       {children}
     </AuthReadinessContext.Provider>
   );

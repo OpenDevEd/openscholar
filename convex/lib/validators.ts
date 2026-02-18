@@ -64,11 +64,6 @@ export const apiKeyProviderValidator = v.union(
   v.literal("openrouter")
 );
 
-export const keySourceValidator = v.union(
-  v.literal("platform"),
-  v.literal("byok")
-);
-
 const organizationFields = {
   _id: v.id("organizations"),
   _creationTime: v.number(),

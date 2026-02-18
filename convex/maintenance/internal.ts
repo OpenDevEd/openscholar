@@ -48,8 +48,7 @@ export const cleanupDeletedUsers = internalMutation({
         // Hard delete the user to prevent re-processing
         await ctx.db.delete(user._id);
 
-        // Note: We keep credits, subscriptions, and usage logs for audit purposes
-        // but you could clean those up too if needed
+        // Note: We keep credits and subscriptions for audit purposes
 
         cleanedCount++;
       }
@@ -63,19 +62,6 @@ export const cleanupDeletedUsers = internalMutation({
     if (cleanedCount > 0) {
       console.log(`Cleaned up ${cleanedCount} deleted users`);
     }
-  },
-});
-
-/**
- * Aggregate usage statistics for reporting
- */
-export const aggregateUsage = internalMutation({
-  args: {},
-  returns: v.null(),
-  handler: async (ctx) => {
-    // Placeholder for usage aggregation logic
-    // You would aggregate usageLogs into summary tables here
-    console.log("Usage aggregation completed");
   },
 });
 

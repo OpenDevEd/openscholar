@@ -11,13 +11,6 @@ crons.interval(
   internal.maintenance.internal.cleanupDeletedUsers
 );
 
-// Hourly usage stats aggregation
-crons.interval(
-  "aggregate usage stats",
-  { hours: 1 },
-  internal.maintenance.internal.aggregateUsage
-);
-
 // Daily subscription status check
 crons.interval(
   "check subscription status",

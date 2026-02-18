@@ -195,25 +195,6 @@ export default defineSchema({
     .index("by_user_provider", ["userId", "provider"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // USAGE LOGS - AI token usage tracking
-  // ═══════════════════════════════════════════════════════════════
-  usageLogs: defineTable({
-    userId: v.id("users"),
-    organizationId: v.optional(v.id("organizations")),
-    model: v.string(),
-    inputTokens: v.number(),
-    outputTokens: v.number(),
-    costCredits: v.number(),
-    featureId: v.optional(v.string()),
-    keySource: v.union(v.literal("platform"), v.literal("byok")),
-    createdAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_org", ["organizationId"])
-    .index("by_user_date", ["userId", "createdAt"])
-    .index("by_org_date", ["organizationId", "createdAt"]),
-
-  // ═══════════════════════════════════════════════════════════════
   // ZOTERO INTEGRATION - OAuth connections (auth only)
   // ═══════════════════════════════════════════════════════════════
 

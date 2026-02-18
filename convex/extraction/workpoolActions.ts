@@ -8,6 +8,8 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getModel } from "../ai/helpers";
+import { captureAIGenerationServer } from "../../lib/posthog-server";
+import { SERVER_AI_CONFIG } from "../ai/config";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { MIN_ABSTRACT_LENGTH } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
@@ -474,6 +476,11 @@ function toEvidenceContext(candidates: RetrievalCandidate[]) {
   }));
 }
 
+type ExtractionWithUsage = {
+  result: ExtractionQuestionResult;
+  usage: { inputTokens: number; outputTokens: number };
+};
+
 async function extractQuestionAnswer(params: {
   model: Awaited<ReturnType<typeof getModel>>;
   question: {
@@ -485,7 +492,7 @@ async function extractQuestionAnswer(params: {
   abstract?: string;
   evidencePool: RetrievalCandidate[];
   diagnosticsSeed: Omit<RetrievalDiagnostics, "validatedCitations" | "strictNull">;
-}): Promise<ExtractionQuestionResult> {
+}): Promise<ExtractionWithUsage> {
   const { model, question, abstract, evidencePool, diagnosticsSeed } = params;
 
   try {
@@ -495,7 +502,7 @@ async function extractQuestionAnswer(params: {
       toEvidenceContext(evidencePool)
     );
 
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: buildAnswerSchema(question.type),
       prompt,
@@ -517,7 +524,7 @@ async function extractQuestionAnswer(params: {
     });
     const citations = buildCitations(policy.selectedCandidates);
 
-    return {
+    const result: ExtractionQuestionResult = {
       questionKey: question.key,
       answer: policy.answer,
       confidence: policy.confidence,
@@ -531,20 +538,31 @@ async function extractQuestionAnswer(params: {
       },
       pdfContentUsed: citations.length > 0,
     };
+
+    const inputTokens = usage?.inputTokens ?? 0;
+    const outputTokens = usage?.outputTokens ?? 0;
+
+    return {
+      result,
+      usage: { inputTokens, outputTokens },
+    };
   } catch (error) {
     return {
-      questionKey: question.key,
-      answer: null,
-      confidence: 0,
-      reasoning: `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      citations: [],
-      citationStatus: "extraction_error",
-      retrievalDiagnostics: {
-        ...diagnosticsSeed,
-        validatedCitations: 0,
-        strictNull: false,
+      result: {
+        questionKey: question.key,
+        answer: null,
+        confidence: 0,
+        reasoning: `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        citations: [],
+        citationStatus: "extraction_error",
+        retrievalDiagnostics: {
+          ...diagnosticsSeed,
+          validatedCitations: 0,
+          strictNull: false,
+        },
+        pdfContentUsed: false,
       },
-      pdfContentUsed: false,
+      usage: { inputTokens: 0, outputTokens: 0 },
     };
   }
 }
@@ -558,7 +576,7 @@ async function extractQuestionAnswerFromAbstract(params: {
     description?: string;
   };
   abstract: string;
-}): Promise<ExtractionQuestionResult> {
+}): Promise<ExtractionWithUsage> {
   const { model, question, abstract } = params;
 
   try {
@@ -568,7 +586,7 @@ async function extractQuestionAnswerFromAbstract(params: {
       []
     );
 
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model,
       schema: buildAnswerSchema(question.type),
       prompt,
@@ -585,40 +603,49 @@ async function extractQuestionAnswerFromAbstract(params: {
         ? "Abstract-only mode: no direct support found in the abstract."
         : "Abstract-only mode: answer inferred from abstract content.";
 
+    const inputTokens = usage?.inputTokens ?? 0;
+    const outputTokens = usage?.outputTokens ?? 0;
+
     return {
-      questionKey: question.key,
-      answer: policy.answer,
-      confidence: policy.confidence,
-      reasoning: `${reasoningPrefix} ${extracted.reasoning}`.trim(),
-      citations: [],
-      citationStatus: policy.citationStatus,
-      retrievalDiagnostics: {
-        denseCandidates: 0,
-        lexicalCandidates: 0,
-        fusedCandidates: 0,
-        rerankedCandidates: 0,
-        validatedCitations: 0,
-        strictNull: policy.strictNull,
+      result: {
+        questionKey: question.key,
+        answer: policy.answer,
+        confidence: policy.confidence,
+        reasoning: `${reasoningPrefix} ${extracted.reasoning}`.trim(),
+        citations: [],
+        citationStatus: policy.citationStatus,
+        retrievalDiagnostics: {
+          denseCandidates: 0,
+          lexicalCandidates: 0,
+          fusedCandidates: 0,
+          rerankedCandidates: 0,
+          validatedCitations: 0,
+          strictNull: policy.strictNull,
+        },
+        pdfContentUsed: false,
       },
-      pdfContentUsed: false,
+      usage: { inputTokens, outputTokens },
     };
   } catch (error) {
     return {
-      questionKey: question.key,
-      answer: null,
-      confidence: 0,
-      reasoning: `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      citations: [],
-      citationStatus: "extraction_error",
-      retrievalDiagnostics: {
-        denseCandidates: 0,
-        lexicalCandidates: 0,
-        fusedCandidates: 0,
-        rerankedCandidates: 0,
-        validatedCitations: 0,
-        strictNull: false,
+      result: {
+        questionKey: question.key,
+        answer: null,
+        confidence: 0,
+        reasoning: `Extraction failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        citations: [],
+        citationStatus: "extraction_error",
+        retrievalDiagnostics: {
+          denseCandidates: 0,
+          lexicalCandidates: 0,
+          fusedCandidates: 0,
+          rerankedCandidates: 0,
+          validatedCitations: 0,
+          strictNull: false,
+        },
+        pdfContentUsed: false,
       },
-      pdfContentUsed: false,
+      usage: { inputTokens: 0, outputTokens: 0 },
     };
   }
 }
@@ -890,6 +917,7 @@ export const waitAndExtractAction = internalAction({
 
       const model = await getModel();
       const results: ExtractionQuestionResult[] = [];
+      const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
       let anyPdfEvidenceUsed = false;
       const abstractPresent = isUsableAbstract(paper.abstract);
       const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
@@ -897,12 +925,13 @@ export const waitAndExtractAction = internalAction({
       for (const question of args.questions) {
         if (units.length === 0) {
           if (abstractText) {
-            const extracted = await extractQuestionAnswerFromAbstract({
+            const { result, usage } = await extractQuestionAnswerFromAbstract({
               model,
               question,
               abstract: abstractText,
             });
-            results.push(extracted);
+            results.push(result);
+            extractionUsages.push(usage);
             console.info(
               "[waitAndExtractAction] question diagnostics",
               JSON.stringify({
@@ -913,7 +942,7 @@ export const waitAndExtractAction = internalAction({
                 denseCandidates: 0,
                 lexicalCandidates: 0,
                 fusedCandidates: 0,
-                citationStatus: extracted.citationStatus,
+                citationStatus: result.citationStatus,
                 selectedEvidenceIds: [],
               })
             );
@@ -989,7 +1018,7 @@ export const waitAndExtractAction = internalAction({
           rerankedCandidates: evidencePool.length,
         };
 
-        const extracted = await extractQuestionAnswer({
+        const { result: extracted, usage } = await extractQuestionAnswer({
           model,
           question,
           abstract: paper.abstract,
@@ -1000,6 +1029,8 @@ export const waitAndExtractAction = internalAction({
         if (extracted.citations.length > 0) {
           anyPdfEvidenceUsed = true;
         }
+
+        extractionUsages.push(usage);
 
         console.info(
           "[waitAndExtractAction] question diagnostics",
@@ -1019,10 +1050,31 @@ export const waitAndExtractAction = internalAction({
         results.push(extracted);
       }
 
+      const totalInputTokens = extractionUsages.reduce((acc, u) => acc + u.inputTokens, 0);
+      const totalOutputTokens = extractionUsages.reduce((acc, u) => acc + u.outputTokens, 0);
+      const latencyMs = Date.now() - start;
+
+      if (job && (totalInputTokens > 0 || totalOutputTokens > 0)) {
+        const user = await ctx.runQuery(internal.users.internal.getUserById, {
+          userId: job.userId,
+        });
+        const distinctId = user?.workosId ?? String(job.userId);
+        await captureAIGenerationServer({
+          distinctId,
+          provider: SERVER_AI_CONFIG.provider as "openai" | "anthropic" | "deepseek" | "azure" | "openrouter",
+          modelId: SERVER_AI_CONFIG.model,
+          feature: "extraction",
+          usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+          latencyMs,
+          input: `Extraction: ${args.questions.length} questions for paper`,
+          output: `Processed ${results.length} questions`,
+        });
+      }
+
       return {
         success: true,
         results,
-        creditsUsed: Math.ceil((Date.now() - start) / 1000),
+        creditsUsed: Math.ceil(latencyMs / 1000),
         pdfContentUsed: anyPdfEvidenceUsed,
       };
     } catch (error) {
