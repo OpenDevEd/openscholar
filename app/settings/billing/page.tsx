@@ -4,12 +4,11 @@ import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { useRouter } from "next/navigation";
-import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { isEntitledStatus } from "@/lib/billing/entitlements";
@@ -38,6 +37,25 @@ export default function BillingPage() {
   );
 
   const [isLoading, setIsLoading] = useState(false);
+  const [navStartTime, setNavStartTime] = useState<number | null>(null);
+
+  // Reset isLoading if we've been in loading state for too long (handles back navigation from Stripe)
+  useEffect(() => {
+    if (isLoading && navStartTime) {
+      const elapsed = Date.now() - navStartTime;
+      // If we've been loading for more than 5 seconds, something went wrong - reset
+      if (elapsed > 5000) {
+        console.log("[BILLING] Resetting stuck loading state");
+        setIsLoading(false);
+        setNavStartTime(null);
+      }
+    }
+  });
+
+  // Debug: track isLoading changes
+  useEffect(() => {
+    console.log("[BILLING] isLoading changed:", isLoading);
+  }, [isLoading]);
   const [details, setDetails] = useState<{
     amount: number;
     currency: string;
@@ -86,28 +104,44 @@ export default function BillingPage() {
   }, [subscription]); // Intentional dependency for 'getSubscriptionDetails' omission to avoid loops if reference unstable
 
   const handleManageSubscription = async () => {
+    console.log(`[BILLING] ${performance.now().toFixed(1)}ms handleManageSubscription called`, { isLoading, showUpgradeCta, isSettling: subscriptionState.isSettling });
+    // Prevent multiple clicks during loading
+    if (isLoading) {
+      console.log("[BILLING] Blocked - already loading");
+      return;
+    }
+
     // Route truly free users to pricing. If a Stripe subscription/customer is linked,
     // always prefer portal management (including non-entitled states like unpaid).
     if (showUpgradeCta) {
+      console.log("[BILLING] Navigating to pricing");
       router.push("/pricing");
       return;
     }
 
     // Otherwise, open the portal
     try {
+      console.log(`[BILLING] ${performance.now().toFixed(1)}ms Before setIsLoading(true)`);
+      setNavStartTime(Date.now());
       setIsLoading(true);
+      console.log(`[BILLING] ${performance.now().toFixed(1)}ms After setIsLoading(true), calling action`);
       const { url } = await createPortalSession({});
-      if (url) window.location.href = url;
+      console.log("[BILLING] createPortalSession returned", { url });
+      if (url) {
+        console.log("[BILLING] Navigating to", url);
+        window.location.href = url;
+      }
     } catch (error) {
+      console.error("[BILLING] Error:", error);
       toast.billing.portalFailed();
-      console.error(error);
-    } finally {
       setIsLoading(false);
+      setNavStartTime(null);
     }
   };
 
   const handleKeepCurrentPlan = async () => {
     if (!details?.currentPriceId) return;
+    if (isLoading) return;
 
     try {
       setIsLoading(true);
@@ -123,25 +157,9 @@ export default function BillingPage() {
       console.error(error);
     } finally {
       setIsLoading(false);
+      setNavStartTime(null);
     }
   };
-
-  if (
-    subscriptionState.isSettling ||
-    creditBalanceQuery.isDeferred ||
-    creditBalance === undefined
-  ) {
-    return (
-      <div className="p-8 flex items-center justify-center text-muted-foreground">
-        <AuthStatePanel
-          variant="loading"
-          loadingStyle="panel"
-          title={t("loadingBillingDetails")}
-          description={t("fetchingSubscription")}
-        />
-      </div>
-    );
-  }
 
   let displayPlan: "free" | "go" | "pro" | "enterprise" = "free";
   if (subscription?.plan) {
@@ -188,6 +206,19 @@ export default function BillingPage() {
     });
   };
 
+  // Debug logging for state changes
+  const renderId = useRef(0);
+  renderId.current++;
+  console.log(`[BILLING] ${performance.now().toFixed(1)}ms Render #`, renderId.current, {
+    isLoading,
+    isSettling: subscriptionState.isSettling,
+    settlement: subscriptionState.settlement,
+    isDeferred: creditBalanceQuery.isDeferred,
+    creditBalance: creditBalance === undefined ? "undefined" : "defined",
+    effectivePlan,
+    hasBillingLink,
+  });
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -205,13 +236,30 @@ export default function BillingPage() {
           onClick={handleManageSubscription}
           disabled={isLoading}
           size="sm"
+          // Prevent button from being re-rendered during loading state change
+          style={{ transition: 'none' }}
         >
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {showUpgradeCta ? t("upgradePlan") : t("manageSubscriptionBtn")}
         </Button>
       </div>
 
-      {/* Content */}
+      {/* Content - show skeleton when data is loading */}
+      {subscriptionState.isSettling || creditBalanceQuery.isDeferred || creditBalance === undefined ? (
+        <div className="p-6 space-y-8 max-w-2xl">
+          {/* Plan Section Skeleton */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              <CreditCard className="w-4 h-4" />
+              <span>{t("subscription")}</span>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-muted/30 p-4 space-y-3">
+              <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="p-6 space-y-8 max-w-2xl">
         {/* Plan Section */}
         <div className="space-y-4">
@@ -420,6 +468,7 @@ export default function BillingPage() {
         )}
 
       </div>
+      )}
     </div>
   );
 }
