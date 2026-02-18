@@ -5,6 +5,7 @@
 export const NEXT_INTL_TO_BCP47: Record<string, string> = {
   "zh": "zh-CN",
   "hi": "hi-IN",
+  "ja": "ja-JP",
   "en-US": "en-US",
   "en-GB": "en-GB",
   "fr": "fr-FR",
@@ -28,6 +29,7 @@ export function localeToLanguageCode(locale: string): string {
     zh: "zh",
     fr: "fr",
     hi: "hi",
+    ja: "ja",
   };
   return map[locale] ?? locale.split("-")[0] ?? "en";
 }

@@ -21,6 +21,7 @@ const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
   zh: "zh",
   fr: "fr",
   hi: "hi",
+  ja: "ja",
 };
 
 const localeFlags: Record<Locale, string> = {
@@ -29,6 +30,7 @@ const localeFlags: Record<Locale, string> = {
   zh: "🇨🇳",
   fr: "🇫🇷",
   hi: "🇮🇳",
+  ja: "🇯🇵",
 };
 
 interface LanguageSwitcherProps {
