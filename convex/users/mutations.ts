@@ -50,8 +50,24 @@ export const ensureUser = mutation({
       if (existing.state === "deleted") {
         throw createError("FORBIDDEN", "Account deleted");
       }
-      // Update last login
-      await ctx.db.patch(existing._id, { lastLoginAt: Date.now() });
+      // Update last login and backfill empty profile from JWT when WorkOS JWT has data
+      const lastLoginAt = Date.now();
+      const patch: {
+        lastLoginAt: number;
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+        avatarUrl?: string;
+        updatedAt?: number;
+      } = { lastLoginAt };
+      if (!existing.email && identity.email) patch.email = identity.email;
+      if (!existing.firstName && identity.givenName) patch.firstName = identity.givenName;
+      if (!existing.lastName && identity.familyName) patch.lastName = identity.familyName;
+      if (!existing.avatarUrl && identity.pictureUrl) patch.avatarUrl = identity.pictureUrl;
+      if (patch.email ?? patch.firstName ?? patch.lastName ?? patch.avatarUrl) {
+        patch.updatedAt = Date.now();
+      }
+      await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
 
@@ -63,5 +79,33 @@ export const ensureUser = mutation({
       lastName: identity.familyName,
       avatarUrl: identity.pictureUrl,
     });
+  },
+});
+
+/**
+ * Sync profile from WorkOS session when Convex user has empty data.
+ * Called from client when useAuth().user has full profile but api.users.queries.me has empty email.
+ * WorkOS JWT may not include email/name claims; the session has full data.
+ */
+export const syncProfileFromSession = mutation({
+  args: {
+    email: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const patch: Record<string, unknown> = {};
+    if (args.email && !user.email) patch.email = args.email;
+    if (args.firstName !== undefined && !user.firstName) patch.firstName = args.firstName;
+    if (args.lastName !== undefined && !user.lastName) patch.lastName = args.lastName;
+    if (args.avatarUrl !== undefined && !user.avatarUrl) patch.avatarUrl = args.avatarUrl;
+    if (Object.keys(patch).length > 0) {
+      patch.updatedAt = Date.now();
+      await ctx.db.patch(user._id, patch);
+    }
+    return null;
   },
 });
