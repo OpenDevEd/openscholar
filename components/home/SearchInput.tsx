@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import { Search, Loader2, Wand2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +40,17 @@ export function SearchInput({
   // Detect mode based on input ("?" at end) or manual toggle
   // Initialize with "search" but sync with query
   const [mode, setMode] = useState<SearchMode>("search");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Autofocus on desktop (avoid on mobile to prevent keyboard popup)
+  useEffect(() => {
+    const isDesktop =
+      typeof window !== "undefined" &&
+      window.matchMedia("(pointer: fine) and (min-width: 768px)").matches;
+    if (isDesktop && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
 
   // Auto-switch to research mode if query ends with '?'
   useEffect(() => {
@@ -114,6 +125,7 @@ export function SearchInput({
         >
           <div className="relative bg-background/80 dark:bg-background/60 backdrop-blur-xl rounded-xl overflow-hidden group focus-within:ring-1 focus-within:ring-primary/30 transition-shadow">
             <Textarea
+              ref={textareaRef}
               name="query"
               value={query}
               placeholder={
