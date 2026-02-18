@@ -94,7 +94,7 @@ export function CommandCenterPagination({
         {getPageNumbers().map((page, index) =>
           page === "ellipsis" ? (
             <span
-              key={`ellipsis-${index}`}
+              key={index === 1 ? "ellipsis-start" : "ellipsis-end"}
               className="px-2 text-muted-foreground"
             >
               ...

@@ -223,7 +223,7 @@ export function ScreeningResponses({
 
           return (
             <ScreeningBadge
-              key={index}
+              key={question.question}
               displayState={displayState}
               index={index}
               question={question.question}
@@ -247,7 +247,7 @@ export function ScreeningResponses({
 
           return (
             <button
-              key={index}
+              key={question.question}
               disabled={displayState === "loading"}
               className={cn(
                 "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors",
@@ -334,7 +334,7 @@ export function ScreeningResponses({
 
                   return (
                     <tr
-                      key={index}
+                      key={question.question}
                       className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                     >
                       <td className="py-2 px-2 font-mono text-muted-foreground w-8 align-top">

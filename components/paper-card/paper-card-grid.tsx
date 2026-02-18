@@ -158,7 +158,7 @@ export function PaperCardGrid({
 
                 return (
                   <ScreeningBadge
-                    key={index}
+                    key={question.question}
                     displayState={displayState}
                     index={index}
                     question={question.question}

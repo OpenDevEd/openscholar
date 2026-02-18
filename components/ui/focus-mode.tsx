@@ -552,13 +552,12 @@ export function FocusMode({
   );
 
   const goToNext = () => {
-    const idx = useUIStore.getState().focusModeIndex;
-    if (idx < papers.length - 1) {
+    if (currentIndex < papers.length - 1) {
       if (isMobile) {
         setSwipeDirection("left");
       }
-      const nextPaper = papers[idx + 1];
-      setCurrentIndex(idx + 1);
+      const nextPaper = papers[currentIndex + 1];
+      setCurrentIndex((prev) => prev + 1);
 
       // Track focus mode navigation
       posthog.capture("focus_mode_navigation", {
@@ -570,13 +569,12 @@ export function FocusMode({
   };
 
   const goToPrevious = () => {
-    const idx = useUIStore.getState().focusModeIndex;
-    if (idx > 0) {
+    if (currentIndex > 0) {
       if (isMobile) {
         setSwipeDirection("right");
       }
-      const previousPaper = papers[idx - 1];
-      setCurrentIndex(idx - 1);
+      const previousPaper = papers[currentIndex - 1];
+      setCurrentIndex((prev) => prev - 1);
 
       // Track focus mode navigation
       posthog.capture("focus_mode_navigation", {

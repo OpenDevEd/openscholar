@@ -128,7 +128,7 @@ export function Cascader({
 
     if (option.children && option.children.length > 0) {
       setExpandedPath(newPath)
-      setFocusedColumn(columnIndex + 1)
+      setFocusedColumn((prev) => prev + 1)
       setFocusedIndex(0)
       setTimeout(() => {
         if (scrollContainerRef.current) {
@@ -220,7 +220,7 @@ export function Cascader({
         if (columnIndex > 0) {
           const newPath = expandedPath.slice(0, columnIndex - 1)
           setExpandedPath(newPath)
-          setFocusedColumn(columnIndex - 1)
+          setFocusedColumn((prev) => prev - 1)
           const parentColumn = columns[columnIndex - 1]
           const parentValue = expandedPath[columnIndex - 1]
           const parentIndex = parentColumn.findIndex((opt) => opt.value === parentValue)
@@ -241,7 +241,7 @@ export function Cascader({
       case "Tab":
         if (!e.shiftKey && hasChildren && expandedPath[columnIndex] === option.value) {
           e.preventDefault()
-          setFocusedColumn(columnIndex + 1)
+          setFocusedColumn((prev) => prev + 1)
           setFocusedIndex(0)
           const key = `${columnIndex + 1}-0`
           columnRefs.current.get(key)?.focus()
@@ -250,7 +250,7 @@ export function Cascader({
           const parentColumn = columns[columnIndex - 1]
           const parentValue = expandedPath[columnIndex - 1]
           const parentIndex = parentColumn.findIndex((opt) => opt.value === parentValue)
-          setFocusedColumn(columnIndex - 1)
+          setFocusedColumn((prev) => prev - 1)
           setFocusedIndex(parentIndex >= 0 ? parentIndex : 0)
           const key = `${columnIndex - 1}-${parentIndex >= 0 ? parentIndex : 0}`
           columnRefs.current.get(key)?.focus()

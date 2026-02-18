@@ -52,7 +52,7 @@ export function RatingRangePicker() {
         <div className="flex items-center gap-0.5">
           {Array.from({ length: 5 }, (_, i) => (
             <Star
-              key={i}
+              key={`star-empty-${i}`}
               className="h-4 w-4 text-muted-foreground/20"
             />
           ))}
@@ -64,7 +64,7 @@ export function RatingRangePicker() {
       <div className="flex items-center gap-0.5">
         {Array.from({ length: 5 }, (_, i) => (
           <Star
-            key={i}
+            key={`star-${rating}-${i}`}
             className={cn(
               "h-4 w-4",
               i < rating 

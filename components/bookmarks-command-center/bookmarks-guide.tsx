@@ -84,7 +84,7 @@ export function BookmarksGuide() {
           >
             <div className="px-4 py-4 space-y-4">
               {tips.map((tip, index) => (
-                <div key={index} className="flex items-start gap-3">
+                <div key={tip.title} className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                     <span className="text-xs font-semibold text-primary">
                       {index + 1}

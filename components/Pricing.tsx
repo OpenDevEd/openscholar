@@ -624,8 +624,8 @@ export function Pricing() {
 
               {/* Features */}
               <div className="p-6 space-y-3 flex-1">
-                {plan.features.map((feature, i) => (
-                  <div key={i} className="flex items-start gap-2">
+                {plan.features.map((feature) => (
+                  <div key={feature} className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                     <span className="text-sm">{feature}</span>
                   </div>

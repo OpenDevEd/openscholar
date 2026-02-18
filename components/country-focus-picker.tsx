@@ -58,9 +58,9 @@ export function CountryFocusPicker() {
                 {tf("searchFocusDescription")}
               </p>
               <div className="flex flex-wrap gap-1">
-                {countryNames.slice(0, 10).map((countryName, index) => (
+                {countryNames.slice(0, 10).map((countryName) => (
                   <span 
-                    key={index}
+                    key={countryName}
                     className="text-xs bg-sidebar-accent text-sidebar-primary px-2 py-1 rounded-md border border-border/40"
                   >
                     {countryName}

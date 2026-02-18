@@ -152,7 +152,7 @@ export function HistoryQueryExpansion({
 
             return (
               <div
-                key={`${entry.timestamp}-${index}`}
+                key={`${entry.timestamp}-${entry.query}`}
                 className={cn(
                   "relative border-b border-border/30 last:border-b-0",
                   isCurrent && "bg-primary/5"

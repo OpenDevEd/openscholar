@@ -368,9 +368,9 @@ const ResultCell = memo(function ResultCell({
           )
         ) : Array.isArray(answer) ? (
           <div className="flex flex-wrap gap-1">
-            {answer.map((item, i) => (
+            {answer.map((item) => (
               <Badge
-                key={i}
+                key={String(item)}
                 variant="outline"
                 className="text-xs font-normal"
                 dangerouslySetInnerHTML={{

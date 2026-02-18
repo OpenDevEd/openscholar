@@ -80,7 +80,7 @@ export function QueryEvolution({
         ) : (
           <div className="flex-1 min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
             {previewQueries.map((entry, idx) => (
-              <React.Fragment key={idx}>
+              <React.Fragment key={entry.query}>
                 <span className="truncate max-w-[80px]" title={entry.query}>
                   "{truncateQuery(entry.query, 15)}"
                 </span>
@@ -115,7 +115,7 @@ export function QueryEvolution({
                 
                 return (
                   <motion.div
-                    key={idx}
+                    key={entry.query}
                     initial={{ opacity: 0, x: -4 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.03 }}

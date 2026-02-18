@@ -75,7 +75,7 @@ interface UIState {
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
-  setFocusModeIndex: (index: number) => void
+  setFocusModeIndex: (index: number | ((prev: number) => number)) => void
   setViewMode: (mode: ViewMode) => void
   setHistoryViewMode: (mode: ViewMode) => void
   setHistorySortBy: (sort: HistorySortBy) => void
@@ -538,7 +538,13 @@ export const useUIStore = create<UIState>()(
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
       setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
-      setFocusModeIndex: (index) => set({ focusModeIndex: index }),
+      setFocusModeIndex: (indexOrUpdater) =>
+        set((state) => ({
+          focusModeIndex:
+            typeof indexOrUpdater === "function"
+              ? indexOrUpdater(state.focusModeIndex)
+              : indexOrUpdater,
+        })),
       setViewMode: (mode) => set({ viewMode: mode }),
       setHistoryViewMode: (mode) => set({ historyViewMode: mode }),
       setHistorySortBy: (sort) => set({ historySortBy: sort }),

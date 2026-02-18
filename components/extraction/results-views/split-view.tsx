@@ -203,7 +203,7 @@ function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type
         )
       ) : Array.isArray(answer) ? (
         <div className="flex flex-wrap gap-2">
-          {answer.map((item, i) => <Badge key={i} variant="outline">{item}</Badge>)}
+          {answer.map((item) => <Badge key={String(item)} variant="outline">{item}</Badge>)}
         </div>
       ) : (
         <div className="text-sm">{String(answer)}</div>
