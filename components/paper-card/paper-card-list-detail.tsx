@@ -116,32 +116,34 @@ export function PaperCardListDetail({
 
         {/* Title Section */}
         <div className="mb-4">
-          {/* Translation toggle */}
-          {selectedLanguage &&
-            !(translatedContent && translatedContent.noTranslationNeeded) && (
-              <div className="flex items-center gap-2 mb-2">
-                {isTranslating && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-                    <span>{tc("translating")}</span>
-                  </div>
-                )}
+          {/* Translation toggle - only when translating or we have translation to toggle */}
+          {(isTranslating ||
+            (translatedContent &&
+              translatedContent.sourceLanguage === selectedLanguage &&
+              !translatedContent.noTranslationNeeded)) && (
+            <div className="flex items-center gap-2 mb-2">
+              {isTranslating && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                  <span>{tc("translating")}</span>
+                </div>
+              )}
 
-                {translatedContent &&
-                  translatedContent.sourceLanguage === selectedLanguage &&
-                  !translatedContent.noTranslationNeeded && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowTranslated(!showTranslated);
-                      }}
-                      className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
-                    >
-                      {showTranslated ? tc("showOriginal") : tc("showTranslation")}
-                    </button>
-                  )}
-              </div>
-            )}
+              {translatedContent &&
+                translatedContent.sourceLanguage === selectedLanguage &&
+                !translatedContent.noTranslationNeeded && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowTranslated(!showTranslated);
+                    }}
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    {showTranslated ? tc("showOriginal") : tc("showTranslation")}
+                  </button>
+                )}
+            </div>
+          )}
 
           {/* Title Button */}
           <button

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useBatchTranslations } from "@/lib/ai/client/router";
-import { useTranslationStore } from "@/lib/store";
+import { useTranslationStore, useTranslationFlowStore } from "@/lib/store";
 import { useBatchOperation } from "./use-batch-operation";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useLocale } from "next-intl";
@@ -30,6 +30,8 @@ interface UseBatchTranslationOptions {
   papers: Paper[];
   selectedLanguage: string;
   canStart: boolean;
+  /** When true, blocks results translation (e.g. search refetch in progress) */
+  isSearchLoading?: boolean;
   targetLanguage?: string;
 }
 
@@ -47,12 +49,16 @@ export function useBatchTranslation({
   papers,
   selectedLanguage,
   canStart,
+  isSearchLoading = false,
   targetLanguage: targetLanguageProp,
 }: UseBatchTranslationOptions) {
   const locale = useLocale();
   const targetLanguage = targetLanguageProp ?? localeToLanguageCode(locale);
   const { execute, isConfigured } = useBatchTranslations();
   const { getTranslation, setTranslation, setShowTranslated } = useTranslationStore();
+  const isQueryTranslationInProgress = useTranslationFlowStore(
+    (s) => s.isQueryTranslationInProgress
+  );
 
   // Filter papers that need translation (only when a language is selected)
   const filterItemsNeedingProcessing = useCallback(
@@ -119,7 +125,11 @@ export function useBatchTranslation({
   // Stable context ID for O(1) comparison in batch operation
   const contextId = `${searchId}:${selectedLanguage}:${targetLanguage}`;
 
-  const effectiveCanStart = canStart && !!selectedLanguage;
+  const effectiveCanStart =
+    canStart &&
+    !!selectedLanguage &&
+    !isQueryTranslationInProgress &&
+    !isSearchLoading;
 
   const { loadingState, errors } = useBatchOperation<
     { papers: { id: string; title: string; abstract: string }[]; sourceLanguage: string; targetLanguage?: string },

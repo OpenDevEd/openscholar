@@ -111,6 +111,12 @@ export function TranslationToggle({
   if (!selectedLanguage) return null;
   if (translatedContent && translatedContent.noTranslationNeeded) return null;
 
+  const hasToggleContent =
+    translatedContent &&
+    translatedContent.sourceLanguage === selectedLanguage &&
+    !translatedContent.noTranslationNeeded;
+  if (!isTranslating && !hasToggleContent) return null;
+
   if (variant === "compact") {
     // Icon-only version for compact layouts
     if (!translatedContent || translatedContent.sourceLanguage !== selectedLanguage) {

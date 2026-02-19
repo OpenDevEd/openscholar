@@ -408,6 +408,7 @@ export function ResultsList({
     papers: papersForBatchScreening,
     selectedLanguage,
     canStart: canStartScreening && !!searchId,
+    isSearchLoading: isLoading || isValidating,
   });
 
   // Notify Zotero when results change

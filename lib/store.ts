@@ -947,7 +947,17 @@ export const useTranslationStore = create<TranslationState>()(
       set({ translations: {} });
     },
   })
-); 
+);
+
+// Translation Flow Store - coordinates query translation vs results translation
+interface TranslationFlowState {
+  isQueryTranslationInProgress: boolean;
+  setQueryTranslationInProgress: (v: boolean) => void;
+}
+export const useTranslationFlowStore = create<TranslationFlowState>()((set) => ({
+  isQueryTranslationInProgress: false,
+  setQueryTranslationInProgress: (v) => set({ isQueryTranslationInProgress: v }),
+}));
 
 // Sidebar Store - Main navigation sidebar
 const SIDEBAR_WIDTH_EXPANDED = 280;
