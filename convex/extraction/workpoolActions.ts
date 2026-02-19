@@ -8,6 +8,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getModel } from "../ai/helpers";
+import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
 import { SERVER_AI_CONFIG } from "../ai/config";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
@@ -507,6 +508,7 @@ async function extractQuestionAnswer(params: {
       schema: buildAnswerSchema(question.type),
       prompt,
       temperature: 0,
+      providerOptions: STANDARD_PROVIDER_OPTIONS,
     });
 
     const extracted = normalizeExtractionOutputForQuestion(
@@ -591,6 +593,7 @@ async function extractQuestionAnswerFromAbstract(params: {
       schema: buildAnswerSchema(question.type),
       prompt,
       temperature: 0,
+      providerOptions: STANDARD_PROVIDER_OPTIONS,
     });
 
     const extracted = normalizeExtractionOutputForQuestion(
