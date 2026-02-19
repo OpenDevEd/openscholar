@@ -24,6 +24,7 @@ interface AdjustModeProps {
 export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProps) {
   const toast = useAppToast();
   const t = useTranslations();
+  const th = useTranslations("home");
   const tv = useTranslations("validation");
   const locale = useLocale();
   const search = useSearch();
@@ -99,6 +100,17 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
       }
     },
     [search, editableQuery]
+  );
+
+  // Match home screen: Enter = submit, Shift+Enter = new line
+  const handleQueryKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit(e);
+      }
+    },
+    [handleSubmit]
   );
 
   // Handle AI enhancement
@@ -250,16 +262,28 @@ Please enhance this academic search query according to the user's specific instr
               placeholder={t("searchCommand.noQuerySet")}
               value={editableQuery}
               onChange={(e) => setEditableQuery(e.target.value)}
+              onKeyDown={handleQueryKeyDown}
               disabled={isFormDisabled}
             />
             
-            {/* Inline search button */}
-            <div className="flex justify-end pt-1.5 border-t border-border/40">
+            {/* Bottom bar: hints + search button (same as home screen) */}
+            <div className="flex flex-wrap items-center justify-end md:justify-between gap-2 pt-1.5 border-t border-border/40">
+              <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0 order-2 md:order-1">
+                <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
+                  {th("enterKey")}
+                </span>
+                {th("toSubmit")}
+                <span className="mx-1 opacity-20">|</span>
+                <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
+                  {th("shiftEnterKey")}
+                </span>
+                {th("newLine")}
+              </div>
               <Button
                 type="submit"
                 size="sm"
                 disabled={isFormDisabled || !editableQuery.trim()}
-                className="h-7 px-3 text-xs"
+                className={cn("order-1 md:order-2 h-7 px-3 text-xs")}
               >
                 {isLoading || isValidating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
