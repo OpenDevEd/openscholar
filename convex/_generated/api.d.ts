@@ -36,6 +36,7 @@ import type * as extraction_debug_pdfjs_alignment from "../extraction/debug_pdfj
 import type * as extraction_dedupe from "../extraction/dedupe.js";
 import type * as extraction_evidence_units from "../extraction/evidence_units.js";
 import type * as extraction_grobid from "../extraction/grobid.js";
+import type * as extraction_guard from "../extraction/guard.js";
 import type * as extraction_index from "../extraction/index.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
 import type * as extraction_pdfjs_extract from "../extraction/pdfjs_extract.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/dedupe": typeof extraction_dedupe;
   "extraction/evidence_units": typeof extraction_evidence_units;
   "extraction/grobid": typeof extraction_grobid;
+  "extraction/guard": typeof extraction_guard;
   "extraction/index": typeof extraction_index;
   "extraction/mutations": typeof extraction_mutations;
   "extraction/pdfjs_extract": typeof extraction_pdfjs_extract;

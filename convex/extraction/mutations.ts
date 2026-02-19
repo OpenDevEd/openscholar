@@ -13,6 +13,7 @@ import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
+import { requireExtractionEnabled } from "./guard";
 import {
   aggregateQuestionInsights,
   buildDisagreementClusters,
@@ -161,6 +162,7 @@ export const startExtraction = mutation({
     ),
   },
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
 
     const userId = user._id;
@@ -218,6 +220,7 @@ export const startExtraction = mutation({
 export const cancelExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
@@ -244,6 +247,7 @@ export const cancelExtraction = mutation({
 export const duplicateExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
 
     const oldJob = await ctx.db.get(args.jobId);
@@ -321,6 +325,7 @@ export const setResultReviewState = mutation({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const result = await ctx.db.get(args.resultId);
     if (!result) throw new Error("Result not found");
@@ -398,6 +403,7 @@ export const saveExtractionSavedView = mutation({
     created: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     await assertJobOwnership(ctx, user._id, args.jobId);
 
@@ -442,6 +448,7 @@ export const deleteExtractionSavedView = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const view = await ctx.db.get(args.viewId);
     if (!view || view.userId !== user._id) {
@@ -463,6 +470,7 @@ export const saveWorkflowTemplate = mutation({
     created: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
     const questions = await ctx.db
@@ -515,6 +523,7 @@ export const deleteWorkflowTemplate = mutation({
   },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const template = await ctx.db.get(args.templateId);
     if (!template || template.userId !== user._id) {
@@ -532,6 +541,7 @@ export const startExtractionFromTemplate = mutation({
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const template = await ctx.db.get(args.templateId);
     if (!template || template.userId !== user._id) {
@@ -594,6 +604,7 @@ export const createExtractionReportSnapshot = mutation({
   },
   returns: v.object({ reportId: v.id("extractionReportSnapshots") }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
     const { questions, papers, resultsByPaper, reviewsByResult } =
@@ -759,6 +770,7 @@ export const createExtractionRunDiff = mutation({
     }),
   }),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
     await assertJobOwnership(ctx, user._id, args.jobId);
     await assertJobOwnership(ctx, user._id, args.baselineJobId);
@@ -810,6 +822,7 @@ export const createExtractionRunDiff = mutation({
 export const deleteExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);

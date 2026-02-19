@@ -10,6 +10,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { noAccess, notFound, ok, unauthenticated } from "../lib/query_states";
 import { getProcessableFlags, MIN_ABSTRACT_LENGTH } from "./content";
+import { requireExtractionEnabled } from "./guard";
 import {
   aggregateQuestionInsights,
   buildArrayAnswerProfileClusters,
@@ -180,6 +181,7 @@ export const getMyJobs = query({
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     // Handle unauthenticated gracefully
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -216,6 +218,7 @@ export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -269,6 +272,7 @@ export const getPaperResults = query({
   args: { paperId: v.id("extractionPapers") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") {
       return access;
@@ -300,6 +304,7 @@ export const getPaperPdfUrl = query({
   args: { paperId: v.id("extractionPapers") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") {
       return access;
@@ -322,6 +327,7 @@ export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -374,6 +380,7 @@ export const getJobResultsPaginated = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return {
@@ -433,6 +440,7 @@ export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -557,6 +565,7 @@ export const getQuestionInsights = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -637,6 +646,7 @@ export const getQuestionDisagreements = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -735,6 +745,7 @@ export const getReviewQueue = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -819,6 +830,7 @@ export const getSavedViews = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -837,6 +849,7 @@ export const getWorkflowTemplates = query({
   args: {},
   returns: v.array(v.any()),
   handler: async (ctx) => {
+    requireExtractionEnabled();
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
@@ -852,6 +865,7 @@ export const getReportSnapshots = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -873,6 +887,7 @@ export const getRunDiff = query({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1069,6 +1084,7 @@ export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;

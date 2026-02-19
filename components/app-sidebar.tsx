@@ -32,6 +32,7 @@ import {
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 import { SearchHistoryTab } from "./search-history-tab";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
@@ -313,7 +314,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     if (pathname === "/") return "home";
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/history")) return "history";
-    if (pathname.includes("/extraction")) return "extraction";
+    if (extractionFeatureFlags.enabled && pathname.includes("/extraction"))
+      return "extraction";
     if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
   };
@@ -387,15 +389,17 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             index={2}
           />
 
-          <NavItem
-            href="/extraction"
-            icon={Database}
-            label={tc("extraction")}
-            isActive={currentPageValue === "extraction"}
-            isCollapsed={isCollapsed && !isMobile}
-            onClick={handleNavClick}
-            index={3}
-          />
+          {extractionFeatureFlags.enabled && (
+            <NavItem
+              href="/extraction"
+              icon={Database}
+              label={tc("extraction")}
+              isActive={currentPageValue === "extraction"}
+              isCollapsed={isCollapsed && !isMobile}
+              onClick={handleNavClick}
+              index={3}
+            />
+          )}
         </motion.div>
       </div>
 

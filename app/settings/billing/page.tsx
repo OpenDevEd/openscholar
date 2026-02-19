@@ -24,7 +24,7 @@ export default function BillingPage() {
   const subscription = subscriptionState.subscription;
   const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
   const grantDiagnosticsQuery = useProtectedQuery(
-    (api as any).credits.queries.getLatestGrantStatus,
+    (api).credits.queries.getLatestGrantStatus,
     {},
   );
   const creditBalance = creditBalanceQuery.data;
@@ -436,7 +436,7 @@ export default function BillingPage() {
           />
         )}
 
-        {grantDiagnostics && (
+        {/* {grantDiagnostics && (
           <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">
             <div className="font-medium mb-1">Last credit grant status</div>
             <div className="text-muted-foreground">
@@ -466,7 +466,7 @@ export default function BillingPage() {
               <div className="text-red-600 mt-1">{grantDiagnostics.latestEventError}</div>
             )}
           </div>
-        )}
+        )} */}
 
       </div>
       )}
