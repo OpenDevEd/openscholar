@@ -1025,6 +1025,8 @@
     "researchQuestion": "Question de recherche",
     "keywords": "Mots-clés",
     "askAI": "Demander à l'IA",
+    "translate": "Traduire",
+    "clearLanguage": "Effacer la langue",
     "translatingQuery": "Traduction de la requête...",
     "queryTranslated": "Requête traduite",
     "translatedTo": "Traduite en {language}",

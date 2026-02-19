@@ -1025,6 +1025,8 @@
     "researchQuestion": "研究質問",
     "keywords": "キーワード",
     "askAI": "AIに聞く",
+    "translate": "翻訳",
+    "clearLanguage": "言語をクリア",
     "translatingQuery": "クエリを翻訳中...",
     "queryTranslated": "クエリを翻訳しました",
     "translatedTo": "{language} に翻訳",

@@ -1025,6 +1025,8 @@
     "researchQuestion": "研究问题",
     "keywords": "关键词",
     "askAI": "询问 AI",
+    "translate": "翻译",
+    "clearLanguage": "清除语言",
     "translatingQuery": "翻译查询...",
     "queryTranslated": "查询已翻译",
     "translatedTo": "已翻译为 {language}",

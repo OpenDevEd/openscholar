@@ -1025,6 +1025,8 @@
     "researchQuestion": "Research Question",
     "keywords": "Keywords",
     "askAI": "Ask AI",
+    "translate": "Translate",
+    "clearLanguage": "Clear language",
     "translatingQuery": "Translating query...",
     "queryTranslated": "Query translated",
     "translatedTo": "Translated to {language}",

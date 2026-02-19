@@ -1025,6 +1025,8 @@
     "researchQuestion": "शोध प्रश्न",
     "keywords": "कीवर्ड",
     "askAI": "AI से पूछें",
+    "translate": "अनुवाद",
+    "clearLanguage": "भाषा साफ़ करें",
     "translatingQuery": "क्वेरी अनुवाद हो रही है...",
     "queryTranslated": "क्वेरी अनुवादित",
     "translatedTo": "{language} में अनुवादित",

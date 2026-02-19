@@ -7,7 +7,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
-import { LanguageSelector } from "@/components/language-selector";
+import { LanguageTranslateControl } from "./components/language-translate-control";
 import { useSearchOptional } from "@/lib/search";
 import {
   useSearchHistoryStore,
@@ -151,62 +151,46 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     }
   };
 
-  // Handle language change with translation
-  const handleLanguageChange = async (language: string) => {
-    if (!search || language === selectedLanguage) return;
-
-    const previousLanguage = selectedLanguage;
-    search.setLanguage(language || null);
-
-    // Track language selection
-    posthog.capture("language_selected", {
-      language: language || "none",
-      previous_language: previousLanguage || "none",
-      context: "search",
-    });
-
-    if (localInputValue.trim() && language) {
+  // Shared translation logic
+  const performTranslation = useCallback(
+    async (targetLanguage: string) => {
+      if (!search || !targetLanguage || !localInputValue.trim()) return;
       if (!isTranslateConfigured) {
-        toast.ai.configRequired(tValidation('aiConfigRequired'));
+        toast.ai.configRequired(tValidation("aiConfigRequired"));
         return;
       }
-
       setIsTranslating(true);
       const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
         await runWithLoadingToast({
-          loading: t('translatingQuery'),
+          loading: t("translatingQuery"),
           run: async () => {
             const result = await translateQueryFn({
               query: expandedQuery,
-              targetLanguage: language,
+              targetLanguage,
             });
-
             search.setQuery(result.translatedQuery);
-
-            // Track query translation event
             posthog.capture("query_translated", {
               original_query: expandedQuery,
               translated_query: result.translatedQuery,
-              target_language: language,
+              target_language: targetLanguage,
             });
-
             return result;
           },
           success: () => ({
-            title: t('queryTranslated'),
-            description: t('translatedTo', { language: tl(language as never) || language }),
+            title: t("queryTranslated"),
+            description: t("translatedTo", {
+              language: tl(targetLanguage as never) || targetLanguage,
+            }),
           }),
           error: (error) => {
-            // Track translation error
             posthog.capture("query_translation_failed", {
               original_query: localInputValue,
-              target_language: language,
+              target_language: targetLanguage,
               error_message: getErrorMessage(error, te("translationFailed")),
             });
-
             return {
-              title: t('translationFailed'),
+              title: t("translationFailed"),
               description: getErrorMessage(error, te("unexpectedErrorRetry")),
             };
           },
@@ -216,8 +200,46 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       } finally {
         setIsTranslating(false);
       }
-    }
-  };
+    },
+    [
+      search,
+      localInputValue,
+      isTranslateConfigured,
+      translateQueryFn,
+      t,
+      tl,
+      te,
+      toast,
+      tValidation,
+    ]
+  );
+
+  // Handle language change (updates language and auto-translates when there's query text)
+  const handleLanguageChange = useCallback(
+    async (language: string) => {
+      if (!search || language === selectedLanguage) return;
+      search.setLanguage(language || null);
+      posthog.capture("language_selected", {
+        language: language || "none",
+        previous_language: selectedLanguage || "none",
+        context: "search",
+      });
+      if (language && localInputValue.trim()) {
+        await performTranslation(language);
+      }
+    },
+    [search, selectedLanguage, localInputValue, performTranslation]
+  );
+
+  // Handle translate button click
+  const handleTranslate = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!selectedLanguage) return;
+      await performTranslation(selectedLanguage);
+    },
+    [selectedLanguage, performTranslation]
+  );
 
   return (
     <div className="p-4 space-y-4">
@@ -270,10 +292,13 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
           icon={<Search className="h-4 w-4" />}
           action={
             <div className="flex items-center gap-2">
-              <LanguageSelector
+              <LanguageTranslateControl
                 value={selectedLanguage}
                 onValueChange={handleLanguageChange}
+                onTranslate={() => handleTranslate({ preventDefault: () => {} } as React.FormEvent)}
                 disabled={isLanguageSelectorDisabled}
+                translateDisabled={!localInputValue.trim()}
+                isTranslating={isTranslating}
               />
               <Button
                 type="submit"
@@ -281,14 +306,10 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 disabled={isFormDisabled || !localInputValue.trim()}
                 className="px-3"
               >
-                {isTranslating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Search className="h-4 w-4 sm:mr-1" />
-                    <span className="hidden sm:inline">{tc('search')}</span>
-                  </>
-                )}
+                <>
+                  <Search className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">{tc('search')}</span>
+                </>
               </Button>
             </div>
           }
