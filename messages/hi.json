@@ -190,7 +190,7 @@
     "enterKey": "Enter",
     "shiftEnterKey": "Shift + Enter",
     "researchButton": "अनुसंधान",
-    "questionShortcutHint": "प्रश्न मोड के लिए ? दबाएं"
+    "questionShortcutHint": "प्रश्न मोड के लिए अपने क्वेरी को ? से समाप्त करें"
   },
   "search": {
     "nothingMatched": "\"{query}\" से कुछ मेल नहीं खाया",

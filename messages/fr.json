@@ -190,7 +190,7 @@
     "enterKey": "Entrée",
     "shiftEnterKey": "Maj + Entrée",
     "researchButton": "Recherche",
-    "questionShortcutHint": "Appuyez sur ? pour le mode question"
+    "questionShortcutHint": "Terminez votre requête par ? pour le mode question"
   },
   "search": {
     "nothingMatched": "Rien ne correspond à \"{query}\"",

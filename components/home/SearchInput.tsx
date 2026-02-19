@@ -259,7 +259,7 @@ export function SearchInput({
                 animate="animate"
                 exit="exit"
                 transition={hintAnimTransition}
-                className="h-9 flex items-center justify-center gap-2.5 px-5 rounded-full text-xs sm:text-sm text-muted-foreground hover:text-foreground/90 bg-muted/30 hover:bg-muted/50 backdrop-blur-sm border border-border/40 hover:border-primary/25 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
+                className="h-9 flex items-center justify-center gap-2.5 px-3 rounded-full text-xs sm:text-sm text-muted-foreground hover:text-foreground/90 bg-muted/30 hover:bg-muted/50 backdrop-blur-sm border border-border/40 hover:border-primary/25 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
               >
                 <span className="flex items-center justify-center w-6 h-6 rounded-md bg-muted/80 border border-border/50 font-mono font-medium text-foreground/80">
                   ?
