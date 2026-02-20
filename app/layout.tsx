@@ -9,6 +9,7 @@ import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -79,6 +80,7 @@ export default function RootLayout({
                   </div>
                 </div>
                 <Toaster />
+                <CookieConsentBanner />
               </QuerySyncProvider>
             </NuqsAdapter>
           </ThemeProvider>
