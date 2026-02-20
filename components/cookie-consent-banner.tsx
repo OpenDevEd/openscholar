@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { Cookie, Settings2 } from "lucide-react";
 import posthog from "posthog-js";
@@ -19,6 +18,7 @@ import {
   hasConsentDecision,
   CONSENT_UPDATED_EVENT,
 } from "@/lib/consent-storage";
+import { PolicyLinks } from "@/components/legal-links";
 import { subtleSpring } from "@/lib/animation-config";
 import { cn } from "@/lib/utils";
 
@@ -60,15 +60,7 @@ function ConsentDialogContent({
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Learn more in our{" "}
-        <Link
-          href="/privacy"
-          className="text-primary underline-offset-4 hover:underline font-medium"
-        >
-          Privacy policy
-        </Link>
-      </p>
+      <PolicyLinks className="text-xs text-muted-foreground" />
     </div>
   );
 }
@@ -180,15 +172,7 @@ export function CookieConsentBanner() {
                 </div>
               </div>
               <div className="mt-3 sm:mt-4 pt-3 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  Learn more in our{" "}
-                  <Link
-                    href="/privacy"
-                    className="text-primary underline-offset-4 hover:underline font-medium"
-                  >
-                    Privacy policy
-                  </Link>
-                </p>
+                <PolicyLinks className="text-xs text-muted-foreground" />
               </div>
             </div>
           </motion.div>
