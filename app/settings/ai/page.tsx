@@ -32,6 +32,7 @@ import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 
 export default function AISettingsPage() {
@@ -85,9 +86,12 @@ export default function AISettingsPage() {
     setApiKey(value);
   };
 
-  // Reset credits mode when signed out (persisted store may have credits selected)
+  // Reset credits mode when signed out or credits disabled (persisted store may have credits selected)
   useEffect(() => {
-    if (!isSignedIn && apiKeyMode === "credits") {
+    if (
+      (!isSignedIn || !creditsFeatureFlags.enabled) &&
+      apiKeyMode === "credits"
+    ) {
       setApiKeyMode("local");
     }
   }, [isSignedIn, apiKeyMode, setApiKeyMode]);
@@ -242,44 +246,46 @@ export default function AISettingsPage() {
               </div>
             </motion.button>
 
-            <motion.button
-              type="button"
-              onClick={() => {
-                if (!isSignedIn) {
-                  toast.validation.failed(t("signInToUseCredits"));
-                  router.push("/auth/signin");
-                  return;
-                }
-                setApiKeyMode("credits");
-                toast.entity.updated(tc("mode"), t("usingCredits"));
-              }}
-              whileHover={isSignedIn ? { scale: 1.01 } : undefined}
-              transition={{ duration: 0.2 }}
-              className={cn(
-                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                apiKeyMode === "credits"
-                  ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
-                  : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-                !isSignedIn && "opacity-60",
-              )}
-            >
-              <div
+            {creditsFeatureFlags.enabled && (
+              <motion.button
+                type="button"
+                onClick={() => {
+                  if (!isSignedIn) {
+                    toast.validation.failed(t("signInToUseCredits"));
+                    router.push("/auth/signin");
+                    return;
+                  }
+                  setApiKeyMode("credits");
+                  toast.entity.updated(tc("mode"), t("usingCredits"));
+                }}
+                whileHover={isSignedIn ? { scale: 1.01 } : undefined}
+                transition={{ duration: 0.2 }}
                 className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                  apiKeyMode === "credits" ? "bg-primary/20" : "bg-muted/50",
+                  "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
+                  apiKeyMode === "credits"
+                    ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
+                    : "border-border/50 hover:border-border/80 hover:bg-muted/30",
+                  !isSignedIn && "opacity-60",
                 )}
               >
-                {apiKeyMode === "credits" && (
-                  <Check className="w-5 h-5 text-primary" />
-                )}
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-semibold text-base">{t("useCredits")}</div>
-                <div className="text-sm text-muted-foreground">
-                  {t("accountBalance")}
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
+                    apiKeyMode === "credits" ? "bg-primary/20" : "bg-muted/50",
+                  )}
+                >
+                  {apiKeyMode === "credits" && (
+                    <Check className="w-5 h-5 text-primary" />
+                  )}
                 </div>
-              </div>
-            </motion.button>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-base">{t("useCredits")}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {t("accountBalance")}
+                  </div>
+                </div>
+              </motion.button>
+            )}
           </div>
         </div>
 

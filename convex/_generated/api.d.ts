@@ -58,6 +58,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_debug_gate from "../lib/debug_gate.js";
 import type * as lib_errors from "../lib/errors.js";
+import type * as lib_featureFlags from "../lib/featureFlags.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as lib_query_states from "../lib/query_states.js";
@@ -152,6 +153,7 @@ declare const fullApi: ApiFromModules<{
   "lib/constants": typeof lib_constants;
   "lib/debug_gate": typeof lib_debug_gate;
   "lib/errors": typeof lib_errors;
+  "lib/featureFlags": typeof lib_featureFlags;
   "lib/helpers": typeof lib_helpers;
   "lib/permissions": typeof lib_permissions;
   "lib/query_states": typeof lib_query_states;

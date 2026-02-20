@@ -13,6 +13,7 @@ import {
   classifyMonthlyCreditInvoice,
   type MonthlyCreditGrantDecision,
 } from "./lib/invoiceGrantPolicy";
+import { requireCreditsEnabled } from "../lib/featureFlags";
 
 const internalApi = internal as any;
 const componentApi = components as any;
@@ -767,6 +768,7 @@ export const deductCredits = internalMutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
+    requireCreditsEnabled();
     const ownerId = args.organizationId ?? args.userId;
     const ownerType = args.organizationId ? "organization" : "user";
 

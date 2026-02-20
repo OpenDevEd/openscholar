@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { isEntitledStatus } from "@/lib/billing/entitlements";
+import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
+import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
 
 export default function BillingPage() {
   const t = useTranslations("billingPage");
@@ -104,6 +106,29 @@ export default function BillingPage() {
     }
   }, [subscription]); // Intentional dependency for 'getSubscriptionDetails' omission to avoid loops if reference unstable
 
+  const hasBillingLink = Boolean(
+    subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
+  );
+  const effectivePlan: "free" | "go" | "pro" | "enterprise" =
+    subscriptionState.resolvedPlan ?? "free";
+  const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
+
+  // Redirect non-subscribers away when subscriptions flag is disabled
+  useEffect(() => {
+    if (
+      !subscriptionState.isSettling &&
+      !subscriptionsFeatureFlags.enabled &&
+      showUpgradeCta
+    ) {
+      router.replace("/settings");
+    }
+  }, [
+    subscriptionState.isSettling,
+    subscriptionsFeatureFlags.enabled,
+    showUpgradeCta,
+    router,
+  ]);
+
   const handleManageSubscription = async () => {
     console.log(`[BILLING] ${performance.now().toFixed(1)}ms handleManageSubscription called`, { isLoading, showUpgradeCta, isSettling: subscriptionState.isSettling });
     // Prevent multiple clicks during loading
@@ -114,9 +139,14 @@ export default function BillingPage() {
 
     // Route truly free users to pricing. If a Stripe subscription/customer is linked,
     // always prefer portal management (including non-entitled states like unpaid).
-    if (showUpgradeCta) {
+    // When subscriptions disabled, do not route to pricing.
+    if (showUpgradeCta && subscriptionsFeatureFlags.enabled) {
       console.log("[BILLING] Navigating to pricing");
       router.push("/pricing");
+      return;
+    }
+    if (showUpgradeCta && !subscriptionsFeatureFlags.enabled) {
+      toast.error(tc("somethingWentWrong"), "Upgrades are temporarily unavailable.");
       return;
     }
 
@@ -166,16 +196,10 @@ export default function BillingPage() {
   if (subscription?.plan) {
     displayPlan = subscription.plan;
   }
-  const effectivePlan: "free" | "go" | "pro" | "enterprise" =
-    subscriptionState.resolvedPlan ?? "free";
   let status = "inactive";
   if (subscription?.status) {
     status = subscription.status;
   }
-  const hasBillingLink = Boolean(
-    subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
-  );
-  const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
   const creditsPerMonth = subscriptionState.isEntitled
     ? (subscription?.creditsPerMonth ?? 0)
     : 0;
@@ -235,7 +259,10 @@ export default function BillingPage() {
         <Button
           variant={showUpgradeCta ? "default" : "outline"}
           onClick={handleManageSubscription}
-          disabled={isLoading}
+          disabled={
+            isLoading ||
+            (showUpgradeCta && !subscriptionsFeatureFlags.enabled)
+          }
           size="sm"
           // Prevent button from being re-rendered during loading state change
           style={{ transition: 'none' }}
@@ -427,7 +454,7 @@ export default function BillingPage() {
         </div>
 
         {/* Credits Section */}
-        {creditBalance && (
+        {creditsFeatureFlags.enabled && creditBalance && (
           <CreditBalanceCard
             freeBalance={creditBalance.free}
             paidBalance={creditBalance.paid}

@@ -29,6 +29,7 @@ import {
   type ScheduleLike,
 } from "./lib/schedulePlanning";
 import { isEntitledStatus } from "../../lib/billing/entitlements";
+import { requireSubscriptionsEnabled } from "../lib/featureFlags";
 
 const internalApi = internal as any;
 const componentApi = components as any;
@@ -128,6 +129,7 @@ export const createCheckoutSession = action({
     url: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args): Promise<{ url: string | null }> => {
+    requireSubscriptionsEnabled();
     const identity = await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 

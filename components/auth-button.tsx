@@ -35,6 +35,8 @@ import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations } from "next-intl";
+import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
+import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
@@ -132,9 +134,11 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             <LogIn className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
               <span className="font-medium">{tc("signIn")}</span>
-              <span className="text-xs text-muted-foreground leading-snug">
-                {tc("signInCreditsDescription")}
-              </span>
+              {creditsFeatureFlags.enabled && (
+                <span className="text-xs text-muted-foreground leading-snug">
+                  {tc("signInCreditsDescription")}
+                </span>
+              )}
             </div>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -188,6 +192,16 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     hasResolvedSubscription &&
     (resolvedPlan === "free" || resolvedPlan === "go");
 
+  const showPlanRow = subscriptionsFeatureFlags.enabled || !showUpgrade;
+  const showCredits =
+    creditsFeatureFlags.enabled &&
+    creditsQuery.settlement === "ready" &&
+    credits &&
+    credits.total > 0;
+  const showUpgradeButton = subscriptionsFeatureFlags.enabled && showUpgrade;
+  const showPlansItem = subscriptionsFeatureFlags.enabled;
+  const hasAccountInfo = showPlanRow || showCredits || showUpgradeButton;
+
   const trigger = (
     <Button
       variant="ghost"
@@ -240,69 +254,71 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           </div>
         </DropdownMenuLabel>
 
-        <DropdownMenuSeparator />
-
-        <div className="px-2 py-1.5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">
-              {tc("plan")}
-            </span>
-            {isSubscriptionLoading ? (
-              <span
-                className="h-5 w-16 animate-pulse rounded-full bg-muted/60"
-                aria-hidden
-              />
-            ) : (
-              <div className="flex items-center text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                {isResolvedProPlan && <Crown className="w-3 h-3 mr-1" />}
-                {planLabel}
-              </div>
-            )}
-          </div>
-
-          {/* Credits display */}
-          {creditsQuery.settlement === "ready" && credits && credits.total > 0 && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                {tc("credits")}
-              </span>
-              <span className="text-sm font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                {credits.total}
-              </span>
+        {hasAccountInfo && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 space-y-2">
+              {showPlanRow && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tc("plan")}
+                  </span>
+                  {isSubscriptionLoading ? (
+                    <span
+                      className="h-5 w-16 animate-pulse rounded-full bg-muted/60"
+                      aria-hidden
+                    />
+                  ) : (
+                    <div className="flex items-center text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {isResolvedProPlan && <Crown className="w-3 h-3 mr-1" />}
+                      {planLabel}
+                    </div>
+                  )}
+                </div>
+              )}
+              {showCredits && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tc("credits")}
+                  </span>
+                  <span className="text-sm font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {credits.total}
+                  </span>
+                </div>
+              )}
+              {showUpgradeButton && (
+                <Button
+                  size="sm"
+                  className="w-full h-8 text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/pricing");
+                  }}
+                >
+                  {tc("upgradeTo", { plan: "Pro" })}
+                </Button>
+              )}
             </div>
-          )}
-
-          {showUpgrade && (
-            <Button
-              size="sm"
-              className="w-full h-8 text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0"
-              onClick={() => {
-                setOpen(false);
-                router.push("/pricing");
-              }}
-            >
-              {tc("upgradeTo", { plan: "Pro" })}
-            </Button>
-          )}
-        </div>
+          </>
+        )}
 
         <DropdownMenuSeparator />
-
+        {showPlansItem && (
+          <DropdownMenuItem
+            onClick={() => {
+              setOpen(false);
+              router.push("/pricing");
+            }}
+            className="cursor-pointer"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            {tc("plans")}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onClick={() => {
             setOpen(false);
-            router.push("/pricing");
-          }}
-          className="cursor-pointer"
-        >
-          <CreditCard className="h-4 w-4 mr-2" />
-          {tc("plans")}
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() => {
-            setOpen(false);
-            router.push("/settings/billing");
+            router.push("/settings/ai");
           }}
           className="cursor-pointer"
         >

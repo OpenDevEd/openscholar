@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
 
 export default function SettingsLayout({
   children,
@@ -16,13 +18,23 @@ export default function SettingsLayout({
   const tc = useTranslations("common");
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
+  const subscriptionState = useSubscriptionState();
+  const subscription = subscriptionState.subscription;
+  const hasBillingLink = Boolean(
+    subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
+  );
+  const effectivePlan = subscriptionState.resolvedPlan ?? "free";
+  const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
+  const hideBilling =
+    !subscriptionsFeatureFlags.enabled && showUpgradeCta && !subscriptionState.isSettling;
 
+  const baseSignedInItems = [
+    { title: tc("general"), href: "/settings", icon: Settings2 },
+    { title: tc("ai"), href: "/settings/ai", icon: Bot },
+    ...(hideBilling ? [] : [{ title: tc("billing"), href: "/settings/billing", icon: CreditCard }]),
+  ];
   const sidebarNavItems = isSignedIn
-    ? [
-        { title: tc("general"), href: "/settings", icon: Settings2 },
-        { title: tc("ai"), href: "/settings/ai", icon: Bot },
-        { title: tc("billing"), href: "/settings/billing", icon: CreditCard },
-      ]
+    ? baseSignedInItems
     : [{ title: tc("ai"), href: "/settings/ai", icon: Bot }];
 
   return (
