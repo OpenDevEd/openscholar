@@ -64,14 +64,14 @@ It's designed for systematic reviews and complex queries, not just keyword match
    You'll need credentials for:
    - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
    - **Convex HTTP (optional/custom domain):** `NEXT_PUBLIC_CONVEX_SITE_URL`
-   - **WorkOS/AuthKit:** `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_REDIRECT_URI` (or `NEXT_PUBLIC_WORKOS_REDIRECT_URI` for edge runtime redirect precedence), `WORKOS_WEBHOOK_SECRET`
-   - **App URL (for billing/webhook redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
+   - **WorkOS/AuthKit:** `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_WEBHOOK_SECRET`
+   - **App URL (for billing, webhooks, redirects, auth callback):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
    - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (and optional publishable key for client UI)
 
    WorkOS notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.
    - Public route policy is centralized in `lib/auth/public-routes.ts` and shared by both `proxy.ts` and client route gating.
-   - Redirect URI precedence in edge auth is `NEXT_PUBLIC_WORKOS_REDIRECT_URI` then `WORKOS_REDIRECT_URI`.
+   - Auth callback redirect URI is derived from `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`) + `/auth/callback`.
    - Sign-out route (`/auth/signout`) uses AuthKit `signOut({ returnTo })` with `NEXT_PUBLIC_APP_URL` then `NEXT_PUBLIC_URL`; one of these env vars is required and must be an absolute `http(s)` URL.
    - Convex token bridging uses `GET /auth/access-token` backed by AuthKit middleware + `withAuth({ ensureSignedIn: false })` and returns `401` when no active session is present.
    - Configure WorkOS Redirects in each environment: `App Homepage URL`, callback URL(s) for `/auth/callback`, and sign-out redirect locations that include your app base URL.

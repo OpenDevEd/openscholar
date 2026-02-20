@@ -7,10 +7,11 @@ import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 const COOKIE_NAME = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_URL;
+const redirectUri = appUrl ? `${appUrl.replace(/\/$/, "")}/auth/callback` : undefined;
+
 const authMiddleware = authkitMiddleware({
-  redirectUri:
-    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI ??
-    process.env.WORKOS_REDIRECT_URI!,
+  redirectUri,
   middlewareAuth: {
     enabled: true,
     unauthenticatedPaths: [...PUBLIC_UNAUTHENTICATED_PATHS],
