@@ -41,6 +41,12 @@ export function Footer() {
             >
               Privacy policy
             </Link>
+            <Link
+              href="/cookie-policy"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cookie policy
+            </Link>
             <CookiePreferencesTrigger />
           </div>
         </div>
