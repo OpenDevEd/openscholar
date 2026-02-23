@@ -22,6 +22,9 @@ import { PolicyLinks } from "@/components/legal-links";
 import { subtleSpring } from "@/lib/animation-config";
 import { cn } from "@/lib/utils";
 
+const cookieButtonClass =
+  "min-h-10 sm:min-h-9 flex-1 sm:flex-initial bg-primary text-primary-foreground shadow-xs hover:bg-primary/90";
+
 function ConsentDialogContent({
   onAccept,
   onReject,
@@ -39,14 +42,10 @@ function ConsentDialogContent({
 
       <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
         <Button
-          variant="outline"
+          variant="default"
           size="default"
           onClick={onReject}
-          className={cn(
-            "min-h-10 sm:min-h-9 flex-1 sm:flex-initial",
-            "border bg-background hover:bg-accent hover:text-accent-foreground",
-            "dark:border-input dark:hover:bg-input/50"
-          )}
+          className={cookieButtonClass}
         >
           Reject non-essential
         </Button>
@@ -54,7 +53,7 @@ function ConsentDialogContent({
           variant="default"
           size="default"
           onClick={onAccept}
-          className="min-h-10 sm:min-h-9 flex-1 sm:flex-initial bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+          className={cookieButtonClass}
         >
           Accept all
         </Button>
@@ -150,14 +149,10 @@ export function CookieConsentBanner() {
                 </div>
                 <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 flex-shrink-0">
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="default"
                     onClick={handleReject}
-                    className={cn(
-                      "min-h-10 sm:min-h-9 flex-1 sm:flex-initial",
-                      "border bg-background hover:bg-accent hover:text-accent-foreground",
-                      "dark:border-input dark:hover:bg-input/50"
-                    )}
+                    className={cookieButtonClass}
                   >
                     Reject non-essential
                   </Button>
@@ -165,7 +160,7 @@ export function CookieConsentBanner() {
                     variant="default"
                     size="default"
                     onClick={handleAccept}
-                    className="min-h-10 sm:min-h-9 flex-1 sm:flex-initial bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+                    className={cookieButtonClass}
                   >
                     Accept all
                   </Button>
