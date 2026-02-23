@@ -896,7 +896,11 @@
     "jsonLdContext": "https://schema.org",
     "jsonLdTypeWebsite": "WebSite",
     "jsonLdTypeSearchAction": "SearchAction",
-    "jsonLdTypeEntryPoint": "EntryPoint"
+    "jsonLdTypeEntryPoint": "EntryPoint",
+    "privacyTitle": "隐私政策 | OpenScholar",
+    "privacyDescription": "OpenScholar.ai 客户隐私声明。了解 Open Development & Education 如何收集、使用和保护您的个人信息。",
+    "cookiePolicyTitle": "Cookie 政策 | OpenScholar",
+    "cookiePolicyDescription": "了解 OpenScholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。"
   },
   "validation": {
     "bookmarkNameRequired": "书签名称是必需的",
@@ -1295,7 +1299,10 @@
   "footer": {
     "builtBy": "由",
     "with": "与",
-    "suffix": "联合打造"
+    "suffix": "联合打造",
+    "privacyPolicy": "隐私政策",
+    "cookiePolicy": "Cookie 政策",
+    "cookiePreferences": "Cookie 偏好设置"
   },
   "focusMode": {
     "settingsTitle": "专注模式设置",
@@ -1329,5 +1336,21 @@
     "showTranslation": "显示翻译",
     "originalShort": "原文",
     "translationShort": "译"
+  },
+  "cookieConsent": {
+    "bannerTitle": "我们重视您的隐私",
+    "bannerDescription": "我们使用分析 Cookie 来了解您如何使用 OpenScholar 并改进产品。请在下方选择您的偏好设置。",
+    "dialogDescription": "我们使用分析 Cookie 来了解您如何使用 OpenScholar 并改进产品。您可以接受所有 Cookie、拒绝非必要 Cookie，或随时更改您的偏好设置。",
+    "acceptAll": "接受全部",
+    "rejectNonEssential": "拒绝非必要",
+    "preferencesTitle": "Cookie 偏好设置",
+    "preferencesDescription": "管理 OpenScholar 如何使用 Cookie 进行分析。"
+  },
+  "legal": {
+    "learnMorePrefix": "了解更多",
+    "and": "和",
+    "privacyPolicy": "隐私政策",
+    "cookiePolicy": "Cookie 政策",
+    "backToSite": "← 返回 OpenScholar"
   }
 }

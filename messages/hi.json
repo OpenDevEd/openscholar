@@ -896,7 +896,11 @@
     "jsonLdContext": "https://schema.org",
     "jsonLdTypeWebsite": "WebSite",
     "jsonLdTypeSearchAction": "SearchAction",
-    "jsonLdTypeEntryPoint": "EntryPoint"
+    "jsonLdTypeEntryPoint": "EntryPoint",
+    "privacyTitle": "गोपनीयता नीति | OpenScholar",
+    "privacyDescription": "OpenScholar.ai ग्राहक गोपनीयता सूचना। जानें कि Open Development & Education आपकी व्यक्तिगत जानकारी को कैसे एकत्र, उपयोग और सुरक्षित करता है।",
+    "cookiePolicyTitle": "कुकी नीति | OpenScholar",
+    "cookiePolicyDescription": "जानें कि OpenScholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।"
   },
   "validation": {
     "bookmarkNameRequired": "बुकमार्क नाम आवश्यक है",
@@ -1295,7 +1299,10 @@
   "footer": {
     "builtBy": "बनाया गया",
     "with": "के साथ",
-    "suffix": ""
+    "suffix": "",
+    "privacyPolicy": "गोपनीयता नीति",
+    "cookiePolicy": "कुकी नीति",
+    "cookiePreferences": "कुकी प्राथमिकताएं"
   },
   "focusMode": {
     "settingsTitle": "फोकस मोड सेटिंग्स",
@@ -1329,5 +1336,21 @@
     "showTranslation": "अनुवाद दिखाएं",
     "originalShort": "मूल",
     "translationShort": "अनुवाद"
+  },
+  "cookieConsent": {
+    "bannerTitle": "हम आपकी गोपनीयता को महत्व देते हैं",
+    "bannerDescription": "हम विश्लेषण कुकी का उपयोग यह समझने के लिए करते हैं कि आप OpenScholar का उपयोग कैसे करते हैं और उत्पाद को कैसे बेहतर बनाते हैं। अपनी प्राथमिकता नीचे चुनें।",
+    "dialogDescription": "हम विश्लेषण कुकी का उपयोग यह समझने के लिए करते हैं कि आप OpenScholar का उपयोग कैसे करते हैं और उत्पाद को कैसे बेहतर बनाते हैं। आप सभी कुकी स्वीकार कर सकते हैं, गैर-आवश्यक को अस्वीकार कर सकते हैं, या कभी भी अपनी प्राथमिकता बदल सकते हैं।",
+    "acceptAll": "सभी स्वीकार करें",
+    "rejectNonEssential": "गैर-आवश्यक अस्वीकार करें",
+    "preferencesTitle": "कुकी प्राथमिकताएं",
+    "preferencesDescription": "प्रबंधित करें कि OpenScholar विश्लेषण के लिए कुकी का उपयोग कैसे करता है।"
+  },
+  "legal": {
+    "learnMorePrefix": "हमारे यहां और जानें",
+    "and": "और",
+    "privacyPolicy": "गोपनीयता नीति",
+    "cookiePolicy": "कुकी नीति",
+    "backToSite": "← OpenScholar पर वापस जाएं"
   }
 }

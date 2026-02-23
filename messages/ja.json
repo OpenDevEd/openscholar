@@ -896,7 +896,11 @@
     "jsonLdContext": "https://schema.org",
     "jsonLdTypeWebsite": "WebSite",
     "jsonLdTypeSearchAction": "SearchAction",
-    "jsonLdTypeEntryPoint": "EntryPoint"
+    "jsonLdTypeEntryPoint": "EntryPoint",
+    "privacyTitle": "プライバシーポリシー | OpenScholar",
+    "privacyDescription": "OpenScholar.ai顧客のプライバシーに関する通知。Open Development & Educationがどのように個人情報を収集、使用、保護するかについて説明します。",
+    "cookiePolicyTitle": "Cookieポリシー | OpenScholar",
+    "cookiePolicyDescription": "OpenScholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。"
   },
   "validation": {
     "bookmarkNameRequired": "ブックマーク名は必須です",
@@ -1295,7 +1299,10 @@
   "footer": {
     "builtBy": "作成：",
     "with": "使用：",
-    "suffix": ""
+    "suffix": "",
+    "privacyPolicy": "プライバシーポリシー",
+    "cookiePolicy": "Cookieポリシー",
+    "cookiePreferences": "Cookie設定"
   },
   "focusMode": {
     "settingsTitle": "フォーカスモード設定",
@@ -1329,5 +1336,21 @@
     "showTranslation": "翻訳を表示",
     "originalShort": "原文",
     "translationShort": "訳"
+  },
+  "cookieConsent": {
+    "bannerTitle": "プライバシーを尊重します",
+    "bannerDescription": "分析用Cookieを使用してOpenScholarの使用状況を理解し、製品を改善しています。以下で設定を選択してください。",
+    "dialogDescription": "分析用Cookieを使用してOpenScholarの使用状況を理解し、製品を改善しています。すべてのCookieを受け入れるか、必須でないCookieを拒否するか、またはいつでも設定を変更できます。",
+    "acceptAll": "すべて受け入れ",
+    "rejectNonEssential": "必須でないものを拒否",
+    "preferencesTitle": "Cookie設定",
+    "preferencesDescription": "OpenScholarが分析のためにCookieをどのように使用するかを管理します。"
+  },
+  "legal": {
+    "learnMorePrefix": "詳細については私たちの",
+    "and": "および",
+    "privacyPolicy": "プライバシーポリシー",
+    "cookiePolicy": "Cookieポリシー",
+    "backToSite": "← OpenScholarに戻る"
   }
 }

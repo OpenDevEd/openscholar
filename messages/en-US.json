@@ -896,7 +896,11 @@
     "jsonLdContext": "https://schema.org",
     "jsonLdTypeWebsite": "WebSite",
     "jsonLdTypeSearchAction": "SearchAction",
-    "jsonLdTypeEntryPoint": "EntryPoint"
+    "jsonLdTypeEntryPoint": "EntryPoint",
+    "privacyTitle": "Privacy Policy | OpenScholar",
+    "privacyDescription": "OpenScholar.ai customer privacy notice. Learn how Open Development & Education collects, uses, and protects your personal information.",
+    "cookiePolicyTitle": "Cookie Policy | OpenScholar",
+    "cookiePolicyDescription": "Learn how OpenScholar.ai uses cookies for analytics and how to manage your cookie preferences."
   },
   "validation": {
     "bookmarkNameRequired": "Bookmark name is required",
@@ -1295,7 +1299,10 @@
   "footer": {
     "builtBy": "Built by",
     "with": "with",
-    "suffix": ""
+    "suffix": "",
+    "privacyPolicy": "Privacy policy",
+    "cookiePolicy": "Cookie policy",
+    "cookiePreferences": "Cookie preferences"
   },
   "focusMode": {
     "settingsTitle": "Focus Mode Settings",
@@ -1329,5 +1336,21 @@
     "showTranslation": "Show Translation",
     "originalShort": "Orig",
     "translationShort": "Trans"
+  },
+  "cookieConsent": {
+    "bannerTitle": "We value your privacy",
+    "bannerDescription": "We use analytics cookies to understand how you use OpenScholar and improve the product. Choose your preference below.",
+    "dialogDescription": "We use analytics cookies to understand how you use OpenScholar and improve the product. You can accept all cookies, reject non-essential ones, or change your preference anytime.",
+    "acceptAll": "Accept all",
+    "rejectNonEssential": "Reject non-essential",
+    "preferencesTitle": "Cookie preferences",
+    "preferencesDescription": "Manage how OpenScholar uses cookies for analytics."
+  },
+  "legal": {
+    "learnMorePrefix": "Learn more in our",
+    "and": "and",
+    "privacyPolicy": "Privacy policy",
+    "cookiePolicy": "Cookie policy",
+    "backToSite": "← Back to OpenScholar"
   }
 }

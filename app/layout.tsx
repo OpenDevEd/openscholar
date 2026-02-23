@@ -12,6 +12,7 @@ import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
@@ -91,6 +92,7 @@ export default async function RootLayout({
                         </div>
                       </div>
                       <Toaster />
+                      <CookieConsentBanner />
                     </TooltipProvider>
                   </QuerySyncProvider>
                 </NuqsAdapter>

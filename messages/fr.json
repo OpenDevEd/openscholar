@@ -896,7 +896,11 @@
     "jsonLdContext": "https://schema.org",
     "jsonLdTypeWebsite": "WebSite",
     "jsonLdTypeSearchAction": "SearchAction",
-    "jsonLdTypeEntryPoint": "EntryPoint"
+    "jsonLdTypeEntryPoint": "EntryPoint",
+    "privacyTitle": "Politique de confidentialité | OpenScholar",
+    "privacyDescription": "Avis de confidentialité clients OpenScholar.ai. Découvrez comment Open Development & Education collecte, utilise et protège vos données personnelles.",
+    "cookiePolicyTitle": "Politique de cookies | OpenScholar",
+    "cookiePolicyDescription": "Découvrez comment OpenScholar.ai utilise les cookies pour l'analyse et comment gérer vos préférences de cookies."
   },
   "validation": {
     "bookmarkNameRequired": "Le nom du favori est requis",
@@ -1295,7 +1299,10 @@
   "footer": {
     "builtBy": "Construit par",
     "with": "avec",
-    "suffix": ""
+    "suffix": "",
+    "privacyPolicy": "Politique de confidentialité",
+    "cookiePolicy": "Politique de cookies",
+    "cookiePreferences": "Préférences de cookies"
   },
   "focusMode": {
     "settingsTitle": "Paramètres du mode focus",
@@ -1329,5 +1336,21 @@
     "showTranslation": "Afficher la traduction",
     "originalShort": "Orig",
     "translationShort": "Trad"
+  },
+  "cookieConsent": {
+    "bannerTitle": "Nous respectons votre vie privée",
+    "bannerDescription": "Nous utilisons des cookies analytiques pour comprendre comment vous utilisez OpenScholar et améliorer le produit. Faites votre choix ci-dessous.",
+    "dialogDescription": "Nous utilisons des cookies analytiques pour comprendre comment vous utilisez OpenScholar et améliorer le produit. Vous pouvez accepter tous les cookies, refuser les cookies non essentiels, ou modifier vos préférences à tout moment.",
+    "acceptAll": "Tout accepter",
+    "rejectNonEssential": "Refuser les non-essentiels",
+    "preferencesTitle": "Préférences de cookies",
+    "preferencesDescription": "Gérez la façon dont OpenScholar utilise les cookies pour l'analyse."
+  },
+  "legal": {
+    "learnMorePrefix": "En savoir plus dans notre",
+    "and": "et",
+    "privacyPolicy": "Politique de confidentialité",
+    "cookiePolicy": "Politique de cookies",
+    "backToSite": "← Retour à OpenScholar"
   }
 }
