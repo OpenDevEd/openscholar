@@ -10,6 +10,8 @@ import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import { buildDedupeKey } from "./dedupe";
 
+import { createError } from "../lib/errors";
+
 export const runExtractionWorkflow = workflow.define({
   args: {
     jobId: v.id("extractionJobs"),
@@ -23,7 +25,7 @@ export const runExtractionWorkflow = workflow.define({
     });
 
     if (!job) {
-      throw new Error("Job not found");
+      throw createError("NOT_FOUND", "Job not found");
     }
 
     const questionsRaw = await step.runQuery(
@@ -120,7 +122,7 @@ export const runExtractionWorkflow = workflow.define({
     }
 
     if (papers.length === 0) {
-      throw new Error("No sources selected");
+      throw createError("VALIDATION_ERROR", "No sources selected");
     }
 
     const dedupedMap = new Map<string, any>();

@@ -19,6 +19,7 @@ import {
   type InsightEntry,
   type ReviewState,
 } from "../../lib/extraction/insights";
+import { createError } from "../lib/errors";
 
 type OwnedJobResolution =
   | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
@@ -179,7 +180,40 @@ export const getMyJobs = query({
       )
     ),
   },
-  returns: v.array(v.any()),
+  returns: v.array(
+    v.object({
+      _id: v.id("extractionJobs"),
+      _creationTime: v.number(),
+      userId: v.id("users"),
+      organizationId: v.optional(v.id("organizations")),
+      sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
+      sourceHistoryId: v.optional(v.string()),
+      sourceZoteroCollection: v.optional(v.string()),
+      sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: v.record(v.string(), v.any()) }))),
+      sourceZoteroSelection: v.optional(v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        includeDescendants: v.optional(v.boolean()),
+        items: v.array(v.object({ itemKey: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()) }))
+      })),
+      sourceManualItems: v.optional(v.array(v.object({
+        id: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.optional(v.array(v.string())), year: v.optional(v.number()), doi: v.optional(v.string()), pdfUrl: v.optional(v.string()), storageId: v.optional(v.id("_storage"))
+      }))),
+      searchFilters: v.optional(v.record(v.string(), v.any())),
+      status: v.union(v.literal("pending"), v.literal("downloading_pdfs"), v.literal("indexing"), v.literal("extracting"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
+      totalPapers: v.number(),
+      processedPapers: v.number(),
+      failedPapers: v.number(),
+      workflowId: v.optional(v.string()),
+      name: v.string(),
+      description: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      completedAt: v.optional(v.number()),
+    })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     // Handle unauthenticated gracefully
@@ -216,7 +250,6 @@ export const getMyJobs = query({
 // Get job details with progress (public API)
 export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -270,7 +303,6 @@ export const getJobDetails = query({
 // Get paper extraction results (public API)
 export const getPaperResults = query({
   args: { paperId: v.id("extractionPapers") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
@@ -302,7 +334,6 @@ export const getPaperResultsInternal = internalQuery({
 
 export const getPaperPdfUrl = query({
   args: { paperId: v.id("extractionPapers") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
@@ -325,7 +356,6 @@ export const getPaperPdfUrl = query({
 // Get all results for a job (public API) - for export
 export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -378,7 +408,6 @@ export const getJobResultsPaginated = query({
     jobId: v.id("extractionJobs"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -438,7 +467,6 @@ export const getJobResultsPaginated = query({
 
 export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -563,7 +591,6 @@ export const getQuestionInsights = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -644,7 +671,6 @@ export const getQuestionDisagreements = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -743,7 +769,6 @@ export const getReviewQueue = query({
     onlyInsufficientEvidence: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -828,7 +853,6 @@ export const getReviewQueue = query({
 
 export const getSavedViews = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -863,7 +887,6 @@ export const getWorkflowTemplates = query({
 
 export const getReportSnapshots = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -885,7 +908,6 @@ export const getRunDiff = query({
     jobId: v.id("extractionJobs"),
     diffId: v.optional(v.id("extractionRunDiffs")),
   },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1082,7 +1104,6 @@ export const getPapersDebug = internalQuery({
 // Subscribe to job progress (real-time updates)
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);

@@ -74,7 +74,43 @@ export function ReviewQueue({
       : "skip",
   );
   const queue = queueQuery.data;
-  const setReviewState = useMutation(api.extraction.mutations.setResultReviewState);
+  const setReviewState = useMutation(api.extraction.mutations.setResultReviewState).withOptimisticUpdate(
+    (localStore, args) => {
+      if (!enabled) return;
+      const currentQueue = localStore.getQuery(api.extraction.queries.getReviewQueue, {
+        jobId: jobId as any,
+        states: Array.from(selectedStates),
+        onlyInsufficientEvidence,
+        limit: 250,
+      });
+
+      if (currentQueue && currentQueue.status === "ok" && currentQueue.items) {
+        const itemIndex = currentQueue.items.findIndex(
+          (item: any) => item.resultId === args.resultId
+        );
+
+        if (itemIndex !== -1) {
+          const newItems = [...currentQueue.items];
+          newItems[itemIndex] = {
+            ...newItems[itemIndex],
+            reviewState: args.state,
+            reviewNote: args.note,
+            correctedAnswer: args.correctedAnswer !== undefined ? args.correctedAnswer : newItems[itemIndex].correctedAnswer,
+          };
+          
+          localStore.setQuery(api.extraction.queries.getReviewQueue, {
+            jobId: jobId as any,
+            states: Array.from(selectedStates),
+            onlyInsufficientEvidence,
+            limit: 250,
+          }, {
+            ...currentQueue,
+            items: newItems,
+          });
+        }
+      }
+    }
+  );
 
   const items = queue?.status === "ok" ? queue.items || [] : [];
   const current = items[index] || null;

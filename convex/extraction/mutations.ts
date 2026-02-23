@@ -23,6 +23,8 @@ import {
   type RunDiffRecord,
 } from "../../lib/extraction/insights";
 
+import { createError } from "../lib/errors";
+
 async function assertJobOwnership(
   ctx: any,
   userId: Id<"users">,
@@ -30,7 +32,7 @@ async function assertJobOwnership(
 ) {
   const job = await ctx.db.get(jobId);
   if (!job || job.userId !== userId) {
-    throw new Error("Job not found");
+    throw createError("NOT_FOUND", "Job not found");
   }
   return job;
 }
@@ -226,7 +228,7 @@ export const cancelExtraction = mutation({
     const job = await ctx.db.get(args.jobId);
 
     if (!job || job.userId !== user._id) {
-      throw new Error("Job not found");
+      throw createError("NOT_FOUND", "Job not found");
     }
 
     // Only allow cancelling pending or active jobs
@@ -252,7 +254,7 @@ export const duplicateExtraction = mutation({
 
     const oldJob = await ctx.db.get(args.jobId);
     if (!oldJob || oldJob.userId !== user._id) {
-      throw new Error("Job not found");
+      throw createError("NOT_FOUND", "Job not found");
     }
 
     const questions = await ctx.db
@@ -328,10 +330,10 @@ export const setResultReviewState = mutation({
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
     const result = await ctx.db.get(args.resultId);
-    if (!result) throw new Error("Result not found");
+    if (!result) throw createError("NOT_FOUND", "Result not found");
 
     const paper = await ctx.db.get(result.paperId);
-    if (!paper) throw new Error("Paper not found");
+    if (!paper) throw createError("NOT_FOUND", "Paper not found");
 
     const job = await assertJobOwnership(ctx, user._id, paper.jobId);
     const existing = await ctx.db
@@ -408,7 +410,7 @@ export const saveExtractionSavedView = mutation({
     await assertJobOwnership(ctx, user._id, args.jobId);
 
     const name = args.name.trim();
-    if (!name) throw new Error("View name is required");
+    if (!name) throw createError("VALIDATION_ERROR", "View name is required");
 
     const existing = await ctx.db
       .query("extractionSavedViews")
@@ -452,7 +454,7 @@ export const deleteExtractionSavedView = mutation({
     const user = await requireAuth(ctx);
     const view = await ctx.db.get(args.viewId);
     if (!view || view.userId !== user._id) {
-      throw new Error("Saved view not found");
+      throw createError("NOT_FOUND", "Saved view not found");
     }
     await ctx.db.delete(args.viewId);
     return { success: true };
@@ -480,7 +482,7 @@ export const saveWorkflowTemplate = mutation({
       .collect();
 
     const name = args.name.trim();
-    if (!name) throw new Error("Template name is required");
+    if (!name) throw createError("VALIDATION_ERROR", "Template name is required");
 
     const existing = await ctx.db
       .query("extractionWorkflowTemplates")
@@ -527,7 +529,7 @@ export const deleteWorkflowTemplate = mutation({
     const user = await requireAuth(ctx);
     const template = await ctx.db.get(args.templateId);
     if (!template || template.userId !== user._id) {
-      throw new Error("Template not found");
+      throw createError("NOT_FOUND", "Template not found");
     }
     await ctx.db.delete(args.templateId);
     return { success: true };
@@ -545,7 +547,7 @@ export const startExtractionFromTemplate = mutation({
     const user = await requireAuth(ctx);
     const template = await ctx.db.get(args.templateId);
     if (!template || template.userId !== user._id) {
-      throw new Error("Template not found");
+      throw createError("NOT_FOUND", "Template not found");
     }
 
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
@@ -821,46 +823,63 @@ export const createExtractionRunDiff = mutation({
 
 export const deleteExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) throw new Error("Job not found");
+    if (!job || job.userId !== user._id) throw createError("NOT_FOUND", "Job not found");
 
-    // Helper to delete in batches
-    const deleteBatch = async (table: string, index: string, field: string) => {
-        const items = await ctx.db
-            .query(table as any)
-            .withIndex(index, (q) => q.eq(field as any, args.jobId))
-            .collect();
-        for (const item of items) {
-            await ctx.db.delete(item._id);
-        }
-    };
-
-    // Delete related data 
-    // Note: detailed cleanup might need internal mutation if too many items, but for now strict delete
-    await deleteBatch("extractionPapers", "by_job", "jobId");
-    await deleteBatch("extractionQuestions", "by_job", "jobId");
-    // extractionResults are linked to papers, so we might need to delete them first or cascade
-    // Actually, extractionResults bind to paperId. We need to find papers first.
-    // This simple delete might be too slow for large jobs.
-    // Better to just delete the job and let a cron clean up orphans, OR use a recursive delete here.
-    // Given the urgency, I'll delete the job and papers/questions. Results might be orphaned but that's acceptable for now or I can iterate papers.
-    // Let's iterate papers to be clean.
+    // Defer the cascade delete to an internal mutation so it doesn't hit transaction limits
+    await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, {
+      jobId: args.jobId
+    });
     
-    // Deleting papers and their results
+    return null;
+  }
+});
+
+export const deleteExtractionInternal = internalMutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Delete in batches to avoid hitting transaction limits
+    const BATCH_SIZE = 100;
+    
+    // 1. Delete Results
     const papers = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).collect();
     for (const paper of papers) {
-        const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).collect();
+      const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(BATCH_SIZE);
+      if (results.length > 0) {
         for (const res of results) await ctx.db.delete(res._id);
-        await ctx.db.delete(paper._id);
+        // Reschedule ourselves if we hit the batch limit to continue deleting
+        await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+        return null;
+      }
     }
 
-    await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).collect().then(qs => qs.forEach(q => ctx.db.delete(q._id)));
+    // 2. Delete Papers
+    const remainingPapers = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).take(BATCH_SIZE);
+    if (remainingPapers.length > 0) {
+       for (const paper of remainingPapers) await ctx.db.delete(paper._id);
+       await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+       return null;
+    }
+
+    // 3. Delete Questions
+    const questions = await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).take(BATCH_SIZE);
+    if (questions.length > 0) {
+      for (const q of questions) await ctx.db.delete(q._id);
+      await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
     
-    await ctx.db.delete(args.jobId);
+    // 4. Delete the job itself now that everything is cleaned up
+    const job = await ctx.db.get(args.jobId);
+    if (job) await ctx.db.delete(args.jobId);
+
+    return null;
   }
 });
 
@@ -887,7 +906,8 @@ export const createPaperRecords = internalMutation({
       })
     ),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     for (const paper of args.papers) {
       const { processable } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
@@ -911,6 +931,7 @@ export const createPaperRecords = internalMutation({
         status: "pending",
       });
     }
+    return null;
   },
 });
 
@@ -928,7 +949,8 @@ export const updateJobStatus = internalMutation({
     ),
     totalPapers: v.optional(v.number()),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     const updates: Record<string, unknown> = {
       status: args.status,
       updatedAt: Date.now(),
@@ -939,6 +961,7 @@ export const updateJobStatus = internalMutation({
     }
 
     await ctx.db.patch(args.jobId, updates);
+    return null;
   },
 });
 
@@ -959,7 +982,8 @@ export const updatePaperStatus = internalMutation({
     completedAt: v.optional(v.number()),
     creditsUsed: v.optional(v.number()),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     const updates: Record<string, unknown> = {
       status: args.status,
     };
@@ -977,6 +1001,7 @@ export const updatePaperStatus = internalMutation({
     }
 
     await ctx.db.patch(args.paperId, updates);
+    return null;
   },
 });
 
@@ -985,10 +1010,12 @@ export const updatePaperProcessable = internalMutation({
     paperId: v.id("extractionPapers"),
     processable: v.boolean(),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     await ctx.db.patch(args.paperId, {
       processable: args.processable,
     });
+    return null;
   },
 });
 
@@ -997,11 +1024,13 @@ export const setPaperStorage = internalMutation({
     paperId: v.id("extractionPapers"),
     storageId: v.id("_storage"),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     await ctx.db.patch(args.paperId, {
       storageId: args.storageId,
       processable: true,
     });
+    return null;
   },
 });
 
@@ -1010,10 +1039,12 @@ export const setPaperWorkId = internalMutation({
     paperId: v.id("extractionPapers"),
     workId: v.string(),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     await ctx.db.patch(args.paperId, {
       workId: args.workId,
     });
+    return null;
   },
 });
 
@@ -1022,7 +1053,8 @@ export const markPaperIndexed = internalMutation({
     paperId: v.id("extractionPapers"),
     ragEntryId: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     const updates: Record<string, unknown> = {
       isIndexed: true,
       indexedAt: Date.now(),
@@ -1033,6 +1065,7 @@ export const markPaperIndexed = internalMutation({
     }
 
     await ctx.db.patch(args.paperId, updates);
+    return null;
   },
 });
 
@@ -1040,9 +1073,10 @@ export const finalizeJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     const job = await ctx.db.get(args.jobId);
-    if (!job) return;
+    if (!job) return null;
 
     // Count final stats
     const papers = await ctx.db
@@ -1072,6 +1106,7 @@ export const finalizeJob = internalMutation({
       completedAt: Date.now(),
       updatedAt: Date.now(),
     });
+    return null;
   },
 });
 
@@ -1080,6 +1115,7 @@ export const cleanupOldPdfs = internalMutation({
   args: {
     maxAgeHours: v.number(),
   },
+  returns: v.object({ cleaned: v.number() }),
   handler: async (ctx, args): Promise<{ cleaned: number }> => {
     const cutoffTime = Date.now() - args.maxAgeHours * 60 * 60 * 1000;
 
@@ -1112,16 +1148,17 @@ export const finalizeJobIfDone = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     const job = await ctx.db.get(args.jobId);
-    if (!job) return;
+    if (!job) return null;
 
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .collect();
 
-    if (papers.length === 0) return;
+    if (papers.length === 0) return null;
 
     const processablePapers = papers.filter((p) => p.processable !== false);
     if (processablePapers.length === 0) {
@@ -1132,7 +1169,7 @@ export const finalizeJobIfDone = internalMutation({
         completedAt: Date.now(),
         updatedAt: Date.now(),
       });
-      return;
+      return null;
     }
 
     const completedCount = processablePapers.filter(
@@ -1149,7 +1186,7 @@ export const finalizeJobIfDone = internalMutation({
       await ctx.db.patch(args.jobId, {
         updatedAt: Date.now(),
       });
-      return;
+      return null;
     }
 
     const status =
@@ -1162,6 +1199,7 @@ export const finalizeJobIfDone = internalMutation({
       completedAt: Date.now(),
       updatedAt: Date.now(),
     });
+    return null;
   },
 });
 
@@ -1219,6 +1257,7 @@ export const createJobDirect = internalMutation({
       )
     ),
   },
+  returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
     return await ctx.db.insert("extractionJobs", {
       userId: args.userId,
@@ -1247,6 +1286,7 @@ export const createQuestionDirect = internalMutation({
     description: v.optional(v.string()),
     order: v.number(),
   },
+  returns: v.id("extractionQuestions"),
   handler: async (ctx, args) => {
     return await ctx.db.insert("extractionQuestions", {
       jobId: args.jobId,
@@ -1265,8 +1305,10 @@ export const setJobWorkflowId = internalMutation({
     jobId: v.id("extractionJobs"),
     workflowId: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch(args.jobId, { workflowId: args.workflowId });
+    return null;
   },
 });
 
@@ -1294,6 +1336,7 @@ export const enqueuePaperProcessing = internalMutation({
       })
     ),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     console.log(`[enqueuePaperProcessing] START - Paper ${args.paperId}, PDF URL: ${args.pdfUrl ? "YES" : "NO"}`);
     
@@ -1332,6 +1375,7 @@ export const enqueuePaperProcessing = internalMutation({
       }
     );
     console.log(`[enqueuePaperProcessing] SUCCESS - Paper ${args.paperId} enqueued for processing`);
+    return null;
   },
 });
 
@@ -1552,6 +1596,7 @@ export const createJobByWorkosId = internalMutation({
       )
     ),
   },
+  returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
     // Look up user by workosId
     const user = await ctx.db
@@ -1560,7 +1605,7 @@ export const createJobByWorkosId = internalMutation({
       .unique();
     
     if (!user) {
-      throw new Error("User not found");
+      throw createError("NOT_FOUND", "User not found");
     }
     
     const jobId = await ctx.db.insert("extractionJobs", {
@@ -1588,10 +1633,11 @@ export const getUserIdFromJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
   },
+  returns: v.id("users"),
   handler: async (ctx, args) => {
     const job = await ctx.db.get(args.jobId);
     if (!job) {
-      throw new Error("Job not found");
+      throw createError("NOT_FOUND", "Job not found");
     }
     return job.userId;
   },
@@ -1826,7 +1872,8 @@ export const replacePaperEvidenceUnits = internalMutation({
       })
     ),
   },
-  handler: async (ctx, args): Promise<void> => {
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
     const existing = await ctx.db
       .query("extractionEvidenceUnits")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
@@ -1850,6 +1897,7 @@ export const replacePaperEvidenceUnits = internalMutation({
         createdAt: Date.now(),
       });
     }
+    return null;
   },
 });
 
