@@ -20,6 +20,7 @@ async function getMembership(
  */
 export const getById = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -42,6 +43,7 @@ export const getById = query({
  */
 export const getWithMembership = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -62,6 +64,7 @@ export const getWithMembership = query({
  */
 export const getMembers = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.array(v.any()),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
@@ -89,6 +92,7 @@ export const getMembers = query({
  */
 export const getCredits = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -109,6 +113,7 @@ export const getCredits = query({
  */
 export const getSubscription = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;

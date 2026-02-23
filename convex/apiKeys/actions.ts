@@ -1,6 +1,6 @@
 "use node";
 import { action, internalAction } from "../_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
@@ -15,7 +15,7 @@ function encrypt(plaintext: string, keyHex: string): string {
   const key = Buffer.from(keyHex, "hex");
 
   if (key.length !== 32) {
-    throw new Error("Encryption key must be 32 bytes (64 hex characters)");
+    throw new ConvexError("Encryption key must be 32 bytes (64 hex characters)");
   }
 
   const iv = randomBytes(IV_LENGTH);
@@ -33,14 +33,14 @@ function decrypt(encrypted: string, keyHex: string): string {
   const parts = encrypted.split(":");
 
   if (parts.length !== 3) {
-    throw new Error("Invalid encrypted format");
+    throw new ConvexError("Invalid encrypted format");
   }
 
   const [ivHex, authTagHex, ciphertext] = parts;
   const key = Buffer.from(keyHex, "hex");
 
   if (key.length !== 32) {
-    throw new Error("Encryption key must be 32 bytes (64 hex characters)");
+    throw new ConvexError("Encryption key must be 32 bytes (64 hex characters)");
   }
 
   const iv = Buffer.from(ivHex, "hex");
@@ -102,12 +102,12 @@ export const encryptAndSave = action({
   handler: async (ctx, args) => {
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
-      throw new Error("Encryption key not configured");
+      throw new ConvexError("Encryption key not configured");
     }
 
     // Validate key format
     if (!validateApiKeyFormat(args.plainKey, args.provider)) {
-      throw new Error(`Invalid ${args.provider} API key format`);
+      throw new ConvexError(`Invalid ${args.provider} API key format`);
     }
 
     const encryptedKey = encrypt(args.plainKey, encryptionKey);
@@ -140,13 +140,13 @@ export const getDecrypted = internalAction({
   handler: async (ctx, args): Promise<string | null> => {
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
-      throw new Error("Encryption key not configured");
+      throw new ConvexError("Encryption key not configured");
     }
 
     // Get authenticated user
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
     if (!user) {
-      throw new Error("Unauthenticated");
+      throw new ConvexError("Unauthenticated");
     }
 
     // Get the encrypted key from internal query

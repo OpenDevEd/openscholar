@@ -385,7 +385,9 @@ export default defineSchema({
     .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_status", ["jobId", "status"])
     .index("by_openalex", ["openalexId"])
-    .index("by_work", ["workId"]),
+    .index("by_work", ["workId"])
+    .index("by_status_completedAt", ["status", "completedAt"])
+    .index("by_ragEntryId_isIndexed", ["ragEntryId", "isIndexed"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)

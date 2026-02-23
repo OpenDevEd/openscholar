@@ -163,6 +163,7 @@ export const startExtraction = mutation({
       })
     ),
   },
+  returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
@@ -221,6 +222,7 @@ export const startExtraction = mutation({
 // Cancel a running job (public API)
 export const cancelExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
@@ -248,6 +250,7 @@ export const cancelExtraction = mutation({
 
 export const duplicateExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
@@ -1121,9 +1124,9 @@ export const cleanupOldPdfs = internalMutation({
 
     const oldPapers = await ctx.db
       .query("extractionPapers")
-      .withIndex("by_job_status")
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .filter((q) => q.lt(q.field("completedAt"), cutoffTime))
+      .withIndex("by_status_completedAt", (q) => 
+        q.eq("status", "completed").lt("completedAt", cutoffTime)
+      )
       .collect();
 
     for (const paper of oldPapers) {
@@ -1172,9 +1175,7 @@ export const finalizeJobIfDone = internalMutation({
       return null;
     }
 
-    const completedCount = processablePapers.filter(
-      (p) => p.status === "completed"
-    ).length;
+    const completedCount = processablePapers.filter((p) => p.status === "completed").length;
     const failedCount = processablePapers.filter(
       (p) =>
         p.status === "failed" ||
@@ -1667,12 +1668,13 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
       };
 
       if (data.papers && data.papers.length > 0) {
+        const validPapers = data.papers.filter((paper): paper is NonNullable<typeof paper> => Boolean(paper));
         // Create paper records
         await ctx.runMutation(
           internal.extraction.mutations.createPaperRecords,
           {
             jobId,
-            papers: data.papers,
+            papers: validPapers,
           }
         );
 
@@ -1709,7 +1711,7 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
   },
 });
 
-// Backfill mutation to set isIndexed for papers with existing ragEntryId
+  // Backfill mutation to set isIndexed for papers with existing ragEntryId
 export const backfillIsIndexed = internalMutation({
   args: {
     batchSize: v.optional(v.number()),
@@ -1718,16 +1720,18 @@ export const backfillIsIndexed = internalMutation({
     const batchSize = args.batchSize ?? 100;
     
     // Find papers with ragEntryId but no isIndexed flag
+    // Without an explicit equality check on ragEntryId, we might not be able to fully query by index.
+    // However, if we need to query by index, we can just do a full table scan since it's a backfill,
+    // or collect everything. Let's just collect all papers and array filter them to avoid DB filters.
+    // But since it's a large table, we should just use collect and slice.
     const papers = await ctx.db
       .query("extractionPapers")
-      .filter((q) => q.and(
-        q.neq(q.field("ragEntryId"), null),
-        q.eq(q.field("isIndexed"), null)
-      ))
-      .take(batchSize);
+      .collect();
+
+    const targetPapers = papers.filter((p) => p.ragEntryId != null && p.isIndexed == null).slice(0, batchSize);
     
     let updated = 0;
-    for (const paper of papers) {
+    for (const paper of targetPapers) {
       await ctx.db.patch(paper._id, {
         isIndexed: true,
       });
@@ -1735,7 +1739,7 @@ export const backfillIsIndexed = internalMutation({
     }
     
     console.log(`[backfillIsIndexed] Updated ${updated} papers`);
-    return { updated, hasMore: papers.length === batchSize };
+    return { updated, hasMore: targetPapers.length === batchSize };
   },
 });
 
@@ -1815,7 +1819,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
   },
   handler: async (ctx, args): Promise<void> => {
     // Save extraction results
-    for (const result of args.results) {
+    for (const result of args.results.filter(Boolean)) {
       await ctx.db.insert("extractionResults", {
         paperId: args.paperId,
         questionKey: result.questionKey,
@@ -1907,7 +1911,7 @@ export const resetExtractionMvpData = internalMutation({
   },
   handler: async (ctx, args): Promise<{ deletedResults: number; deletedUnits: number; updatedJobs: number }> => {
     const targetJobs = args.jobId
-      ? [await ctx.db.get(args.jobId)].filter(Boolean)
+      ? [await ctx.db.get(args.jobId)].filter((job): job is NonNullable<typeof job> => Boolean(job))
       : await ctx.db.query("extractionJobs").collect();
 
     let deletedResults = 0;

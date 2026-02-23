@@ -34,7 +34,7 @@ export default function BillingPage() {
   const createPortalSession = useAction(
     api.subscriptions.actions.createPortalSession,
   );
-  const changePlan = useAction((api as any).subscriptions.actions.changePlan);
+  const changePlan = useAction(api.subscriptions.actions.changePlan);
   const getSubscriptionDetails = useAction(
     api.subscriptions.actions.getSubscriptionDetails,
   );

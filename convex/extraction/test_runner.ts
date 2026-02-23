@@ -13,6 +13,7 @@ export const createAndRunTestJob = internalMutation({
     query: v.optional(v.string()),
     paperLimit: v.optional(v.number()),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     // Get first user
     const user = await ctx.db
@@ -110,6 +111,7 @@ export const getTestJobStatus = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     const job = await ctx.db.get(args.jobId);
     if (!job) {

@@ -86,14 +86,14 @@ export function Pricing() {
 
   const getPlans = useAction(api.subscriptions.actions.getPlans);
   const createCheckoutSession = useAction(
-    (api as any).subscriptions.actions.createCheckoutSession,
+    api.subscriptions.actions.createCheckoutSession,
   );
-  const changePlan = useAction((api as any).subscriptions.actions.changePlan);
+  const changePlan = useAction(api.subscriptions.actions.changePlan);
   const createPortalSession = useAction(
-    (api as any).subscriptions.actions.createPortalSession,
+    api.subscriptions.actions.createPortalSession,
   );
   const getSubscriptionDetails = useAction(
-    (api as any).subscriptions.actions.getSubscriptionDetails,
+    api.subscriptions.actions.getSubscriptionDetails,
   );
 
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);

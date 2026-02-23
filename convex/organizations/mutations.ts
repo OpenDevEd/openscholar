@@ -1,5 +1,5 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { requireOrgAdmin, requireOrgOwner } from "../lib/auth";
 
 /**
@@ -12,6 +12,7 @@ export const update = mutation({
     slug: v.optional(v.string()),
     logoUrl: v.optional(v.string()),
   },
+  returns: v.id("organizations"),
   handler: async (ctx, args) => {
     await requireOrgAdmin(ctx, args.organizationId);
 
@@ -35,11 +36,12 @@ export const updateSettings = mutation({
     allowByok: v.optional(v.boolean()),
     creditPooling: v.optional(v.boolean()),
   },
+  returns: v.id("organizations"),
   handler: async (ctx, args) => {
     await requireOrgOwner(ctx, args.organizationId);
 
     const org = await ctx.db.get(args.organizationId);
-    if (!org) throw new Error("Organization not found");
+    if (!org) throw new ConvexError("Organization not found");
 
     await ctx.db.patch(args.organizationId, {
       settings: {

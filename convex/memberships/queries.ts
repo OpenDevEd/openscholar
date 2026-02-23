@@ -7,6 +7,7 @@ import { getCurrentUser } from "../lib/auth";
  */
 export const getById = query({
   args: { membershipId: v.id("memberships") },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { membershipId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -42,6 +43,7 @@ export const getById = query({
  */
 export const getMyMembership = query({
   args: { organizationId: v.id("organizations") },
+  returns: v.union(v.null(), v.any()),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;

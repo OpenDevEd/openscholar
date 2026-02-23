@@ -7,6 +7,7 @@ import { requirePublicDebugEnabled } from "../lib/debug_gate";
 // Debug query to get detailed error information for failed papers
 export const getFailedPapersDebug = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requirePublicDebugEnabled();
 

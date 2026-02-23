@@ -1,4 +1,5 @@
 import { mutation } from "../_generated/server";
+import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
@@ -6,6 +7,7 @@ import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 export const createTestJob = mutation({
   args: {},
+  returns: v.any(),
   handler: async (ctx): Promise<{ jobId: string }> => {
     requirePublicDebugEnabled();
 

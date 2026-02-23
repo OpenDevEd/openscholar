@@ -250,6 +250,22 @@ export const getMyJobs = query({
 // Get job details with progress (public API)
 export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      job: v.any(),
+      questions: v.array(v.any()),
+      papers: v.array(v.any()),
+      progress: v.object({
+        total: v.number(),
+        processed: v.number(),
+        failed: v.number(),
+        percentage: v.number(),
+      }),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -273,9 +289,7 @@ export const getJobDetails = query({
       .take(100);
 
     const processablePapers = papers.filter((p) => p.processable !== false);
-    const processed = processablePapers.filter(
-      (p) => p.status === "completed"
-    ).length;
+    const processed = processablePapers.filter((p) => p.status === "completed").length;
     const failed = processablePapers.filter(
       (p) =>
         p.status === "failed" ||
@@ -303,6 +317,15 @@ export const getJobDetails = query({
 // Get paper extraction results (public API)
 export const getPaperResults = query({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      paper: v.any(),
+      results: v.array(v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
@@ -334,6 +357,14 @@ export const getPaperResultsInternal = internalQuery({
 
 export const getPaperPdfUrl = query({
   args: { paperId: v.id("extractionPapers") },
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      pdfUrl: v.union(v.string(), v.null()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
@@ -356,6 +387,16 @@ export const getPaperPdfUrl = query({
 // Get all results for a job (public API) - for export
 export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      job: v.any(),
+      questions: v.array(v.any()),
+      papers: v.any(),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -408,6 +449,7 @@ export const getJobResultsPaginated = query({
     jobId: v.id("extractionJobs"),
     paginationOpts: paginationOptsValidator,
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -467,6 +509,7 @@ export const getJobResultsPaginated = query({
 
 export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -591,6 +634,7 @@ export const getQuestionInsights = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -671,6 +715,7 @@ export const getQuestionDisagreements = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -769,6 +814,7 @@ export const getReviewQueue = query({
     onlyInsufficientEvidence: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -853,6 +899,7 @@ export const getReviewQueue = query({
 
 export const getSavedViews = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -887,6 +934,7 @@ export const getWorkflowTemplates = query({
 
 export const getReportSnapshots = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -908,6 +956,7 @@ export const getRunDiff = query({
     jobId: v.id("extractionJobs"),
     diffId: v.optional(v.id("extractionRunDiffs")),
   },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1017,9 +1066,7 @@ export const getJobProgressInternal = internalQuery({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .collect();
     const processablePapers = papers.filter((p) => p.processable !== false);
-    const processed = processablePapers.filter(
-      (p) => p.status === "completed"
-    ).length;
+    const processed = processablePapers.filter((p) => p.status === "completed").length;
     const failed = processablePapers.filter(
       (p) =>
         p.status === "failed" ||
@@ -1104,6 +1151,7 @@ export const getPapersDebug = internalQuery({
 // Subscribe to job progress (real-time updates)
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);

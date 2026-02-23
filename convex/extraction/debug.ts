@@ -7,6 +7,7 @@ import { requirePublicDebugEnabled } from "../lib/debug_gate";
 // Diagnostic query to check extraction job status
 export const diagnoseJob = query({
   args: { jobId: v.id("extractionJobs") },
+  returns: v.any(),
   handler: async (ctx, args) => {
     requirePublicDebugEnabled();
 

@@ -1,7 +1,7 @@
 "use node";
 
 import { action, type ActionCtx } from "../_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { requireActionAuth } from "../lib/auth";
 import { internal, components } from "../_generated/api";
 import { stripeClient } from "../stripe";
@@ -87,7 +87,7 @@ async function syncLocalSubscriptionFromStripe(
   const stripeCustomerId = getStripeCustomerId(subscription);
 
   if (!item?.price?.id || !stripeCustomerId) {
-    throw new Error("Stripe subscription is missing required item or customer data");
+    throw new ConvexError("Stripe subscription is missing required item or customer data");
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -136,12 +136,12 @@ export const createCheckoutSession = action({
     assertPlanPriceConfig();
 
     if (!isAllowedPriceId(args.priceId)) {
-      throw new Error("Invalid price ID");
+      throw new ConvexError("Invalid price ID");
     }
 
     const targetPlan = getPlanFromPriceId(args.priceId);
     if (targetPlan === "free") {
-      throw new Error("Cannot create checkout session for free plan");
+      throw new ConvexError("Cannot create checkout session for free plan");
     }
 
     const existingSubscription = await ctx.runQuery(
@@ -153,7 +153,7 @@ export const createCheckoutSession = action({
     );
 
     if (existingSubscription?.stripeSubscriptionId && existingSubscription.status !== "canceled") {
-      throw new Error("Existing Stripe subscription found. Use changePlan or billing portal.");
+      throw new ConvexError("Existing Stripe subscription found. Use changePlan or billing portal.");
     }
 
     const customer = await stripeClient.getOrCreateCustomer(ctx, {
@@ -287,7 +287,7 @@ export const createPortalSession = action({
     }
 
     if (!stripeCustomerId) {
-      throw new Error("No subscription customer found");
+      throw new ConvexError("No subscription customer found");
     }
 
     const portal = await stripeClient.createCustomerPortalSession(ctx, {
@@ -483,12 +483,12 @@ export const changePlan = action({
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
-      throw new Error("Invalid target price ID");
+      throw new ConvexError("Invalid target price ID");
     }
 
     const targetPlan = getPlanFromPriceId(args.targetPriceId);
     if (targetPlan === "free") {
-      throw new Error("Use billing portal to cancel to free plan");
+      throw new ConvexError("Use billing portal to cancel to free plan");
     }
 
     try {
@@ -501,7 +501,7 @@ export const changePlan = action({
       );
 
       if (!subscription || !subscription.stripeSubscriptionId) {
-        throw new Error("No active Stripe subscription found");
+        throw new ConvexError("No active Stripe subscription found");
       }
 
       const stripeSubscription: any = await stripe.subscriptions.retrieve(
@@ -513,7 +513,7 @@ export const changePlan = action({
 
       const item = stripeSubscription.items.data[0];
       if (!item?.id || !item.price?.id) {
-        throw new Error("Current subscription item not found");
+        throw new ConvexError("Current subscription item not found");
       }
 
       const currentPlan = getPlanFromPriceId(item.price.id || undefined);
@@ -617,7 +617,7 @@ export const changePlan = action({
       const fallbackCurrentPeriodEnd =
         stripeSubscription.current_period_end ?? item.current_period_end;
       if (!fallbackCurrentPeriodEnd) {
-        throw new Error("Unable to determine current period end for downgrade");
+        throw new ConvexError("Unable to determine current period end for downgrade");
       }
 
       const fallbackCurrentPeriodStart =
@@ -665,7 +665,7 @@ export const changePlan = action({
           targetPriceId: args.targetPriceId,
           userId: user._id,
         });
-        throw new Error(
+        throw new ConvexError(
           "Unable to update your plan due to a Stripe billing conflict. Please retry or use the billing portal.",
         );
       }

@@ -6,7 +6,7 @@
 import { action, internalAction } from "../_generated/server";
 import { buildZoteroHeaders } from "../../lib/zotero-utils";
 import { internal } from "../_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import * as crypto from "crypto";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -27,6 +27,9 @@ type ZoteroConnection = {
 
 async function requireCurrentUserId(ctx: ActionCtx): Promise<Id<"users">> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+  if (!user) {
+    throw new ConvexError("Unauthenticated");
+  }
   return user._id;
 }
 

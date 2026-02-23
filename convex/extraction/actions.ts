@@ -14,6 +14,7 @@ export const fetchPapersFromHistory = internalAction({
   args: {
     searchFilters: v.record(v.string(), v.any()),
   },
+  returns: v.array(v.any()),
   handler: async (ctx, args): Promise<PaperData[]> => {
     const filters = args.searchFilters as {
       query: string;

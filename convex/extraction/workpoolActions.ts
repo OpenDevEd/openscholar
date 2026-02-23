@@ -712,14 +712,14 @@ async function resolvePdfBlob(ctx: any, args: {
     return { pdfBlob: null, error: "No PDF URL provided" };
   }
 
-  const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
-    jobId: args.jobId,
-  });
-  const zoteroConnection = job
-    ? await ctx.runQuery(internal.zotero.internal.getConnection, {
-        userId: job.userId,
-      })
-    : null;
+    const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
+      jobId: args.jobId,
+    });
+    const zoteroConnection = job
+      ? await ctx.runQuery(internal.zotero.internal.getConnection, {
+          userId: job.userId,
+        })
+      : null;
 
   const downloaded: DownloadPdfResult = await downloadPdf(args.pdfUrl, {
     doi: args.doi,
@@ -1058,9 +1058,9 @@ export const waitAndExtractAction = internalAction({
       const latencyMs = Date.now() - start;
 
       if (job && (totalInputTokens > 0 || totalOutputTokens > 0)) {
-        const user = await ctx.runQuery(internal.users.internal.getUserById, {
-          userId: job.userId,
-        });
+    const user = await ctx.runQuery(internal.users.internal.getUserById, {
+      userId: job.userId,
+    });
         const distinctId = user?.workosId ?? String(job.userId);
         await captureAIGenerationServer({
           distinctId,
