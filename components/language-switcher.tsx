@@ -52,7 +52,6 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
   const handleLocaleChange = async (locale: Locale) => {
     await setLocale(locale);
     setOpen(false);
-    window.location.reload();
   };
 
   if (!mounted) {
