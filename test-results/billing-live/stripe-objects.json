@@ -1,0 +1,58 @@
+[
+  {
+    "phase": "create",
+    "objectType": "test_clock",
+    "id": "clock_1T4UQYQlhLZbGeKr7c6IO6BM"
+  },
+  {
+    "phase": "create",
+    "objectType": "customer",
+    "id": "cus_U2ZZFa1gdef2oU",
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  },
+  {
+    "phase": "create",
+    "objectType": "test_clock",
+    "id": "clock_1T4UQfQlhLZbGeKrGpdD1LIP"
+  },
+  {
+    "phase": "create",
+    "objectType": "customer",
+    "id": "cus_U2ZZqr0q8zzuLS",
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  },
+  {
+    "phase": "create",
+    "objectType": "subscription",
+    "id": "sub_1T4UQhQlhLZbGeKrQnvtYyLL",
+    "invoiceId": "in_1T4UQhQlhLZbGeKrGulOx0so"
+  },
+  {
+    "phase": "create",
+    "objectType": "test_clock",
+    "id": "clock_1T4URIQlhLZbGeKr3pQcbRxd"
+  },
+  {
+    "phase": "create",
+    "objectType": "customer",
+    "id": "cus_U2ZaqE7Fvr7LT2",
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  },
+  {
+    "phase": "create",
+    "objectType": "test_clock",
+    "id": "clock_1T4URjQlhLZbGeKr6ZPqYbnd"
+  },
+  {
+    "phase": "create",
+    "objectType": "customer",
+    "id": "cus_U2ZaNkFdk8UYgQ",
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  },
+  {
+    "phase": "create",
+    "objectType": "subscription",
+    "id": "sub_1T4URlQlhLZbGeKrfnI1S8Op",
+    "invoiceId": "in_1T4URlQlhLZbGeKr1WgqIEwC"
+  }
+]

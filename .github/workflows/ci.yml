@@ -102,3 +102,103 @@ jobs:
           name: playwright-output
           path: test-results
           if-no-files-found: ignore
+
+  billing-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: unit-and-build
+    concurrency:
+      group: billing-live-shared-test-user
+      cancel-in-progress: false
+    env:
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
+      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
+      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
+      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
+      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate required billing-live secrets
+        run: |
+          required_vars=(
+            NEXT_PUBLIC_CONVEX_URL
+            STRIPE_SECRET_KEY
+            STRIPE_GO_PRICE_ID
+          )
+          for var_name in "${required_vars[@]}"; do
+            if [ -z "${!var_name}" ]; then
+              echo "::error::Missing required secret/env: ${var_name}"
+              exit 1
+            fi
+          done
+          if [ -z "${CONVEX_DEPLOYMENT}" ] && [ -z "${CONVEX_DEPLOYMENT_NAME}" ]; then
+            echo "::error::Missing deployment target. Set CONVEX_DEPLOYMENT or CONVEX_DEPLOYMENT_NAME."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run billing preflight + required live regressions
+        run: npm run test:billing:live:ci
+
+      - name: Upload billing-live artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-live-artifacts
+          path: test-results/billing-live
+          if-no-files-found: ignore
+
+  billing-live-extended:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: billing-live
+    continue-on-error: true
+    concurrency:
+      group: billing-live-shared-test-user
+      cancel-in-progress: false
+    env:
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
+      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
+      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
+      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
+      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
+      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run extended live billing regressions (non-blocking)
+        run: npm run test:billing:extended:ci
+
+      - name: Upload billing-live-extended artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-live-extended-artifacts
+          path: test-results/billing-live
+          if-no-files-found: ignore

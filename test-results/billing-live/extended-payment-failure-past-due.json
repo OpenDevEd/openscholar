@@ -1,0 +1,21 @@
+{
+  "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
+  "customerId": "cus_U2ZZFa1gdef2oU",
+  "stripeSubscriptionId": "sub_1T4UQaQlhLZbGeKrqo7e0LzH",
+  "synced": {
+    "_creationTime": 1771973406185.5894,
+    "_id": "m17a4g11w55xcvkp64cvesjpgh81s16g",
+    "cancelAtPeriodEnd": false,
+    "createdAt": 1771973406185,
+    "creditsPerMonth": 100,
+    "currentPeriodEnd": 1774392602000,
+    "currentPeriodStart": 1771973402000,
+    "plan": "go",
+    "seats": 1,
+    "status": "incomplete",
+    "stripeCustomerId": "cus_U2ZZFa1gdef2oU",
+    "stripeSubscriptionId": "sub_1T4UQaQlhLZbGeKrqo7e0LzH",
+    "updatedAt": 1771973406185,
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  }
+}

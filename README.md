@@ -63,6 +63,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
 
    You'll need credentials for:
    - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
+   - **Convex CLI target (for remote billing live tests):** `CONVEX_DEPLOYMENT` (or `CONVEX_DEPLOYMENT_NAME`)
    - **Convex HTTP (optional/custom domain):** `NEXT_PUBLIC_CONVEX_SITE_URL`
    - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
@@ -70,6 +71,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PRODUCT_ID` (and optional publishable key for client UI)
    - **Credits top-up conversion:** optional `CREDITS_PER_USD` (defaults to `100`)
    - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups)
+   - **Billing live test user (optional; defaults provided):** `BILLING_TEST_USER_SUBJECT`, `BILLING_TEST_USER_EMAIL`
 
    Clerk notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.
@@ -159,7 +161,35 @@ It's designed for systematic reviews and complex queries, not just keyword match
   - `.github/workflows/ci.yml` runs:
     - `unit-and-build` (`npm run test`, `npm run build`)
     - `e2e-auth` (`npm run test:e2e:auth`)
-  - Branch protection should require both checks on pull requests.
+    - `billing-live` (`npm run test:billing:live:ci`) against shared Convex dev + Stripe sandbox
+  - `.github/workflows/billing-nightly.yml` runs `npm run test:billing:extended:ci` nightly
+  - Branch protection should require all required CI checks on pull requests.
+
+## Billing Live Regression Suite
+
+- Preflight checks (env, Convex reachability, Stripe webhook endpoint/events):
+
+  ```bash
+  npm run test:billing:preflight
+  ```
+
+- Required live billing regression suite (PR-gated):
+
+  ```bash
+  npm run test:billing:live
+  ```
+
+- CI wrapper (pushes Convex code before running required suite):
+
+  ```bash
+  npm run test:billing:live:ci
+  ```
+
+- Extended non-blocking suite (main/nightly):
+
+  ```bash
+  npm run test:billing:extended
+  ```
 
 ## Project Structure
 

@@ -74,6 +74,7 @@ import type * as subscriptions_lib_schedulePlanning from "../subscriptions/lib/s
 import type * as subscriptions_lib_selectCanonicalSubscription from "../subscriptions/lib/selectCanonicalSubscription.js";
 import type * as subscriptions_lib_stripeStatus from "../subscriptions/lib/stripeStatus.js";
 import type * as subscriptions_queries from "../subscriptions/queries.js";
+import type * as testing_billing from "../testing/billing.js";
 import type * as users_internal from "../users/internal.js";
 import type * as users_mutations from "../users/mutations.js";
 import type * as users_queries from "../users/queries.js";
@@ -160,6 +161,7 @@ declare const fullApi: ApiFromModules<{
   "subscriptions/lib/selectCanonicalSubscription": typeof subscriptions_lib_selectCanonicalSubscription;
   "subscriptions/lib/stripeStatus": typeof subscriptions_lib_stripeStatus;
   "subscriptions/queries": typeof subscriptions_queries;
+  "testing/billing": typeof testing_billing;
   "users/internal": typeof users_internal;
   "users/mutations": typeof users_mutations;
   "users/queries": typeof users_queries;

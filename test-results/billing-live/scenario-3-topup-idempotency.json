@@ -1,0 +1,81 @@
+{
+  "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
+  "customerId": "cus_U2ZZXDc8zpNU4h",
+  "payment": {
+    "paymentIntentId": "pi_3T4UQ2QlhLZbGeKr0JeKlwVR",
+    "chargeId": "ch_3T4UQ2QlhLZbGeKr0H462XQ3",
+    "amountCents": 1000,
+    "credits": 1000
+  },
+  "duplicateResult": {
+    "grantedCredits": 0,
+    "outcome": "already_granted",
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  },
+  "snapshot": {
+    "billingCustomers": [],
+    "creditTransactions": [
+      {
+        "_id": "j979rm9saerrxfgqxqa96x858s81svbr",
+        "amount": 1000,
+        "balanceAfter": 1000,
+        "createdAt": 1771973371733,
+        "creditType": "paid",
+        "description": "Credit top-up purchase (1000 credits)",
+        "metadata": {
+          "amountCents": "1000",
+          "appliedCreditsPerUsd": "100",
+          "billingTestSubject": "billing_live_test_subject",
+          "billingType": "credit_topup",
+          "chargedAmountCents": "1000",
+          "credits": "1000",
+          "creditsPerUsd": "100",
+          "eventCurrency": "usd",
+          "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+        },
+        "stripeChargeId": "ch_3T4UQ2QlhLZbGeKr0H462XQ3",
+        "stripePaymentIntentId": "pi_3T4UQ2QlhLZbGeKr0JeKlwVR",
+        "type": "purchase"
+      }
+    ],
+    "credits": [
+      {
+        "_id": "jd719d3fv1nhcs5gyzt6rp1eq981s25e",
+        "freeBalance": 0,
+        "lastUpdatedAt": 1771973371733,
+        "lifetimeUsed": 0,
+        "paidBalance": 1000
+      }
+    ],
+    "objectIds": {
+      "stripeChargeIds": [
+        "ch_3T4UQ2QlhLZbGeKr0H462XQ3"
+      ],
+      "stripeCustomerIds": [],
+      "stripeInvoiceIds": [],
+      "stripePaymentIntentIds": [
+        "pi_3T4UQ2QlhLZbGeKr0JeKlwVR"
+      ],
+      "stripeSubscriptionIds": []
+    },
+    "stripeEventLogs": [
+      {
+        "_id": "mn7dz26zzjr3kmmp9k80c7qc8581rqym",
+        "attemptCount": 0,
+        "classification": "processed",
+        "eventType": "payment_intent.succeeded",
+        "status": "processed",
+        "stripeEventId": "evt_3T4UQ2QlhLZbGeKr0iOpmnMM",
+        "stripeObjectId": "pi_3T4UQ2QlhLZbGeKr0JeKlwVR",
+        "updatedAt": 1771973371761
+      }
+    ],
+    "subscriptions": [],
+    "user": {
+      "_id": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
+      "clerkId": "billing_live_test_subject",
+      "email": "billing-live-test@example.com",
+      "state": "active"
+    }
+  }
+}
