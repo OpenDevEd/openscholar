@@ -1,7 +1,7 @@
 import { internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { PLAN_CONFIG, getPlanFromPriceId } from "../lib/constants";
-import { Doc } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
 import { components } from "../_generated/api";
 import {
@@ -13,14 +13,14 @@ import {
   shouldSkipProcessedTransition,
   type StripeEventLogStatus,
 } from "./lib/eventLogPolicy";
-import { resolveOwnerIdForSubscriptionSync } from "./lib/ownerResolution";
+
+const componentApi = components as any;
 
 type StripeMetadata = {
   userId?: string;
 };
 
 type StripeEventLogClassification = string;
-const componentApi = components as any;
 
 async function upsertStripeEventLog(
   ctx: MutationCtx,
@@ -92,7 +92,7 @@ function selectLatestBillingCustomer(
 async function upsertBillingCustomerLinkRecord(
   ctx: MutationCtx,
   args: {
-    userId: string;
+    userId: Id<"users">;
     stripeCustomerId: string;
     linkedFrom: string;
   },
@@ -143,9 +143,6 @@ async function upsertBillingCustomerLinkRecord(
   }
 }
 
-/**
- * Helper to find a subscription by Stripe ID, Customer ID, or Metadata (User ID)
- */
 async function getSubscriptionByStripeOrMetadata(
   ctx: MutationCtx,
   args: {
@@ -175,9 +172,10 @@ async function getSubscriptionByStripeOrMetadata(
   }
 
   if (args.metadata?.userId) {
+    const userId = args.metadata.userId as Id<"users">;
     const subs = await ctx.db
       .query("subscriptions")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.metadata!.userId!).eq("ownerType", "user"))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
     return selectCanonicalSubscription(subs);
@@ -188,7 +186,7 @@ async function getSubscriptionByStripeOrMetadata(
 
 export const upsertBillingCustomerLink = internalMutation({
   args: {
-    userId: v.string(),
+    userId: v.id("users"),
     stripeCustomerId: v.string(),
     linkedFrom: v.optional(v.string()),
   },
@@ -205,12 +203,12 @@ export const upsertBillingCustomerLink = internalMutation({
 
 export const getBillingCustomerByUser = internalQuery({
   args: {
-    userId: v.string(),
+    userId: v.id("users"),
   },
   returns: v.union(
     v.null(),
     v.object({
-      userId: v.string(),
+      userId: v.id("users"),
       stripeCustomerId: v.string(),
       linkedFrom: v.string(),
       createdAt: v.number(),
@@ -241,7 +239,7 @@ export const getBillingCustomerByStripeCustomer = internalQuery({
   returns: v.union(
     v.null(),
     v.object({
-      userId: v.string(),
+      userId: v.id("users"),
       stripeCustomerId: v.string(),
       linkedFrom: v.string(),
       createdAt: v.number(),
@@ -265,20 +263,15 @@ export const getBillingCustomerByStripeCustomer = internalQuery({
   },
 });
 
-/**
- * Get subscription by owner (user or organization)
- * Uses same logic as getMy/getOrg queries - prefers paid subscriptions
- */
-export const getSubscriptionByOwner = internalQuery({
+export const getSubscriptionByUser = internalQuery({
   args: {
-    ownerId: v.string(),
-    ownerType: v.union(v.literal("user"), v.literal("organization")),
+    userId: v.id("users"),
   },
   returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx, args) => {
     const subscriptions = await ctx.db
       .query("subscriptions")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId).eq("ownerType", args.ownerType))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .order("desc")
       .collect();
     return selectCanonicalSubscription(subscriptions);
@@ -291,7 +284,7 @@ export const listGrantEligibleSubscriptionPointers = internalQuery({
   },
   returns: v.array(
     v.object({
-      ownerId: v.string(),
+      userId: v.id("users"),
       stripeCustomerId: v.string(),
       stripeSubscriptionId: v.string(),
       status: v.string(),
@@ -318,11 +311,10 @@ export const listGrantEligibleSubscriptionPointers = internalQuery({
     ]);
 
     const sorted = [...active, ...trialing, ...pastDue]
-      .filter((row) => Boolean(row.stripeCustomerId) && Boolean(row.stripeSubscriptionId))
       .sort((a, b) => b.updatedAt - a.updatedAt);
 
     const deduped: Array<{
-      ownerId: string;
+      userId: Id<"users">;
       stripeCustomerId: string;
       stripeSubscriptionId: string;
       status: string;
@@ -334,7 +326,7 @@ export const listGrantEligibleSubscriptionPointers = internalQuery({
       if (seen.has(row.stripeSubscriptionId)) continue;
       seen.add(row.stripeSubscriptionId);
       deduped.push({
-        ownerId: row.ownerId,
+        userId: row.userId,
         stripeCustomerId: row.stripeCustomerId,
         stripeSubscriptionId: row.stripeSubscriptionId,
         status: row.status,
@@ -349,10 +341,6 @@ export const listGrantEligibleSubscriptionPointers = internalQuery({
   },
 });
 
-/**
- * Sync subscription from Stripe webhook
- * This is the single source of truth for subscription state from Stripe.
- */
 export const syncSubscription = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
@@ -382,61 +370,50 @@ export const syncSubscription = internalMutation({
     });
 
     const metadata = args.metadata as StripeMetadata;
-    let ownerId = subscription?.ownerId;
-    let ownerType = subscription?.ownerType ?? "user";
-    let linkedBillingCustomerUserId: string | null = null;
-    let componentCustomerMetadataUserId: string | null = null;
+    let userId: Id<"users"> | undefined = subscription?.userId;
 
-    if (!ownerId && args.stripeCustomerId) {
+    if (!userId && args.stripeCustomerId) {
       const linkedRows = await ctx.db
         .query("billingCustomers")
         .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId))
         .collect();
       const linked = selectLatestBillingCustomer(linkedRows);
       if (linked) {
-        linkedBillingCustomerUserId = linked.userId;
+        userId = linked.userId;
       }
     }
 
-    if (!ownerId && args.stripeCustomerId) {
+    if (!userId && args.stripeCustomerId) {
       try {
         const customer = await ctx.runQuery(componentApi.stripe.public.getCustomer, {
           stripeCustomerId: args.stripeCustomerId,
         });
         const componentUserId = customer?.metadata?.userId;
         if (typeof componentUserId === "string" && componentUserId.length > 0) {
-          componentCustomerMetadataUserId = componentUserId;
+          userId = componentUserId as Id<"users">;
         }
       } catch (error) {
         console.warn("[syncSubscription] Failed to resolve customer metadata", error);
       }
     }
 
-    ownerId = resolveOwnerIdForSubscriptionSync({
-      existingSubscriptionOwnerId: ownerId,
-      linkedBillingCustomerUserId,
-      componentCustomerMetadataUserId,
-      subscriptionMetadataUserId: metadata?.userId ?? null,
-    });
-    if (ownerId && ownerType !== "organization") {
-      ownerType = "user";
+    if (!userId && metadata?.userId) {
+      userId = metadata.userId as Id<"users">;
     }
 
-    if (!ownerId) {
-      console.error("[syncSubscription] No owner ID found from subscription/customer metadata");
+    if (!userId) {
+      console.error("[syncSubscription] No user ID found from subscription/customer metadata");
       throw new ConvexError({
         code: "INVALID_DATA",
-        message: "Cannot sync subscription: no owner identifier",
+        message: "Cannot sync subscription: no user identifier",
       });
     }
 
-    if (ownerType === "user") {
-      await upsertBillingCustomerLinkRecord(ctx, {
-        userId: ownerId,
-        stripeCustomerId: args.stripeCustomerId,
-        linkedFrom: "subscription_sync",
-      });
-    }
+    await upsertBillingCustomerLinkRecord(ctx, {
+      userId,
+      stripeCustomerId: args.stripeCustomerId,
+      linkedFrom: "subscription_sync",
+    });
 
     const plan = getPlanFromPriceId(args.priceId);
     const quantity = args.quantity ?? 1;
@@ -447,8 +424,7 @@ export const syncSubscription = internalMutation({
 
     if (!subscription) {
       await ctx.db.insert("subscriptions", {
-        ownerId,
-        ownerType,
+        userId,
         stripeSubscriptionId: args.stripeSubscriptionId,
         stripeCustomerId: args.stripeCustomerId,
         plan,
@@ -465,6 +441,7 @@ export const syncSubscription = internalMutation({
     }
 
     await ctx.db.patch(subscription._id, {
+      userId,
       stripeSubscriptionId: args.stripeSubscriptionId,
       stripeCustomerId: args.stripeCustomerId,
       plan,
@@ -481,9 +458,6 @@ export const syncSubscription = internalMutation({
   },
 });
 
-/**
- * Handle subscription cancellation.
- */
 export const handleSubscriptionCanceled = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
@@ -504,9 +478,9 @@ export const handleSubscriptionCanceled = internalMutation({
 
     const now = Date.now();
 
-    if (subscription.ownerType === "user" && subscription.stripeCustomerId) {
+    if (subscription.stripeCustomerId) {
       await upsertBillingCustomerLinkRecord(ctx, {
-        userId: subscription.ownerId,
+        userId: subscription.userId,
         stripeCustomerId: subscription.stripeCustomerId,
         linkedFrom: "subscription_canceled",
       });
@@ -520,8 +494,7 @@ export const handleSubscriptionCanceled = internalMutation({
     });
 
     await ctx.db.insert("subscriptions", {
-      ownerId: subscription.ownerId,
-      ownerType: subscription.ownerType,
+      userId: subscription.userId,
       stripeCustomerId: subscription.stripeCustomerId,
       plan: "free",
       status: "active",
@@ -535,9 +508,6 @@ export const handleSubscriptionCanceled = internalMutation({
   },
 });
 
-/**
- * Handle payment failure.
- */
 export const handlePaymentFailed = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
@@ -568,17 +538,15 @@ export const recordStripeEventReceived = internalMutation({
     eventType: v.string(),
     stripeObjectId: v.optional(v.string()),
     stripeApiVersion: v.optional(v.string()),
-    classification: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     await upsertStripeEventLog(ctx, {
       stripeEventId: args.stripeEventId,
       eventType: args.eventType,
-      status: "received",
       stripeObjectId: args.stripeObjectId,
       stripeApiVersion: args.stripeApiVersion,
-      classification: args.classification,
+      status: "received",
     });
     return null;
   },
@@ -599,12 +567,12 @@ export const markStripeEventProcessed = internalMutation({
       .withIndex("by_stripe_event_id", (q) => q.eq("stripeEventId", args.stripeEventId))
       .first();
 
-    const now = Date.now();
     if (
+      existing &&
       shouldSkipProcessedTransition({
-        status: existing?.status as StripeEventLogStatus | undefined,
-        nextRetryAt: existing?.nextRetryAt,
-        now,
+        status: existing.status,
+        nextRetryAt: existing.nextRetryAt,
+        now: Date.now(),
       })
     ) {
       return null;
@@ -613,11 +581,11 @@ export const markStripeEventProcessed = internalMutation({
     await upsertStripeEventLog(ctx, {
       stripeEventId: args.stripeEventId,
       eventType: args.eventType,
-      status: "processed",
       stripeObjectId: args.stripeObjectId,
       stripeApiVersion: args.stripeApiVersion,
       classification: args.classification,
-      processedAt: now,
+      status: "processed",
+      processedAt: Date.now(),
     });
     return null;
   },
@@ -631,19 +599,19 @@ export const markStripeEventRetrying = internalMutation({
     stripeApiVersion: v.optional(v.string()),
     classification: v.optional(v.string()),
     retryAt: v.number(),
-    reason: v.string(),
+    reason: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     await upsertStripeEventLog(ctx, {
       stripeEventId: args.stripeEventId,
       eventType: args.eventType,
-      status: "retrying",
       stripeObjectId: args.stripeObjectId,
       stripeApiVersion: args.stripeApiVersion,
       classification: args.classification,
-      errorMessage: args.reason,
+      status: "retrying",
       nextRetryAt: args.retryAt,
+      errorMessage: args.reason,
     });
     return null;
   },
@@ -663,10 +631,10 @@ export const markStripeEventFailed = internalMutation({
     await upsertStripeEventLog(ctx, {
       stripeEventId: args.stripeEventId,
       eventType: args.eventType,
-      status: "failed",
       stripeObjectId: args.stripeObjectId,
       stripeApiVersion: args.stripeApiVersion,
       classification: args.classification,
+      status: "failed",
       errorMessage: args.errorMessage,
     });
     return null;
@@ -687,10 +655,10 @@ export const markStripeEventIgnored = internalMutation({
     await upsertStripeEventLog(ctx, {
       stripeEventId: args.stripeEventId,
       eventType: args.eventType,
-      status: "ignored",
       stripeObjectId: args.stripeObjectId,
       stripeApiVersion: args.stripeApiVersion,
       classification: args.classification,
+      status: "ignored",
       errorMessage: args.reason,
     });
     return null;

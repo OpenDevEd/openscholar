@@ -71,7 +71,7 @@ export async function withAuthAndCreditsBatch<T>(
   const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
 
   await captureAIGenerationServer({
-    distinctId: user.workosId,
+    distinctId: user.clerkId,
     provider: SERVER_AI_CONFIG.provider as AIProvider,
     modelId: SERVER_AI_CONFIG.model,
     feature: operation,
@@ -130,7 +130,7 @@ export async function withUserCreditsBatch<T>(
   const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
 
   await captureAIGenerationServer({
-    distinctId: user.workosId,
+    distinctId: user.clerkId,
     provider: SERVER_AI_CONFIG.provider as AIProvider,
     modelId: SERVER_AI_CONFIG.model,
     feature: operation,
@@ -220,7 +220,7 @@ export function createAIAction<
           const outputForTracking = truncateForTracking(JSON.stringify(output));
 
           await captureAIGenerationServer({
-            distinctId: user.workosId,
+            distinctId: user.clerkId,
             provider: SERVER_AI_CONFIG.provider as AIProvider,
             modelId: SERVER_AI_CONFIG.model,
             feature: description,
@@ -240,7 +240,7 @@ export function createAIAction<
         } catch (error) {
           const latencyMs = Date.now() - start;
           await captureAIGenerationServer({
-            distinctId: user.workosId,
+            distinctId: user.clerkId,
             provider: SERVER_AI_CONFIG.provider as AIProvider,
             modelId: SERVER_AI_CONFIG.model,
             feature: description,
@@ -259,5 +259,4 @@ export function createAIAction<
 }
 
 // RAG helpers removed
-
 

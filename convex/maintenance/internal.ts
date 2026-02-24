@@ -35,16 +35,6 @@ export const cleanupDeletedUsers = internalMutation({
           await ctx.db.delete(key._id);
         }
 
-        // Clean up user's memberships
-        const memberships = await ctx.db
-          .query("memberships")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
-
-        for (const membership of memberships) {
-          await ctx.db.delete(membership._id);
-        }
-
         // Hard delete the user to prevent re-processing
         await ctx.db.delete(user._id);
 

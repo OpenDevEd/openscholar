@@ -5,7 +5,7 @@ import { PLAN_CONFIG } from "./constants";
 export async function createUserWithDefaults(
   ctx: MutationCtx,
   userData: {
-    workosId: string;
+    clerkId: string;
     email: string;
     firstName?: string;
     lastName?: string;
@@ -13,7 +13,7 @@ export async function createUserWithDefaults(
   }
 ): Promise<Id<"users">> {
   const now = Date.now();
-  
+
   const userId = await ctx.db.insert("users", {
     ...userData,
     state: "active",
@@ -23,8 +23,7 @@ export async function createUserWithDefaults(
   });
 
   await ctx.db.insert("credits", {
-    ownerId: userId,
-    ownerType: "user",
+    userId,
     freeBalance: 0,
     paidBalance: 0,
     lifetimeUsed: 0,
@@ -32,8 +31,7 @@ export async function createUserWithDefaults(
   });
 
   await ctx.db.insert("subscriptions", {
-    ownerId: userId,
-    ownerType: "user",
+    userId,
     plan: "free",
     status: "active",
     creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,

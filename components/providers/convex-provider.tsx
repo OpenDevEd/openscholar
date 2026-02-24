@@ -1,11 +1,9 @@
 "use client";
-"use no memo"; // ConvexProviderWithAuth requires passing a hook; auth sync effect uses setState in subscription pattern
+"use no memo";
 
-import { ConvexReactClient, ConvexProviderWithAuth, useConvexAuth, useMutation } from "convex/react";
-import {
-  AuthKitProvider,
-  useAuth,
-} from "@workos-inc/authkit-nextjs/components";
+import { ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import {
   createContext,
   type ReactNode,
@@ -17,7 +15,6 @@ import {
   useState,
 } from "react";
 import { api } from "@/convex/_generated/api";
-import { createConvexAuthTokenFetcher } from "@/lib/auth/convex-token-fetcher";
 import { PostHogIdentify } from "@/components/posthog-identify";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -42,58 +39,13 @@ const AuthReadinessContext = createContext<AuthReadinessContextValue | undefined
   undefined,
 );
 
-/**
- * Custom hook to bridge WorkOS AuthKit with Convex authentication
- */
-function useAuthFromAuthKit() {
-  const { user, loading: authLoading } = useAuth();
-  const fetchAccessTokenFromRoute = useCallback(async (): Promise<string | undefined> => {
-    if (!user) return undefined;
-
-    try {
-      const response = await fetch("/auth/access-token", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "same-origin",
-        headers: { "Cache-Control": "no-store" },
-      });
-
-      if (!response.ok) {
-        return undefined;
-      }
-
-      const payload = (await response.json()) as { accessToken?: string | null };
-      return typeof payload.accessToken === "string" && payload.accessToken.length > 0
-        ? payload.accessToken
-        : undefined;
-    } catch {
-      return undefined;
-    }
-  }, [user]);
-  const getAccessToken = useCallback(() => fetchAccessTokenFromRoute(), [fetchAccessTokenFromRoute]);
-  const refresh = useCallback(() => fetchAccessTokenFromRoute(), [fetchAccessTokenFromRoute]);
-  const fetchAccessToken = useMemo(
-    () => createConvexAuthTokenFetcher({ getAccessToken, refresh }),
-    [getAccessToken, refresh],
-  );
-
-  return {
-    isLoading: Boolean(authLoading),
-    isAuthenticated: Boolean(user),
-    fetchAccessToken,
-  };
-}
-
-/**
- * Combined Convex + WorkOS AuthKit provider
- */
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
-    <AuthKitProvider>
-      <ConvexProviderWithAuth client={convex} useAuth={useAuthFromAuthKit}>
+    <ClerkProvider>
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <AuthReadinessProvider>{children}</AuthReadinessProvider>
-      </ConvexProviderWithAuth>
-    </AuthKitProvider>
+      </ConvexProviderWithClerk>
+    </ClerkProvider>
   );
 }
 
@@ -106,7 +58,8 @@ export function useAuthReadiness() {
 }
 
 function AuthReadinessProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const ensureUser = useMutation(api.users.mutations.ensureUser);
   const hasSynced = useRef(false);
@@ -130,11 +83,9 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   }, [clearRetryTimer]);
 
   useEffect(() => {
-    const hasAuthSession = Boolean(user) || authLoading;
+    const hasAuthSession = !isLoaded || Boolean(user) || Boolean(isSignedIn);
 
     if (!isAuthenticated) {
-      // During token refresh / websocket re-auth, Convex can be temporarily
-      // unauthenticated while AuthKit still has an active session.
       if (hasAuthSession) {
         return;
       }
@@ -200,11 +151,12 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
         syncInFlight.current = false;
       });
   }, [
-    authLoading,
     clearRetryTimer,
     ensureUser,
     isAuthenticated,
+    isLoaded,
     isLoading,
+    isSignedIn,
     syncAttempt,
     syncState,
     user,
@@ -217,14 +169,14 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated && syncState === "error") {
       return "sync_error";
     }
-    if (!user && !authLoading && !isLoading) {
+    if (isLoaded && !isSignedIn && !isLoading) {
       return "anonymous";
     }
-    if (authLoading || isLoading || Boolean(user) || isAuthenticated) {
+    if (!isLoaded || isLoading || Boolean(isSignedIn) || isAuthenticated) {
       return "initializing";
     }
     return "anonymous";
-  }, [authLoading, isAuthenticated, isLoading, syncState, user]);
+  }, [isAuthenticated, isLoaded, isLoading, isSignedIn, syncState]);
 
   const retryUserSync = useCallback(() => {
     if (!isAuthenticated) return;

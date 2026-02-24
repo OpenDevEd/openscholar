@@ -25,9 +25,6 @@ export function selectLatestTrackedGrantEvent<T extends { eventType: string; upd
     .sort((a, b) => b.updatedAt - a.updatedAt)[0];
 }
 
-/**
- * Get current user's credit balance (free + paid)
- */
 export const getMyBalance = query({
   args: {},
   returns: v.union(creditBalanceValidator, v.null()),
@@ -37,9 +34,7 @@ export const getMyBalance = query({
 
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) =>
-        q.eq("ownerId", user._id).eq("ownerType", "user")
-      )
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
     if (!credits) {
@@ -54,49 +49,8 @@ export const getMyBalance = query({
   },
 });
 
-/**
- * Get organization's credit balance
- */
-export const getOrgBalance = query({
-  args: { organizationId: v.id("organizations") },
-  returns: v.union(creditBalanceValidator, v.null()),
-  handler: async (ctx, { organizationId }) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const membership = await ctx.db
-      .query("memberships")
-      .withIndex("by_user_org", (q) =>
-        q.eq("userId", user._id).eq("organizationId", organizationId)
-      )
-      .unique();
-    if (!membership) return null;
-
-    const credits = await ctx.db
-      .query("credits")
-      .withIndex("by_owner", (q) =>
-        q.eq("ownerId", organizationId).eq("ownerType", "organization")
-      )
-      .unique();
-
-    if (!credits) {
-      return { free: 0, paid: 0, total: 0 };
-    }
-
-    return {
-      free: credits.freeBalance,
-      paid: credits.paidBalance,
-      total: credits.freeBalance + credits.paidBalance,
-    };
-  },
-});
-
-/**
- * Get credit transaction history
- */
 export const getTransactions = query({
   args: {
-    organizationId: v.optional(v.id("organizations")),
     limit: v.optional(v.number()),
   },
   returns: v.array(creditTransactionValidator),
@@ -104,24 +58,9 @@ export const getTransactions = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    const ownerId = args.organizationId ?? user._id;
-    const ownerType = args.organizationId ? "organization" : "user";
-
-    if (args.organizationId) {
-      const membership = await ctx.db
-        .query("memberships")
-        .withIndex("by_user_org", (q) =>
-          q.eq("userId", user._id).eq("organizationId", args.organizationId!)
-        )
-        .unique();
-      if (!membership) return [];
-    }
-
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) =>
-        q.eq("ownerId", ownerId).eq("ownerType", ownerType)
-      )
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
     if (!credits) return [];
@@ -136,12 +75,8 @@ export const getTransactions = query({
   },
 });
 
-/**
- * Check if user/org has enough credits
- */
 export const checkBalance = query({
   args: {
-    organizationId: v.optional(v.id("organizations")),
     requiredAmount: v.number(),
   },
   returns: v.union(
@@ -159,24 +94,9 @@ export const checkBalance = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
-    if (args.organizationId) {
-      const membership = await ctx.db
-        .query("memberships")
-        .withIndex("by_user_org", (q) =>
-          q.eq("userId", user._id).eq("organizationId", args.organizationId!)
-        )
-        .unique();
-      if (!membership) return null;
-    }
-
-    const ownerId = args.organizationId ?? user._id;
-    const ownerType = args.organizationId ? "organization" : "user";
-
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) =>
-        q.eq("ownerId", ownerId).eq("ownerType", ownerType)
-      )
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
 
     const free = credits?.freeBalance ?? 0;
@@ -213,8 +133,9 @@ export const getLatestGrantStatus = query({
 
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id).eq("ownerType", "user"))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .unique();
+
     const grantTransactions = credits
       ? await ctx.db
           .query("creditTransactions")
@@ -230,7 +151,7 @@ export const getLatestGrantStatus = query({
 
     const subscriptions = await ctx.db
       .query("subscriptions")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id).eq("ownerType", "user"))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .take(10);
 
@@ -278,44 +199,41 @@ export const getLatestGrantStatus = query({
       objectIds.add(stripeCustomerId);
     }
 
-    const eventRowsByObject = (
-      await Promise.all(
-        Array.from(objectIds).map((stripeObjectId) =>
-          ctx.db
-            .query("stripeEventLogs")
-            .withIndex("by_object_created", (q) => q.eq("stripeObjectId", stripeObjectId))
-            .order("desc")
-            .take(10),
-        ),
-      )
-    ).flat();
+    const eventRows: Array<{
+      status: string;
+      classification?: string;
+      lastError?: string;
+      eventType: string;
+      updatedAt: number;
+    }> = [];
 
-    const eventRowsBySyntheticId = (
-      await Promise.all(
-        Array.from(invoiceIds).flatMap((invoiceId) => [
-          ctx.db
-            .query("stripeEventLogs")
-            .withIndex("by_stripe_event_id", (q) => q.eq("stripeEventId", `invoice.reconcile:${invoiceId}`))
-            .collect(),
-          ctx.db
-            .query("stripeEventLogs")
-            .withIndex("by_stripe_event_id", (q) => q.eq("stripeEventId", `reconcile.pull:${invoiceId}`))
-            .collect(),
-        ]),
-      )
-    ).flat();
+    for (const objectId of objectIds) {
+      const rows = await ctx.db
+        .query("stripeEventLogs")
+        .withIndex("by_object_created", (q) => q.eq("stripeObjectId", objectId))
+        .order("desc")
+        .take(5);
 
-    const latestEvents = [...eventRowsByObject, ...eventRowsBySyntheticId];
+      for (const row of rows) {
+        eventRows.push({
+          status: row.status,
+          classification: row.classification,
+          lastError: row.lastError,
+          eventType: row.eventType,
+          updatedAt: row.updatedAt,
+        });
+      }
+    }
 
-    const latestEvent = selectLatestTrackedGrantEvent(latestEvents);
+    const latestRelevantEvent = selectLatestTrackedGrantEvent(eventRows);
 
     return {
       lastGrantAt: lastGrant?.createdAt,
       lastGrantInvoiceId: lastGrant?.stripeInvoiceId,
-      latestEventStatus: latestEvent?.status,
-      latestEventClassification: latestEvent?.classification,
-      latestEventError: latestEvent?.lastError,
-      latestEventUpdatedAt: latestEvent?.updatedAt,
+      latestEventStatus: latestRelevantEvent?.status,
+      latestEventClassification: latestRelevantEvent?.classification,
+      latestEventError: latestRelevantEvent?.lastError,
+      latestEventUpdatedAt: latestRelevantEvent?.updatedAt,
     };
   },
 });

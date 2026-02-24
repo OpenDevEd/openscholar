@@ -422,7 +422,7 @@ export const backfillBillingAndCredits = internalAction({
   }),
   handler: async (ctx, args) => {
     const pointers: Array<{
-      ownerId: string;
+      userId: string;
       stripeCustomerId: string;
       status: string;
     }> = await ctx.runQuery(
@@ -439,17 +439,16 @@ export const backfillBillingAndCredits = internalAction({
     for (const pointer of pointers) {
       customerIds.add(pointer.stripeCustomerId);
       await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
-        userId: pointer.ownerId,
+        userId: pointer.userId,
         stripeCustomerId: pointer.stripeCustomerId,
         linkedFrom: "backfill",
       });
       billingLinksUpserted += 1;
 
       const result: { created: boolean } = await ctx.runMutation(
-        internalApi.credits.internal.ensureCreditsForOwner,
+        internalApi.credits.internal.ensureCreditsForUser,
         {
-          ownerId: pointer.ownerId,
-          ownerType: "user",
+          userId: pointer.userId,
         },
       );
       if (result.created) {

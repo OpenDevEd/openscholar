@@ -4,14 +4,12 @@ import { buildInitialCreditsRecord } from "../convex/credits/internal";
 describe("credit grant missing credits row remediation", () => {
   it("builds a zeroed credits record for auto-heal creation", () => {
     const row = buildInitialCreditsRecord({
-      ownerId: "user_123",
-      ownerType: "user",
+      userId: "user_123",
       now: 1_700_000_000_000,
     });
 
     expect(row).toEqual({
-      ownerId: "user_123",
-      ownerType: "user",
+      userId: "user_123",
       freeBalance: 0,
       paidBalance: 0,
       lifetimeUsed: 0,

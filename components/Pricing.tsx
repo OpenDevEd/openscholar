@@ -217,7 +217,7 @@ export function Pricing() {
 
   const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
     if (phase !== "authenticated") {
-      router.push("/auth/signin");
+      router.push("/sign-in");
       return;
     }
 
@@ -318,7 +318,7 @@ export function Pricing() {
         disabled: false,
         label: tc("signInToSubscribe"),
         variant: "default" as const,
-        onClick: () => router.push("/auth/signin"),
+        onClick: () => router.push("/sign-in"),
       };
     }
 

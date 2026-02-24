@@ -26,7 +26,7 @@ For protected resources, do not leak existence to unauthorized callers.
 
 Client rendering and query execution now follow an explicit readiness state machine:
 
-- `initializing`: AuthKit/Convex auth is still settling, or user sync is in progress.
+- `initializing`: Clerk/Convex auth is still settling, or user sync is in progress.
 - `authenticated`: Session is authenticated and user sync completed; protected queries may run.
 - `anonymous`: Session is not authenticated.
 - `sync_error`: Session exists but user sync retry budget was exhausted.

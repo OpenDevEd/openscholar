@@ -69,7 +69,7 @@ export const getBalanceByUserId = internalQuery({
   handler: async (ctx, { userId }) => {
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) => q.eq("ownerId", userId).eq("ownerType", "user"))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
 
     if (!credits) return null;
@@ -83,29 +83,24 @@ export const getBalanceByUserId = internalQuery({
   },
 });
 
-async function getLatestCreditsByOwner(
+async function getLatestCreditsByUser(
   ctx: MutationCtx,
-  args: {
-    ownerId: string;
-    ownerType: "user" | "organization";
-  },
+  userId: Doc<"users">["_id"],
 ): Promise<Doc<"credits"> | null> {
   const rows = await ctx.db
     .query("credits")
-    .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId).eq("ownerType", args.ownerType))
+    .withIndex("by_user", (q) => q.eq("userId", userId))
     .order("desc")
     .collect();
   return rows[0] ?? null;
 }
 
 export function buildInitialCreditsRecord(args: {
-  ownerId: string;
-  ownerType: "user" | "organization";
+  userId: Doc<"users">["_id"];
   now: number;
 }) {
   return {
-    ownerId: args.ownerId,
-    ownerType: args.ownerType,
+    userId: args.userId,
     freeBalance: 0,
     paidBalance: 0,
     lifetimeUsed: 0,
@@ -113,17 +108,16 @@ export function buildInitialCreditsRecord(args: {
   };
 }
 
-export const ensureCreditsForOwner = internalMutation({
+export const ensureCreditsForUser = internalMutation({
   args: {
-    ownerId: v.string(),
-    ownerType: v.union(v.literal("user"), v.literal("organization")),
+    userId: v.id("users"),
   },
   returns: v.object({
     creditsId: v.id("credits"),
     created: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const existing = await getLatestCreditsByOwner(ctx, args);
+    const existing = await getLatestCreditsByUser(ctx, args.userId);
     if (existing) {
       return { creditsId: existing._id, created: false };
     }
@@ -132,8 +126,7 @@ export const ensureCreditsForOwner = internalMutation({
     const creditsId = await ctx.db.insert(
       "credits",
       buildInitialCreditsRecord({
-        ownerId: args.ownerId,
-        ownerType: args.ownerType,
+        userId: args.userId,
         now,
       }),
     );
@@ -664,17 +657,13 @@ export const grantMonthlyCredits = internalMutation({
       });
     }
 
-    let credits: Doc<"credits"> | null = await getLatestCreditsByOwner(ctx, {
-      ownerId: subscription.ownerId,
-      ownerType: subscription.ownerType,
-    });
+    let credits: Doc<"credits"> | null = await getLatestCreditsByUser(ctx, subscription.userId);
     if (!credits) {
       const now = Date.now();
       const creditsId = await ctx.db.insert(
         "credits",
         buildInitialCreditsRecord({
-          ownerId: subscription.ownerId,
-          ownerType: subscription.ownerType,
+          userId: subscription.userId,
           now,
         }),
       );
@@ -688,13 +677,13 @@ export const grantMonthlyCredits = internalMutation({
         stripeObjectId: args.stripeInvoiceId,
         stripeApiVersion: args.stripeApiVersion,
         classification: "credits_record_missing",
-        message: `Unable to create credits record for owner ${subscription.ownerId}`,
+        message: `Unable to create credits record for user ${subscription.userId}`,
       });
       return createGrantResult({
         outcome: "failed_subscription_lookup",
         decision: "grant",
         classification: "credits_record_missing",
-        message: `Unable to create credits record for owner ${subscription.ownerId}`,
+        message: `Unable to create credits record for user ${subscription.userId}`,
       });
     }
 
@@ -761,7 +750,6 @@ export const grantMonthlyCredits = internalMutation({
 export const deductCredits = internalMutation({
   args: {
     userId: v.id("users"),
-    organizationId: v.optional(v.id("organizations")),
     amount: v.number(),
     description: v.optional(v.string()),
     metadata: v.optional(v.record(v.string(), v.string())),
@@ -769,12 +757,9 @@ export const deductCredits = internalMutation({
   returns: v.number(),
   handler: async (ctx, args) => {
     requireCreditsEnabled();
-    const ownerId = args.organizationId ?? args.userId;
-    const ownerType = args.organizationId ? "organization" : "user";
-
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId).eq("ownerType", ownerType))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
 
     if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });
@@ -856,8 +841,7 @@ export const deductCredits = internalMutation({
  */
 export const addCredits = internalMutation({
   args: {
-    ownerId: v.string(),
-    ownerType: v.union(v.literal("user"), v.literal("organization")),
+    userId: v.id("users"),
     amount: v.number(),
     type: v.union(v.literal("grant"), v.literal("refund")),
     creditType: v.union(v.literal("free"), v.literal("paid")),
@@ -867,7 +851,7 @@ export const addCredits = internalMutation({
   handler: async (ctx, args) => {
     const credits = await ctx.db
       .query("credits")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId).eq("ownerType", args.ownerType))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
 
     if (!credits) throw new ConvexError({ code: "NOT_FOUND", message: "Credits record not found" });

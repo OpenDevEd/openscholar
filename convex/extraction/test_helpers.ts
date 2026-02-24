@@ -22,7 +22,7 @@ export async function getOrCreateTestUser(ctx: any): Promise<Doc<"users">> {
   
   // Create test user
   const userId = await ctx.db.insert("users", {
-    workosId: `test-workos-${Date.now()}`,
+    clerkId: `test-clerk-${Date.now()}`,
     email: "test@example.com",
     firstName: "Test",
     lastName: "User",

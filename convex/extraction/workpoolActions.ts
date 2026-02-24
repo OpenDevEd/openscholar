@@ -1061,7 +1061,7 @@ export const waitAndExtractAction = internalAction({
     const user = await ctx.runQuery(internal.users.internal.getUserById, {
       userId: job.userId,
     });
-        const distinctId = user?.workosId ?? String(job.userId);
+        const distinctId = user?.clerkId ?? String(job.userId);
         await captureAIGenerationServer({
           distinctId,
           provider: SERVER_AI_CONFIG.provider as "openai" | "anthropic" | "deepseek" | "azure" | "openrouter",

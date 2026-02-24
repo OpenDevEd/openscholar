@@ -3,10 +3,10 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
-  // USERS - synced from WorkOS, single source of truth in Convex
+  // USERS - synced from Clerk, single source of truth in Convex
   // ═══════════════════════════════════════════════════════════════
   users: defineTable({
-    workosId: v.string(),
+    clerkId: v.string(),
     email: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
@@ -20,57 +20,20 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_workos_id", ["workosId"])
+    .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // ORGANIZATIONS - synced from WorkOS
-  // ═══════════════════════════════════════════════════════════════
-  organizations: defineTable({
-    workosId: v.string(),
-    name: v.string(),
-    slug: v.optional(v.string()),
-    logoUrl: v.optional(v.string()),
-    stripeCustomerId: v.optional(v.string()),
-    settings: v.optional(
-      v.object({
-        allowByok: v.optional(v.boolean()),
-        creditPooling: v.optional(v.boolean()),
-      })
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_workos_id", ["workosId"])
-    .index("by_slug", ["slug"])
-    .index("by_stripe_customer", ["stripeCustomerId"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // MEMBERSHIPS - user ↔ organization join table with roles
-  // ═══════════════════════════════════════════════════════════════
-  memberships: defineTable({
-    userId: v.id("users"),
-    organizationId: v.id("organizations"),
-    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
-    permissions: v.array(v.string()),
-    joinedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_organization", ["organizationId"])
-    .index("by_user_org", ["userId", "organizationId"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // CREDITS - per-user or per-org credit balance (dual system)
+  // CREDITS - per-user credit balance
   // ═══════════════════════════════════════════════════════════════
   credits: defineTable({
-    ownerId: v.string(), // Store as string for flexibility
-    ownerType: v.union(v.literal("user"), v.literal("organization")),
-    freeBalance: v.number(), // From subscriptions, capped at 10k
-    paidBalance: v.number(), // From purchases, no cap
+    userId: v.id("users"),
+    freeBalance: v.number(),
+    paidBalance: v.number(),
     lifetimeUsed: v.number(),
     lastUpdatedAt: v.number(),
-  }).index("by_owner", ["ownerId", "ownerType"]),
+  }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // CREDIT_TRANSACTIONS - audit log for credit changes
@@ -102,8 +65,7 @@ export default defineSchema({
   // SUBSCRIPTIONS - Stripe billing integration ready
   // ═══════════════════════════════════════════════════════════════
   subscriptions: defineTable({
-    ownerId: v.string(),
-    ownerType: v.union(v.literal("user"), v.literal("organization")),
+    userId: v.id("users"),
     stripeSubscriptionId: v.optional(v.string()),
     stripeCustomerId: v.optional(v.string()),
     plan: v.union(
@@ -131,14 +93,14 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_owner", ["ownerId", "ownerType"])
+    .index("by_user", ["userId"])
     .index("by_stripe_sub", ["stripeSubscriptionId"])
     .index("by_stripe_customer", ["stripeCustomerId"])
     .index("by_status", ["status"]),
 
   // Durable user -> Stripe customer identity mapping.
   billingCustomers: defineTable({
-    userId: v.string(),
+    userId: v.id("users"),
     stripeCustomerId: v.string(),
     linkedFrom: v.string(),
     createdAt: v.number(),
@@ -223,7 +185,6 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   extractionJobs: defineTable({
     userId: v.id("users"),
-    organizationId: v.optional(v.id("organizations")),
 
     // Source information
     sourceType: v.union(

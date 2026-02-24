@@ -185,7 +185,6 @@ export const getMyJobs = query({
       _id: v.id("extractionJobs"),
       _creationTime: v.number(),
       userId: v.id("users"),
-      organizationId: v.optional(v.id("organizations")),
       sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
       sourceHistoryId: v.optional(v.string()),
       sourceZoteroCollection: v.optional(v.string()),
@@ -1329,7 +1328,7 @@ export const getCurrentUserInternal = internalQuery({
     
     return await ctx.db
       .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .unique();
   },
 });

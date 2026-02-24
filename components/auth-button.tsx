@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@workos-inc/authkit-nextjs/components";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   LogIn,
@@ -46,7 +46,8 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const t = useTranslations("auth");
   const tc = useTranslations("common");
   const tai = useTranslations("aiSettings");
-  const { user } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const { phase } = useAuthReadiness();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -127,7 +128,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           <DropdownMenuItem
             onClick={() => {
               setOpen(false);
-              router.push("/auth/signin");
+              router.push("/sign-in");
             }}
             className="cursor-pointer flex items-start gap-3 py-2.5"
           >
@@ -168,9 +169,16 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     lastName?: string | null;
     email?: string | null;
     profilePictureUrl?: string | null;
-  } = user ?? {
-    email: fallbackEmail,
-  };
+  } = user
+    ? {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.primaryEmailAddress?.emailAddress ?? null,
+        profilePictureUrl: user.imageUrl ?? null,
+      }
+    : {
+        email: fallbackEmail,
+      };
   const displayName = profile.firstName
     ? `${profile.firstName}${profile.lastName ? ` ${profile.lastName}` : ""}`
     : profile.email?.split("@")[0] || tc("user");
@@ -328,9 +336,9 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
 
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={() => {
+          onClick={async () => {
             setOpen(false);
-            router.push("/auth/signout");
+            await signOut({ redirectUrl: "/" });
           }}
           className="text-destructive focus:text-destructive"
         >

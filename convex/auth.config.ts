@@ -1,21 +1,10 @@
-const clientId = process.env.WORKOS_CLIENT_ID!;
+import type { AuthConfig } from "convex/server";
 
-const authConfig = {
+export default {
   providers: [
     {
-      type: "customJwt",
-      issuer: "https://api.workos.com",
-      jwks: "https://api.workos.com/sso/jwks",
-      algorithm: "RS256",
-      applicationID: clientId,
-    },
-    {
-      type: "customJwt",
-      issuer: `https://api.workos.com/user_management/${clientId}`,
-      jwks: `https://api.workos.com/sso/jwks/${clientId}`,
-      algorithm: "RS256",
+      domain: process.env.CLERK_JWT_ISSUER_DOMAIN!,
+      applicationID: "convex",
     },
   ],
-};
-
-export default authConfig;
+} satisfies AuthConfig;

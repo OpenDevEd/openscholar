@@ -360,7 +360,7 @@ export default function JobDetailPage() {
           <AuthStatePanel
             variant="sign_in_required"
             description={tError('signInToView')}
-            primaryHref="/auth/signin"
+            primaryHref="/sign-in"
             primaryLabel={tc('signIn')}
             secondaryHref="/extraction"
             secondaryLabel={tError('backToJobs')}

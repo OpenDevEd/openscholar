@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
-import { workosWebhook } from "./webhooks/workos";
+import { clerkWebhook } from "./webhooks/clerk";
 import { normalizeStripeSubscriptionStatus } from "./subscriptions/lib/stripeStatus";
 import { isSubscriptionScheduledToCancel } from "./subscriptions/lib/cancellation";
 import type Stripe from "stripe";
@@ -104,11 +104,11 @@ async function processInvoiceForGrantNonBlocking(
   }
 }
 
-// WorkOS webhook for user/org/membership sync
+// Clerk webhook for user sync
 http.route({
-  path: "/webhooks/workos",
+  path: "/webhooks/clerk",
   method: "POST",
-  handler: workosWebhook,
+  handler: clerkWebhook,
 });
 
 // Zotero OAuth callback

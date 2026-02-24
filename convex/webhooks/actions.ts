@@ -1,22 +1,23 @@
 "use node";
 import { internalAction } from "../_generated/server";
-import { WorkOS } from "@workos-inc/node";
 import { v } from "convex/values";
+import { Webhook } from "svix";
 
 /**
- * Verifies WorkOS webhook signature and returns parsed event.
- * Must run in Node.js runtime to use WorkOS SDK.
+ * Verifies Clerk webhook signature and returns parsed event.
  */
-export const verifyWorkosWebhook = internalAction({
+export const verifyClerkWebhook = internalAction({
   args: {
     payloadText: v.string(),
-    signature: v.string(),
+    svixId: v.string(),
+    svixTimestamp: v.string(),
+    svixSignature: v.string(),
   },
   returns: v.union(
     v.object({
       success: v.literal(true),
       eventId: v.string(),
-      event: v.string(),
+      eventType: v.string(),
       data: v.any(),
     }),
     v.object({
@@ -25,41 +26,42 @@ export const verifyWorkosWebhook = internalAction({
     })
   ),
   handler: async (_ctx, args) => {
-    const apiKey = process.env.WORKOS_API_KEY;
-    if (!apiKey) {
-      return {
-        success: false as const,
-        error: "WORKOS_API_KEY is not configured for webhook verification.",
-      };
-    }
-
-    const webhookSecret = process.env.WORKOS_WEBHOOK_SECRET;
+    const webhookSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
     if (!webhookSecret) {
       return {
         success: false as const,
         error:
-          "WORKOS_WEBHOOK_SECRET is not configured. Set it for local and deployed webhook verification.",
+          "CLERK_WEBHOOK_SIGNING_SECRET is not configured for webhook verification.",
       };
     }
 
     try {
-      const workos = new WorkOS(apiKey);
-      const payload = JSON.parse(args.payloadText) as Record<string, unknown>;
+      const webhook = new Webhook(webhookSecret);
+      const verified = webhook.verify(args.payloadText, {
+        "svix-id": args.svixId,
+        "svix-timestamp": args.svixTimestamp,
+        "svix-signature": args.svixSignature,
+      }) as Record<string, unknown>;
 
-      const webhook = await workos.webhooks.constructEvent({
-        payload,
-        sigHeader: args.signature,
-        secret: webhookSecret,
-      });
+      const eventId = verified.id;
+      const eventType = verified.type;
+      const data = verified.data;
+
+      if (typeof eventId !== "string" || typeof eventType !== "string") {
+        return {
+          success: false as const,
+          error: "Verified webhook payload is missing id/type.",
+        };
+      }
 
       return {
         success: true as const,
-        eventId: webhook.id as string,
-        event: webhook.event as string,
-        data: webhook.data as Record<string, unknown>,
+        eventId,
+        eventType,
+        data: data ?? {},
       };
     } catch (err) {
-      console.error("WorkOS webhook verification failed:", err);
+      console.error("Clerk webhook verification failed:", err);
       return {
         success: false as const,
         error: err instanceof Error ? err.message : "Unknown error",

@@ -252,7 +252,7 @@ export default function AISettingsPage() {
                 onClick={() => {
                   if (!isSignedIn) {
                     toast.validation.failed(t("signInToUseCredits"));
-                    router.push("/auth/signin");
+                    router.push("/sign-in");
                     return;
                   }
                   setApiKeyMode("credits");

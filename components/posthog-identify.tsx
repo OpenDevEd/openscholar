@@ -1,73 +1,69 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useEffect, useRef } from "react";
 import posthog from "posthog-js";
-import { useAuth } from "@workos-inc/authkit-nextjs/components";
+import { useUser } from "@clerk/nextjs";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 
-/**
- * Syncs PostHog distinct_id with the authenticated user and sets person properties.
- * Uses Convex users.me when available; falls back to WorkOS session when Convex user
- * has empty profile (WorkOS JWT may omit email/name claims).
- * Also syncs profile from WorkOS session to Convex when Convex has empty data.
- */
 export function PostHogIdentify() {
   const { data: convexUser } = useOptionalAuthQuery(api.users.queries.me, {});
-  const workosUser = useAuth().user;
+  const { user: clerkUser } = useUser();
   const syncProfile = useMutation(api.users.mutations.syncProfileFromSession);
   const lastIdentifiedRef = useRef<string | null>(null);
   const hasSyncedRef = useRef(false);
 
-  const workosHasProfile =
-    workosUser &&
-    (workosUser.email || workosUser.firstName || workosUser.lastName);
+  const clerkHasProfile =
+    clerkUser &&
+    (clerkUser.primaryEmailAddress?.emailAddress ||
+      clerkUser.firstName ||
+      clerkUser.lastName);
   const convexHasEmptyProfile =
     convexUser && !convexUser.email && !convexUser.firstName && !convexUser.lastName;
-  const effectiveProfile = convexHasEmptyProfile && workosHasProfile
+
+  const effectiveProfile = convexUser
     ? {
-        distinctId: convexUser.workosId,
-        email: workosUser.email ?? undefined,
-        firstName: workosUser.firstName ?? undefined,
-        lastName: workosUser.lastName ?? undefined,
-        avatarUrl: workosUser.profilePictureUrl ?? undefined,
+        distinctId: convexUser.clerkId,
+        email:
+          convexHasEmptyProfile && clerkUser
+            ? clerkUser.primaryEmailAddress?.emailAddress ?? undefined
+            : convexUser.email || undefined,
+        firstName:
+          convexHasEmptyProfile && clerkUser
+            ? clerkUser.firstName ?? undefined
+            : convexUser.firstName ?? undefined,
+        lastName:
+          convexHasEmptyProfile && clerkUser
+            ? clerkUser.lastName ?? undefined
+            : convexUser.lastName ?? undefined,
+        avatarUrl:
+          convexHasEmptyProfile && clerkUser
+            ? clerkUser.imageUrl ?? undefined
+            : convexUser.avatarUrl ?? undefined,
         state: convexUser.state,
         lastLoginAt: convexUser.lastLoginAt,
         createdAt: convexUser.createdAt,
         updatedAt: convexUser.updatedAt,
       }
-    : convexUser
-      ? {
-          distinctId: convexUser.workosId,
-          email: convexUser.email || undefined,
-          firstName: convexUser.firstName ?? undefined,
-          lastName: convexUser.lastName ?? undefined,
-          avatarUrl: convexUser.avatarUrl ?? undefined,
-          state: convexUser.state,
-          lastLoginAt: convexUser.lastLoginAt,
-          createdAt: convexUser.createdAt,
-          updatedAt: convexUser.updatedAt,
-        }
-      : null;
+    : null;
 
-  // Sync Convex user from WorkOS session when Convex has empty profile
   useEffect(() => {
     if (
       convexHasEmptyProfile &&
-      workosHasProfile &&
-      workosUser &&
+      clerkHasProfile &&
+      clerkUser &&
       !hasSyncedRef.current
     ) {
       hasSyncedRef.current = true;
       void syncProfile({
-        email: workosUser.email ?? undefined,
-        firstName: workosUser.firstName ?? undefined,
-        lastName: workosUser.lastName ?? undefined,
-        avatarUrl: workosUser.profilePictureUrl ?? undefined,
+        email: clerkUser.primaryEmailAddress?.emailAddress ?? undefined,
+        firstName: clerkUser.firstName ?? undefined,
+        lastName: clerkUser.lastName ?? undefined,
+        avatarUrl: clerkUser.imageUrl ?? undefined,
       });
     }
-  }, [convexHasEmptyProfile, workosHasProfile, workosUser, syncProfile]);
+  }, [convexHasEmptyProfile, clerkHasProfile, clerkUser, syncProfile]);
 
   useEffect(() => {
     if (effectiveProfile) {

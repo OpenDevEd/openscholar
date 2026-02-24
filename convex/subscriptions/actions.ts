@@ -145,10 +145,9 @@ export const createCheckoutSession = action({
     }
 
     const existingSubscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByOwner,
+      internalApi.subscriptions.internal.getSubscriptionByUser,
       {
-        ownerId: user._id,
-        ownerType: "user",
+        userId: user._id,
       },
     );
 
@@ -260,10 +259,9 @@ export const createPortalSession = action({
     );
 
     const subscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByOwner,
+      internalApi.subscriptions.internal.getSubscriptionByUser,
       {
-        ownerId: user._id,
-        ownerType: "user",
+        userId: user._id,
       },
     );
 
@@ -353,10 +351,9 @@ export const getSubscriptionDetails = action({
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
     const subscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByOwner,
+      internalApi.subscriptions.internal.getSubscriptionByUser,
       {
-        ownerId: user._id,
-        ownerType: "user",
+        userId: user._id,
       },
     );
 
@@ -493,10 +490,9 @@ export const changePlan = action({
 
     try {
       const subscription = await ctx.runQuery(
-        internalApi.subscriptions.internal.getSubscriptionByOwner,
+        internalApi.subscriptions.internal.getSubscriptionByUser,
         {
-          ownerId: user._id,
-          ownerType: "user",
+          userId: user._id,
         },
       );
 

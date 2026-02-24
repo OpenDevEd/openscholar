@@ -1,15 +1,9 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
-import { PLAN_CONFIG } from "../lib/constants";
 import { createUserWithDefaults } from "../lib/userCreation";
 import { createError } from "../lib/errors";
 
-
-
-/**
- * Update current user's profile
- */
 export const updateProfile = mutation({
   args: {
     firstName: v.optional(v.string()),
@@ -28,9 +22,6 @@ export const updateProfile = mutation({
   },
 });
 
-/**
- * Ensure user exists in database (called on first login)
- */
 export const ensureUser = mutation({
   args: {},
   returns: v.id("users"),
@@ -40,7 +31,7 @@ export const ensureUser = mutation({
 
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_workos_id", (q) => q.eq("workosId", identity.subject))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .unique();
 
     if (existing) {
@@ -50,7 +41,7 @@ export const ensureUser = mutation({
       if (existing.state === "deleted") {
         throw createError("FORBIDDEN", "Account deleted");
       }
-      // Update last login and backfill empty profile from JWT when WorkOS JWT has data
+
       const lastLoginAt = Date.now();
       const patch: {
         lastLoginAt: number;
@@ -60,6 +51,7 @@ export const ensureUser = mutation({
         avatarUrl?: string;
         updatedAt?: number;
       } = { lastLoginAt };
+
       if (!existing.email && identity.email) patch.email = identity.email;
       if (!existing.firstName && identity.givenName) patch.firstName = identity.givenName;
       if (!existing.lastName && identity.familyName) patch.lastName = identity.familyName;
@@ -67,13 +59,13 @@ export const ensureUser = mutation({
       if (patch.email ?? patch.firstName ?? patch.lastName ?? patch.avatarUrl) {
         patch.updatedAt = Date.now();
       }
+
       await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
 
-    // Create new user using helper
     return await createUserWithDefaults(ctx, {
-      workosId: identity.subject,
+      clerkId: identity.subject,
       email: identity.email ?? "",
       firstName: identity.givenName,
       lastName: identity.familyName,
@@ -82,11 +74,6 @@ export const ensureUser = mutation({
   },
 });
 
-/**
- * Sync profile from WorkOS session when Convex user has empty data.
- * Called from client when useAuth().user has full profile but api.users.queries.me has empty email.
- * WorkOS JWT may not include email/name claims; the session has full data.
- */
 export const syncProfileFromSession = mutation({
   args: {
     email: v.optional(v.string()),

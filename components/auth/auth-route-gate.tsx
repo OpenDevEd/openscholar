@@ -23,7 +23,7 @@ function AuthGateContent({
       <AuthStatePanel
         key="auth-gate-anonymous"
         variant="sign_in_required"
-        primaryHref="/auth/signin"
+        primaryHref="/sign-in"
         primaryLabel={t("common.signIn")}
         secondaryHref="/"
         secondaryLabel={t("common.goHome")}

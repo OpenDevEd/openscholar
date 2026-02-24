@@ -43,7 +43,6 @@ export {
   setPaperStorage,
   saveExtractionResultsAndComplete,
   createJobDirect,
-  createJobByWorkosId,
   getUserIdFromJob,
   createQuestionDirect,
   setJobWorkflowId,

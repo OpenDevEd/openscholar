@@ -34,7 +34,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
 
 - **Framework:** Next.js 16 (App Router)
 - **Database:** Convex (Real-time)
-- **Auth:** WorkOS
+- **Auth:** Clerk
 - **Billing:** Stripe
 - **Styling:** Tailwind CSS 4, Radix UI, Motion
 - **State:** Zustand, SWR
@@ -64,23 +64,22 @@ It's designed for systematic reviews and complex queries, not just keyword match
    You'll need credentials for:
    - **Convex:** `NEXT_PUBLIC_CONVEX_URL`
    - **Convex HTTP (optional/custom domain):** `NEXT_PUBLIC_CONVEX_SITE_URL`
-   - **WorkOS/AuthKit:** `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_WEBHOOK_SECRET`
-   - **App URL (for billing, webhooks, redirects, auth callback):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
+   - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
+   - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
+   - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
    - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (and optional publishable key for client UI)
 
-   WorkOS notes for this repo:
+   Clerk notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.
    - Public route policy is centralized in `lib/auth/public-routes.ts` and shared by both `proxy.ts` and client route gating.
-   - Auth callback redirect URI is derived from `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`) + `/auth/callback`.
-   - Sign-out route (`/auth/signout`) uses AuthKit `signOut({ returnTo })` with `NEXT_PUBLIC_APP_URL` then `NEXT_PUBLIC_URL`; one of these env vars is required and must be an absolute `http(s)` URL.
-   - Convex token bridging uses `GET /auth/access-token` backed by AuthKit middleware + `withAuth({ ensureSignedIn: false })` and returns `401` when no active session is present.
-   - Configure WorkOS Redirects in each environment: `App Homepage URL`, callback URL(s) for `/auth/callback`, and sign-out redirect locations that include your app base URL.
-   - Convex JWT verification is configured in `convex/auth.config.ts` and accepts both WorkOS issuer formats used by AuthKit.
+   - Clerk auth routes are canonicalized to `/sign-in` and `/sign-up`.
+   - Sign out is handled by the Clerk client API in UI components.
+   - Convex JWT verification is configured in `convex/auth.config.ts` with `CLERK_JWT_ISSUER_DOMAIN` and `applicationID: "convex"`.
    - Protected App Router rendering is guarded by `components/auth/auth-route-gate.tsx`, which enforces a no-flicker auth bootstrap flow.
    - Client auth readiness is exposed via `useAuthReadiness()` from `components/providers/convex-provider.tsx`.
    - Use auth-aware query wrappers from `lib/auth/use-auth-query.ts` (`useProtectedQuery`, `useProtectedPaginatedQuery`, `useOptionalAuthQuery`) instead of direct `useQuery` calls in UI.
-   - Configure your WorkOS webhook endpoint to `POST /webhooks/workos` on your Convex HTTP deployment URL.
-   - `WORKOS_WEBHOOK_SECRET` must be configured in every environment, including local development and deployed environments, or webhook verification will fail with `401`.
+   - Configure your Clerk webhook endpoint to `POST /webhooks/clerk` on your Convex HTTP deployment URL.
+   - `CLERK_WEBHOOK_SIGNING_SECRET` must be configured in every environment, including local development and deployed environments, or webhook verification will fail with `401`.
    - Public debug/test Convex endpoints are disabled by default; only enable with `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true`.
    - Public read-query auth/authorization states follow the safe contract documented in `docs/auth-error-contract.md`.
 

@@ -1,21 +1,16 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
-import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
-import { PUBLIC_UNAUTHENTICATED_PATHS } from "@/lib/auth/public-routes";
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { isPublicPath } from "@/lib/auth/public-routes";
 import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_URL;
-const redirectUri = appUrl ? `${appUrl.replace(/\/$/, "")}/auth/callback` : undefined;
-
-const authMiddleware = authkitMiddleware({
-  redirectUri,
-  middlewareAuth: {
-    enabled: true,
-    unauthenticatedPaths: [...PUBLIC_UNAUTHENTICATED_PATHS],
-  },
+const authMiddleware = clerkMiddleware(async (auth, request) => {
+  if (!isPublicPath(request.nextUrl.pathname)) {
+    await auth.protect();
+  }
 });
 
 function hasValidLocaleCookie(request: NextRequest): boolean {

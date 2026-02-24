@@ -1,20 +1,5 @@
 import { v } from "convex/values";
 
-/**
- * Shared validators for reuse across functions
- */
-
-export const ownerTypeValidator = v.union(
-  v.literal("user"),
-  v.literal("organization")
-);
-
-export const roleValidator = v.union(
-  v.literal("owner"),
-  v.literal("admin"),
-  v.literal("member")
-);
-
 export const planValidator = v.union(
   v.literal("free"),
   v.literal("go"),
@@ -64,47 +49,10 @@ export const apiKeyProviderValidator = v.union(
   v.literal("openrouter")
 );
 
-const organizationFields = {
-  _id: v.id("organizations"),
-  _creationTime: v.number(),
-  workosId: v.string(),
-  name: v.string(),
-  slug: v.optional(v.string()),
-  logoUrl: v.optional(v.string()),
-  stripeCustomerId: v.optional(v.string()),
-  settings: v.optional(
-    v.object({
-      allowByok: v.optional(v.boolean()),
-      creditPooling: v.optional(v.boolean()),
-    })
-  ),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-};
-
-export const organizationValidator = v.object(organizationFields);
-
-export const membershipValidator = v.object({
-  _id: v.id("memberships"),
-  _creationTime: v.number(),
-  userId: v.id("users"),
-  organizationId: v.id("organizations"),
-  role: roleValidator,
-  permissions: v.array(v.string()),
-  joinedAt: v.number(),
-});
-
-export const orgWithMembershipValidator = v.object({
-  ...organizationFields,
-  role: roleValidator,
-  membership: membershipValidator,
-});
-
-// Full object validators for return types
 export const userValidator = v.object({
   _id: v.id("users"),
   _creationTime: v.number(),
-  workosId: v.string(),
+  clerkId: v.string(),
   email: v.string(),
   firstName: v.optional(v.string()),
   lastName: v.optional(v.string()),
@@ -118,8 +66,7 @@ export const userValidator = v.object({
 export const creditsValidator = v.object({
   _id: v.id("credits"),
   _creationTime: v.number(),
-  ownerId: v.string(),
-  ownerType: ownerTypeValidator,
+  userId: v.id("users"),
   freeBalance: v.number(),
   paidBalance: v.number(),
   lifetimeUsed: v.number(),
@@ -135,8 +82,7 @@ export const creditBalanceValidator = v.object({
 export const subscriptionValidator = v.object({
   _id: v.id("subscriptions"),
   _creationTime: v.number(),
-  ownerId: v.string(),
-  ownerType: ownerTypeValidator,
+  userId: v.id("users"),
   stripeSubscriptionId: v.optional(v.string()),
   stripeCustomerId: v.optional(v.string()),
   plan: planValidator,
