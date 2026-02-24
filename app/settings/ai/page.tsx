@@ -49,6 +49,7 @@ export default function AISettingsPage() {
 
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
+  const isAnonymous = phase === "anonymous";
   const router = useRouter();
 
   const [models, setModels] = useState<AIModel[]>([]);
@@ -86,15 +87,16 @@ export default function AISettingsPage() {
     setApiKey(value);
   };
 
-  // Reset credits mode when signed out or credits disabled (persisted store may have credits selected)
+  // Reset credits mode only when truly anonymous or credits are disabled.
+  // Avoid flipping mode during transient auth initialization on route changes.
   useEffect(() => {
     if (
-      (!isSignedIn || !creditsFeatureFlags.enabled) &&
+      (isAnonymous || !creditsFeatureFlags.enabled) &&
       apiKeyMode === "credits"
     ) {
       setApiKeyMode("local");
     }
-  }, [isSignedIn, apiKeyMode, setApiKeyMode]);
+  }, [isAnonymous, apiKeyMode, setApiKeyMode]);
 
   useEffect(() => {
     const loadModels = async () => {
