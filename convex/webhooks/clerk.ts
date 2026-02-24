@@ -6,7 +6,7 @@ import {
   mapClerkUserToUpsertArgs,
 } from "./clerk_mappers";
 
-function parseUserPayload(data: unknown): ClerkUserPayload | null {
+export function parseClerkUserPayload(data: unknown): ClerkUserPayload | null {
   if (!data || typeof data !== "object") {
     return null;
   }
@@ -15,6 +15,69 @@ function parseUserPayload(data: unknown): ClerkUserPayload | null {
     return null;
   }
   return data as ClerkUserPayload;
+}
+
+type ClerkWebhookHandlerOutcome = {
+  status: number;
+  body: string;
+};
+
+type ClerkWebhookMutationRunner = (
+  mutation: unknown,
+  args: unknown,
+) => Promise<unknown>;
+
+type ClerkWebhookMutationRefs = {
+  upsertUserFromClerk: unknown;
+  markUserDeletedFromClerk: unknown;
+};
+
+export async function processClerkWebhookEvent(args: {
+  eventId: string;
+  eventType: string;
+  data: unknown;
+  runMutation: ClerkWebhookMutationRunner;
+  mutationRefs?: ClerkWebhookMutationRefs;
+}): Promise<ClerkWebhookHandlerOutcome> {
+  const { eventId, eventType, data, runMutation } = args;
+  const mutationRefs = args.mutationRefs ?? {
+    upsertUserFromClerk: internal.users.internal.upsertUserFromClerk,
+    markUserDeletedFromClerk: internal.users.internal.markUserDeletedFromClerk,
+  };
+
+  try {
+    switch (eventType) {
+      case "user.created":
+      case "user.updated": {
+        const user = parseClerkUserPayload(data);
+        if (!user) {
+          return { status: 400, body: "Invalid user payload" };
+        }
+        await runMutation(mutationRefs.upsertUserFromClerk, mapClerkUserToUpsertArgs(user));
+        break;
+      }
+
+      case "user.deleted": {
+        const user = parseClerkUserPayload(data);
+        if (!user) {
+          return { status: 400, body: "Invalid user payload" };
+        }
+        await runMutation(
+          mutationRefs.markUserDeletedFromClerk,
+          mapClerkUserToDeleteArgs(user),
+        );
+        break;
+      }
+
+      default:
+        console.info("[Clerk webhook] Ignored event", { eventId, eventType });
+    }
+
+    return { status: 200, body: "OK" };
+  } catch (err) {
+    console.error("[Clerk webhook] processing error", { eventId, eventType, err });
+    return { status: 500, body: "Processing error" };
+  }
 }
 
 export const clerkWebhook = httpAction(async (ctx, req) => {
@@ -40,41 +103,13 @@ export const clerkWebhook = httpAction(async (ctx, req) => {
   }
 
   const { eventId, eventType, data } = result;
+  const outcome = await processClerkWebhookEvent({
+    eventId,
+    eventType,
+    data,
+    runMutation: (mutation, mutationArgs) =>
+      ctx.runMutation(mutation as never, mutationArgs as never),
+  });
 
-  try {
-    switch (eventType) {
-      case "user.created":
-      case "user.updated": {
-        const user = parseUserPayload(data);
-        if (!user) {
-          return new Response("Invalid user payload", { status: 400 });
-        }
-        await ctx.runMutation(
-          internal.users.internal.upsertUserFromClerk,
-          mapClerkUserToUpsertArgs(user),
-        );
-        break;
-      }
-
-      case "user.deleted": {
-        const user = parseUserPayload(data);
-        if (!user) {
-          return new Response("Invalid user payload", { status: 400 });
-        }
-        await ctx.runMutation(
-          internal.users.internal.markUserDeletedFromClerk,
-          mapClerkUserToDeleteArgs(user),
-        );
-        break;
-      }
-
-      default:
-        console.info("[Clerk webhook] Ignored event", { eventId, eventType });
-    }
-
-    return new Response("OK", { status: 200 });
-  } catch (err) {
-    console.error("[Clerk webhook] processing error", { eventId, eventType, err });
-    return new Response("Processing error", { status: 500 });
-  }
+  return new Response(outcome.body, { status: outcome.status });
 });

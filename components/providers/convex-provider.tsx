@@ -4,6 +4,8 @@
 import { ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
+import { useLocale } from "next-intl";
+import { useTheme } from "next-themes";
 import {
   createContext,
   type ReactNode,
@@ -16,6 +18,10 @@ import {
 } from "react";
 import { api } from "@/convex/_generated/api";
 import { PostHogIdentify } from "@/components/posthog-identify";
+import {
+  resolveClerkAppearance,
+  resolveClerkLocalization,
+} from "@/lib/auth/clerk-ui-config";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const MAX_SYNC_RETRIES = 6;
@@ -40,8 +46,19 @@ const AuthReadinessContext = createContext<AuthReadinessContextValue | undefined
 );
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
+  const locale = useLocale();
+  const { resolvedTheme } = useTheme();
+  const clerkLocalization = useMemo(
+    () => resolveClerkLocalization(locale),
+    [locale],
+  );
+  const clerkAppearance = useMemo(
+    () => resolveClerkAppearance(resolvedTheme),
+    [resolvedTheme],
+  );
+
   return (
-    <ClerkProvider>
+    <ClerkProvider localization={clerkLocalization} appearance={clerkAppearance}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <AuthReadinessProvider>{children}</AuthReadinessProvider>
       </ConvexProviderWithClerk>

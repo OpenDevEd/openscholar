@@ -72,6 +72,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    Clerk notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.
    - Public route policy is centralized in `lib/auth/public-routes.ts` and shared by both `proxy.ts` and client route gating.
+   - Middleware matcher coverage follows Clerk guidance (including API/TRPC) and still enforces protected-by-default behavior.
    - Clerk auth routes are canonicalized to `/sign-in` and `/sign-up`.
    - Sign out is handled by the Clerk client API in UI components.
    - Convex JWT verification is configured in `convex/auth.config.ts` with `CLERK_JWT_ISSUER_DOMAIN` and `applicationID: "convex"`.
@@ -80,6 +81,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - Use auth-aware query wrappers from `lib/auth/use-auth-query.ts` (`useProtectedQuery`, `useProtectedPaginatedQuery`, `useOptionalAuthQuery`) instead of direct `useQuery` calls in UI.
    - Configure your Clerk webhook endpoint to `POST /webhooks/clerk` on your Convex HTTP deployment URL.
    - `CLERK_WEBHOOK_SIGNING_SECRET` must be configured in every environment, including local development and deployed environments, or webhook verification will fail with `401`.
+   - `CLERK_WEBHOOK_SIGNING_SECRET` must be the endpoint Signing Secret value from Clerk (starts with `whsec_`); do not use API keys or frontend URL values.
+   - Auth paths are `/sign-in` and `/sign-up` only.
+   - Keep local `.env.local` aligned with current auth env variables to avoid operator confusion.
    - Public debug/test Convex endpoints are disabled by default; only enable with `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true`.
    - Public read-query auth/authorization states follow the safe contract documented in `docs/auth-error-contract.md`.
 
@@ -122,6 +126,31 @@ It's designed for systematic reviews and complex queries, not just keyword match
    ```
 
    This starts the Next.js app and the Convex dev server.
+
+## Auth E2E + CI
+
+- Run auth E2E locally:
+
+  ```bash
+  npm run test:e2e:auth
+  ```
+
+- Required E2E environment variables:
+  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+  - `CLERK_PUBLISHABLE_KEY` (or rely on auto-mapping from `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `e2e/global.setup.ts`)
+  - `CLERK_SECRET_KEY`
+  - `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`
+  - `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
+  - `NEXT_PUBLIC_CONVEX_URL`
+  - `E2E_CLERK_USER_EMAIL`
+  - `E2E_CLERK_USER_PASSWORD`
+  - Optional: `E2E_BASE_URL` (defaults to `http://127.0.0.1:3000`)
+
+- CI workflow:
+  - `.github/workflows/ci.yml` runs:
+    - `unit-and-build` (`npm run test`, `npm run build`)
+    - `e2e-auth` (`npm run test:e2e:auth`)
+  - Branch protection should require both checks on pull requests.
 
 ## Project Structure
 

@@ -73,9 +73,9 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ConvexClientProvider>
-            <ConfigProvider>
-              <ThemeProvider>
+          <ThemeProvider>
+            <ConvexClientProvider>
+              <ConfigProvider>
                 <NuqsAdapter>
                   <QuerySyncProvider>
                     <TooltipProvider>
@@ -96,9 +96,9 @@ export default async function RootLayout({
                     </TooltipProvider>
                   </QuerySyncProvider>
                 </NuqsAdapter>
-              </ThemeProvider>
-            </ConfigProvider>
-          </ConvexClientProvider>
+              </ConfigProvider>
+            </ConvexClientProvider>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

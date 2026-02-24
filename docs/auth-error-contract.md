@@ -80,6 +80,8 @@ For list UIs, use `getAuthSensitiveListRenderState` from `lib/auth/list-render-s
 ## UI Expectations
 
 - Protected routes are gated by `AuthRouteGate` and public route policy in `lib/auth/public-routes.ts`.
+- Middleware protection logic is centralized in `lib/auth/proxy-policy.ts` and applied in `proxy.ts`.
+- Middleware runs for both App Router and API/TRPC matcher scopes; API routes must be explicitly listed in public policy to remain anonymous.
 - Unauthenticated users should see a sign-in call to action.
 - Unauthorized users should see explicit “You do not have access” messaging.
 - During `initializing`, UI must render loading states only (no empty or sign-in copy).

@@ -9,6 +9,7 @@ export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/bookmarks",
   "/history",
   "/settings/ai",
+  "/api/openalex/search",
   "/data/:path*", // PostHog proxy - must work when signed out
 ] as const;
 

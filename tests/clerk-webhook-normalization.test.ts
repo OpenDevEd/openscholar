@@ -36,6 +36,31 @@ describe("clerk webhook normalization", () => {
     expect(args.email).toBe("user_123@clerk.local");
   });
 
+  it("falls back to first email when primary_email_address_id is missing", () => {
+    const args = mapClerkUserToUpsertArgs({
+      id: "user_123",
+      email_addresses: [
+        { id: "email_1", email_address: "first@example.com" },
+        { id: "email_2", email_address: "second@example.com" },
+      ],
+    });
+
+    expect(args.email).toBe("first@example.com");
+  });
+
+  it("falls back to first email when primary id does not match", () => {
+    const args = mapClerkUserToUpsertArgs({
+      id: "user_123",
+      primary_email_address_id: "email_999",
+      email_addresses: [
+        { id: "email_1", email_address: "first@example.com" },
+        { id: "email_2", email_address: "second@example.com" },
+      ],
+    });
+
+    expect(args.email).toBe("first@example.com");
+  });
+
   it("normalizes user deletion payload", () => {
     const args = mapClerkUserToDeleteArgs({
       id: "user_123",
