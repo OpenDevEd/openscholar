@@ -60,6 +60,7 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_featureFlags from "../lib/featureFlags.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_stripeWebhookSecret from "../lib/stripeWebhookSecret.js";
 import type * as lib_userCreation from "../lib/userCreation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as maintenance_internal from "../maintenance/internal.js";
@@ -144,6 +145,7 @@ declare const fullApi: ApiFromModules<{
   "lib/featureFlags": typeof lib_featureFlags;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/stripeWebhookSecret": typeof lib_stripeWebhookSecret;
   "lib/userCreation": typeof lib_userCreation;
   "lib/validators": typeof lib_validators;
   "maintenance/internal": typeof maintenance_internal;

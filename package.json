@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev:stripe": "stripe listen --events checkout.session.completed,customer.created,customer.updated,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.created,invoice.finalized,invoice.paid,invoice.payment_failed,invoice.payment_succeeded --forward-to http://127.0.0.1:3211/webhooks/stripe",
+    "dev:stripe": "./scripts/dev-stripe.sh",
     "dev:convex": "convex dev",
     "dev:all": "pm2 start ecosystem.config.js",
-    "convex:admin": "docker compose exec backend ./generate_admin_key.sh",
     "build": "next build",
     "start": "next start",
     "sync:env": "./sync-env.sh",

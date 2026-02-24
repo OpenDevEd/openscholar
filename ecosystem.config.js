@@ -9,11 +9,6 @@ module.exports = {
       },
     },
     {
-      name: 'stripe',
-      script: 'npm',
-      args: 'run dev:stripe',
-    },
-    {
       name: 'convex',
       script: 'npm',
       args: 'run dev:convex',

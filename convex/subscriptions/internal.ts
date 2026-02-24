@@ -538,6 +538,7 @@ export const recordStripeEventReceived = internalMutation({
     eventType: v.string(),
     stripeObjectId: v.optional(v.string()),
     stripeApiVersion: v.optional(v.string()),
+    classification: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -546,6 +547,7 @@ export const recordStripeEventReceived = internalMutation({
       eventType: args.eventType,
       stripeObjectId: args.stripeObjectId,
       stripeApiVersion: args.stripeApiVersion,
+      classification: args.classification,
       status: "received",
     });
     return null;

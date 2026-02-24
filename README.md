@@ -103,6 +103,11 @@ It's designed for systematic reviews and complex queries, not just keyword match
      - `invoice.payment_succeeded`
    - Local listener command:
      - `npm run dev:stripe`
+     - This command auto-syncs `STRIPE_WEBHOOK_SECRET` in Convex from the active Stripe CLI listener before forwarding events.
+   - Signature verification troubleshooting:
+     - `STRIPE_WEBHOOK_SECRET` must come from the same source that sends the request.
+     - If using Stripe CLI forwarding, use the Stripe CLI signing secret (`stripe listen --print-secret`), not a dashboard endpoint secret.
+     - If using direct Stripe dashboard webhooks to Convex, use that endpoint's signing secret and avoid forwarding the same events via Stripe CLI to the same path.
    - Plan change policy:
      - Upgrades apply immediately and release any attached `active`/`not_started` subscription schedule first.
      - Downgrades are scheduled for period end using current schedule phase boundaries.

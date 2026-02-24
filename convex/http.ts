@@ -5,6 +5,7 @@ import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
 import { normalizeStripeSubscriptionStatus } from "./subscriptions/lib/stripeStatus";
 import { isSubscriptionScheduledToCancel } from "./subscriptions/lib/cancellation";
+import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
 import type Stripe from "stripe";
 
 const http = httpRouter();
@@ -13,6 +14,9 @@ const FRONTEND_URL =
   process.env.NEXT_PUBLIC_APP_URL ||
   process.env.NEXT_PUBLIC_URL ||
   "http://localhost:3000";
+const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
+  process.env.STRIPE_WEBHOOK_SECRET,
+);
 
 function getStripeObjectId(event: Stripe.Event): string | undefined {
   const object = event.data.object as { id?: unknown };
@@ -150,6 +154,7 @@ http.route({
 
 registerRoutes(http, components.stripe, {
   webhookPath: "/webhooks/stripe",
+  STRIPE_WEBHOOK_SECRET,
 
   events: {
     "checkout.session.completed": async (ctx, event) => {
