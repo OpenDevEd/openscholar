@@ -1,6 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
+import {
+  organizationValidator,
+  membershipValidator,
+  userValidator,
+  creditsValidator,
+  subscriptionValidator,
+  roleValidator,
+} from "../lib/validators";
 
 async function getMembership(
   ctx: any,
@@ -20,7 +28,7 @@ async function getMembership(
  */
 export const getById = query({
   args: { organizationId: v.id("organizations") },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), organizationValidator),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -43,7 +51,11 @@ export const getById = query({
  */
 export const getWithMembership = query({
   args: { organizationId: v.id("organizations") },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), v.object({
+    organization: v.union(v.null(), organizationValidator),
+    membership: membershipValidator,
+    user: userValidator,
+  })),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -64,7 +76,18 @@ export const getWithMembership = query({
  */
 export const getMembers = query({
   args: { organizationId: v.id("organizations") },
-  returns: v.array(v.any()),
+  returns: v.array(
+    v.object({
+      _id: v.id("memberships"),
+      _creationTime: v.number(),
+      userId: v.id("users"),
+      organizationId: v.id("organizations"),
+      role: roleValidator,
+      permissions: v.array(v.string()),
+      joinedAt: v.number(),
+      user: v.union(v.null(), userValidator),
+    })
+  ),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return [];
@@ -92,7 +115,7 @@ export const getMembers = query({
  */
 export const getCredits = query({
   args: { organizationId: v.id("organizations") },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), creditsValidator),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -113,7 +136,7 @@ export const getCredits = query({
  */
 export const getSubscription = query({
   args: { organizationId: v.id("organizations") },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), subscriptionValidator),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;

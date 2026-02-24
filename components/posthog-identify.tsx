@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useEffect, useRef } from "react";
 import posthog from "posthog-js";
 import { useAuth } from "@workos-inc/authkit-nextjs/components";
+import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 
 /**
@@ -13,7 +14,7 @@ import { api } from "@/convex/_generated/api";
  * Also syncs profile from WorkOS session to Convex when Convex has empty data.
  */
 export function PostHogIdentify() {
-  const convexUser = useQuery(api.users.queries.me);
+  const { data: convexUser } = useOptionalAuthQuery(api.users.queries.me, {});
   const workosUser = useAuth().user;
   const syncProfile = useMutation(api.users.mutations.syncProfileFromSession);
   const lastIdentifiedRef = useRef<string | null>(null);

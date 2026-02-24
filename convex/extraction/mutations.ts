@@ -328,7 +328,21 @@ export const setResultReviewState = mutation({
       v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null())
     ),
   },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      cleared: v.boolean(),
+      state: v.literal("unreviewed"),
+    }),
+    v.object({
+      reviewId: v.id("extractionResultReviews"),
+      state: v.union(
+        v.literal("unreviewed"),
+        v.literal("accepted"),
+        v.literal("rejected"),
+        v.literal("needs_followup")
+      ),
+    })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
@@ -353,7 +367,7 @@ export const setResultReviewState = mutation({
       }
       return {
         cleared: true,
-        state: "unreviewed",
+        state: "unreviewed" as const,
       };
     }
 

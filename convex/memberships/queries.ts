@@ -1,13 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
+import { membershipValidator } from "../lib/validators";
 
 /**
  * Get membership by ID
  */
 export const getById = query({
   args: { membershipId: v.id("memberships") },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), membershipValidator),
   handler: async (ctx, { membershipId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;
@@ -43,7 +44,7 @@ export const getById = query({
  */
 export const getMyMembership = query({
   args: { organizationId: v.id("organizations") },
-  returns: v.union(v.null(), v.any()),
+  returns: v.union(v.null(), membershipValidator),
   handler: async (ctx, { organizationId }) => {
     const user = await getCurrentUser(ctx);
     if (!user) return null;

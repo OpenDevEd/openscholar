@@ -449,7 +449,24 @@ export const getJobResultsPaginated = query({
     jobId: v.id("extractionJobs"),
     paginationOpts: paginationOptsValidator,
   },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      page: v.array(v.any()),
+      isDone: v.boolean(),
+      continueCursor: v.string(),
+      questions: v.array(v.any()),
+      job: v.any(),
+    }),
+    v.object({
+      status: v.union(v.literal("unauthenticated"), v.literal("no_access")),
+      page: v.array(v.any()),
+      isDone: v.boolean(),
+      continueCursor: v.string(),
+      questions: v.array(v.any()),
+      job: v.any(),
+    })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -509,7 +526,17 @@ export const getJobResultsPaginated = query({
 
 export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      job: v.any(),
+      summary: v.any(),
+      questions: v.array(v.any()),
+      diagnostics: v.any(),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -634,7 +661,26 @@ export const getQuestionInsights = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      question: v.any(),
+      total: v.number(),
+      answered: v.number(),
+      grounded: v.number(),
+      avgConfidence: v.number(),
+      avgEffectiveConfidence: v.number(),
+      insightMode: v.string(),
+      citationStatusMix: v.any(),
+      reviewStateMix: v.optional(v.any()),
+      topAnswers: v.array(v.any()),
+      rawAnswerDistribution: v.array(v.any()),
+      entityDistribution: v.optional(v.array(v.any())),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") }),
+    v.object({ status: v.literal("not_found") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -715,7 +761,21 @@ export const getQuestionDisagreements = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      question: v.any(),
+      viewMode: v.union(v.literal("disagreement"), v.literal("answer_profiles")),
+      hasDisagreement: v.boolean(),
+      clusterCount: v.number(),
+      totalClusterCount: v.number(),
+      suppressedSingletonCount: v.number(),
+      clusters: v.array(v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") }),
+    v.object({ status: v.literal("not_found") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -814,7 +874,15 @@ export const getReviewQueue = query({
     onlyInsufficientEvidence: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      counts: v.any(),
+      items: v.array(v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -899,7 +967,14 @@ export const getReviewQueue = query({
 
 export const getSavedViews = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      views: v.array(v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -918,7 +993,34 @@ export const getSavedViews = query({
 
 export const getWorkflowTemplates = query({
   args: {},
-  returns: v.array(v.any()),
+  returns: v.array(v.object({
+    _id: v.id("extractionWorkflowTemplates"),
+    _creationTime: v.number(),
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
+    sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: v.record(v.string(), v.any()) }))),
+    sourceZoteroSelection: v.optional(v.object({
+      libraryType: v.union(v.literal("user"), v.literal("group")),
+      groupId: v.optional(v.string()),
+      zoteroUserId: v.optional(v.string()),
+      collectionKey: v.optional(v.string()),
+      includeDescendants: v.optional(v.boolean()),
+      items: v.array(v.object({ itemKey: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()) }))
+    })),
+    sourceManualItems: v.optional(v.array(v.object({
+      id: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.optional(v.array(v.string())), year: v.optional(v.number()), doi: v.optional(v.string()), pdfUrl: v.optional(v.string()), storageId: v.optional(v.id("_storage"))
+    }))),
+    questions: v.array(v.object({
+      key: v.string(),
+      question: v.string(),
+      type: v.union(v.literal("string"), v.literal("boolean"), v.literal("number"), v.literal("array")),
+      description: v.optional(v.string()),
+    })),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })),
   handler: async (ctx) => {
     requireExtractionEnabled();
     const user = await getCurrentUser(ctx);
@@ -934,7 +1036,14 @@ export const getWorkflowTemplates = query({
 
 export const getReportSnapshots = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      reports: v.array(v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -956,7 +1065,14 @@ export const getRunDiff = query({
     jobId: v.id("extractionJobs"),
     diffId: v.optional(v.id("extractionRunDiffs")),
   },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      diff: v.union(v.null(), v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1151,7 +1267,16 @@ export const getPapersDebug = internalQuery({
 // Subscribe to job progress (real-time updates)
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
+  returns: v.union(
+    v.object({
+      status: v.literal("ok"),
+      job: v.any(),
+      statusCounts: v.any(),
+      recentPapers: v.array(v.any()),
+    }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") })
+  ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);

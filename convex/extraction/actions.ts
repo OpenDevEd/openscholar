@@ -14,7 +14,16 @@ export const fetchPapersFromHistory = internalAction({
   args: {
     searchFilters: v.record(v.string(), v.any()),
   },
-  returns: v.array(v.any()),
+  returns: v.array(v.object({
+    openalexId: v.string(),
+    title: v.string(),
+    doi: v.optional(v.string()),
+    publicationYear: v.optional(v.number()),
+    abstract: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
+    pdfUrl: v.optional(v.string()),
+    isOpenAccess: v.optional(v.boolean()),
+  })),
   handler: async (ctx, args): Promise<PaperData[]> => {
     const filters = args.searchFilters as {
       query: string;
