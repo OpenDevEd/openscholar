@@ -187,6 +187,50 @@ registerRoutes(http, components.stripe, {
       });
     },
 
+    "payment_intent.succeeded": async (ctx, event) => {
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const stripeCustomerId =
+          typeof paymentIntent.customer === "string"
+            ? paymentIntent.customer
+            : paymentIntent.customer?.id;
+        const stripeChargeId =
+          typeof paymentIntent.latest_charge === "string"
+            ? paymentIntent.latest_charge
+            : paymentIntent.latest_charge?.id;
+
+        await ctx.runMutation(internalApi.credits.internal.grantPurchasedCreditsFromPaymentIntent, {
+          stripePaymentIntentId: paymentIntent.id,
+          stripeCustomerId,
+          stripeChargeId,
+          amountReceived: paymentIntent.amount_received || paymentIntent.amount || 0,
+          currency: paymentIntent.currency,
+          metadata: paymentIntent.metadata as Record<string, string>,
+        });
+      });
+    },
+
+    "charge.refunded": async (ctx, event) => {
+      await runAuditedStripeHandler(ctx, event, async () => {
+        const charge = event.data.object as Stripe.Charge;
+        const stripePaymentIntentId =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id;
+
+        if (!stripePaymentIntentId) {
+          return;
+        }
+
+        await ctx.runMutation(internalApi.credits.internal.reversePurchasedCreditsFromRefund, {
+          stripeChargeId: charge.id,
+          stripePaymentIntentId,
+          amountRefunded: charge.amount_refunded,
+          chargeAmount: charge.amount,
+        });
+      });
+    },
+
     "invoice.created": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const invoice = event.data.object as any;

@@ -9,7 +9,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
-import { useRouter } from "next/navigation";
+import { CreditTopupCard } from "@/components/billing/credit-topup-card";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { isEntitledStatus } from "@/lib/billing/entitlements";
@@ -22,25 +23,33 @@ export default function BillingPage() {
   const tc = useTranslations("common");
   const format = useFormatter();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
   const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
+  const topupCatalogQuery = useProtectedQuery(api.credits.queries.getTopupCatalog, {});
   const grantDiagnosticsQuery = useProtectedQuery(
     (api).credits.queries.getLatestGrantStatus,
     {},
   );
   const creditBalance = creditBalanceQuery.data;
+  const topupCatalog = topupCatalogQuery.data;
   const grantDiagnostics = grantDiagnosticsQuery.data;
   const createPortalSession = useAction(
     api.subscriptions.actions.createPortalSession,
   );
   const changePlan = useAction(api.subscriptions.actions.changePlan);
+  const createTopupCheckoutSession = useAction(
+    api.credits.actions.createTopupCheckoutSession,
+  );
   const getSubscriptionDetails = useAction(
     api.subscriptions.actions.getSubscriptionDetails,
   );
 
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingTopupBundle, setLoadingTopupBundle] = useState<string | null>(null);
   const [navStartTime, setNavStartTime] = useState<number | null>(null);
+  const topupStatusToastShown = useRef<string | null>(null);
 
   // Reset isLoading if we've been in loading state for too long (handles back navigation from Stripe)
   useEffect(() => {
@@ -59,6 +68,20 @@ export default function BillingPage() {
   useEffect(() => {
     console.log("[BILLING] isLoading changed:", isLoading);
   }, [isLoading]);
+
+  useEffect(() => {
+    const topupStatus = searchParams.get("topup");
+    if (!topupStatus || topupStatusToastShown.current === topupStatus) {
+      return;
+    }
+
+    if (topupStatus === "success") {
+      toast.success(t("topupSuccessTitle"), t("topupSuccessDescription"));
+    } else if (topupStatus === "canceled") {
+      toast.warning(t("topupCancelledTitle"), t("topupCancelledDescription"));
+    }
+    topupStatusToastShown.current = topupStatus;
+  }, [searchParams, t, toast]);
   const [details, setDetails] = useState<{
     amount: number;
     currency: string;
@@ -189,6 +212,25 @@ export default function BillingPage() {
     } finally {
       setIsLoading(false);
       setNavStartTime(null);
+    }
+  };
+
+  const handleTopupPurchase = async (bundleKey: string) => {
+    if (loadingTopupBundle) return;
+
+    try {
+      setLoadingTopupBundle(bundleKey);
+      const { url } = await createTopupCheckoutSession({ bundleKey });
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      toast.billing.checkoutFailed();
+    } catch (error) {
+      console.error("[BILLING] Failed to start top-up checkout:", error);
+      toast.error(tc("somethingWentWrong"), t("topupCheckoutFailed"));
+    } finally {
+      setLoadingTopupBundle(null);
     }
   };
 
@@ -462,6 +504,19 @@ export default function BillingPage() {
             creditsPerMonth={creditsPerMonth}
           />
         )}
+
+        {creditsFeatureFlags.enabled &&
+          creditsFeatureFlags.topupsEnabled &&
+          topupCatalog?.enabled &&
+          topupCatalog.bundles.length > 0 && (
+            <CreditTopupCard
+              bundles={topupCatalog.bundles}
+              creditsPerUsd={topupCatalog.creditsPerUsd}
+              loadingBundleKey={loadingTopupBundle}
+              onPurchase={handleTopupPurchase}
+              disabled={isLoading}
+            />
+          )}
 
         {/* {grantDiagnostics && (
           <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm">

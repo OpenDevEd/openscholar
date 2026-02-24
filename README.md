@@ -67,7 +67,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
-   - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (and optional publishable key for client UI)
+   - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PRODUCT_ID` (and optional publishable key for client UI)
+   - **Credits top-up conversion:** optional `CREDITS_PER_USD` (defaults to `100`)
+   - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups)
 
    Clerk notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.
@@ -101,6 +103,8 @@ It's designed for systematic reviews and complex queries, not just keyword match
      - `invoice.paid`
      - `invoice.payment_failed`
      - `invoice.payment_succeeded`
+     - `payment_intent.succeeded`
+     - `charge.refunded`
    - Local listener command:
      - `npm run dev:stripe`
      - This command auto-syncs `STRIPE_WEBHOOK_SECRET` in Convex from the active Stripe CLI listener before forwarding events.

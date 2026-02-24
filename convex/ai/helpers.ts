@@ -8,7 +8,6 @@ import {
   AIUnauthenticatedError,
   AIInsufficientCreditsError,
   calculateCostInDollars,
-  dollarsToCredits,
   executeAIOperation,
   type Usage,
 } from "../../lib/ai/core";
@@ -18,6 +17,7 @@ import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType } from "convex/values";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
+import { convertDollarsToCredits } from "../lib/creditTopups";
 
 const MAX_TRACKING_CONTENT_LENGTH = 2000;
 
@@ -68,7 +68,7 @@ export async function withAuthAndCreditsBatch<T>(
     SERVER_AI_CONFIG.provider as AIProvider,
     SERVER_AI_CONFIG.model,
   );
-  const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
+  const creditsToDeduct = convertDollarsToCredits(costDollars);
 
   await captureAIGenerationServer({
     distinctId: user.clerkId,
@@ -127,7 +127,7 @@ export async function withUserCreditsBatch<T>(
     SERVER_AI_CONFIG.provider as AIProvider,
     SERVER_AI_CONFIG.model,
   );
-  const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
+  const creditsToDeduct = convertDollarsToCredits(costDollars);
 
   await captureAIGenerationServer({
     distinctId: user.clerkId,
@@ -172,7 +172,7 @@ export async function withAuthAndCredits<T>(
     SERVER_AI_CONFIG.provider as AIProvider,
     SERVER_AI_CONFIG.model,
   );
-  const creditsToDeduct = Math.max(1, dollarsToCredits(costDollars));
+  const creditsToDeduct = convertDollarsToCredits(costDollars);
 
   await ctx.runMutation(internal.credits.internal.deductCredits, {
     userId: user._id,
@@ -259,4 +259,3 @@ export function createAIAction<
 }
 
 // RAG helpers removed
-

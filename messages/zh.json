@@ -360,7 +360,17 @@
     "gracePeriodNotice": "检测到账单问题。我们重试扣款期间，你仍可暂时访问。",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
-    "intervalYear": "年"
+    "intervalYear": "年",
+    "topupTitle": "Credit Top-Ups",
+    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
+    "topupRate": "{rate} credits per $1 (base rate).",
+    "topupBuyButton": "Buy credits",
+    "topupProcessing": "Redirecting…",
+    "topupCheckoutFailed": "Could not start credit checkout.",
+    "topupSuccessTitle": "Credit purchase started",
+    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
+    "topupCancelledTitle": "Credit checkout canceled",
+    "topupCancelledDescription": "No charge was made. You can retry anytime."
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",

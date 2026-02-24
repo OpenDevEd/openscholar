@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
 import { components } from "../_generated/api";
+import { getCreditTopupCatalog, getCreditsPerUsd } from "../lib/creditTopups";
 
 const componentApi = components as any;
 
@@ -110,6 +111,41 @@ export const checkBalance = query({
       total,
       required: args.requiredAmount,
       deficit: Math.max(0, args.requiredAmount - total),
+    };
+  },
+});
+
+export const getTopupCatalog = query({
+  args: {},
+  returns: v.object({
+    enabled: v.boolean(),
+    creditsPerUsd: v.number(),
+    bundles: v.array(
+      v.object({
+        key: v.string(),
+        credits: v.number(),
+        amountCents: v.number(),
+        currency: v.literal("usd"),
+      }),
+    ),
+  }),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    const topupsEnabled = process.env.NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED !== "false";
+    const creditsPerUsd = getCreditsPerUsd();
+
+    if (!user || !topupsEnabled) {
+      return {
+        enabled: false,
+        creditsPerUsd,
+        bundles: [],
+      };
+    }
+
+    return {
+      enabled: true,
+      creditsPerUsd,
+      bundles: getCreditTopupCatalog(creditsPerUsd),
     };
   },
 });

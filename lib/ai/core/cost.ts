@@ -18,10 +18,6 @@ export function calculateCostInDollars(
          ((completionTokens / 1_000_000) * pricing.output)
 }
 
-export function dollarsToCredits(dollars: number): number {
-  return Math.ceil(dollars * 100)
-}
-
 /**
  * Aggregates multiple Usage objects into a single total.
  * Useful for batch operations where each item generates usage.

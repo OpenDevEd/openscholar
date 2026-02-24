@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { FREE_CREDIT_CAP } from "../lib/constants";
 import { ConvexError } from "convex/values";
 import { internal, components } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
 import {
   getCreditGrantRetryDelayMs,
@@ -14,6 +14,13 @@ import {
   type MonthlyCreditGrantDecision,
 } from "./lib/invoiceGrantPolicy";
 import { requireCreditsEnabled } from "../lib/featureFlags";
+import {
+  CREDIT_TOPUP_CURRENCY,
+  calculateRefundDeltaCredits,
+  calculateRefundTargetCredits,
+  convertCreditsToAmountCents,
+  getCreditsPerUsd,
+} from "../lib/creditTopups";
 
 const internalApi = internal as any;
 const componentApi = components as any;
@@ -134,6 +141,50 @@ export const ensureCreditsForUser = internalMutation({
     return { creditsId, created: true };
   },
 });
+
+function parsePositiveInteger(input: string | undefined): number | null {
+  if (!input) return null;
+  const parsed = Number.parseInt(input, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function getLatestBillingCustomerByUpdatedAt(rows: Doc<"billingCustomers">[]) {
+  if (rows.length === 0) return null;
+  return rows.reduce((latest, row) =>
+    row.updatedAt > latest.updatedAt ? row : latest,
+  );
+}
+
+async function resolveTopupUserId(
+  ctx: MutationCtx,
+  args: {
+    metadata?: Record<string, string>;
+    stripeCustomerId?: string;
+  },
+): Promise<Id<"users"> | null> {
+  const metadataUserId = args.metadata?.userId;
+
+  if (metadataUserId) {
+    const user = await ctx.db.get(metadataUserId as Id<"users">);
+    if (user) {
+      return user._id;
+    }
+  }
+
+  if (args.stripeCustomerId) {
+    const rows = await ctx.db
+      .query("billingCustomers")
+      .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId!))
+      .collect();
+    const latest = getLatestBillingCustomerByUpdatedAt(rows);
+    if (latest) {
+      return latest.userId;
+    }
+  }
+
+  return null;
+}
 
 async function findGrantSubscription(
   ctx: MutationCtx,
@@ -740,6 +791,267 @@ export const grantMonthlyCredits = internalMutation({
       grantedCredits: actualGranted,
       message: `Granted ${actualGranted} monthly credits for invoice ${args.stripeInvoiceId ?? "unknown"}`,
     });
+  },
+});
+
+function selectPurchaseTransactionByPaymentIntent(
+  transactions: Doc<"creditTransactions">[],
+): Doc<"creditTransactions"> | null {
+  const purchases = transactions
+    .filter((row) => row.type === "purchase" && row.amount > 0)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return purchases[0] ?? null;
+}
+
+function sumReversedCredits(
+  transactions: Doc<"creditTransactions">[],
+): number {
+  return transactions
+    .filter((row) => row.type === "refund" && row.creditType === "paid" && row.amount < 0)
+    .reduce((sum, row) => sum + Math.abs(row.amount), 0);
+}
+
+function getRecordedPurchaseAmountCents(
+  metadata?: Record<string, string>,
+): number | null {
+  const chargedAmountCents = parsePositiveInteger(metadata?.chargedAmountCents);
+  if (chargedAmountCents !== null) return chargedAmountCents;
+  return parsePositiveInteger(metadata?.amountCents);
+}
+
+export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
+  args: {
+    stripePaymentIntentId: v.string(),
+    stripeCustomerId: v.optional(v.string()),
+    stripeChargeId: v.optional(v.string()),
+    amountReceived: v.number(),
+    currency: v.string(),
+    metadata: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.object({
+    outcome: v.string(),
+    grantedCredits: v.number(),
+    userId: v.optional(v.id("users")),
+  }),
+  handler: async (ctx, args) => {
+    const metadata = args.metadata ?? {};
+    const billingType = metadata.billingType;
+
+    if (billingType !== "credit_topup") {
+      return {
+        outcome: "ignored_non_topup",
+        grantedCredits: 0,
+      };
+    }
+
+    if (args.currency.toLowerCase() !== CREDIT_TOPUP_CURRENCY) {
+      throw new ConvexError(
+        `Unsupported top-up currency: ${args.currency}. Expected ${CREDIT_TOPUP_CURRENCY}.`,
+      );
+    }
+
+    const amountReceivedCents = Math.max(0, Math.floor(args.amountReceived));
+    if (amountReceivedCents <= 0) {
+      throw new ConvexError("Payment amount must be greater than zero");
+    }
+
+    const creditsToGrant = parsePositiveInteger(metadata.credits);
+    if (creditsToGrant === null) {
+      throw new ConvexError("Missing or invalid credits metadata for top-up payment");
+    }
+
+    const metadataCreditsPerUsd =
+      parsePositiveInteger(metadata.creditsPerUsd) ?? getCreditsPerUsd();
+    const expectedMinimumAmountCents = convertCreditsToAmountCents(
+      creditsToGrant,
+      metadataCreditsPerUsd,
+    );
+    if (amountReceivedCents < expectedMinimumAmountCents) {
+      throw new ConvexError(
+        `Payment amount is lower than expected minimum for top-up (${amountReceivedCents} < ${expectedMinimumAmountCents})`,
+      );
+    }
+
+    const metadataAmountCents = parsePositiveInteger(metadata.amountCents);
+    if (metadataAmountCents !== null && amountReceivedCents < metadataAmountCents) {
+      throw new ConvexError(
+        `Payment amount is lower than declared checkout amount (${amountReceivedCents} < ${metadataAmountCents})`,
+      );
+    }
+
+    const existingTransactions = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_stripe_payment_intent", (q) =>
+        q.eq("stripePaymentIntentId", args.stripePaymentIntentId))
+      .collect();
+
+    const existingPurchase = selectPurchaseTransactionByPaymentIntent(existingTransactions);
+    if (existingPurchase) {
+      return {
+        outcome: "already_granted",
+        grantedCredits: 0,
+        userId: existingPurchase.userId,
+      };
+    }
+
+    const userId = await resolveTopupUserId(ctx, {
+      metadata,
+      stripeCustomerId: args.stripeCustomerId,
+    });
+    if (!userId) {
+      throw new ConvexError(
+        `Unable to resolve user for top-up payment intent ${args.stripePaymentIntentId}`,
+      );
+    }
+
+    let credits = await getLatestCreditsByUser(ctx, userId);
+    if (!credits) {
+      const now = Date.now();
+      const creditsId = await ctx.db.insert(
+        "credits",
+        buildInitialCreditsRecord({
+          userId,
+          now,
+        }),
+      );
+      credits = await ctx.db.get(creditsId);
+    }
+
+    if (!credits) {
+      throw new ConvexError(`Unable to create credits record for user ${userId}`);
+    }
+
+    const now = Date.now();
+    const newPaidBalance = credits.paidBalance + creditsToGrant;
+
+    await ctx.db.patch(credits._id, {
+      paidBalance: newPaidBalance,
+      lastUpdatedAt: now,
+    });
+
+    const transactionMetadata: Record<string, string> = {
+      ...metadata,
+      chargedAmountCents: String(amountReceivedCents),
+      eventCurrency: args.currency.toLowerCase(),
+      appliedCreditsPerUsd: String(metadataCreditsPerUsd),
+    };
+
+    await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId,
+      type: "purchase",
+      creditType: "paid",
+      amount: creditsToGrant,
+      balanceAfter: newPaidBalance,
+      description: `Credit top-up purchase (${creditsToGrant} credits)`,
+      metadata: transactionMetadata,
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      stripeChargeId: args.stripeChargeId,
+      createdAt: now,
+    });
+
+    return {
+      outcome: "granted",
+      grantedCredits: creditsToGrant,
+      userId,
+    };
+  },
+});
+
+export const reversePurchasedCreditsFromRefund = internalMutation({
+  args: {
+    stripeChargeId: v.string(),
+    stripePaymentIntentId: v.string(),
+    amountRefunded: v.number(),
+    chargeAmount: v.number(),
+  },
+  returns: v.object({
+    outcome: v.string(),
+    reversedCredits: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const refundedAmountCents = Math.max(0, Math.floor(args.amountRefunded));
+    const chargeAmountCents = Math.max(0, Math.floor(args.chargeAmount));
+
+    if (refundedAmountCents <= 0) {
+      return { outcome: "ignored_zero_refund", reversedCredits: 0 };
+    }
+
+    const transactions = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_stripe_payment_intent", (q) =>
+        q.eq("stripePaymentIntentId", args.stripePaymentIntentId))
+      .collect();
+
+    const purchase = selectPurchaseTransactionByPaymentIntent(transactions);
+    if (!purchase) {
+      return { outcome: "ignored_no_purchase", reversedCredits: 0 };
+    }
+
+    const purchaseMetadata =
+      (purchase.metadata as Record<string, string> | undefined) ?? undefined;
+    const purchaseAmountCents =
+      getRecordedPurchaseAmountCents(purchaseMetadata) ?? chargeAmountCents;
+
+    if (purchaseAmountCents <= 0) {
+      throw new ConvexError(
+        `Invalid original purchase amount for payment intent ${args.stripePaymentIntentId}`,
+      );
+    }
+
+    const alreadyReversedCredits = sumReversedCredits(transactions);
+    const targetReversedCredits = calculateRefundTargetCredits({
+      purchasedCredits: purchase.amount,
+      purchaseAmountCents,
+      refundedAmountCents,
+    });
+    const reversalDelta = calculateRefundDeltaCredits({
+      targetReversedCredits,
+      alreadyReversedCredits,
+    });
+
+    if (reversalDelta <= 0) {
+      return { outcome: "already_reversed", reversedCredits: 0 };
+    }
+
+    const credits = await ctx.db.get(purchase.creditsId);
+    if (!credits) {
+      throw new ConvexError(
+        `Credits record missing for purchase transaction ${purchase._id}`,
+      );
+    }
+
+    const now = Date.now();
+    const newPaidBalance = credits.paidBalance - reversalDelta;
+
+    await ctx.db.patch(credits._id, {
+      paidBalance: newPaidBalance,
+      lastUpdatedAt: now,
+    });
+
+    await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId: purchase.userId,
+      type: "refund",
+      creditType: "paid",
+      amount: -reversalDelta,
+      balanceAfter: newPaidBalance,
+      description: `Credit top-up refund reversal (${reversalDelta} credits)`,
+      metadata: {
+        refundedAmountCents: String(refundedAmountCents),
+        purchaseAmountCents: String(purchaseAmountCents),
+        targetReversedCredits: String(targetReversedCredits),
+        alreadyReversedCredits: String(alreadyReversedCredits),
+      },
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      stripeChargeId: args.stripeChargeId,
+      createdAt: now,
+    });
+
+    return {
+      outcome: "reversed",
+      reversedCredits: reversalDelta,
+    };
   },
 });
 

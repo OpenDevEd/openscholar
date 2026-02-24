@@ -360,7 +360,17 @@
     "gracePeriodNotice": "請求の問題を検出しました。支払いを再試行している間、一時的なアクセスが可能です。",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
-    "intervalYear": "年"
+    "intervalYear": "年",
+    "topupTitle": "Credit Top-Ups",
+    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
+    "topupRate": "{rate} credits per $1 (base rate).",
+    "topupBuyButton": "Buy credits",
+    "topupProcessing": "Redirecting…",
+    "topupCheckoutFailed": "Could not start credit checkout.",
+    "topupSuccessTitle": "Credit purchase started",
+    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
+    "topupCancelledTitle": "Credit checkout canceled",
+    "topupCancelledDescription": "No charge was made. You can retry anytime."
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",

@@ -15,6 +15,8 @@ Configure the Stripe endpoint (`POST /webhooks/stripe`) with:
 - `invoice.paid`
 - `invoice.payment_failed`
 - `invoice.payment_succeeded`
+- `payment_intent.succeeded`
+- `charge.refunded`
 
 ## Local Development
 
@@ -44,6 +46,16 @@ This forwards webhook traffic to:
   - mark event as `failed`,
   - include actionable error context,
   - do not silently grant.
+
+## Credit Top-Up Policy
+
+- Credit top-ups are fulfilled from `payment_intent.succeeded` only when `metadata.billingType=credit_topup`.
+- Purchased credit grants are idempotent by `stripePaymentIntentId`.
+- Top-up checkout amount is server-authored from bundle credits and `CREDITS_PER_USD`.
+- Refund reversals are handled from `charge.refunded` using cumulative refunded cents:
+  - reversal is proportional to refund progress,
+  - repeated/refired events are replay-safe,
+  - paid balance may go negative when refunded credits were already consumed.
 
 ## Entitlement Policy
 

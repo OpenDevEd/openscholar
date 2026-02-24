@@ -54,10 +54,14 @@ export default defineSchema({
     description: v.optional(v.string()),
     metadata: v.optional(v.record(v.string(), v.string())),
     stripeInvoiceId: v.optional(v.string()), // For idempotency
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeChargeId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_credits", ["creditsId"])
     .index("by_stripe_invoice", ["stripeInvoiceId"])
+    .index("by_stripe_payment_intent", ["stripePaymentIntentId"])
+    .index("by_stripe_charge", ["stripeChargeId"])
     .index("by_user", ["userId"])
     .index("by_type_date", ["type", "createdAt"]),
 

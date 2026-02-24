@@ -360,7 +360,17 @@
     "gracePeriodNotice": "Un problème de facturation a été détecté. Vous conservez temporairement l'accès pendant les nouvelles tentatives de paiement.",
     "perInterval": "/ {interval}",
     "intervalMonth": "mois",
-    "intervalYear": "an"
+    "intervalYear": "an",
+    "topupTitle": "Credit Top-Ups",
+    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
+    "topupRate": "{rate} credits per $1 (base rate).",
+    "topupBuyButton": "Buy credits",
+    "topupProcessing": "Redirecting…",
+    "topupCheckoutFailed": "Could not start credit checkout.",
+    "topupSuccessTitle": "Credit purchase started",
+    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
+    "topupCancelledTitle": "Credit checkout canceled",
+    "topupCancelledDescription": "No charge was made. You can retry anytime."
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",

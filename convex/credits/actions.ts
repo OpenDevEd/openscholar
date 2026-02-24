@@ -1,7 +1,7 @@
 "use node";
 
-import { internalAction } from "../_generated/server";
-import { v } from "convex/values";
+import { action, internalAction } from "../_generated/server";
+import { v, ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import Stripe from "stripe";
 import {
@@ -12,11 +12,103 @@ import {
   getCreditGrantRetryDelayMs,
   shouldRetryCreditGrant,
 } from "./lib/retryPolicy";
+import { stripeClient } from "../stripe";
+import { requireActionAuth } from "../lib/auth";
+import { requireCreditsEnabled, requireCreditTopupsEnabled } from "../lib/featureFlags";
+import {
+  CREDIT_TOPUP_CURRENCY,
+  getCreditsPerUsd,
+  getCreditTopupBundle,
+} from "../lib/creditTopups";
 
 const internalApi = internal as any;
+const DOMAIN =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_URL ||
+  "http://localhost:3000";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
   apiVersion: "2026-01-28.clover",
+});
+
+export const createTopupCheckoutSession = action({
+  args: {
+    bundleKey: v.string(),
+  },
+  returns: v.object({
+    url: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args): Promise<{ url: string | null }> => {
+    requireCreditsEnabled();
+    requireCreditTopupsEnabled();
+    const identity = await requireActionAuth(ctx);
+    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+
+    if (!user?._id) {
+      throw new ConvexError("Unable to resolve current user");
+    }
+
+    const creditsPerUsd = getCreditsPerUsd();
+    const bundle = getCreditTopupBundle(args.bundleKey, creditsPerUsd);
+    if (!bundle) {
+      throw new ConvexError("Invalid credit top-up bundle");
+    }
+
+    const creditsProductId = process.env.STRIPE_CREDITS_PRODUCT_ID;
+    if (!creditsProductId) {
+      throw new ConvexError("STRIPE_CREDITS_PRODUCT_ID is not configured");
+    }
+
+    const customer = await stripeClient.getOrCreateCustomer(ctx, {
+      userId: user._id,
+      email: identity.email,
+      name: identity.name,
+    });
+
+    await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+      userId: user._id,
+      stripeCustomerId: customer.customerId,
+      linkedFrom: "credit_topup_checkout",
+    });
+
+    const metadata: Record<string, string> = {
+      billingType: "credit_topup",
+      userId: user._id,
+      bundleKey: bundle.key,
+      credits: String(bundle.credits),
+      amountCents: String(bundle.amountCents),
+      creditsPerUsd: String(creditsPerUsd),
+    };
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customer.customerId,
+      mode: "payment",
+      success_url: `${DOMAIN}/settings/billing?topup=success`,
+      cancel_url: `${DOMAIN}/settings/billing?topup=canceled`,
+      customer_update: {
+        address: "auto",
+      },
+      automatic_tax: {
+        enabled: true,
+      },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            product: creditsProductId,
+            currency: CREDIT_TOPUP_CURRENCY,
+            unit_amount: bundle.amountCents,
+          },
+        },
+      ],
+      metadata,
+      payment_intent_data: {
+        metadata,
+      },
+    });
+
+    return { url: session.url };
+  },
 });
 
 export type StripeInvoiceReconcileLike = {

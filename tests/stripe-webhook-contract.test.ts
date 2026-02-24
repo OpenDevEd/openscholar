@@ -6,6 +6,8 @@ const HTTP_FILE = "convex/http.ts";
 
 const REQUIRED_EVENTS = [
   "checkout.session.completed",
+  "payment_intent.succeeded",
+  "charge.refunded",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -35,10 +37,12 @@ describe("stripe webhook contract", () => {
     }
   });
 
-  it("does not contain one-time payment checkout handling", () => {
+  it("includes top-up payment intent and refund handling", () => {
     const source = readSource(HTTP_FILE);
-    expect(source).not.toMatch(/session\.mode\s*===\s*["']payment["']/);
-    expect(source).not.toMatch(/handleCreditPurchase/);
+    expect(source).toMatch(/grantPurchasedCreditsFromPaymentIntent/);
+    expect(source).toMatch(/reversePurchasedCreditsFromRefund/);
+    expect(source).toMatch(/"payment_intent\.succeeded"/);
+    expect(source).toMatch(/"charge\.refunded"/);
   });
 
   it("routes invoice events through hydrated invoice processing action", () => {

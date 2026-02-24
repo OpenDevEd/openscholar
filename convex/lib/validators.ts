@@ -109,5 +109,7 @@ export const creditTransactionValidator = v.object({
   description: v.optional(v.string()),
   metadata: v.optional(v.record(v.string(), v.string())),
   stripeInvoiceId: v.optional(v.string()),
+  stripePaymentIntentId: v.optional(v.string()),
+  stripeChargeId: v.optional(v.string()),
   createdAt: v.number(),
 });
