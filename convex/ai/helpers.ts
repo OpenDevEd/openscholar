@@ -5,9 +5,14 @@ import type { ActionCtx } from "../_generated/server";
 import { internal, api } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
+  AIError,
+  AIApiKeyRequiredError,
   AIUnauthenticatedError,
   AIInsufficientCreditsError,
   AIPlanEntitlementError,
+  AIValidationError,
+  AIProviderError,
+  AIMaxRetriesExceededError,
   calculateCostInDollars,
   executeAIOperation,
   type Usage,
@@ -21,6 +26,7 @@ import { captureAIGenerationServer } from "../../lib/posthog-server";
 import { convertDollarsToCredits } from "../lib/creditTopups";
 import { AI_COST_MARKUP, getPlanTier } from "../lib/constants";
 import { resolveEffectivePlan } from "../../lib/billing/entitlements";
+import { createError } from "../lib/errors";
 
 const MAX_TRACKING_CONTENT_LENGTH = 2000;
 
@@ -29,7 +35,92 @@ function truncateForTracking(s: string): string {
   return s.slice(0, MAX_TRACKING_CONTENT_LENGTH) + "...[truncated]";
 }
 
-/** Asserts the user holds at least `minTier`. Throws AIPlanEntitlementError if not. */
+function hasStructuredConvexCode(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const data = (error as { data?: unknown }).data;
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "code" in data &&
+      typeof (data as { code?: unknown }).code === "string",
+  );
+}
+
+function isApiKeyMissingMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes("api key") && (
+    normalized.includes("missing") ||
+    normalized.includes("not configured") ||
+    normalized.includes("not set") ||
+    normalized.includes("required") ||
+    normalized.includes("no key")
+  );
+}
+
+function throwStructuredAIError(error: unknown): never {
+  if (hasStructuredConvexCode(error)) {
+    throw error;
+  }
+
+  if (error instanceof AIApiKeyRequiredError) {
+    throw createError("AI_API_KEY_REQUIRED", error.message);
+  }
+  if (error instanceof AIUnauthenticatedError) {
+    throw createError("AI_UNAUTHENTICATED", error.message);
+  }
+  if (error instanceof AIInsufficientCreditsError) {
+    throw createError("AI_INSUFFICIENT_CREDITS", error.message);
+  }
+  if (error instanceof AIPlanEntitlementError) {
+    throw createError("AI_PLAN_ENTITLEMENT", error.message);
+  }
+  if (error instanceof AIValidationError) {
+    throw createError("AI_VALIDATION_ERROR", error.message);
+  }
+  if (error instanceof AIMaxRetriesExceededError) {
+    throw createError("AI_MAX_RETRIES_EXCEEDED", error.message);
+  }
+  if (error instanceof AIProviderError) {
+    if (isApiKeyMissingMessage(error.message)) {
+      throw createError("AI_API_KEY_REQUIRED", error.message);
+    }
+    throw createError("AI_PROVIDER_ERROR", error.message);
+  }
+  if (error instanceof AIError) {
+    if (error.code === "AI_API_KEY_REQUIRED") {
+      throw createError("AI_API_KEY_REQUIRED", error.message);
+    }
+    if (error.code === "AI_UNAUTHENTICATED") {
+      throw createError("AI_UNAUTHENTICATED", error.message);
+    }
+    if (error.code === "AI_INSUFFICIENT_CREDITS") {
+      throw createError("AI_INSUFFICIENT_CREDITS", error.message);
+    }
+    if (error.code === "AI_PLAN_ENTITLEMENT") {
+      throw createError("AI_PLAN_ENTITLEMENT", error.message);
+    }
+    if (error.code === "AI_VALIDATION_ERROR") {
+      throw createError("AI_VALIDATION_ERROR", error.message);
+    }
+    if (error.code === "AI_PROVIDER_ERROR") {
+      throw createError("AI_PROVIDER_ERROR", error.message);
+    }
+    if (error.code === "AI_MAX_RETRIES_EXCEEDED") {
+      throw createError("AI_MAX_RETRIES_EXCEEDED", error.message);
+    }
+  }
+
+  if (error instanceof Error) {
+    if (isApiKeyMissingMessage(error.message)) {
+      throw createError("AI_API_KEY_REQUIRED", error.message);
+    }
+    throw createError("AI_PROVIDER_ERROR", error.message);
+  }
+
+  throw createError("AI_PROVIDER_ERROR", String(error));
+}
+
+/** Asserts the user holds at least `minTier`. */
 async function assertPlanTier(
   ctx: ActionCtx,
   userId: Id<"users">,
@@ -42,7 +133,7 @@ async function assertPlanTier(
   const plan = resolveEffectivePlan(subscription);
   const tier = getPlanTier(plan);
   if (tier < minTier) {
-    throw new AIPlanEntitlementError("Go");
+    throw createError("AI_PLAN_ENTITLEMENT", "This feature requires the Go plan or higher");
   }
 }
 
@@ -72,50 +163,56 @@ export async function withAuthAndCreditsBatch<T>(
   handler: (user: Doc<"users">) => Promise<{ result: T; totalUsage: Usage }>,
   options?: { minPlanTier?: number }
 ): Promise<T> {
-  const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-  if (!user) throw new AIUnauthenticatedError();
+  try {
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) {
+      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+    }
 
-  if (options?.minPlanTier) {
-    await assertPlanTier(ctx, user._id, options.minPlanTier);
+    if (options?.minPlanTier) {
+      await assertPlanTier(ctx, user._id, options.minPlanTier);
+    }
+
+    const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
+    if (!balance || balance.total <= 0) {
+      throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
+    }
+
+    const start = Date.now();
+    const { result, totalUsage } = await handler(user);
+    const latencyMs = Date.now() - start;
+
+    const costDollars = calculateCostInDollars(
+      totalUsage,
+      SERVER_AI_CONFIG.provider as AIProvider,
+      SERVER_AI_CONFIG.model,
+    );
+    const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
+
+    await captureAIGenerationServer({
+      distinctId: user.clerkId,
+      provider: SERVER_AI_CONFIG.provider as AIProvider,
+      modelId: SERVER_AI_CONFIG.model,
+      feature: operation,
+      usage: {
+        inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+        outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+      },
+      latencyMs,
+      input: `Batch: ${operation}`,
+      output: "Completed",
+    });
+
+    await ctx.runMutation(internal.credits.internal.deductCredits, {
+      userId: user._id,
+      amount: creditsToDeduct,
+      description: `AI: ${operation}`,
+    });
+
+    return result;
+  } catch (error) {
+    throwStructuredAIError(error);
   }
-
-  const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
-  if (!balance || balance.total <= 0) {
-    throw new AIInsufficientCreditsError();
-  }
-
-  const start = Date.now();
-  const { result, totalUsage } = await handler(user);
-  const latencyMs = Date.now() - start;
-
-  const costDollars = calculateCostInDollars(
-    totalUsage,
-    SERVER_AI_CONFIG.provider as AIProvider,
-    SERVER_AI_CONFIG.model,
-  );
-  const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
-
-  await captureAIGenerationServer({
-    distinctId: user.clerkId,
-    provider: SERVER_AI_CONFIG.provider as AIProvider,
-    modelId: SERVER_AI_CONFIG.model,
-    feature: operation,
-    usage: {
-      inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
-      outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
-    },
-    latencyMs,
-    input: `Batch: ${operation}`,
-    output: "Completed",
-  });
-
-  await ctx.runMutation(internal.credits.internal.deductCredits, {
-    userId: user._id,
-    amount: creditsToDeduct,
-    description: `AI: ${operation}`,
-  });
-
-  return result;
 }
 
 /**
@@ -128,53 +225,59 @@ export async function withUserCreditsBatch<T>(
   operation: string,
   handler: () => Promise<{ result: T; totalUsage: Usage }>,
 ): Promise<T> {
-  // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
-  const user = await ctx.runQuery(internal.users.internal.getUserById, {
-    userId,
-  });
-  if (!user) throw new AIUnauthenticatedError();
+  try {
+    // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
+    const user = await ctx.runQuery(internal.users.internal.getUserById, {
+      userId,
+    });
+    if (!user) {
+      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+    }
 
-  // Check credits for this user
-  const balance = await ctx.runQuery(
-    internal.credits.internal.getBalanceByUserId,
-    { userId },
-  );
-  if (!balance || balance.total <= 0) {
-    throw new AIInsufficientCreditsError();
+    // Check credits for this user
+    const balance = await ctx.runQuery(
+      internal.credits.internal.getBalanceByUserId,
+      { userId },
+    );
+    if (!balance || balance.total <= 0) {
+      throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
+    }
+
+    const start = Date.now();
+    const { result, totalUsage } = await handler();
+    const latencyMs = Date.now() - start;
+
+    const costDollars = calculateCostInDollars(
+      totalUsage,
+      SERVER_AI_CONFIG.provider as AIProvider,
+      SERVER_AI_CONFIG.model,
+    );
+    const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
+
+    await captureAIGenerationServer({
+      distinctId: user.clerkId,
+      provider: SERVER_AI_CONFIG.provider as AIProvider,
+      modelId: SERVER_AI_CONFIG.model,
+      feature: operation,
+      usage: {
+        inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+        outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+      },
+      latencyMs,
+      input: `Batch: ${operation}`,
+      output: "Completed",
+    });
+
+    await ctx.runMutation(internal.credits.internal.deductCredits, {
+      userId,
+      amount: creditsToDeduct,
+      description: `AI: ${operation}`,
+    });
+
+    return result;
+  } catch (error) {
+    throwStructuredAIError(error);
   }
-
-  const start = Date.now();
-  const { result, totalUsage } = await handler();
-  const latencyMs = Date.now() - start;
-
-  const costDollars = calculateCostInDollars(
-    totalUsage,
-    SERVER_AI_CONFIG.provider as AIProvider,
-    SERVER_AI_CONFIG.model,
-  );
-  const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
-
-  await captureAIGenerationServer({
-    distinctId: user.clerkId,
-    provider: SERVER_AI_CONFIG.provider as AIProvider,
-    modelId: SERVER_AI_CONFIG.model,
-    feature: operation,
-    usage: {
-      inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
-      outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
-    },
-    latencyMs,
-    input: `Batch: ${operation}`,
-    output: "Completed",
-  });
-
-  await ctx.runMutation(internal.credits.internal.deductCredits, {
-    userId,
-    amount: creditsToDeduct,
-    description: `AI: ${operation}`,
-  });
-
-  return result;
 }
 
 export async function withAuthAndCredits<T>(
@@ -183,34 +286,40 @@ export async function withAuthAndCredits<T>(
   handler: (user: Doc<"users">) => Promise<{ result: T; usage: Usage }>,
   options?: { minPlanTier?: number }
 ): Promise<T> {
-  const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-  if (!user) throw new AIUnauthenticatedError();
+  try {
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) {
+      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+    }
 
-  if (options?.minPlanTier) {
-    await assertPlanTier(ctx, user._id, options.minPlanTier);
+    if (options?.minPlanTier) {
+      await assertPlanTier(ctx, user._id, options.minPlanTier);
+    }
+
+    const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
+    if (!balance || balance.total <= 0) {
+      throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
+    }
+
+    const { result, usage } = await handler(user);
+
+    const costDollars = calculateCostInDollars(
+      usage,
+      SERVER_AI_CONFIG.provider as AIProvider,
+      SERVER_AI_CONFIG.model,
+    );
+    const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
+
+    await ctx.runMutation(internal.credits.internal.deductCredits, {
+      userId: user._id,
+      amount: creditsToDeduct,
+      description: `AI: ${operation}`,
+    });
+
+    return result;
+  } catch (error) {
+    throwStructuredAIError(error);
   }
-
-  const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
-  if (!balance || balance.total <= 0) {
-    throw new AIInsufficientCreditsError();
-  }
-
-  const { result, usage } = await handler(user);
-
-  const costDollars = calculateCostInDollars(
-    usage,
-    SERVER_AI_CONFIG.provider as AIProvider,
-    SERVER_AI_CONFIG.model,
-  );
-  const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
-
-  await ctx.runMutation(internal.credits.internal.deductCredits, {
-    userId: user._id,
-    amount: creditsToDeduct,
-    description: `AI: ${operation}`,
-  });
-
-  return result;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -282,7 +391,7 @@ export function createAIAction<
             isError: true,
             errorMessage: error instanceof Error ? error.message : String(error),
           });
-          throw error;
+          throwStructuredAIError(error);
         }
       }, options);
     },

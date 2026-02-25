@@ -4,25 +4,18 @@ import { useTranslations } from "next-intl";
 import { showStyledToast, customToast, dismissToast } from "@/components/ui/sonner";
 import { showLoadingToast, type LoadingToastOptions } from "./core";
 import { formatEntityName, formatEntityWithCount, formatOptionalLabel } from "./messages";
+import {
+  getToastMessageKeyForErrorCode,
+  isInsufficientCreditsCode,
+  resolveToastError,
+} from "./error-resolver";
 
 function openAISettings() {
   window.location.href = "/settings/ai";
 }
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-  return fallback;
+function openBillingSettings() {
+  window.location.href = "/settings/billing";
 }
 
 function getStatusCode(message: string): string | null {
@@ -43,6 +36,19 @@ function createEntityDescription(verb: string, label?: string): string | undefin
 export function useAppToast() {
   const t = useTranslations("toast");
 
+  const resolveErrorDetails = (error: unknown, fallback: string) => {
+    const resolved = resolveToastError(error, fallback);
+    const mappedKey = getToastMessageKeyForErrorCode(resolved.code);
+    return {
+      code: resolved.code,
+      message: mappedKey
+        ? t(mappedKey)
+        : resolved.isConvex
+          ? t("convexUnknownError")
+          : resolved.message,
+    };
+  };
+
   return {
     ai: {
       configRequired: (description?: string) => {
@@ -57,13 +63,23 @@ export function useAppToast() {
       },
       failed: (operation: string, error: unknown) => {
         const operationLabel = operation.trim() || t("aiOperation");
+        const resolved = resolveErrorDetails(error, t("unexpectedError"));
+        const action = isInsufficientCreditsCode(resolved.code)
+          ? {
+              label: t("openBilling"),
+              onClick: openBillingSettings,
+              icon: "arrow-right" as const,
+            }
+          : resolved.code === "AI_API_KEY_REQUIRED"
+            ? {
+                label: t("openAISettings"),
+                onClick: openAISettings,
+                icon: "settings" as const,
+              }
+            : undefined;
         showStyledToast("error", t("operationFailed", { operation: operationLabel }), {
-          description: getErrorMessage(error, t("unexpectedError")),
-          action: {
-            label: t("openAISettings"),
-            onClick: openAISettings,
-            icon: "settings" as const,
-          },
+          description: resolved.message,
+          action,
         });
       },
       succeeded: (title: string, description?: string) => {
@@ -72,7 +88,7 @@ export function useAppToast() {
     },
     search: {
       failed: (error: unknown) => {
-        const message = getErrorMessage(error, t("unexpectedError"));
+        const { message } = resolveErrorDetails(error, t("unexpectedError"));
         const statusCode = getStatusCode(message);
         if (statusCode === "400") {
           showStyledToast("error", t("searchQueryTooLarge"), {
@@ -96,11 +112,12 @@ export function useAppToast() {
         });
       },
       uploadFailed: (formatLabel: string, error?: unknown) => {
+        const { message } = resolveErrorDetails(
+          error,
+          t("uploadFailedDescription", { format: formatLabel }),
+        );
         showStyledToast("error", t("uploadFailed"), {
-          description: getErrorMessage(
-            error,
-            t("uploadFailedDescription", { format: formatLabel }),
-          ),
+          description: message,
         });
       },
       importResult: (entity: string, count: number) => {
@@ -211,8 +228,10 @@ export function useAppToast() {
     },
     zotero: {
       connected: () => showStyledToast("success", t("zoteroConnected")),
-      failed: (error?: string) =>
-        showStyledToast("error", t("zoteroConnectionFailed"), { description: error }),
+      failed: (error?: string) => {
+        const { message } = resolveErrorDetails(error, t("zoteroConnectionFailed"));
+        showStyledToast("error", t("zoteroConnectionFailed"), { description: message });
+      },
     },
     success: (title: string, description?: string) => {
       showStyledToast("success", title, { description });

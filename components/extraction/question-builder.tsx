@@ -420,15 +420,7 @@ export function QuestionBuilder() {
         toast.warning(t("noNewQuestions"));
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : t("failedToGenerateQuestions");
-      if (message === "API_KEY_REQUIRED") {
-        toast.ai.configRequired(t("configureApiKey"));
-      } else {
-        toast.error(t("generationFailed"), message);
-      }
+      toast.ai.failed(tc("generateWithAI"), error);
     } finally {
       setIsGenerating(false);
     }

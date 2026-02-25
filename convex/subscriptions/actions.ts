@@ -1,7 +1,7 @@
 "use node";
 
 import { action, type ActionCtx } from "../_generated/server";
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { requireActionAuth } from "../lib/auth";
 import { internal, components } from "../_generated/api";
 import { stripeClient } from "../stripe";
@@ -30,6 +30,7 @@ import {
 } from "./lib/schedulePlanning";
 import { isEntitledStatus } from "../../lib/billing/entitlements";
 import { requireSubscriptionsEnabled } from "../lib/featureFlags";
+import { createError, type ErrorCode } from "../lib/errors";
 
 const internalApi = internal as any;
 const componentApi = components as any;
@@ -42,6 +43,35 @@ const DOMAIN =
   process.env.NEXT_PUBLIC_APP_URL ||
   process.env.NEXT_PUBLIC_URL ||
   "http://localhost:3000";
+
+export type SubscriptionDetailsErrorCode = Extract<
+  ErrorCode,
+  | "BILLING_NO_SUBSCRIPTION_LINKED"
+  | "BILLING_SUBSCRIPTION_PRICE_MISSING"
+  | "BILLING_SUBSCRIPTION_INVALID"
+  | "BILLING_AUTHENTICATION_FAILED"
+  | "BILLING_NETWORK_ERROR"
+  | "BILLING_RATE_LIMITED"
+  | "BILLING_STRIPE_ERROR"
+>;
+
+export function mapSubscriptionDetailsErrorCode(
+  error: unknown,
+): SubscriptionDetailsErrorCode {
+  if (error instanceof Stripe.errors.StripeInvalidRequestError) {
+    return "BILLING_SUBSCRIPTION_INVALID";
+  }
+  if (error instanceof Stripe.errors.StripeAuthenticationError) {
+    return "BILLING_AUTHENTICATION_FAILED";
+  }
+  if (error instanceof Stripe.errors.StripeConnectionError) {
+    return "BILLING_NETWORK_ERROR";
+  }
+  if (error instanceof Stripe.errors.StripeRateLimitError) {
+    return "BILLING_RATE_LIMITED";
+  }
+  return "BILLING_STRIPE_ERROR";
+}
 
 function getStripeCustomerId(subscription: any): string | null {
   if (!subscription.customer) return null;
@@ -87,7 +117,10 @@ async function syncLocalSubscriptionFromStripe(
   const stripeCustomerId = getStripeCustomerId(subscription);
 
   if (!item?.price?.id || !stripeCustomerId) {
-    throw new ConvexError("Stripe subscription is missing required item or customer data");
+    throw createError(
+      "BILLING_SUBSCRIPTION_DATA_INVALID",
+      "Stripe subscription is missing required item or customer data",
+    );
   }
 
   const nowSec = Math.floor(Date.now() / 1000);
@@ -136,12 +169,15 @@ export const createCheckoutSession = action({
     assertPlanPriceConfig();
 
     if (!isAllowedPriceId(args.priceId)) {
-      throw new ConvexError("Invalid price ID");
+      throw createError("BILLING_INVALID_PRICE_ID", "Invalid price ID");
     }
 
     const targetPlan = getPlanFromPriceId(args.priceId);
     if (targetPlan === "free") {
-      throw new ConvexError("Cannot create checkout session for free plan");
+      throw createError(
+        "BILLING_FREE_PLAN_CHECKOUT_NOT_ALLOWED",
+        "Cannot create checkout session for free plan",
+      );
     }
 
     const existingSubscription = await ctx.runQuery(
@@ -152,7 +188,10 @@ export const createCheckoutSession = action({
     );
 
     if (existingSubscription?.stripeSubscriptionId && existingSubscription.status !== "canceled") {
-      throw new ConvexError("Existing Stripe subscription found. Use changePlan or billing portal.");
+      throw createError(
+        "BILLING_SUBSCRIPTION_ALREADY_EXISTS",
+        "Existing Stripe subscription found. Use changePlan or billing portal.",
+      );
     }
 
     const customer = await stripeClient.getOrCreateCustomer(ctx, {
@@ -285,7 +324,7 @@ export const createPortalSession = action({
     }
 
     if (!stripeCustomerId) {
-      throw new ConvexError("No subscription customer found");
+      throw createError("BILLING_CUSTOMER_NOT_FOUND", "No subscription customer found");
     }
 
     const portal = await stripeClient.createCustomerPortalSession(ctx, {
@@ -324,7 +363,7 @@ export const getSubscriptionDetails = action({
         cardLast4: v.optional(v.string()),
       }),
     ),
-    error: v.optional(v.string()),
+    errorCode: v.optional(v.string()),
   }),
   handler: async (ctx): Promise<{
     status: "success" | "error";
@@ -345,7 +384,7 @@ export const getSubscriptionDetails = action({
       cardBrand?: string;
       cardLast4?: string;
     };
-    error?: string;
+    errorCode?: SubscriptionDetailsErrorCode;
   }> => {
     await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
@@ -358,7 +397,7 @@ export const getSubscriptionDetails = action({
     );
 
     if (!subscription || !subscription.stripeSubscriptionId) {
-      return { status: "error", error: "No subscription linked." };
+      return { status: "error", errorCode: "BILLING_NO_SUBSCRIPTION_LINKED" };
     }
 
     try {
@@ -369,7 +408,7 @@ export const getSubscriptionDetails = action({
       const sub = stripeSub as any;
 
       if (!sub.items?.data?.[0]?.price) {
-        return { status: "error", error: "No price data in subscription." };
+        return { status: "error", errorCode: "BILLING_SUBSCRIPTION_PRICE_MISSING" };
       }
 
       const price = sub.items.data[0].price;
@@ -426,24 +465,7 @@ export const getSubscriptionDetails = action({
       };
     } catch (error: any) {
       console.error("Failed to fetch Stripe subscription:", error);
-
-      if (error instanceof Stripe.errors.StripeInvalidRequestError) {
-        return { status: "error", error: "Subscription not found or invalid." };
-      }
-      if (error instanceof Stripe.errors.StripeAuthenticationError) {
-        return {
-          status: "error",
-          error: "Stripe authentication failed. Please contact support.",
-        };
-      }
-      if (error instanceof Stripe.errors.StripeConnectionError) {
-        return { status: "error", error: "Network error. Please try again." };
-      }
-      if (error instanceof Stripe.errors.StripeRateLimitError) {
-        return { status: "error", error: "Too many requests. Please try again later." };
-      }
-
-      return { status: "error", error: error.message || "Stripe API failed" };
+      return { status: "error", errorCode: mapSubscriptionDetailsErrorCode(error) };
     }
   },
 });
@@ -480,12 +502,15 @@ export const changePlan = action({
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
-      throw new ConvexError("Invalid target price ID");
+      throw createError("BILLING_INVALID_PRICE_ID", "Invalid target price ID");
     }
 
     const targetPlan = getPlanFromPriceId(args.targetPriceId);
     if (targetPlan === "free") {
-      throw new ConvexError("Use billing portal to cancel to free plan");
+      throw createError(
+        "BILLING_CANCEL_TO_FREE_REQUIRES_PORTAL",
+        "Use billing portal to cancel to free plan",
+      );
     }
 
     try {
@@ -497,7 +522,7 @@ export const changePlan = action({
       );
 
       if (!subscription || !subscription.stripeSubscriptionId) {
-        throw new ConvexError("No active Stripe subscription found");
+        throw createError("BILLING_NO_ACTIVE_SUBSCRIPTION", "No active Stripe subscription found");
       }
 
       const stripeSubscription: any = await stripe.subscriptions.retrieve(
@@ -509,7 +534,10 @@ export const changePlan = action({
 
       const item = stripeSubscription.items.data[0];
       if (!item?.id || !item.price?.id) {
-        throw new ConvexError("Current subscription item not found");
+        throw createError(
+          "BILLING_SUBSCRIPTION_ITEM_NOT_FOUND",
+          "Current subscription item not found",
+        );
       }
 
       const currentPlan = getPlanFromPriceId(item.price.id || undefined);
@@ -613,7 +641,10 @@ export const changePlan = action({
       const fallbackCurrentPeriodEnd =
         stripeSubscription.current_period_end ?? item.current_period_end;
       if (!fallbackCurrentPeriodEnd) {
-        throw new ConvexError("Unable to determine current period end for downgrade");
+        throw createError(
+          "BILLING_PERIOD_END_UNAVAILABLE",
+          "Unable to determine current period end for downgrade",
+        );
       }
 
       const fallbackCurrentPeriodStart =
@@ -661,7 +692,8 @@ export const changePlan = action({
           targetPriceId: args.targetPriceId,
           userId: user._id,
         });
-        throw new ConvexError(
+        throw createError(
+          "BILLING_PLAN_CHANGE_CONFLICT",
           "Unable to update your plan due to a Stripe billing conflict. Please retry or use the billing portal.",
         );
       }

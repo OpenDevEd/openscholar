@@ -1,7 +1,7 @@
 "use node";
 
 import { action, internalAction } from "../_generated/server";
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import Stripe from "stripe";
 import {
@@ -20,6 +20,7 @@ import {
   getCreditsPerUsd,
   getCreditTopupBundle,
 } from "../lib/creditTopups";
+import { createError } from "../lib/errors";
 
 const internalApi = internal as any;
 const DOMAIN =
@@ -45,18 +46,21 @@ export const createTopupCheckoutSession = action({
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
 
     if (!user?._id) {
-      throw new ConvexError("Unable to resolve current user");
+      throw createError("CREDITS_USER_NOT_FOUND", "Unable to resolve current user");
     }
 
     const creditsPerUsd = getCreditsPerUsd();
     const bundle = getCreditTopupBundle(args.bundleKey, creditsPerUsd);
     if (!bundle) {
-      throw new ConvexError("Invalid credit top-up bundle");
+      throw createError("CREDITS_TOPUP_BUNDLE_INVALID", "Invalid credit top-up bundle");
     }
 
     const creditsProductId = process.env.STRIPE_CREDITS_PRODUCT_ID;
     if (!creditsProductId) {
-      throw new ConvexError("STRIPE_CREDITS_PRODUCT_ID is not configured");
+      throw createError(
+        "CREDITS_PRODUCT_NOT_CONFIGURED",
+        "STRIPE_CREDITS_PRODUCT_ID is not configured"
+      );
     }
 
     const customer = await stripeClient.getOrCreateCustomer(ctx, {

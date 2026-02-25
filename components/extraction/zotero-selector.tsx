@@ -16,6 +16,10 @@ import { useAppToast } from "@/lib/toast";
 import { getConvexSiteUrl } from "@/lib/convex-site";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
+import {
+  getToastMessageKeyForErrorCode,
+  resolveToastError,
+} from "@/lib/toast/error-resolver";
 
 type ZoteroGroup = {
   id: string;
@@ -47,6 +51,7 @@ type ZoteroItem = {
 export function ZoteroSelector() {
   const toast = useAppToast();
   const t = useTranslations('zotero');
+  const tToast = useTranslations("toast");
   const te = useTranslations('extraction');
   const tc = useTranslations('common');
   const { draftJob, setZoteroSelection } = useExtractionStore();
@@ -189,6 +194,13 @@ export function ZoteroSelector() {
 
   const isLoading = groups.isLoading || collections.isLoading || isLoadingItems;
   const itemsError = requiresGroupSelection ? undefined : (items.error as Error | undefined);
+  const itemsErrorMessage = useMemo(() => {
+    if (!itemsError) return null;
+    const resolved = resolveToastError(itemsError, t("failedToLoadItems"));
+    const toastKey = getToastMessageKeyForErrorCode(resolved.code);
+    if (toastKey) return tToast(toastKey);
+    return resolved.isConvex ? tToast("convexUnknownError") : resolved.message;
+  }, [itemsError, t, tToast]);
 
   if (
     meQuery.isDeferred ||
@@ -360,7 +372,7 @@ export function ZoteroSelector() {
 
       {itemsError && (
         <div className="rounded-xl border border-border bg-muted p-6 text-sm text-muted-foreground">
-          {t("failedToLoadItems", { error: itemsError.message })}
+          {itemsErrorMessage}
         </div>
       )}
 

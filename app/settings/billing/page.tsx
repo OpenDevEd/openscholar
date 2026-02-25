@@ -16,9 +16,11 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { isEntitledStatus } from "@/lib/billing/entitlements";
 import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
 import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
+import { getToastMessageKeyForErrorCode } from "@/lib/toast/error-resolver";
 
 export default function BillingPage() {
   const t = useTranslations("billingPage");
+  const tToast = useTranslations("toast");
   const toast = useAppToast();
   const tc = useTranslations("common");
   const format = useFormatter();
@@ -99,7 +101,7 @@ export default function BillingPage() {
     cardBrand?: string;
     cardLast4?: string;
   } | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [detailsErrorCode, setDetailsErrorCode] = useState<string | null>(null);
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
   // Fetch detailed info from Stripe on mount if user has a paid plan
@@ -110,24 +112,31 @@ export default function BillingPage() {
         .then((result) => {
           if (result.status === "success" && result.data) {
             setDetails(result.data);
-            setErrorMsg(null);
+            setDetailsErrorCode(null);
           } else {
-            console.error("Stripe fetch error:", result.error);
-            setErrorMsg(result.error || t("failedToLoadDetails"));
+            const errorCode = (result as { errorCode?: string }).errorCode;
+            console.error("Stripe fetch error code:", errorCode);
+            setDetailsErrorCode(errorCode || "BILLING_STRIPE_ERROR");
           }
         })
         .catch((err) => {
           console.error("Failed to fetch details", err);
-          setErrorMsg(t("networkErrorFetchingDetails"));
+          setDetailsErrorCode("BILLING_NETWORK_ERROR");
         })
         .finally(() => setIsFetchingDetails(false));
     } else if (subscription && subscription.plan === "free") {
       // Clear details when subscription becomes free (after cancellation)
       setDetails(null);
-      setErrorMsg(null);
+      setDetailsErrorCode(null);
       setIsFetchingDetails(false);
     }
   }, [subscription]); // Intentional dependency for 'getSubscriptionDetails' omission to avoid loops if reference unstable
+
+  const detailsErrorMessage = React.useMemo(() => {
+    if (!detailsErrorCode) return null;
+    const toastKey = getToastMessageKeyForErrorCode(detailsErrorCode);
+    return toastKey ? tToast(toastKey) : t("failedToLoadDetails");
+  }, [detailsErrorCode, t, tToast]);
 
   const hasBillingLink = Boolean(
     subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
@@ -374,10 +383,10 @@ export default function BillingPage() {
             </div>
 
             {/* Error State */}
-            {errorMsg && !showUpgradeCta && (
+            {detailsErrorMessage && !showUpgradeCta && (
               <div className="bg-red-500/10 p-3 text-red-600 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
-                <span>{errorMsg}</span>
+                <span>{detailsErrorMessage}</span>
               </div>
             )}
 

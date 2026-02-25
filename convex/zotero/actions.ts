@@ -6,7 +6,7 @@
 import { action, internalAction } from "../_generated/server";
 import { buildZoteroHeaders } from "../../lib/zotero-utils";
 import { internal } from "../_generated/api";
-import { v, ConvexError } from "convex/values";
+import { v } from "convex/values";
 import * as crypto from "crypto";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -28,7 +28,7 @@ type ZoteroConnection = {
 async function requireCurrentUserId(ctx: ActionCtx): Promise<Id<"users">> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
   if (!user) {
-    throw new ConvexError("Unauthenticated");
+    throw createError("UNAUTHENTICATED", "Authentication required");
   }
   return user._id;
 }
@@ -203,7 +203,10 @@ async function fetchCollectionPage(
 
   if (!response.ok) {
     const text = await response.text();
-    throw createError("STRIPE_ERROR", `Failed to fetch collections from Zotero: ${response.status} ${text}`);
+    throw createError(
+      "ZOTERO_API_ERROR",
+      `Failed to fetch collections from Zotero: ${response.status} ${text}`,
+    );
   }
 
   const totalResults = parseInt(response.headers.get("Total-Results") || "0", 10);
@@ -343,8 +346,9 @@ async function fetchCollectionByKey(
   }
   if (!response.ok) {
     const text = await response.text();
-    throw createError("STRIPE_ERROR", 
-      `Failed to fetch selected collection from Zotero (${collectionKey}): ${response.status} ${text}`
+    throw createError(
+      "ZOTERO_API_ERROR",
+      `Failed to fetch selected collection from Zotero (${collectionKey}): ${response.status} ${text}`,
     );
   }
 
@@ -386,8 +390,9 @@ async function fetchAllTopItemsForCollection(
 
     if (!response.ok) {
       const text = await response.text();
-      throw createError("STRIPE_ERROR", 
-        `Failed to fetch collection items from Zotero (${collectionKey}): ${response.status} ${text}`
+      throw createError(
+        "ZOTERO_API_ERROR",
+        `Failed to fetch collection items from Zotero (${collectionKey}): ${response.status} ${text}`,
       );
     }
 
@@ -427,7 +432,10 @@ export const startOAuth = action({
     const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
 
     if (!consumerKey || !consumerSecret) {
-      throw createError("VALIDATION_ERROR", "Zotero OAuth credentials not configured");
+      throw createError(
+        "ZOTERO_OAUTH_NOT_CONFIGURED",
+        "Zotero OAuth credentials not configured",
+      );
     }
 
     const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -464,7 +472,7 @@ export const startOAuth = action({
     if (!response.ok) {
       const text = await response.text();
       console.error("Zotero request token failed:", text);
-      throw createError("STRIPE_ERROR", "Failed to get Zotero request token");
+      throw createError("ZOTERO_REQUEST_TOKEN_FAILED", "Failed to get Zotero request token");
     }
 
     const responseText = await response.text();
@@ -473,7 +481,7 @@ export const startOAuth = action({
     const oauthTokenSecret = responseParams.get("oauth_token_secret");
 
     if (!oauthToken || !oauthTokenSecret) {
-      throw createError("STRIPE_ERROR", "Invalid response from Zotero");
+      throw createError("ZOTERO_INVALID_RESPONSE", "Invalid response from Zotero");
     }
 
     // Store request token for callback
@@ -612,7 +620,7 @@ export const fetchCollections = action({
     });
 
     if (!connection) {
-      throw createError("UNAUTHENTICATED", "Zotero not connected");
+      throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
     const prefix: string = groupId
@@ -663,7 +671,7 @@ export const fetchGroups = action({
     });
 
     if (!connection) {
-      throw createError("UNAUTHENTICATED", "Zotero not connected");
+      throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
     const response: Response = await fetch(
@@ -674,7 +682,7 @@ export const fetchGroups = action({
     );
 
     if (!response.ok) {
-      throw createError("STRIPE_ERROR", "Failed to fetch groups from Zotero");
+      throw createError("ZOTERO_API_ERROR", "Failed to fetch groups from Zotero");
     }
 
     const data: ZoteroGroupResponse[] = await response.json();
@@ -736,7 +744,7 @@ export const fetchItems = action({
     });
 
     if (!connection) {
-      throw createError("UNAUTHENTICATED", "Zotero not connected");
+      throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
     const prefix: string = groupId
@@ -849,7 +857,10 @@ export const fetchItems = action({
       if (!response.ok) {
         const text = await response.text();
         console.error("Zotero fetch failed:", response.status, text);
-        throw createError("STRIPE_ERROR", `Failed to fetch items from Zotero: ${response.status} ${text}`);
+        throw createError(
+          "ZOTERO_API_ERROR",
+          `Failed to fetch items from Zotero: ${response.status} ${text}`,
+        );
       }
 
       totalResults = parseInt(response.headers.get("Total-Results") || "0", 10);
@@ -945,7 +956,7 @@ export const getAttachments = internalAction({
     });
 
     if (!connection) {
-      throw createError("UNAUTHENTICATED", "Zotero not connected");
+      throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
     const prefix = groupId
@@ -962,7 +973,7 @@ export const getAttachments = internalAction({
     );
 
     if (!response.ok) {
-      throw createError("STRIPE_ERROR", "Failed to fetch attachments from Zotero");
+      throw createError("ZOTERO_API_ERROR", "Failed to fetch attachments from Zotero");
     }
 
     const data: ZoteroChildItem[] = await response.json();

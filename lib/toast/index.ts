@@ -13,9 +13,18 @@ import {
   formatEntityWithCount,
   formatOptionalLabel,
 } from "./messages";
+import {
+  getToastMessageKeyForErrorCode,
+  isInsufficientCreditsCode,
+  resolveToastError,
+} from "./error-resolver";
 
 function openAISettings() {
   window.location.href = "/settings/ai";
+}
+
+function openBillingSettings() {
+  window.location.href = "/settings/billing";
 }
 
 function createAISettingsAction(): ToastAction & { icon: "settings" } {
@@ -23,6 +32,14 @@ function createAISettingsAction(): ToastAction & { icon: "settings" } {
     label: TOAST_MESSAGES.ai.settingsActionLabel,
     onClick: openAISettings,
     icon: "settings" as const,
+  };
+}
+
+function createBillingAction(): ToastAction & { icon: "arrow-right" } {
+  return {
+    label: TOAST_MESSAGES.billing.openBillingActionLabel,
+    onClick: openBillingSettings,
+    icon: "arrow-right" as const,
   };
 }
 
@@ -53,23 +70,24 @@ function getStatusCode(message: string): string | null {
   return statusMatch?.[1] ?? null;
 }
 
+function resolveErrorDetails(error: unknown, fallback: string): {
+  code?: string;
+  message: string;
+} {
+  const resolved = resolveToastError(error, fallback);
+  const mappedKey = getToastMessageKeyForErrorCode(resolved.code);
+  return {
+    code: resolved.code,
+    message: mappedKey
+      ? TOAST_MESSAGES.convex[mappedKey]
+      : resolved.isConvex
+        ? TOAST_MESSAGES.convex.convexUnknownError
+        : resolved.message,
+  };
+}
+
 export function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-
-  if (typeof error === "string" && error.trim()) {
-    return error;
-  }
-
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-
-  return fallback;
+  return resolveErrorDetails(error, fallback).message;
 }
 
 export async function runWithLoadingToast<T>(options: LoadingToastOptions<T>): Promise<T> {
@@ -162,9 +180,15 @@ export const appToast: AppToastApi = {
     },
     failed: (operation: string, error: unknown) => {
       const operationLabel = operation.trim() || "AI operation";
+      const resolved = resolveErrorDetails(error, TOAST_MESSAGES.fallback.unexpectedError);
+      const action = isInsufficientCreditsCode(resolved.code)
+        ? createBillingAction()
+        : resolved.code === "AI_API_KEY_REQUIRED"
+          ? createAISettingsAction()
+          : undefined;
       showStyledToast("error", `${operationLabel} failed`, {
-        description: getErrorMessage(error, TOAST_MESSAGES.fallback.unexpectedError),
-        action: createAISettingsAction(),
+        description: resolved.message,
+        action,
       });
     },
     succeeded: (title: string, description?: string) => {
@@ -173,7 +197,7 @@ export const appToast: AppToastApi = {
   },
   search: {
     failed: (error: unknown) => {
-      const message = getErrorMessage(error, TOAST_MESSAGES.search.failedDescription);
+      const { message } = resolveErrorDetails(error, TOAST_MESSAGES.search.failedDescription);
       const statusCode = getStatusCode(message);
 
       if (statusCode === "400") {
@@ -202,11 +226,12 @@ export const appToast: AppToastApi = {
       });
     },
     uploadFailed: (formatLabel: string, error?: unknown) => {
+      const { message } = resolveErrorDetails(
+        error,
+        `Could not upload ${formatLabel}. Please try again.`,
+      );
       showStyledToast("error", TOAST_MESSAGES.io.uploadFailedTitle, {
-        description: getErrorMessage(
-          error,
-          `Could not upload ${formatLabel}. Please try again.`
-        ),
+        description: message,
       });
     },
     importResult: (entity: string, count: number) => {
@@ -343,8 +368,9 @@ export const appToast: AppToastApi = {
       showStyledToast("success", TOAST_MESSAGES.zotero.connectedTitle);
     },
     failed: (error?: string) => {
+      const { message } = resolveErrorDetails(error, TOAST_MESSAGES.zotero.connectionFailedTitle);
       showStyledToast("error", TOAST_MESSAGES.zotero.connectionFailedTitle, {
-        description: error,
+        description: message,
       });
     },
   },
