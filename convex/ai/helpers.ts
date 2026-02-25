@@ -13,7 +13,6 @@ import {
   AIValidationError,
   AIProviderError,
   AIMaxRetriesExceededError,
-  calculateCostInDollars,
   executeAIOperation,
   type Usage,
 } from "../../lib/ai/core";
@@ -23,10 +22,13 @@ import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType } from "convex/values";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
-import { convertDollarsToCredits } from "../lib/creditTopups";
 import { AI_COST_MARKUP, getPlanTier } from "../lib/constants";
 import { resolveEffectivePlan } from "../../lib/billing/entitlements";
 import { createError } from "../lib/errors";
+import {
+  calculateCreditsToDeductFromUsage,
+  convertUsdCostToCredits,
+} from "./lib/creditBilling";
 
 const MAX_TRACKING_CONTENT_LENGTH = 2000;
 
@@ -153,6 +155,19 @@ export async function getModel() {
   );
 }
 
+export function convertServerCostDollarsToCredits(costDollars: number): number {
+  return convertUsdCostToCredits(costDollars, AI_COST_MARKUP);
+}
+
+export function calculateServerCreditsToDeduct(usage: Usage): number {
+  return calculateCreditsToDeductFromUsage({
+    usage,
+    provider: SERVER_AI_CONFIG.provider as AIProvider,
+    modelId: SERVER_AI_CONFIG.model,
+    markupMultiplier: AI_COST_MARKUP,
+  });
+}
+
 /**
  * Batch-aware auth and credits wrapper.
  * Checks auth/credits once, runs the batch handler, then deducts credits based on total usage.
@@ -182,12 +197,7 @@ export async function withAuthAndCreditsBatch<T>(
     const { result, totalUsage } = await handler(user);
     const latencyMs = Date.now() - start;
 
-    const costDollars = calculateCostInDollars(
-      totalUsage,
-      SERVER_AI_CONFIG.provider as AIProvider,
-      SERVER_AI_CONFIG.model,
-    );
-    const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
+    const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
 
     await captureAIGenerationServer({
       distinctId: user.clerkId,
@@ -247,12 +257,7 @@ export async function withUserCreditsBatch<T>(
     const { result, totalUsage } = await handler();
     const latencyMs = Date.now() - start;
 
-    const costDollars = calculateCostInDollars(
-      totalUsage,
-      SERVER_AI_CONFIG.provider as AIProvider,
-      SERVER_AI_CONFIG.model,
-    );
-    const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
+    const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
 
     await captureAIGenerationServer({
       distinctId: user.clerkId,
@@ -303,12 +308,7 @@ export async function withAuthAndCredits<T>(
 
     const { result, usage } = await handler(user);
 
-    const costDollars = calculateCostInDollars(
-      usage,
-      SERVER_AI_CONFIG.provider as AIProvider,
-      SERVER_AI_CONFIG.model,
-    );
-    const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
+    const creditsToDeduct = calculateServerCreditsToDeduct(usage);
 
     await ctx.runMutation(internal.credits.internal.deductCredits, {
       userId: user._id,

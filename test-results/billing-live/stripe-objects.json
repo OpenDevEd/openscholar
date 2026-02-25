@@ -2,93 +2,57 @@
   {
     "phase": "create",
     "objectType": "test_clock",
-    "id": "clock_1T4UocQlhLZbGeKrYF4JSmO6"
+    "id": "clock_1T4d9cQlhLZbGeKrpf8XMj3m"
   },
   {
     "phase": "create",
     "objectType": "customer",
-    "id": "cus_U2ZyhCgjgHdaVb",
+    "id": "cus_U2iaV7y4mZEYIi",
     "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
-  },
-  {
-    "scenario": "subscription_happy_path",
-    "clockId": "clock_1T4UocQlhLZbGeKrYF4JSmO6",
-    "customerId": "cus_U2ZyhCgjgHdaVb"
-  },
-  {
-    "phase": "create",
-    "objectType": "subscription",
-    "id": "sub_1T4UoeQlhLZbGeKrZiAZUrYK",
-    "invoiceId": "in_1T4UoeQlhLZbGeKrlvfqHrsD"
   },
   {
     "phase": "create",
     "objectType": "test_clock",
-    "id": "clock_1T4UorQlhLZbGeKrdyj7KTc2"
+    "id": "clock_1T4d9jQlhLZbGeKrF9iMfgnv"
   },
   {
     "phase": "create",
     "objectType": "customer",
-    "id": "cus_U2ZyNcYLCiNI7n",
+    "id": "cus_U2iaLQxIZEfzjC",
     "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
   },
   {
     "phase": "create",
     "objectType": "subscription",
-    "id": "sub_1T4UouQlhLZbGeKrUdimidGg",
-    "invoiceId": "in_1T4UouQlhLZbGeKr9SxgeLiY"
+    "id": "sub_1T4d9lQlhLZbGeKrJ7vmy8Lo",
+    "invoiceId": "in_1T4d9lQlhLZbGeKrLnWHY3vC"
   },
   {
     "phase": "create",
     "objectType": "test_clock",
-    "id": "clock_1T4UpVQlhLZbGeKronCAdbjd"
+    "id": "clock_1T4dAKQlhLZbGeKrxclsfe4R"
   },
   {
     "phase": "create",
     "objectType": "customer",
-    "id": "cus_U2ZzOTQYnRrCnX",
+    "id": "cus_U2ib6mNyWTmmf7",
+    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
+  },
+  {
+    "phase": "create",
+    "objectType": "test_clock",
+    "id": "clock_1T4dAkQlhLZbGeKrhY9Mr9rA"
+  },
+  {
+    "phase": "create",
+    "objectType": "customer",
+    "id": "cus_U2ibCTLSARsMUz",
     "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
   },
   {
     "phase": "create",
     "objectType": "subscription",
-    "id": "sub_1T4UpXQlhLZbGeKraBIaIX3N",
-    "invoiceId": "in_1T4UpXQlhLZbGeKrZoN2uFwM"
-  },
-  {
-    "phase": "create",
-    "objectType": "test_clock",
-    "id": "clock_1T4UpjQlhLZbGeKrXLSttqqx"
-  },
-  {
-    "phase": "create",
-    "objectType": "customer",
-    "id": "cus_U2Zz3jCDfCxrll",
-    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
-  },
-  {
-    "phase": "create",
-    "objectType": "payment_intent",
-    "id": "pi_3T4UplQlhLZbGeKr1y69N2Gg",
-    "chargeId": "ch_3T4UplQlhLZbGeKr1wDyJiSm",
-    "amountCents": 1000
-  },
-  {
-    "phase": "create",
-    "objectType": "test_clock",
-    "id": "clock_1T4UpsQlhLZbGeKr66JjKWev"
-  },
-  {
-    "phase": "create",
-    "objectType": "customer",
-    "id": "cus_U2ZztvnDs1WhYW",
-    "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
-  },
-  {
-    "phase": "create",
-    "objectType": "payment_intent",
-    "id": "pi_3T4UpuQlhLZbGeKr1B72fuPk",
-    "chargeId": "ch_3T4UpuQlhLZbGeKr1VChKzn4",
-    "amountCents": 1000
+    "id": "sub_1T4dAmQlhLZbGeKrzIqcV4Cb",
+    "invoiceId": "in_1T4dAmQlhLZbGeKrKXIkwKhs"
   }
 ]

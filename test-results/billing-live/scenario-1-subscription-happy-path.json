@@ -1,34 +1,34 @@
 {
   "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
-  "customerId": "cus_U2ZyhCgjgHdaVb",
-  "subscriptionId": "sub_1T4UoeQlhLZbGeKrZiAZUrYK",
-  "invoiceId": "in_1T4UoeQlhLZbGeKrlvfqHrsD",
+  "customerId": "cus_U2iZCuxhzsPbbd",
+  "subscriptionId": "sub_1T4d8AQlhLZbGeKrz7tTGirK",
+  "invoiceId": "in_1T4d8AQlhLZbGeKrd0L7nVLv",
   "snapshot": {
     "billingCustomers": [
       {
-        "_id": "ms7cdtvpsrkjg557f1gtecz34x81r719",
+        "_id": "ms74rcqcc2yry0qw747yp9h8n581v7ra",
         "linkedFrom": "subscription_sync",
-        "stripeCustomerId": "cus_U2ZyhCgjgHdaVb",
-        "updatedAt": 1771974900142
+        "stripeCustomerId": "cus_U2iZCuxhzsPbbd",
+        "updatedAt": 1772006861792
       }
     ],
     "creditTransactions": [
       {
-        "_id": "j97135tyg7wnjwk0znxddp73qn81sf2r",
+        "_id": "j97d4ewvaa69h1q6dcq6vjbypn81vpfy",
         "amount": 3000,
         "balanceAfter": 3000,
-        "createdAt": 1771974901751,
+        "createdAt": 1772006862212,
         "creditType": "free",
         "description": "Monthly credit grant (go plan) - 3000/3000 credits granted",
-        "stripeInvoiceId": "in_1T4UoeQlhLZbGeKrlvfqHrsD",
+        "stripeInvoiceId": "in_1T4d8AQlhLZbGeKrd0L7nVLv",
         "type": "grant"
       }
     ],
     "credits": [
       {
-        "_id": "jd7b9pgx5r8v2wd9h4nezn9t9d81szqe",
+        "_id": "jd7cmfncdjn80c2a199sm3pdm981v1qa",
         "freeBalance": 3000,
-        "lastUpdatedAt": 1771974901751,
+        "lastUpdatedAt": 1772006862212,
         "lifetimeUsed": 0,
         "paidBalance": 0
       }
@@ -36,109 +36,109 @@
     "objectIds": {
       "stripeChargeIds": [],
       "stripeCustomerIds": [
-        "cus_U2ZyhCgjgHdaVb"
+        "cus_U2iZCuxhzsPbbd"
       ],
       "stripeInvoiceIds": [
-        "in_1T4UoeQlhLZbGeKrlvfqHrsD"
+        "in_1T4d8AQlhLZbGeKrd0L7nVLv"
       ],
       "stripePaymentIntentIds": [],
       "stripeSubscriptionIds": [
-        "sub_1T4UoeQlhLZbGeKrZiAZUrYK"
+        "sub_1T4d8AQlhLZbGeKrz7tTGirK"
       ]
     },
     "stripeEventLogs": [
       {
-        "_id": "mn71n411mk1d7cvjcwy0ydrhh981r30a",
+        "_id": "mn70t7723thndt2hd22kbzbxes81vkc2",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "invoice.payment_succeeded",
         "status": "processed",
-        "stripeEventId": "evt_1T4UoiQlhLZbGeKrgdOO3z0U",
-        "stripeObjectId": "in_1T4UoeQlhLZbGeKrlvfqHrsD",
-        "updatedAt": 1771974902252
+        "stripeEventId": "evt_1T4d8DQlhLZbGeKrT6SDr2Rn",
+        "stripeObjectId": "in_1T4d8AQlhLZbGeKrd0L7nVLv",
+        "updatedAt": 1772006862452
       },
       {
-        "_id": "mn76z9g3nqa6xkbm00qg4bbcsn81rfhe",
+        "_id": "mn78rvqd5cpemg87q36jgpvvr981t587",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "invoice.paid",
         "status": "processed",
-        "stripeEventId": "evt_1T4UoiQlhLZbGeKrREHM60qc",
-        "stripeObjectId": "in_1T4UoeQlhLZbGeKrlvfqHrsD",
-        "updatedAt": 1771974902058
+        "stripeEventId": "evt_1T4d8DQlhLZbGeKroKszDJ5Y",
+        "stripeObjectId": "in_1T4d8AQlhLZbGeKrd0L7nVLv",
+        "updatedAt": 1772006862396
       },
       {
-        "_id": "mn756g0tm0k3j551qyf56f7xh581rcn3",
+        "_id": "mn71y371akwmy51txw8rxk6wb981vsjv",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "invoice.finalized",
         "status": "processed",
-        "stripeEventId": "evt_1T4UoiQlhLZbGeKruGvVLoKe",
-        "stripeObjectId": "in_1T4UoeQlhLZbGeKrlvfqHrsD",
-        "updatedAt": 1771974901973
+        "stripeEventId": "evt_1T4d8DQlhLZbGeKrV73ibqjq",
+        "stripeObjectId": "in_1T4d8AQlhLZbGeKrd0L7nVLv",
+        "updatedAt": 1772006862384
       },
       {
-        "_id": "mn7es4xmz05v535ed7fxpgf73181ss5x",
+        "_id": "mn75vyhnrwshs2dyv53wftax1x81v19d",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "invoice.created",
         "status": "processed",
-        "stripeEventId": "evt_1T4UohQlhLZbGeKriuI0d8Bl",
-        "stripeObjectId": "in_1T4UoeQlhLZbGeKrlvfqHrsD",
-        "updatedAt": 1771974901953
+        "stripeEventId": "evt_1T4d8DQlhLZbGeKrRl2AQKrm",
+        "stripeObjectId": "in_1T4d8AQlhLZbGeKrd0L7nVLv",
+        "updatedAt": 1772006862255
       },
       {
-        "_id": "mn759hrsf7hm2zf9b7fna23bjs81rb77",
+        "_id": "mn7azqa5hdx5e1depfnrgq5ecd81vmz4",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "customer.subscription.created",
         "status": "processed",
-        "stripeEventId": "evt_1T4UohQlhLZbGeKrXD7slWcy",
-        "stripeObjectId": "sub_1T4UoeQlhLZbGeKrZiAZUrYK",
-        "updatedAt": 1771974900184
+        "stripeEventId": "evt_1T4d8DQlhLZbGeKr84BblzJH",
+        "stripeObjectId": "sub_1T4d8AQlhLZbGeKrz7tTGirK",
+        "updatedAt": 1772006861832
       },
       {
-        "_id": "mn77jkkepv9z7swrcyrc0xvny981rh10",
+        "_id": "mn7dghwjd5gyte5a251km730s981tzm7",
         "attemptCount": 0,
         "classification": "received",
         "eventType": "customer.updated",
         "status": "received",
-        "stripeEventId": "evt_1T4UohQlhLZbGeKrtduqxLAO",
-        "stripeObjectId": "cus_U2ZyhCgjgHdaVb",
-        "updatedAt": 1771974899963
+        "stripeEventId": "evt_1T4d8DQlhLZbGeKriATZLtlg",
+        "stripeObjectId": "cus_U2iZCuxhzsPbbd",
+        "updatedAt": 1772006861647
       },
       {
-        "_id": "mn72qvhdxchbqqyfhxceqvj1rx81srwa",
+        "_id": "mn74p27gb3c4g4awjgpwbjbyyd81tj4t",
         "attemptCount": 0,
         "classification": "received",
         "eventType": "customer.updated",
         "status": "received",
-        "stripeEventId": "evt_1T4UoeQlhLZbGeKrki3xSy2Z",
-        "stripeObjectId": "cus_U2ZyhCgjgHdaVb",
-        "updatedAt": 1771974896391
+        "stripeEventId": "evt_1T4d8AQlhLZbGeKrpaBCI3gV",
+        "stripeObjectId": "cus_U2iZCuxhzsPbbd",
+        "updatedAt": 1772006858405
       },
       {
-        "_id": "mn73dsjrkt4ktcm4xb223xh59x81r9mr",
+        "_id": "mn7bryct7y836bmv6et6w18c4981v0qj",
         "attemptCount": 0,
         "classification": "received",
         "eventType": "customer.created",
         "status": "received",
-        "stripeEventId": "evt_1T4UocQlhLZbGeKrFJVSn4G9",
-        "stripeObjectId": "cus_U2ZyhCgjgHdaVb",
-        "updatedAt": 1771974895111
+        "stripeEventId": "evt_1T4d88QlhLZbGeKr8DUfzobl",
+        "stripeObjectId": "cus_U2iZCuxhzsPbbd",
+        "updatedAt": 1772006857201
       }
     ],
     "subscriptions": [
       {
-        "_id": "m17afztp3gpky98wt5j6ghqkw981snve",
+        "_id": "m178kx6c3m6qn25h6bp2c5ff0x81vm1d",
         "creditsPerMonth": 3000,
-        "currentPeriodEnd": 1774394094000,
-        "currentPeriodStart": 1771974894000,
+        "currentPeriodEnd": 1774426056000,
+        "currentPeriodStart": 1772006856000,
         "plan": "go",
         "status": "active",
-        "stripeCustomerId": "cus_U2ZyhCgjgHdaVb",
-        "stripeSubscriptionId": "sub_1T4UoeQlhLZbGeKrZiAZUrYK",
-        "updatedAt": 1771974900142
+        "stripeCustomerId": "cus_U2iZCuxhzsPbbd",
+        "stripeSubscriptionId": "sub_1T4d8AQlhLZbGeKrz7tTGirK",
+        "updatedAt": 1772006861792
       }
     ],
     "user": {
@@ -149,19 +149,19 @@
     }
   },
   "mySubscription": {
-    "_creationTime": 1771974900142.2832,
-    "_id": "m17afztp3gpky98wt5j6ghqkw981snve",
+    "_creationTime": 1772006861792.342,
+    "_id": "m178kx6c3m6qn25h6bp2c5ff0x81vm1d",
     "cancelAtPeriodEnd": false,
-    "createdAt": 1771974900142,
+    "createdAt": 1772006861792,
     "creditsPerMonth": 3000,
-    "currentPeriodEnd": 1774394094000,
-    "currentPeriodStart": 1771974894000,
+    "currentPeriodEnd": 1774426056000,
+    "currentPeriodStart": 1772006856000,
     "plan": "go",
     "seats": 1,
     "status": "active",
-    "stripeCustomerId": "cus_U2ZyhCgjgHdaVb",
-    "stripeSubscriptionId": "sub_1T4UoeQlhLZbGeKrZiAZUrYK",
-    "updatedAt": 1771974900142,
+    "stripeCustomerId": "cus_U2iZCuxhzsPbbd",
+    "stripeSubscriptionId": "sub_1T4d8AQlhLZbGeKrz7tTGirK",
+    "updatedAt": 1772006861792,
     "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
   }
 }

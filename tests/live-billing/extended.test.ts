@@ -265,7 +265,12 @@ describe.sequential("live billing extended regressions", () => {
         transaction.stripeInvoiceId === renewalInvoice.id,
     );
 
-    expect(renewalGrant?.amount).toBe(1000);
+    const syncedSubscription = postRenewalSnapshot.subscriptions.find(
+      (subscription) => subscription.stripeSubscriptionId === subscriptionId,
+    );
+    const expectedRenewalCredits = syncedSubscription?.creditsPerMonth ?? null;
+    expect(expectedRenewalCredits).not.toBeNull();
+    expect(renewalGrant?.amount).toBe(expectedRenewalCredits);
 
     const invoices = await stripe.invoices.list({
       subscription: subscriptionId,

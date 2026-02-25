@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
 import Stripe from "stripe";
+import { DEFAULT_CREDITS_PER_USD } from "../../convex/lib/creditTopups";
 
 const execFileAsync = promisify(execFile);
 
@@ -45,6 +46,8 @@ export type BillingLiveEnv = {
   stripeGoPriceId: string;
   stripeProPriceId?: string;
   creditsPerUsd: number;
+  billingTestMinChargeCents: number;
+  testTopupCredits: number;
   convexSiteUrl: string;
   testUserSubject: string;
   testUserEmail: string;
@@ -167,12 +170,42 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return parsed;
 }
 
+const DEFAULT_BILLING_TEST_MIN_CHARGE_CENTS = 50;
+const DEFAULT_BILLING_TEST_TOPUP_CREDITS = 1_000;
+
+function calculateMinimumCreditsForCharge(args: {
+  creditsPerUsd: number;
+  minChargeCents: number;
+}): number {
+  return Math.ceil((args.minChargeCents * args.creditsPerUsd) / 100);
+}
+
 export function loadBillingLiveEnv(): BillingLiveEnv {
+  const creditsPerUsd = parsePositiveInt(
+    process.env.CREDITS_PER_USD,
+    DEFAULT_CREDITS_PER_USD,
+  );
+  const billingTestMinChargeCents = parsePositiveInt(
+    process.env.BILLING_TEST_MIN_CHARGE_CENTS,
+    DEFAULT_BILLING_TEST_MIN_CHARGE_CENTS,
+  );
+  const requestedTopupCredits = parsePositiveInt(
+    process.env.BILLING_TEST_TOPUP_CREDITS,
+    DEFAULT_BILLING_TEST_TOPUP_CREDITS,
+  );
+  const minimumTopupCredits = calculateMinimumCreditsForCharge({
+    creditsPerUsd,
+    minChargeCents: billingTestMinChargeCents,
+  });
+  const testTopupCredits = Math.max(requestedTopupCredits, minimumTopupCredits);
+
   return {
     stripeSecretKey: requireEnv("STRIPE_SECRET_KEY"),
     stripeGoPriceId: requireEnv("STRIPE_GO_PRICE_ID"),
     stripeProPriceId: process.env.STRIPE_PRO_PRICE_ID,
-    creditsPerUsd: parsePositiveInt(process.env.CREDITS_PER_USD, 100),
+    creditsPerUsd,
+    billingTestMinChargeCents,
+    testTopupCredits,
     convexSiteUrl: getConvexSiteUrlFromEnv(),
     testUserSubject:
       process.env.BILLING_TEST_USER_SUBJECT ?? "billing_live_test_subject",
@@ -708,8 +741,23 @@ export async function createCreditTopupPaymentIntent(args: {
   amountCents: number;
   credits: number;
 }> {
-  const credits = args.credits ?? 1_000;
+  const requestedCredits = args.credits ?? DEFAULT_BILLING_TEST_TOPUP_CREDITS;
+  const minChargeCents = parsePositiveInt(
+    process.env.BILLING_TEST_MIN_CHARGE_CENTS,
+    DEFAULT_BILLING_TEST_MIN_CHARGE_CENTS,
+  );
+  const minimumTopupCredits = calculateMinimumCreditsForCharge({
+    creditsPerUsd: args.creditsPerUsd,
+    minChargeCents,
+  });
+  const credits = Math.max(requestedCredits, minimumTopupCredits);
   const amountCents = Math.ceil((credits * 100) / args.creditsPerUsd);
+
+  if (credits !== requestedCredits) {
+    appendBillingArtifactLog(
+      `[billing topup] requested ${requestedCredits} credits resolves below ${minChargeCents} cents; adjusted to ${credits} credits (${amountCents} cents).`,
+    );
+  }
 
   const paymentIntent = await args.stripe.paymentIntents.create({
     amount: amountCents,
@@ -722,6 +770,7 @@ export async function createCreditTopupPaymentIntent(args: {
       billingType: "credit_topup",
       userId: args.userId,
       credits: String(credits),
+      requestedCredits: String(requestedCredits),
       amountCents: String(amountCents),
       creditsPerUsd: String(args.creditsPerUsd),
       billingTestSubject: args.subjectMarker,

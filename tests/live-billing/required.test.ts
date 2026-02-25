@@ -361,7 +361,7 @@ describe.sequential("live billing required regressions", () => {
       creditsPerUsd: env.creditsPerUsd,
       subjectMarker: env.testUserSubject,
       paymentMethodId,
-      credits: 1000,
+      credits: env.testTopupCredits,
     });
 
     await waitForCondition({
@@ -435,7 +435,7 @@ describe.sequential("live billing required regressions", () => {
       creditsPerUsd: env.creditsPerUsd,
       subjectMarker: env.testUserSubject,
       paymentMethodId,
-      credits: 1000,
+      credits: env.testTopupCredits,
     });
 
     await waitForCondition({

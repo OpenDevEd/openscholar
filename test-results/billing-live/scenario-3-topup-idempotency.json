@@ -1,11 +1,11 @@
 {
   "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
-  "customerId": "cus_U2Zz3jCDfCxrll",
+  "customerId": "cus_U2iauHm08zURz2",
   "payment": {
-    "paymentIntentId": "pi_3T4UplQlhLZbGeKr1y69N2Gg",
-    "chargeId": "ch_3T4UplQlhLZbGeKr1wDyJiSm",
-    "amountCents": 1000,
-    "credits": 1000
+    "paymentIntentId": "pi_3T4d99QlhLZbGeKr1qrmpIxS",
+    "chargeId": "ch_3T4d99QlhLZbGeKr1yv3fcZ9",
+    "amountCents": 50,
+    "credits": 5000
   },
   "duplicateResult": {
     "grantedCredits": 0,
@@ -16,58 +16,59 @@
     "billingCustomers": [],
     "creditTransactions": [
       {
-        "_id": "j973w5f5ssaz0tq5ekdc2r6sm581skr5",
-        "amount": 1000,
-        "balanceAfter": 1000,
-        "createdAt": 1771974966251,
+        "_id": "j977yp2gxjcjchwesgc9w1zcvs81thty",
+        "amount": 5000,
+        "balanceAfter": 5000,
+        "createdAt": 1772006920344,
         "creditType": "paid",
-        "description": "Credit top-up purchase (1000 credits)",
+        "description": "Credit top-up purchase (5000 credits)",
         "metadata": {
-          "amountCents": "1000",
-          "appliedCreditsPerUsd": "100",
+          "amountCents": "50",
+          "appliedCreditsPerUsd": "10000",
           "billingTestSubject": "billing_live_test_subject",
           "billingType": "credit_topup",
-          "chargedAmountCents": "1000",
-          "credits": "1000",
-          "creditsPerUsd": "100",
+          "chargedAmountCents": "50",
+          "credits": "5000",
+          "creditsPerUsd": "10000",
           "eventCurrency": "usd",
+          "requestedCredits": "5000",
           "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
         },
-        "stripeChargeId": "ch_3T4UplQlhLZbGeKr1wDyJiSm",
-        "stripePaymentIntentId": "pi_3T4UplQlhLZbGeKr1y69N2Gg",
+        "stripeChargeId": "ch_3T4d99QlhLZbGeKr1yv3fcZ9",
+        "stripePaymentIntentId": "pi_3T4d99QlhLZbGeKr1qrmpIxS",
         "type": "purchase"
       }
     ],
     "credits": [
       {
-        "_id": "jd7bkch21hgmp5xvttgx0zxs8181r8ra",
+        "_id": "jd7dyfa5qztwhjhwspj7yg0t9x81vjp4",
         "freeBalance": 0,
-        "lastUpdatedAt": 1771974966251,
+        "lastUpdatedAt": 1772006920344,
         "lifetimeUsed": 0,
-        "paidBalance": 1000
+        "paidBalance": 5000
       }
     ],
     "objectIds": {
       "stripeChargeIds": [
-        "ch_3T4UplQlhLZbGeKr1wDyJiSm"
+        "ch_3T4d99QlhLZbGeKr1yv3fcZ9"
       ],
       "stripeCustomerIds": [],
       "stripeInvoiceIds": [],
       "stripePaymentIntentIds": [
-        "pi_3T4UplQlhLZbGeKr1y69N2Gg"
+        "pi_3T4d99QlhLZbGeKr1qrmpIxS"
       ],
       "stripeSubscriptionIds": []
     },
     "stripeEventLogs": [
       {
-        "_id": "mn76nhf1f22rs47dkackd64c0s81r267",
+        "_id": "mn78x7br8wyj0sc3twrgzcpek981vg3n",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "payment_intent.succeeded",
         "status": "processed",
-        "stripeEventId": "evt_3T4UplQlhLZbGeKr1yiSs5Fo",
-        "stripeObjectId": "pi_3T4UplQlhLZbGeKr1y69N2Gg",
-        "updatedAt": 1771974966284
+        "stripeEventId": "evt_3T4d99QlhLZbGeKr1UvobLmi",
+        "stripeObjectId": "pi_3T4d99QlhLZbGeKr1qrmpIxS",
+        "updatedAt": 1772006920375
       }
     ],
     "subscriptions": [],

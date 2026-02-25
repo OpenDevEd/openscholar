@@ -1,29 +1,29 @@
 {
   "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
-  "customerId": "cus_U2ZaqE7Fvr7LT2",
-  "clockId": "clock_1T4URIQlhLZbGeKr3pQcbRxd",
-  "stripeSubscriptionId": "sub_1T4URKQlhLZbGeKrSB3dSxEf",
+  "customerId": "cus_U2ib6mNyWTmmf7",
+  "clockId": "clock_1T4dAKQlhLZbGeKrxclsfe4R",
+  "stripeSubscriptionId": "sub_1T4dALQlhLZbGeKr8vxqP3iT",
   "scheduled": {
     "changeType": "downgrade_scheduled",
-    "effectiveDate": 1774392648000,
+    "effectiveDate": 1774426191000,
     "message": "Downgrade to go scheduled for period end.",
     "mode": "scheduled",
     "success": true
   },
   "downgraded": {
-    "_creationTime": 1771973454515.1301,
-    "_id": "m17bk3kz3dx3bxxe0b4msj96cn81syhb",
+    "_creationTime": 1772006997343.0632,
+    "_id": "m17baxexkdfggmb2s09n7zacdx81vzer",
     "cancelAtPeriodEnd": false,
-    "createdAt": 1771973454515,
-    "creditsPerMonth": 100,
-    "currentPeriodEnd": 1777071048000,
-    "currentPeriodStart": 1774392648000,
+    "createdAt": 1772006997343,
+    "creditsPerMonth": 3000,
+    "currentPeriodEnd": 1777104591000,
+    "currentPeriodStart": 1774426191000,
     "plan": "go",
     "seats": 1,
     "status": "active",
-    "stripeCustomerId": "cus_U2ZaqE7Fvr7LT2",
-    "stripeSubscriptionId": "sub_1T4URKQlhLZbGeKrSB3dSxEf",
-    "updatedAt": 1771973465789,
+    "stripeCustomerId": "cus_U2ib6mNyWTmmf7",
+    "stripeSubscriptionId": "sub_1T4dALQlhLZbGeKr8vxqP3iT",
+    "updatedAt": 1772007008502,
     "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
   }
 }

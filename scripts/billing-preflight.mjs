@@ -37,12 +37,55 @@ const REQUIRED_WEBHOOK_EVENTS = [
   "charge.refunded",
 ];
 
+const DEFAULT_CREDITS_PER_USD = 10_000;
+const DEFAULT_BILLING_TEST_MIN_CHARGE_CENTS = 50;
+const DEFAULT_BILLING_TEST_TOPUP_CREDITS = 1_000;
+
 function requireEnv(name) {
   const value = process.env[name];
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+function parsePositiveInteger(value, fallback) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+function validateLiveTopupChargeConfig() {
+  const creditsPerUsd = parsePositiveInteger(
+    process.env.CREDITS_PER_USD,
+    DEFAULT_CREDITS_PER_USD,
+  );
+  const minChargeCents = parsePositiveInteger(
+    process.env.BILLING_TEST_MIN_CHARGE_CENTS,
+    DEFAULT_BILLING_TEST_MIN_CHARGE_CENTS,
+  );
+  const requestedTopupCredits = parsePositiveInteger(
+    process.env.BILLING_TEST_TOPUP_CREDITS,
+    DEFAULT_BILLING_TEST_TOPUP_CREDITS,
+  );
+  const minimumCreditsForCharge = Math.ceil((minChargeCents * creditsPerUsd) / 100);
+  const requestedAmountCents = Math.ceil((requestedTopupCredits * 100) / creditsPerUsd);
+  const effectiveTopupCredits = Math.max(requestedTopupCredits, minimumCreditsForCharge);
+  const effectiveAmountCents = Math.ceil((effectiveTopupCredits * 100) / creditsPerUsd);
+
+  if (
+    process.env.BILLING_TEST_TOPUP_CREDITS &&
+    requestedAmountCents < minChargeCents
+  ) {
+    throw new Error(
+      `BILLING_TEST_TOPUP_CREDITS=${requestedTopupCredits} resolves to ${requestedAmountCents} cents, below BILLING_TEST_MIN_CHARGE_CENTS=${minChargeCents}.`,
+    );
+  }
+
+  console.log(
+    `[preflight] topup config: creditsPerUsd=${creditsPerUsd}, minChargeCents=${minChargeCents}, requestedTopupCredits=${requestedTopupCredits}, effectiveTopupCredits=${effectiveTopupCredits}, effectiveAmountCents=${effectiveAmountCents}`,
+  );
 }
 
 function getConvexSiteUrl() {
@@ -172,6 +215,8 @@ async function main() {
 
   const convexSiteUrl = getConvexSiteUrl();
   console.log(`[preflight] convex site resolved to ${convexSiteUrl}`);
+
+  validateLiveTopupChargeConfig();
 
   await runConvexReachabilityCheck({ shouldPush });
 

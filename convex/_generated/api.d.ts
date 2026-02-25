@@ -11,6 +11,7 @@
 import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_helpers from "../ai/helpers.js";
+import type * as ai_lib_creditBilling from "../ai/lib/creditBilling.js";
 import type * as apiKeys_actions from "../apiKeys/actions.js";
 import type * as apiKeys_mutations from "../apiKeys/mutations.js";
 import type * as apiKeys_queries from "../apiKeys/queries.js";
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   "ai/actions": typeof ai_actions;
   "ai/config": typeof ai_config;
   "ai/helpers": typeof ai_helpers;
+  "ai/lib/creditBilling": typeof ai_lib_creditBilling;
   "apiKeys/actions": typeof apiKeys_actions;
   "apiKeys/mutations": typeof apiKeys_mutations;
   "apiKeys/queries": typeof apiKeys_queries;

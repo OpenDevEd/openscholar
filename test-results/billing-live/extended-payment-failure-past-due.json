@@ -1,21 +1,21 @@
 {
   "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
-  "customerId": "cus_U2ZZFa1gdef2oU",
-  "stripeSubscriptionId": "sub_1T4UQaQlhLZbGeKrqo7e0LzH",
+  "customerId": "cus_U2iaV7y4mZEYIi",
+  "stripeSubscriptionId": "sub_1T4d9eQlhLZbGeKrOiBgbQG4",
   "synced": {
-    "_creationTime": 1771973406185.5894,
-    "_id": "m17a4g11w55xcvkp64cvesjpgh81s16g",
+    "_creationTime": 1772006952251.6143,
+    "_id": "m175neapge7jp0d89t00m981h581tc80",
     "cancelAtPeriodEnd": false,
-    "createdAt": 1771973406185,
-    "creditsPerMonth": 100,
-    "currentPeriodEnd": 1774392602000,
-    "currentPeriodStart": 1771973402000,
+    "createdAt": 1772006952251,
+    "creditsPerMonth": 3000,
+    "currentPeriodEnd": 1774426148000,
+    "currentPeriodStart": 1772006948000,
     "plan": "go",
     "seats": 1,
     "status": "incomplete",
-    "stripeCustomerId": "cus_U2ZZFa1gdef2oU",
-    "stripeSubscriptionId": "sub_1T4UQaQlhLZbGeKrqo7e0LzH",
-    "updatedAt": 1771973406185,
+    "stripeCustomerId": "cus_U2iaV7y4mZEYIi",
+    "stripeSubscriptionId": "sub_1T4d9eQlhLZbGeKrOiBgbQG4",
+    "updatedAt": 1772006952251,
     "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
   }
 }

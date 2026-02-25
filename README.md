@@ -69,9 +69,11 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
    - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PRODUCT_ID` (and optional publishable key for client UI)
-   - **Credits top-up conversion:** optional `CREDITS_PER_USD` (defaults to `100`)
+   - **Credits top-up conversion:** optional `CREDITS_PER_USD`
+   - **Extraction embedding billing:** optional `EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS` (defaults to `0.02`)
    - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups), `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` (set to `false` for abstract-only extraction mode)
    - **Billing live test user (optional; defaults provided):** `BILLING_TEST_USER_SUBJECT`, `BILLING_TEST_USER_EMAIL`
+   - **Billing live top-up safety (optional):** `BILLING_TEST_MIN_CHARGE_CENTS` (defaults to `50`), `BILLING_TEST_TOPUP_CREDITS` (defaults to `1000` but auto-raised in tests when below min charge)
 
    Clerk notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.

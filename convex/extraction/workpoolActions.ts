@@ -7,10 +7,13 @@ import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { getModel } from "../ai/helpers";
+import {
+  calculateServerCreditsToDeduct,
+  convertServerCostDollarsToCredits,
+  getModel,
+  withUserCreditsBatch,
+} from "../ai/helpers";
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
-import { captureAIGenerationServer } from "../../lib/posthog-server";
-import { SERVER_AI_CONFIG } from "../ai/config";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { MIN_ABSTRACT_LENGTH, isPdfExtractionEnabled } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
@@ -109,6 +112,7 @@ const V32_CUTOVER_AT = Number(process.env.EXTRACTION_V3_2_CUTOVER_AT || "0");
 const ARRAY_ANSWER_MAX_ITEMS = 8;
 const ARRAY_GENERIC_PENALTY = 0.15;
 const ARRAY_GENERIC_THRESHOLD = 0.6;
+const DEFAULT_EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS = 0.02;
 const ARRAY_GENERIC_TERMS = new Set([
   "artificial intelligence",
   "artificial-intelligence",
@@ -129,6 +133,39 @@ const ARRAY_GENERIC_TERMS = new Set([
   "transformer architectures",
   "transformer-based models",
 ]);
+
+function parsePositiveFloat(input: string | undefined, fallback: number): number {
+  if (!input) return fallback;
+  const parsed = Number.parseFloat(input);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
+const EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS = parsePositiveFloat(
+  process.env.EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS,
+  DEFAULT_EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS,
+);
+
+function estimateEmbeddingCostDollars(tokens: number): number {
+  if (!Number.isFinite(tokens) || tokens <= 0) return 0;
+  return (tokens / 1_000_000) * EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS;
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (error && typeof error === "object" && "data" in error) {
+    const data = (error as { data?: unknown }).data;
+    if (data && typeof data === "object" && "message" in data) {
+      const message = (data as { message?: unknown }).message;
+      if (typeof message === "string" && message.length > 0) {
+        return message;
+      }
+    }
+  }
+  if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+  return fallback;
+}
 
 function toTupleRange(charRange: number[] | [number, number]): [number, number] {
   const start = Number(charRange?.[0] ?? 0);
@@ -769,7 +806,13 @@ export const downloadAndIndexPdfAction = internalAction({
       const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
         jobId: args.jobId,
       });
-      if (job && !isV32EnabledForJob(job.createdAt)) {
+      if (!job) {
+        return {
+          success: false,
+          error: "Job not found",
+        };
+      }
+      if (!isV32EnabledForJob(job.createdAt)) {
         return {
           success: false,
           error:
@@ -855,6 +898,25 @@ export const downloadAndIndexPdfAction = internalAction({
           metadata: { paperId: args.paperId },
         });
 
+        const embeddingTokens = ragResult.usage?.tokens ?? 0;
+        const embeddingCostDollars = estimateEmbeddingCostDollars(embeddingTokens);
+        const embeddingCreditsToDeduct =
+          convertServerCostDollarsToCredits(embeddingCostDollars);
+        if (embeddingCreditsToDeduct > 0) {
+          await ctx.runMutation(internal.credits.internal.deductCredits, {
+            userId: job.userId,
+            amount: embeddingCreditsToDeduct,
+            description: "AI: Extraction embedding index",
+            metadata: {
+              billingType: "extraction_embedding",
+              paperId: String(args.paperId),
+              jobId: String(args.jobId),
+              embeddingTokens: String(embeddingTokens),
+              embeddingUsdPer1m: String(EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS),
+            },
+          });
+        }
+
         await ctx.runMutation(internal.extraction.mutations.markPaperIndexed, {
           paperId: args.paperId,
           ragEntryId: ragResult.entryId,
@@ -869,7 +931,7 @@ export const downloadAndIndexPdfAction = internalAction({
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown indexing error",
+        error: toErrorMessage(error, "Unknown indexing error"),
       };
     }
   },
@@ -900,8 +962,6 @@ export const waitAndExtractAction = internalAction({
     pdfContentUsed?: boolean;
     error?: string;
   }> => {
-    const start = Date.now();
-
     try {
       const paper = await ctx.runQuery(internal.extraction.queries.getPaperInternal, {
         paperId: args.paperId,
@@ -912,7 +972,10 @@ export const waitAndExtractAction = internalAction({
       const job = await ctx.runQuery(internal.extraction.queries.getJobInternal, {
         jobId: args.jobId,
       });
-      if (job && !isV32EnabledForJob(job.createdAt)) {
+      if (!job) {
+        return { success: false, error: "Job not found" };
+      }
+      if (!isV32EnabledForJob(job.createdAt)) {
         return {
           success: false,
           error:
@@ -936,172 +999,181 @@ export const waitAndExtractAction = internalAction({
         source: unit.source,
       }));
 
-      const model = await getModel();
-      const results: ExtractionQuestionResult[] = [];
-      const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
-      let anyPdfEvidenceUsed = false;
-      const abstractPresent = isUsableAbstract(paper.abstract);
-      const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
+      const extracted = await withUserCreditsBatch(
+        ctx,
+        job.userId,
+        `Extraction (${args.questions.length} questions)`,
+        async () => {
+          const model = await getModel();
+          const results: ExtractionQuestionResult[] = [];
+          const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
+          let anyPdfEvidenceUsed = false;
+          const abstractPresent = isUsableAbstract(paper.abstract);
+          const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
 
-      for (const question of args.questions) {
-        if (units.length === 0) {
-          if (abstractText) {
-            const { result, usage } = await extractQuestionAnswerFromAbstract({
+          for (const question of args.questions) {
+            if (units.length === 0) {
+              if (abstractText) {
+                const { result, usage } = await extractQuestionAnswerFromAbstract({
+                  model,
+                  question,
+                  abstract: abstractText,
+                });
+                results.push(result);
+                extractionUsages.push(usage);
+                console.info(
+                  "[waitAndExtractAction] question diagnostics",
+                  JSON.stringify({
+                    paperId: args.paperId,
+                    questionKey: question.key,
+                    mode: "abstract_only",
+                    abstractPresent,
+                    denseCandidates: 0,
+                    lexicalCandidates: 0,
+                    fusedCandidates: 0,
+                    citationStatus: result.citationStatus,
+                    selectedEvidenceIds: [],
+                  }),
+                );
+                continue;
+              }
+
+              const noContentResult: ExtractionQuestionResult = {
+                questionKey: question.key,
+                answer: null,
+                confidence: 0,
+                reasoning: "No PDF evidence and no usable abstract are available for this paper.",
+                citations: [],
+                citationStatus: "insufficient_evidence",
+                retrievalDiagnostics: {
+                  denseCandidates: 0,
+                  lexicalCandidates: 0,
+                  fusedCandidates: 0,
+                  rerankedCandidates: 0,
+                  validatedCitations: 0,
+                  strictNull: true,
+                },
+                pdfContentUsed: false,
+              };
+              results.push(noContentResult);
+              console.info(
+                "[waitAndExtractAction] question diagnostics",
+                JSON.stringify({
+                  paperId: args.paperId,
+                  questionKey: question.key,
+                  mode: "no_content",
+                  abstractPresent,
+                  denseCandidates: 0,
+                  lexicalCandidates: 0,
+                  fusedCandidates: 0,
+                  citationStatus: noContentResult.citationStatus,
+                  selectedEvidenceIds: [],
+                }),
+              );
+              continue;
+            }
+
+            const denseScores = await runDenseSearch(
+              ctx,
+              `extraction:${args.jobId}`,
+              args.paperId,
+              question.question,
+            );
+            const lexicalScores = scoreLexicalEvidence(
+              question.question,
+              units.map((unit) => ({ evidenceId: unit.evidenceId, tokens: unit.tokens })),
+              DENSE_LIMIT,
+            );
+
+            const fusedScores = reciprocalRankFuse(denseScores, lexicalScores, RRF_CONSTANT);
+            const byEvidenceId = new Map(units.map((unit) => [unit.evidenceId, unit]));
+            const fusedCandidates: RetrievalCandidate[] = [];
+            for (const row of fusedScores.slice(0, FUSED_TOP_N)) {
+              const unit = byEvidenceId.get(row.evidenceId);
+              if (!unit) continue;
+              fusedCandidates.push({
+                unit,
+                denseScore: row.denseScore,
+                lexicalScore: row.lexicalScore,
+                fusedScore: row.fusedScore,
+              });
+            }
+
+            const evidencePool = fusedCandidates.slice(0, EVIDENCE_POOL_N);
+            const diagnosticsSeed = {
+              denseCandidates: denseScores.length,
+              lexicalCandidates: lexicalScores.length,
+              fusedCandidates: fusedCandidates.length,
+              rerankedCandidates: evidencePool.length,
+            };
+
+            const { result: extracted, usage } = await extractQuestionAnswer({
               model,
               question,
-              abstract: abstractText,
+              abstract: paper.abstract,
+              evidencePool,
+              diagnosticsSeed,
             });
-            results.push(result);
+
+            if (extracted.citations.length > 0) {
+              anyPdfEvidenceUsed = true;
+            }
+
             extractionUsages.push(usage);
+
             console.info(
               "[waitAndExtractAction] question diagnostics",
               JSON.stringify({
                 paperId: args.paperId,
                 questionKey: question.key,
-                mode: "abstract_only",
+                mode: "pdf_evidence",
                 abstractPresent,
-                denseCandidates: 0,
-                lexicalCandidates: 0,
-                fusedCandidates: 0,
-                citationStatus: result.citationStatus,
-                selectedEvidenceIds: [],
-              })
+                denseCandidates: diagnosticsSeed.denseCandidates,
+                lexicalCandidates: diagnosticsSeed.lexicalCandidates,
+                fusedCandidates: diagnosticsSeed.fusedCandidates,
+                citationStatus: extracted.citationStatus,
+                selectedEvidenceIds: extracted.citations.map((citation) => citation.evidenceId),
+              }),
             );
-            continue;
+
+            results.push(extracted);
           }
 
-          const noContentResult: ExtractionQuestionResult = {
-            questionKey: question.key,
-            answer: null,
-            confidence: 0,
-            reasoning: "No PDF evidence and no usable abstract are available for this paper.",
-            citations: [],
-            citationStatus: "insufficient_evidence",
-            retrievalDiagnostics: {
-              denseCandidates: 0,
-              lexicalCandidates: 0,
-              fusedCandidates: 0,
-              rerankedCandidates: 0,
-              validatedCitations: 0,
-              strictNull: true,
-            },
-            pdfContentUsed: false,
-          };
-          results.push(noContentResult);
-          console.info(
-            "[waitAndExtractAction] question diagnostics",
-            JSON.stringify({
-              paperId: args.paperId,
-              questionKey: question.key,
-              mode: "no_content",
-              abstractPresent,
-              denseCandidates: 0,
-              lexicalCandidates: 0,
-              fusedCandidates: 0,
-              citationStatus: noContentResult.citationStatus,
-              selectedEvidenceIds: [],
-            })
+          const totalInputTokens = extractionUsages.reduce(
+            (acc, usage) => acc + usage.inputTokens,
+            0,
           );
-          continue;
-        }
+          const totalOutputTokens = extractionUsages.reduce(
+            (acc, usage) => acc + usage.outputTokens,
+            0,
+          );
+          const totalUsage = {
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+          };
+          const billedCredits = calculateServerCreditsToDeduct(totalUsage);
 
-        const denseScores = await runDenseSearch(
-          ctx,
-          `extraction:${args.jobId}`,
-          args.paperId,
-          question.question
-        );
-        const lexicalScores = scoreLexicalEvidence(
-          question.question,
-          units.map((unit) => ({ evidenceId: unit.evidenceId, tokens: unit.tokens })),
-          DENSE_LIMIT
-        );
-
-        const fusedScores = reciprocalRankFuse(denseScores, lexicalScores, RRF_CONSTANT);
-        const byEvidenceId = new Map(units.map((unit) => [unit.evidenceId, unit]));
-        const fusedCandidates: RetrievalCandidate[] = [];
-        for (const row of fusedScores.slice(0, FUSED_TOP_N)) {
-          const unit = byEvidenceId.get(row.evidenceId);
-          if (!unit) continue;
-          fusedCandidates.push({
-            unit,
-            denseScore: row.denseScore,
-            lexicalScore: row.lexicalScore,
-            fusedScore: row.fusedScore,
-          });
-        }
-
-        const evidencePool = fusedCandidates.slice(0, EVIDENCE_POOL_N);
-        const diagnosticsSeed = {
-          denseCandidates: denseScores.length,
-          lexicalCandidates: lexicalScores.length,
-          fusedCandidates: fusedCandidates.length,
-          rerankedCandidates: evidencePool.length,
-        };
-
-        const { result: extracted, usage } = await extractQuestionAnswer({
-          model,
-          question,
-          abstract: paper.abstract,
-          evidencePool,
-          diagnosticsSeed,
-        });
-
-        if (extracted.citations.length > 0) {
-          anyPdfEvidenceUsed = true;
-        }
-
-        extractionUsages.push(usage);
-
-        console.info(
-          "[waitAndExtractAction] question diagnostics",
-          JSON.stringify({
-            paperId: args.paperId,
-            questionKey: question.key,
-            mode: "pdf_evidence",
-            abstractPresent,
-            denseCandidates: diagnosticsSeed.denseCandidates,
-            lexicalCandidates: diagnosticsSeed.lexicalCandidates,
-            fusedCandidates: diagnosticsSeed.fusedCandidates,
-            citationStatus: extracted.citationStatus,
-            selectedEvidenceIds: extracted.citations.map((citation) => citation.evidenceId),
-          })
-        );
-
-        results.push(extracted);
-      }
-
-      const totalInputTokens = extractionUsages.reduce((acc, u) => acc + u.inputTokens, 0);
-      const totalOutputTokens = extractionUsages.reduce((acc, u) => acc + u.outputTokens, 0);
-      const latencyMs = Date.now() - start;
-
-      if (job && (totalInputTokens > 0 || totalOutputTokens > 0)) {
-    const user = await ctx.runQuery(internal.users.internal.getUserById, {
-      userId: job.userId,
-    });
-        const distinctId = user?.clerkId ?? String(job.userId);
-        await captureAIGenerationServer({
-          distinctId,
-          provider: SERVER_AI_CONFIG.provider as "openai" | "anthropic" | "deepseek" | "azure" | "openrouter",
-          modelId: SERVER_AI_CONFIG.model,
-          feature: "extraction",
-          usage: { inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
-          latencyMs,
-          input: `Extraction: ${args.questions.length} questions for paper`,
-          output: `Processed ${results.length} questions`,
-        });
-      }
+          return {
+            result: {
+              results,
+              billedCredits,
+              pdfContentUsed: anyPdfEvidenceUsed,
+            },
+            totalUsage,
+          };
+        },
+      );
 
       return {
         success: true,
-        results,
-        creditsUsed: Math.ceil(latencyMs / 1000),
-        pdfContentUsed: anyPdfEvidenceUsed,
+        results: extracted.results,
+        creditsUsed: extracted.billedCredits,
+        pdfContentUsed: extracted.pdfContentUsed,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown extraction error",
+        error: toErrorMessage(error, "Unknown extraction error"),
       };
     }
   },
