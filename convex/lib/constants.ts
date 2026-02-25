@@ -1,10 +1,23 @@
-export const FREE_CREDIT_CAP = 10_000;
+/** Cap on freeBalance accumulation (applies to subscription grants + admin promos). */
+export const FREE_CREDIT_CAP = 50_000;
+
+/**
+ * One-time credit grant issued to every new user on account creation.
+ * Lets free users experience server-side AI (including extraction) before committing to a plan.
+ */
+export const FREE_SIGNUP_CREDIT_GRANT = 1_000;
+
+/**
+ * Markup multiplier applied to raw AI token costs before deducting credits.
+ * Covers infrastructure overhead and sustains platform margins.
+ */
+export const AI_COST_MARKUP = 1.3;
 
 export const PLAN_CONFIG = {
   free: { creditsPerMonth: 0, tier: 0 },
-  go: { creditsPerMonth: 100, tier: 10 },
-  pro: { creditsPerMonth: 1000, tier: 20 },
-  enterprise: { creditsPerMonth: 10000, tier: 30 },
+  go: { creditsPerMonth: 3_000, tier: 10 },
+  pro: { creditsPerMonth: 15_000, tier: 20 },
+  enterprise: { creditsPerMonth: 150_000, tier: 30 },
 } as const;
 
 // Price IDs from environment - allows test/live flexibility

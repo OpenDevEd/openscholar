@@ -28,6 +28,7 @@ export {
   setResultReviewState,
   saveExtractionSavedView,
   deleteExtractionSavedView,
+  saveWorkflowTemplateFromJob,
   saveWorkflowTemplate,
   deleteWorkflowTemplate,
   startExtractionFromTemplate,

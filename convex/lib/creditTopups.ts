@@ -1,10 +1,11 @@
 export const CREDIT_TOPUP_CURRENCY = "usd" as const;
-export const DEFAULT_CREDITS_PER_USD = 100;
+export const DEFAULT_CREDITS_PER_USD = 10_000;
 
 export const CREDIT_TOPUP_BUNDLES = [
-  { key: "credits_1000", credits: 1_000 },
-  { key: "credits_5000", credits: 5_000 },
   { key: "credits_10000", credits: 10_000 },
+  { key: "credits_50000", credits: 50_000 },
+  { key: "credits_100000", credits: 100_000 },
+  { key: "credits_250000", credits: 250_000 },
 ] as const;
 
 export type CreditTopupBundleKey = (typeof CREDIT_TOPUP_BUNDLES)[number]["key"];

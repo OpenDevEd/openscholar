@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   Select,
@@ -14,7 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Languages, Wand2, ArrowRight } from "lucide-react";
+import { Languages, Wand2, ArrowRight, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -37,6 +38,8 @@ interface LanguageSelectorProps {
   placeholder?: string;
   /** When true, trigger shows only the flag (no text). Useful with a separate translate button. */
   flagOnly?: boolean;
+  /** When false, tooltip shows an upgrade prompt instead of the usual description. */
+  isPlanEntitled?: boolean;
 }
 
 export function LanguageSelector({
@@ -46,10 +49,12 @@ export function LanguageSelector({
   className,
   placeholder,
   flagOnly = false,
+  isPlanEntitled = true,
 }: LanguageSelectorProps) {
   const tf = useTranslations("searchFilters");
   const tl = useTranslations("languages");
   const tc = useTranslations("common");
+  const ts = useTranslations("searchCommand");
   const selectedLanguage = languageOptions.find((lang) => lang.code === value);
   const resolvedPlaceholder = placeholder ?? tc("language");
   const selectedLabel = selectedLanguage
@@ -126,29 +131,53 @@ export function LanguageSelector({
             )}
           </SelectTrigger>
         </TooltipTrigger>
-        <TooltipContent className="max-w-72 p-3 bg-foreground text-background border border-background/20 shadow-lg">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Languages className="h-4 w-4 text-background" />
-              <p className="text-sm font-semibold text-background">{tf("selectSearchLanguage")}</p>
+        <TooltipContent className="max-w-72 p-0 bg-foreground text-background border border-background/10 shadow-xl overflow-hidden">
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center size-7 rounded-md bg-background/10 shrink-0">
+                <Languages className="h-3.5 w-3.5 text-background" />
+              </div>
+              <p className="text-sm font-semibold text-background leading-tight">{tf("selectSearchLanguage")}</p>
             </div>
-            <p className="text-xs text-background/90 leading-relaxed">
+            <p className="text-xs text-background/70 leading-relaxed">
               {tf("languageTooltipDescription")}
             </p>
-            <div className="space-y-1.5">
-              <div className="flex items-start gap-2 text-xs">
-                <Wand2 className="h-3.5 w-3.5 mt-0.5 text-background/95" />
-                <span className="text-background/85">
+            <div className="space-y-2">
+              <div className="flex items-start gap-2.5">
+                <div className="flex items-center justify-center size-4 rounded bg-background/10 shrink-0 mt-0.5">
+                  <Wand2 className="h-2.5 w-2.5 text-background/90" />
+                </div>
+                <span className="text-xs text-background/65 leading-relaxed">
                   {tf("languageTooltipPreserveIntent")}
                 </span>
               </div>
-              <div className="flex items-start gap-2 text-xs">
-                <ArrowRight className="h-3.5 w-3.5 mt-0.5 text-background/95" />
-                <span className="text-background/85">
+              <div className="flex items-start gap-2.5">
+                <div className="flex items-center justify-center size-4 rounded bg-background/10 shrink-0 mt-0.5">
+                  <ArrowRight className="h-2.5 w-2.5 text-background/90" />
+                </div>
+                <span className="text-xs text-background/65 leading-relaxed">
                   {tf("languageTooltipAutoApply")}
                 </span>
               </div>
             </div>
+            {!isPlanEntitled && (
+              <div className="flex flex-col gap-2 pt-3 border-t border-background/15">
+                <div className="flex items-start gap-2.5">
+                  <div className="flex items-center justify-center size-4 rounded bg-background/10 shrink-0 mt-0.5">
+                    <Lock className="h-2.5 w-2.5 text-background/90" />
+                  </div>
+                  <p className="text-xs text-background/70 leading-relaxed">
+                    {ts("translationPlanRequired")}
+                  </p>
+                </div>
+                <Link
+                  href="/pricing"
+                  className="text-xs font-semibold text-background underline-offset-2 hover:underline ml-6.5"
+                >
+                  {tc("upgradeTo", { plan: "Go" })} →
+                </Link>
+              </div>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>

@@ -1,6 +1,6 @@
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { PLAN_CONFIG } from "./constants";
+import { PLAN_CONFIG, FREE_SIGNUP_CREDIT_GRANT } from "./constants";
 
 export async function createUserWithDefaults(
   ctx: MutationCtx,
@@ -24,7 +24,7 @@ export async function createUserWithDefaults(
 
   await ctx.db.insert("credits", {
     userId,
-    freeBalance: 0,
+    freeBalance: FREE_SIGNUP_CREDIT_GRANT,
     paidBalance: 0,
     lifetimeUsed: 0,
     lastUpdatedAt: now,

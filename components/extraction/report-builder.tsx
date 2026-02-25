@@ -104,7 +104,7 @@ export function ReportBuilder({
 
   const saveView = useMutation(api.extraction.mutations.saveExtractionSavedView);
   const deleteView = useMutation(api.extraction.mutations.deleteExtractionSavedView);
-  const saveTemplate = useMutation(api.extraction.mutations.saveWorkflowTemplate);
+  const saveTemplate = useMutation(api.extraction.mutations.saveWorkflowTemplateFromJob);
   const deleteTemplate = useMutation(api.extraction.mutations.deleteWorkflowTemplate);
   const rerunTemplate = useMutation(api.extraction.mutations.startExtractionFromTemplate);
   const createReport = useMutation(api.extraction.mutations.createExtractionReportSnapshot);

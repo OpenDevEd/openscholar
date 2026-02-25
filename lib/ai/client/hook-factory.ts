@@ -4,6 +4,8 @@ import { useState, useCallback, useMemo } from 'react'
 import { useAction } from 'convex/react'
 import type { FunctionReference } from 'convex/server'
 import { useAIConfigStore } from '@/lib/store'
+import { useSubscriptionState } from '@/lib/auth/use-subscription-state'
+import { AIPlanEntitlementError } from '@/lib/ai/core/errors'
 import type { AIConfig } from './executor'
 
 export interface AIHookResult<TParams, TResult> {
@@ -11,6 +13,7 @@ export interface AIHookResult<TParams, TResult> {
   isLoading: boolean
   error: Error | null
   isConfigured: boolean
+  isPlanEntitled: boolean
 }
 
 function useIsConfigured(): boolean {
@@ -32,7 +35,8 @@ function useLocalConfig(): AIConfig {
 export function createAIHook<TParams extends Record<string, any>, TResult>(
   actionRef: FunctionReference<'action', 'public', TParams, TResult>,
   executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
-  transformCreditsResult?: (result: TResult, params: TParams) => TResult
+  transformCreditsResult?: (result: TResult, params: TParams) => TResult,
+  options?: { minPlanTier?: number }
 ): () => AIHookResult<TParams, TResult> {
   return function useAIOperation() {
     const [isLoading, setIsLoading] = useState(false)
@@ -41,6 +45,13 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
     const { apiKeyMode } = useAIConfigStore()
     const localConfig = useLocalConfig()
     const isConfigured = useIsConfigured()
+    const { resolvedTier, isSettling } = useSubscriptionState()
+
+    // A hook is plan-entitled if there's no tier requirement, or the user's tier meets it.
+    // While settling, treat as not entitled (conservative).
+    const isPlanEntitled = options?.minPlanTier
+      ? !isSettling && resolvedTier !== null && resolvedTier >= options.minPlanTier
+      : true
 
     const convexAction = useAction(actionRef)
 
@@ -51,11 +62,16 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
 
         try {
           if (apiKeyMode === 'credits') {
+            // Server-side path: server enforces the plan gate
             const result = await convexAction(params as any)
             return transformCreditsResult
               ? transformCreditsResult(result, params)
               : result
           } else {
+            // BYOK path: enforce plan gate client-side before calling the executor
+            if (options?.minPlanTier && !isPlanEntitled) {
+              throw new AIPlanEntitlementError('Go')
+            }
             return await executorFn(params, localConfig)
           }
         } catch (err) {
@@ -66,12 +82,12 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
           setIsLoading(false)
         }
       },
-      [apiKeyMode, convexAction, localConfig]
+      [apiKeyMode, convexAction, localConfig, isPlanEntitled]
     )
 
     return useMemo(
-      () => ({ execute, isLoading, error, isConfigured }),
-      [execute, isLoading, error, isConfigured]
+      () => ({ execute, isLoading, error, isConfigured, isPlanEntitled }),
+      [execute, isLoading, error, isConfigured, isPlanEntitled]
     )
   }
 }

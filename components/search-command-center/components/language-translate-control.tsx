@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
-import { RefreshCw, Loader2, X } from "lucide-react";
+import { RefreshCw, Loader2, X, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ interface LanguageTranslateControlProps {
   /** When true, the translate button is disabled (e.g. no query to translate) */
   translateDisabled?: boolean;
   isTranslating?: boolean;
+  /** When false, translation feature is locked behind a plan upgrade */
+  isPlanEntitled?: boolean;
 }
 
 const ACTIONS_WIDTH = 56 + 8;
@@ -28,6 +30,7 @@ export function LanguageTranslateControl({
   disabled = false,
   translateDisabled = false,
   isTranslating = false,
+  isPlanEntitled = true,
 }: LanguageTranslateControlProps) {
   const t = useTranslations("searchCommand");
   const shouldReduceMotion = useReducedMotion();
@@ -61,7 +64,7 @@ export function LanguageTranslateControl({
             type="button"
             size="sm"
             variant="ghost"
-            disabled={disabled || translateDisabled || !hasValue}
+            disabled={disabled || translateDisabled || !hasValue || !isPlanEntitled}
             onClick={onTranslate}
             title={t("translate")}
             aria-label={t("translate")}
@@ -89,11 +92,17 @@ export function LanguageTranslateControl({
       </motion.div>
       <LanguageSelector
         value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
+        onValueChange={isPlanEntitled ? onValueChange : undefined}
+        disabled={disabled || !isPlanEntitled}
+        isPlanEntitled={isPlanEntitled}
         flagOnly
         className="border-0 rounded-none min-w-[2.5rem] shrink-0"
       />
+      {!isPlanEntitled && (
+        <div className="flex items-center px-1.5 border-l border-violet-500/30">
+          <Lock className="h-3 w-3 text-violet-500/70" />
+        </div>
+      )}
     </div>
   );
 }

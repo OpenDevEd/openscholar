@@ -54,7 +54,7 @@ export function useBatchTranslation({
 }: UseBatchTranslationOptions) {
   const locale = useLocale();
   const targetLanguage = targetLanguageProp ?? localeToLanguageCode(locale);
-  const { execute, isConfigured } = useBatchTranslations();
+  const { execute, isConfigured, isPlanEntitled } = useBatchTranslations();
   const { getTranslation, setTranslation, setShowTranslated } = useTranslationStore();
   const isQueryTranslationInProgress = useTranslationFlowStore(
     (s) => s.isQueryTranslationInProgress
@@ -128,6 +128,7 @@ export function useBatchTranslation({
   const effectiveCanStart =
     canStart &&
     !!selectedLanguage &&
+    isPlanEntitled &&
     !isQueryTranslationInProgress &&
     !isSearchLoading;
 
@@ -155,5 +156,6 @@ export function useBatchTranslation({
     loadingPaperIds: loadingState,
     errors: errors as TranslationError[],
     isConfigured,
+    isPlanEntitled,
   };
 }

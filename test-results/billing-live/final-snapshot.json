@@ -2,10 +2,10 @@
   "billingCustomers": [],
   "creditTransactions": [
     {
-      "_id": "j974y03rd91rvdj80nwd1kc06981r5ye",
+      "_id": "j97c9crx1zp7vx8m96r2mapgk981r67d",
       "amount": -500,
       "balanceAfter": 0,
-      "createdAt": 1771973386904,
+      "createdAt": 1771974981787,
       "creditType": "paid",
       "description": "Credit top-up refund reversal (500 credits)",
       "metadata": {
@@ -14,15 +14,15 @@
         "refundedAmountCents": "1000",
         "targetReversedCredits": "1000"
       },
-      "stripeChargeId": "ch_3T4UQCQlhLZbGeKr0kFkZXWJ",
-      "stripePaymentIntentId": "pi_3T4UQCQlhLZbGeKr0NEWQP8O",
+      "stripeChargeId": "ch_3T4UpuQlhLZbGeKr1VChKzn4",
+      "stripePaymentIntentId": "pi_3T4UpuQlhLZbGeKr1B72fuPk",
       "type": "refund"
     },
     {
-      "_id": "j9756r0scaatp4ktcvjg8a1p3581r30z",
+      "_id": "j97df2zmegbphd614jjhg9nvw581sbew",
       "amount": -500,
       "balanceAfter": 500,
-      "createdAt": 1771973384325,
+      "createdAt": 1771974978172,
       "creditType": "paid",
       "description": "Credit top-up refund reversal (500 credits)",
       "metadata": {
@@ -31,15 +31,15 @@
         "refundedAmountCents": "500",
         "targetReversedCredits": "500"
       },
-      "stripeChargeId": "ch_3T4UQCQlhLZbGeKr0kFkZXWJ",
-      "stripePaymentIntentId": "pi_3T4UQCQlhLZbGeKr0NEWQP8O",
+      "stripeChargeId": "ch_3T4UpuQlhLZbGeKr1VChKzn4",
+      "stripePaymentIntentId": "pi_3T4UpuQlhLZbGeKr1B72fuPk",
       "type": "refund"
     },
     {
-      "_id": "j978nrwz3qhh0s0sst85ht37bn81rhre",
+      "_id": "j9772y2ks31g7vf3jf7d5rrwz581r4ba",
       "amount": 1000,
       "balanceAfter": 1000,
-      "createdAt": 1771973381451,
+      "createdAt": 1771974975352,
       "creditType": "paid",
       "description": "Credit top-up purchase (1000 credits)",
       "metadata": {
@@ -53,61 +53,61 @@
         "eventCurrency": "usd",
         "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
       },
-      "stripeChargeId": "ch_3T4UQCQlhLZbGeKr0kFkZXWJ",
-      "stripePaymentIntentId": "pi_3T4UQCQlhLZbGeKr0NEWQP8O",
+      "stripeChargeId": "ch_3T4UpuQlhLZbGeKr1VChKzn4",
+      "stripePaymentIntentId": "pi_3T4UpuQlhLZbGeKr1B72fuPk",
       "type": "purchase"
     }
   ],
   "credits": [
     {
-      "_id": "jd7dy45yj8kdmcdqzqjmrjfxmx81s3xp",
+      "_id": "jd755cjvdz7rpkztm60az5668d81ratz",
       "freeBalance": 0,
-      "lastUpdatedAt": 1771973386904,
+      "lastUpdatedAt": 1771974981787,
       "lifetimeUsed": 0,
       "paidBalance": 0
     }
   ],
   "objectIds": {
     "stripeChargeIds": [
-      "ch_3T4UQCQlhLZbGeKr0kFkZXWJ"
+      "ch_3T4UpuQlhLZbGeKr1VChKzn4"
     ],
     "stripeCustomerIds": [],
     "stripeInvoiceIds": [],
     "stripePaymentIntentIds": [
-      "pi_3T4UQCQlhLZbGeKr0NEWQP8O"
+      "pi_3T4UpuQlhLZbGeKr1B72fuPk"
     ],
     "stripeSubscriptionIds": []
   },
   "stripeEventLogs": [
     {
-      "_id": "mn78psscz50qbfes1q5ev6rpnh81srsz",
+      "_id": "mn73t670tczvshak1a6r6pffnn81s28n",
       "attemptCount": 0,
       "classification": "processed",
       "eventType": "charge.refunded",
       "status": "processed",
-      "stripeEventId": "evt_3T4UQCQlhLZbGeKr0ckn5aMZ",
-      "stripeObjectId": "ch_3T4UQCQlhLZbGeKr0kFkZXWJ",
-      "updatedAt": 1771973386933
+      "stripeEventId": "evt_3T4UpuQlhLZbGeKr12II5mTw",
+      "stripeObjectId": "ch_3T4UpuQlhLZbGeKr1VChKzn4",
+      "updatedAt": 1771974981813
     },
     {
-      "_id": "mn7d8jz1khsrvwbbetjnzbxz5581rt2j",
+      "_id": "mn7c83kndethqpkgd49tyrp0y981rthb",
       "attemptCount": 0,
       "classification": "processed",
       "eventType": "charge.refunded",
       "status": "processed",
-      "stripeEventId": "evt_3T4UQCQlhLZbGeKr0fWzQLNQ",
-      "stripeObjectId": "ch_3T4UQCQlhLZbGeKr0kFkZXWJ",
-      "updatedAt": 1771973384350
+      "stripeEventId": "evt_3T4UpuQlhLZbGeKr1JNDp8JZ",
+      "stripeObjectId": "ch_3T4UpuQlhLZbGeKr1VChKzn4",
+      "updatedAt": 1771974978201
     },
     {
-      "_id": "mn76m663v19152ajsyfsgj9nz181rdwj",
+      "_id": "mn7fx4kqfqex00g9nwbxwvrg7d81syf7",
       "attemptCount": 0,
       "classification": "processed",
       "eventType": "payment_intent.succeeded",
       "status": "processed",
-      "stripeEventId": "evt_3T4UQCQlhLZbGeKr0heuqksM",
-      "stripeObjectId": "pi_3T4UQCQlhLZbGeKr0NEWQP8O",
-      "updatedAt": 1771973381483
+      "stripeEventId": "evt_3T4UpuQlhLZbGeKr1H5FbXAj",
+      "stripeObjectId": "pi_3T4UpuQlhLZbGeKr1B72fuPk",
+      "updatedAt": 1771974975381
     }
   ],
   "subscriptions": [],

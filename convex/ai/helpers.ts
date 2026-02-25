@@ -7,6 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import {
   AIUnauthenticatedError,
   AIInsufficientCreditsError,
+  AIPlanEntitlementError,
   calculateCostInDollars,
   executeAIOperation,
   type Usage,
@@ -18,12 +19,31 @@ import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType } from "convex/values";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
 import { convertDollarsToCredits } from "../lib/creditTopups";
+import { AI_COST_MARKUP, getPlanTier } from "../lib/constants";
+import { resolveEffectivePlan } from "../../lib/billing/entitlements";
 
 const MAX_TRACKING_CONTENT_LENGTH = 2000;
 
 function truncateForTracking(s: string): string {
   if (s.length <= MAX_TRACKING_CONTENT_LENGTH) return s;
   return s.slice(0, MAX_TRACKING_CONTENT_LENGTH) + "...[truncated]";
+}
+
+/** Asserts the user holds at least `minTier`. Throws AIPlanEntitlementError if not. */
+async function assertPlanTier(
+  ctx: ActionCtx,
+  userId: Id<"users">,
+  minTier: number
+): Promise<void> {
+  const subscription = await ctx.runQuery(
+    internal.subscriptions.internal.getSubscriptionByUser,
+    { userId }
+  );
+  const plan = resolveEffectivePlan(subscription);
+  const tier = getPlanTier(plan);
+  if (tier < minTier) {
+    throw new AIPlanEntitlementError("Go");
+  }
 }
 
 export async function getModel() {
@@ -50,9 +70,14 @@ export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
   operation: string,
   handler: (user: Doc<"users">) => Promise<{ result: T; totalUsage: Usage }>,
+  options?: { minPlanTier?: number }
 ): Promise<T> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
   if (!user) throw new AIUnauthenticatedError();
+
+  if (options?.minPlanTier) {
+    await assertPlanTier(ctx, user._id, options.minPlanTier);
+  }
 
   const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
   if (!balance || balance.total <= 0) {
@@ -68,7 +93,7 @@ export async function withAuthAndCreditsBatch<T>(
     SERVER_AI_CONFIG.provider as AIProvider,
     SERVER_AI_CONFIG.model,
   );
-  const creditsToDeduct = convertDollarsToCredits(costDollars);
+  const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
 
   await captureAIGenerationServer({
     distinctId: user.clerkId,
@@ -127,7 +152,7 @@ export async function withUserCreditsBatch<T>(
     SERVER_AI_CONFIG.provider as AIProvider,
     SERVER_AI_CONFIG.model,
   );
-  const creditsToDeduct = convertDollarsToCredits(costDollars);
+  const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
 
   await captureAIGenerationServer({
     distinctId: user.clerkId,
@@ -156,9 +181,14 @@ export async function withAuthAndCredits<T>(
   ctx: ActionCtx,
   operation: string,
   handler: (user: Doc<"users">) => Promise<{ result: T; usage: Usage }>,
+  options?: { minPlanTier?: number }
 ): Promise<T> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
   if (!user) throw new AIUnauthenticatedError();
+
+  if (options?.minPlanTier) {
+    await assertPlanTier(ctx, user._id, options.minPlanTier);
+  }
 
   const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
   if (!balance || balance.total <= 0) {
@@ -172,7 +202,7 @@ export async function withAuthAndCredits<T>(
     SERVER_AI_CONFIG.provider as AIProvider,
     SERVER_AI_CONFIG.model,
   );
-  const creditsToDeduct = convertDollarsToCredits(costDollars);
+  const creditsToDeduct = convertDollarsToCredits(costDollars * AI_COST_MARKUP);
 
   await ctx.runMutation(internal.credits.internal.deductCredits, {
     userId: user._id,
@@ -197,6 +227,7 @@ export function createAIAction<
     args: ObjectType<Args>,
   ) => OperationConfig<ObjectType<Args>, AIOutput>,
   formatOutput: (output: AIOutput, args: ObjectType<Args>) => Output,
+  options?: { minPlanTier?: number }
 ) {
   return action({
     args: argsValidator,
@@ -253,7 +284,7 @@ export function createAIAction<
           });
           throw error;
         }
-      });
+      }, options);
     },
   });
 }

@@ -13,7 +13,7 @@ import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
-import { requireExtractionEnabled } from "./guard";
+import { requireExtractionEnabled, requireProPlan } from "./guard";
 import {
   aggregateQuestionInsights,
   buildDisagreementClusters,
@@ -167,6 +167,7 @@ export const startExtraction = mutation({
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
+    await requireProPlan(ctx, user._id, "Data extraction");
 
     const userId = user._id;
 
@@ -254,6 +255,7 @@ export const duplicateExtraction = mutation({
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
+    await requireProPlan(ctx, user._id, "Data extraction");
 
     const oldJob = await ctx.db.get(args.jobId);
     if (!oldJob || oldJob.userId !== user._id) {
@@ -404,155 +406,6 @@ export const setResultReviewState = mutation({
   },
 });
 
-export const saveExtractionSavedView = mutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-    name: v.string(),
-    filters: v.object({
-      searchQuery: v.string(),
-      confidenceRange: v.array(v.number()),
-      statusFilters: v.array(v.string()),
-    }),
-    sortBy: v.optional(v.string()),
-    viewMode: v.optional(v.string()),
-    selectedQuestionKeys: v.optional(v.array(v.string())),
-  },
-  returns: v.object({
-    viewId: v.id("extractionSavedViews"),
-    created: v.boolean(),
-  }),
-  handler: async (ctx, args) => {
-    requireExtractionEnabled();
-    const user = await requireAuth(ctx);
-    await assertJobOwnership(ctx, user._id, args.jobId);
-
-    const name = args.name.trim();
-    if (!name) throw createError("VALIDATION_ERROR", "View name is required");
-
-    const existing = await ctx.db
-      .query("extractionSavedViews")
-      .withIndex("by_job_name", (q) => q.eq("jobId", args.jobId).eq("name", name))
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        filters: args.filters,
-        sortBy: args.sortBy,
-        viewMode: args.viewMode,
-        selectedQuestionKeys: args.selectedQuestionKeys,
-        updatedAt: Date.now(),
-      });
-      return { viewId: existing._id, created: false };
-    }
-
-    const viewId = await ctx.db.insert("extractionSavedViews", {
-      jobId: args.jobId,
-      userId: user._id,
-      name,
-      filters: args.filters,
-      sortBy: args.sortBy,
-      viewMode: args.viewMode,
-      selectedQuestionKeys: args.selectedQuestionKeys,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    return { viewId, created: true };
-  },
-});
-
-export const deleteExtractionSavedView = mutation({
-  args: {
-    viewId: v.id("extractionSavedViews"),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    requireExtractionEnabled();
-    const user = await requireAuth(ctx);
-    const view = await ctx.db.get(args.viewId);
-    if (!view || view.userId !== user._id) {
-      throw createError("NOT_FOUND", "Saved view not found");
-    }
-    await ctx.db.delete(args.viewId);
-    return { success: true };
-  },
-});
-
-export const saveWorkflowTemplate = mutation({
-  args: {
-    jobId: v.id("extractionJobs"),
-    name: v.string(),
-    description: v.optional(v.string()),
-  },
-  returns: v.object({
-    templateId: v.id("extractionWorkflowTemplates"),
-    created: v.boolean(),
-  }),
-  handler: async (ctx, args) => {
-    requireExtractionEnabled();
-    const user = await requireAuth(ctx);
-    const job = await assertJobOwnership(ctx, user._id, args.jobId);
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
-
-    const name = args.name.trim();
-    if (!name) throw createError("VALIDATION_ERROR", "Template name is required");
-
-    const existing = await ctx.db
-      .query("extractionWorkflowTemplates")
-      .withIndex("by_user_name", (q) => q.eq("userId", user._id).eq("name", name))
-      .first();
-
-    const payload = {
-      name,
-      description: args.description?.trim() || undefined,
-      sourceType: job.sourceType,
-      sourceHistoryEntries: job.sourceHistoryEntries,
-      sourceZoteroSelection: job.sourceZoteroSelection,
-      sourceManualItems: job.sourceManualItems,
-      questions: questions.map((question) => ({
-        key: question.key,
-        question: question.question,
-        type: question.type,
-        description: question.description,
-      })),
-      updatedAt: Date.now(),
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, payload);
-      return { templateId: existing._id, created: false };
-    }
-
-    const templateId = await ctx.db.insert("extractionWorkflowTemplates", {
-      userId: user._id,
-      ...payload,
-      createdAt: Date.now(),
-    });
-    return { templateId, created: true };
-  },
-});
-
-export const deleteWorkflowTemplate = mutation({
-  args: {
-    templateId: v.id("extractionWorkflowTemplates"),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args) => {
-    requireExtractionEnabled();
-    const user = await requireAuth(ctx);
-    const template = await ctx.db.get(args.templateId);
-    if (!template || template.userId !== user._id) {
-      throw createError("NOT_FOUND", "Template not found");
-    }
-    await ctx.db.delete(args.templateId);
-    return { success: true };
-  },
-});
-
 export const startExtractionFromTemplate = mutation({
   args: {
     templateId: v.id("extractionWorkflowTemplates"),
@@ -562,6 +415,7 @@ export const startExtractionFromTemplate = mutation({
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
+    await requireProPlan(ctx, user._id, "Data extraction");
     const template = await ctx.db.get(args.templateId);
     if (!template || template.userId !== user._id) {
       throw createError("NOT_FOUND", "Template not found");
@@ -606,6 +460,260 @@ export const startExtractionFromTemplate = mutation({
     });
 
     return { jobId };
+  },
+});
+
+export const saveExtractionSavedView = mutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    name: v.string(),
+    filters: v.object({
+      searchQuery: v.string(),
+      confidenceRange: v.array(v.number()),
+      statusFilters: v.array(v.string()),
+    }),
+    sortBy: v.optional(v.string()),
+    viewMode: v.optional(v.string()),
+    selectedQuestionKeys: v.optional(v.array(v.string())),
+  },
+  returns: v.object({ viewId: v.id("extractionSavedViews") }),
+  handler: async (ctx, args) => {
+    requireExtractionEnabled();
+    const user = await requireAuth(ctx);
+    await assertJobOwnership(ctx, user._id, args.jobId);
+
+    const existing = await ctx.db
+      .query("extractionSavedViews")
+      .withIndex("by_job_name", (q) =>
+        q.eq("jobId", args.jobId).eq("name", args.name.trim())
+      )
+      .first();
+
+    const now = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        filters: args.filters,
+        sortBy: args.sortBy,
+        viewMode: args.viewMode,
+        selectedQuestionKeys: args.selectedQuestionKeys,
+        updatedAt: now,
+      });
+      return { viewId: existing._id };
+    }
+
+    const viewId = await ctx.db.insert("extractionSavedViews", {
+      jobId: args.jobId,
+      userId: user._id,
+      name: args.name.trim(),
+      filters: args.filters,
+      sortBy: args.sortBy,
+      viewMode: args.viewMode,
+      selectedQuestionKeys: args.selectedQuestionKeys,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { viewId };
+  },
+});
+
+export const deleteExtractionSavedView = mutation({
+  args: { viewId: v.id("extractionSavedViews") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    requireExtractionEnabled();
+    const user = await requireAuth(ctx);
+
+    const view = await ctx.db.get(args.viewId);
+    if (!view) throw createError("NOT_FOUND", "Saved view not found");
+
+    await assertJobOwnership(ctx, user._id, view.jobId);
+
+    await ctx.db.delete(args.viewId);
+    return null;
+  },
+});
+
+export const saveWorkflowTemplateFromJob = mutation({
+  args: {
+    jobId: v.id("extractionJobs"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  returns: v.object({ templateId: v.id("extractionWorkflowTemplates") }),
+  handler: async (ctx, args) => {
+    requireExtractionEnabled();
+    const user = await requireAuth(ctx);
+    await requireProPlan(ctx, user._id, "Workflow templates");
+    const job = await assertJobOwnership(ctx, user._id, args.jobId);
+
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
+      .collect();
+
+    const existing = await ctx.db
+      .query("extractionWorkflowTemplates")
+      .withIndex("by_user_name", (q) =>
+        q.eq("userId", user._id).eq("name", args.name.trim())
+      )
+      .first();
+
+    const now = Date.now();
+    const templateFields = {
+      description: args.description,
+      sourceType: job.sourceType,
+      sourceHistoryEntries: job.sourceHistoryEntries,
+      sourceZoteroSelection: job.sourceZoteroSelection,
+      sourceManualItems: job.sourceManualItems,
+      questions: questions.map((q) => ({
+        key: q.key,
+        question: q.question,
+        type: q.type,
+        description: q.description,
+      })),
+      updatedAt: now,
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, templateFields);
+      return { templateId: existing._id };
+    }
+
+    const templateId = await ctx.db.insert("extractionWorkflowTemplates", {
+      userId: user._id,
+      name: args.name.trim(),
+      ...templateFields,
+      createdAt: now,
+    });
+    return { templateId };
+  },
+});
+
+export const saveWorkflowTemplate = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+    sourceType: v.union(
+      v.literal("history"),
+      v.literal("zotero"),
+      v.literal("manual"),
+      v.literal("mixed")
+    ),
+    sourceHistoryEntries: v.optional(
+      v.array(
+        v.object({
+          historyId: v.string(),
+          searchFilters: v.record(v.string(), v.any()),
+        })
+      )
+    ),
+    sourceZoteroSelection: v.optional(
+      v.object({
+        libraryType: v.union(v.literal("user"), v.literal("group")),
+        groupId: v.optional(v.string()),
+        zoteroUserId: v.optional(v.string()),
+        collectionKey: v.optional(v.string()),
+        includeDescendants: v.optional(v.boolean()),
+        items: v.array(
+          v.object({
+            itemKey: v.string(),
+            title: v.string(),
+            abstract: v.optional(v.string()),
+            authors: v.array(v.string()),
+            year: v.optional(v.number()),
+            doi: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+    sourceManualItems: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          abstract: v.optional(v.string()),
+          authors: v.optional(v.array(v.string())),
+          year: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          pdfUrl: v.optional(v.string()),
+          storageId: v.optional(v.id("_storage")),
+        })
+      )
+    ),
+    questions: v.array(
+      v.object({
+        key: v.string(),
+        question: v.string(),
+        type: v.union(
+          v.literal("string"),
+          v.literal("boolean"),
+          v.literal("number"),
+          v.literal("array")
+        ),
+        description: v.optional(v.string()),
+      })
+    ),
+  },
+  returns: v.object({ templateId: v.id("extractionWorkflowTemplates") }),
+  handler: async (ctx, args) => {
+    requireExtractionEnabled();
+    const user = await requireAuth(ctx);
+    await requireProPlan(ctx, user._id, "Workflow templates");
+
+    const existing = await ctx.db
+      .query("extractionWorkflowTemplates")
+      .withIndex("by_user_name", (q) =>
+        q.eq("userId", user._id).eq("name", args.name.trim())
+      )
+      .first();
+
+    const now = Date.now();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        description: args.description,
+        sourceType: args.sourceType,
+        sourceHistoryEntries: args.sourceHistoryEntries,
+        sourceZoteroSelection: args.sourceZoteroSelection,
+        sourceManualItems: args.sourceManualItems,
+        questions: args.questions,
+        updatedAt: now,
+      });
+      return { templateId: existing._id };
+    }
+
+    const templateId = await ctx.db.insert("extractionWorkflowTemplates", {
+      userId: user._id,
+      name: args.name.trim(),
+      description: args.description,
+      sourceType: args.sourceType,
+      sourceHistoryEntries: args.sourceHistoryEntries,
+      sourceZoteroSelection: args.sourceZoteroSelection,
+      sourceManualItems: args.sourceManualItems,
+      questions: args.questions,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return { templateId };
+  },
+});
+
+export const deleteWorkflowTemplate = mutation({
+  args: { templateId: v.id("extractionWorkflowTemplates") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    requireExtractionEnabled();
+    const user = await requireAuth(ctx);
+
+    const template = await ctx.db.get(args.templateId);
+    if (!template || template.userId !== user._id) {
+      throw createError("NOT_FOUND", "Template not found");
+    }
+
+    await ctx.db.delete(args.templateId);
+    return null;
   },
 });
 

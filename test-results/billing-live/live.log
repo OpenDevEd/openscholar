@@ -1,1 +1,13 @@
-2026-02-24T22:50:07.326Z payment failure scenario resolved to incomplete instead of past_due
+2026-02-24T23:14:50.154Z Starting required live billing regression suite
+2026-02-24T23:14:51.682Z Using billing test user m97bkth9d9q8s235vg86kpwe0s81rfcm
+2026-02-24T23:14:51.683Z Running pre-test Stripe cleanup for billing test user
+2026-02-24T23:14:52.133Z Resetting Convex billing state for test user
+2026-02-24T23:15:07.614Z Running pre-test Stripe cleanup for billing test user
+2026-02-24T23:15:07.893Z Resetting Convex billing state for test user
+2026-02-24T23:15:46.914Z Running pre-test Stripe cleanup for billing test user
+2026-02-24T23:15:47.130Z Resetting Convex billing state for test user
+2026-02-24T23:16:01.266Z Running pre-test Stripe cleanup for billing test user
+2026-02-24T23:16:01.478Z Resetting Convex billing state for test user
+2026-02-24T23:16:10.389Z Running pre-test Stripe cleanup for billing test user
+2026-02-24T23:16:10.613Z Resetting Convex billing state for test user
+2026-02-24T23:16:26.651Z Running final cleanup and snapshot capture

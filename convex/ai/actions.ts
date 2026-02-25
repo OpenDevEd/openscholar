@@ -82,7 +82,8 @@ export const translateQuery = createAIAction(
   getTranslateQueryConfig,
   (output) => ({
     translatedQuery: output.translatedQuery,
-  })
+  }),
+  { minPlanTier: 10 }
 );
 
 export const translatePaperContent = createAIAction(
@@ -105,7 +106,8 @@ export const translatePaperContent = createAIAction(
     translatedAbstract: output.translatedAbstract,
     sourceLanguage: args.sourceLanguage,
     noTranslationNeeded: false,
-  })
+  }),
+  { minPlanTier: 10 }
 );
 
 export const generateScreeningResponses = createAIAction(
@@ -186,7 +188,8 @@ export const generateBatchTranslations = action({
           result: { results, errors },
           totalUsage: aggregateUsage(usages),
         };
-      }
+      },
+      { minPlanTier: 10 }
     );
   },
 });

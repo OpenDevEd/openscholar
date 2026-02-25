@@ -30,6 +30,16 @@ export class AIInsufficientCreditsError extends AIError {
   }
 }
 
+export class AIPlanEntitlementError extends AIError {
+  constructor(requiredPlan: string = 'Go') {
+    super(
+      `This feature requires the ${requiredPlan} plan or higher`,
+      'AI_PLAN_ENTITLEMENT'
+    )
+    this.name = 'AIPlanEntitlementError'
+  }
+}
+
 export class AIValidationError extends AIError {
   constructor(details: string, cause?: Error) {
     super(`AI response failed validation: ${details}`, 'AI_VALIDATION_ERROR', cause)
