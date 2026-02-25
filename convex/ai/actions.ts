@@ -15,7 +15,12 @@ import {
   processTranslationBatch,
   aggregateUsage,
 } from "../../lib/ai/core";
-import { createAIAction, getModel, withAuthAndCreditsBatch } from "./helpers";
+import {
+  createAIAction,
+  calculateServerCreditsToDeduct,
+  getModel,
+  withAuthAndCreditsBatch,
+} from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
 export const enhanceSearchQuery = createAIAction(
@@ -238,7 +243,7 @@ export const generateBatchScreeningResponses = action({
       async () => {
         const model = await getModel();
         
-        const { results, errors, usages } = await processScreeningBatch({
+        const { results, errors, usages, usageByItemId } = await processScreeningBatch({
           model,
           papers,
           questions,
@@ -254,9 +259,26 @@ export const generateBatchScreeningResponses = action({
           ])
         );
 
+        const usageBreakdown = Object.entries(usageByItemId).map(
+          ([paperId, usage]) => {
+            const amount = calculateServerCreditsToDeduct(usage);
+            return {
+              usage,
+              // Preserve itemized ledger visibility per screened paper.
+              description: `AI: Batch screening (${paperId})`,
+              metadata: {
+                billingType: "batch_screening",
+                paperId,
+                chargedCredits: String(amount),
+              },
+            };
+          },
+        );
+
         return {
           result: { results: encodedResults, errors },
           totalUsage: aggregateUsage(usages),
+          usageBreakdown,
         };
       }
     );

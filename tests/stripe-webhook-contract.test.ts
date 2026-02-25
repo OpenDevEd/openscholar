@@ -15,11 +15,27 @@ const REQUIRED_EVENTS = [
   "invoice.finalized",
   "invoice.paid",
   "invoice.payment_failed",
-  "invoice.payment_succeeded",
 ];
 
 function readSource(relativeFilePath: string) {
   return readFileSync(path.resolve(process.cwd(), relativeFilePath), "utf8");
+}
+
+function getEventHandlerBlocks(source: string): Map<string, string> {
+  const matches = Array.from(
+    source.matchAll(/"([a-z_.]+)"\s*:\s*async\s*\(ctx,\s*event\)\s*=>\s*\{/g),
+  );
+  const blocks = new Map<string, string>();
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const eventType = matches[index]?.[1];
+    const start = matches[index]?.index ?? 0;
+    const end = matches[index + 1]?.index ?? source.length;
+    if (!eventType) continue;
+    blocks.set(eventType, source.slice(start, end));
+  }
+
+  return blocks;
 }
 
 describe("stripe webhook contract", () => {
@@ -45,11 +61,16 @@ describe("stripe webhook contract", () => {
     expect(source).toMatch(/"charge\.refunded"/);
   });
 
-  it("routes invoice events through hydrated invoice processing action", () => {
+  it("routes only invoice.paid through hydrated invoice processing action", () => {
     const source = readSource(HTTP_FILE);
+    const handlerBlocks = getEventHandlerBlocks(source);
+    const monthlyGrantTriggers = Array.from(handlerBlocks.entries())
+      .filter(([, block]) => block.includes("processInvoiceForGrantNonBlocking"))
+      .map(([eventType]) => eventType);
 
     expect(source).toMatch(/processInvoiceForGrantNonBlocking/);
     expect(source).toMatch(/internalApi\.credits\.actions\.processInvoiceForGrant/);
     expect(source).not.toMatch(/internalApi\.credits\.internal\.grantMonthlyCredits/);
+    expect(monthlyGrantTriggers).toEqual(["invoice.paid"]);
   });
 });

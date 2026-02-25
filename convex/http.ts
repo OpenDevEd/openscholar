@@ -233,15 +233,13 @@ registerRoutes(http, components.stripe, {
 
     "invoice.created": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const invoice = event.data.object as any;
-        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+        // Monthly credit grants are intentionally triggered only from invoice.paid.
       });
     },
 
     "invoice.finalized": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const invoice = event.data.object as any;
-        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+        // Monthly credit grants are intentionally triggered only from invoice.paid.
       });
     },
 
@@ -254,8 +252,7 @@ registerRoutes(http, components.stripe, {
 
     "invoice.payment_succeeded": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const invoice = event.data.object as any;
-        await processInvoiceForGrantNonBlocking(ctx, event, invoice);
+        // invoice.payment_succeeded is not used as a monthly-credit trigger.
       });
     },
 

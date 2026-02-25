@@ -14,7 +14,6 @@ Configure the Stripe endpoint (`POST /webhooks/stripe`) with:
 - `invoice.finalized`
 - `invoice.paid`
 - `invoice.payment_failed`
-- `invoice.payment_succeeded`
 - `payment_intent.succeeded`
 - `charge.refunded`
 
@@ -65,7 +64,7 @@ This forwards webhook traffic to:
 
 ## Reconciliation Policy
 
-- Webhook push path remains primary (`invoice.paid` / `invoice.payment_succeeded`).
+- Webhook push path is canonicalized to `invoice.paid`.
 - Pull-based reconciliation is enabled hourly via Convex cron:
   - internal action: `internal.credits.actions.reconcileRecentPaidInvoicesFromStripe`
 - Reconciliation only backfills invoices that:

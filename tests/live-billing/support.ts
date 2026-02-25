@@ -36,7 +36,6 @@ export const BILLING_REQUIRED_WEBHOOK_EVENTS = [
   "invoice.finalized",
   "invoice.paid",
   "invoice.payment_failed",
-  "invoice.payment_succeeded",
   "payment_intent.succeeded",
   "charge.refunded",
 ] as const;

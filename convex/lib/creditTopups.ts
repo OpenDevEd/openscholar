@@ -5,7 +5,6 @@ export const CREDIT_TOPUP_BUNDLES = [
   { key: "credits_10000", credits: 10_000 },
   { key: "credits_50000", credits: 50_000 },
   { key: "credits_100000", credits: 100_000 },
-  { key: "credits_250000", credits: 250_000 },
 ] as const;
 
 export type CreditTopupBundleKey = (typeof CREDIT_TOPUP_BUNDLES)[number]["key"];

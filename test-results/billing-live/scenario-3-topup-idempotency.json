@@ -1,9 +1,9 @@
 {
   "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm",
-  "customerId": "cus_U2iauHm08zURz2",
+  "customerId": "cus_U2izO0po2Ex1lE",
   "payment": {
-    "paymentIntentId": "pi_3T4d99QlhLZbGeKr1qrmpIxS",
-    "chargeId": "ch_3T4d99QlhLZbGeKr1yv3fcZ9",
+    "paymentIntentId": "pi_3T4dXLQlhLZbGeKr15ZUOGk1",
+    "chargeId": "ch_3T4dXLQlhLZbGeKr1rvoRXUj",
     "amountCents": 50,
     "credits": 5000
   },
@@ -16,10 +16,10 @@
     "billingCustomers": [],
     "creditTransactions": [
       {
-        "_id": "j977yp2gxjcjchwesgc9w1zcvs81thty",
+        "_id": "j97crc8t306kw6v1b070frkfd981ttyz",
         "amount": 5000,
         "balanceAfter": 5000,
-        "createdAt": 1772006920344,
+        "createdAt": 1772008420012,
         "creditType": "paid",
         "description": "Credit top-up purchase (5000 credits)",
         "metadata": {
@@ -34,41 +34,41 @@
           "requestedCredits": "5000",
           "userId": "m97bkth9d9q8s235vg86kpwe0s81rfcm"
         },
-        "stripeChargeId": "ch_3T4d99QlhLZbGeKr1yv3fcZ9",
-        "stripePaymentIntentId": "pi_3T4d99QlhLZbGeKr1qrmpIxS",
+        "stripeChargeId": "ch_3T4dXLQlhLZbGeKr1rvoRXUj",
+        "stripePaymentIntentId": "pi_3T4dXLQlhLZbGeKr15ZUOGk1",
         "type": "purchase"
       }
     ],
     "credits": [
       {
-        "_id": "jd7dyfa5qztwhjhwspj7yg0t9x81vjp4",
+        "_id": "jd77qdne7k1zgdw0qg8jxcsrq981tywn",
         "freeBalance": 0,
-        "lastUpdatedAt": 1772006920344,
+        "lastUpdatedAt": 1772008420012,
         "lifetimeUsed": 0,
         "paidBalance": 5000
       }
     ],
     "objectIds": {
       "stripeChargeIds": [
-        "ch_3T4d99QlhLZbGeKr1yv3fcZ9"
+        "ch_3T4dXLQlhLZbGeKr1rvoRXUj"
       ],
       "stripeCustomerIds": [],
       "stripeInvoiceIds": [],
       "stripePaymentIntentIds": [
-        "pi_3T4d99QlhLZbGeKr1qrmpIxS"
+        "pi_3T4dXLQlhLZbGeKr15ZUOGk1"
       ],
       "stripeSubscriptionIds": []
     },
     "stripeEventLogs": [
       {
-        "_id": "mn78x7br8wyj0sc3twrgzcpek981vg3n",
+        "_id": "mn7exkbnnbhfpp9msycmgbb8eh81tqak",
         "attemptCount": 0,
         "classification": "processed",
         "eventType": "payment_intent.succeeded",
         "status": "processed",
-        "stripeEventId": "evt_3T4d99QlhLZbGeKr1UvobLmi",
-        "stripeObjectId": "pi_3T4d99QlhLZbGeKr1qrmpIxS",
-        "updatedAt": 1772006920375
+        "stripeEventId": "evt_3T4dXLQlhLZbGeKr1XzbjvX9",
+        "stripeObjectId": "pi_3T4dXLQlhLZbGeKr15ZUOGk1",
+        "updatedAt": 1772008420043
       }
     ],
     "subscriptions": [],

@@ -168,6 +168,12 @@ export function calculateServerCreditsToDeduct(usage: Usage): number {
   });
 }
 
+export type UsageBreakdownEntry = {
+  usage: Usage;
+  description?: string;
+  metadata?: Record<string, string>;
+};
+
 /**
  * Batch-aware auth and credits wrapper.
  * Checks auth/credits once, runs the batch handler, then deducts credits based on total usage.
@@ -175,7 +181,11 @@ export function calculateServerCreditsToDeduct(usage: Usage): number {
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
   operation: string,
-  handler: (user: Doc<"users">) => Promise<{ result: T; totalUsage: Usage }>,
+  handler: (user: Doc<"users">) => Promise<{
+    result: T;
+    totalUsage: Usage;
+    usageBreakdown?: UsageBreakdownEntry[];
+  }>,
   options?: { minPlanTier?: number }
 ): Promise<T> {
   try {
@@ -194,10 +204,8 @@ export async function withAuthAndCreditsBatch<T>(
     }
 
     const start = Date.now();
-    const { result, totalUsage } = await handler(user);
+    const { result, totalUsage, usageBreakdown } = await handler(user);
     const latencyMs = Date.now() - start;
-
-    const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
 
     await captureAIGenerationServer({
       distinctId: user.clerkId,
@@ -213,11 +221,25 @@ export async function withAuthAndCreditsBatch<T>(
       output: "Completed",
     });
 
-    await ctx.runMutation(internal.credits.internal.deductCredits, {
-      userId: user._id,
-      amount: creditsToDeduct,
-      description: `AI: ${operation}`,
-    });
+    if (usageBreakdown && usageBreakdown.length > 0) {
+      for (const entry of usageBreakdown) {
+        const amount = calculateServerCreditsToDeduct(entry.usage);
+        if (amount <= 0) continue;
+        await ctx.runMutation(internal.credits.internal.deductCredits, {
+          userId: user._id,
+          amount,
+          description: entry.description ?? `AI: ${operation}`,
+          metadata: entry.metadata,
+        });
+      }
+    } else {
+      const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
+      await ctx.runMutation(internal.credits.internal.deductCredits, {
+        userId: user._id,
+        amount: creditsToDeduct,
+        description: `AI: ${operation}`,
+      });
+    }
 
     return result;
   } catch (error) {

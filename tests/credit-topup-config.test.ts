@@ -39,7 +39,7 @@ describe("credit topup config", () => {
     expect(topups.convertCreditsToAmountCents(1_000)).toBe(800);
 
     const catalog = topups.getCreditTopupCatalog();
-    expect(catalog.map((bundle) => bundle.credits)).toEqual([10_000, 50_000, 100_000, 250_000]);
+    expect(catalog.map((bundle) => bundle.credits)).toEqual([10_000, 50_000, 100_000]);
     expect(catalog.map((bundle) => bundle.amountCents)).toEqual([8_000, 40_000, 80_000, 200_000]);
     expect(catalog.every((bundle) => bundle.currency === "usd")).toBe(true);
   });

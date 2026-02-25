@@ -37,6 +37,7 @@ export interface BatchProcessorResult<TResult> {
   results: Record<string, TResult>
   errors: BatchError[]
   usages: Usage[]
+  usageByItemId: Record<string, Usage>
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -56,6 +57,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
   const results: Record<string, TResult> = {}
   const errors: BatchError[] = []
   const usages: Usage[] = []
+  const usageByItemId: Record<string, Usage> = {}
 
   // Process all items in parallel
   const promises = items.map(async (item) => {
@@ -83,6 +85,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
       const { itemId, result, usage } = settled.value
       results[itemId] = result
       usages.push(usage)
+      usageByItemId[itemId] = usage
     } else {
       const itemId = getItemId(items[i]) || 'unknown'
       const errorMessage = settled.reason instanceof Error
@@ -92,7 +95,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
     }
   }
 
-  return { results, errors, usages }
+  return { results, errors, usages, usageByItemId }
 }
 
 // ═══════════════════════════════════════════════════════════════
