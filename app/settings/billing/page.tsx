@@ -169,7 +169,7 @@ export default function BillingPage() {
       return;
     }
     if (showUpgradeCta && !subscriptionsFeatureFlags.enabled) {
-      toast.error(tc("somethingWentWrong"), "Upgrades are temporarily unavailable.");
+      toast.error(tc("somethingWentWrong"), t("upgradesUnavailable"));
       return;
     }
 
@@ -200,7 +200,7 @@ export default function BillingPage() {
     try {
       setIsLoading(true);
       const result = await changePlan({ targetPriceId: details.currentPriceId });
-      toast.success("Plan updated", result.message);
+      toast.success(tc("planUpdated"), result.message);
 
       const refreshed = await getSubscriptionDetails({});
       if (refreshed.status === "success" && refreshed.data) {
@@ -263,7 +263,7 @@ export default function BillingPage() {
     status === "incomplete" || details?.entitlementState === "payment_pending";
   const paymentPendingMessage =
     details?.entitlementMessage ||
-    "Payment is pending. Complete payment in Stripe Billing Portal to activate credits.";
+    t("paymentPendingDefault");
 
   // Format currency
   const formatPrice = (amount: number, currency: string) => {
@@ -400,7 +400,7 @@ export default function BillingPage() {
                   onClick={handleManageSubscription}
                   disabled={isLoading}
                 >
-                  Open billing portal
+                  {tc("openBillingPortal")}
                 </Button>
               </div>
             )}
@@ -410,16 +410,16 @@ export default function BillingPage() {
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
                   <span>
-                    Scheduled change to{" "}
+                    {t("scheduledChangeTo")}{" "}
                     <span className="font-semibold">
-                      {details.pendingTargetPlan ?? "another plan"}
+                      {details.pendingTargetPlan ?? tc("anotherPlan")}
                     </span>
                     {details.pendingEffectiveDate
-                      ? ` on ${format.dateTime(new Date(details.pendingEffectiveDate), {
+                      ? ` ${tc("onDate", { date: format.dateTime(new Date(details.pendingEffectiveDate), {
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        })}`
+                        }) })}`
                       : ""}
                     .
                   </span>
@@ -430,7 +430,7 @@ export default function BillingPage() {
                   onClick={handleKeepCurrentPlan}
                   disabled={isLoading || !details.currentPriceId}
                 >
-                  Keep current plan
+                  {tc("keepCurrentPlan")}
                 </Button>
               </div>
             )}

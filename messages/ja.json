@@ -166,6 +166,11 @@
     "screen": "スクリーニング",
     "redirecting": "リダイレクト中...",
     "questionPrefix": "Q:",
+    "planUpdated": "プランを更新しました",
+    "openBillingPortal": "請求ポータルを開く",
+    "keepCurrentPlan": "現在のプランを維持する",
+    "anotherPlan": "別のプラン",
+    "onDate": "{date}に",
     "localeLabels": {
       "enUS": "英語（米国）",
       "enGB": "英語（英国）",
@@ -238,7 +243,9 @@
     "failedToStartCheckout": "チェックアウトを開始できませんでした",
     "couldNotInitiateCheckout": "チェックアウトを開始できませんでした。もう一度お試しください。",
     "sessionSetupIssue": "セッション設定の問題",
-    "retrySyncToContinue": "請求操作を続けるにはセッション同期を再試行してください。"
+    "retrySyncToContinue": "請求操作を続けるにはセッション同期を再試行してください。",
+    "paymentPendingDefault": "お支払いが保留中です。プランとクレジットを有効化するには、Stripe請求ポータルでお支払いを完了してください。",
+    "downgradeScheduledTo": "ダウングレード予定："
   },
   "auth": {
     "loadingTitle": "ワークスペースを読み込み中",
@@ -361,16 +368,19 @@
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
-    "topupTitle": "Credit Top-Ups",
-    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
-    "topupRate": "{rate} credits per $1 (base rate).",
-    "topupBuyButton": "Buy credits",
-    "topupProcessing": "Redirecting…",
-    "topupCheckoutFailed": "Could not start credit checkout.",
-    "topupSuccessTitle": "Credit purchase started",
-    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
-    "topupCancelledTitle": "Credit checkout canceled",
-    "topupCancelledDescription": "No charge was made. You can retry anytime."
+    "topupTitle": "クレジット追加購入",
+    "topupDescription": "無料クレジット消費後に使用されるプリペイドクレジットを購入できます。",
+    "topupRate": "1ドルあたり{rate}クレジット（基本レート）。",
+    "topupBuyButton": "クレジットを購入",
+    "topupProcessing": "リダイレクト中…",
+    "topupCheckoutFailed": "クレジット購入を開始できませんでした。",
+    "topupSuccessTitle": "クレジット購入を開始しました",
+    "topupSuccessDescription": "Stripeが支払いを確認後、自動的にクレジットを追加します。",
+    "topupCancelledTitle": "クレジット購入をキャンセルしました",
+    "topupCancelledDescription": "請求は発生していません。いつでも再試行できます。",
+    "upgradesUnavailable": "アップグレードは一時的にご利用いただけません。",
+    "paymentPendingDefault": "お支払いが保留中です。クレジットを有効化するには、Stripe請求ポータルでお支払いを完了してください。",
+    "scheduledChangeTo": "プラン変更予定："
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",

@@ -7,7 +7,7 @@ import { workflow } from "../workflow";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { pdfProcessingPool } from "../workpool";
-import { getProcessableFlags } from "./content";
+import { getProcessableFlags, isPdfExtractionEnabled } from "./content";
 import { buildDedupeKey } from "./dedupe";
 
 import { createError } from "../lib/errors";
@@ -167,6 +167,7 @@ export const runExtractionWorkflow = workflow.define({
     });
 
     console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
+    const pdfEnabled = isPdfExtractionEnabled();
 
     // Enqueue each paper for processing
     let enqueuedCount = 0;
@@ -185,7 +186,9 @@ export const runExtractionWorkflow = workflow.define({
           {
             paperId: paper._id,
             status: "download_failed",
-            errorMessage: "No PDF URL or abstract available",
+            errorMessage: pdfEnabled
+              ? "No PDF URL or abstract available"
+              : "PDF processing is disabled and no usable abstract is available",
           }
         );
         await step.runMutation(internal.extraction.mutations.finalizeJobIfDone, {

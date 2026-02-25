@@ -166,6 +166,11 @@
     "screen": "स्क्रीन",
     "redirecting": "रीडायरेक्ट हो रहा है...",
     "questionPrefix": "प्र:",
+    "planUpdated": "प्लान अपडेट किया गया",
+    "openBillingPortal": "बिलिंग पोर्टल खोलें",
+    "keepCurrentPlan": "वर्तमान प्लान रखें",
+    "anotherPlan": "दूसरा प्लान",
+    "onDate": "{date} को",
     "localeLabels": {
       "enUS": "अंग्रेज़ी (US)",
       "enGB": "अंग्रेज़ी (UK)",
@@ -238,7 +243,9 @@
     "failedToStartCheckout": "चेकआउट शुरू करने में विफल",
     "couldNotInitiateCheckout": "चेकआउट शुरू नहीं कर सके। कृपया फिर कोशिश करें।",
     "sessionSetupIssue": "सेटअप समस्या",
-    "retrySyncToContinue": "बिलिंग कार्यों के साथ जारी रखने के लिए सिंक पुनः प्रयास करें।"
+    "retrySyncToContinue": "बिलिंग कार्यों के साथ जारी रखने के लिए सिंक पुनः प्रयास करें।",
+    "paymentPendingDefault": "भुगतान लंबित है। अपना प्लान और क्रेडिट सक्रिय करने के लिए Stripe बिलिंग पोर्टल में भुगतान पूरा करें।",
+    "downgradeScheduledTo": "के लिए डाउनग्रेड निर्धारित"
   },
   "auth": {
     "loadingTitle": "वर्कस्पेस लोड हो रहा है",
@@ -361,16 +368,19 @@
     "perInterval": "/ {interval}",
     "intervalMonth": "महीना",
     "intervalYear": "वर्ष",
-    "topupTitle": "Credit Top-Ups",
-    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
-    "topupRate": "{rate} credits per $1 (base rate).",
-    "topupBuyButton": "Buy credits",
-    "topupProcessing": "Redirecting…",
-    "topupCheckoutFailed": "Could not start credit checkout.",
-    "topupSuccessTitle": "Credit purchase started",
-    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
-    "topupCancelledTitle": "Credit checkout canceled",
-    "topupCancelledDescription": "No charge was made. You can retry anytime."
+    "topupTitle": "क्रेडिट टॉप-अप",
+    "topupDescription": "प्रीपेड क्रेडिट्स खरीदें जो फ्री क्रेडिट्स के बाद उपयोग होते हैं।",
+    "topupRate": "{rate} क्रेडिट प्रति $1 (आधार दर)।",
+    "topupBuyButton": "क्रेडिट्स खरीदें",
+    "topupProcessing": "रीडायरेक्ट हो रहा है…",
+    "topupCheckoutFailed": "क्रेडिट चेकआउट शुरू नहीं हो सका।",
+    "topupSuccessTitle": "क्रेडिट खरीद शुरू हुई",
+    "topupSuccessDescription": "Stripe द्वारा भुगतान की पुष्टि के बाद हम क्रेडिट्स स्वचालित रूप से जोड़ देंगे।",
+    "topupCancelledTitle": "क्रेडिट चेकआउट रद्द",
+    "topupCancelledDescription": "कोई शुल्क नहीं लिया गया। आप कभी भी पुनः प्रयास कर सकते हैं।",
+    "upgradesUnavailable": "अपग्रेड अस्थायी रूप से अनुपलब्ध है।",
+    "paymentPendingDefault": "भुगतान लंबित है। क्रेडिट सक्रिय करने के लिए Stripe बिलिंग पोर्टल में भुगतान पूरा करें।",
+    "scheduledChangeTo": "के लिए बदलाव निर्धारित"
   },
   "errors": {
     "unexpectedIssue": "हमें एक अप्रत्याशित समस्या का सामना करना पड़ा। कृपया पुनः प्रयास करें, या स्थिर पेज पर वापस जाएं।",

@@ -38,6 +38,7 @@ export const debugJobContent = internalQuery({
     for (const paper of papers) {
       const { hasPdfUrl, hasAbstract } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        storageId: paper.storageId,
         abstract: paper.abstract,
       });
       const isProcessable = paper.processable !== false;

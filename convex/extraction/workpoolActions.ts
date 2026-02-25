@@ -12,7 +12,7 @@ import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
 import { SERVER_AI_CONFIG } from "../ai/config";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
-import { MIN_ABSTRACT_LENGTH } from "./content";
+import { MIN_ABSTRACT_LENGTH, isPdfExtractionEnabled } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
 import { processFulltextDocumentWithGrobid } from "./grobid";
 import {
@@ -774,6 +774,24 @@ export const downloadAndIndexPdfAction = internalAction({
           success: false,
           error:
             "This job predates EXTRACTION_V3_2_CUTOVER_AT. Create a new extraction job for V3.2.",
+        };
+      }
+
+      if (!isPdfExtractionEnabled()) {
+        if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
+          await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
+            paperId: args.paperId,
+            units: [],
+          });
+          return {
+            success: true,
+            chunksCount: 0,
+            error: "PDF processing disabled by feature flag; continuing in abstract-only mode.",
+          };
+        }
+        return {
+          success: false,
+          error: "PDF processing is disabled and no usable abstract is available.",
         };
       }
 

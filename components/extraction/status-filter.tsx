@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Filter,
   FileText,
@@ -20,6 +21,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useTranslations } from "next-intl";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { getStatusFilterOptionIds } from "@/lib/extraction/status-filter-options";
 
 interface StatusFilterProps {
   selected: Set<string>;
@@ -29,16 +32,41 @@ interface StatusFilterProps {
 export function StatusFilter({ selected, onChange }: StatusFilterProps) {
   const t = useTranslations('filters');
   const tc = useTranslations('common');
-  const options = [
-    { id: 'has-pdf', label: t('hasPdf'), icon: FileText },
-{ id: 'abstract-only', label: tc('abstractOnly'), icon: FileText },
-  { id: 'open-access', label: tc('openAccess'), icon: Unlock },
-    { id: 'has-errors', label: t('hasErrors'), icon: AlertCircle },
-    { id: 'high-confidence', label: t('highConfidence'), icon: TrendingUp },
-    { id: 'low-confidence', label: t('lowConfidence'), icon: TrendingDown },
-    { id: 'reviewed', label: t('reviewed'), icon: CheckCircle2 },
-    { id: 'needs-followup', label: t('needsFollowUp'), icon: AlertTriangle },
-  ];
+  const pdfEnabled = extractionFeatureFlags.pdf;
+  const options = getStatusFilterOptionIds(pdfEnabled).map((id) => {
+    if (id === "has-pdf") {
+      return { id, label: t("hasPdf"), icon: FileText };
+    }
+    if (id === "abstract-only") {
+      return { id, label: tc("abstractOnly"), icon: FileText };
+    }
+    if (id === "open-access") {
+      return { id, label: tc("openAccess"), icon: Unlock };
+    }
+    if (id === "has-errors") {
+      return { id, label: t("hasErrors"), icon: AlertCircle };
+    }
+    if (id === "high-confidence") {
+      return { id, label: t("highConfidence"), icon: TrendingUp };
+    }
+    if (id === "low-confidence") {
+      return { id, label: t("lowConfidence"), icon: TrendingDown };
+    }
+    if (id === "reviewed") {
+      return { id, label: t("reviewed"), icon: CheckCircle2 };
+    }
+    return { id, label: t("needsFollowUp"), icon: AlertTriangle };
+  });
+
+  useEffect(() => {
+    if (pdfEnabled || !selected.has("has-pdf")) {
+      return;
+    }
+    const next = new Set(selected);
+    next.delete("has-pdf");
+    onChange(next);
+  }, [onChange, pdfEnabled, selected]);
+
   const toggleStatus = (id: string) => {
     const newSet = new Set(selected);
     if (newSet.has(id)) {

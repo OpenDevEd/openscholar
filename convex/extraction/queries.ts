@@ -9,7 +9,11 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { noAccess, notFound, ok, unauthenticated } from "../lib/query_states";
-import { getProcessableFlags, MIN_ABSTRACT_LENGTH } from "./content";
+import {
+  getProcessableFlags,
+  isPdfExtractionEnabled,
+  MIN_ABSTRACT_LENGTH,
+} from "./content";
 import { requireExtractionEnabled } from "./guard";
 import {
   aggregateQuestionInsights,
@@ -370,6 +374,11 @@ export const getPaperPdfUrl = query({
     if (access.status !== "ok") {
       return access;
     }
+
+    if (!isPdfExtractionEnabled()) {
+      return ok({ pdfUrl: null });
+    }
+
     const { paper } = access;
 
     let pdfUrl: string | null = null;
@@ -1223,6 +1232,7 @@ export const getPapersDebug = internalQuery({
       statusCounts[paper.status] = (statusCounts[paper.status] || 0) + 1;
       const { hasPdfUrl, hasAbstract } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        storageId: paper.storageId,
         abstract: paper.abstract,
       });
       const isProcessable = paper.processable !== false;

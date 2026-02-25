@@ -18,6 +18,7 @@ import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { getAvgConfidence } from "@/lib/extraction/filtering";
 import { ConfidenceRing } from "../confidence-ring";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 import {
   getAllCitationLocations,
   getCitationStatus,
@@ -43,6 +44,7 @@ export const CardView = memo(function CardView({
 }: CardViewProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const pdfEnabled = extractionFeatureFlags.pdf;
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -131,7 +133,7 @@ export const CardView = memo(function CardView({
                             {tc("openAccess")}
                           </Badge>
                         )}
-                        {paper.isIndexed || paper.ragEntryId ? (
+                        {pdfEnabled && (paper.isIndexed || paper.ragEntryId) ? (
                           <Badge
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
@@ -139,7 +141,7 @@ export const CardView = memo(function CardView({
                             {tc("indexed")}
                           </Badge>
                         ) : null}
-                        {paper.pdfContentUsed ? (
+                        {pdfEnabled && paper.pdfContentUsed ? (
                           <Badge
                             variant="outline"
                             className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"

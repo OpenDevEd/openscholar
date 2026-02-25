@@ -166,6 +166,11 @@
     "screen": "Screen",
     "redirecting": "Redirecting...",
     "questionPrefix": "Q:",
+    "planUpdated": "Plan updated",
+    "openBillingPortal": "Open billing portal",
+    "keepCurrentPlan": "Keep current plan",
+    "anotherPlan": "another plan",
+    "onDate": "on {date}",
     "localeLabels": {
       "enUS": "English (US)",
       "enGB": "English (UK)",
@@ -238,7 +243,9 @@
     "failedToStartCheckout": "Failed to start checkout",
     "couldNotInitiateCheckout": "Could not initiate checkout. Please try again.",
     "sessionSetupIssue": "Session setup issue",
-    "retrySyncToContinue": "Retry session sync to continue with billing actions."
+    "retrySyncToContinue": "Retry session sync to continue with billing actions.",
+    "paymentPendingDefault": "Payment is pending. Complete payment in Stripe Billing Portal to activate your plan and credits.",
+    "downgradeScheduledTo": "Downgrade scheduled to"
   },
   "auth": {
     "loadingTitle": "Loading workspace",
@@ -370,7 +377,10 @@
     "topupSuccessTitle": "Credit purchase started",
     "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
     "topupCancelledTitle": "Credit checkout canceled",
-    "topupCancelledDescription": "No charge was made. You can retry anytime."
+    "topupCancelledDescription": "No charge was made. You can retry anytime.",
+    "upgradesUnavailable": "Upgrades are temporarily unavailable.",
+    "paymentPendingDefault": "Payment is pending. Complete payment in Stripe Billing Portal to activate credits.",
+    "scheduledChangeTo": "Scheduled change to"
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",

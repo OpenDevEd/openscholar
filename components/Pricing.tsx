@@ -201,7 +201,7 @@ export function Pricing() {
     try {
       setLoadingPriceId("keep-current");
       const result = await changePlan({ targetPriceId: subscriptionDetails.currentPriceId });
-      toast.success("Plan updated", result.message);
+      toast.success(tc("planUpdated"), result.message);
 
       const refreshed = await getSubscriptionDetails({});
       if (refreshed.status === "success" && refreshed.data) {
@@ -241,7 +241,7 @@ export function Pricing() {
 
       if (isEntitled && resolvedPlan && resolvedPlan !== "free") {
         const result = await changePlan({ targetPriceId: priceId });
-        toast.success("Plan updated", result.message);
+        toast.success(tc("planUpdated"), result.message);
 
         const refreshed = await getSubscriptionDetails({});
         if (refreshed.status === "success" && refreshed.data) {
@@ -493,7 +493,7 @@ export function Pricing() {
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 flex items-center justify-between gap-3">
           <span>
             {subscriptionDetails?.entitlementMessage ??
-              "Payment is pending. Complete payment in Stripe Billing Portal to activate your plan and credits."}
+              t("paymentPendingDefault")}
           </span>
           <Button
             variant="outline"
@@ -501,7 +501,7 @@ export function Pricing() {
             onClick={handleOpenPortal}
             disabled={loadingPriceId !== null}
           >
-            Open billing portal
+            {tc("openBillingPortal")}
           </Button>
         </div>
       )}
@@ -509,16 +509,16 @@ export function Pricing() {
       {hasPendingDowngrade && subscriptionDetails && (
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 flex items-center justify-between gap-3">
           <span>
-            Downgrade scheduled to{" "}
+            {t("downgradeScheduledTo")}{" "}
             <span className="font-semibold">
-              {subscriptionDetails.pendingTargetPlan ?? "another plan"}
+              {subscriptionDetails.pendingTargetPlan ?? tc("anotherPlan")}
             </span>
             {subscriptionDetails.pendingEffectiveDate
-              ? ` on ${format.dateTime(new Date(subscriptionDetails.pendingEffectiveDate), {
+              ? ` ${tc("onDate", { date: format.dateTime(new Date(subscriptionDetails.pendingEffectiveDate), {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
-                })}`
+                }) })}`
               : ""}
             .
           </span>
@@ -528,7 +528,7 @@ export function Pricing() {
             onClick={handleKeepCurrentPlan}
             disabled={loadingPriceId !== null || !subscriptionDetails.currentPriceId}
           >
-            Keep current plan
+            {tc("keepCurrentPlan")}
           </Button>
         </div>
       )}

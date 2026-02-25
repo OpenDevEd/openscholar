@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
 import { useAppToast } from "@/lib/toast";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 import { FileUp, Plus, Trash2 } from "lucide-react";
 
 const ACCEPTED_TYPES = ["application/pdf"];
@@ -24,6 +25,7 @@ export function ManualItems() {
   const { draftJob, addManualItem, updateManualItem, removeManualItem } = useExtractionStore();
   const generateUploadUrl = useMutation(api.extraction.uploads.generateUploadUrl);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
+  const pdfEnabled = extractionFeatureFlags.pdf;
 
   const handleFileUpload = async (id: string, file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -124,34 +126,38 @@ export function ManualItems() {
                       value={item.doi || ""}
                       onChange={(e) => updateManualItem(item.id, { doi: e.target.value })}
                     />
-                    <Input
-                      placeholder={t("pdfUrlOptional")}
-                      value={item.pdfUrl || ""}
-                      onChange={(e) => updateManualItem(item.id, { pdfUrl: e.target.value, storageId: undefined })}
-                    />
+                    {pdfEnabled ? (
+                      <Input
+                        placeholder={t("pdfUrlOptional")}
+                        value={item.pdfUrl || ""}
+                        onChange={(e) => updateManualItem(item.id, { pdfUrl: e.target.value, storageId: undefined })}
+                      />
+                    ) : null}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button asChild variant="outline" size="sm" disabled={isUploading}>
-                      <label className="cursor-pointer">
-                        <FileUp className="h-4 w-4 mr-2" />
-                        {item.storageId ? t("replacePdf") : t("attachPdf")}
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleFileUpload(item.id, file);
-                            }
-                          }}
-                        />
-                      </label>
-                    </Button>
-                    {item.storageId && (
-                      <span className="text-xs text-muted-foreground">{tc("pdfAttached")}</span>
-                    )}
-                  </div>
+                  {pdfEnabled ? (
+                    <div className="flex items-center gap-3">
+                      <Button asChild variant="outline" size="sm" disabled={isUploading}>
+                        <label className="cursor-pointer">
+                          <FileUp className="h-4 w-4 mr-2" />
+                          {item.storageId ? t("replacePdf") : t("attachPdf")}
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleFileUpload(item.id, file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </Button>
+                      {item.storageId && (
+                        <span className="text-xs text-muted-foreground">{tc("pdfAttached")}</span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => removeManualItem(item.id)}>
                   <Trash2 className="h-4 w-4" />

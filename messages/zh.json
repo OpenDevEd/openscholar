@@ -166,6 +166,11 @@
     "screen": "屏幕",
     "redirecting": "正在跳转...",
     "questionPrefix": "问:",
+    "planUpdated": "计划已更新",
+    "openBillingPortal": "打开计费门户",
+    "keepCurrentPlan": "保留当前计划",
+    "anotherPlan": "其他计划",
+    "onDate": "于{date}",
     "localeLabels": {
       "enUS": "英语（美国）",
       "enGB": "英语（英国）",
@@ -238,7 +243,9 @@
     "failedToStartCheckout": "无法开始结账",
     "couldNotInitiateCheckout": "无法启动结账。请重试。",
     "sessionSetupIssue": "会话设置问题",
-    "retrySyncToContinue": "重试会话同步以继续账单操作。"
+    "retrySyncToContinue": "重试会话同步以继续账单操作。",
+    "paymentPendingDefault": "付款待处理。请在 Stripe 计费门户中完成付款以激活您的计划和积分。",
+    "downgradeScheduledTo": "计划降级至"
   },
   "auth": {
     "loadingTitle": "加载工作区",
@@ -361,16 +368,19 @@
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
-    "topupTitle": "Credit Top-Ups",
-    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
-    "topupRate": "{rate} credits per $1 (base rate).",
-    "topupBuyButton": "Buy credits",
-    "topupProcessing": "Redirecting…",
-    "topupCheckoutFailed": "Could not start credit checkout.",
-    "topupSuccessTitle": "Credit purchase started",
-    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
-    "topupCancelledTitle": "Credit checkout canceled",
-    "topupCancelledDescription": "No charge was made. You can retry anytime."
+    "topupTitle": "积分充值",
+    "topupDescription": "购买预付积分，在免费积分用完后消耗。",
+    "topupRate": "每 $1 可获得 {rate} 积分（基础费率）。",
+    "topupBuyButton": "购买积分",
+    "topupProcessing": "跳转中…",
+    "topupCheckoutFailed": "无法启动积分结账。",
+    "topupSuccessTitle": "积分购买已开始",
+    "topupSuccessDescription": "Stripe 确认付款后，我们将自动添加积分。",
+    "topupCancelledTitle": "积分结账已取消",
+    "topupCancelledDescription": "未产生任何费用。您可以随时重试。",
+    "upgradesUnavailable": "升级暂时不可用。",
+    "paymentPendingDefault": "付款待处理。请在 Stripe 计费门户中完成付款以激活积分。",
+    "scheduledChangeTo": "计划变更至"
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",

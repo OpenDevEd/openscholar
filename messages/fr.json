@@ -166,6 +166,11 @@
     "screen": "Filtrer",
     "redirecting": "Redirection...",
     "questionPrefix": "Q :",
+    "planUpdated": "Abonnement mis à jour",
+    "openBillingPortal": "Ouvrir le portail de facturation",
+    "keepCurrentPlan": "Conserver l'abonnement actuel",
+    "anotherPlan": "un autre abonnement",
+    "onDate": "le {date}",
     "localeLabels": {
       "enUS": "Anglais (US)",
       "enGB": "Anglais (UK)",
@@ -238,7 +243,9 @@
     "failedToStartCheckout": "Échec du démarrage du paiement",
     "couldNotInitiateCheckout": "Impossible de lancer le paiement. Veuillez réessayer.",
     "sessionSetupIssue": "Problème de configuration de session",
-    "retrySyncToContinue": "Réessayez la synchronisation pour continuer avec les actions de facturation."
+    "retrySyncToContinue": "Réessayez la synchronisation pour continuer avec les actions de facturation.",
+    "paymentPendingDefault": "Paiement en attente. Effectuez le paiement dans le portail Stripe pour activer votre abonnement et vos crédits.",
+    "downgradeScheduledTo": "Rétrogradation planifiée vers"
   },
   "auth": {
     "loadingTitle": "Chargement de l'espace de travail",
@@ -361,16 +368,19 @@
     "perInterval": "/ {interval}",
     "intervalMonth": "mois",
     "intervalYear": "an",
-    "topupTitle": "Credit Top-Ups",
-    "topupDescription": "Buy prepaid credits that are consumed after free credits.",
-    "topupRate": "{rate} credits per $1 (base rate).",
-    "topupBuyButton": "Buy credits",
-    "topupProcessing": "Redirecting…",
-    "topupCheckoutFailed": "Could not start credit checkout.",
-    "topupSuccessTitle": "Credit purchase started",
-    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
-    "topupCancelledTitle": "Credit checkout canceled",
-    "topupCancelledDescription": "No charge was made. You can retry anytime."
+    "topupTitle": "Recharges de crédits",
+    "topupDescription": "Achetez des crédits prépayés consommés après les crédits gratuits.",
+    "topupRate": "{rate} crédits par 1 $ (tarif de base).",
+    "topupBuyButton": "Acheter des crédits",
+    "topupProcessing": "Redirection…",
+    "topupCheckoutFailed": "Impossible de lancer le paiement de crédits.",
+    "topupSuccessTitle": "Achat de crédits démarré",
+    "topupSuccessDescription": "Nous ajouterons les crédits automatiquement après confirmation du paiement par Stripe.",
+    "topupCancelledTitle": "Paiement de crédits annulé",
+    "topupCancelledDescription": "Aucun frais n'a été prélevé. Vous pouvez réessayer à tout moment.",
+    "upgradesUnavailable": "Les mises à niveau sont temporairement indisponibles.",
+    "paymentPendingDefault": "Paiement en attente. Effectuez le paiement dans le portail Stripe pour activer vos crédits.",
+    "scheduledChangeTo": "Changement planifié vers"
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",

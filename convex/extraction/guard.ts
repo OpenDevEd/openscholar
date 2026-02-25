@@ -11,6 +11,12 @@ export function requireExtractionEnabled(): void {
   }
 }
 
+export function requireExtractionPdfEnabled(): void {
+  if (process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED === "false") {
+    throw createError("FORBIDDEN", "PDF processing is disabled");
+  }
+}
+
 /**
  * Asserts that the given user holds at least `minTier`.
  * Mutations have direct `ctx.db` access, so we can query inline.

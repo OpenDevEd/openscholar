@@ -1,3 +1,5 @@
+import { extractionFeatureFlags } from "./feature-flags";
+
 export type CitationEvidence = {
   evidenceId: string;
   page: number;
@@ -112,6 +114,7 @@ export function getCitationStatus(result: any): CitationStatus | undefined {
 }
 
 export function getPrimaryCitation(result: any): CitationLocation | null {
+  if (!extractionFeatureFlags.pdf) return null;
   const citationStatus = getCitationStatus(result);
   const first = getStructuredCitations(result)[0];
   if (!first) return null;
@@ -128,6 +131,7 @@ export function getPrimaryCitation(result: any): CitationLocation | null {
 }
 
 export function getAllCitationLocations(result: any): CitationLocation[] {
+  if (!extractionFeatureFlags.pdf) return [];
   const citationStatus = getCitationStatus(result);
   return getStructuredCitations(result).map((citation) => ({
     evidenceId: citation.evidenceId,

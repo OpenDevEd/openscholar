@@ -70,7 +70,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
    - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PRODUCT_ID` (and optional publishable key for client UI)
    - **Credits top-up conversion:** optional `CREDITS_PER_USD` (defaults to `100`)
-   - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups)
+   - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups), `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` (set to `false` for abstract-only extraction mode)
    - **Billing live test user (optional; defaults provided):** `BILLING_TEST_USER_SUBJECT`, `BILLING_TEST_USER_EMAIL`
 
    Clerk notes for this repo:

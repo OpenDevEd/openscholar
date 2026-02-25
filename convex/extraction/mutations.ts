@@ -10,7 +10,7 @@ import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
 import type { Doc, Id } from "../_generated/dataModel";
 import { pdfProcessingPool } from "../workpool";
-import { getProcessableFlags } from "./content";
+import { getProcessableFlags, isPdfExtractionEnabled } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
 import { requireExtractionEnabled, requireProPlan } from "./guard";
@@ -1033,10 +1033,13 @@ export const createPaperRecords = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const pdfEnabled = isPdfExtractionEnabled();
     for (const paper of args.papers) {
+      const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
+      const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
       const { processable } = getProcessableFlags({
-        pdfUrl: paper.pdfUrl,
-        storageId: paper.storageId,
+        pdfUrl: sanitizedPdfUrl,
+        storageId: sanitizedStorageId,
         abstract: paper.abstract,
       });
       await ctx.db.insert("extractionPapers", {
@@ -1047,8 +1050,8 @@ export const createPaperRecords = internalMutation({
         publicationYear: paper.publicationYear,
         abstract: paper.abstract,
         authors: paper.authors,
-        pdfUrl: paper.pdfUrl,
-        storageId: paper.storageId,
+        pdfUrl: sanitizedPdfUrl,
+        storageId: sanitizedStorageId,
         isOpenAccess: paper.isOpenAccess,
         sourceType: paper.sourceType,
         sourceId: paper.sourceId,
@@ -1151,9 +1154,18 @@ export const setPaperStorage = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) {
+      return null;
+    }
+    const { processable } = getProcessableFlags({
+      pdfUrl: paper.pdfUrl,
+      storageId: args.storageId,
+      abstract: paper.abstract,
+    });
     await ctx.db.patch(args.paperId, {
       storageId: args.storageId,
-      processable: true,
+      processable,
     });
     return null;
   },
@@ -1793,6 +1805,7 @@ export const backfillProcessable = internalMutation({
     for (const paper of papers) {
       const { processable } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        storageId: paper.storageId,
         abstract: paper.abstract,
       });
       if (paper.processable !== processable) {

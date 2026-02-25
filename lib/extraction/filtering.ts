@@ -1,5 +1,6 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import { getReviewState, isReviewed } from "./reviews";
+import { extractionFeatureFlags } from "./feature-flags";
 
 export interface FilterState {
   searchQuery: string;
@@ -91,8 +92,11 @@ export function filterPapers(
     }
 
     // Status filters - use preprocessed avgConfidence
-    if (filters.statusFilters.size > 0) {
-      const hasMatch = [...filters.statusFilters].some(filter => {
+    const effectiveStatusFilters = extractionFeatureFlags.pdf
+      ? filters.statusFilters
+      : new Set([...filters.statusFilters].filter((filter) => filter !== "has-pdf"));
+    if (effectiveStatusFilters.size > 0) {
+      const hasMatch = [...effectiveStatusFilters].some(filter => {
         if (filter === 'has-pdf') return !!paper.pdfUrl || !!paper.storageId;
         if (filter === 'abstract-only') return !paper.pdfContentUsed;
         if (filter === 'open-access') return paper.isOpenAccess;

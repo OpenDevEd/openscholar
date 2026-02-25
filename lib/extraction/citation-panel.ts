@@ -1,5 +1,6 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import type { CitationLocation, CitationStatus } from "@/lib/extraction/citations";
+import { extractionFeatureFlags } from "./feature-flags";
 
 export type CitationPanelPayload = {
   paperId: Id<"extractionPapers">;
@@ -44,6 +45,10 @@ export function buildCitationPanelPayload(params: {
   answer: unknown;
   questionText: string | null;
 }): CitationPanelPayload | null {
+  if (!extractionFeatureFlags.pdf) {
+    return null;
+  }
+
   if (!params.citations.length) {
     return null;
   }

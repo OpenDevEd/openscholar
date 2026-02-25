@@ -1,11 +1,16 @@
 export const MIN_ABSTRACT_LENGTH = 50;
 
+export function isPdfExtractionEnabled() {
+  return process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED !== "false";
+}
+
 export function getProcessableFlags(args: {
   pdfUrl?: string | null;
   storageId?: string | null;
   abstract?: string | null;
 }) {
-  const hasPdfUrl = !!args.pdfUrl || !!args.storageId;
+  const hasPdfUrl =
+    isPdfExtractionEnabled() && (!!args.pdfUrl || !!args.storageId);
   const hasAbstract = !!args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH;
   return {
     hasPdfUrl,
