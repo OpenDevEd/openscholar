@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
-import { motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ export function SearchCommandFooter({
   const te = useTranslations("errors");
   const locale = useLocale();
   const format = useFormatter();
+  const shouldReduceMotion = useReducedMotion();
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
 
@@ -60,6 +61,14 @@ export function SearchCommandFooter({
   // Show buttons conditionally
   const showBroadenButton = totalCount < 10 && totalCount >= 0 && effectiveQuery.trim();
   const showNarrowButton = totalCount > 1000 && effectiveQuery.trim();
+  const contextualAction = showBroadenButton
+    ? "broaden"
+    : showNarrowButton
+      ? "narrow"
+      : null;
+  const contextualTransition = shouldReduceMotion ? { duration: 0 } : subtleSpring;
+  const isContextualActionLoading =
+    contextualAction === "broaden" ? isBroadening : isNarrowing;
 
   // Wrap screening toggle to add tracking
   const handleScreeningToggle = () => {
@@ -199,7 +208,7 @@ Return a more targeted version of this query.`;
         "border-t border-border/40"
       )}
     >
-      {/* Left: Results count and contextual buttons */}
+      {/* Left: Results count */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5">
           <AnimatedCount
@@ -208,53 +217,79 @@ Return a more targeted version of this query.`;
           />
           <span className="text-muted-foreground">{t("common.results")}</span>
         </div>
-
-        {/* Contextual broaden/narrow buttons */}
-        {(showBroadenButton || showNarrowButton) && (
-          <div className="hidden sm:flex items-center gap-2">
-            {showBroadenButton && (
-              <Button
-                variant="ai"
-                size="sm"
-                onClick={handleBroadenQuery}
-                disabled={isBroadening || isLoading}
-                className="h-7 px-2.5 text-xs gap-1.5"
-              >
-                {isBroadening ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Expand className="h-3 w-3" />
-                )}
-                {tsc("makeBroader")}
-              </Button>
-            )}
-            {showNarrowButton && (
-              <Button
-                variant="ai"
-                size="sm"
-                onClick={handleNarrowQuery}
-                disabled={isNarrowing || isLoading}
-                className="h-7 px-2.5 text-xs gap-1.5"
-              >
-                {isNarrowing ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Minimize2 className="h-3 w-3" />
-                )}
-                {tsc("makeSpecific")}
-              </Button>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="self-end sm:self-auto">
-        <div
+        <motion.div
+          layout
+          transition={contextualTransition}
           className={cn(
             "inline-flex items-center rounded-2xl border border-border/70 bg-background/70 p-1 shadow-sm",
             "backdrop-blur supports-[backdrop-filter]:bg-background/55 supports-[backdrop-filter]:backdrop-saturate-150"
           )}
         >
+          <AnimatePresence initial={false} mode="popLayout">
+            {contextualAction && (
+              <motion.div
+                key={contextualAction}
+                layout
+                initial={
+                  shouldReduceMotion
+                    ? { opacity: 1, x: 0, scale: 1 }
+                    : { opacity: 0, x: -10, scale: 0.96 }
+                }
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={
+                  shouldReduceMotion
+                    ? { opacity: 1, x: 0, scale: 1 }
+                    : { opacity: 0, x: -10, scale: 0.96 }
+                }
+                transition={contextualTransition}
+                className="inline-flex items-center"
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={
+                    contextualAction === "broaden"
+                      ? handleBroadenQuery
+                      : handleNarrowQuery
+                  }
+                  disabled={Boolean(isLoading) || isContextualActionLoading}
+                  title={
+                    contextualAction === "broaden"
+                      ? tsc("makeBroader")
+                      : tsc("makeSpecific")
+                  }
+                  aria-label={
+                    contextualAction === "broaden"
+                      ? tsc("makeBroader")
+                      : tsc("makeSpecific")
+                  }
+                  className={cn(
+                    "h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+                    isContextualActionLoading && "text-foreground"
+                  )}
+                >
+                  {isContextualActionLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : contextualAction === "broaden" ? (
+                    <Expand className="h-3.5 w-3.5" />
+                  ) : (
+                    <Minimize2 className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden text-sm font-medium sm:inline">
+                    {contextualAction === "broaden"
+                      ? tsc("makeBroader")
+                      : tsc("makeSpecific")}
+                  </span>
+                </Button>
+                <div className="mx-1 h-6 w-px bg-border/70" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <ResultsTranslationControl
             disabled={isLoading}
             triggerVariant="ghost"
@@ -303,7 +338,7 @@ Return a more targeted version of this query.`;
               </motion.div>
             </span>
           </Button>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
