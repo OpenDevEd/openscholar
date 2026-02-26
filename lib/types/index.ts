@@ -4,7 +4,7 @@
  */
 
 // AI Types
-export type { AIProvider } from './ai.types';
+export type { AIProvider, AIKeyMode } from './ai.types';
 
 // Screening Types
 export type {

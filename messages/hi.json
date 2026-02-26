@@ -327,7 +327,11 @@
         "credits": "Azure OpenAI उपयोग आपकी Azure सब्सक्रिप्शन के माध्यम से बिल किया जाता है; यदि आपकी सब्सक्रिप्शन या स्पेंड लिमिट पूरी हो गई है, तो अनुरोध विफल होंगे।",
         "freeModels": "मुफ़्त विकल्प: Azure OpenAI मुफ़्त-टियर API एक्सेस प्रदान नहीं करता; उपयोग प्रति टोकन बिल किया जाता है।"
       }
-    }
+    },
+    "useSmartMode": "स्मार्ट मोड का उपयोग करें",
+    "smartModeDescription": "उपलब्ध होने पर क्रेडिट्स का उपयोग करें, नहीं तो आपकी API key का उपयोग करें",
+    "creditsModeDisabled": "क्रेडिट्स मोड बंद है",
+    "creditsModeDisabledDescription": "इस ऐप के लिए क्रेडिट्स अभी बंद हैं। Smart Mode या Use My API Keys चुनें।"
   },
   "billingPage": {
     "billingAndPlans": "बिलिंग और प्लान्स",
@@ -663,7 +667,8 @@
     "creditsTopupBundleInvalid": "यह क्रेडिट बंडल अमान्य है। रिफ्रेश करके पुनः प्रयास करें।",
     "creditsProductMisconfigured": "क्रेडिट चेकआउट फिलहाल उपलब्ध नहीं है।",
     "openPricing": "प्राइसिंग खोलें",
-    "extractionPlanRequired": "डेटा एक्सट्रैक्शन के लिए Pro प्लान चाहिए। जारी रखने के लिए अपग्रेड करें।"
+    "extractionPlanRequired": "डेटा एक्सट्रैक्शन के लिए Pro प्लान चाहिए। जारी रखने के लिए अपग्रेड करें।",
+    "aiCreditsDisabled": "क्रेडिट्स मोड फिलहाल बंद है।"
   },
   "viewMode": {
     "simpleList": "सरल सूची",

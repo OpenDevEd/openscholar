@@ -3,10 +3,27 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useAction } from 'convex/react'
 import type { FunctionReference } from 'convex/server'
+import { api } from '@/convex/_generated/api'
+import { useAuthReadiness } from '@/components/providers/convex-provider'
+import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
+import { creditsFeatureFlags } from '@/lib/credits/feature-flags'
 import { useSubscriptionState } from '@/lib/auth/use-subscription-state'
-import { AIPlanEntitlementError } from '@/lib/ai/core/errors'
+import {
+  AIApiKeyRequiredError,
+  AICreditsDisabledError,
+  AIInsufficientCreditsError,
+  AIPlanEntitlementError,
+} from '@/lib/ai/core/errors'
 import type { AIConfig } from './executor'
+import {
+  type AIExecutionErrorReason,
+  type CreditsAvailability,
+  resolveErrorCode,
+  resolveExecutionDecision,
+  resolveModeConfigurability,
+  shouldRetrySmartWithLocalFallback,
+} from './mode-routing'
 
 export interface AIHookResult<TParams, TResult> {
   execute: (params: TParams) => Promise<TResult>
@@ -16,12 +33,32 @@ export interface AIHookResult<TParams, TResult> {
   isPlanEntitled: boolean
 }
 
-function useIsConfigured(): boolean {
-  const { apiKeyMode, apiKey } = useAIConfigStore()
-  if (apiKeyMode === 'local') {
-    return !!apiKey
+function mapExecutionError(reason: AIExecutionErrorReason): Error {
+  if (reason === 'api_key_required') {
+    return new AIApiKeyRequiredError()
   }
-  return true
+  if (reason === 'insufficient_credits') {
+    return new AIInsufficientCreditsError()
+  }
+  return new AICreditsDisabledError()
+}
+
+function resolveCreditsAvailability({
+  isAuthenticated,
+  settlement,
+  totalCredits,
+}: {
+  isAuthenticated: boolean
+  settlement: string
+  totalCredits: number | undefined
+}): CreditsAvailability {
+  if (!isAuthenticated) {
+    return 'unavailable'
+  }
+  if (settlement !== 'ready') {
+    return 'unknown'
+  }
+  return (totalCredits ?? 0) > 0 ? 'available' : 'unavailable'
 }
 
 function useLocalConfig(): AIConfig {
@@ -44,7 +81,30 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
 
     const { apiKeyMode } = useAIConfigStore()
     const localConfig = useLocalConfig()
-    const isConfigured = useIsConfigured()
+    const hasApiKey = Boolean(localConfig.apiKey)
+    const { phase } = useAuthReadiness()
+    const isAuthenticated = phase === 'authenticated'
+    const creditsEnabled = creditsFeatureFlags.enabled
+    const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {})
+    const creditsAvailability = useMemo(
+      () =>
+        resolveCreditsAvailability({
+          isAuthenticated,
+          settlement: creditsQuery.settlement,
+          totalCredits: creditsQuery.data?.total,
+        }),
+      [creditsQuery.data?.total, creditsQuery.settlement, isAuthenticated]
+    )
+    const isConfigured = useMemo(
+      () =>
+        resolveModeConfigurability({
+          mode: apiKeyMode,
+          hasApiKey,
+          creditsEnabled,
+          isAuthenticated,
+        }),
+      [apiKeyMode, creditsEnabled, hasApiKey, isAuthenticated]
+    )
     const { resolvedTier, isSettling } = useSubscriptionState()
 
     // A hook is plan-entitled if there's no tier requirement, or the user's tier meets it.
@@ -61,18 +121,52 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
         setError(null)
 
         try {
-          if (apiKeyMode === 'credits') {
+          const decision = resolveExecutionDecision({
+            mode: apiKeyMode,
+            hasApiKey,
+            creditsEnabled,
+            isAuthenticated,
+            creditsAvailability,
+          })
+
+          if (decision.type === 'error') {
+            throw mapExecutionError(decision.reason)
+          }
+
+          const runLocal = async () => {
+            // BYOK path: enforce plan gate client-side before calling the executor
+            if (options?.minPlanTier && !isPlanEntitled) {
+              throw new AIPlanEntitlementError('Go')
+            }
+            return executorFn(params, localConfig)
+          }
+
+          const runCredits = async () => {
             // Server-side path: server enforces the plan gate
             const result = await convexAction(params as any)
             return transformCreditsResult
               ? transformCreditsResult(result, params)
               : result
-          } else {
-            // BYOK path: enforce plan gate client-side before calling the executor
-            if (options?.minPlanTier && !isPlanEntitled) {
-              throw new AIPlanEntitlementError('Go')
+          }
+
+          if (decision.target === 'local') {
+            return await runLocal()
+          }
+
+          try {
+            return await runCredits()
+          } catch (creditsError) {
+            const fallbackCode = resolveErrorCode(creditsError)
+            if (
+              shouldRetrySmartWithLocalFallback({
+                mode: apiKeyMode,
+                hasApiKey,
+                errorCode: fallbackCode,
+              })
+            ) {
+              return await runLocal()
             }
-            return await executorFn(params, localConfig)
+            throw creditsError
           }
         } catch (err) {
           const error = err instanceof Error ? err : new Error(String(err))
@@ -82,7 +176,18 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
           setIsLoading(false)
         }
       },
-      [apiKeyMode, convexAction, localConfig, isPlanEntitled]
+      [
+        apiKeyMode,
+        convexAction,
+        creditsAvailability,
+        creditsEnabled,
+        executorFn,
+        hasApiKey,
+        isAuthenticated,
+        isPlanEntitled,
+        localConfig,
+        transformCreditsResult,
+      ]
     )
 
     return useMemo(

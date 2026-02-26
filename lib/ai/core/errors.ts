@@ -30,6 +30,13 @@ export class AIInsufficientCreditsError extends AIError {
   }
 }
 
+export class AICreditsDisabledError extends AIError {
+  constructor() {
+    super('Credits mode is disabled', 'AI_CREDITS_DISABLED')
+    this.name = 'AICreditsDisabledError'
+  }
+}
+
 export class AIPlanEntitlementError extends AIError {
   constructor(requiredPlan: string = 'Go') {
     super(

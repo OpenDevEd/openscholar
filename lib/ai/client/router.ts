@@ -22,6 +22,7 @@ import type {
   BatchScreeningParams,
   BatchTranslationParams,
 } from './executor'
+import type { AIKeyMode } from '@/lib/types'
 
 // Export types for external consumers
 export type EnhanceSearchQueryParams = EnhanceSearchQueryInput
@@ -34,7 +35,7 @@ export type GenerateBatchScreeningResponsesParams = BatchScreeningParams
 export type GenerateBatchTranslationsParams = BatchTranslationParams
 export type { BatchScreeningResult, BatchTranslationResult }
 
-export type AIKeyMode = 'local' | 'credits'
+export type { AIKeyMode }
 
 export const useEnhanceSearchQuery = createAIHook(
   api.ai.actions.enhanceSearchQuery,

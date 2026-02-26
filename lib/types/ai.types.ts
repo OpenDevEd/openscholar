@@ -9,6 +9,11 @@
 export type AIProvider = 'openai' | 'google' | 'anthropic' | 'openrouter' | 'deepseek' | 'azure';
 
 /**
+ * AI key routing mode selected by the user.
+ */
+export type AIKeyMode = 'smart' | 'local' | 'credits';
+
+/**
  * AI model definition
  */
 export interface AIModel {

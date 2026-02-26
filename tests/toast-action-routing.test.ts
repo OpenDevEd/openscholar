@@ -4,6 +4,7 @@ import { resolveToastActionRoute } from "../lib/toast/action-routing";
 describe("toast action routing", () => {
   it("routes AI settings related codes to /settings/ai", () => {
     expect(resolveToastActionRoute("AI_API_KEY_REQUIRED")).toBe("/settings/ai");
+    expect(resolveToastActionRoute("AI_CREDITS_DISABLED")).toBe("/settings/ai");
     expect(resolveToastActionRoute("AI_VALIDATION_ERROR")).toBe("/settings/ai");
     expect(resolveToastActionRoute("API_KEY_INVALID_FORMAT")).toBe("/settings/ai");
   });

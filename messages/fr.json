@@ -327,7 +327,11 @@
         "credits": "L'utilisation d'Azure OpenAI est facturée via votre abonnement Azure ; si votre abonnement ou votre limite de dépenses est atteint, les demandes échoueront.",
         "freeModels": "Options gratuites : Azure OpenAI n'offre pas d'accès API gratuit ; l'utilisation est facturée par token."
       }
-    }
+    },
+    "useSmartMode": "Utiliser le mode intelligent",
+    "smartModeDescription": "Utilise les crédits s'ils sont disponibles, puis bascule vers votre clé API",
+    "creditsModeDisabled": "Le mode crédits est désactivé",
+    "creditsModeDisabledDescription": "Les crédits sont actuellement désactivés pour cette application. Passez au mode intelligent ou utilisez vos clés API."
   },
   "billingPage": {
     "billingAndPlans": "Facturation et forfaits",
@@ -663,7 +667,8 @@
     "creditsTopupBundleInvalid": "Ce pack de crédits est invalide. Actualisez puis réessayez.",
     "creditsProductMisconfigured": "L'achat de crédits est temporairement indisponible.",
     "openPricing": "Voir les tarifs",
-    "extractionPlanRequired": "L'extraction de données nécessite Pro. Passez à niveau pour continuer."
+    "extractionPlanRequired": "L'extraction de données nécessite Pro. Passez à niveau pour continuer.",
+    "aiCreditsDisabled": "Le mode crédits est actuellement désactivé."
   },
   "viewMode": {
     "simpleList": "Liste simple",

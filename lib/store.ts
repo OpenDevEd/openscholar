@@ -7,6 +7,7 @@ import type {
   ScreeningQuestionEntry,
   ScreeningResponses,
   AIProvider,
+  AIKeyMode,
   SearchResult,
   ViewMode,
   HistorySortBy,
@@ -140,12 +141,12 @@ interface AIConfigState {
   provider: AIProvider
   model: string
   apiKey: string
-  apiKeyMode: 'local' | 'credits'
+  apiKeyMode: AIKeyMode
   providerApiKeys: Record<string, string>
   setProvider: (provider: AIProvider) => void
   setModel: (model: string) => void
   setApiKey: (apiKey: string) => void
-  setApiKeyMode: (mode: 'local' | 'credits') => void
+  setApiKeyMode: (mode: AIKeyMode) => void
   clearConfig: () => void
 }
 
@@ -782,7 +783,7 @@ export const useAIConfigStore = create<AIConfigState>()(
       provider: 'openrouter',
       model: 'openrouter/free',
       apiKey: '',
-      apiKeyMode: 'local',
+      apiKeyMode: 'smart',
       providerApiKeys: {},
       setProvider: (provider) =>
         set((state) => {
@@ -805,11 +806,11 @@ export const useAIConfigStore = create<AIConfigState>()(
           },
         })),
       setApiKeyMode: (apiKeyMode) => set({ apiKeyMode }),
-      clearConfig: () => set({ provider: 'openrouter', model: 'openrouter/free', apiKey: '', apiKeyMode: 'local', providerApiKeys: {} }),
+      clearConfig: () => set({ provider: 'openrouter', model: 'openrouter/free', apiKey: '', apiKeyMode: 'smart', providerApiKeys: {} }),
     }),
     {
       name: 'ai-config-storage',
-      version: 4,
+      version: 5,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {
           return {
@@ -820,13 +821,22 @@ export const useAIConfigStore = create<AIConfigState>()(
         if (version === 1 || version === 2) {
           return {
             ...persistedState,
-            apiKeyMode: 'local',
+            apiKeyMode: 'smart',
           };
         }
         if (version === 3) {
           // Remove budget tracking fields
           const { dollarsUsed, budget, ...rest } = persistedState;
-          return rest;
+          return {
+            ...rest,
+            apiKeyMode: 'smart',
+          };
+        }
+        if (version === 4) {
+          return {
+            ...persistedState,
+            apiKeyMode: 'smart',
+          };
         }
         return persistedState;
       },

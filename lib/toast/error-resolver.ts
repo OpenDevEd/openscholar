@@ -10,6 +10,7 @@ export type ToastErrorMessageKey =
   | "convexInsufficientCredits"
   | "aiUnauthenticated"
   | "aiInsufficientCredits"
+  | "aiCreditsDisabled"
   | "aiPlanEntitlement"
   | "aiApiKeyRequired"
   | "aiProviderError"
@@ -46,6 +47,7 @@ const CONVEX_MESSAGE_SIGNATURES = ["[CONVEX", "Called by client"] as const;
 
 const LEGACY_CODE_MATCHERS: Array<{ pattern: RegExp; code: string }> = [
   { pattern: /\bAIInsufficientCreditsError\b/i, code: "AI_INSUFFICIENT_CREDITS" },
+  { pattern: /\bAICreditsDisabledError\b/i, code: "AI_CREDITS_DISABLED" },
   { pattern: /\bAIUnauthenticatedError\b/i, code: "AI_UNAUTHENTICATED" },
   { pattern: /\bAIPlanEntitlementError\b/i, code: "AI_PLAN_ENTITLEMENT" },
   {
@@ -69,6 +71,7 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   INSUFFICIENT_CREDITS: "convexInsufficientCredits",
   AI_UNAUTHENTICATED: "aiUnauthenticated",
   AI_INSUFFICIENT_CREDITS: "aiInsufficientCredits",
+  AI_CREDITS_DISABLED: "aiCreditsDisabled",
   AI_PLAN_ENTITLEMENT: "aiPlanEntitlement",
   AI_API_KEY_REQUIRED: "aiApiKeyRequired",
   AI_PROVIDER_ERROR: "aiProviderError",
@@ -158,6 +161,15 @@ function readCodeFromData(data: unknown): string | undefined {
   return undefined;
 }
 
+function readCodeFromError(error: unknown): string | undefined {
+  const code = trimToString(asRecord(error)?.code);
+  if (!code) return undefined;
+  if (/^[A-Z0-9_]+$/.test(code)) {
+    return code;
+  }
+  return undefined;
+}
+
 function sanitizeLegacyConvexMessage(message: string): string | undefined {
   const sanitized = message
     .replace(/\[CONVEX[^\]]*\]\s*/gi, "")
@@ -206,12 +218,13 @@ export function isPlanUpgradeCode(code?: string): boolean {
 
 export function resolveToastError(error: unknown, fallback: string): ResolvedToastError {
   const data = readErrorData(error);
+  const recordCode = readCodeFromError(error);
   const dataCode = readCodeFromData(data);
   const rawMessage = readRawMessage(error);
   const dataMessage = readMessageFromData(data);
   const sanitizedMessage = rawMessage ? sanitizeLegacyConvexMessage(rawMessage) : undefined;
   const inferredCode = inferLegacyCode(dataMessage, sanitizedMessage, rawMessage);
-  const code = dataCode ?? inferredCode;
+  const code = dataCode ?? recordCode ?? inferredCode;
   const isConvex = Boolean(dataCode || data !== undefined || hasConvexSignature(rawMessage));
 
   if (isConvex && !code) {

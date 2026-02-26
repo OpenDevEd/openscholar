@@ -1,8 +1,8 @@
 /**
  * Shared batch processing types used by both client-side executor and server-side actions.
  * This eliminates duplication between the two execution modes:
- * - Client executor: Used when apiKeyMode === 'local' (BYOK - user's own API key)
- * - Server action: Used when apiKeyMode === 'credits' (platform credits)
+ * - Client executor: Used when routing resolves to BYOK/local execution.
+ * - Server action: Used when routing resolves to credits execution.
  */
 
 // ═══════════════════════════════════════════════════════════════

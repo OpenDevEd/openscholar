@@ -327,7 +327,11 @@
         "credits": "Azure OpenAIの使用はAzureサブスクリプションを通じて請求されます。サブスクリプションまたは支出制限に達すると、リクエストは失敗します。",
         "freeModels": "無料オプション：Azure OpenAIは無料ティアAPIアクセスを提供していません。使用量はトークンごとに請求されます。"
       }
-    }
+    },
+    "useSmartMode": "スマートモードを使用",
+    "smartModeDescription": "利用可能ならクレジットを使い、なければAPIキーを使用します",
+    "creditsModeDisabled": "クレジットモードは無効です",
+    "creditsModeDisabledDescription": "このアプリでは現在クレジットが無効です。スマートモードかAPIキー利用に切り替えてください。"
   },
   "billingPage": {
     "billingAndPlans": "請求とプラン",
@@ -663,7 +667,8 @@
     "creditsTopupBundleInvalid": "このクレジットバンドルは無効です。更新して再試行してください。",
     "creditsProductMisconfigured": "クレジット購入は現在利用できません。",
     "openPricing": "料金ページを開く",
-    "extractionPlanRequired": "データ抽出はProプランが必要です。続行するにはアップグレードしてください。"
+    "extractionPlanRequired": "データ抽出はProプランが必要です。続行するにはアップグレードしてください。",
+    "aiCreditsDisabled": "クレジットモードは現在無効です。"
   },
   "viewMode": {
     "simpleList": "シンプルリスト",

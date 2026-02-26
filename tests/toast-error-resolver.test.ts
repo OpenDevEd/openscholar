@@ -68,4 +68,17 @@ describe("toast error resolver", () => {
     expect(getToastMessageKeyForErrorCode(resolved.code)).toBe("extractionPlanRequired");
     expect(isPlanUpgradeCode(resolved.code)).toBe(true);
   });
+
+  it("resolves top-level client error.code and maps credits disabled message key", () => {
+    const resolved = resolveToastError(
+      {
+        code: "AI_CREDITS_DISABLED",
+        message: "Credits mode is disabled",
+      },
+      "fallback",
+    );
+
+    expect(resolved.code).toBe("AI_CREDITS_DISABLED");
+    expect(getToastMessageKeyForErrorCode(resolved.code)).toBe("aiCreditsDisabled");
+  });
 });

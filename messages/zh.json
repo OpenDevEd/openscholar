@@ -327,7 +327,11 @@
         "credits": "Azure OpenAI 使用通过您的 Azure 订阅计费；如果您的订阅或支出限额达到上限，请求将失败。",
         "freeModels": "免费选项：Azure OpenAI 不提供免费层级 API 访问；使用按令牌计费。"
       }
-    }
+    },
+    "useSmartMode": "使用智能模式",
+    "smartModeDescription": "优先使用可用积分，否则使用你的 API 密钥",
+    "creditsModeDisabled": "积分模式已禁用",
+    "creditsModeDisabledDescription": "此应用当前已禁用积分。请切换到智能模式或使用我的 API 密钥。"
   },
   "billingPage": {
     "billingAndPlans": "账单和计划",
@@ -663,7 +667,8 @@
     "creditsTopupBundleInvalid": "该积分包无效，请刷新后重试。",
     "creditsProductMisconfigured": "积分购买暂时不可用。",
     "openPricing": "打开定价",
-    "extractionPlanRequired": "数据提取需要 Pro 套餐。请升级后继续。"
+    "extractionPlanRequired": "数据提取需要 Pro 套餐。请升级后继续。",
+    "aiCreditsDisabled": "积分模式当前已禁用。"
   },
   "viewMode": {
     "simpleList": "简单列表",

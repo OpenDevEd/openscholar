@@ -327,7 +327,11 @@
         "credits": "Azure OpenAI usage is billed through your Azure subscription; if your subscription or spending limit is reached, requests will fail.",
         "freeModels": "Free options: Azure OpenAI does not offer free-tier API access; usage is billed per token."
       }
-    }
+    },
+    "useSmartMode": "Use Smart Mode",
+    "smartModeDescription": "Use credits when available, then fall back to your API key",
+    "creditsModeDisabled": "Credits mode is disabled",
+    "creditsModeDisabledDescription": "Credits are currently disabled for this app. Switch to Smart Mode or Use My API Keys."
   },
   "billingPage": {
     "billingAndPlans": "Billing & Plans",
@@ -663,7 +667,8 @@
     "creditsTopupBundleInvalid": "That credit bundle is invalid. Please refresh and retry.",
     "creditsProductMisconfigured": "Credit checkout is temporarily unavailable.",
     "openPricing": "Open Pricing",
-    "extractionPlanRequired": "Data extraction requires Pro. Upgrade to continue."
+    "extractionPlanRequired": "Data extraction requires Pro. Upgrade to continue.",
+    "aiCreditsDisabled": "Credits mode is currently disabled."
   },
   "viewMode": {
     "simpleList": "Simple List",

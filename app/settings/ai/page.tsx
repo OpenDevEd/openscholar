@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Check,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import {
   OpenAIIcon,
@@ -49,7 +50,6 @@ export default function AISettingsPage() {
 
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
-  const isAnonymous = phase === "anonymous";
   const router = useRouter();
 
   const [models, setModels] = useState<AIModel[]>([]);
@@ -84,17 +84,6 @@ export default function AISettingsPage() {
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
   };
-
-  // Reset credits mode only when truly anonymous or credits are disabled.
-  // Avoid flipping mode during transient auth initialization on route changes.
-  useEffect(() => {
-    if (
-      (isAnonymous || !creditsFeatureFlags.enabled) &&
-      apiKeyMode === "credits"
-    ) {
-      setApiKeyMode("local");
-    }
-  }, [isAnonymous, apiKeyMode, setApiKeyMode]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -189,6 +178,7 @@ export default function AISettingsPage() {
     },
   ];
 
+  const isCreditsModeLocked = !creditsFeatureFlags.enabled;
   const isDisabled = apiKeyMode === "credits";
 
   return (
@@ -213,6 +203,38 @@ export default function AISettingsPage() {
           </div>
 
           <div className="space-y-3">
+            <motion.button
+              type="button"
+              onClick={() => {
+                setApiKeyMode("smart");
+              }}
+              whileHover={{ scale: 1.01 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
+                apiKeyMode === "smart"
+                  ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
+                  : "border-border/50 hover:border-border/80 hover:bg-muted/30",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
+                  apiKeyMode === "smart" ? "bg-primary/20" : "bg-muted/50",
+                )}
+              >
+                {apiKeyMode === "smart" && (
+                  <Check className="w-5 h-5 text-primary" />
+                )}
+              </div>
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-base">{t("useSmartMode")}</div>
+                <div className="text-sm text-muted-foreground">
+                  {t("smartModeDescription")}
+                </div>
+              </div>
+            </motion.button>
+
             <motion.button
               type="button"
               onClick={() => {
@@ -245,48 +267,59 @@ export default function AISettingsPage() {
               </div>
             </motion.button>
 
-            {creditsFeatureFlags.enabled && (
-              <motion.button
-                type="button"
-                onClick={() => {
-                  if (!isSignedIn) {
-                    toast.error(t("signInToUseCredits"), undefined, {
-                      label: tc("signIn"),
-                      onClick: () => router.push("/sign-in"),
-                      icon: "arrow-right",
-                    });
-                    return;
-                  }
-                  setApiKeyMode("credits");
-                }}
-                whileHover={isSignedIn ? { scale: 1.01 } : undefined}
-                transition={{ duration: 0.2 }}
+            <motion.button
+              type="button"
+              onClick={() => {
+                if (isCreditsModeLocked) {
+                  toast.error(
+                    t("creditsModeDisabled"),
+                    t("creditsModeDisabledDescription"),
+                  );
+                  return;
+                }
+                if (!isSignedIn) {
+                  toast.error(t("signInToUseCredits"), undefined, {
+                    label: tc("signIn"),
+                    onClick: () => router.push("/sign-in"),
+                    icon: "arrow-right",
+                  });
+                  return;
+                }
+                setApiKeyMode("credits");
+              }}
+              whileHover={
+                isSignedIn && !isCreditsModeLocked ? { scale: 1.01 } : undefined
+              }
+              transition={{ duration: 0.2 }}
+              className={cn(
+                "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
+                apiKeyMode === "credits"
+                  ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
+                  : "border-border/50 hover:border-border/80 hover:bg-muted/30",
+                (!isSignedIn || isCreditsModeLocked) && "opacity-60",
+              )}
+            >
+              <div
                 className={cn(
-                  "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-200",
-                  apiKeyMode === "credits"
-                    ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5"
-                    : "border-border/50 hover:border-border/80 hover:bg-muted/30",
-                  !isSignedIn && "opacity-60",
+                  "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
+                  apiKeyMode === "credits" ? "bg-primary/20" : "bg-muted/50",
                 )}
               >
-                <div
-                  className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center transition-colors",
-                    apiKeyMode === "credits" ? "bg-primary/20" : "bg-muted/50",
-                  )}
-                >
-                  {apiKeyMode === "credits" && (
-                    <Check className="w-5 h-5 text-primary" />
-                  )}
+                {apiKeyMode === "credits" ? (
+                  <Check className="w-5 h-5 text-primary" />
+                ) : isCreditsModeLocked ? (
+                  <Lock className="w-4 h-4 text-muted-foreground" />
+                ) : null}
+              </div>
+              <div className="flex-1 text-left">
+                <div className="font-semibold text-base">{t("useCredits")}</div>
+                <div className="text-sm text-muted-foreground">
+                  {isCreditsModeLocked
+                    ? t("creditsModeDisabledDescription")
+                    : t("accountBalance")}
                 </div>
-                <div className="flex-1 text-left">
-                  <div className="font-semibold text-base">{t("useCredits")}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {t("accountBalance")}
-                  </div>
-                </div>
-              </motion.button>
-            )}
+              </div>
+            </motion.button>
           </div>
         </div>
 
@@ -307,7 +340,9 @@ export default function AISettingsPage() {
               <div className="rounded-xl border border-border/50 bg-muted/30 p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-muted-foreground">
-                  {t("creditsInfoBanner")}
+                  {isCreditsModeLocked
+                    ? t("creditsModeDisabledDescription")
+                    : t("creditsInfoBanner")}
                 </div>
               </div>
             </motion.div>
