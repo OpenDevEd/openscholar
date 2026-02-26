@@ -13,6 +13,7 @@ OpenScholar.ai does not currently set any cookies that are required for the webs
 | **Name** | **Purpose** | **Expires** |
 | --- | --- | --- |
 | ph_phc_[token]_posthog | We use PostHog analytics software to learn how people interact with our website. This helps us create better reports and enhance user experience. The cookie contains an anonymous device identifier, your browsing session details, and your initial landing page. All data is collected anonymously - we never identify you personally. OpenScholar.ai doesn't employ third-party tracking technologies or sell your information to advertising companies. | 365 days |
+| _ga, _ga_* | We use Google Analytics (GA4) to understand traffic patterns, page views, and how visitors use our site. These cookies store an anonymous identifier and help us improve the product. Data is aggregated and we do not identify you personally or sell your information. | Up to 2 years |
 
 ### What data is contained in the PostHog cookie?
 
@@ -76,14 +77,14 @@ For other browsers, check the support documentation provided by your browser's d
 
 ### Removing the OpenScholar.ai cookie from your device
 
-You can remove our analytics cookie whenever you like using your browser's settings:
+You can remove our analytics cookies whenever you like using your browser's settings:
 
 **Google Chrome:**
 1. Select the three-dot menu (⋮) in the upper right
 2. Navigate to Settings → Privacy and security → Cookies and other site data
 3. Select "See all cookies and site data"
 4. Type "openscholar.ai" in the search box
-5. Click the delete icon next to the PostHog cookie
+5. Click the delete icon next to the PostHog and Google Analytics cookies
 
 **Mozilla Firefox:**
 1. Open the menu (≡) and choose Settings
@@ -121,4 +122,4 @@ For questions about our cookie practices, please reach out to us:
 
 **Email**: contact@opendeved.net
 
-**Last updated**: February 13, 2026
+**Last updated**: February 26, 2026

@@ -16,6 +16,7 @@ import {
   getStoredConsent,
   storeConsent,
   hasConsentDecision,
+  isAnalyticsEssential,
   CONSENT_UPDATED_EVENT,
 } from "@/lib/consent-storage";
 import { PolicyLinks } from "@/components/legal-links";
@@ -72,6 +73,7 @@ export function CookieConsentBanner() {
   const shouldShowBanner = useCallback(() => {
     if (typeof window === "undefined") return false;
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return false;
+    if (isAnalyticsEssential()) return false;
 
     const stored = getStoredConsent();
     if (stored) return false;
@@ -213,7 +215,7 @@ export function CookiePreferencesTrigger() {
     window.dispatchEvent(new CustomEvent(COOKIE_PREFERENCES_EVENT));
   };
 
-  if (!mounted || !hasDecision) return null;
+  if (!mounted || !hasDecision || isAnalyticsEssential()) return null;
 
   return (
     <button

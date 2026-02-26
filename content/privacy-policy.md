@@ -113,6 +113,7 @@ For more information on our use of legitimate interests as a lawful basis, you c
   * From your interactions with our site (pages visited, clicks, time spent)
 
 * **From PostHog analytics** – our website analytics platform that collects pseudonymous usage data on our behalf
+  * **From Google Analytics (GA4)** – our website analytics service that collects traffic and usage data when you accept analytics cookies
 
 # **How long we keep information**
 
@@ -121,6 +122,7 @@ For more information on our use of legitimate interests as a lawful basis, you c
 | **Email correspondence**             | 3 years from the date of last communication | To respond to follow-up queries, maintain communication history, and resolve disputes         |
 | **Support ticket records**           | 3 years from the date of resolution         | To reference similar issues and improve support quality                                       |
 | **Website analytics data** (PostHog) | 1 year from the date of collection          | To analyse trends, identify long-term patterns, and improve the product                       |
+| **Website analytics data** (Google Analytics) | Up to 2 years from the date of collection | To analyse traffic patterns, page views, and improve the product                              |
 | **Session replays** (PostHog)        | 30 days from the date of recording          | To debug technical issues, understand user experience problems, and improve website usability |
 | **Analytics cookies**                | 365 days from the last visit                | To track returning visitors and maintain session continuity                                   |
 | **Survey responses**                 | 1 year from the date of submission          | To improve the product and track feedback trends over time                                    |
@@ -144,6 +146,14 @@ This data processor does the following activities for us:
 * Hosts survey responses
 
 **Location:** Germany (EU hosting)
+
+**Google LLC (Google Analytics)**
+
+This data processor does the following activities for us:
+* Collects and stores website traffic and usage data (page views, sessions, referrers)
+* Processes aggregated analytics and generates reports
+
+**Location:** United States (data may be transferred outside the UK; Google complies with applicable data transfer mechanisms)
 
 **Vercel Inc.**
 
@@ -198,7 +208,7 @@ We implement appropriate technical and organisational measures to protect your p
 We use cookies to collect some of the analytics information described in this privacy notice. For detailed information about the cookies we use, please see our [Cookie Policy](/cookie-policy).
 
 Key points:
-* We use one analytics cookie from PostHog (stored for 365 days)
+* We use analytics cookies from PostHog (365 days) and Google Analytics (up to 2 years)
 * No third-party advertising or tracking cookies
 * You can accept or decline cookies via our cookie consent banner
 * You can change your preferences anytime via "Cookie Settings" in the footer

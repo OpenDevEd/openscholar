@@ -42,3 +42,19 @@ export function storeConsent(choice: "granted" | "denied"): void {
 export function hasConsentDecision(): boolean {
   return getStoredConsent() !== null;
 }
+
+/** Returns true when NEXT_PUBLIC_ANALYTICS_ESSENTIAL=true; analytics collect regardless of consent. */
+export function isAnalyticsEssential(): boolean {
+  return process.env.NEXT_PUBLIC_ANALYTICS_ESSENTIAL === "true";
+}
+
+/** Returns true if user has granted analytics cookie consent. */
+export function hasAnalyticsConsent(): boolean {
+  const record = getStoredConsent();
+  return record?.choice === "granted";
+}
+
+/** Returns true when analytics should run (essential mode or user consented). */
+export function shouldCollectAnalytics(): boolean {
+  return isAnalyticsEssential() || hasAnalyticsConsent();
+}
