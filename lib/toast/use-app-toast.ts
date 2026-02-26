@@ -7,6 +7,7 @@ import { formatEntityName, formatEntityWithCount, formatOptionalLabel } from "./
 import {
   getToastMessageKeyForErrorCode,
   isInsufficientCreditsCode,
+  isPlanUpgradeCode,
   resolveToastError,
 } from "./error-resolver";
 
@@ -16,6 +17,10 @@ function openAISettings() {
 
 function openBillingSettings() {
   window.location.href = "/settings/billing";
+}
+
+function openPricing() {
+  window.location.href = "/pricing";
 }
 
 function getStatusCode(message: string): string | null {
@@ -216,7 +221,20 @@ export function useAppToast() {
       deleted: () => showStyledToast("success", t("jobDeleted")),
       deleteFailed: () => showStyledToast("error", t("jobDeleteFailed")),
       created: () => showStyledToast("success", t("jobCreated")),
-      createFailed: () => showStyledToast("error", t("jobCreateFailed")),
+      createFailed: (error?: unknown) => {
+        const resolved = resolveErrorDetails(error, t("unexpectedError"));
+        const action = isPlanUpgradeCode(resolved.code)
+          ? {
+              label: t("openPricing"),
+              onClick: openPricing,
+              icon: "arrow-right" as const,
+            }
+          : undefined;
+        showStyledToast("error", t("jobCreateFailed"), {
+          description: resolved.message,
+          action,
+        });
+      },
       duplicated: () => showStyledToast("success", t("jobDuplicated")),
       duplicateFailed: () => showStyledToast("error", t("jobDuplicateFailed")),
     },

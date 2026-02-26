@@ -553,7 +553,28 @@
     "disagreementAnswer": "उत्तर:",
     "disagreementOpenPaper": "पेपर खोलें",
     "disagreementShowMore": "और दिखाएं",
-    "searchPlaceholder": "खोजें..."
+    "searchPlaceholder": "खोजें...",
+    "planGateBadge": "Pro फीचर",
+    "planGateTitle": "रिसर्च पेपर्स को मिनटों में संरचित डेटा में बदलें",
+    "planGateDescription": "डेटा एक्सट्रैक्शन आपके चुने हुए पेपर्स पढ़कर एकसमान, समीक्षा-तैयार फ़ील्ड बनाता है ताकि स्टडी तुलना तेज़ हो सके।",
+    "planGatePrimaryCta": "Pro पर अपग्रेड करें",
+    "planGateHowItWorksTitle": "डेटा एक्सट्रैक्शन कैसे काम करता है",
+    "planGateHowItWorksDescription": "अपने सवाल एक बार सेट करें, फिर सभी चुने हुए पेपर्स पर एक्सट्रैक्शन चलाएँ।",
+    "planGateStep1Title": "स्रोत चुनें",
+    "planGateStep1Description": "सर्च हिस्ट्री, Zotero या मैन्युअल अपलोड से पेपर चुनें।",
+    "planGateStep2Title": "फ़ील्ड तय करें",
+    "planGateStep2Description": "मॉडल को स्पष्ट बताएँ कि हर पेपर से क्या निकालना है।",
+    "planGateStep3Title": "आउटपुट समीक्षा करें",
+    "planGateStep3Description": "कन्फिडेंस संदर्भ के साथ साफ़, संरचित परिणाम एक्सपोर्ट करें।",
+    "planGateWhatYouCanExtractTitle": "आप क्या एक्सट्रैक्ट कर सकते हैं",
+    "planGateWhatYouCanExtractDescription": "स्क्रीनिंग, सिंथेसिस और रिपोर्टिंग के लिए जरूरी स्टडी डिटेल्स कैप्चर करें।",
+    "planGateCardOutcomesTitle": "आउटकम और इफ़ेक्ट साइज़",
+    "planGateCardOutcomesDescription": "मुख्य आउटकम, माप और रिपोर्टेड प्रभाव ट्रैक करें।",
+    "planGateCardMethodsTitle": "मेथड्स और इंटरवेंशन",
+    "planGateCardMethodsDescription": "इंटरवेंशन डिटेल्स, कम्पेरेटर और स्टडी डिज़ाइन निकालें।",
+    "planGateCardPopulationTitle": "पॉपुलेशन और सेटिंग",
+    "planGateCardPopulationDescription": "सैंपल साइज़, डेमोग्राफिक्स और स्टडी संदर्भ कैप्चर करें।",
+    "planGateProNote": "डेटा एक्सट्रैक्शन Pro और Enterprise प्लान में उपलब्ध है।"
   },
   "toast": {
     "unexpectedError": "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें।",
@@ -668,7 +689,9 @@
     "billingCancelRequiresPortal": "फ्री प्लान में बदलने के लिए बिलिंग पोर्टल का उपयोग करें।",
     "billingNoActiveSubscription": "इस खाते के लिए कोई सक्रिय सदस्यता नहीं मिली।",
     "creditsTopupBundleInvalid": "यह क्रेडिट बंडल अमान्य है। रिफ्रेश करके पुनः प्रयास करें।",
-    "creditsProductMisconfigured": "क्रेडिट चेकआउट फिलहाल उपलब्ध नहीं है।"
+    "creditsProductMisconfigured": "क्रेडिट चेकआउट फिलहाल उपलब्ध नहीं है।",
+    "openPricing": "प्राइसिंग खोलें",
+    "extractionPlanRequired": "डेटा एक्सट्रैक्शन के लिए Pro प्लान चाहिए। जारी रखने के लिए अपग्रेड करें।"
   },
   "viewMode": {
     "simpleList": "सरल सूची",

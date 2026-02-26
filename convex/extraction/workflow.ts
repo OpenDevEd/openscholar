@@ -7,7 +7,7 @@ import { workflow } from "../workflow";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { pdfProcessingPool } from "../workpool";
-import { getProcessableFlags, isPdfExtractionEnabled } from "./content";
+import { getProcessableFlags } from "./content";
 import { buildDedupeKey } from "./dedupe";
 
 import { createError } from "../lib/errors";
@@ -167,7 +167,10 @@ export const runExtractionWorkflow = workflow.define({
     });
 
     console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
-    const pdfEnabled = isPdfExtractionEnabled();
+    const pdfEnabled = await step.runQuery(
+      internal.extraction.queries.getPdfExtractionEnabledInternal,
+      {}
+    );
 
     // Enqueue each paper for processing
     let enqueuedCount = 0;
@@ -176,6 +179,7 @@ export const runExtractionWorkflow = workflow.define({
         pdfUrl: paper.pdfUrl,
         storageId: paper.storageId,
         abstract: paper.abstract,
+        pdfEnabled,
       });
       const isProcessable = paper.processable !== false && computedProcessable;
 

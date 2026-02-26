@@ -4,7 +4,7 @@
  */
 
 import { query, internalQuery } from "../_generated/server";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
@@ -168,6 +168,8 @@ async function loadJobPapersAndResults(ctx: any, jobId: Id<"extractionJobs">) {
 
   return { questions, papers, resultsByPaper };
 }
+
+const paginatedAnyResultValidator = paginationResultValidator(v.any());
 
 // Get user's extraction jobs (public API)
 export const getMyJobs = query({
@@ -358,6 +360,14 @@ export const getPaperResultsInternal = internalQuery({
   },
 });
 
+export const getPdfExtractionEnabledInternal = internalQuery({
+  args: {},
+  returns: v.boolean(),
+  handler: async () => {
+    return isPdfExtractionEnabled();
+  },
+});
+
 export const getPaperPdfUrl = query({
   args: { paperId: v.id("extractionPapers") },
   returns: v.union(
@@ -460,19 +470,11 @@ export const getJobResultsPaginated = query({
   returns: v.union(
     v.object({
       status: v.literal("ok"),
-      page: v.array(v.any()),
-      isDone: v.boolean(),
-      continueCursor: v.string(),
-      questions: v.array(v.any()),
-      job: v.any(),
+      ...paginatedAnyResultValidator.fields,
     }),
     v.object({
       status: v.union(v.literal("unauthenticated"), v.literal("no_access")),
-      page: v.array(v.any()),
-      isDone: v.boolean(),
-      continueCursor: v.string(),
-      questions: v.array(v.any()),
-      job: v.any(),
+      ...paginatedAnyResultValidator.fields,
     })
   ),
   handler: async (ctx, args) => {
@@ -484,17 +486,10 @@ export const getJobResultsPaginated = query({
         page: [],
         isDone: true,
         continueCursor: "",
-        questions: [],
-        job: null as any,
+        splitCursor: null,
+        pageStatus: null,
       };
     }
-    const { job } = access;
-
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .order("asc")
-      .collect();
 
     const result = await ctx.db
       .query("extractionPapers")
@@ -526,8 +521,6 @@ export const getJobResultsPaginated = query({
       status: "ok" as const,
       ...result,
       page: papersWithResults,
-      questions,
-      job,
     };
   },
 });
@@ -679,8 +672,19 @@ export const getQuestionInsights = query({
       avgConfidence: v.number(),
       avgEffectiveConfidence: v.number(),
       insightMode: v.string(),
+      confidenceBuckets: v.object({
+        high: v.number(),
+        medium: v.number(),
+        low: v.number(),
+        unknown: v.number(),
+      }),
       citationStatusMix: v.any(),
-      reviewStateMix: v.optional(v.any()),
+      reviewed: v.object({
+        accepted: v.number(),
+        rejected: v.number(),
+        needsFollowup: v.number(),
+        unreviewed: v.number(),
+      }),
       topAnswers: v.array(v.any()),
       rawAnswerDistribution: v.array(v.any()),
       entityDistribution: v.optional(v.array(v.any())),

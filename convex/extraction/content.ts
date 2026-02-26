@@ -8,9 +8,11 @@ export function getProcessableFlags(args: {
   pdfUrl?: string | null;
   storageId?: string | null;
   abstract?: string | null;
+  pdfEnabled?: boolean;
 }) {
+  const pdfEnabled = args.pdfEnabled ?? isPdfExtractionEnabled();
   const hasPdfUrl =
-    isPdfExtractionEnabled() && (!!args.pdfUrl || !!args.storageId);
+    pdfEnabled && (!!args.pdfUrl || !!args.storageId);
   const hasAbstract = !!args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH;
   return {
     hasPdfUrl,

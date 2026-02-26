@@ -553,7 +553,28 @@
     "disagreementAnswer": "答案：",
     "disagreementOpenPaper": "打开论文",
     "disagreementShowMore": "显示更多",
-    "searchPlaceholder": "搜索..."
+    "searchPlaceholder": "搜索...",
+    "planGateBadge": "Pro 功能",
+    "planGateTitle": "几分钟内把论文转成结构化数据",
+    "planGateDescription": "数据提取会读取你选择的论文，生成一致、可复核的字段，帮助团队更快比较研究。",
+    "planGatePrimaryCta": "升级到 Pro",
+    "planGateHowItWorksTitle": "数据提取如何工作",
+    "planGateHowItWorksDescription": "问题设置一次，即可在所有已选论文上批量运行提取。",
+    "planGateStep1Title": "选择来源",
+    "planGateStep1Description": "从搜索历史、Zotero 或手动上传中选择论文。",
+    "planGateStep2Title": "定义字段",
+    "planGateStep2Description": "明确告诉模型每篇论文要提取哪些信息。",
+    "planGateStep3Title": "检查结果",
+    "planGateStep3Description": "导出干净、结构化且带置信度上下文的结果。",
+    "planGateWhatYouCanExtractTitle": "可提取内容",
+    "planGateWhatYouCanExtractDescription": "抓取筛选、综合与报告所需的关键研究信息。",
+    "planGateCardOutcomesTitle": "结局指标与效应量",
+    "planGateCardOutcomesDescription": "跟踪主要结局、测量指标和报告的影响。",
+    "planGateCardMethodsTitle": "方法与干预",
+    "planGateCardMethodsDescription": "提取干预细节、对照组和研究设计。",
+    "planGateCardPopulationTitle": "人群与研究场景",
+    "planGateCardPopulationDescription": "获取样本量、人口学特征和研究背景。",
+    "planGateProNote": "数据提取功能仅在 Pro 和 Enterprise 套餐可用。"
   },
   "toast": {
     "unexpectedError": "发生意外错误。请重试。",
@@ -668,7 +689,9 @@
     "billingCancelRequiresPortal": "请在账单门户中切换到免费套餐。",
     "billingNoActiveSubscription": "该账户未找到有效订阅。",
     "creditsTopupBundleInvalid": "该积分包无效，请刷新后重试。",
-    "creditsProductMisconfigured": "积分购买暂时不可用。"
+    "creditsProductMisconfigured": "积分购买暂时不可用。",
+    "openPricing": "打开定价",
+    "extractionPlanRequired": "数据提取需要 Pro 套餐。请升级后继续。"
   },
   "viewMode": {
     "simpleList": "简单列表",

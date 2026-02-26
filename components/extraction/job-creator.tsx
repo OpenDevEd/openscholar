@@ -166,8 +166,7 @@ export function JobCreator() {
       clearDraftJob();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
-      console.error("Failed to start extraction:", error);
-      toast.job.createFailed();
+      toast.job.createFailed(error);
     } finally {
       setIsSubmitting(false);
     }

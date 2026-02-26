@@ -1,10 +1,65 @@
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
-import { useUIStore, useRatingsStore } from './store';
+import { useUIStore, useRatingsStore, useSearchHistoryStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { validateAndExpandKeywordsSilently } from './keyword-validation';
-import type { SearchField, SearchFilters } from './types';
+import type { SearchField, SearchFilters, ScreeningResponses } from './types';
+
+export type DownloadSearchState = {
+  query: string;
+  field: SearchField;
+  dateRange?: DateRange;
+  yearRange?: [number, number];
+  searchId?: string;
+};
+
+type ItemScreeningResults = Record<string, boolean | null>;
+
+function getScreeningResponsesForSearch(searchState?: DownloadSearchState): ScreeningResponses {
+  if (!searchState?.searchId) {
+    return {};
+  }
+
+  const searchResult = useSearchHistoryStore
+    .getState()
+    .getSearchResult(searchState.searchId);
+
+  return searchResult?.screeningResponses || {};
+}
+
+function getItemScreeningResults(
+  itemId: string,
+  screeningResponses: ScreeningResponses
+): ItemScreeningResults | undefined {
+  const screeningResults = screeningResponses[itemId];
+  if (!screeningResults || Object.keys(screeningResults).length === 0) {
+    return undefined;
+  }
+
+  return screeningResults;
+}
+
+function withScreeningResults<T extends Record<string, unknown>>(
+  payload: T,
+  itemId: string,
+  screeningResponses: ScreeningResponses,
+  format: 'json' | 'csv'
+): T & { screening_results?: ItemScreeningResults } {
+  if (format !== 'json') {
+    return payload;
+  }
+
+  const screeningResults = getItemScreeningResults(itemId, screeningResponses);
+  if (!screeningResults) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    screening_results: screeningResults,
+  };
+}
 
 export const createSearchMetadata = (
   query: string,
@@ -52,16 +107,24 @@ export const createSearchMetadata = (
   };
 };
 
-export const getEssentialInfo = (item: any) => {
-  const { ratings } = useRatingsStore.getState();
-  return {
+export const getEssentialInfo = (
+  item: any,
+  ratings: Record<string, number>,
+  screeningResponses: ScreeningResponses,
+  format: 'json' | 'csv'
+) => {
+  const essentialInfo = {
     id: item.id,
     title: item.title,
     authors: item.authorships?.map((a: { author: { display_name: string } }) => a.author.display_name).join(', ') || '',
     year: item.publication_year,
     abstract: item.abstract || '',
-    rating: getRatingOrNull(ratings, item.id)
+    rating: getRatingOrNull(ratings, item.id),
+    ...(item.doi ? { doi: item.doi } : {}),
+    ...(item.open_access?.oa_url ? { pdf_url: item.open_access.oa_url } : {}),
   };
+
+  return withScreeningResults(essentialInfo, item.id, screeningResponses, format);
 };
 
 export type DownloadToastLabels = {
@@ -78,12 +141,13 @@ export const downloadItem = async (
   item: any,
   format: 'json' | 'csv',
   toast: ToastApi,
-  searchState?: any,
+  searchState?: DownloadSearchState,
   labels?: DownloadToastLabels
 ) => {
   const formatLabel = labels?.item ?? 'item';
   try {
     const { ratings } = useRatingsStore.getState();
+    const screeningResponses = getScreeningResponsesForSearch(searchState);
     
     if (!searchState) {
       toast.io.downloadFailed(formatLabel);
@@ -94,10 +158,15 @@ export const downloadItem = async (
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const filename = generateFilename(item.title, '', format);
-    const itemWithRating = {
-      ...item,
-      rating: getRatingOrNull(ratings, item.id)
-    };
+    const itemWithRating = withScreeningResults(
+      {
+        ...item,
+        rating: getRatingOrNull(ratings, item.id)
+      },
+      item.id,
+      screeningResponses,
+      format
+    );
     const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange);
     await downloadWithMetadata(itemWithRating, filename, format, metadata);
   } catch (error) {
@@ -110,11 +179,14 @@ export const downloadEssentialItem = async (
   item: any,
   format: 'json' | 'csv',
   toast: ToastApi,
-  searchState?: any,
+  searchState?: DownloadSearchState,
   labels?: DownloadToastLabels
 ) => {
   const formatLabel = labels?.essentialItem ?? 'essential item';
   try {
+    const { ratings } = useRatingsStore.getState();
+    const screeningResponses = getScreeningResponsesForSearch(searchState);
+
     if (!searchState) {
       toast.io.downloadFailed(formatLabel);
       return;
@@ -123,7 +195,7 @@ export const downloadEssentialItem = async (
     // Expand keywords for export
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
-    const essentialInfo = getEssentialInfo(item);
+    const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
     const filename = generateFilename(item.title, 'essential', format);
     const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange);
     await downloadWithMetadata(essentialInfo, filename, format, metadata);
@@ -137,13 +209,14 @@ export const downloadAll = async (
   format: 'json' | 'csv',
   toast: ToastApi,
   onlyEssential: boolean = false,
-  searchState?: any,
+  searchState?: DownloadSearchState,
   results?: any[],
   labels?: DownloadToastLabels
 ) => {
   const formatLabel = labels?.results ?? 'results';
   try {
     const { ratings } = useRatingsStore.getState();
+    const screeningResponses = getScreeningResponsesForSearch(searchState);
     
     if (!searchState || !results) {
       toast.io.downloadFailed(formatLabel);
@@ -155,11 +228,18 @@ export const downloadAll = async (
     
     const filename = generateFilename('search_results', onlyEssential ? 'essential' : '', format);
     const dataToDownload = onlyEssential 
-      ? results.map(getEssentialInfo)
-      : results.map(item => ({
-          ...item,
-          rating: getRatingOrNull(ratings, item.id)
-        }));
+      ? results.map((item) => getEssentialInfo(item, ratings, screeningResponses, format))
+      : results.map(item =>
+          withScreeningResults(
+            {
+              ...item,
+              rating: getRatingOrNull(ratings, item.id)
+            },
+            item.id,
+            screeningResponses,
+            format
+          )
+        );
     
     const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange);
     await downloadWithMetadata(dataToDownload, filename, format, metadata);

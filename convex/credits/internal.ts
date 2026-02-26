@@ -1,10 +1,11 @@
 import { internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { FREE_CREDIT_CAP } from "../lib/constants";
 import { ConvexError } from "convex/values";
 import { internal, components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
+import { resolveEffectivePlan } from "../../lib/billing/entitlements";
+import { applyTierFreeCreditCap } from "../lib/freeCredits";
 import {
   getCreditGrantRetryDelayMs,
   shouldRetryCreditGrant,
@@ -464,7 +465,7 @@ export const reconcileInvoiceCreditGrant = internalMutation({
 
 /**
  * Grant monthly credits for subscription.
- * Free credits are capped at FREE_CREDIT_CAP.
+ * Free credits are capped per subscription tier.
  */
 export const grantMonthlyCredits = internalMutation({
   args: {
@@ -739,10 +740,13 @@ export const grantMonthlyCredits = internalMutation({
     }
 
     const now = Date.now();
-    const currentFree = credits.freeBalance;
-    const creditsToGrant = subscription.creditsPerMonth;
-    const newFreeBalance = Math.min(currentFree + creditsToGrant, FREE_CREDIT_CAP);
-    const actualGranted = newFreeBalance - currentFree;
+    const cappedGrant = applyTierFreeCreditCap({
+      plan: subscription.plan,
+      currentFreeBalance: credits.freeBalance,
+      amountToAdd: subscription.creditsPerMonth,
+    });
+    const newFreeBalance = cappedGrant.newFreeBalance;
+    const actualGranted = cappedGrant.actualAdded;
 
     if (actualGranted <= 0) {
       await markEventProcessed(ctx, {
@@ -771,7 +775,7 @@ export const grantMonthlyCredits = internalMutation({
       creditType: "free",
       amount: actualGranted,
       balanceAfter: newFreeBalance,
-      description: `Monthly credit grant (${subscription.plan} plan) - ${actualGranted}/${creditsToGrant} credits granted`,
+      description: `Monthly credit grant (${subscription.plan} plan) - ${actualGranted}/${subscription.creditsPerMonth} credits granted`,
       stripeInvoiceId: args.stripeInvoiceId,
       createdAt: now,
     });
@@ -1174,8 +1178,21 @@ export const addCredits = internalMutation({
     let actualAdded = args.amount;
 
     if (args.creditType === "free") {
-      newFreeBalance = Math.min(newFreeBalance + args.amount, FREE_CREDIT_CAP);
-      actualAdded = newFreeBalance - credits.freeBalance;
+      const subscriptions = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .order("desc")
+        .collect();
+      const subscription = selectCanonicalSubscription(subscriptions);
+      const effectivePlan = resolveEffectivePlan(subscription);
+
+      const cappedAddition = applyTierFreeCreditCap({
+        plan: effectivePlan,
+        currentFreeBalance: credits.freeBalance,
+        amountToAdd: args.amount,
+      });
+      newFreeBalance = cappedAddition.newFreeBalance;
+      actualAdded = cappedAddition.actualAdded;
     } else {
       newPaidBalance += args.amount;
     }

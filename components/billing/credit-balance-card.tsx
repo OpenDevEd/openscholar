@@ -10,7 +10,7 @@ interface CreditBalanceCardProps {
   paidBalance: number;
   totalBalance: number;
   creditsPerMonth?: number;
-  freeCreditCap?: number;
+  freeCreditCap: number;
   className?: string;
 }
 
@@ -19,20 +19,16 @@ export function CreditBalanceCard({
   paidBalance,
   totalBalance,
   creditsPerMonth = 0,
-  freeCreditCap = 10000,
+  freeCreditCap,
   className,
 }: CreditBalanceCardProps) {
   const tc = useTranslations("common");
   const t = useTranslations("billingPage");
   const format = useFormatter();
 
-  // Calculate free credit usage percentage (for progress bar)
-  const freeCreditsPercentage = creditsPerMonth > 0 
-    ? Math.min((freeBalance / creditsPerMonth) * 100, 100)
-    : 0;
-
   // Calculate how close to the cap
-  const freeCapPercentage = (freeBalance / freeCreditCap) * 100;
+  const freeCapPercentage =
+    freeCreditCap > 0 ? Math.min((freeBalance / freeCreditCap) * 100, 100) : 0;
 
   return (
     <div className={cn("space-y-4", className)}>

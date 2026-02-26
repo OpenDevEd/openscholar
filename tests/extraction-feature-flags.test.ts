@@ -74,4 +74,40 @@ describe("extraction PDF feature flag", () => {
       processable: true,
     });
   });
+
+  it("allows overriding pdfEnabled to true even when env disables PDF extraction", async () => {
+    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
+
+    const content = await loadExtractionContent();
+
+    expect(
+      content.getProcessableFlags({
+        pdfUrl: "https://example.org/paper.pdf",
+        abstract: undefined,
+        pdfEnabled: true,
+      })
+    ).toEqual({
+      hasPdfUrl: true,
+      hasAbstract: false,
+      processable: true,
+    });
+  });
+
+  it("allows overriding pdfEnabled to false even when env enables PDF extraction", async () => {
+    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "true";
+
+    const content = await loadExtractionContent();
+
+    expect(
+      content.getProcessableFlags({
+        pdfUrl: "https://example.org/paper.pdf",
+        abstract: undefined,
+        pdfEnabled: false,
+      })
+    ).toEqual({
+      hasPdfUrl: false,
+      hasAbstract: false,
+      processable: false,
+    });
+  });
 });

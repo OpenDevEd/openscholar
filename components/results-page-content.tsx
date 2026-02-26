@@ -75,8 +75,9 @@ export default function ResultsPageContent({
       field: filters.searchField,
       dateRange: filters.dateRange,
       yearRange: filters.yearRange,
+      searchId,
     };
-  }, [query, toSearchFilters]);
+  }, [query, searchId, toSearchFilters]);
 
   const handleBackToHome = () => {
     router.push("/");

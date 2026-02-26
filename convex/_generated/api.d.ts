@@ -60,6 +60,7 @@ import type * as lib_creditTopups from "../lib/creditTopups.js";
 import type * as lib_debug_gate from "../lib/debug_gate.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_featureFlags from "../lib/featureFlags.js";
+import type * as lib_freeCredits from "../lib/freeCredits.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_stripeWebhookSecret from "../lib/stripeWebhookSecret.js";
@@ -148,6 +149,7 @@ declare const fullApi: ApiFromModules<{
   "lib/debug_gate": typeof lib_debug_gate;
   "lib/errors": typeof lib_errors;
   "lib/featureFlags": typeof lib_featureFlags;
+  "lib/freeCredits": typeof lib_freeCredits;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/stripeWebhookSecret": typeof lib_stripeWebhookSecret;

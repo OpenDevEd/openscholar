@@ -1,6 +1,3 @@
-/** Cap on freeBalance accumulation (applies to subscription grants + admin promos). */
-export const FREE_CREDIT_CAP = 50_000;
-
 /**
  * One-time credit grant issued to every new user on account creation.
  * Lets free users experience server-side AI (including extraction) before committing to a plan.
@@ -14,10 +11,10 @@ export const FREE_SIGNUP_CREDIT_GRANT = 1_000;
 export const AI_COST_MARKUP = 1.3;
 
 export const PLAN_CONFIG = {
-  free: { creditsPerMonth: 0, tier: 0 },
-  go: { creditsPerMonth: 3_000, tier: 10 },
-  pro: { creditsPerMonth: 15_000, tier: 20 },
-  enterprise: { creditsPerMonth: 150_000, tier: 30 },
+  free: { creditsPerMonth: 0, tier: 0, freeCreditCap: FREE_SIGNUP_CREDIT_GRANT },
+  go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 3_000 },
+  pro: { creditsPerMonth: 15_000, tier: 20, freeCreditCap: 15_000 },
+  enterprise: { creditsPerMonth: 150_000, tier: 30, freeCreditCap: 150_000 },
 } as const;
 
 // Price IDs from environment - allows test/live flexibility
@@ -88,4 +85,8 @@ export function getPlanFromPriceId(priceId?: string): PlanType {
  */
 export function getPlanTier(plan: PlanType): number {
   return PLAN_CONFIG[plan]?.tier ?? 0;
+}
+
+export function getFreeCreditCapForPlan(plan: PlanType): number {
+  return PLAN_CONFIG[plan]?.freeCreditCap ?? PLAN_CONFIG.free.freeCreditCap;
 }

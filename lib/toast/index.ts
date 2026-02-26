@@ -16,6 +16,7 @@ import {
 import {
   getToastMessageKeyForErrorCode,
   isInsufficientCreditsCode,
+  isPlanUpgradeCode,
   resolveToastError,
 } from "./error-resolver";
 
@@ -25,6 +26,10 @@ function openAISettings() {
 
 function openBillingSettings() {
   window.location.href = "/settings/billing";
+}
+
+function openPricing() {
+  window.location.href = "/pricing";
 }
 
 function createAISettingsAction(): ToastAction & { icon: "settings" } {
@@ -39,6 +44,14 @@ function createBillingAction(): ToastAction & { icon: "arrow-right" } {
   return {
     label: TOAST_MESSAGES.billing.openBillingActionLabel,
     onClick: openBillingSettings,
+    icon: "arrow-right" as const,
+  };
+}
+
+function createPricingAction(): ToastAction & { icon: "arrow-right" } {
+  return {
+    label: TOAST_MESSAGES.billing.openPricingActionLabel,
+    onClick: openPricing,
     icon: "arrow-right" as const,
   };
 }
@@ -149,7 +162,7 @@ type AppToastApi = {
     deleted: () => void;
     deleteFailed: () => void;
     created: () => void;
-    createFailed: () => void;
+    createFailed: (error?: unknown) => void;
     duplicated: () => void;
     duplicateFailed: () => void;
   };
@@ -339,8 +352,15 @@ export const appToast: AppToastApi = {
     created: () => {
       showStyledToast("success", TOAST_MESSAGES.job.createdTitle);
     },
-    createFailed: () => {
-      showStyledToast("error", TOAST_MESSAGES.job.createFailedTitle);
+    createFailed: (error?: unknown) => {
+      const resolved = resolveErrorDetails(error, TOAST_MESSAGES.fallback.unexpectedError);
+      const action = isPlanUpgradeCode(resolved.code)
+        ? createPricingAction()
+        : undefined;
+      showStyledToast("error", TOAST_MESSAGES.job.createFailedTitle, {
+        description: resolved.message,
+        action,
+      });
     },
     duplicated: () => {
       showStyledToast("success", TOAST_MESSAGES.job.duplicatedTitle);

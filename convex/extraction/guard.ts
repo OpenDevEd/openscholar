@@ -39,7 +39,7 @@ export async function requirePlanTier(
 
   if (tier < minTier) {
     throw createError(
-      "FORBIDDEN",
+      "EXTRACTION_PLAN_REQUIRED",
       `${featureName} requires a higher plan. Please upgrade to continue.`
     );
   }

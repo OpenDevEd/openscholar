@@ -553,7 +553,28 @@
     "disagreementAnswer": "Réponse :",
     "disagreementOpenPaper": "Ouvrir l'article",
     "disagreementShowMore": "Afficher plus",
-    "searchPlaceholder": "Rechercher..."
+    "searchPlaceholder": "Rechercher...",
+    "planGateBadge": "Fonctionnalité Pro",
+    "planGateTitle": "Transformez des articles en données structurées en quelques minutes",
+    "planGateDescription": "L'extraction de données lit vos articles sélectionnés et produit des champs cohérents, prêts pour la revue, afin d'accélérer la comparaison des études.",
+    "planGatePrimaryCta": "Passer à Pro",
+    "planGateHowItWorksTitle": "Comment fonctionne l'extraction",
+    "planGateHowItWorksDescription": "Définissez vos questions une fois, puis lancez l'extraction sur tous les articles sélectionnés.",
+    "planGateStep1Title": "Choisir les sources",
+    "planGateStep1Description": "Sélectionnez des articles depuis l'historique, Zotero ou des ajouts manuels.",
+    "planGateStep2Title": "Définir les champs",
+    "planGateStep2Description": "Indiquez précisément ce qu'il faut extraire de chaque article.",
+    "planGateStep3Title": "Vérifier les résultats",
+    "planGateStep3Description": "Exportez des résultats structurés et propres avec le contexte de confiance.",
+    "planGateWhatYouCanExtractTitle": "Ce que vous pouvez extraire",
+    "planGateWhatYouCanExtractDescription": "Capturez les détails d'étude nécessaires pour le tri, la synthèse et le reporting.",
+    "planGateCardOutcomesTitle": "Résultats et tailles d'effet",
+    "planGateCardOutcomesDescription": "Suivez les critères principaux, les mesures et l'effet rapporté.",
+    "planGateCardMethodsTitle": "Méthodes et interventions",
+    "planGateCardMethodsDescription": "Extrayez les interventions, comparateurs et le design d'étude.",
+    "planGateCardPopulationTitle": "Population et contexte",
+    "planGateCardPopulationDescription": "Capturez taille d'échantillon, démographie et contexte de l'étude.",
+    "planGateProNote": "L'extraction de données est disponible avec les plans Pro et Enterprise."
   },
   "toast": {
     "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
@@ -668,7 +689,9 @@
     "billingCancelRequiresPortal": "Utilisez le portail de facturation pour passer au plan gratuit.",
     "billingNoActiveSubscription": "Aucun abonnement actif trouvé pour ce compte.",
     "creditsTopupBundleInvalid": "Ce pack de crédits est invalide. Actualisez puis réessayez.",
-    "creditsProductMisconfigured": "L'achat de crédits est temporairement indisponible."
+    "creditsProductMisconfigured": "L'achat de crédits est temporairement indisponible.",
+    "openPricing": "Voir les tarifs",
+    "extractionPlanRequired": "L'extraction de données nécessite Pro. Passez à niveau pour continuer."
   },
   "viewMode": {
     "simpleList": "Liste simple",

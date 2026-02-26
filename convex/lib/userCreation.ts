@@ -1,6 +1,7 @@
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { PLAN_CONFIG, FREE_SIGNUP_CREDIT_GRANT } from "./constants";
+import { applyTierFreeCreditCap } from "./freeCredits";
 
 export async function createUserWithDefaults(
   ctx: MutationCtx,
@@ -13,6 +14,11 @@ export async function createUserWithDefaults(
   }
 ): Promise<Id<"users">> {
   const now = Date.now();
+  const signupFreeCredits = applyTierFreeCreditCap({
+    plan: "free",
+    currentFreeBalance: 0,
+    amountToAdd: FREE_SIGNUP_CREDIT_GRANT,
+  });
 
   const userId = await ctx.db.insert("users", {
     ...userData,
@@ -24,7 +30,7 @@ export async function createUserWithDefaults(
 
   await ctx.db.insert("credits", {
     userId,
-    freeBalance: FREE_SIGNUP_CREDIT_GRANT,
+    freeBalance: signupFreeCredits.newFreeBalance,
     paidBalance: 0,
     lifetimeUsed: 0,
     lastUpdatedAt: now,

@@ -49,6 +49,7 @@ export const TOAST_MESSAGES = {
     portalFailedTitle: "Failed to open billing portal",
     checkoutFailedTitle: "Failed to start checkout",
     openBillingActionLabel: "Open Billing",
+    openPricingActionLabel: "Open Pricing",
   },
   zotero: {
     connectedTitle: "Connected to Zotero",
@@ -58,6 +59,7 @@ export const TOAST_MESSAGES = {
     convexUnknownError: "Something went wrong. Please try again.",
     convexAuthRequired: "Please sign in to continue.",
     convexPermissionDenied: "You do not have permission to do that.",
+    extractionPlanRequired: "Data extraction requires Pro. Upgrade to continue.",
     convexNotFound: "The requested resource could not be found.",
     convexInvalidInput: "Please review your input and try again.",
     convexInsufficientCredits: "You do not have enough credits to continue.",

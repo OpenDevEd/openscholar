@@ -6,9 +6,11 @@ const LOCALES = ["en-US", "en-GB", "fr", "hi", "ja", "zh"] as const;
 
 const NEW_TOAST_KEYS = [
   "openBilling",
+  "openPricing",
   "convexUnknownError",
   "convexAuthRequired",
   "convexPermissionDenied",
+  "extractionPlanRequired",
   "convexNotFound",
   "convexInvalidInput",
   "convexInsufficientCredits",

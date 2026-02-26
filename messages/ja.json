@@ -553,7 +553,28 @@
     "disagreementAnswer": "回答：",
     "disagreementOpenPaper": "論文を開く",
     "disagreementShowMore": "もっと表示",
-    "searchPlaceholder": "検索..."
+    "searchPlaceholder": "検索...",
+    "planGateBadge": "Pro機能",
+    "planGateTitle": "論文を数分で構造化データに変換",
+    "planGateDescription": "データ抽出は選択した論文を読み取り、比較しやすいレビュー向けの一貫した項目を自動作成します。",
+    "planGatePrimaryCta": "Proにアップグレード",
+    "planGateHowItWorksTitle": "データ抽出の流れ",
+    "planGateHowItWorksDescription": "質問を一度設定すれば、選択した論文全体に抽出を実行できます。",
+    "planGateStep1Title": "ソースを選択",
+    "planGateStep1Description": "検索履歴、Zotero、手動追加から論文を選びます。",
+    "planGateStep2Title": "抽出項目を定義",
+    "planGateStep2Description": "各論文から何を抽出するかを明確に指定します。",
+    "planGateStep3Title": "結果を確認",
+    "planGateStep3Description": "信頼度情報付きの整形済み結果をエクスポートします。",
+    "planGateWhatYouCanExtractTitle": "抽出できる内容",
+    "planGateWhatYouCanExtractDescription": "スクリーニング、統合、報告に必要な研究情報を収集できます。",
+    "planGateCardOutcomesTitle": "アウトカムと効果量",
+    "planGateCardOutcomesDescription": "主要アウトカム、測定値、報告された効果を整理します。",
+    "planGateCardMethodsTitle": "方法と介入",
+    "planGateCardMethodsDescription": "介入内容、比較対象、研究デザインを抽出します。",
+    "planGateCardPopulationTitle": "対象集団と実施状況",
+    "planGateCardPopulationDescription": "サンプルサイズ、背景属性、研究コンテキストを取得します。",
+    "planGateProNote": "データ抽出はProおよびEnterpriseプランで利用できます。"
   },
   "toast": {
     "unexpectedError": "予期しないエラーが発生しました。もう一度お試しください。",
@@ -668,7 +689,9 @@
     "billingCancelRequiresPortal": "無料プランへの変更は請求ポータルから行ってください。",
     "billingNoActiveSubscription": "このアカウントに有効なサブスクリプションがありません。",
     "creditsTopupBundleInvalid": "このクレジットバンドルは無効です。更新して再試行してください。",
-    "creditsProductMisconfigured": "クレジット購入は現在利用できません。"
+    "creditsProductMisconfigured": "クレジット購入は現在利用できません。",
+    "openPricing": "料金ページを開く",
+    "extractionPlanRequired": "データ抽出はProプランが必要です。続行するにはアップグレードしてください。"
   },
   "viewMode": {
     "simpleList": "シンプルリスト",

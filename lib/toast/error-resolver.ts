@@ -4,6 +4,7 @@ export type ToastErrorMessageKey =
   | "convexUnknownError"
   | "convexAuthRequired"
   | "convexPermissionDenied"
+  | "extractionPlanRequired"
   | "convexNotFound"
   | "convexInvalidInput"
   | "convexInsufficientCredits"
@@ -61,6 +62,7 @@ const LEGACY_CODE_MATCHERS: Array<{ pattern: RegExp; code: string }> = [
 const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   UNAUTHENTICATED: "convexAuthRequired",
   FORBIDDEN: "convexPermissionDenied",
+  EXTRACTION_PLAN_REQUIRED: "extractionPlanRequired",
   NOT_FOUND: "convexNotFound",
   VALIDATION_ERROR: "convexInvalidInput",
   INVALID_DATA: "convexInvalidInput",
@@ -102,6 +104,11 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
 const INSUFFICIENT_CREDITS_CODES = new Set<string>([
   "AI_INSUFFICIENT_CREDITS",
   "INSUFFICIENT_CREDITS",
+]);
+
+const PLAN_UPGRADE_CODES = new Set<string>([
+  "EXTRACTION_PLAN_REQUIRED",
+  "AI_PLAN_ENTITLEMENT",
 ]);
 
 function asRecord(value: unknown): ErrorRecord | undefined {
@@ -190,6 +197,11 @@ export function getToastMessageKeyForErrorCode(
 export function isInsufficientCreditsCode(code?: string): boolean {
   if (!code) return false;
   return INSUFFICIENT_CREDITS_CODES.has(code);
+}
+
+export function isPlanUpgradeCode(code?: string): boolean {
+  if (!code) return false;
+  return PLAN_UPGRADE_CODES.has(code);
 }
 
 export function resolveToastError(error: unknown, fallback: string): ResolvedToastError {

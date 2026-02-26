@@ -553,7 +553,28 @@
     "disagreementAnswer": "Answer:",
     "disagreementOpenPaper": "Open Paper",
     "disagreementShowMore": "Show more",
-    "searchPlaceholder": "Search..."
+    "searchPlaceholder": "Search...",
+    "planGateBadge": "Pro feature",
+    "planGateTitle": "Turn papers into structured evidence in minutes",
+    "planGateDescription": "Data extraction reads your selected papers and produces consistent, review-ready fields so your team can compare studies faster.",
+    "planGatePrimaryCta": "Upgrade to Pro",
+    "planGateHowItWorksTitle": "How data extraction works",
+    "planGateHowItWorksDescription": "Set your questions once, then run extraction across all selected papers.",
+    "planGateStep1Title": "Choose sources",
+    "planGateStep1Description": "Select papers from search history, Zotero, or manual uploads.",
+    "planGateStep2Title": "Define fields",
+    "planGateStep2Description": "Tell the model exactly what to pull out from each paper.",
+    "planGateStep3Title": "Review outputs",
+    "planGateStep3Description": "Export clean, structured results with confidence context.",
+    "planGateWhatYouCanExtractTitle": "What you can extract",
+    "planGateWhatYouCanExtractDescription": "Capture the study details you need for screening, synthesis, and reporting.",
+    "planGateCardOutcomesTitle": "Outcomes and effect sizes",
+    "planGateCardOutcomesDescription": "Track primary outcomes, measurements, and reported impact.",
+    "planGateCardMethodsTitle": "Methods and interventions",
+    "planGateCardMethodsDescription": "Extract intervention details, comparators, and study design.",
+    "planGateCardPopulationTitle": "Population and setting",
+    "planGateCardPopulationDescription": "Capture sample size, demographics, and study context.",
+    "planGateProNote": "Data extraction is available on Pro and Enterprise plans."
   },
   "toast": {
     "unexpectedError": "An unexpected error occurred. Please try again.",
@@ -668,7 +689,9 @@
     "billingCancelRequiresPortal": "Use the billing portal to switch to the free plan.",
     "billingNoActiveSubscription": "No active subscription was found for this account.",
     "creditsTopupBundleInvalid": "That credit bundle is invalid. Please refresh and retry.",
-    "creditsProductMisconfigured": "Credit checkout is temporarily unavailable."
+    "creditsProductMisconfigured": "Credit checkout is temporarily unavailable.",
+    "openPricing": "Open Pricing",
+    "extractionPlanRequired": "Data extraction requires Pro. Upgrade to continue."
   },
   "viewMode": {
     "simpleList": "Simple List",

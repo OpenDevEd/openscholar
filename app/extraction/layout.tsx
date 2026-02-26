@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import { ExtractionAccessGate } from "@/components/extraction/extraction-access-gate";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [t, tc, te] = await Promise.all([
@@ -26,5 +27,5 @@ export default function ExtractionLayout({
   if (process.env.NEXT_PUBLIC_EXTRACTION_ENABLED === "false") {
     redirect("/");
   }
-  return children;
+  return <ExtractionAccessGate>{children}</ExtractionAccessGate>;
 }

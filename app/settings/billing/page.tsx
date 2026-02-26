@@ -17,6 +17,7 @@ import { isEntitledStatus } from "@/lib/billing/entitlements";
 import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
 import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
 import { getToastMessageKeyForErrorCode } from "@/lib/toast/error-resolver";
+import { getFreeCreditCapForPlan } from "@/convex/lib/constants";
 
 export default function BillingPage() {
   const t = useTranslations("billingPage");
@@ -511,6 +512,7 @@ export default function BillingPage() {
             paidBalance={creditBalance.paid}
             totalBalance={creditBalance.total}
             creditsPerMonth={creditsPerMonth}
+            freeCreditCap={getFreeCreditCapForPlan(effectivePlan)}
           />
         )}
 

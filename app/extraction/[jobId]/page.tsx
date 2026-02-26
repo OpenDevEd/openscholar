@@ -317,7 +317,7 @@ export default function JobDetailPage() {
       toast.job.created();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
-      toast.job.createFailed();
+      toast.job.createFailed(error);
     }
   };
 
