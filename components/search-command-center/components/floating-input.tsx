@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 
 interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  /** Extra content rendered inline after the label text (e.g. history nav) */
+  labelAddon?: React.ReactNode;
   icon?: React.ReactNode;
   action?: React.ReactNode;
   wrapperClassName?: string;
@@ -12,6 +14,7 @@ interface FloatingInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 
 export function FloatingInput({
   label,
+  labelAddon,
   icon,
   action,
   className,
@@ -21,18 +24,21 @@ export function FloatingInput({
   return (
     <div className={cn("group relative", wrapperClassName)}>
       {/* Floating label */}
-      <label
-        className={cn(
-          "absolute -top-2.5 left-3 z-10 px-1.5 py-0.5",
-          "text-xs font-medium",
-          "text-muted-foreground",
-          "bg-background rounded",
-          "transition-colors duration-200",
-          "group-focus-within:text-primary"
-        )}
-      >
-        {label}
-      </label>
+      <div className="absolute -top-2.5 left-3 z-10 flex items-center gap-2">
+        <label
+          className={cn(
+            "px-1.5 py-0.5",
+            "text-xs font-medium",
+            "text-muted-foreground",
+            "bg-background rounded",
+            "transition-colors duration-200",
+            "group-focus-within:text-primary"
+          )}
+        >
+          {label}
+        </label>
+        {labelAddon}
+      </div>
 
       {/* Input container */}
       <div

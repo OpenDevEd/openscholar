@@ -276,18 +276,11 @@ export function ScreeningExpansion({ isOpen, searchId }: ScreeningExpansionProps
                 )}
               </Button>
               <Button
-                variant="outline"
+                variant="ai"
                 size="sm"
                 onClick={handleGenerateWithAI}
                 disabled={isGenerating || !researchQuestion.trim()}
-                className={cn(
-                  "h-9 px-3 flex-shrink-0 text-xs gap-1.5",
-                  "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
-                  "hover:from-violet-500/20 hover:to-fuchsia-500/20",
-                  "border-violet-500/30 hover:border-violet-500/50",
-                  "text-violet-700 dark:text-violet-300",
-                  "transition-all duration-200"
-                )}
+                className="h-9 px-3 flex-shrink-0 text-xs gap-1.5"
               >
                 {isGenerating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

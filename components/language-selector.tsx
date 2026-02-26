@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Languages, Wand2, ArrowRight, Lock } from "lucide-react";
+import { Languages, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -51,7 +51,6 @@ export function LanguageSelector({
   flagOnly = false,
   isPlanEntitled = true,
 }: LanguageSelectorProps) {
-  const tf = useTranslations("searchFilters");
   const tl = useTranslations("languages");
   const tc = useTranslations("common");
   const ts = useTranslations("searchCommand");
@@ -63,124 +62,99 @@ export function LanguageSelector({
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion ? { duration: 0 } : submitButtonMorphTransition;
 
+  const trigger = (
+    <div className="flex items-stretch">
+      <SelectTrigger
+        size="sm"
+        className={cn(
+          "w-auto flex-1",
+          flagOnly ? "min-w-[2.5rem] px-2" : "min-w-[120px] max-w-[220px]",
+          "bg-ai-bg border-ai-border text-ai shadow-xs",
+          "hover:bg-ai-bg-hover hover:border-ai-border-hover hover:shadow-[var(--ai-glow)]",
+          "dark:bg-ai-bg dark:border-ai-border dark:text-ai",
+          "dark:hover:bg-ai-bg-hover dark:hover:border-ai-border-hover",
+          "transition-all duration-200",
+          "[&_svg:not([class*='text-'])]:text-ai",
+          !isPlanEntitled && "rounded-r-none border-r-0",
+          className,
+        )}
+      >
+        {flagOnly ? (
+          <span className="relative flex h-3 w-4 shrink-0 items-center justify-center">
+            <AnimatePresence mode="popLayout">
+              {selectedLanguage ? (
+                <motion.span
+                  key={`flag-${selectedLanguage.code}`}
+                  variants={flagIconVariants}
+                  initial="enter"
+                  animate="animate"
+                  exit="exit"
+                  transition={transition}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <SelectValue>
+                    <img
+                      src={selectedLanguage.flagUrl}
+                      alt={`${selectedLanguage.name} flag`}
+                      className="h-3 w-4 rounded-sm border border-gray-200 object-cover"
+                    />
+                  </SelectValue>
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="icon"
+                  variants={flagIconVariants}
+                  initial="enter"
+                  animate="animate"
+                  exit="exit"
+                  transition={transition}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <Languages className="h-3 w-3" />
+                  <SelectValue placeholder="" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </span>
+        ) : selectedLanguage ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <img
+              src={selectedLanguage.flagUrl}
+              alt={`${selectedLanguage.name} flag`}
+              className="w-4 h-3 rounded-sm border border-gray-200"
+            />
+            <SelectValue>{selectedLabel}</SelectValue>
+          </div>
+        ) : (
+          <SelectValue placeholder={resolvedPlaceholder} />
+        )}
+      </SelectTrigger>
+      {!isPlanEntitled && (
+        <div className="flex items-center px-1.5 border-l border-current/20 bg-ai-bg text-ai">
+          <Lock className="h-3 w-3 opacity-70" />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <SelectTrigger
-            size="sm"
-            className={cn(
-              "w-auto flex-1",
-              flagOnly ? "min-w-[2.5rem] px-2" : "min-w-[120px] max-w-[220px]",
-              "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
-              "hover:from-violet-500/20 hover:to-fuchsia-500/20",
-              "border-violet-500/30 hover:border-violet-500/50",
-              "text-violet-700 dark:text-violet-300",
-              "transition-all duration-200",
-              className,
-            )}
-          >
-            {flagOnly ? (
-              <span className="relative flex h-3 w-4 shrink-0 items-center justify-center">
-                <AnimatePresence mode="popLayout">
-                  {selectedLanguage ? (
-                    <motion.span
-                      key={`flag-${selectedLanguage.code}`}
-                      variants={flagIconVariants}
-                      initial="enter"
-                      animate="animate"
-                      exit="exit"
-                      transition={transition}
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
-                      <SelectValue>
-                        <img
-                          src={selectedLanguage.flagUrl}
-                          alt={`${selectedLanguage.name} flag`}
-                          className="h-3 w-4 rounded-sm border border-gray-200 object-cover"
-                        />
-                      </SelectValue>
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="icon"
-                      variants={flagIconVariants}
-                      initial="enter"
-                      animate="animate"
-                      exit="exit"
-                      transition={transition}
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
-                      <Languages className="h-3 w-3 text-muted-foreground" />
-                      <SelectValue placeholder="" />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </span>
-            ) : selectedLanguage ? (
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src={selectedLanguage.flagUrl}
-                  alt={`${selectedLanguage.name} flag`}
-                  className="w-4 h-3 rounded-sm border border-gray-200"
-                />
-                <SelectValue>{selectedLabel}</SelectValue>
-              </div>
-            ) : (
-              <SelectValue placeholder={resolvedPlaceholder} />
-            )}
-          </SelectTrigger>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-72 p-0 bg-foreground text-background border border-background/10 shadow-xl overflow-hidden">
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center size-7 rounded-md bg-background/10 shrink-0">
-                <Languages className="h-3.5 w-3.5 text-background" />
-              </div>
-              <p className="text-sm font-semibold text-background leading-tight">{tf("selectSearchLanguage")}</p>
-            </div>
-            <p className="text-xs text-background/70 leading-relaxed">
-              {tf("languageTooltipDescription")}
-            </p>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2.5">
-                <div className="flex items-center justify-center size-4 rounded bg-background/10 shrink-0 mt-0.5">
-                  <Wand2 className="h-2.5 w-2.5 text-background/90" />
-                </div>
-                <span className="text-xs text-background/65 leading-relaxed">
-                  {tf("languageTooltipPreserveIntent")}
-                </span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <div className="flex items-center justify-center size-4 rounded bg-background/10 shrink-0 mt-0.5">
-                  <ArrowRight className="h-2.5 w-2.5 text-background/90" />
-                </div>
-                <span className="text-xs text-background/65 leading-relaxed">
-                  {tf("languageTooltipAutoApply")}
-                </span>
-              </div>
-            </div>
-            {!isPlanEntitled && (
-              <div className="flex flex-col gap-2 pt-3 border-t border-background/15">
-                <div className="flex items-start gap-2.5">
-                  <div className="flex items-center justify-center size-4 rounded bg-background/10 shrink-0 mt-0.5">
-                    <Lock className="h-2.5 w-2.5 text-background/90" />
-                  </div>
-                  <p className="text-xs text-background/70 leading-relaxed">
-                    {ts("translationPlanRequired")}
-                  </p>
-                </div>
-                <Link
-                  href="/pricing"
-                  className="text-xs font-semibold text-background underline-offset-2 hover:underline ml-6.5"
-                >
-                  {tc("upgradeTo", { plan: "Go" })} →
-                </Link>
-              </div>
-            )}
-          </div>
-        </TooltipContent>
-      </Tooltip>
+      {isPlanEntitled ? (
+        trigger
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent sideOffset={6} className="max-w-52 px-2.5 py-2 text-xs leading-relaxed">
+            <p className="text-background/80">{ts("translationPlanRequired")}</p>
+            <Link
+              href="/pricing"
+              className="mt-1 inline-flex items-center gap-1 font-semibold underline-offset-2 hover:underline"
+            >
+              {tc("upgradeTo", { plan: "Go" })} →
+            </Link>
+          </TooltipContent>
+        </Tooltip>
+      )}
       <SelectContent
         position="popper"
         align="start"

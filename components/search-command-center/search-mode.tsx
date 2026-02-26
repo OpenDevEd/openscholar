@@ -7,6 +7,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
+import { QueryHistoryNav } from "./components/query-history-nav";
 import { LanguageTranslateControl } from "./components/language-translate-control";
 import { useSearchOptional } from "@/lib/search";
 import {
@@ -17,7 +18,7 @@ import {
   useKeywordExpansionDialogStore,
   useTranslationFlowStore,
 } from "@/lib/store";
-import { useEffectiveSearchId } from "@/lib/hooks";
+import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -52,8 +53,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const [localInputValue, setLocalInputValue] = useState(urlQuery);
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Sync URL query to global store (used by app-sidebar, home page). Parent key handles localInputValue remount on URL change.
+  // Sync local input + global store when URL query changes (e.g. history nav, AI enhance, translation)
   useEffect(() => {
+    setLocalInputValue(urlQuery);
     setCurrentQuery(urlQuery);
   }, [urlQuery, setCurrentQuery]);
 
@@ -86,6 +88,11 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     setCurrentQuery(value); // Update global store for real-time tooltip updates
     setSuggestedQuery(validateAndExpandKeywordsSilently(value).expandedQuery);
   }, [setCurrentQuery, setSuggestedQuery]);
+
+  // Query history navigation (shared with AdjustMode)
+  const {
+    historyIndex, historyLength, canGoPrevious, canGoNext, goToPrevious, goToNext,
+  } = useQueryHistory(effectiveSearchId, search?.setQuery);
 
   // Handle keyword search submit
   const handleSearchSubmit = useCallback(
@@ -264,16 +271,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
             <Button
               type="submit"
               size="sm"
-              variant="outline"
+              variant="ai"
               disabled={isFormDisabled || !currentQuestion.trim()}
-              className={cn(
-                "h-7 px-2.5 text-xs gap-1.5",
-                "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
-                "hover:from-violet-500/20 hover:to-fuchsia-500/20",
-                "border-violet-500/30 hover:border-violet-500/50",
-                "text-violet-700 dark:text-violet-300",
-                "transition-all duration-200"
-              )}
+              className="h-7 px-2.5 text-xs gap-1.5"
             >
               {isEnhancing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -293,6 +293,17 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       <form onSubmit={handleSearchSubmit}>
         <FloatingInput
           label={t('keywords')}
+          labelAddon={
+            <QueryHistoryNav
+              historyIndex={historyIndex}
+              historyLength={historyLength}
+              canGoPrevious={canGoPrevious}
+              canGoNext={canGoNext}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              disabled={isFormDisabled}
+            />
+          }
           placeholder={isTranslating ? tc('translating') : t('placeholder.keywords')}
           value={localInputValue}
           onChange={(e) => handleQueryChange(e.target.value)}

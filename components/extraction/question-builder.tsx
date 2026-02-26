@@ -625,17 +625,10 @@ export function QuestionBuilder() {
 
             <Button
               type="button"
-              variant="outline"
+              variant="ai"
               onClick={handleGenerateWithAI}
               disabled={isGenerating}
-              className={cn(
-                "gap-1.5",
-                "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
-                "hover:from-violet-500/20 hover:to-fuchsia-500/20",
-                "border-violet-500/30 hover:border-violet-500/50",
-                "text-violet-700 dark:text-violet-300",
-                "transition-all duration-200"
-              )}
+              className="gap-1.5"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

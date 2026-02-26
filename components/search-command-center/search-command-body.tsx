@@ -57,7 +57,6 @@ export function SearchCommandBody({
         >
           {mode === "search" ? (
             <SearchMode
-              key={currentQuery}
               isLoading={isLoading}
               isValidating={isValidating}
             />

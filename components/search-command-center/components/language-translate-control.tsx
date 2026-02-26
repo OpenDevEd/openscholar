@@ -3,7 +3,7 @@
 import React from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
-import { RefreshCw, Loader2, X, Lock } from "lucide-react";
+import { RefreshCw, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
@@ -44,10 +44,7 @@ export function LanguageTranslateControl({
     <div
       className={cn(
         "flex items-center rounded-md overflow-hidden",
-        "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
-        "border border-violet-500/30 hover:border-violet-500/50",
-        "text-violet-700 dark:text-violet-300",
-        "transition-colors duration-200"
+        "ai-surface border",
       )}
     >
       <motion.div
@@ -57,7 +54,7 @@ export function LanguageTranslateControl({
         aria-hidden={!hasValue}
       >
         <div
-          className="flex items-center border-r border-violet-500/30"
+          className="flex items-center border-r border-current/20"
           style={{ width: ACTIONS_WIDTH }}
         >
           <Button
@@ -68,7 +65,7 @@ export function LanguageTranslateControl({
             onClick={onTranslate}
             title={t("translate")}
             aria-label={t("translate")}
-            className="size-8 p-0 rounded-none hover:from-violet-500/20 hover:to-fuchsia-500/20 hover:bg-violet-500/10"
+            className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
           >
             {isTranslating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -84,7 +81,7 @@ export function LanguageTranslateControl({
             onClick={handleClear}
             title={t("clearLanguage")}
             aria-label={t("clearLanguage")}
-            className="size-8 p-0 rounded-none hover:from-violet-500/20 hover:to-fuchsia-500/20 hover:bg-violet-500/10"
+            className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
           >
             <X className="h-3.5 w-3.5" />
           </Button>
@@ -98,11 +95,6 @@ export function LanguageTranslateControl({
         flagOnly
         className="border-0 rounded-none min-w-[2.5rem] shrink-0"
       />
-      {!isPlanEntitled && (
-        <div className="flex items-center px-1.5 border-l border-violet-500/30">
-          <Lock className="h-3 w-3 text-violet-500/70" />
-        </div>
-      )}
     </div>
   );
 }

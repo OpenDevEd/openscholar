@@ -1,14 +1,15 @@
 "use client";
 "use no memo"; // Sync effect for editableQuery when urlQuery changes (prev/next); try/finally in enhance handler
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
-import { ChevronLeft, ChevronRight, Search, Loader2, Wand2 } from "lucide-react";
+import { Search, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
+import { QueryHistoryNav } from "./components/query-history-nav";
 import { useSearch } from "@/lib/search";
-import { useSearchHistoryStore } from "@/lib/store";
+import { useQueryHistory } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
@@ -47,49 +48,12 @@ export function AdjustMode({ searchId, isLoading, isValidating }: AdjustModeProp
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [queryFlash, setQueryFlash] = useState(false);
 
-  // Get current search result for history navigation
-  const currentSearchResult = useSearchHistoryStore((state) =>
-    searchId ? state.searchHistory.find((item) => item.id === searchId) : null
-  );
-
-  const queryHistory = currentSearchResult?.queryHistory || [];
-  const [historyIndex, setHistoryIndex] = useState(
-    queryHistory.length > 0 ? queryHistory.length - 1 : 0
-  );
+  // Query history navigation (shared with SearchMode)
+  const {
+    historyIndex, historyLength, canGoPrevious, canGoNext, goToPrevious, goToNext,
+  } = useQueryHistory(searchId, search.setQuery);
 
   const isFormDisabled = isLoading || isValidating || isEnhancing;
-
-  // Track previous history length to detect new additions
-  const prevHistoryLengthRef = useRef(queryHistory.length);
-
-  // Update history index only when a NEW entry is added (not when navigating)
-  useEffect(() => {
-    if (queryHistory.length > prevHistoryLengthRef.current) {
-      // New entry added - jump to latest
-      setHistoryIndex(queryHistory.length - 1);
-    }
-    prevHistoryLengthRef.current = queryHistory.length;
-  }, [queryHistory.length]);
-
-  // Navigation handlers
-  const canGoPrevious = queryHistory.length > 0 && historyIndex > 0;
-  const canGoNext = queryHistory.length > 0 && historyIndex < queryHistory.length - 1;
-
-  const goToPrevious = useCallback(() => {
-    if (canGoPrevious) {
-      const prevIndex = historyIndex - 1;
-      setHistoryIndex(prevIndex);
-      search.setQuery(queryHistory[prevIndex].query, { skipHistory: true });
-    }
-  }, [canGoPrevious, historyIndex, queryHistory, search]);
-
-  const goToNext = useCallback(() => {
-    if (canGoNext) {
-      const nextIndex = historyIndex + 1;
-      setHistoryIndex(nextIndex);
-      search.setQuery(queryHistory[nextIndex].query, { skipHistory: true });
-    }
-  }, [canGoNext, historyIndex, queryHistory, search]);
 
   // Handle manual query submission
   const handleSubmit = useCallback(
@@ -176,16 +140,9 @@ Please enhance this academic search query according to the user's specific instr
             <Button
               type="submit"
               size="sm"
-              variant="outline"
+              variant="ai"
               disabled={isFormDisabled || !aiInstructions.trim()}
-              className={cn(
-                "h-7 px-2.5 text-xs gap-1.5",
-                "bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10",
-                "hover:from-violet-500/20 hover:to-fuchsia-500/20",
-                "border-violet-500/30 hover:border-violet-500/50",
-                "text-violet-700 dark:text-violet-300",
-                "transition-all duration-200"
-              )}
+              className="h-7 px-2.5 text-xs gap-1.5"
             >
               {isEnhancing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -215,33 +172,15 @@ Please enhance this academic search query according to the user's specific instr
             >
               {t("searchCommand.currentQuery")}
             </span>
-            {queryHistory.length > 1 && (
-              <div className="flex items-center gap-0.5 bg-background rounded px-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToPrevious}
-                  disabled={!canGoPrevious || isFormDisabled}
-                  className="h-5 w-5"
-                >
-                  <ChevronLeft className="h-3 w-3" />
-                </Button>
-                <span className="text-[10px] text-muted-foreground tabular-nums px-0.5">
-                  {historyIndex + 1}/{queryHistory.length}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToNext}
-                  disabled={!canGoNext || isFormDisabled}
-                  className="h-5 w-5"
-                >
-                  <ChevronRight className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
+            <QueryHistoryNav
+              historyIndex={historyIndex}
+              historyLength={historyLength}
+              canGoPrevious={canGoPrevious}
+              canGoNext={canGoNext}
+              onPrevious={goToPrevious}
+              onNext={goToNext}
+              disabled={isFormDisabled}
+            />
           </div>
 
           {/* Textarea container */}
