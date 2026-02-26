@@ -41,7 +41,6 @@ export interface TranslationToggleProps {
   isTranslating: boolean;
   translatedContent: any;
   showTranslated: boolean;
-  selectedLanguage: string;
   setShowTranslated: (show: boolean) => void;
   variant?: "full" | "compact";
 }
@@ -103,23 +102,20 @@ export function TranslationToggle({
   isTranslating,
   translatedContent,
   showTranslated,
-  selectedLanguage,
   setShowTranslated,
   variant = "full",
 }: TranslationToggleProps) {
   const tc = useTranslations("common");
-  if (!selectedLanguage) return null;
   if (translatedContent && translatedContent.noTranslationNeeded) return null;
 
   const hasToggleContent =
     translatedContent &&
-    translatedContent.sourceLanguage === selectedLanguage &&
     !translatedContent.noTranslationNeeded;
   if (!isTranslating && !hasToggleContent) return null;
 
   if (variant === "compact") {
     // Icon-only version for compact layouts
-    if (!translatedContent || translatedContent.sourceLanguage !== selectedLanguage) {
+    if (!translatedContent) {
       if (isTranslating) {
         return (
           <div className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30" title={tc("translating")}>
@@ -160,7 +156,6 @@ export function TranslationToggle({
       )}
 
       {translatedContent &&
-        translatedContent.sourceLanguage === selectedLanguage &&
         !translatedContent.noTranslationNeeded && (
           <button
             onClick={(e) => {

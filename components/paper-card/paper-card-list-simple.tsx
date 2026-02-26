@@ -40,8 +40,7 @@ export function PaperCardListSimple({
     translatedContent, 
     showTranslated, 
     isTranslating, 
-    setShowTranslated,
-    selectedLanguage 
+    setShowTranslated
   } = useTranslate(result);
 
   const displayTitle = showTranslated && translatedContent
@@ -152,7 +151,6 @@ export function PaperCardListSimple({
                 isTranslating={isTranslating}
                 translatedContent={translatedContent}
                 showTranslated={showTranslated}
-                selectedLanguage={selectedLanguage}
                 setShowTranslated={setShowTranslated}
                 variant="compact"
               />

@@ -152,14 +152,13 @@ import type { TranslatePaperContentInput } from './types'
 export interface TranslationBatchConfig {
   model: LanguageModel
   papers: BatchPaper[]
-  sourceLanguage: string
   targetLanguage?: string
 }
 
 export async function processTranslationBatch(
   config: TranslationBatchConfig
 ): Promise<BatchProcessorResult<TranslationResultData>> {
-  const { model, papers, sourceLanguage, targetLanguage } = config
+  const { model, papers, targetLanguage } = config
 
   return processBatch<
     BatchPaper,
@@ -173,14 +172,12 @@ export async function processTranslationBatch(
       toConfigInput: (paper) => ({
         title: paper.title,
         abstract: paper.abstract,
-        sourceLanguage,
         ...(targetLanguage && { targetLanguage }),
       }),
       getOperationConfig: getTranslatePaperContentConfig,
       formatResult: (output) => ({
         translatedTitle: output.translatedTitle,
         translatedAbstract: output.translatedAbstract,
-        sourceLanguage,
         noTranslationNeeded: false,
       }),
       getItemId: (paper) => paper.id,

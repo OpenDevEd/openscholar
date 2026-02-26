@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useBatchTranslations } from "@/lib/ai/client/router";
-import { useTranslationStore, useTranslationFlowStore } from "@/lib/store";
+import { useTranslationStore } from "@/lib/store";
 import { useBatchOperation } from "./use-batch-operation";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useLocale } from "next-intl";
@@ -16,7 +16,6 @@ interface Paper {
 interface TranslationData {
   translatedTitle: string;
   translatedAbstract: string;
-  sourceLanguage: string;
   noTranslationNeeded: boolean;
 }
 
@@ -28,11 +27,12 @@ interface TranslationError {
 interface UseBatchTranslationOptions {
   searchId: string;
   papers: Paper[];
-  selectedLanguage: string;
   canStart: boolean;
   /** When true, blocks results translation (e.g. search refetch in progress) */
   isSearchLoading?: boolean;
-  targetLanguage?: string;
+  autoTranslateResults: boolean;
+  manualRunRequestId: number;
+  targetLanguageOverride: string | null;
 }
 
 /**
@@ -40,33 +40,29 @@ interface UseBatchTranslationOptions {
  * Uses the generic useBatchOperation factory for common batch processing logic.
  */
 interface BatchTranslationContext {
-  selectedLanguage: string;
   targetLanguage: string;
 }
 
 export function useBatchTranslation({
   searchId,
   papers,
-  selectedLanguage,
   canStart,
   isSearchLoading = false,
-  targetLanguage: targetLanguageProp,
+  autoTranslateResults,
+  manualRunRequestId,
+  targetLanguageOverride,
 }: UseBatchTranslationOptions) {
   const locale = useLocale();
-  const targetLanguage = targetLanguageProp ?? localeToLanguageCode(locale);
+  const targetLanguage = targetLanguageOverride ?? localeToLanguageCode(locale);
   const { execute, isConfigured, isPlanEntitled } = useBatchTranslations();
   const { getTranslation, setTranslation, setShowTranslated } = useTranslationStore();
-  const isQueryTranslationInProgress = useTranslationFlowStore(
-    (s) => s.isQueryTranslationInProgress
-  );
+  const lastConsumedManualRunRequestIdRef = useRef(0);
 
-  // Filter papers that need translation (only when a language is selected)
+  // Filter papers that need translation
   const filterItemsNeedingProcessing = useCallback(
     (allPapers: Paper[], context: BatchTranslationContext) => {
-      if (!context.selectedLanguage) return [];
-
       return allPapers.filter((paper) => {
-        const existing = getTranslation(paper.id, context.selectedLanguage, context.targetLanguage);
+        const existing = getTranslation(paper.id, context.targetLanguage);
         return !existing;
       });
     },
@@ -79,7 +75,7 @@ export function useBatchTranslation({
       if (papersToProcess.length === 0) return null;
 
       const paperIds = papersToProcess.map((p) => p.id).sort();
-      return `${context.selectedLanguage}:${context.targetLanguage}:${paperIds.join(",")}`;
+      return `${context.targetLanguage}:${paperIds.join(",")}`;
     },
     []
   );
@@ -92,7 +88,6 @@ export function useBatchTranslation({
         title: p.title || "",
         abstract: p.abstract || "",
       })),
-      sourceLanguage: context.selectedLanguage,
       targetLanguage: context.targetLanguage,
     }),
     []
@@ -101,12 +96,12 @@ export function useBatchTranslation({
   // Handle results
   const handleResult = useCallback(
     (paperId: string, translation: TranslationData, context: BatchTranslationContext) => {
-      if (context.selectedLanguage === selectedLanguage && context.targetLanguage === targetLanguage) {
+      if (context.targetLanguage === targetLanguage) {
         setTranslation(paperId, { ...translation, targetLanguage: context.targetLanguage });
         setShowTranslated(paperId, true);
       }
     },
-    [setTranslation, setShowTranslated, selectedLanguage, targetLanguage]
+    [setTranslation, setShowTranslated, targetLanguage]
   );
 
   // Create loading state
@@ -118,22 +113,29 @@ export function useBatchTranslation({
   const clearLoadingState = useCallback(() => new Set<string>(), []);
 
   const context = useMemo<BatchTranslationContext>(
-    () => ({ selectedLanguage, targetLanguage }),
-    [selectedLanguage, targetLanguage]
+    () => ({ targetLanguage }),
+    [targetLanguage]
   );
 
   // Stable context ID for O(1) comparison in batch operation
-  const contextId = `${searchId}:${selectedLanguage}:${targetLanguage}`;
+  const contextId = `${searchId}:${targetLanguage}`;
+  const hasPendingManualRun =
+    manualRunRequestId > lastConsumedManualRunRequestIdRef.current;
 
   const effectiveCanStart =
     canStart &&
-    !!selectedLanguage &&
     isPlanEntitled &&
-    !isQueryTranslationInProgress &&
-    !isSearchLoading;
+    !isSearchLoading &&
+    (autoTranslateResults || hasPendingManualRun);
+
+  const beforeExecute = useCallback(() => {
+    if (!autoTranslateResults) {
+      lastConsumedManualRunRequestIdRef.current = manualRunRequestId;
+    }
+  }, [autoTranslateResults, manualRunRequestId]);
 
   const { loadingState, errors } = useBatchOperation<
-    { papers: { id: string; title: string; abstract: string }[]; sourceLanguage: string; targetLanguage?: string },
+    { papers: { id: string; title: string; abstract: string }[]; targetLanguage?: string },
     TranslationData,
     BatchTranslationContext,
     Set<string>
@@ -148,6 +150,7 @@ export function useBatchTranslation({
     context,
     canStart: effectiveCanStart,
     papers,
+    beforeExecute,
     createLoadingState,
     clearLoadingState,
   });

@@ -30,6 +30,19 @@ const generateUUID = (): string => {
   });
 };
 
+const removeQuestionFromResponses = (
+  responses: ScreeningResponses | undefined,
+  question: string
+): ScreeningResponses =>
+  Object.fromEntries(
+    Object.entries(responses || {}).map(([paperId, paperResponses]) => [
+      paperId,
+      Object.fromEntries(
+        Object.entries(paperResponses || {}).filter(([q]) => q !== question)
+      ),
+    ])
+  );
+
 interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
@@ -42,7 +55,7 @@ interface SearchHistoryState {
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQueryToHistory: (id: string, query: string) => void
   addQuestionToHistory: (id: string, question: string) => void
-  addScreeningQuestion: (id: string, question: string, locked?: boolean) => void
+  addScreeningQuestion: (id: string, question: string) => void
   updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
   removeScreeningQuestion: (id: string, questionIndex: number) => void
   clearScreeningQuestions: (id: string) => void
@@ -72,6 +85,7 @@ interface UIState {
   extractionViewMode: ViewMode
   extractionSortBy: ExtractionSortBy
   expandedScreeningDetails: Record<string, boolean>
+  screeningPanelOpenBySearchId: Record<string, boolean>
   setIsDialogOpen: (open: boolean) => void
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
@@ -85,6 +99,9 @@ interface UIState {
   setExtractionSortBy: (sort: ExtractionSortBy) => void
   setScreeningDetailExpanded: (paperId: string, expanded: boolean) => void
   getScreeningDetailExpanded: (paperId: string) => boolean
+  getScreeningPanelOpen: (searchId: string) => boolean
+  setScreeningPanelOpen: (searchId: string, open: boolean) => void
+  toggleScreeningPanel: (searchId: string) => void
 }
 
 interface ResultsState {
@@ -219,13 +236,13 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           ),
         }));
       },
-      addScreeningQuestion: (id, question, locked = false) => {
+      addScreeningQuestion: (id, question) => {
         set((state) => ({
           searchHistory: state.searchHistory.map((item) =>
             item.id === id
               ? {
                   ...item,
-                  screeningQuestions: [...(item.screeningQuestions || []), { question, locked }],
+                  screeningQuestions: [...(item.screeningQuestions || []), { question }],
                   updatedAt: new Date().toISOString()
                 }
               : item
@@ -235,28 +252,51 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
       updateScreeningQuestion: (id, questionIndex, updates) => {
         set((state) => ({
           searchHistory: state.searchHistory.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  screeningQuestions: (item.screeningQuestions || []).map((q, index) =>
+            item.id !== id
+              ? item
+              : (() => {
+                  const currentQuestions = item.screeningQuestions || [];
+                  const previousQuestion = currentQuestions[questionIndex]?.question;
+                  const screeningQuestions = currentQuestions.map((q, index) =>
                     index === questionIndex ? { ...q, ...updates } : q
-                  ),
-                  updatedAt: new Date().toISOString()
-                }
-              : item
+                  );
+                  const nextQuestion = screeningQuestions[questionIndex]?.question;
+                  const shouldCleanupResponses =
+                    typeof previousQuestion === "string" &&
+                    typeof nextQuestion === "string" &&
+                    previousQuestion !== nextQuestion;
+
+                  return {
+                    ...item,
+                    screeningQuestions,
+                    screeningResponses: shouldCleanupResponses
+                      ? removeQuestionFromResponses(item.screeningResponses, previousQuestion)
+                      : item.screeningResponses,
+                    updatedAt: new Date().toISOString(),
+                  };
+                })()
           ),
         }));
       },
       removeScreeningQuestion: (id, questionIndex) => {
         set((state) => ({
           searchHistory: state.searchHistory.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  screeningQuestions: (item.screeningQuestions || []).filter((_, index) => index !== questionIndex),
-                  updatedAt: new Date().toISOString()
-                }
-              : item
+            item.id !== id
+              ? item
+              : (() => {
+                  const removedQuestion = (item.screeningQuestions || [])[questionIndex]?.question;
+                  return {
+                    ...item,
+                    screeningQuestions: (item.screeningQuestions || []).filter(
+                      (_, index) => index !== questionIndex
+                    ),
+                    screeningResponses:
+                      typeof removedQuestion === "string"
+                        ? removeQuestionFromResponses(item.screeningResponses, removedQuestion)
+                        : item.screeningResponses,
+                    updatedAt: new Date().toISOString(),
+                  };
+                })()
           ),
         }));
       },
@@ -267,6 +307,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
               ? {
                   ...item,
                   screeningQuestions: [],
+                  screeningResponses: {},
                   updatedAt: new Date().toISOString()
                 }
               : item
@@ -328,14 +369,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
             item.id === searchId
               ? {
                   ...item,
-                  screeningResponses: Object.fromEntries(
-                    Object.entries(item.screeningResponses || {}).map(([paperId, responses]) => [
-                      paperId,
-                      Object.fromEntries(
-                        Object.entries(responses).filter(([q]) => q !== question)
-                      )
-                    ])
-                  ),
+                  screeningResponses: removeQuestionFromResponses(item.screeningResponses, question),
                   updatedAt: new Date().toISOString()
                 }
               : item
@@ -422,7 +456,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
-      version: 6, // Increment when migrations are needed
+      version: 7, // Increment when migrations are needed
       migrate: (persistedState: any, version: number) => {
         // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
         if (version === 0) {
@@ -514,6 +548,18 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           }
         }
 
+        // Migration for version 6 -> 7: Normalize screening question shape
+        if (version <= 6) {
+          if (persistedState.searchHistory) {
+            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => ({
+              ...item,
+              screeningQuestions: (item.screeningQuestions || []).map((question: any) => ({
+                question: typeof question?.question === "string" ? question.question : "",
+              })),
+            }));
+          }
+        }
+
         return persistedState;
       },
     }
@@ -535,6 +581,7 @@ export const useUIStore = create<UIState>()(
       extractionViewMode: 'list-detail',
       extractionSortBy: 'recent',
       expandedScreeningDetails: {},
+      screeningPanelOpenBySearchId: {},
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
       setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
@@ -559,6 +606,28 @@ export const useUIStore = create<UIState>()(
         },
       })),
       getScreeningDetailExpanded: (paperId) => get().expandedScreeningDetails[paperId] || false,
+      getScreeningPanelOpen: (searchId) => {
+        const key = searchId || "__active";
+        return get().screeningPanelOpenBySearchId[key] || false;
+      },
+      setScreeningPanelOpen: (searchId, open) => {
+        const key = searchId || "__active";
+        set((state) => ({
+          screeningPanelOpenBySearchId: {
+            ...state.screeningPanelOpenBySearchId,
+            [key]: open,
+          },
+        }));
+      },
+      toggleScreeningPanel: (searchId) => {
+        const key = searchId || "__active";
+        set((state) => ({
+          screeningPanelOpenBySearchId: {
+            ...state.screeningPanelOpenBySearchId,
+            [key]: !(state.screeningPanelOpenBySearchId[key] || false),
+          },
+        }));
+      },
     }),
     {
       name: 'ui-store',
@@ -571,6 +640,7 @@ export const useUIStore = create<UIState>()(
         extractionViewMode: state.extractionViewMode,
         extractionSortBy: state.extractionSortBy,
         expandedScreeningDetails: state.expandedScreeningDetails,
+        screeningPanelOpenBySearchId: state.screeningPanelOpenBySearchId,
       }),
     }
   )
@@ -873,20 +943,19 @@ export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (ope
 export interface TranslationData {
   translatedTitle: string;
   translatedAbstract: string;
-  sourceLanguage: string;
   noTranslationNeeded: boolean;
   targetLanguage?: string;
 }
 
-function translationKey(paperId: string, sourceLanguage: string, targetLanguage: string): string {
-  return `${paperId}:${sourceLanguage}:${targetLanguage}`;
+function translationKey(paperId: string, targetLanguage: string): string {
+  return `${paperId}:${targetLanguage}`;
 }
 
 interface TranslationState {
   translations: Record<string, TranslationData>;
   showTranslations: Record<string, boolean>;
   setTranslation: (paperId: string, data: TranslationData) => void;
-  getTranslation: (paperId: string, sourceLanguage?: string, targetLanguage?: string) => TranslationData | null;
+  getTranslation: (paperId: string, targetLanguage?: string) => TranslationData | null;
   getShowTranslated: (id: string) => boolean;
   setShowTranslated: (id: string, show: boolean) => void;
   clearTranslation: (id: string) => void;
@@ -899,7 +968,7 @@ export const useTranslationStore = create<TranslationState>()(
     showTranslations: {},
     setTranslation: (paperId: string, data: TranslationData) => {
       const target = data.targetLanguage ?? "en";
-      const key = translationKey(paperId, data.sourceLanguage, target);
+      const key = translationKey(paperId, target);
       set((state) => ({
         translations: {
           ...state.translations,
@@ -908,12 +977,12 @@ export const useTranslationStore = create<TranslationState>()(
       }));
     },
 
-    getTranslation: (paperId: string, sourceLanguage?: string, targetLanguage?: string) => {
-      if (sourceLanguage && targetLanguage) {
-        const key = translationKey(paperId, sourceLanguage, targetLanguage);
+    getTranslation: (paperId: string, targetLanguage?: string) => {
+      if (targetLanguage) {
+        const key = translationKey(paperId, targetLanguage);
         return get().translations[key] || null;
       }
-      // Fallback: find any translation for this paper (legacy)
+      // Fallback: find any translation for this paper
       const entries = Object.entries(get().translations);
       const match = entries.find(([k]) => k.startsWith(`${paperId}:`));
       return match ? match[1] : null;
@@ -949,15 +1018,37 @@ export const useTranslationStore = create<TranslationState>()(
   })
 );
 
-// Translation Flow Store - coordinates query translation vs results translation
-interface TranslationFlowState {
-  isQueryTranslationInProgress: boolean;
-  setQueryTranslationInProgress: (v: boolean) => void;
+interface ResultsTranslationSettingsState {
+  autoTranslateResults: boolean;
+  targetLanguageOverride: string | null;
+  manualRunRequestId: number;
+  setAutoTranslateResults: (enabled: boolean) => void;
+  setTargetLanguageOverride: (language: string | null) => void;
+  clearTargetLanguageOverride: () => void;
+  requestManualRun: () => void;
 }
-export const useTranslationFlowStore = create<TranslationFlowState>()((set) => ({
-  isQueryTranslationInProgress: false,
-  setQueryTranslationInProgress: (v) => set({ isQueryTranslationInProgress: v }),
-}));
+
+export const useResultsTranslationSettingsStore = create<ResultsTranslationSettingsState>()(
+  persist(
+    (set) => ({
+      autoTranslateResults: false,
+      targetLanguageOverride: null,
+      manualRunRequestId: 0,
+      setAutoTranslateResults: (enabled) => set({ autoTranslateResults: enabled }),
+      setTargetLanguageOverride: (language) => set({ targetLanguageOverride: language }),
+      clearTargetLanguageOverride: () => set({ targetLanguageOverride: null }),
+      requestManualRun: () =>
+        set((state) => ({ manualRunRequestId: state.manualRunRequestId + 1 })),
+    }),
+    {
+      name: "results-translation-settings-store",
+      partialize: (state) => ({
+        autoTranslateResults: state.autoTranslateResults,
+        targetLanguageOverride: state.targetLanguageOverride,
+      }),
+    }
+  )
+);
 
 // Sidebar Store - Main navigation sidebar
 const SIDEBAR_WIDTH_EXPANDED = 280;
@@ -1093,12 +1184,20 @@ export const useTransientScreeningStore = create<{
   testIndexPerQuestion: Record<string, number>;
   setTestIndexPerQuestion: (key: string, value: number) => void;
   incrementTestIndexPerQuestion: (key: string) => void;
+  clearTestIndexPerQuestion: (key: string) => void;
+  clearAllTestIndexPerQuestion: () => void;
 }>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       testIndexPerQuestion: {},
       setTestIndexPerQuestion: (key, value) => set((state) => ({ testIndexPerQuestion: { ...state.testIndexPerQuestion, [key]: value } })),
       incrementTestIndexPerQuestion: (key) => set((state) => ({ testIndexPerQuestion: { ...state.testIndexPerQuestion, [key]: (state.testIndexPerQuestion[key] || 0) + 1 } })),
+      clearTestIndexPerQuestion: (key) =>
+        set((state) => {
+          const { [key]: _ignored, ...remaining } = state.testIndexPerQuestion;
+          return { testIndexPerQuestion: remaining };
+        }),
+      clearAllTestIndexPerQuestion: () => set({ testIndexPerQuestion: {} }),
     }),
     {
       name: 'transient-screening-store',

@@ -16,7 +16,6 @@ import {
   useAIConfigStore,
   useCurrentQueryStore,
   useKeywordExpansionDialogStore,
-  useTranslationFlowStore,
 } from "@/lib/store";
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
@@ -228,19 +227,14 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const handleLanguageChange = useCallback(
     async (language: string) => {
       if (!search || language === selectedLanguage) return;
-      useTranslationFlowStore.getState().setQueryTranslationInProgress(true);
       search.setLanguage(language || null);
       posthog.capture("language_selected", {
         language: language || "none",
         previous_language: selectedLanguage || "none",
         context: "search",
       });
-      try {
-        if (language && localInputValue.trim()) {
-          await performTranslation(language);
-        }
-      } finally {
-        useTranslationFlowStore.getState().setQueryTranslationInProgress(false);
+      if (language && localInputValue.trim()) {
+        await performTranslation(language);
       }
     },
     [search, selectedLanguage, localInputValue, performTranslation]

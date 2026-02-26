@@ -95,21 +95,18 @@ export const translatePaperContent = createAIAction(
   {
     title: v.string(),
     abstract: v.string(),
-    sourceLanguage: v.string(),
     targetLanguage: v.optional(v.string()),
   },
   v.object({
     translatedTitle: v.string(),
     translatedAbstract: v.string(),
-    sourceLanguage: v.string(),
     noTranslationNeeded: v.boolean(),
   }),
   "Translate paper content",
   getTranslatePaperContentConfig,
-  (output, args) => ({
+  (output) => ({
     translatedTitle: output.translatedTitle,
     translatedAbstract: output.translatedAbstract,
-    sourceLanguage: args.sourceLanguage,
     noTranslationNeeded: false,
   }),
   { minPlanTier: 10 }
@@ -149,7 +146,6 @@ export const generateBatchTranslations = action({
         abstract: v.string(),
       })
     ),
-    sourceLanguage: v.string(),
     targetLanguage: v.optional(v.string()),
   },
   returns: v.object({
@@ -158,7 +154,6 @@ export const generateBatchTranslations = action({
       v.object({
         translatedTitle: v.string(),
         translatedAbstract: v.string(),
-        sourceLanguage: v.string(),
         noTranslationNeeded: v.boolean(),
       })
     ),
@@ -170,9 +165,9 @@ export const generateBatchTranslations = action({
     ),
   }),
   handler: async (ctx, args) => {
-    const { papers, sourceLanguage, targetLanguage } = args;
+    const { papers, targetLanguage } = args;
 
-    if (papers.length === 0 || !sourceLanguage) {
+    if (papers.length === 0) {
       return { results: {}, errors: [] };
     }
 
@@ -185,7 +180,6 @@ export const generateBatchTranslations = action({
         const { results, errors, usages } = await processTranslationBatch({
           model,
           papers,
-          sourceLanguage,
           targetLanguage,
         });
 

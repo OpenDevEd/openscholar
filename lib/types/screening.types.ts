@@ -26,12 +26,10 @@ export interface ScreeningQuestion {
 export type DataExtractionQuestion = ScreeningQuestion;
 
 /**
- * A simplified screening question entry for search history
- * @deprecated Use ScreeningQuestion instead when possible
+ * A simplified screening question entry for search history.
  */
 export interface ScreeningQuestionEntry {
   question: string;
-  locked: boolean;
 }
 
 /**

@@ -43,7 +43,6 @@ import {
   useFocusModeSettingsStore,
   useUIStore,
 } from "@/lib/store";
-import { useSearchOptional } from "@/lib/search";
 import { DownloadMenu } from "../download-menu";
 import { useTheme } from "next-themes";
 import { RatingSelector } from "../rating-selector";
@@ -465,10 +464,6 @@ export function FocusMode({
     };
   }, []);
 
-  // Get language from URL params (source of truth on results page)
-  const search = useSearchOptional();
-  const selectedLanguage = search?.params?.lang ?? '';
-
   // Swipe threshold for triggering navigation - made more restrictive
   const swipeThreshold = 120; // Increased from 50
   const swipeVelocityThreshold = 800; // Increased from 500
@@ -666,7 +661,7 @@ export function FocusMode({
         case "t":
         case "T":
           e.preventDefault();
-          if (selectedLanguage && translatedContent) {
+          if (translatedContent) {
             setShowTranslated(!showTranslated);
           }
           break;
@@ -680,7 +675,6 @@ export function FocusMode({
     currentIndex,
     papers.length,
     currentPaper,
-    selectedLanguage,
     translatedContent,
     showTranslated,
     handleRatingChange,
@@ -855,38 +849,34 @@ export function FocusMode({
                 <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
 
                 <div className="flex items-center gap-1">
-                  {selectedLanguage && (
-                    <>
-                      <Button
-                        variant={showTranslated ? "outline-primary" : "outline"}
-                        size="sm"
-                        onClick={() => setShowTranslated(!showTranslated)}
-                        title={
-                          showTranslated
-                            ? tFocus("showOriginal")
-                            : tFocus("showTranslation")
-                        }
-                        disabled={
-                          !translatedContent ||
-                          translatedContent.noTranslationNeeded
-                        }
-                      >
-                        {isTranslating ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Globe className="h-3 w-3 md:mr-1" />
-                            <span className="hidden sm:inline">
-                              {showTranslated ? tFocus("original") : tFocus("translation")}
-                            </span>
-                          </>
-                        )}
-                      </Button>
-                      <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                        T
-                      </span>
-                    </>
-                  )}
+                  <Button
+                    variant={showTranslated ? "outline-primary" : "outline"}
+                    size="sm"
+                    onClick={() => setShowTranslated(!showTranslated)}
+                    title={
+                      showTranslated
+                        ? tFocus("showOriginal")
+                        : tFocus("showTranslation")
+                    }
+                    disabled={
+                      !translatedContent ||
+                      translatedContent.noTranslationNeeded
+                    }
+                  >
+                    {isTranslating ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Globe className="h-3 w-3 md:mr-1" />
+                        <span className="hidden sm:inline">
+                          {showTranslated ? tFocus("original") : tFocus("translation")}
+                        </span>
+                      </>
+                    )}
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    T
+                  </span>
                   <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
                   <Button
                     variant={showSettings ? "outline-primary" : "outline"}

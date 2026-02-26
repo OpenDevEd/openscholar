@@ -133,10 +133,9 @@ export const translateQuery = createClientExecutor(
 
 export const translatePaperContent = createClientExecutor(
   getTranslatePaperContentConfig,
-  (output, params) => ({
+  (output) => ({
     translatedTitle: output.translatedTitle,
     translatedAbstract: output.translatedAbstract,
-    sourceLanguage: params.sourceLanguage,
     noTranslationNeeded: false,
   }),
   'translate_paper_content'
@@ -224,7 +223,6 @@ export async function generateBatchScreeningResponses(
 
 export interface BatchTranslationParams {
   papers: BatchPaper[]
-  sourceLanguage: string
   targetLanguage?: string
 }
 
@@ -232,9 +230,9 @@ export async function generateBatchTranslations(
   params: BatchTranslationParams,
   config: AIConfig
 ): Promise<BatchTranslationResult> {
-  const { papers, sourceLanguage, targetLanguage } = params
+  const { papers, targetLanguage } = params
 
-  if (papers.length === 0 || !sourceLanguage) {
+  if (papers.length === 0) {
     return { results: {}, errors: [] }
   }
 
@@ -249,7 +247,6 @@ export async function generateBatchTranslations(
     const { results, errors, usages } = await processTranslationBatch({
       model,
       papers,
-      sourceLanguage,
       targetLanguage,
     })
 
@@ -269,7 +266,7 @@ export async function generateBatchTranslations(
       feature: 'batch_translations',
       usage: { inputTokens: totalInput, outputTokens: totalOutput },
       latencyMs,
-      input: `Batch translation: ${papers.length} papers, ${sourceLanguage} -> ${targetLanguage ?? 'auto'}`,
+      input: `Batch translation: ${papers.length} papers -> ${targetLanguage ?? 'auto'}`,
       output: `Processed ${Object.keys(results).length} papers`,
     })
 
@@ -282,7 +279,7 @@ export async function generateBatchTranslations(
       feature: 'batch_translations',
       usage: { inputTokens: 0, outputTokens: 0 },
       latencyMs,
-      input: `Batch translation: ${papers.length} papers, ${sourceLanguage} -> ${targetLanguage ?? 'auto'}`,
+      input: `Batch translation: ${papers.length} papers -> ${targetLanguage ?? 'auto'}`,
       output: '',
       isError: true,
       errorMessage: error instanceof Error ? error.message : String(error),

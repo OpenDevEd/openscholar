@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
+import { useSearchHistoryStore, useUIStore } from "@/lib/store";
 import { SearchCommandHeader } from "./search-command-header";
 import { SearchCommandBody } from "./search-command-body";
 import { SearchCommandFooter } from "./search-command-footer";
@@ -36,7 +37,17 @@ export function SearchCommandCenter({
   onDownloadAllEssentialCSV,
 }: SearchCommandCenterProps) {
   const [mode, setMode] = useState<CommandCenterMode>("search");
-  const [isScreeningOpen, setIsScreeningOpen] = useState(false);
+  const screenStateKey = searchId || "__active";
+  const screeningPanelId = `screening-panel-${searchId || "active"}`;
+  const isScreeningOpen = useUIStore(
+    (state) => state.screeningPanelOpenBySearchId[screenStateKey] || false
+  );
+  const toggleScreeningPanel = useUIStore((state) => state.toggleScreeningPanel);
+  const screeningQuestionCount = useSearchHistoryStore(
+    (state) =>
+      state.searchHistory.find((item) => item.id === searchId)?.screeningQuestions
+        ?.length || 0
+  );
 
   return (
     <motion.div
@@ -82,7 +93,9 @@ export function SearchCommandCenter({
         totalCount={totalCount}
         currentQuery={currentQuery}
         isScreeningOpen={isScreeningOpen}
-        onScreeningToggle={() => setIsScreeningOpen(!isScreeningOpen)}
+        onScreeningToggle={() => toggleScreeningPanel(screenStateKey)}
+        screeningPanelId={screeningPanelId}
+        screeningQuestionCount={screeningQuestionCount}
         isLoading={isLoading || isValidating}
       />
 
@@ -90,6 +103,7 @@ export function SearchCommandCenter({
       <ScreeningExpansion
         isOpen={isScreeningOpen}
         searchId={searchId}
+        panelId={screeningPanelId}
       />
     </motion.div>
   );

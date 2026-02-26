@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useState,
   useMemo,
-  createContext,
   useCallback,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -21,6 +20,7 @@ import { cn, isRatingFilterActive, getEffectiveSearchId } from "@/lib/utils";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import {
   useRatingsStore,
+  useResultsTranslationSettingsStore,
   useSearchHistoryStore,
   useUIStore,
 } from "@/lib/store";
@@ -32,7 +32,7 @@ import { SearchCommandCenter } from "./search-command-center";
 import { NoResults, LoadingResults } from "@/components/no-results";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
-import { ScreeningResponses } from "@/lib/types";
+import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 import { FocusMode } from "./ui/focus-mode";
 import { useIsTablet } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
@@ -71,21 +71,6 @@ interface ResultsListProps {
   currentQuery?: string;
   onBackToHome?: () => void;
 }
-
-export const ScreeningContext = createContext<{
-  missingResponses?: Record<string, string[]>;
-  loadingQuestions?: Record<string, Set<string>>;  // paperId -> Set<questionText>
-  existingResponses?: ScreeningResponses;
-  errors?: Array<{ paperId: string; error: string }>;
-  setScreeningResponse?: (paperId: string, question: string, response: boolean) => void;
-  setScreeningResponses?: (paperId: string, responses: Record<string, boolean | null>) => void;
-  canStartScreening?: boolean;
-}>({});
-
-export const TranslationContext = createContext<{
-  loadingPaperIds?: Set<string>;
-  errors?: Array<{ paperId: string; error: string }>;
-}>({});
 
 function PapersGrid({
   results,
@@ -320,6 +305,15 @@ export function ResultsList({
   );
 
   const { setScreeningResponse, setScreeningResponses } = useSearchHistoryStore();
+  const autoTranslateResults = useResultsTranslationSettingsStore(
+    (state) => state.autoTranslateResults
+  );
+  const targetLanguageOverride = useResultsTranslationSettingsStore(
+    (state) => state.targetLanguageOverride
+  );
+  const manualRunRequestId = useResultsTranslationSettingsStore(
+    (state) => state.manualRunRequestId
+  );
 
   // Get query from URL params
   const urlQuery = search.params.q;
@@ -399,16 +393,22 @@ export function ResultsList({
     onResults: handleBatchResults,
   });
 
-  // Get selected language from URL params
-  const selectedLanguage = search.params.lang ?? "";
+  const papersForBatchTranslation = paginatedResults;
 
   // Use batch translation hook
-  const { loadingPaperIds: translationLoadingPaperIds, errors: translationErrors } = useBatchTranslation({
+  const {
+    loadingPaperIds: translationLoadingPaperIds,
+    errors: translationErrors,
+    isConfigured: isTranslationConfigured,
+    isPlanEntitled: isTranslationPlanEntitled,
+  } = useBatchTranslation({
     searchId: searchId || "",
-    papers: papersForBatchScreening,
-    selectedLanguage,
-    canStart: canStartScreening && !!searchId,
+    papers: papersForBatchTranslation,
+    canStart: !!searchId,
     isSearchLoading: isLoading || isValidating,
+    autoTranslateResults,
+    manualRunRequestId,
+    targetLanguageOverride,
   });
 
   // Notify Zotero when results change
@@ -432,7 +432,14 @@ export function ResultsList({
   };
 
   return (
-    <TranslationContext.Provider value={{ loadingPaperIds: translationLoadingPaperIds, errors: translationErrors }}>
+    <TranslationContext.Provider
+      value={{
+        loadingPaperIds: translationLoadingPaperIds,
+        errors: translationErrors,
+        isConfigured: isTranslationConfigured,
+        isPlanEntitled: isTranslationPlanEntitled,
+      }}
+    >
     <ScreeningContext.Provider
       value={{
         missingResponses,

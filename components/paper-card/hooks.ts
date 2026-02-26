@@ -4,14 +4,14 @@ import { useCallback, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import {
+  useResultsTranslationSettingsStore,
   useTranslationStore,
   useSearchHistoryStore,
 } from "@/lib/store";
-import { useSearchOptional } from "@/lib/search";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { createCitationSearch } from "@/lib/search";
 import { getEffectiveSearchId } from "@/lib/utils";
-import { ScreeningContext, TranslationContext } from "@/components/results-list";
+import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 
 // ==================== Types ====================
 
@@ -43,7 +43,6 @@ export interface PaperData {
 export interface TranslationContent {
   translatedTitle: string;
   translatedAbstract: string;
-  sourceLanguage: string;
   noTranslationNeeded?: boolean;
 }
 
@@ -58,15 +57,16 @@ export function useTranslate(
   data: { id: string; title: string; abstract: string } | undefined,
   _autoSet: boolean = true
 ) {
-  const search = useSearchOptional();
-  const selectedLanguage = search?.params?.lang ?? '';
   const locale = useLocale();
-  const targetLanguage = localeToLanguageCode(locale);
+  const targetLanguageOverride = useResultsTranslationSettingsStore(
+    (state) => state.targetLanguageOverride
+  );
+  const targetLanguage = targetLanguageOverride ?? localeToLanguageCode(locale);
 
-  // Use selectors to subscribe to specific translation data (composite key: paperId:source:target)
+  // Use selectors to subscribe to specific translation data (composite key: paperId:target)
   const translatedContent = useTranslationStore(
-    (state) => (data?.id && selectedLanguage && targetLanguage
-      ? state.getTranslation(data.id, selectedLanguage, targetLanguage)
+    (state) => (data?.id && targetLanguage
+      ? state.getTranslation(data.id, targetLanguage)
       : null)
   );
   const showTranslated = useTranslationStore(
@@ -93,7 +93,6 @@ export function useTranslate(
     showTranslated,
     isTranslating,
     setShowTranslated,
-    selectedLanguage,
   };
 }
 

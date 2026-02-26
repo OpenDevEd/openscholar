@@ -38,14 +38,12 @@ export interface TranslateQueryOutput {
 export interface TranslatePaperContentInput {
   title: string
   abstract: string
-  sourceLanguage: string
   targetLanguage?: string
 }
 
 export interface TranslatePaperContentOutput {
   translatedTitle: string
   translatedAbstract: string
-  sourceLanguage: string
   noTranslationNeeded: boolean
 }
 

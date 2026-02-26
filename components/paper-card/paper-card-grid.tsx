@@ -42,8 +42,7 @@ export function PaperCardGrid({
     translatedContent, 
     showTranslated, 
     isTranslating, 
-    setShowTranslated,
-    selectedLanguage 
+    setShowTranslated
   } = useTranslate(result);
 
   const {
@@ -100,7 +99,6 @@ export function PaperCardGrid({
                 isTranslating={isTranslating}
                 translatedContent={translatedContent}
                 showTranslated={showTranslated}
-                selectedLanguage={selectedLanguage}
                 setShowTranslated={setShowTranslated}
                 variant="compact"
               />

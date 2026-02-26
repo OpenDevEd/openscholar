@@ -47,13 +47,12 @@ export type BatchScreeningResult = BatchResult<ScreeningResultData>
 
 export interface BatchTranslationParams {
   papers: BatchPaper[]
-  sourceLanguage: string
+  targetLanguage?: string
 }
 
 export interface TranslationResultData {
   translatedTitle: string
   translatedAbstract: string
-  sourceLanguage: string
   noTranslationNeeded: boolean
 }
 

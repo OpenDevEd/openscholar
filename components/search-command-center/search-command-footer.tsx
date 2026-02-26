@@ -8,6 +8,7 @@ import posthog from "posthog-js";
 import { motion } from "motion/react";
 import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore } from "@/lib/store";
@@ -16,12 +17,15 @@ import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
+import { ResultsTranslationControl } from "./components/results-translation-control";
 
 interface SearchCommandFooterProps {
   totalCount: number;
   currentQuery: string;
   isScreeningOpen: boolean;
   onScreeningToggle: () => void;
+  screeningPanelId: string;
+  screeningQuestionCount: number;
   isLoading?: boolean;
 }
 
@@ -30,6 +34,8 @@ export function SearchCommandFooter({
   currentQuery,
   isScreeningOpen,
   onScreeningToggle,
+  screeningPanelId,
+  screeningQuestionCount,
   isLoading,
 }: SearchCommandFooterProps) {
   const toast = useAppToast();
@@ -189,7 +195,7 @@ Return a more targeted version of this query.`;
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-3",
+        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
         "border-t border-border/40"
       )}
     >
@@ -242,25 +248,63 @@ Return a more targeted version of this query.`;
         )}
       </div>
 
-      {/* Right: Screen toggle */}
-      <Button
-        variant={isScreeningOpen ? "default" : "outline"}
-        size="sm"
-        onClick={handleScreeningToggle}
-        className={cn(
-          "h-8 gap-1.5",
-          isScreeningOpen && "bg-primary text-primary-foreground"
-        )}
-      >
-        <Eye className="h-4 w-4" />
-        <span className="hidden sm:inline">{t("common.screen")}</span>
-        <motion.div
-          animate={{ rotate: isScreeningOpen ? 180 : 0 }}
-          transition={subtleSpring}
+      <div className="self-end sm:self-auto">
+        <div
+          className={cn(
+            "inline-flex items-center rounded-2xl border border-border/70 bg-background/70 p-1 shadow-sm",
+            "backdrop-blur supports-[backdrop-filter]:bg-background/55 supports-[backdrop-filter]:backdrop-saturate-150"
+          )}
         >
-          <ChevronDown className="h-3 w-3" />
-        </motion.div>
-      </Button>
+          <ResultsTranslationControl
+            disabled={isLoading}
+            triggerVariant="ghost"
+            compactTrigger
+            triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+          />
+
+          <div className="mx-1 h-6 w-px bg-border/70" />
+
+          {/* Right: Screen toggle */}
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={handleScreeningToggle}
+            aria-expanded={isScreeningOpen}
+            aria-controls={screeningPanelId}
+            className={cn(
+              "h-9 min-w-[130px] justify-between gap-2 rounded-xl border border-transparent px-2.5",
+              "text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+              isScreeningOpen &&
+                "border-border/70 bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
+            )}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Eye className="h-4 w-4" />
+              <span className="text-sm font-medium">{t("common.screen")}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Badge
+                variant={isScreeningOpen ? "default" : "outline"}
+                className={cn(
+                  "h-5 min-w-5 rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+                  isScreeningOpen
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground"
+                )}
+              >
+                {screeningQuestionCount}
+              </Badge>
+              <motion.div
+                animate={{ rotate: isScreeningOpen ? 180 : 0 }}
+                transition={subtleSpring}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </motion.div>
+            </span>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

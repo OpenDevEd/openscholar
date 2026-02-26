@@ -6,7 +6,6 @@ import { workToCoins } from "@/lib/utils";
 import { useResultsStore, useUIStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
-import { useSearchOptional } from "@/lib/search";
 import { openFocusMode } from "@/lib/search-actions";
 import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
@@ -58,9 +57,6 @@ export function PaperCardListDetail({
   const isMobile = useIsTablet();
 
   const searchId = getEffectiveSearchId(pathname, undefined);
-
-  const search = useSearchOptional();
-  const selectedLanguage = search?.params?.lang ?? "";
 
   const handleFilteredSearch = (
     filterType: "cites" | "citedBy" | "related",
@@ -119,7 +115,6 @@ export function PaperCardListDetail({
           {/* Translation toggle - only when translating or we have translation to toggle */}
           {(isTranslating ||
             (translatedContent &&
-              translatedContent.sourceLanguage === selectedLanguage &&
               !translatedContent.noTranslationNeeded)) && (
             <div className="flex items-center gap-2 mb-2">
               {isTranslating && (
@@ -130,7 +125,6 @@ export function PaperCardListDetail({
               )}
 
               {translatedContent &&
-                translatedContent.sourceLanguage === selectedLanguage &&
                 !translatedContent.noTranslationNeeded && (
                   <button
                     onClick={(e) => {

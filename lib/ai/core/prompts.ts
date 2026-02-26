@@ -168,7 +168,7 @@ CRITICAL: You MUST respond with valid JSON in the following format:
   "translatedAbstract": "translated abstract here"
 }
 
-Your task is to translate academic paper titles and abstracts FROM the specified language TO ${targetLanguageName} while maintaining:
+Your task is to translate academic paper titles and abstracts TO ${targetLanguageName} while maintaining:
 
 1. Academic terminology and precision
 2. The same meaning and scientific accuracy
@@ -176,7 +176,7 @@ Your task is to translate academic paper titles and abstracts FROM the specified
 4. Natural and fluent translation in ${targetLanguageName}
 
 Translate professionally and accurately, preserving the scientific content and academic tone.`,
-    prompt: `Translate this academic paper content FROM ${getLanguageName(input.sourceLanguage)} TO ${targetLanguageName}:
+    prompt: `Detect the original language and translate this academic paper content TO ${targetLanguageName}:
 
 Title: "${input.title}"
 
