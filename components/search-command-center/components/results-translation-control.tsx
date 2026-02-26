@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useContext, useId, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Globe2, Loader2, Sparkles } from "lucide-react";
+import { Check, Globe2, Loader2, Lock, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -90,8 +91,13 @@ export function ResultsTranslationControl({
   const effectiveTargetLabel =
     tl(effectiveTargetLanguage as never) || effectiveTargetLanguage;
   const targetBadgeLabel = effectiveTargetLanguage.toUpperCase();
-  const isTriggerDisabled = disabled || !isPlanEntitled;
-  const isRunDisabled = disabled || !isPlanEntitled || isTranslating;
+  const isLocked = !isPlanEntitled;
+  const isTriggerDisabled = disabled || isLocked;
+  const isRunDisabled = disabled || isLocked || isTranslating;
+  const showActiveTranslationState = !isLocked && autoTranslateResults;
+  const triggerAriaLabel = isLocked
+    ? `${t("translate")} - ${t("translationPlanRequired")}`
+    : `${t("translate")} - ${t("targetLanguageValue", { language: effectiveTargetLabel })}`;
 
   const handleTargetModeChange = useCallback(
     (value: string) => {
@@ -125,14 +131,14 @@ export function ResultsTranslationControl({
       variant={triggerVariant}
       size="sm"
       disabled={isTriggerDisabled}
-      aria-label={`${t("translate")} - ${t("targetLanguageValue", { language: effectiveTargetLabel })}`}
+      aria-label={triggerAriaLabel}
       className={cn(
         compactTrigger
           ? "h-8 gap-1.5 px-2.5"
           : "h-8 rounded-full gap-1.5 pl-2.5 pr-2 border-border/70 bg-background/90 hover:bg-accent/50",
         compactTrigger
-          ? autoTranslateResults && "bg-background text-foreground shadow-xs"
-          : autoTranslateResults && "border-primary/40 text-primary",
+          ? showActiveTranslationState && "bg-background text-foreground shadow-xs"
+          : showActiveTranslationState && "border-primary/40 text-primary",
         compactTrigger
           ? isOpen && "bg-background text-foreground shadow-xs"
           : isOpen && "border-primary/50 shadow-[0_0_0_3px] shadow-primary/10",
@@ -145,7 +151,9 @@ export function ResultsTranslationControl({
         <Globe2 className="h-4 w-4" />
       )}
       <span>{t("translate")}</span>
-      {compactTrigger ? (
+      {isLocked ? (
+        <Lock className="h-3.5 w-3.5 opacity-70" />
+      ) : compactTrigger ? (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {targetBadgeLabel}
         </span>
@@ -157,7 +165,7 @@ export function ResultsTranslationControl({
           {targetBadgeLabel}
         </Badge>
       )}
-      {autoTranslateResults && !isTranslating && !compactTrigger && (
+      {showActiveTranslationState && !isTranslating && !compactTrigger && (
         <Sparkles className="h-3.5 w-3.5 text-primary/80" />
       )}
     </Button>
@@ -166,8 +174,18 @@ export function ResultsTranslationControl({
   if (!isPlanEntitled) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-        <TooltipContent>{t("translationPlanRequired")}</TooltipContent>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">{trigger}</span>
+        </TooltipTrigger>
+        <TooltipContent sideOffset={6} className="max-w-52 px-2.5 py-2 text-xs leading-relaxed">
+          <p className="text-background/80">{t("translationPlanRequired")}</p>
+          <Link
+            href="/pricing"
+            className="mt-1 inline-flex items-center gap-1 font-semibold underline-offset-2 hover:underline"
+          >
+            {tc("upgradeTo", { plan: "Go" })} →
+          </Link>
+        </TooltipContent>
       </Tooltip>
     );
   }

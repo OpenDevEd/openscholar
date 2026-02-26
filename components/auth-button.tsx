@@ -11,7 +11,6 @@ import {
   Settings,
   Loader2,
   Bot,
-  MoreVertical,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -100,7 +99,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
         )}
       >
-        <MoreVertical className="h-[1.2rem] w-[1.2rem] shrink-0" />
+        <User className="h-[1.2rem] w-[1.2rem] shrink-0" />
         {!isCollapsed && (
           <span className="text-sm font-medium">{tc("more")}</span>
         )}
