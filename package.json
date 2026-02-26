@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev:stripe": "./scripts/dev-stripe.sh",
     "dev:convex": "convex dev",
     "dev:all": "pm2 start ecosystem.config.js",
     "build": "next build",
