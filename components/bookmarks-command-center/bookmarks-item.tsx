@@ -70,9 +70,8 @@ export function BookmarksItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(bookmark.expansion);
-      toast.clipboard.copied(tToast("entityExpansion"));
     } catch {
-      toast.clipboard.copied(tToast("entityExpansion"));
+      toast.clipboard.copyFailed(tToast("entityExpansion"));
     }
   };
 

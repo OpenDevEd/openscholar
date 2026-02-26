@@ -166,7 +166,6 @@ export function HistoryCommandCenter() {
         "search_history.json",
         "json",
       );
-      toast.io.downloadSuccess(data.length, tToast("entitySearchEntries"), tToast("entityJson"));
     } catch {
       toast.io.downloadFailed(tToast("entityJson"));
     }
@@ -184,7 +183,6 @@ export function HistoryCommandCenter() {
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "search_history.csv", "csv");
-      toast.io.downloadSuccess(data.length, tToast("entitySearchEntries"), tToast("entityCsv"));
     } catch {
       toast.io.downloadFailed(tToast("entityCsv"));
     }
@@ -194,12 +192,7 @@ export function HistoryCommandCenter() {
     try {
       const file = await triggerFileUpload(".json");
       const data = await uploadFile(file);
-      const importedCount = importSearchHistory(data);
-      if (importedCount > 0) {
-        toast.io.uploadSuccess(importedCount, tToast("entitySearchEntries"));
-      } else {
-        toast.io.uploadNoValid(tToast("entitySearchEntries"));
-      }
+      importSearchHistory(data);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityJson"), error);
     }
@@ -209,12 +202,7 @@ export function HistoryCommandCenter() {
     try {
       const file = await triggerFileUpload(".csv");
       const data = await uploadFile(file);
-      const importedCount = importSearchHistory(data);
-      if (importedCount > 0) {
-        toast.io.uploadSuccess(importedCount, tToast("entitySearchEntries"));
-      } else {
-        toast.io.uploadNoValid(tToast("entitySearchEntries"));
-      }
+      importSearchHistory(data);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityCsv"), error);
     }
@@ -228,7 +216,6 @@ export function HistoryCommandCenter() {
       cancelText: tc("cancel"),
       onConfirm: () => {
         clearSearchHistory();
-        toast.entity.cleared(tToast("entitySearchHistory"), searchHistory.length);
       },
     });
   };

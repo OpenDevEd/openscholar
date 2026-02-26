@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmationHost } from "@/lib/confirmation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,7 @@ export default async function RootLayout({
                         </div>
                       </div>
                       <Toaster />
+                      <ConfirmationHost />
                       <CookieConsentBanner />
                     </TooltipProvider>
                   </QuerySyncProvider>

@@ -1,109 +1,152 @@
-import { showConfirmationToast } from "@/components/ui/sonner";
+"use client";
 
-/**
- * Universal Confirmation Toast Component
- * 
- * Usage Examples:
- * 
- * // Basic confirmation
- * showConfirmation({
- *   title: "Delete File",
- *   message: "Are you sure you want to delete this file?",
- *   onConfirm: () => deleteFile()
- * });
- * 
- * // Custom button text and variant
- * showConfirmation({
- *   title: "Save Changes",
- *   message: "Do you want to save your changes?",
- *   confirmText: "Save",
- *   cancelText: "Discard",
- *   variant: 'default',
- *   onConfirm: () => saveChanges(),
- *   onCancel: () => discardChanges()
- * });
- * 
- * // Using convenience functions
- * confirmDelete("My Document", () => deleteDocument());
- * confirmClearAll(25, "Search Entries", () => clearAll());
- * confirmAction("publish this post", () => publishPost());
- */
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+type ConfirmationVariant = "destructive" | "default";
 
 interface ConfirmationOptions {
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'destructive' | 'default';
+  variant?: ConfirmationVariant;
   onConfirm: () => void;
   onCancel?: () => void;
 }
 
-export const showConfirmation = ({
-  title,
-  message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  variant = 'destructive',
-  onConfirm,
-  onCancel
-}: ConfirmationOptions) => {
-  showConfirmationToast({
-    title,
-    description: message,
-    confirmText,
-    cancelText,
-    variant,
-    onConfirm,
-    onCancel
-  });
-};
+type ConfirmationRequest = Required<Pick<ConfirmationOptions, "confirmText" | "cancelText" | "variant">> &
+  Omit<ConfirmationOptions, "confirmText" | "cancelText" | "variant">;
 
-// Convenience function for delete confirmations
-export const confirmDelete = (
-  itemName: string,
-  onConfirm: () => void,
-  options?: { confirmText?: string; cancelText?: string }
-) => {
-  showConfirmation({
-    title: `Delete ${itemName}`,
-    message: `Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
-    confirmText: options?.confirmText || "Delete",
-    cancelText: options?.cancelText || "Cancel",
-    variant: 'destructive',
-    onConfirm
-  });
-};
+type ConfirmationListener = (request: ConfirmationRequest) => void;
 
-// Convenience function for clear all confirmations
-export const confirmClearAll = (
-  count: number,
-  itemType: string,
-  onConfirm: () => void,
-  options?: { confirmText?: string; cancelText?: string }
-) => {
-  showConfirmation({
-    title: `Clear All ${itemType}`,
-    message: `Are you sure you want to delete all ${count} ${itemType}? This action cannot be undone.`,
-    confirmText: options?.confirmText || "Clear All",
-    cancelText: options?.cancelText || "Cancel",
-    variant: 'destructive',
-    onConfirm
-  });
-};
+const listeners = new Set<ConfirmationListener>();
+const pendingQueue: ConfirmationRequest[] = [];
 
-// Convenience function for action confirmations (non-destructive)
-export const confirmAction = (
-  actionDescription: string,
-  onConfirm: () => void,
-  options?: { title?: string; confirmText?: string; cancelText?: string }
-) => {
-  showConfirmation({
-    title: options?.title || "Confirm Action",
-    message: `Are you sure you want to ${actionDescription}?`,
-    confirmText: options?.confirmText || "Confirm",
-    cancelText: options?.cancelText || "Cancel",
-    variant: 'default',
-    onConfirm
-  });
-};
+function toRequest(options: ConfirmationOptions): ConfirmationRequest {
+  return {
+    ...options,
+    confirmText: options.confirmText ?? "Confirm",
+    cancelText: options.cancelText ?? "Cancel",
+    variant: options.variant ?? "destructive",
+  };
+}
+
+function dispatchConfirmation(request: ConfirmationRequest) {
+  if (listeners.size === 0) {
+    pendingQueue.push(request);
+    return;
+  }
+
+  for (const listener of listeners) {
+    listener(request);
+  }
+}
+
+export function showConfirmation(options: ConfirmationOptions) {
+  dispatchConfirmation(toRequest(options));
+}
+
+export function ConfirmationHost() {
+  const [current, setCurrent] = useState<ConfirmationRequest | null>(null);
+  const handledByActionRef = useRef(false);
+
+  const consumeNext = useCallback(() => {
+    const next = pendingQueue.shift() ?? null;
+    setCurrent(next);
+  }, []);
+
+  useEffect(() => {
+    const listener: ConfirmationListener = (request) => {
+      setCurrent((existing) => {
+        if (existing) {
+          pendingQueue.push(request);
+          return existing;
+        }
+
+        return request;
+      });
+    };
+
+    listeners.add(listener);
+
+    if (!current && pendingQueue.length > 0) {
+      consumeNext();
+    }
+
+    return () => {
+      listeners.delete(listener);
+    };
+  }, [consumeNext, current]);
+
+  const closeAsCancel = useCallback(() => {
+    if (!current) {
+      return;
+    }
+
+    current.onCancel?.();
+    consumeNext();
+  }, [consumeNext, current]);
+
+  const closeAsConfirm = useCallback(() => {
+    if (!current) {
+      return;
+    }
+
+    current.onConfirm();
+    consumeNext();
+  }, [consumeNext, current]);
+
+  return (
+    <AlertDialog
+      open={Boolean(current)}
+      onOpenChange={(open) => {
+        if (open) {
+          return;
+        }
+
+        if (handledByActionRef.current) {
+          handledByActionRef.current = false;
+          return;
+        }
+
+        closeAsCancel();
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{current?.title ?? ""}</AlertDialogTitle>
+          <AlertDialogDescription>{current?.message ?? ""}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              handledByActionRef.current = true;
+              closeAsCancel();
+            }}
+          >
+            {current?.cancelText ?? "Cancel"}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            variant={current?.variant === "destructive" ? "destructive" : "default"}
+            onClick={() => {
+              handledByActionRef.current = true;
+              closeAsConfirm();
+            }}
+          >
+            {current?.confirmText ?? "Confirm"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

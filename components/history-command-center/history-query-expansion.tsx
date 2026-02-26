@@ -62,9 +62,8 @@ export function HistoryQueryExpansion({
   const handleCopy = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      toast.clipboard.copied(tToast("entityQuery"));
     } catch {
-      toast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copyFailed(tToast("entityQuery"));
     }
   };
 
@@ -80,7 +79,6 @@ export function HistoryQueryExpansion({
       queryHistory: updatedQueryHistory,
     });
 
-    toast.entity.deleted(tToast("entityQueryEntry"));
   };
 
   const handleBookmarkSubmit = (query: string) => {
@@ -99,7 +97,6 @@ export function HistoryQueryExpansion({
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    toast.entity.created(tToast("entityBookmark"), bookmarkName);
     setBookmarkingIndex(null);
     setBookmarkName("");
   };

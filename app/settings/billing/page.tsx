@@ -77,14 +77,8 @@ export default function BillingPage() {
     if (!topupStatus || topupStatusToastShown.current === topupStatus) {
       return;
     }
-
-    if (topupStatus === "success") {
-      toast.success(t("topupSuccessTitle"), t("topupSuccessDescription"));
-    } else if (topupStatus === "canceled") {
-      toast.warning(t("topupCancelledTitle"), t("topupCancelledDescription"));
-    }
     topupStatusToastShown.current = topupStatus;
-  }, [searchParams, t, toast]);
+  }, [searchParams]);
   const [details, setDetails] = useState<{
     amount: number;
     currency: string;
@@ -197,7 +191,7 @@ export default function BillingPage() {
       }
     } catch (error) {
       console.error("[BILLING] Error:", error);
-      toast.billing.portalFailed();
+      toast.billing.portalFailed(error);
       setIsLoading(false);
       setNavStartTime(null);
     }
@@ -210,7 +204,6 @@ export default function BillingPage() {
     try {
       setIsLoading(true);
       const result = await changePlan({ targetPriceId: details.currentPriceId });
-      toast.success(tc("planUpdated"), result.message);
 
       const refreshed = await getSubscriptionDetails({});
       if (refreshed.status === "success" && refreshed.data) {
@@ -238,7 +231,7 @@ export default function BillingPage() {
       toast.billing.checkoutFailed();
     } catch (error) {
       console.error("[BILLING] Failed to start top-up checkout:", error);
-      toast.error(tc("somethingWentWrong"), t("topupCheckoutFailed"));
+      toast.billing.checkoutFailed(error);
     } finally {
       setLoadingTopupBundle(null);
     }

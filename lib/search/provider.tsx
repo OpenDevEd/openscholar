@@ -257,7 +257,6 @@ export function SearchProvider({ children }: SearchProviderProps) {
     const result = await getSearchResultsWithFilters(searchParams, {
       getMessage: (key, params) =>
         tValidation(key as "singleCharSearch", params as Record<string, string>),
-      onWarning: (msg) => toast.validation.warning(msg),
     });
     // Attach the paramsKey and requestId for outcome tracking
     return { ...result, paramsKey: paramsJson, requestId };

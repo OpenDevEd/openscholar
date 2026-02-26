@@ -1,26 +1,18 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { showStyledToast, customToast, dismissToast } from "@/components/ui/sonner";
-import { showLoadingToast, type LoadingToastOptions } from "./core";
-import { formatEntityName, formatEntityWithCount, formatOptionalLabel } from "./messages";
+import { showStyledToast } from "@/components/ui/sonner";
+import { resolveToastActionRoute } from "./action-routing";
 import {
   getToastMessageKeyForErrorCode,
-  isInsufficientCreditsCode,
-  isPlanUpgradeCode,
   resolveToastError,
 } from "./error-resolver";
+import type { ToastAction } from "./core";
 
-function openAISettings() {
-  window.location.href = "/settings/ai";
-}
-
-function openBillingSettings() {
-  window.location.href = "/settings/billing";
-}
-
-function openPricing() {
-  window.location.href = "/pricing";
+function navigateTo(
+  path: "/settings/ai" | "/settings/billing" | "/pricing" | "/sign-in"
+) {
+  window.location.href = path;
 }
 
 function getStatusCode(message: string): string | null {
@@ -28,18 +20,85 @@ function getStatusCode(message: string): string | null {
   return statusMatch?.[1] ?? null;
 }
 
-function createEntityDescription(verb: string, label?: string): string | undefined {
-  if (!label) return undefined;
-  const trimmedLabel = label.trim();
-  if (!trimmedLabel) return undefined;
-  if (trimmedLabel.includes(" ") || /[.!?]$/.test(trimmedLabel)) return trimmedLabel;
-  const formattedLabel = formatOptionalLabel(trimmedLabel);
-  if (!formattedLabel) return undefined;
-  return `${formattedLabel} ${verb}.`;
+function buildActionFromRoute(
+  route: "/settings/ai" | "/settings/billing" | "/pricing" | "/sign-in",
+  t: ReturnType<typeof useTranslations>,
+  tc: ReturnType<typeof useTranslations>
+): ToastAction {
+  if (route === "/sign-in") {
+    return {
+      label: tc("signIn"),
+      onClick: () => navigateTo("/sign-in"),
+      icon: "arrow-right",
+    };
+  }
+
+  if (route === "/settings/ai") {
+    return {
+      label: t("openAISettings"),
+      onClick: () => navigateTo("/settings/ai"),
+      icon: "settings",
+    };
+  }
+
+  if (route === "/settings/billing") {
+    return {
+      label: t("openBilling"),
+      onClick: () => navigateTo("/settings/billing"),
+      icon: "arrow-right",
+    };
+  }
+
+  return {
+    label: t("openPricing"),
+    onClick: () => navigateTo("/pricing"),
+    icon: "arrow-right",
+  };
 }
 
-export function useAppToast() {
+export type AppToastApi = {
+  ai: {
+    configRequired: (description?: string) => void;
+    failed: (operation: string, error: unknown) => void;
+  };
+  search: { failed: (error: unknown) => void };
+  io: {
+    downloadFailed: (formatLabel: string) => void;
+    uploadFailed: (formatLabel: string, error?: unknown) => void;
+  };
+  clipboard: {
+    copyFailed: (thing: string) => void;
+  };
+  validation: {
+    failed: (message: string) => void;
+    fileType: (allowedTypes?: string) => void;
+    fileSize: (maxSizeMB: number) => void;
+  };
+  job: {
+    cancelFailed: () => void;
+    deleteFailed: () => void;
+    createFailed: (error?: unknown) => void;
+    duplicateFailed: () => void;
+  };
+  billing: {
+    cancelFailed: () => void;
+    portalFailed: (error?: unknown) => void;
+    checkoutFailed: (error?: unknown) => void;
+  };
+  zotero: {
+    failed: (error?: unknown) => void;
+  };
+  error: (title: string, description?: string, action?: ToastAction) => void;
+};
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  const resolved = resolveToastError(error, fallback);
+  return resolved.message;
+}
+
+export function useAppToast(): AppToastApi {
   const t = useTranslations("toast");
+  const tc = useTranslations("common");
 
   const resolveErrorDetails = (error: unknown, fallback: string) => {
     const resolved = resolveToastError(error, fallback);
@@ -54,59 +113,52 @@ export function useAppToast() {
     };
   };
 
+  const getActionFromCode = (code?: string): ToastAction | undefined => {
+    const route = resolveToastActionRoute(code);
+    if (!route) {
+      return undefined;
+    }
+
+    return buildActionFromRoute(route, t, tc);
+  };
+
   return {
     ai: {
       configRequired: (description?: string) => {
         showStyledToast("error", t("aiConfigRequired"), {
           description: description || t("aiConfigRequiredDescription"),
-          action: {
-            label: t("openAISettings"),
-            onClick: openAISettings,
-            icon: "settings" as const,
-          },
+          action: buildActionFromRoute("/settings/ai", t, tc),
         });
       },
       failed: (operation: string, error: unknown) => {
         const operationLabel = operation.trim() || t("aiOperation");
         const resolved = resolveErrorDetails(error, t("unexpectedError"));
-        const action = isInsufficientCreditsCode(resolved.code)
-          ? {
-              label: t("openBilling"),
-              onClick: openBillingSettings,
-              icon: "arrow-right" as const,
-            }
-          : resolved.code === "AI_API_KEY_REQUIRED"
-            ? {
-                label: t("openAISettings"),
-                onClick: openAISettings,
-                icon: "settings" as const,
-              }
-            : undefined;
+
         showStyledToast("error", t("operationFailed", { operation: operationLabel }), {
           description: resolved.message,
-          action,
+          action: getActionFromCode(resolved.code),
         });
-      },
-      succeeded: (title: string, description?: string) => {
-        showStyledToast("success", title, { description });
       },
     },
     search: {
       failed: (error: unknown) => {
         const { message } = resolveErrorDetails(error, t("unexpectedError"));
         const statusCode = getStatusCode(message);
+
         if (statusCode === "400") {
           showStyledToast("error", t("searchQueryTooLarge"), {
             description: t("searchQueryTooLargeDescription"),
           });
           return;
         }
+
         if (statusCode === "429") {
           showStyledToast("error", t("tooManyRequests"), {
             description: t("tooManyRequestsDescription"),
           });
           return;
         }
+
         showStyledToast("error", t("searchFailed"), { description: message });
       },
     },
@@ -119,52 +171,14 @@ export function useAppToast() {
       uploadFailed: (formatLabel: string, error?: unknown) => {
         const { message } = resolveErrorDetails(
           error,
-          t("uploadFailedDescription", { format: formatLabel }),
+          t("uploadFailedDescription", { format: formatLabel })
         );
         showStyledToast("error", t("uploadFailed"), {
           description: message,
         });
       },
-      importResult: (entity: string, count: number) => {
-        if (count > 0) {
-          showStyledToast("success", t("importCompleted"), {
-            description: t("importCompletedDescription", {
-              count: formatEntityWithCount(entity, count),
-            }),
-          });
-          return;
-        }
-        showStyledToast("warning", t("nothingImported"), {
-          description: t("nothingImportedDescription", { entity }),
-        });
-      },
-      downloadSuccess: (count: number, entity: string, format: string) => {
-        showStyledToast("success", t("downloadSuccess"), {
-          description: t("downloadSuccessDescription", {
-            count: formatEntityWithCount(entity, count),
-            format,
-          }),
-        });
-      },
-      uploadSuccess: (count: number, entity: string) => {
-        showStyledToast("success", t("importCompleted"), {
-          description: t("uploadSuccessDescription", {
-            count: formatEntityWithCount(entity, count),
-          }),
-        });
-      },
-      uploadNoValid: (entity: string) => {
-        showStyledToast("warning", t("nothingImported"), {
-          description: t("nothingImportedDescription", { entity }),
-        });
-      },
     },
     clipboard: {
-      copied: (thing: string) => {
-        showStyledToast("success", t("thingCopied", { thing }), {
-          description: t("copiedDescription"),
-        });
-      },
       copyFailed: (thing: string) => {
         showStyledToast("error", t("failedToCopyThing", { thing }), {
           description: t("copyFailedDescription"),
@@ -175,12 +189,11 @@ export function useAppToast() {
       failed: (message: string) => {
         showStyledToast("error", t("validationFailed"), { description: message });
       },
-      warning: (message: string) => {
-        showStyledToast("warning", t("validationWarning"), { description: message });
-      },
       fileType: (allowedTypes?: string) => {
         showStyledToast("error", t("fileTypeTitle"), {
-          description: allowedTypes ? t("onlyFilesSupported", { allowedTypes }) : t("fileTypeNotSupported"),
+          description: allowedTypes
+            ? t("onlyFilesSupported", { allowedTypes })
+            : t("fileTypeNotSupported"),
         });
       },
       fileSize: (maxSizeMB: number) => {
@@ -189,98 +202,43 @@ export function useAppToast() {
         });
       },
     },
-    entity: {
-      created: (entity: string, label?: string) => {
-        showStyledToast("success", t("entityCreated", { entity: formatEntityName(entity, t("entityItem")) }), {
-          description: createEntityDescription("was created", label),
-        });
-      },
-      updated: (entity: string, label?: string) => {
-        showStyledToast("success", t("entityUpdated", { entity: formatEntityName(entity, t("entityItem")) }), {
-          description: createEntityDescription("was updated", label),
-        });
-      },
-      deleted: (entity: string, label?: string) => {
-        showStyledToast("success", t("entityDeleted", { entity: formatEntityName(entity, t("entityItem")) }), {
-          description: createEntityDescription("was deleted", label),
-        });
-      },
-      cleared: (entity: string, count?: number) => {
-        const description =
-          typeof count === "number"
-            ? t("clearedCount", { count: formatEntityWithCount(entity, count) })
-            : undefined;
-        showStyledToast("success", t("entityCleared", { entity: formatEntityName(entity, t("entityItem")) }), {
-          description,
-        });
-      },
-    },
     job: {
-      cancelled: () => showStyledToast("success", t("jobCancelled")),
       cancelFailed: () => showStyledToast("error", t("jobCancelFailed")),
-      deleted: () => showStyledToast("success", t("jobDeleted")),
       deleteFailed: () => showStyledToast("error", t("jobDeleteFailed")),
-      created: () => showStyledToast("success", t("jobCreated")),
       createFailed: (error?: unknown) => {
         const resolved = resolveErrorDetails(error, t("unexpectedError"));
-        const action = isPlanUpgradeCode(resolved.code)
-          ? {
-              label: t("openPricing"),
-              onClick: openPricing,
-              icon: "arrow-right" as const,
-            }
-          : undefined;
         showStyledToast("error", t("jobCreateFailed"), {
           description: resolved.message,
-          action,
+          action: getActionFromCode(resolved.code),
         });
       },
-      duplicated: () => showStyledToast("success", t("jobDuplicated")),
       duplicateFailed: () => showStyledToast("error", t("jobDuplicateFailed")),
     },
     billing: {
-      cancelled: () => showStyledToast("success", t("billingCancelled")),
       cancelFailed: () => showStyledToast("error", t("billingCancelFailed")),
-      portalFailed: () => showStyledToast("error", t("billingPortalFailed")),
-      checkoutFailed: () => showStyledToast("error", t("billingCheckoutFailed")),
+      portalFailed: (error?: unknown) => {
+        const resolved = resolveErrorDetails(error, t("billingPortalFailed"));
+        showStyledToast("error", t("billingPortalFailed"), {
+          description: resolved.message,
+          action: getActionFromCode(resolved.code),
+        });
+      },
+      checkoutFailed: (error?: unknown) => {
+        const resolved = resolveErrorDetails(error, t("billingCheckoutFailed"));
+        showStyledToast("error", t("billingCheckoutFailed"), {
+          description: resolved.message,
+          action: getActionFromCode(resolved.code),
+        });
+      },
     },
     zotero: {
-      connected: () => showStyledToast("success", t("zoteroConnected")),
-      failed: (error?: string) => {
+      failed: (error?: unknown) => {
         const { message } = resolveErrorDetails(error, t("zoteroConnectionFailed"));
         showStyledToast("error", t("zoteroConnectionFailed"), { description: message });
       },
     },
-    success: (title: string, description?: string) => {
-      showStyledToast("success", title, { description });
-    },
-    error: (title: string, description?: string, action?: { label: string; onClick: () => void; icon?: "settings" | "arrow-right" }) => {
+    error: (title: string, description?: string, action?: ToastAction) => {
       showStyledToast("error", title, { description, action });
-    },
-    warning: (title: string, description?: string) => {
-      showStyledToast("warning", title, { description });
-    },
-    custom: customToast,
-    dismiss: dismissToast,
-    runWithLoading: async <T>(options: LoadingToastOptions<T>): Promise<T> => {
-      const loadingToastId = showLoadingToast(options.loading);
-      try {
-        const result = await options.run();
-        const successPayload = options.success?.(result);
-        if (successPayload) {
-          showStyledToast("success", successPayload.title, {
-            description: successPayload.description,
-          });
-        }
-        return result;
-      } catch (error) {
-        showStyledToast("error", options.error(error).title, {
-          description: options.error(error).description,
-        });
-        throw error;
-      } finally {
-        dismissToast(loadingToastId);
-      }
     },
   };
 }

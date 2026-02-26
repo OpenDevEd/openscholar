@@ -51,7 +51,6 @@ export function SearchHistoryBookmarkForm({
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(query);
     addKeyword(localBookmarkName.trim(), expandedQuery);
-    toast.entity.created(tToast("entityBookmark"), localBookmarkName);
     onSubmit(localBookmarkName);
     setLocalBookmarkName("");
   };

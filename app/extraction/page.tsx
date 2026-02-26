@@ -59,11 +59,7 @@ function ZoteroCallbackToast() {
   const toast = useAppToast();
 
   useEffect(() => {
-    const connected = searchParams.get("zotero_connected");
     const error = searchParams.get("zotero_error");
-    if (connected) {
-      toast.zotero.connected();
-    }
     if (error) {
       toast.zotero.failed(error);
     }

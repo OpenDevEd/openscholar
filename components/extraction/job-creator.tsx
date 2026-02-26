@@ -162,7 +162,6 @@ export function JobCreator() {
         })),
       });
 
-      toast.job.created();
       clearDraftJob();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {

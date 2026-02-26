@@ -201,7 +201,6 @@ export function Pricing() {
     try {
       setLoadingPriceId("keep-current");
       const result = await changePlan({ targetPriceId: subscriptionDetails.currentPriceId });
-      toast.success(tc("planUpdated"), result.message);
 
       const refreshed = await getSubscriptionDetails({});
       if (refreshed.status === "success" && refreshed.data) {
@@ -241,7 +240,6 @@ export function Pricing() {
 
       if (isEntitled && resolvedPlan && resolvedPlan !== "free") {
         const result = await changePlan({ targetPriceId: priceId });
-        toast.success(tc("planUpdated"), result.message);
 
         const refreshed = await getSubscriptionDetails({});
         if (refreshed.status === "success" && refreshed.data) {
@@ -269,7 +267,7 @@ export function Pricing() {
       }
     } catch (err) {
       console.error(err);
-      toast.error(tc("somethingWentWrong"), t("couldNotInitiateCheckout"));
+      toast.billing.checkoutFailed(err);
     } finally {
       setLoadingPriceId(null);
     }
@@ -284,7 +282,7 @@ export function Pricing() {
       }
     } catch (err) {
       console.error(err);
-      toast.billing.portalFailed();
+      toast.billing.portalFailed(err);
     } finally {
       setLoadingPriceId(null);
     }

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { AnimatedCount } from "./components/animated-count";
 import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore } from "@/lib/store";
-import { useAppToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
+import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -106,34 +106,25 @@ This query is returning fewer than 10 results. Please broaden the search by:
 Return a more inclusive version of this query.`;
 
     try {
-      await runWithLoadingToast({
-        loading: tsc("broadeningSearch"),
-        run: async () => {
-          const result = await enhanceQuery({ query: broadenPrompt, language: currentLanguage || localeToLanguageCode(locale) || undefined });
-
-          if (search) {
-            search.setQuery(result.enhancedQuery);
-          }
-
-          // Track query broadened
-          posthog.capture("query_broadened", {
-            original_query: expandedQuery,
-            broadened_query: result.enhancedQuery,
-          });
-
-          return result;
-        },
-        success: (result) => ({
-          title: tsc("queryBroadened"),
-          description: tsc("newQuery", { query: result.enhancedQuery }),
-        }),
-        error: (error) => ({
-          title: tsc("failedToBroaden"),
-          description: getErrorMessage(error, te("unexpectedErrorRetry")),
-        }),
+      const result = await enhanceQuery({
+        query: broadenPrompt,
+        language: currentLanguage || localeToLanguageCode(locale) || undefined,
       });
-    } catch {
-      // Toast is already handled by runWithLoadingToast.
+
+      if (search) {
+        search.setQuery(result.enhancedQuery);
+      }
+
+      // Track query broadened
+      posthog.capture("query_broadened", {
+        original_query: expandedQuery,
+        broadened_query: result.enhancedQuery,
+      });
+    } catch (error) {
+      toast.error(
+        tsc("failedToBroaden"),
+        getErrorMessage(error, te("unexpectedErrorRetry"))
+      );
     } finally {
       setIsBroadening(false);
     }
@@ -168,34 +159,25 @@ This query is returning too many results. Please make it more specific by:
 Return a more targeted version of this query.`;
 
     try {
-      await runWithLoadingToast({
-        loading: tsc("makingSearchSpecific"),
-        run: async () => {
-          const result = await enhanceQuery({ query: narrowPrompt, language: currentLanguage || localeToLanguageCode(locale) || undefined });
-
-          if (search) {
-            search.setQuery(result.enhancedQuery);
-          }
-
-          // Track query narrowed
-          posthog.capture("query_narrowed", {
-            original_query: expandedQuery,
-            narrowed_query: result.enhancedQuery,
-          });
-
-          return result;
-        },
-        success: (result) => ({
-          title: tsc("queryMadeSpecific"),
-          description: tsc("newQuery", { query: result.enhancedQuery }),
-        }),
-        error: (error) => ({
-          title: tsc("failedToNarrow"),
-          description: getErrorMessage(error, te("unexpectedErrorRetry")),
-        }),
+      const result = await enhanceQuery({
+        query: narrowPrompt,
+        language: currentLanguage || localeToLanguageCode(locale) || undefined,
       });
-    } catch {
-      // Toast is already handled by runWithLoadingToast.
+
+      if (search) {
+        search.setQuery(result.enhancedQuery);
+      }
+
+      // Track query narrowed
+      posthog.capture("query_narrowed", {
+        original_query: expandedQuery,
+        narrowed_query: result.enhancedQuery,
+      });
+    } catch (error) {
+      toast.error(
+        tsc("failedToNarrow"),
+        getErrorMessage(error, te("unexpectedErrorRetry"))
+      );
     } finally {
       setIsNarrowing(false);
     }

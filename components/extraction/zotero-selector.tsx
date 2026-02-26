@@ -226,7 +226,13 @@ export function ZoteroSelector() {
               size="sm"
               onClick={async () => {
                 if (!me?._id) {
-                  toast.validation.failed(t('signInToConnect'));
+                  toast.error(t('signInToConnect'), undefined, {
+                    label: tc('signIn'),
+                    onClick: () => {
+                      window.location.href = '/sign-in';
+                    },
+                    icon: 'arrow-right',
+                  });
                   return;
                 }
                 if (!callbackUrl) {

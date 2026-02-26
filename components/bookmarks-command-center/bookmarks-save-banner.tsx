@@ -60,7 +60,6 @@ export function BookmarksSaveBanner() {
     addKeyword(trimmedName, expandedQuery);
     setName("");
     setSuggestedQuery("");
-    toast.entity.created(tToast("entityBookmark"), trimmedName);
   };
 
   return (

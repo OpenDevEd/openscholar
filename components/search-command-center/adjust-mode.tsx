@@ -115,7 +115,6 @@ Please enhance this academic search query according to the user's specific instr
       setQueryFlash(true);
       setTimeout(() => setQueryFlash(false), 1000);
 
-      toast.ai.succeeded(t("searchCommand.queryEnhanced"), response.explanation || undefined);
 
       setAiInstructions("");
     } catch (error) {

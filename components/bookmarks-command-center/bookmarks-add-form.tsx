@@ -62,7 +62,6 @@ export function BookmarksAddForm() {
 
     setName("");
     setExpansion("");
-    toast.entity.created(tToast("entityBookmark"), trimmedName);
   };
 
   return (

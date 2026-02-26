@@ -73,14 +73,12 @@ export default function AISettingsPage() {
     setModel(defaultModel);
     setModels([]);
     setModelSectionExpanded(false);
-    toast.entity.updated(tc("provider"), newProvider);
   };
 
   const handleModelChange = (newModel: string) => {
     setModel(newModel);
     setModelSectionExpanded(false);
     setModelSearch("");
-    toast.entity.updated(tc("model"), newModel);
   };
 
   const handleApiKeyChange = (value: string) => {
@@ -219,7 +217,6 @@ export default function AISettingsPage() {
               type="button"
               onClick={() => {
                 setApiKeyMode("local");
-                toast.entity.updated(tc("mode"), t("usingOwnApiKeys"));
               }}
               whileHover={{ scale: 1.01 }}
               transition={{ duration: 0.2 }}
@@ -253,12 +250,14 @@ export default function AISettingsPage() {
                 type="button"
                 onClick={() => {
                   if (!isSignedIn) {
-                    toast.validation.failed(t("signInToUseCredits"));
-                    router.push("/sign-in");
+                    toast.error(t("signInToUseCredits"), undefined, {
+                      label: tc("signIn"),
+                      onClick: () => router.push("/sign-in"),
+                      icon: "arrow-right",
+                    });
                     return;
                   }
                   setApiKeyMode("credits");
-                  toast.entity.updated(tc("mode"), t("usingCredits"));
                 }}
                 whileHover={isSignedIn ? { scale: 1.01 } : undefined}
                 transition={{ duration: 0.2 }}

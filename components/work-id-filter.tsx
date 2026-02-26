@@ -153,14 +153,12 @@ export function WorkIdFilter({
     // Update the filter in the store
     setItemId(validatedId);
     
-    toast.entity.updated(t("workIdFilter"), currentConfig.successDescription(validatedId));
   };
   
   const handleClearFilter = () => {
     setInputValue('');
     clearFilter();
     
-    toast.entity.cleared(t("workIdFilter"));
   };
   
   const handleInputChange = (value: string) => {

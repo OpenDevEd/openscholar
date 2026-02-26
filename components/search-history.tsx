@@ -79,7 +79,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const handleCopyQuery = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
-      toast.clipboard.copied(tToast("entityQuery"));
     } catch (err) {
       const textArea = document.createElement('textarea');
       textArea.value = query;
@@ -87,7 +86,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      toast.clipboard.copied(tToast("entityQuery"));
     }
   };
 
@@ -102,7 +100,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
         };
       });
       downloadAsFile(JSON.stringify(data, null, 2), 'search_history.json', 'json');
-      toast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelJson", { count: data.length }));
     } catch (error) {
       toast.io.downloadFailed(tToast("entityJsonFile"));
     }
@@ -120,7 +117,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       });
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, 'search_history.csv', 'csv');
-      toast.entity.created(tToast("entityHistoryExport"), tToast("historyExportLabelCsv", { count: data.length }));
     } catch (error) {
       toast.io.downloadFailed(tToast("entityCsvFile"));
     }
@@ -131,7 +127,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.json');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      toast.io.importResult(tToast("entitySearchEntries"), importedCount);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityJsonFile"), getErrorMessage(error, tToast("uploadJsonFileFailed")));
     }
@@ -142,7 +137,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       const file = await triggerFileUpload('.csv');
       const data = await uploadFile(file);
       const importedCount = importSearchHistory(data);
-      toast.io.importResult(tToast("entitySearchEntries"), importedCount);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityCsvFile"), getErrorMessage(error, tToast("uploadCsvFileFailed")));
     }
@@ -157,7 +151,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       cancelText: t('common.cancel'),
       onConfirm: () => {
         removeSearchResult(index);
-        toast.entity.deleted(tToast("entitySearchEntry"));
       }
     });
   };
@@ -170,7 +163,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       cancelText: t('common.cancel'),
       onConfirm: () => {
         clearSearchHistory();
-        toast.entity.cleared(tToast("entitySearchHistory"));
       }
     });
   };
@@ -210,7 +202,6 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
       updatedAt: new Date().toISOString()
     });
     
-    toast.entity.deleted(tToast("entityQueryEntry"));
   };
 
   // Main render logic

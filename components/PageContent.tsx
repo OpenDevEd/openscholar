@@ -82,11 +82,6 @@ function PageContent() {
 
         // Use the enhanced query for searching
         searchQuery = result.enhancedQuery;
-
-        toast.ai.succeeded(
-          tToast("researchQuestionProcessed"),
-          tToast("convertedToSearchQuery", { query: searchQuery }),
-        );
       } catch (error) {
         console.error("Failed to convert research question:", error);
         toast.ai.failed(tToast("questionConversion"), error);

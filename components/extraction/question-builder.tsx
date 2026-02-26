@@ -414,11 +414,6 @@ export function QuestionBuilder() {
         }
       }
 
-      if (addedCount > 0) {
-        toast.success(t("addedQuestions", { count: addedCount }));
-      } else {
-        toast.warning(t("noNewQuestions"));
-      }
     } catch (error) {
       toast.ai.failed(tc("generateWithAI"), error);
     } finally {

@@ -18,7 +18,7 @@ import {
   useKeywordExpansionDialogStore,
 } from "@/lib/store";
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
-import { useAppToast, getErrorMessage, runWithLoadingToast } from "@/lib/toast";
+import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
-  const tl = useTranslations("languages");
   const te = useTranslations("errors");
   const tValidation = useTranslations("validation");
   const locale = useLocale();
@@ -144,7 +143,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
         language: currentSearchResult?.language || "en",
       });
 
-      toast.ai.succeeded(t('questionConverted'), t('searchingFor', { query: result.enhancedQuery }));
     } catch (error) {
       // Track enhancement error
       posthog.capture("ai_query_enhancement_failed", {
@@ -170,41 +168,26 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       setIsTranslating(true);
       const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
-        await runWithLoadingToast({
-          loading: t("translatingQuery"),
-          run: async () => {
-            const result = await translateQueryFn({
-              query: expandedQuery,
-              targetLanguage,
-            });
-            search.setQuery(result.translatedQuery);
-            posthog.capture("query_translated", {
-              original_query: expandedQuery,
-              translated_query: result.translatedQuery,
-              target_language: targetLanguage,
-            });
-            return result;
-          },
-          success: () => ({
-            title: t("queryTranslated"),
-            description: t("translatedTo", {
-              language: tl(targetLanguage as never) || targetLanguage,
-            }),
-          }),
-          error: (error) => {
-            posthog.capture("query_translation_failed", {
-              original_query: localInputValue,
-              target_language: targetLanguage,
-              error_message: getErrorMessage(error, te("translationFailed")),
-            });
-            return {
-              title: t("translationFailed"),
-              description: getErrorMessage(error, te("unexpectedErrorRetry")),
-            };
-          },
+        const result = await translateQueryFn({
+          query: expandedQuery,
+          targetLanguage,
         });
-      } catch {
-        // Toast is already handled by runWithLoadingToast.
+        search.setQuery(result.translatedQuery);
+        posthog.capture("query_translated", {
+          original_query: expandedQuery,
+          translated_query: result.translatedQuery,
+          target_language: targetLanguage,
+        });
+      } catch (error) {
+        posthog.capture("query_translation_failed", {
+          original_query: localInputValue,
+          target_language: targetLanguage,
+          error_message: getErrorMessage(error, te("translationFailed")),
+        });
+        toast.error(
+          t("translationFailed"),
+          getErrorMessage(error, te("unexpectedErrorRetry"))
+        );
       } finally {
         setIsTranslating(false);
       }
@@ -216,7 +199,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       isTranslateConfigured,
       translateQueryFn,
       t,
-      tl,
       te,
       toast,
       tValidation,

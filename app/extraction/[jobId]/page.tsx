@@ -295,7 +295,6 @@ export default function JobDetailPage() {
   const handleCancel = async () => {
     try {
       await cancelJob({ jobId });
-      toast.job.cancelled();
     } catch (error) {
       toast.job.cancelFailed();
     }
@@ -304,7 +303,6 @@ export default function JobDetailPage() {
   const handleDelete = async () => {
     try {
       await deleteJob({ jobId });
-      toast.job.deleted();
       router.push("/extraction");
     } catch (error) {
       toast.job.deleteFailed();
@@ -314,7 +312,6 @@ export default function JobDetailPage() {
   const handleDuplicate = async () => {
     try {
       const result = await duplicateJob({ jobId });
-      toast.job.created();
       router.push(`/extraction/${result.jobId}`);
     } catch (error) {
       toast.job.createFailed(error);
@@ -340,7 +337,6 @@ export default function JobDetailPage() {
       setCurrentPage(1);
       setActiveTab("results");
       setSearchQueryResetKey((k) => k + 1);
-      toast.success(tJob('appliedSavedView', { name: view?.name || tc('other') }));
     },
     [setViewMode, setFilters, setResultsSortBy, toast, tJob, tc]
   );

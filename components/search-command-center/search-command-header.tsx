@@ -62,7 +62,6 @@ export function SearchCommandHeader({
       const shareableUrl = getShareableUrl();
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);
-      toast.clipboard.copied(tsc("link"));
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
       toast.clipboard.copyFailed(tsc("link"));

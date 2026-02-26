@@ -170,7 +170,6 @@ export function BookmarksCommandCenter() {
 
     removeKeyword(name);
     if (editingBookmark === name) setEditingBookmark(null);
-    toast.entity.deleted(tToast("entityBookmark"), name);
   };
 
   // Download handlers
@@ -182,7 +181,6 @@ export function BookmarksCommandCenter() {
         createdAt: bookmark.createdAt,
       }));
       downloadAsFile(JSON.stringify(data, null, 2), "bookmarks.json", "json");
-      toast.io.downloadSuccess(data.length, tToast("entityBookmarks"), tToast("entityJson"));
     } catch {
       toast.io.downloadFailed(tToast("entityJson"));
     }
@@ -197,7 +195,6 @@ export function BookmarksCommandCenter() {
       }));
       const csv = await jsonToCSV(data);
       downloadAsFile(csv, "bookmarks.csv", "csv");
-      toast.io.downloadSuccess(data.length, tToast("entityBookmarks"), tToast("entityCsv"));
     } catch {
       toast.io.downloadFailed(tToast("entityCsv"));
     }
@@ -207,12 +204,7 @@ export function BookmarksCommandCenter() {
     try {
       const file = await triggerFileUpload(".json");
       const data = await uploadFile(file);
-      const importedCount = importKeywords(data);
-      if (importedCount > 0) {
-        toast.io.uploadSuccess(importedCount, tToast("entityBookmarks"));
-      } else {
-        toast.io.uploadNoValid(tToast("entityBookmarks"));
-      }
+      importKeywords(data);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityJson"), error);
     }
@@ -222,12 +214,7 @@ export function BookmarksCommandCenter() {
     try {
       const file = await triggerFileUpload(".csv");
       const data = await uploadFile(file);
-      const importedCount = importKeywords(data);
-      if (importedCount > 0) {
-        toast.io.uploadSuccess(importedCount, tToast("entityBookmarks"));
-      } else {
-        toast.io.uploadNoValid(tToast("entityBookmarks"));
-      }
+      importKeywords(data);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityCsv"), error);
     }
@@ -241,7 +228,6 @@ export function BookmarksCommandCenter() {
       cancelText: tc("cancel"),
       onConfirm: () => {
         clearKeywords();
-        toast.entity.cleared(tToast("entityBookmarks"), bookmarksArray.length);
       },
     });
   };

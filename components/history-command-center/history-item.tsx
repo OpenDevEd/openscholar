@@ -82,9 +82,8 @@ export function HistoryItem({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(item.query);
-      toast.clipboard.copied(tToast("entityQuery"));
     } catch {
-      toast.clipboard.copied(tToast("entityQuery"));
+      toast.clipboard.copyFailed(tToast("entityQuery"));
     }
   };
 
@@ -96,7 +95,6 @@ export function HistoryItem({
       cancelText: tc("cancel"),
       onConfirm: () => {
         removeSearchResult(actualIndex);
-        toast.entity.deleted(tToast("entitySearchEntry"));
       },
     });
   };
@@ -117,7 +115,6 @@ export function HistoryItem({
 
     const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
     addKeyword(bookmarkName.trim(), expandedQuery);
-    toast.entity.created(tToast("entityBookmark"), bookmarkName);
     setIsBookmarking(false);
     setBookmarkName("");
   };
@@ -705,5 +702,4 @@ export function HistoryItem({
     </motion.div>
   );
 }
-
 

@@ -2,63 +2,31 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+const BASE_LOCALE = "en-US" as const;
 const LOCALES = ["en-US", "en-GB", "fr", "hi", "ja", "zh"] as const;
 
-const NEW_TOAST_KEYS = [
-  "openBilling",
-  "openPricing",
-  "convexUnknownError",
-  "convexAuthRequired",
-  "convexPermissionDenied",
-  "extractionPlanRequired",
-  "convexNotFound",
-  "convexInvalidInput",
-  "convexInsufficientCredits",
-  "aiUnauthenticated",
-  "aiInsufficientCredits",
-  "aiPlanEntitlement",
-  "aiApiKeyRequired",
-  "aiProviderError",
-  "aiValidationError",
-  "aiMaxRetriesExceeded",
-  "apiKeyInvalidFormat",
-  "apiKeyEncryptionMisconfigured",
-  "zoteroNotConnected",
-  "zoteroOauthNotConfigured",
-  "zoteroRequestTokenFailed",
-  "zoteroInvalidResponse",
-  "zoteroApiError",
-  "billingNoSubscriptionLinked",
-  "billingSubscriptionDataInvalid",
-  "billingSubscriptionInvalid",
-  "billingAuthenticationFailed",
-  "billingNetworkError",
-  "billingRateLimited",
-  "billingStripeError",
-  "billingPlanChangeConflict",
-  "billingInvalidPrice",
-  "billingCancelRequiresPortal",
-  "billingNoActiveSubscription",
-  "creditsTopupBundleInvalid",
-  "creditsProductMisconfigured",
-] as const;
-
-function readMessages(locale: (typeof LOCALES)[number]) {
+function readToast(locale: (typeof LOCALES)[number]) {
   const filePath = path.resolve(process.cwd(), `messages/${locale}.json`);
-  return JSON.parse(readFileSync(filePath, "utf8")) as {
+  const messages = JSON.parse(readFileSync(filePath, "utf8")) as {
     toast?: Record<string, unknown>;
   };
+  return messages.toast ?? {};
 }
 
 describe("toast locale parity", () => {
-  for (const locale of LOCALES) {
-    it(`${locale} includes all new toast keys`, () => {
-      const messages = readMessages(locale);
-      const toast = messages.toast ?? {};
+  const baseToast = readToast(BASE_LOCALE);
+  const baseKeys = Object.keys(baseToast).sort();
 
-      for (const key of NEW_TOAST_KEYS) {
-        expect(toast, `${locale} missing toast.${key}`).toHaveProperty(key);
-      }
+  it("en-US keeps required CTA keys", () => {
+    expect(baseToast).toHaveProperty("openAISettings");
+    expect(baseToast).toHaveProperty("openBilling");
+    expect(baseToast).toHaveProperty("openPricing");
+  });
+
+  for (const locale of LOCALES) {
+    it(`${locale} has the same toast keyset as ${BASE_LOCALE}`, () => {
+      const localeKeys = Object.keys(readToast(locale)).sort();
+      expect(localeKeys).toEqual(baseKeys);
     });
   }
 });
