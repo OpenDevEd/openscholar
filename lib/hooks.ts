@@ -274,6 +274,10 @@ function useUpdateSearchFilterFromUrl() {
 
     const batchUpdates: Partial<SearchParams> = {};
     let shouldResetPage = false;
+    const currentYearRange =
+      search.params.yf !== null && search.params.yt !== null
+        ? ([search.params.yf, search.params.yt] as [number, number])
+        : null;
 
     if ('currentSearchField' in updates || 'field' in updates) {
       batchUpdates.field = (updates.currentSearchField || updates.field) as SearchParams['field'];
@@ -292,8 +296,20 @@ function useUpdateSearchFilterFromUrl() {
       shouldResetPage = true;
     }
     if ('isYearRangeEnabled' in updates) {
-      // If disabling year range, clear the values
-      if (!updates.isYearRangeEnabled) {
+      const enabled = Boolean(updates.isYearRangeEnabled);
+
+      if (enabled) {
+        const requestedRange =
+          (updates.yearRange as [number, number] | undefined) ??
+          currentYearRange ??
+          DEFAULT_FILTERS.yearRange();
+
+        batchUpdates.yf = requestedRange[0];
+        batchUpdates.yt = requestedRange[1];
+        batchUpdates.ft = 'year';
+        shouldResetPage = true;
+      } else {
+        // If disabling year range, clear the values
         batchUpdates.yf = null;
         batchUpdates.yt = null;
         batchUpdates.ft = 'year';

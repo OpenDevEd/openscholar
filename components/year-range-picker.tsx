@@ -49,24 +49,75 @@ export function YearRangePicker() {
   const [fromInput, setFromInput] = React.useState<string>(yearRange[0].toString());
   const [toInput, setToInput] = React.useState<string>(yearRange[1].toString());
 
-  // Keep local inputs in sync when the global yearRange changes via slider / presets
+  const syncInputsToRange = React.useCallback((range: [number, number]) => {
+    setFromInput(range[0].toString());
+    setToInput(range[1].toString());
+  }, []);
+
+  // Keep local inputs in sync only when year values change (not array identity).
   React.useEffect(() => {
-    setFromInput(yearRange[0].toString());
-    setToInput(yearRange[1].toString());
-  }, [yearRange]);
+    syncInputsToRange(yearRange);
+  }, [syncInputsToRange, yearRange[0], yearRange[1]]);
+
+  const clampYear = React.useCallback((value: number) => {
+    return Math.min(currentYear, Math.max(MIN_YEAR, value));
+  }, [currentYear]);
+
+  const commitYearRange = React.useCallback((nextRange: [number, number]) => {
+    const clampedFrom = clampYear(nextRange[0]);
+    const clampedTo = clampYear(nextRange[1]);
+
+    const normalizedRange: [number, number] =
+      clampedFrom <= clampedTo
+        ? [clampedFrom, clampedTo]
+        : [clampedTo, clampedTo];
+
+    setYearRange(normalizedRange);
+    syncInputsToRange(normalizedRange);
+  }, [clampYear, setYearRange, syncInputsToRange]);
+
+  const commitFromInput = React.useCallback((rawValue: string) => {
+    const parsedValue = Number.parseInt(rawValue, 10);
+
+    if (Number.isNaN(parsedValue)) {
+      commitYearRange([MIN_YEAR, yearRange[1]]);
+      return;
+    }
+
+    const clampedValue = clampYear(parsedValue);
+    if (clampedValue > yearRange[1]) {
+      commitYearRange([yearRange[1], yearRange[1]]);
+      return;
+    }
+
+    commitYearRange([clampedValue, yearRange[1]]);
+  }, [clampYear, commitYearRange, yearRange]);
+
+  const commitToInput = React.useCallback((rawValue: string) => {
+    const parsedValue = Number.parseInt(rawValue, 10);
+
+    if (Number.isNaN(parsedValue)) {
+      commitYearRange([yearRange[0], currentYear]);
+      return;
+    }
+
+    const clampedValue = clampYear(parsedValue);
+    if (clampedValue < yearRange[0]) {
+      commitYearRange([yearRange[0], yearRange[0]]);
+      return;
+    }
+
+    commitYearRange([yearRange[0], clampedValue]);
+  }, [clampYear, commitYearRange, currentYear, yearRange]);
 
   const handleYearRangeChange = (values: number[]) => {
-    setYearRange([values[0], values[1]]);
-    setFromInput(values[0].toString());
-    setToInput(values[1].toString());
+    commitYearRange([values[0], values[1]]);
     // Don't close the popover when dragging the slider
     // The search will update automatically via the store
   };
 
-  const applyYearPreset = async (preset: [number, number]) => {
-    setYearRange(preset);
-    setFromInput(preset[0].toString());
-    setToInput(preset[1].toString());
+  const applyYearPreset = (preset: [number, number]) => {
+    commitYearRange(preset);
     // Automatically enable the toggle when a preset is selected
     if (!isYearRangeEnabled) {
       setIsYearRangeEnabled(true);
@@ -114,9 +165,7 @@ export function YearRangePicker() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setYearRange([MIN_YEAR, currentYear]);
-                  setFromInput(MIN_YEAR.toString());
-                  setToInput(currentYear.toString());
+                  commitYearRange([MIN_YEAR, currentYear]);
                   setIsYearRangeEnabled(false);
                 }}
                 className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
@@ -148,22 +197,11 @@ export function YearRangePicker() {
                     onChange={(e) => {
                       setFromInput(e.target.value);
                     }}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (isNaN(value) || value < MIN_YEAR) {
-                        const newValue = MIN_YEAR;
-                        setFromInput(newValue.toString());
-                        setYearRange([newValue, yearRange[1]]);
-                      } else if (value > yearRange[1]) {
-                        setFromInput(yearRange[1].toString());
-                        setYearRange([yearRange[1], yearRange[1]]);
-                      } else if (value > currentYear) {
-                        const newValue = currentYear;
-                        setFromInput(newValue.toString());
-                        setYearRange([newValue, yearRange[1]]);
-                      } else {
-                        setYearRange([value, yearRange[1]]);
-                      }
+                    onBlur={(e) => commitFromInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      e.currentTarget.blur();
                     }}
                     className="h-9 text-sm"
                     placeholder={MIN_YEAR.toString()}
@@ -179,22 +217,11 @@ export function YearRangePicker() {
                     onChange={(e) => {
                       setToInput(e.target.value);
                     }}
-                    onBlur={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (isNaN(value) || value > currentYear) {
-                        const newValue = currentYear;
-                        setToInput(newValue.toString());
-                        setYearRange([yearRange[0], newValue]);
-                      } else if (value < yearRange[0]) {
-                        setToInput(yearRange[0].toString());
-                        setYearRange([yearRange[0], yearRange[0]]);
-                      } else if (value < MIN_YEAR) {
-                        const newValue = MIN_YEAR;
-                        setToInput(newValue.toString());
-                        setYearRange([yearRange[0], newValue]);
-                      } else {
-                        setYearRange([yearRange[0], value]);
-                      }
+                    onBlur={(e) => commitToInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      e.currentTarget.blur();
                     }}
                     className="h-9 text-sm"
                     placeholder={currentYear.toString()}
