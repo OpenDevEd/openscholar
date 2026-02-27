@@ -10,8 +10,8 @@ Requirements for the Upgrade Flow milestone. Each maps to roadmap phases.
 ### Upgrade Correctness
 
 - [x] **UPGC-01**: User sees exact charge amount in preview that matches what Stripe charges (proration_date pinned between preview and execution)
-- [ ] **UPGC-02**: User sees "credits are being processed" message when credit grant fails after successful plan change, not a fake success count
-- [ ] **UPGC-03**: User sees actual credits granted in success toast, derived from server response, not the preview estimate
+- [x] **UPGC-02**: User sees "credits are being processed" message when credit grant fails after successful plan change, not a fake success count
+- [x] **UPGC-03**: User sees actual credits granted in success toast, derived from server response, not the preview estimate
 - [x] **UPGC-04**: changePlan response returns explicit `creditsGranted: 0` on grant failure, not `undefined`
 
 ### Upgrade Resilience
@@ -58,8 +58,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | UPGC-01 | Phase 4 | Complete |
-| UPGC-02 | Phase 4 | Pending |
-| UPGC-03 | Phase 4 | Pending |
+| UPGC-02 | Phase 4 | Complete |
+| UPGC-03 | Phase 4 | Complete |
 | UPGC-04 | Phase 4 | Complete |
 | UPGR-01 | Phase 5 | Pending |
 | UPGR-02 | Phase 5 | Pending |
