@@ -2,7 +2,7 @@
  * One-time credit grant issued to every new user on account creation.
  * Lets free users experience server-side AI (including extraction) before committing to a plan.
  */
-export const FREE_SIGNUP_CREDIT_GRANT = 1_000;
+export const FREE_SIGNUP_CREDIT_GRANT = 2_000;
 
 /**
  * Markup multiplier applied to raw AI token costs before deducting credits.
@@ -12,9 +12,9 @@ export const AI_COST_MARKUP = 1.3;
 
 export const PLAN_CONFIG = {
   free: { creditsPerMonth: 0, tier: 0, freeCreditCap: FREE_SIGNUP_CREDIT_GRANT },
-  go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 3_000 },
-  pro: { creditsPerMonth: 15_000, tier: 20, freeCreditCap: 15_000 },
-  enterprise: { creditsPerMonth: 150_000, tier: 30, freeCreditCap: 150_000 },
+  go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 6_000 },
+  pro: { creditsPerMonth: 15_000, tier: 20, freeCreditCap: 30_000 },
+  enterprise: { creditsPerMonth: 150_000, tier: 30, freeCreditCap: 300_000 },
 } as const;
 
 // Price IDs from environment - allows test/live flexibility
