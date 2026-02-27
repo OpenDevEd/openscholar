@@ -184,6 +184,39 @@ async function getSubscriptionByStripeOrMetadata(
   return null;
 }
 
+export const listActiveSubscriptions = internalQuery({
+  args: {},
+  returns: v.array(v.object({
+    _id: v.id("subscriptions"),
+    stripeSubscriptionId: v.string(),
+    stripeCustomerId: v.optional(v.string()),
+    status: v.string(),
+    plan: v.string(),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    updatedAt: v.number(),
+  })),
+  handler: async (ctx) => {
+    const subs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+    // Filter to only those with a stripeSubscriptionId (skip free/local-only records)
+    return subs
+      .filter((s) => !!s.stripeSubscriptionId)
+      .map((s) => ({
+        _id: s._id,
+        stripeSubscriptionId: s.stripeSubscriptionId!,
+        stripeCustomerId: s.stripeCustomerId,
+        status: s.status,
+        plan: s.plan,
+        currentPeriodEnd: s.currentPeriodEnd,
+        cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+        updatedAt: s.updatedAt,
+      }));
+  },
+});
+
 export const upsertBillingCustomerLink = internalMutation({
   args: {
     userId: v.id("users"),
