@@ -834,6 +834,16 @@ function getRecordedPurchaseAmountCents(
   return parsePositiveInteger(metadata?.amountCents);
 }
 
+/**
+ * IDEMPOTENCY CONTRACT (INFRA-03):
+ * Purchase credit grants are deduplicated at the PAYMENT INTENT ID level.
+ * selectPurchaseTransactionByPaymentIntent queries creditTransactions by
+ * stripePaymentIntentId -- if a purchase record exists, returns "already_granted".
+ *
+ * Concurrency safety: Convex OCC serializable transactions. Two concurrent
+ * mutations for the same stripePaymentIntentId will conflict -- one succeeds,
+ * the other retries and finds the existing record.
+ */
 export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
   args: {
     stripePaymentIntentId: v.string(),
@@ -973,6 +983,18 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
   },
 });
 
+/**
+ * IDEMPOTENCY CONTRACT (INFRA-03):
+ * Refund reversals are deduplicated via cumulative delta calculation.
+ * Stripe's charge.amount_refunded is cumulative (not incremental), so
+ * targetReversedCredits is always the same for the same refund state.
+ * alreadyReversedCredits sums existing refund transactions. The delta
+ * (target - already) is 0 on replay, producing no additional deduction.
+ *
+ * Concurrency safety: Convex OCC serializable transactions. Two concurrent
+ * refund mutations for the same charge will serialize -- one processes the
+ * delta, the other finds delta=0 and returns "already_reversed".
+ */
 export const reversePurchasedCreditsFromRefund = internalMutation({
   args: {
     stripeChargeId: v.string(),

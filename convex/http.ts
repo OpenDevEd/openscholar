@@ -155,6 +155,20 @@ registerRoutes(http, components.stripe, {
   STRIPE_WEBHOOK_SECRET,
 
   events: {
+    /**
+     * IDEMPOTENCY CONTRACT (INFRA-03):
+     *
+     * This handler is idempotent. Replaying the same checkout.session.completed event
+     * produces identical outcomes:
+     *
+     * - Dedup gate: For subscription checkouts, triggers reconcileRecentPaidInvoicesFromStripe
+     *   which converges on grantMonthlyCredits -- deduplicated by stripeInvoiceId (CRED-01).
+     * - On replay: Reconciliation re-fetches invoices and attempts grants, but the dedup
+     *   gate on stripeInvoiceId prevents double-grants. Balance unchanged.
+     * - Side effects: stripeEventLogs updated to "processed" (idempotent by stripeEventId).
+     *   Non-subscription checkouts (mode !== "subscription") are no-ops on every invocation.
+     * - Verified: 2026-02-27
+     */
     "checkout.session.completed": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -185,6 +199,20 @@ registerRoutes(http, components.stripe, {
       });
     },
 
+    /**
+     * IDEMPOTENCY CONTRACT (INFRA-03):
+     *
+     * This handler is idempotent. Replaying the same payment_intent.succeeded event
+     * produces identical outcomes:
+     *
+     * - Dedup gate: grantPurchasedCreditsFromPaymentIntent checks creditTransactions
+     *   by stripePaymentIntentId. If a purchase transaction exists, returns "already_granted".
+     * - On replay: selectPurchaseTransactionByPaymentIntent finds the existing purchase
+     *   and short-circuits. No balance change, no duplicate transaction record.
+     * - Side effects: stripeEventLogs updated to "processed" (idempotent by stripeEventId).
+     *   Non-topup payments (billingType !== "credit_topup") are ignored on every invocation.
+     * - Verified: 2026-02-27
+     */
     "payment_intent.succeeded": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
@@ -208,6 +236,21 @@ registerRoutes(http, components.stripe, {
       });
     },
 
+    /**
+     * IDEMPOTENCY CONTRACT (INFRA-03):
+     *
+     * This handler is idempotent. Replaying the same charge.refunded event produces
+     * identical outcomes:
+     *
+     * - Dedup gate: reversePurchasedCreditsFromRefund uses cumulative reversal delta.
+     *   It calculates targetReversedCredits from the charge's amountRefunded (cumulative
+     *   from Stripe), subtracts alreadyReversedCredits (sum of existing refund transactions),
+     *   and only deducts the delta. On replay, delta is 0 -- no further deduction.
+     * - On replay: reversalDelta <= 0, returns "already_reversed". No balance change.
+     * - Side effects: stripeEventLogs updated to "processed" (idempotent by stripeEventId).
+     *   Charges with no stripePaymentIntentId are skipped on every invocation.
+     * - Verified: 2026-02-27
+     */
     "charge.refunded": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const charge = event.data.object as Stripe.Charge;
@@ -241,6 +284,20 @@ registerRoutes(http, components.stripe, {
       });
     },
 
+    /**
+     * IDEMPOTENCY CONTRACT (INFRA-03):
+     *
+     * This handler is idempotent. Replaying the same invoice.paid event produces
+     * identical outcomes:
+     *
+     * - Dedup gate: grantMonthlyCredits checks creditTransactions by stripeInvoiceId.
+     *   If a transaction already exists for this invoice, returns "already_granted".
+     * - On replay: processInvoiceForGrantNonBlocking calls grantMonthlyCredits which
+     *   finds the existing creditTransaction and short-circuits. No balance change.
+     * - Side effects: stripeEventLogs updated to "processed" (idempotent upsert by
+     *   stripeEventId via runAuditedStripeHandler). Credit balance unchanged on replay.
+     * - Verified: 2026-02-27
+     */
     "invoice.paid": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const invoice = event.data.object as any;
