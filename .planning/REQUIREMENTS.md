@@ -10,9 +10,9 @@ Requirements for the audit milestone. Each maps to roadmap phases.
 ### Subscription Lifecycle
 
 - [x] **SUB-01**: Upgrade charges the proration difference immediately via `always_invoice` (not deferred to next cycle)
-- [ ] **SUB-02**: `syncSubscription` guards against out-of-order webhook events using timestamp comparison or Stripe API re-fetch
-- [ ] **SUB-03**: Cancellation handler preserves Stripe subscription ID on canceled records instead of creating orphan free-plan records
-- [ ] **SUB-04**: Downgrade schedule survives mid-period subscription updates (payment method change, metadata update)
+- [x] **SUB-02**: `syncSubscription` guards against out-of-order webhook events using timestamp comparison or Stripe API re-fetch
+- [x] **SUB-03**: Cancellation handler preserves Stripe subscription ID on canceled records instead of creating orphan free-plan records
+- [x] **SUB-04**: Downgrade schedule survives mid-period subscription updates (payment method change, metadata update)
 - [x] **SUB-05**: Schedule leak is prevented on re-upgrade — verify `subscription.schedule === null` after upgrade; detect orphaned schedules
 - [ ] **SUB-06**: Payment failure handling correctly transitions to `past_due` and retains user access during grace period
 
@@ -64,9 +64,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SUB-01 | Phase 1 | Complete |
-| SUB-02 | Phase 1 | Pending |
-| SUB-03 | Phase 1 | Pending |
-| SUB-04 | Phase 1 | Pending |
+| SUB-02 | Phase 1 | Complete |
+| SUB-03 | Phase 1 | Complete |
+| SUB-04 | Phase 1 | Complete |
 | SUB-05 | Phase 1 | Complete |
 | SUB-06 | Phase 1 | Pending |
 | CRED-01 | Phase 2 | Pending |
