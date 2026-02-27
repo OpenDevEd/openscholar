@@ -67,6 +67,7 @@ import type * as lib_stripeWebhookSecret from "../lib/stripeWebhookSecret.js";
 import type * as lib_userCreation from "../lib/userCreation.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as maintenance_internal from "../maintenance/internal.js";
+import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as stripe from "../stripe.js";
 import type * as subscriptions_actions from "../subscriptions/actions.js";
 import type * as subscriptions_internal from "../subscriptions/internal.js";
@@ -156,6 +157,7 @@ declare const fullApi: ApiFromModules<{
   "lib/userCreation": typeof lib_userCreation;
   "lib/validators": typeof lib_validators;
   "maintenance/internal": typeof maintenance_internal;
+  "maintenance/mutations": typeof maintenance_mutations;
   stripe: typeof stripe;
   "subscriptions/actions": typeof subscriptions_actions;
   "subscriptions/internal": typeof subscriptions_internal;

@@ -15,6 +15,8 @@ import {
   type MonthlyCreditGrantDecision,
 } from "./lib/invoiceGrantPolicy";
 import { requireCreditsEnabled } from "../lib/featureFlags";
+import { PLAN_CONFIG } from "../lib/constants";
+import { planValidator } from "../lib/validators";
 import {
   CREDIT_TOPUP_CURRENCY,
   calculateRefundDeltaCredits,
@@ -806,6 +808,149 @@ export const grantMonthlyCredits = internalMutation({
       grantedCredits: actualGranted,
       message: `Granted ${actualGranted} monthly credits for invoice ${args.stripeInvoiceId ?? "unknown"}`,
     });
+  },
+});
+
+/**
+ * Grant pro-rata credits when a user upgrades mid-cycle.
+ *
+ * DEDUP CONTRACT: Deduplicated by querying creditTransactions for an existing
+ * "upgrade_prorate" grant matching (userId, fromPlan, toPlan) within the
+ * current billing period. We do NOT use stripeInvoiceId for dedup because
+ * updated.latest_invoice from Stripe may still reference the original cycle
+ * invoice (which grantMonthlyCredits already recorded), causing false positives.
+ */
+export const grantUpgradeProRataCredits = internalMutation({
+  args: {
+    userId: v.id("users"),
+    fromPlan: planValidator,
+    toPlan: planValidator,
+    currentPeriodStartMs: v.number(),
+    currentPeriodEndMs: v.number(),
+    stripeSubscriptionId: v.string(),
+  },
+  returns: v.object({
+    outcome: v.union(
+      v.literal("granted"),
+      v.literal("already_granted"),
+      v.literal("no_delta"),
+    ),
+    grantedCredits: v.number(),
+    message: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    // Dedup: check if we already granted an upgrade_prorate for this user in this period.
+    // We intentionally do NOT dedup by stripeInvoiceId here because
+    // updated.latest_invoice from Stripe may still point to the original
+    // subscription cycle invoice (which grantMonthlyCredits already recorded),
+    // causing a false "already_granted" on every upgrade.
+    const recentGrants = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
+
+    const existingUpgradeGrant = recentGrants.find(
+      (tx) =>
+        tx.type === "grant" &&
+        tx.metadata?.grantType === "upgrade_prorate" &&
+        tx.metadata?.fromPlan === args.fromPlan &&
+        tx.metadata?.toPlan === args.toPlan &&
+        tx.createdAt >= args.currentPeriodStartMs,
+    );
+
+    if (existingUpgradeGrant) {
+      return {
+        outcome: "already_granted" as const,
+        grantedCredits: 0,
+        message: `Pro-rata credits already granted for ${args.fromPlan} → ${args.toPlan} in this period`,
+      };
+    }
+
+    // Calculate pro-rata credit delta
+    const fromCredits = PLAN_CONFIG[args.fromPlan]?.creditsPerMonth ?? 0;
+    const toCredits = PLAN_CONFIG[args.toPlan]?.creditsPerMonth ?? 0;
+    const creditDelta = toCredits - fromCredits;
+
+    if (creditDelta <= 0) {
+      return {
+        outcome: "no_delta" as const,
+        grantedCredits: 0,
+        message: `No credit delta for ${args.fromPlan} → ${args.toPlan} (${creditDelta})`,
+      };
+    }
+
+    const now = Date.now();
+    const periodLength = args.currentPeriodEndMs - args.currentPeriodStartMs;
+    const remaining = args.currentPeriodEndMs - now;
+    const remainingRatio = periodLength > 0 ? Math.max(0, remaining / periodLength) : 0;
+    const proRataCredits = Math.floor(remainingRatio * creditDelta);
+
+    if (proRataCredits <= 0) {
+      return {
+        outcome: "no_delta" as const,
+        grantedCredits: 0,
+        message: `Pro-rata credits rounded to zero (ratio=${remainingRatio.toFixed(3)})`,
+      };
+    }
+
+    // Get or create credits record (same pattern as grantMonthlyCredits)
+    let credits: Doc<"credits"> | null = await getLatestCreditsByUser(ctx, args.userId);
+    if (!credits) {
+      const creditsId = await ctx.db.insert(
+        "credits",
+        buildInitialCreditsRecord({ userId: args.userId, now }),
+      );
+      credits = await ctx.db.get(creditsId);
+    }
+
+    if (!credits) {
+      throw new ConvexError(`Unable to create credits record for user ${args.userId}`);
+    }
+
+    // Apply tier cap for the new plan
+    const cappedGrant = applyTierFreeCreditCap({
+      plan: args.toPlan,
+      currentFreeBalance: credits.freeBalance,
+      amountToAdd: proRataCredits,
+    });
+    const actualGranted = cappedGrant.actualAdded;
+
+    if (actualGranted <= 0) {
+      return {
+        outcome: "no_delta" as const,
+        grantedCredits: 0,
+        message: `Pro-rata grant capped to zero (freeBalance=${credits.freeBalance}, cap=${cappedGrant.cap})`,
+      };
+    }
+
+    await ctx.db.patch(credits._id, {
+      freeBalance: cappedGrant.newFreeBalance,
+      lastUpdatedAt: now,
+    });
+
+    await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId: args.userId,
+      type: "grant",
+      creditType: "free",
+      amount: actualGranted,
+      balanceAfter: cappedGrant.newFreeBalance,
+      description: `Upgrade pro-rata credit grant (${args.fromPlan} → ${args.toPlan}) - ${actualGranted} credits`,
+      metadata: {
+        grantType: "upgrade_prorate",
+        fromPlan: args.fromPlan,
+        toPlan: args.toPlan,
+        stripeSubscriptionId: args.stripeSubscriptionId,
+      },
+      createdAt: now,
+    });
+
+    return {
+      outcome: "granted" as const,
+      grantedCredits: actualGranted,
+      message: `Granted ${actualGranted} pro-rata credits for upgrade ${args.fromPlan} → ${args.toPlan}`,
+    };
   },
 });
 
