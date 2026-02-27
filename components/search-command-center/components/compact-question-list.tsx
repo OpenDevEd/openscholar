@@ -2,10 +2,12 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Pencil, Play, X } from "lucide-react";
+import { Check, Pencil, Play, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useCooldown } from "@/lib/hooks/use-cooldown";
 
 interface CompactQuestionListProps {
   questions: { question: string }[];
@@ -110,7 +112,7 @@ export function CompactQuestionList({
 
           <div className="flex items-center gap-1">
             {editingIndex === index ? (
-              <>
+              <ButtonGroup>
                 <Button
                   variant="outline"
                   size="icon"
@@ -122,7 +124,7 @@ export function CompactQuestionList({
                   <Check className="h-3.5 w-3.5" />
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
                   onClick={cancelEdit}
                   disabled={disabled}
@@ -131,44 +133,72 @@ export function CompactQuestionList({
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>
-              </>
+              </ButtonGroup>
             ) : (
               <>
-                <Button
-                  variant="ai"
-                  size="icon"
-                  onClick={() => onTest(questionEntry.question)}
+                <TestButton
+                  question={questionEntry.question}
+                  onTest={onTest}
                   disabled={disabled}
-                  className="h-7 w-7"
                   title={ta("testQuestion")}
-                >
-                  <Play className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => startEdit(index)}
-                  disabled={disabled}
-                  className="h-7 w-7"
-                  title={tc("edit")}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(index, questionEntry.question)}
-                  disabled={disabled}
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  title={ta("deleteQuestion")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                />
+                <ButtonGroup>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => startEdit(index)}
+                    disabled={disabled}
+                    className="h-7 w-7"
+                    title={tc("edit")}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onDelete(index, questionEntry.question)}
+                    disabled={disabled}
+                    className="h-7 w-7 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    title={ta("deleteQuestion")}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </ButtonGroup>
               </>
             )}
           </div>
         </div>
       ))}
     </div>
+  );
+}
+
+function TestButton({
+  question,
+  onTest,
+  disabled,
+  title,
+}: {
+  question: string;
+  onTest: (question: string) => void;
+  disabled?: boolean;
+  title: string;
+}) {
+  const [isCooling, trigger] = useCooldown();
+
+  return (
+    <Button
+      variant="ai"
+      size="icon"
+      onClick={() => {
+        onTest(question);
+        trigger();
+      }}
+      disabled={disabled || isCooling}
+      className="h-7 w-7"
+      title={title}
+    >
+      <Play className="h-3.5 w-3.5" />
+    </Button>
   );
 }

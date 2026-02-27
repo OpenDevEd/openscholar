@@ -14,12 +14,14 @@ import {
 } from "lucide-react";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { CompactQuestionList } from "./components/compact-question-list";
 import { useSearchHistoryStore, useTransientScreeningStore } from "@/lib/store";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { commandCenterSpring } from "@/lib/animation-config";
+import { useCooldown } from "@/lib/hooks/use-cooldown";
 
 interface ScreeningExpansionProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
   const [newQuestion, setNewQuestion] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isTestAllCooling, triggerTestAllCooldown] = useCooldown();
 
   const {
     getSearchResult,
@@ -144,6 +147,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
       incrementTestIndexPerQuestion(q.question);
     });
 
+    triggerTestAllCooldown();
   };
 
   const handleClearAllQuestions = () => {
@@ -222,6 +226,34 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
           <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
             {/* Input row */}
             <div className="flex flex-wrap gap-2 items-center">
+              <ButtonGroup>
+                <Button
+                  variant="ai"
+                  size="sm"
+                  onClick={handleGenerateWithAI}
+                  disabled={isGenerating || !hasResearchQuestion}
+                  className="h-8 gap-1.5 shrink-0"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {t("common.generate")}
+                </Button>
+                {screeningQuestions.length > 0 && (
+                  <Button
+                    variant="ai"
+                    size="sm"
+                    onClick={handleTestAllQuestions}
+                    disabled={isTestAllCooling}
+                    className="h-8 gap-1.5 shrink-0"
+                  >
+                    <Play className="h-3.5 w-3.5" />
+                    {t("searchCommand.testAllQuestions")}
+                  </Button>
+                )}
+              </ButtonGroup>
               <Input
                 value={newQuestion}
                 onChange={(event) => setNewQuestion(event.target.value)}
@@ -230,46 +262,22 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
                 disabled={isAdding || isGenerating}
                 className="h-8 flex-1 bg-background text-sm"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddQuestion}
-                disabled={!newQuestion.trim() || isAdding}
-                className="h-8 gap-1.5 shrink-0"
-              >
-                {isAdding ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Plus className="h-3.5 w-3.5" />
-                )}
-                {t("common.add")}
-              </Button>
-              <Button
-                variant="ai"
-                size="sm"
-                onClick={handleGenerateWithAI}
-                disabled={isGenerating || !hasResearchQuestion}
-                className="h-8 gap-1.5 shrink-0"
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                {t("common.generate")}
-              </Button>
-
-              {screeningQuestions.length > 0 && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleTestAllQuestions}
-                    className="h-8 gap-1.5 shrink-0"
-                  >
-                    <Play className="h-3.5 w-3.5" />
-                    {t("searchCommand.testAllQuestions")}
-                  </Button>
+              <ButtonGroup>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddQuestion}
+                  disabled={!newQuestion.trim() || isAdding}
+                  className="h-8 gap-1.5 shrink-0"
+                >
+                  {isAdding ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  {t("common.add")}
+                </Button>
+                {screeningQuestions.length > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -279,8 +287,9 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
                     <Trash2 className="h-3.5 w-3.5" />
                     {t("searchCommand.clearAllQuestions")}
                   </Button>
-                </>
-              )}
+                )}
+              </ButtonGroup>
+
             </div>
 
             {/* Question list */}
