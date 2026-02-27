@@ -539,7 +539,7 @@ export const changePlan = action({
     ),
     message: v.string(),
     effectiveDate: v.optional(v.number()),
-    creditsGranted: v.optional(v.number()),
+    creditsGranted: v.number(),
   }),
   handler: async (ctx, args): Promise<{
     success: boolean;
@@ -547,7 +547,7 @@ export const changePlan = action({
     changeType: ChangeType;
     message: string;
     effectiveDate?: number;
-    creditsGranted?: number;
+    creditsGranted: number;
   }> => {
     await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
@@ -622,6 +622,7 @@ export const changePlan = action({
           mode: "updated",
           changeType,
           message: `You are already on the ${targetPlan} plan.`,
+          creditsGranted: 0,
         };
       }
 
@@ -660,6 +661,7 @@ export const changePlan = action({
           mode: "updated",
           changeType,
           message: `Pending plan change cleared. You remain on ${targetPlan}.`,
+          creditsGranted: 0,
         };
       }
 
@@ -706,7 +708,7 @@ export const changePlan = action({
         await syncLocalSubscriptionFromStripe(ctx, updated);
 
         // Grant pro-rata credits for the upgrade
-        let creditsGranted: number | undefined;
+        let creditsGranted = 0;
         const periodStartMs = (stripeSubscription.current_period_start ?? item.current_period_start ?? Math.floor(Date.now() / 1000)) * 1000;
         const periodEndMs = (stripeSubscription.current_period_end ?? item.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60) * 1000;
 
@@ -744,6 +746,7 @@ export const changePlan = action({
             periodEndMs,
             error: errorMessage,
           });
+          creditsGranted = 0;
         }
 
         return {
@@ -804,6 +807,7 @@ export const changePlan = action({
         changeType,
         message: `Downgrade to ${targetPlan} scheduled for period end.`,
         effectiveDate: endDate * 1000,
+        creditsGranted: 0,
       };
     } catch (error: any) {
       if (error instanceof Stripe.errors.StripeCardError) {
