@@ -486,22 +486,16 @@ export const handleSubscriptionCanceled = internalMutation({
       });
     }
 
+    // Update in place -- no orphan record (SUB-03)
+    // stripeSubscriptionId PRESERVED for audit trail (per locked decision)
     await ctx.db.patch(subscription._id, {
       status: "canceled",
+      plan: "free",
       canceledAt: now,
       updatedAt: now,
-      stripeSubscriptionId: undefined,
-    });
-
-    await ctx.db.insert("subscriptions", {
-      userId: subscription.userId,
-      stripeCustomerId: subscription.stripeCustomerId,
-      plan: "free",
-      status: "active",
       creditsPerMonth: 0,
-      seats: 1,
-      createdAt: now,
-      updatedAt: now,
+      // DO NOT set stripeSubscriptionId to undefined -- preserve for audit trail
+      // DO NOT insert a new free-plan record -- this was creating orphan records
     });
 
     return null;
