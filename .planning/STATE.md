@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Upgrade Flow
-status: in_progress
-last_updated: "2026-02-27T14:26:40Z"
+status: complete
+last_updated: "2026-02-27T14:32:31.919Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -22,19 +22,19 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 ## Current Position
 
-Phase: 6 of 6 (UX Polish) -- IN PROGRESS
-Plan: 1 of 2 complete
-Status: Executing Phase 06 plans
-Last activity: 2026-02-27 -- Completed 06-01 (upgrade dialog payment method, line items, dismiss guard)
+Phase: 6 of 6 (UX Polish) -- COMPLETE
+Plan: 2 of 2 complete
+Status: All plans complete -- awaiting human verification checkpoint
+Last activity: 2026-02-27 -- Completed 06-02 (upgrade dialog i18n translations)
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5 (v1.1)
+- Total plans completed: 6 (v1.0)
 - Average duration: 2min
-- Total execution time: 11min
+- Total execution time: 13min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -43,6 +43,7 @@ Progress: [████████░░] 83%
 | 05 | 01 | 1min | 2 | 2 |
 | 05 | 02 | 2min | 2 | 2 |
 | 06 | 01 | 4min | 2 | 9 |
+| 06 | 02 | 2min | 1 | 6 |
 
 *Updated after each plan completion*
 
@@ -62,6 +63,7 @@ See PROJECT.md Key Decisions table for full log.
 - [05-02] Non-upgrade subscription_update invoices fall through to existing ignore behavior -- no change to normal flow
 - [06-01] Used HTML entities for card dots instead of Unicode bullet to avoid encoding issues
 - [06-01] Added totalCharge i18n key in this plan rather than deferring to Plan 02 to prevent runtime error
+- [06-02] Updated totalCharge from short labels to descriptive translations since Plan 01 added minimal placeholders
 
 ### Pending Todos
 
@@ -74,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 06-01-PLAN.md
+Stopped at: Completed 06-02-PLAN.md -- awaiting human verification checkpoint
 Resume file: None
