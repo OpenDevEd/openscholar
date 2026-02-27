@@ -17,8 +17,8 @@ Requirements for the Upgrade Flow milestone. Each maps to roadmap phases.
 ### Upgrade Resilience
 
 - [ ] **UPGR-01**: User receives pro-rata credits via webhook backup path (invoice.paid for proration invoices) if action-path grant fails
-- [ ] **UPGR-02**: Stripe subscription metadata carries upgrade context (fromPlan, toPlan, upgradeTimestamp) so webhook handler can classify proration invoices
-- [ ] **UPGR-03**: subscription_update invoice firewall in invoiceGrantPolicy verified (with test) to prevent double-grants when both action and webhook paths succeed
+- [x] **UPGR-02**: Stripe subscription metadata carries upgrade context (fromPlan, toPlan, upgradeTimestamp) so webhook handler can classify proration invoices
+- [x] **UPGR-03**: subscription_update invoice firewall in invoiceGrantPolicy verified (with test) to prevent double-grants when both action and webhook paths succeed
 
 ### UX Polish
 
@@ -62,8 +62,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPGC-03 | Phase 4 | Complete |
 | UPGC-04 | Phase 4 | Complete |
 | UPGR-01 | Phase 5 | Pending |
-| UPGR-02 | Phase 5 | Pending |
-| UPGR-03 | Phase 5 | Pending |
+| UPGR-02 | Phase 5 | Complete |
+| UPGR-03 | Phase 5 | Complete |
 | UXPL-01 | Phase 6 | Pending |
 | UXPL-02 | Phase 6 | Pending |
 | UXPL-03 | Phase 6 | Pending |
