@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A comprehensive audit and fix of the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. The app has subscription plans, credit purchasing, and webhook handling — all of which need to be verified, corrected, and hardened to match industry best practices.
+A comprehensive audit and fix of the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. Subscription plans, credit purchasing, and webhook handling have been verified, corrected, and hardened to match industry best practices.
 
 ## Core Value
 
@@ -20,17 +20,18 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 - ✓ Stripe event log for idempotency (`stripeEventLogs` table) — existing
 - ✓ Cron-based subscription status checks and invoice reconciliation — existing
 - ✓ Customer portal integration — existing
+- ✓ Upgrade flow charges proration difference immediately via `always_invoice` — v1.0
+- ✓ Downgrade takes effect at end of billing period via subscription schedule — v1.0
+- ✓ Credit purchase flow correct end-to-end with reactive UI updates — v1.0
+- ✓ Webhook handlers re-fetch from Stripe API (out-of-order event protection) — v1.0
+- ✓ Cancellation updates in-place preserving stripeSubscriptionId — v1.0
+- ✓ Payment failure handling with 7-day grace period and auto-downgrade — v1.0
+- ✓ All webhook handlers idempotent with documented contracts — v1.0
+- ✓ Reconciliation cron paginates and has safety cap (500 invoices) — v1.0
 
 ### Active
 
-- [ ] Upgrade flow charges the proration difference immediately (not just switching plans silently)
-- [ ] Downgrade takes effect at end of billing period (not immediately)
-- [ ] Credit purchase flow is correct end-to-end (payment → credit grant → UI update)
-- [ ] Webhook handler covers all critical Stripe events with correct logic
-- [ ] Subscription cancellation flow follows best practices
-- [ ] Error handling for failed payments, declined cards, and edge cases
-- [ ] Idempotency and race condition protection across all billing operations
-- [ ] Invoice reconciliation cron job is correct and handles edge cases
+- [ ] Upgrade confirmation dialog with proration preview before charging
 
 ### Out of Scope
 
@@ -38,16 +39,16 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 - Migrating away from `@convex-dev/stripe` — work within existing integration
 - Stripe Connect or marketplace payments — not applicable
 - Mobile payment flows (Apple Pay, Google Pay) — web-only
+- Custom proration logic (bypass Stripe) — use Stripe's built-in proration
+- Real-time credit deduction notifications — notification fatigue during batch AI operations
 
 ## Context
 
-- Backend is Convex (serverless, event-driven) — all Stripe logic runs as Convex actions/mutations
-- Uses `@convex-dev/stripe` component for webhook registration and subscription state
-- Stripe SDK v20.3.0 — latest API features available
-- Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`
-- Known bug: upgrading just switches the plan without charging the proration difference
-- Credit system: users get monthly credits from subscription + can buy credit packs
-- Dual AI mode: credits-based (server) vs BYOK (client) — credits are consumed by server-side AI operations
+Shipped v1.0 with 38 files changed, +3181/-172 lines across 29 commits.
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`.
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`.
+Known tech debt: `getUpgradePreview` action exported but no UI consumer yet (Phase 4 planned).
+TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
 
 ## Constraints
 
@@ -60,9 +61,15 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Upgrade = immediate proration charge | Industry standard; users expect to pay difference now | — Pending |
-| Downgrade = end of billing period | Users keep what they paid for; standard practice | — Pending |
-| Work within @convex-dev/stripe | Existing integration, no need to replace | — Pending |
+| Upgrade = immediate proration charge | Industry standard; users expect to pay difference now | ✓ Good — `always_invoice` + `error_if_incomplete` |
+| Downgrade = end of billing period | Users keep what they paid for; standard practice | ✓ Good — subscription schedule approach |
+| Work within @convex-dev/stripe | Existing integration, no need to replace | ✓ Good — no conflicts encountered |
+| Webhook re-fetch from Stripe API | Event payloads can arrive out of order | ✓ Good — eliminates state corruption |
+| In-place cancellation (no orphan records) | Preserve audit trail with stripeSubscriptionId | ✓ Good — clean data model |
+| 7-day grace period for past_due | Balance user access with payment recovery | ✓ Good — auto-downgrades after expiry |
+| Safety cap of 500 invoices per customer | Prevent unbounded iteration in reconciliation | ✓ Good — defensive limit |
+| TOCTOU mitigation = per-user workpool | Simpler than version field, triggers on incident | — Pending (documented, not yet needed) |
+| Sonner toast for credit feedback | AppToastApi only exposes error methods | ✓ Good — direct sonner usage |
 
 ---
-*Last updated: 2026-02-27 after initialization*
+*Last updated: 2026-02-27 after v1.0 milestone*
