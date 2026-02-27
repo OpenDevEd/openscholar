@@ -263,7 +263,8 @@ export default function BillingPage() {
   const inGracePeriod = isEntitledStatus(status) && status !== "active" && status !== "trialing";
   const hasPendingChange = Boolean(details?.hasPendingChange);
   const isPaymentPending =
-    status === "incomplete" || details?.entitlementState === "payment_pending";
+    (status === "incomplete" || details?.entitlementState === "payment_pending") &&
+    status !== "past_due";
   const paymentPendingMessage =
     details?.entitlementMessage ||
     t("paymentPendingDefault");
@@ -384,7 +385,28 @@ export default function BillingPage() {
               </div>
             )}
 
-            {inGracePeriod && (
+            {status === "past_due" && (
+              <div className="bg-red-500/10 p-3 text-red-700 text-sm flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    {t("paymentFailedNotice")}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManageSubscription}
+                  disabled={isLoading}
+                  className="flex-shrink-0"
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {t("updatePaymentMethod")}
+                </Button>
+              </div>
+            )}
+
+            {inGracePeriod && status !== "past_due" && (
               <div className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 <span>{t("gracePeriodNotice")}</span>

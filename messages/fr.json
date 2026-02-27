@@ -369,6 +369,8 @@
     "statusUnpaid": "Impayé",
     "statusPaused": "En pause",
     "gracePeriodNotice": "Un problème de facturation a été détecté. Vous conservez temporairement l'accès pendant les nouvelles tentatives de paiement.",
+    "paymentFailedNotice": "Le paiement a echoue. Mettez a jour votre moyen de paiement pour maintenir votre abonnement actif.",
+    "updatePaymentMethod": "Mettre a jour le moyen de paiement",
     "perInterval": "/ {interval}",
     "intervalMonth": "mois",
     "intervalYear": "an",

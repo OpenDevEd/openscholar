@@ -369,6 +369,8 @@
     "statusUnpaid": "अवैतनिक",
     "statusPaused": "रुका हुआ",
     "gracePeriodNotice": "बिलिंग समस्या का पता चला है। भुगतान पुनः प्रयास के दौरान आपको अस्थायी पहुंच बनी रहेगी।",
+    "paymentFailedNotice": "भुगतान विफल हो गया। अपनी सदस्यता सक्रिय रखने के लिए अपना भुगतान तरीका अपडेट करें।",
+    "updatePaymentMethod": "भुगतान तरीका अपडेट करें",
     "perInterval": "/ {interval}",
     "intervalMonth": "महीना",
     "intervalYear": "वर्ष",

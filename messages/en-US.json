@@ -369,6 +369,8 @@
     "statusUnpaid": "Unpaid",
     "statusPaused": "Paused",
     "gracePeriodNotice": "Billing issue detected. You still have temporary access while we retry payment.",
+    "paymentFailedNotice": "Payment failed. Update your payment method to keep your subscription active.",
+    "updatePaymentMethod": "Update payment method",
     "perInterval": "/ {interval}",
     "intervalMonth": "month",
     "intervalYear": "year",

@@ -369,6 +369,8 @@
     "statusUnpaid": "未払い",
     "statusPaused": "一時停止",
     "gracePeriodNotice": "請求の問題を検出しました。支払いを再試行している間、一時的なアクセスが可能です。",
+    "paymentFailedNotice": "お支払いに失敗しました。サブスクリプションを維持するには、お支払い方法を更新してください。",
+    "updatePaymentMethod": "お支払い方法を更新",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",

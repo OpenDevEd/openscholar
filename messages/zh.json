@@ -369,6 +369,8 @@
     "statusUnpaid": "未支付",
     "statusPaused": "已暂停",
     "gracePeriodNotice": "检测到账单问题。我们重试扣款期间，你仍可暂时访问。",
+    "paymentFailedNotice": "支付失败。请更新支付方式以保持订阅有效。",
+    "updatePaymentMethod": "更新支付方式",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
