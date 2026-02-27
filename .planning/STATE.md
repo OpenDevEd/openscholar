@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-02-27T11:25:28Z"
+status: complete
+last_updated: "2026-02-27T11:26:29Z"
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -22,19 +22,19 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 ## Current Position
 
-Phase: 3 of 3 (Operational Hardening)
-Plan: 2 of 2 in current phase
-Status: Plan 03-02 Complete
-Last activity: 2026-02-27 -- Completed 03-02-PLAN.md
+Phase: 3 of 3 (Operational Hardening) -- COMPLETE
+Plan: 2 of 2 in current phase -- ALL COMPLETE
+Status: Phase Complete
+Last activity: 2026-02-27 -- Completed 03-01-PLAN.md
 
-Progress: [########--] 86% (6/7 plans)
+Progress: [##########] 100% (7/7 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: 3min
-- Total execution time: 0.3 hours
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
@@ -42,10 +42,10 @@ Progress: [########--] 86% (6/7 plans)
 |-------|-------|-------|----------|
 | 01 | 3 | 10min | 3min |
 | 02 | 2 | 6min | 3min |
-| 03 | 1 | 2min | 2min |
+| 03 | 2 | 5min | 2.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3min), 01-03 (4min), 02-01 (2min), 02-02 (4min), 03-02 (2min)
+- Last 5 plans: 01-03 (4min), 02-01 (2min), 02-02 (4min), 03-02 (2min), 03-01 (3min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -76,6 +76,8 @@ Recent decisions affecting current work:
 - [03-02]: All 4 financial webhook handlers confirmed idempotent -- no code fixes needed, documentation only
 - [03-02]: TOCTOU mitigation trigger is observed incident (negative balance in prod), not user count threshold
 - [03-02]: Preferred TOCTOU mitigation path is per-user workpool (maxParallelism: 1) over version field
+- [03-01]: checkSubscriptionStatus converted to internalAction for Stripe API re-fetch; past-due logic extracted to separate mutation (OCC safety)
+- [03-01]: Stripe response typed as `any` for current_period_end/start access (consistent with actions.ts pattern)
 
 ### Pending Todos
 
@@ -83,11 +85,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 2]: `checkSubscriptionStatus` corrective action needs a business decision on what action to take (sync from Stripe? cancel stale? notify user?)
 - [Phase 2]: Free credit cap policy (whether cap should allow rollover) is a business decision, not technical
+- [RESOLVED] checkSubscriptionStatus now auto-corrects divergences by re-fetching from Stripe and calling syncSubscription
 
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 03-02-PLAN.md (IDEMPOTENCY CONTRACTs on financial handlers, TOCTOU CONTRACT on deductCredits)
+Stopped at: Completed 03-01-PLAN.md (corrective subscription sync, failed event monitoring) -- Phase 3 COMPLETE
 Resume file: None
