@@ -51,11 +51,11 @@ Plans:
   1. User receives pro-rata credits via the invoice.paid webhook backup path when the action-path credit grant fails
   2. Stripe subscription metadata carries upgrade context (fromPlan, toPlan, upgradeTimestamp) after every upgrade operation
   3. When both action and webhook paths succeed, the user receives exactly one credit grant -- not two (invoiceGrantPolicy firewall verified with test)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — Write upgrade metadata to Stripe subscription + subscription_update firewall regression test
+- [ ] 05-02-PLAN.md — Extend processInvoiceForGrant with upgrade proration detection via webhook backup path
 
 ### Phase 6: UX Polish
 **Goal**: Users have full visibility into what they are paying and cannot accidentally disrupt an in-progress upgrade
@@ -80,5 +80,5 @@ Plans:
 | 2. Credit System Correctness | v1.0 | 2/2 | Complete | 2026-02-27 |
 | 3. Operational Hardening | v1.0 | 2/2 | Complete | 2026-02-27 |
 | 4. Upgrade Correctness | v1.1 | 0/2 | Planned | - |
-| 5. Upgrade Resilience | v1.1 | 0/0 | Not started | - |
+| 5. Upgrade Resilience | v1.1 | 0/2 | Planned | - |
 | 6. UX Polish | v1.1 | 0/0 | Not started | - |
