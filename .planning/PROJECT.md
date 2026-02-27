@@ -31,7 +31,10 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 
 ### Active
 
-- [ ] Upgrade confirmation dialog with proration preview before charging
+- [ ] Reliable upgrade flow: charge, sync plan, and grant credits atomically
+- [ ] Proration preview dialog before confirming upgrade
+- [ ] Pro-rata credit grants on mid-cycle upgrades
+- [ ] Upgrade error handling that never leaves user in broken state
 
 ### Out of Scope
 
@@ -47,7 +50,7 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 Shipped v1.0 with 38 files changed, +3181/-172 lines across 29 commits.
 Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`.
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`.
-Known tech debt: `getUpgradePreview` action exported but no UI consumer yet (Phase 4 planned).
+Known issue: upgrade flow broken in production — plan changes but errors and doesn't grant credits. Existing uncommitted attempt at fix (confirmation dialog, pro-rata credits) needs to be scrapped and redone properly.
 TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
 
 ## Constraints
@@ -71,5 +74,15 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | TOCTOU mitigation = per-user workpool | Simpler than version field, triggers on incident | — Pending (documented, not yet needed) |
 | Sonner toast for credit feedback | AppToastApi only exposes error methods | ✓ Good — direct sonner usage |
 
+## Current Milestone: v1.1 Upgrade Flow
+
+**Goal:** Fix the broken upgrade flow so it reliably charges, syncs, and grants credits — with a confirmation dialog so users know what they're paying before committing.
+
+**Target features:**
+- Proration preview dialog before upgrade
+- Reliable pro-rata credit grants on upgrade
+- Error handling that keeps user state consistent
+- Clear feedback on success/failure
+
 ---
-*Last updated: 2026-02-27 after v1.0 milestone*
+*Last updated: 2026-02-27 after v1.1 milestone started*
