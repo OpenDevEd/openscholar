@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-last_updated: "2026-02-27T10:48:38Z"
+last_updated: "2026-02-27T10:51:08Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -22,29 +22,29 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 ## Current Position
 
-Phase: 2 of 3 (Credit System Correctness)
-Plan: 1 of 2 in current phase
-Status: In Progress
-Last activity: 2026-02-27 -- Completed 02-01-PLAN.md
+Phase: 2 of 3 (Credit System Correctness) -- COMPLETE
+Plan: 2 of 2 in current phase -- ALL COMPLETE
+Status: Phase Complete
+Last activity: 2026-02-27 -- Completed 02-02-PLAN.md
 
-Progress: [########--] 80% (4/5 plans)
+Progress: [##########] 100% (5/5 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 3min
-- Total execution time: 0.2 hours
+- Total execution time: 0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3 | 10min | 3min |
-| 02 | 1 | 2min | 2min |
+| 02 | 2 | 6min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (3min), 01-02 (3min), 01-03 (4min), 02-01 (2min)
+- Last 5 plans: 01-01 (3min), 01-02 (3min), 01-03 (4min), 02-01 (2min), 02-02 (4min)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -69,6 +69,9 @@ Recent decisions affecting current work:
 - [02-01]: Safety cap of 500 invoices per customer in reconciliation cron (prevents unbounded iteration)
 - [02-01]: Dedup contract documented as JSDoc on grantMonthlyCredits (existing logic correct, documentation-only)
 - [02-01]: Negative paidBalance shown with text-red-600 styling; zero paidBalance hidden (no visual noise)
+- [02-02]: Used sonner toast.success directly for credit-added feedback (AppToastApi only exposes error methods)
+- [02-02]: Reactive checkout return pattern: capture balance on return, watch Convex subscription, fire toast on delta
+- [02-02]: 30-second timeout clears processing state without error toast (payment may still process asynchronously)
 
 ### Pending Todos
 
@@ -82,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 02-01-PLAN.md (reconciliation pagination, dedup contract, negative balance display)
+Stopped at: Completed 02-02-PLAN.md (credit cap banner, checkout return UX, Buy Credits links) -- Phase 2 COMPLETE
 Resume file: None

@@ -20,9 +20,9 @@ Requirements for the audit milestone. Each maps to roadmap phases.
 
 - [x] **CRED-01**: Credit grant deduplication handles same-invoice-ID across different event IDs (no double grants)
 - [x] **CRED-02**: Reconciliation cron handles API pagination for customers with >100 invoices
-- [ ] **CRED-03**: Abandoned checkout sessions don't leave stale state or block new checkout attempts
-- [ ] **CRED-04**: Free credit cap communicates clearly in UI when grants are blocked ("Credits capped at X — use credits to receive your full monthly grant")
-- [ ] **CRED-05**: Credit top-up purchase flow is correct end-to-end (Checkout → payment_intent.succeeded → credit grant → UI update)
+- [x] **CRED-03**: Abandoned checkout sessions don't leave stale state or block new checkout attempts
+- [x] **CRED-04**: Free credit cap communicates clearly in UI when grants are blocked ("Credits capped at X — use credits to receive your full monthly grant")
+- [x] **CRED-05**: Credit top-up purchase flow is correct end-to-end (Checkout → payment_intent.succeeded → credit grant → UI update)
 - [x] **CRED-06**: Refund credit reversal proportionally deducts credits and handles partial refund idempotency
 
 ### Infrastructure
@@ -71,9 +71,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUB-06 | Phase 1 | Complete |
 | CRED-01 | Phase 2 | Complete |
 | CRED-02 | Phase 2 | Complete |
-| CRED-03 | Phase 2 | Pending |
-| CRED-04 | Phase 2 | Pending |
-| CRED-05 | Phase 2 | Pending |
+| CRED-03 | Phase 2 | Complete |
+| CRED-04 | Phase 2 | Complete |
+| CRED-05 | Phase 2 | Complete |
 | CRED-06 | Phase 2 | Complete |
 | INFRA-01 | Phase 3 | Pending |
 | INFRA-02 | Phase 3 | Pending |
