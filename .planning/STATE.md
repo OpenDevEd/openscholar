@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Upgrade Flow
-status: in_progress
-last_updated: "2026-02-27T14:04:02Z"
+status: unknown
+last_updated: "2026-02-27T14:08:13.316Z"
 progress:
-  total_phases: 3
+  total_phases: 2
   completed_phases: 2
   total_plans: 4
   completed_plans: 4
