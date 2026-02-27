@@ -8,7 +8,7 @@ const internalApi = internal as any;
 crons.interval(
   "cleanup deleted users",
   { hours: 24 },
-  internal.maintenance.internal.cleanupDeletedUsers
+  internal.maintenance.mutations.cleanupDeletedUsers
 );
 
 // Hourly subscription status check: corrective sync + past-due expiry
@@ -22,7 +22,7 @@ crons.interval(
 crons.interval(
   "monitor failed stripe events",
   { hours: 1 },
-  internal.maintenance.internal.monitorFailedStripeEvents
+  internal.maintenance.mutations.monitorFailedStripeEvents
 );
 
 crons.interval(

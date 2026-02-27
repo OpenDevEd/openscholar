@@ -112,7 +112,7 @@ export function UpgradeConfirmationDialog({
 
           {/* Proration breakdown */}
           <div className="rounded-lg border p-3 space-y-2">
-            {preview.lineItems.length > 0 ? (
+            {(preview.lineItems ?? []).length > 0 ? (
               <>
                 {preview.lineItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
