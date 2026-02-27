@@ -37,11 +37,11 @@ Full details: `.planning/milestones/v1.0-ROADMAP.md`
   2. User sees "credits are being processed" message when credit grant fails after a successful plan change, never a fake credit count
   3. User sees actual credits granted in the success toast, derived from the server response, not the preview estimate
   4. When credit grant fails, the changePlan response explicitly returns creditsGranted: 0, not undefined
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Server-side: pin proration_date between preview and execution, make creditsGranted non-optional
+- [ ] 04-02-PLAN.md — Client-side: tri-state toast logic, prorationDate passthrough, i18n keys
 
 ### Phase 5: Upgrade Resilience
 **Goal**: Users receive their pro-rata credits even when the primary grant path fails
@@ -79,6 +79,6 @@ Plans:
 | 1. Subscription Lifecycle Correctness | v1.0 | 3/3 | Complete | 2026-02-27 |
 | 2. Credit System Correctness | v1.0 | 2/2 | Complete | 2026-02-27 |
 | 3. Operational Hardening | v1.0 | 2/2 | Complete | 2026-02-27 |
-| 4. Upgrade Correctness | v1.1 | 0/0 | Not started | - |
+| 4. Upgrade Correctness | v1.1 | 0/2 | Planned | - |
 | 5. Upgrade Resilience | v1.1 | 0/0 | Not started | - |
 | 6. UX Polish | v1.1 | 0/0 | Not started | - |
