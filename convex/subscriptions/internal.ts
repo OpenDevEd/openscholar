@@ -5,6 +5,8 @@ import { Doc, Id } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
 import { components } from "../_generated/api";
 import {
+  planValidator,
+  subscriptionStatusValidator,
   subscriptionValidator,
   type SubscriptionStatus,
 } from "../lib/validators";
@@ -308,6 +310,34 @@ export const getSubscriptionByUser = internalQuery({
       .order("desc")
       .collect();
     return selectCanonicalSubscription(subscriptions);
+  },
+});
+
+export const getSubscriptionByStripeId = internalQuery({
+  args: { stripeSubscriptionId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.id("users"),
+      plan: planValidator,
+      status: subscriptionStatusValidator,
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const subs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_stripe_sub", (q) =>
+        q.eq("stripeSubscriptionId", args.stripeSubscriptionId),
+      )
+      .order("desc")
+      .collect();
+    const sub = selectCanonicalSubscription(subs);
+    if (!sub) return null;
+    return {
+      userId: sub.userId,
+      plan: sub.plan,
+      status: sub.status,
+    };
   },
 });
 
