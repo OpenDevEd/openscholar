@@ -386,7 +386,12 @@
     "topupCancelledDescription": "Aucun frais n'a été prélevé. Vous pouvez réessayer à tout moment.",
     "upgradesUnavailable": "Les mises à niveau sont temporairement indisponibles.",
     "paymentPendingDefault": "Paiement en attente. Effectuez le paiement dans le portail Stripe pour activer vos crédits.",
-    "scheduledChangeTo": "Changement planifié vers"
+    "scheduledChangeTo": "Changement planifié vers",
+    "creditCapBanner": "Vos credits gratuits sont au maximum. Utilisez des credits pour recevoir votre allocation mensuelle complete.",
+    "processingPurchase": "Traitement de votre achat...",
+    "creditsAddedTitle": "Credits ajoutes",
+    "creditsAddedDescription": "{amount} credits ont ete ajoutes a votre solde.",
+    "buyCreditsLink": "Acheter des credits"
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",

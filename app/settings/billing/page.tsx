@@ -4,10 +4,11 @@
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
+import { Loader2, CreditCard, Calendar, AlertCircle, Info } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
+import { toast as sonnerToast } from "sonner";
 import { CreditBalanceCard } from "@/components/billing/credit-balance-card";
 import { CreditTopupCard } from "@/components/billing/credit-topup-card";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -53,6 +54,8 @@ export default function BillingPage() {
   const [loadingTopupBundle, setLoadingTopupBundle] = useState<string | null>(null);
   const [navStartTime, setNavStartTime] = useState<number | null>(null);
   const topupStatusToastShown = useRef<string | null>(null);
+  const [isWaitingForCredits, setIsWaitingForCredits] = useState(false);
+  const previousCreditBalance = useRef<number | null>(null);
 
   // Reset isLoading if we've been in loading state for too long (handles back navigation from Stripe)
   useEffect(() => {
@@ -72,13 +75,58 @@ export default function BillingPage() {
     console.log("[BILLING] isLoading changed:", isLoading);
   }, [isLoading]);
 
+  // Handle return from Stripe Checkout -- CRED-03, CRED-05
   useEffect(() => {
     const topupStatus = searchParams.get("topup");
-    if (!topupStatus || topupStatusToastShown.current === topupStatus) {
+
+    // Only trigger on fresh return from checkout with success status
+    if (topupStatus === "success" && topupStatusToastShown.current !== "success") {
+      if (creditBalance != null && previousCreditBalance.current === null) {
+        // Capture balance at time of return
+        previousCreditBalance.current = creditBalance.total;
+        setIsWaitingForCredits(true);
+      }
+    }
+
+    // Handle canceled/abandoned -- clean return, no stale state (CRED-03)
+    if (topupStatus === "canceled" && topupStatusToastShown.current !== "canceled") {
+      topupStatusToastShown.current = "canceled";
+      // Clean URL params silently -- no toast needed per locked decision
+      router.replace("/settings/billing");
+    }
+  }, [searchParams, creditBalance, router]);
+
+  // Watch for credit balance changes after checkout return -- CRED-05
+  useEffect(() => {
+    if (!isWaitingForCredits || creditBalance == null || previousCreditBalance.current === null) {
       return;
     }
-    topupStatusToastShown.current = topupStatus;
-  }, [searchParams]);
+
+    if (creditBalance.total > previousCreditBalance.current) {
+      // Credits arrived via Convex subscription (webhook processed)
+      const added = creditBalance.total - previousCreditBalance.current;
+      sonnerToast.success(t("creditsAddedTitle"), {
+        description: t("creditsAddedDescription", { amount: added }),
+      });
+      topupStatusToastShown.current = "success";
+      setIsWaitingForCredits(false);
+      previousCreditBalance.current = null;
+      router.replace("/settings/billing");
+    }
+  }, [isWaitingForCredits, creditBalance, toast, t, router]);
+
+  // Timeout fallback for processing state -- CRED-03
+  useEffect(() => {
+    if (!isWaitingForCredits) return;
+    const timeout = setTimeout(() => {
+      setIsWaitingForCredits(false);
+      previousCreditBalance.current = null;
+      topupStatusToastShown.current = "success";
+      // Don't show error -- payment may still process, credits will appear reactively
+      router.replace("/settings/billing");
+    }, 30_000); // 30 second timeout
+    return () => clearTimeout(timeout);
+  }, [isWaitingForCredits, router]);
   const [details, setDetails] = useState<{
     amount: number;
     currency: string;
@@ -248,6 +296,12 @@ export default function BillingPage() {
   const creditsPerMonth = subscriptionState.isEntitled
     ? (subscription?.creditsPerMonth ?? 0)
     : 0;
+
+  const freeCreditCap = getFreeCreditCapForPlan(effectivePlan);
+  const isFreeCapReached = creditsFeatureFlags.enabled &&
+    creditBalance != null &&
+    freeCreditCap > 0 &&
+    creditBalance.free >= freeCreditCap;
 
   const statusLabels: Record<string, string> = {
     active: tc("active"),
@@ -521,6 +575,20 @@ export default function BillingPage() {
         </div>
 
         {/* Credits Section */}
+        {isFreeCapReached && (
+          <div className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center gap-2 rounded-lg">
+            <Info className="w-4 h-4 flex-shrink-0" />
+            <span>{t("creditCapBanner")}</span>
+          </div>
+        )}
+
+        {isWaitingForCredits && (
+          <div className="bg-blue-500/10 p-3 text-blue-700 text-sm flex items-center gap-2 rounded-lg">
+            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+            <span>{t("processingPurchase")}</span>
+          </div>
+        )}
+
         {creditsFeatureFlags.enabled && creditBalance && (
           <CreditBalanceCard
             freeBalance={creditBalance.free}
@@ -531,17 +599,35 @@ export default function BillingPage() {
           />
         )}
 
+        {creditsFeatureFlags.enabled && creditsFeatureFlags.topupsEnabled && creditBalance && (
+          <div className="flex justify-end -mt-2">
+            <button
+              onClick={() => {
+                const topupSection = document.getElementById("topup-section");
+                if (topupSection) {
+                  topupSection.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t("buyCreditsLink")}
+            </button>
+          </div>
+        )}
+
         {creditsFeatureFlags.enabled &&
           creditsFeatureFlags.topupsEnabled &&
           topupCatalog?.enabled &&
           topupCatalog.bundles.length > 0 && (
-            <CreditTopupCard
-              bundles={topupCatalog.bundles}
-              creditsPerUsd={topupCatalog.creditsPerUsd}
-              loadingBundleKey={loadingTopupBundle}
-              onPurchase={handleTopupPurchase}
-              disabled={isLoading}
-            />
+            <div id="topup-section">
+              <CreditTopupCard
+                bundles={topupCatalog.bundles}
+                creditsPerUsd={topupCatalog.creditsPerUsd}
+                loadingBundleKey={loadingTopupBundle}
+                onPurchase={handleTopupPurchase}
+                disabled={isLoading}
+              />
+            </div>
           )}
 
         {/* {grantDiagnostics && (

@@ -386,7 +386,12 @@
     "topupCancelledDescription": "未产生任何费用。您可以随时重试。",
     "upgradesUnavailable": "升级暂时不可用。",
     "paymentPendingDefault": "付款待处理。请在 Stripe 计费门户中完成付款以激活积分。",
-    "scheduledChangeTo": "计划变更至"
+    "scheduledChangeTo": "计划变更至",
+    "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
+    "processingPurchase": "Processing your purchase...",
+    "creditsAddedTitle": "Credits added",
+    "creditsAddedDescription": "{amount} credits have been added to your balance.",
+    "buyCreditsLink": "Buy Credits"
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",

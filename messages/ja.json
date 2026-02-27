@@ -386,7 +386,12 @@
     "topupCancelledDescription": "請求は発生していません。いつでも再試行できます。",
     "upgradesUnavailable": "アップグレードは一時的にご利用いただけません。",
     "paymentPendingDefault": "お支払いが保留中です。クレジットを有効化するには、Stripe請求ポータルでお支払いを完了してください。",
-    "scheduledChangeTo": "プラン変更予定："
+    "scheduledChangeTo": "プラン変更予定：",
+    "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
+    "processingPurchase": "Processing your purchase...",
+    "creditsAddedTitle": "Credits added",
+    "creditsAddedDescription": "{amount} credits have been added to your balance.",
+    "buyCreditsLink": "Buy Credits"
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",

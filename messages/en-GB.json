@@ -386,7 +386,12 @@
     "topupCancelledDescription": "No charge was made. You can retry anytime.",
     "upgradesUnavailable": "Upgrades are temporarily unavailable.",
     "paymentPendingDefault": "Payment is pending. Complete payment in Stripe Billing Portal to activate credits.",
-    "scheduledChangeTo": "Scheduled change to"
+    "scheduledChangeTo": "Scheduled change to",
+    "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
+    "processingPurchase": "Processing your purchase...",
+    "creditsAddedTitle": "Credits added",
+    "creditsAddedDescription": "{amount} credits have been added to your balance.",
+    "buyCreditsLink": "Buy Credits"
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",

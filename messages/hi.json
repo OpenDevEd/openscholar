@@ -386,7 +386,12 @@
     "topupCancelledDescription": "कोई शुल्क नहीं लिया गया। आप कभी भी पुनः प्रयास कर सकते हैं।",
     "upgradesUnavailable": "अपग्रेड अस्थायी रूप से अनुपलब्ध है।",
     "paymentPendingDefault": "भुगतान लंबित है। क्रेडिट सक्रिय करने के लिए Stripe बिलिंग पोर्टल में भुगतान पूरा करें।",
-    "scheduledChangeTo": "के लिए बदलाव निर्धारित"
+    "scheduledChangeTo": "के लिए बदलाव निर्धारित",
+    "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
+    "processingPurchase": "Processing your purchase...",
+    "creditsAddedTitle": "Credits added",
+    "creditsAddedDescription": "{amount} credits have been added to your balance.",
+    "buyCreditsLink": "Buy Credits"
   },
   "errors": {
     "unexpectedIssue": "हमें एक अप्रत्याशित समस्या का सामना करना पड़ा। कृपया पुनः प्रयास करें, या स्थिर पेज पर वापस जाएं।",
