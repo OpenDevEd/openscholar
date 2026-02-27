@@ -1434,6 +1434,7 @@
     "upgradeSuccess": "अपग्रेड सफल",
     "upgradeSuccessCredits": "{plan} में अपग्रेड किया गया — {credits} क्रेडिट जोड़े गए",
     "upgradeProcessingCredits": "{plan} में अपग्रेड किया गया — क्रेडिट प्रोसेस हो रहे हैं",
-    "totalCharge": "कुल"
+    "totalCharge": "अभी देय कुल राशि",
+    "paymentMethod": "भुगतान का तरीका"
   }
 }

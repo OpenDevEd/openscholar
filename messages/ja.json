@@ -1434,6 +1434,7 @@
     "upgradeSuccess": "アップグレード成功",
     "upgradeSuccessCredits": "{plan}にアップグレードしました — {credits}クレジットが追加されました",
     "upgradeProcessingCredits": "{plan}にアップグレードしました — クレジットを処理中です",
-    "totalCharge": "合計"
+    "totalCharge": "現在の請求合計",
+    "paymentMethod": "お支払い方法"
   }
 }
