@@ -3,8 +3,6 @@ import { httpAction } from "./_generated/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
-import { normalizeStripeSubscriptionStatus } from "./subscriptions/lib/stripeStatus";
-import { isSubscriptionScheduledToCancel } from "./subscriptions/lib/cancellation";
 import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
 import type Stripe from "stripe";
 
@@ -276,70 +274,28 @@ registerRoutes(http, components.stripe, {
 
     "customer.subscription.created": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const subscription = event.data.object as any;
-        const item = subscription.items.data[0];
-        const stripeCustomerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer.id;
-        const currentPeriodEnd =
-          subscription.current_period_end ??
-          item?.current_period_end ??
-          Math.floor(Date.now() / 1000);
-
-        await ctx.runMutation(internalApi.subscriptions.internal.syncSubscription, {
-          stripeSubscriptionId: subscription.id,
-          stripeCustomerId,
-          status: normalizeStripeSubscriptionStatus(subscription.status),
-          currentPeriodStart:
-            (subscription.current_period_start ?? item?.current_period_start ?? Math.floor(Date.now() / 1000)) *
-            1000,
-          currentPeriodEnd:
-            currentPeriodEnd *
-            1000,
-          cancelAtPeriodEnd: isSubscriptionScheduledToCancel({
-            cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
-            cancelAt: subscription.cancel_at ?? null,
-            currentPeriodEnd,
-          }),
-          priceId: item?.price?.id,
-          quantity: item?.quantity,
-          metadata: subscription.metadata as Record<string, string>,
+        // Re-fetch from Stripe API instead of trusting event payload (SUB-02)
+        const eventSub = event.data.object as any;
+        const eventItem = eventSub.items?.data?.[0];
+        await ctx.runAction(internalApi.subscriptions.actions.handleSubscriptionWebhook, {
+          stripeSubscriptionId: eventSub.id,
+          eventId: event.id,
+          eventStatus: eventSub.status,
+          eventPriceId: eventItem?.price?.id,
         });
       });
     },
 
     "customer.subscription.updated": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const subscription = event.data.object as any;
-        const item = subscription.items.data[0];
-        const stripeCustomerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer.id;
-        const currentPeriodEnd =
-          subscription.current_period_end ??
-          item?.current_period_end ??
-          Math.floor(Date.now() / 1000);
-
-        await ctx.runMutation(internalApi.subscriptions.internal.syncSubscription, {
-          stripeSubscriptionId: subscription.id,
-          stripeCustomerId,
-          status: normalizeStripeSubscriptionStatus(subscription.status),
-          currentPeriodStart:
-            (subscription.current_period_start ?? item?.current_period_start ?? Math.floor(Date.now() / 1000)) *
-            1000,
-          currentPeriodEnd:
-            currentPeriodEnd *
-            1000,
-          cancelAtPeriodEnd: isSubscriptionScheduledToCancel({
-            cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
-            cancelAt: subscription.cancel_at ?? null,
-            currentPeriodEnd,
-          }),
-          priceId: item?.price?.id,
-          quantity: item?.quantity,
-          metadata: subscription.metadata as Record<string, string>,
+        // Re-fetch from Stripe API instead of trusting event payload (SUB-02)
+        const eventSub = event.data.object as any;
+        const eventItem = eventSub.items?.data?.[0];
+        await ctx.runAction(internalApi.subscriptions.actions.handleSubscriptionWebhook, {
+          stripeSubscriptionId: eventSub.id,
+          eventId: event.id,
+          eventStatus: eventSub.status,
+          eventPriceId: eventItem?.price?.id,
         });
       });
     },

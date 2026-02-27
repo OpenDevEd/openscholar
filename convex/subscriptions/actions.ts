@@ -790,3 +790,74 @@ export const changePlan = action({
     }
   },
 });
+
+/**
+ * Preview the proration amount for an upgrade before the user confirms.
+ * Uses Stripe's createPreview API (replacement for deprecated retrieveUpcoming).
+ */
+export const getUpgradePreview = action({
+  args: {
+    targetPriceId: v.string(),
+  },
+  returns: v.object({
+    prorationAmountCents: v.number(),
+    currency: v.string(),
+    immediateChargeCents: v.number(),
+    currentPlan: planValidator,
+    targetPlan: planValidator,
+  }),
+  handler: async (ctx, args) => {
+    requireSubscriptionsEnabled();
+    await requireActionAuth(ctx);
+    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+
+    if (!isAllowedPriceId(args.targetPriceId)) {
+      throw createError("BILLING_INVALID_PRICE_ID", "Invalid target price ID");
+    }
+
+    const targetPlan = getPlanFromPriceId(args.targetPriceId);
+
+    const subscription = await ctx.runQuery(
+      internalApi.subscriptions.internal.getSubscriptionByUser,
+      { userId: user._id },
+    );
+
+    if (!subscription || !subscription.stripeSubscriptionId) {
+      throw createError("BILLING_NO_ACTIVE_SUBSCRIPTION", "No active Stripe subscription found");
+    }
+
+    const stripeSub = await stripe.subscriptions.retrieve(
+      subscription.stripeSubscriptionId,
+    );
+
+    const item = stripeSub.items.data[0];
+    if (!item?.id || !item.price?.id) {
+      throw createError(
+        "BILLING_SUBSCRIPTION_ITEM_NOT_FOUND",
+        "Current subscription item not found",
+      );
+    }
+
+    const currentPlan = getPlanFromPriceId(item.price.id);
+
+    const preview = await stripe.invoices.createPreview({
+      customer: typeof stripeSub.customer === "string"
+        ? stripeSub.customer
+        : (stripeSub.customer as any).id,
+      subscription: stripeSub.id,
+      subscription_details: {
+        items: [{ id: item.id, price: args.targetPriceId }],
+        proration_behavior: "always_invoice",
+        proration_date: Math.floor(Date.now() / 1000),
+      },
+    });
+
+    return {
+      prorationAmountCents: preview.total,
+      currency: preview.currency,
+      immediateChargeCents: preview.amount_due,
+      currentPlan,
+      targetPlan,
+    };
+  },
+});
