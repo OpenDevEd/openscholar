@@ -45,11 +45,11 @@ Plans:
   3. When a partial refund is issued for a credit purchase, credits are deducted proportionally and reprocessing the refund event produces no additional deduction
   4. When a paying user's free credits are at the cap, the UI displays a clear message explaining the cap and how to receive their full monthly grant
   5. When a customer has more than 100 invoices, the reconciliation cron paginates through all of them (not just the first page)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Backend correctness: reconciliation pagination fix, dedup contract assertion, negative balance display (CRED-01, CRED-02, CRED-06)
+- [ ] 02-02-PLAN.md -- Frontend UX: credit cap banner, top-up processing state + toast, Buy Credits links (CRED-03, CRED-04, CRED-05)
 
 ### Phase 3: Operational Hardening
 **Goal**: The billing system is observable, self-correcting for stale state, globally idempotent, and has a documented strategy for credit deduction races at scale
