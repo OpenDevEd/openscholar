@@ -1433,6 +1433,7 @@
     "upgrading": "अपग्रेड हो रहा है...",
     "upgradeSuccess": "अपग्रेड सफल",
     "upgradeSuccessCredits": "{plan} में अपग्रेड किया गया — {credits} क्रेडिट जोड़े गए",
-    "upgradeProcessingCredits": "{plan} में अपग्रेड किया गया — क्रेडिट प्रोसेस हो रहे हैं"
+    "upgradeProcessingCredits": "{plan} में अपग्रेड किया गया — क्रेडिट प्रोसेस हो रहे हैं",
+    "totalCharge": "कुल"
   }
 }

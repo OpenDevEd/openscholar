@@ -1433,6 +1433,7 @@
     "upgrading": "アップグレード中...",
     "upgradeSuccess": "アップグレード成功",
     "upgradeSuccessCredits": "{plan}にアップグレードしました — {credits}クレジットが追加されました",
-    "upgradeProcessingCredits": "{plan}にアップグレードしました — クレジットを処理中です"
+    "upgradeProcessingCredits": "{plan}にアップグレードしました — クレジットを処理中です",
+    "totalCharge": "合計"
   }
 }

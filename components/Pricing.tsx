@@ -726,6 +726,8 @@ export function Pricing() {
         onConfirm={handleConfirmUpgrade}
         isConfirming={isConfirmingUpgrade}
         preview={upgradePreview}
+        cardBrand={subscriptionDetails?.cardBrand}
+        cardLast4={subscriptionDetails?.cardLast4}
       />
     </div>
   );

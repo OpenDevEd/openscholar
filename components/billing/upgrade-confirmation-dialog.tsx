@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, Zap } from "lucide-react";
+import { Loader2, ArrowRight, Zap, CreditCard } from "lucide-react";
 import { useTranslations, useFormatter } from "next-intl";
 
 export type UpgradePreview = {
@@ -23,6 +23,11 @@ export type UpgradePreview = {
   targetPlanCreditsPerMonth: number;
   remainingDays: number;
   prorationDate: number;
+  lineItems: Array<{
+    description: string;
+    amountCents: number;
+    currency: string;
+  }>;
 };
 
 type UpgradeConfirmationDialogProps = {
@@ -31,6 +36,8 @@ type UpgradeConfirmationDialogProps = {
   onConfirm: () => void;
   isConfirming: boolean;
   preview: UpgradePreview | null;
+  cardBrand?: string;
+  cardLast4?: string;
 };
 
 export function UpgradeConfirmationDialog({
@@ -39,6 +46,8 @@ export function UpgradeConfirmationDialog({
   onConfirm,
   isConfirming,
   preview,
+  cardBrand,
+  cardLast4,
 }: UpgradeConfirmationDialogProps) {
   const t = useTranslations("upgradeDialog");
   const format = useFormatter();
@@ -53,7 +62,18 @@ export function UpgradeConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+          onEscapeKeyDown={(e) => {
+            if (isConfirming) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (isConfirming) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (isConfirming) e.preventDefault();
+          }}
+          showCloseButton={!isConfirming}
+        >
         <DialogHeader>
           <DialogTitle>
             {t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
@@ -64,6 +84,19 @@ export function UpgradeConfirmationDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Payment method */}
+          {cardLast4 && (
+            <div className="flex items-center gap-2 text-sm">
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <span className="capitalize text-muted-foreground">
+                {cardBrand}
+              </span>
+              <span className="font-medium">
+                &bull;&bull;&bull;&bull; {cardLast4}
+              </span>
+            </div>
+          )}
+
           {/* Plan change */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="text-sm">
@@ -77,12 +110,35 @@ export function UpgradeConfirmationDialog({
             </div>
           </div>
 
-          {/* Prorated charge */}
-          <div className="rounded-lg border p-3 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{t("prorationCharge")}</span>
-              <span className="text-lg font-semibold">{formattedCharge}</span>
-            </div>
+          {/* Proration breakdown */}
+          <div className="rounded-lg border p-3 space-y-2">
+            {preview.lineItems.length > 0 ? (
+              <>
+                {preview.lineItems.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground truncate mr-2">
+                      {item.description}
+                    </span>
+                    <span className={item.amountCents < 0 ? "text-green-600" : ""}>
+                      {format.number(item.amountCents / 100, {
+                        style: "currency",
+                        currency: item.currency,
+                        minimumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                ))}
+                <div className="border-t pt-2 flex items-center justify-between">
+                  <span className="text-sm font-medium">{t("totalCharge")}</span>
+                  <span className="text-lg font-semibold">{formattedCharge}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{t("prorationCharge")}</span>
+                <span className="text-lg font-semibold">{formattedCharge}</span>
+              </div>
+            )}
           </div>
 
           {/* Credits info */}

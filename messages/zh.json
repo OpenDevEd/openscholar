@@ -1433,6 +1433,7 @@
     "upgrading": "升级中...",
     "upgradeSuccess": "升级成功",
     "upgradeSuccessCredits": "已升级到{plan} — 已添加{credits}积分",
-    "upgradeProcessingCredits": "已升级到{plan} — 积分正在处理中"
+    "upgradeProcessingCredits": "已升级到{plan} — 积分正在处理中",
+    "totalCharge": "总计"
   }
 }

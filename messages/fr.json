@@ -1433,6 +1433,7 @@
     "upgrading": "Mise à niveau...",
     "upgradeSuccess": "Mise à niveau réussie",
     "upgradeSuccessCredits": "Mise à niveau vers {plan} — {credits} crédits ajoutés",
-    "upgradeProcessingCredits": "Mise à niveau vers {plan} — les crédits sont en cours de traitement"
+    "upgradeProcessingCredits": "Mise à niveau vers {plan} — les crédits sont en cours de traitement",
+    "totalCharge": "Total"
   }
 }

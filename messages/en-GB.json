@@ -1435,6 +1435,7 @@
     "upgrading": "Upgrading...",
     "upgradeSuccess": "Upgrade successful",
     "upgradeSuccessCredits": "Upgraded to {plan} — {credits} credits added",
-    "upgradeProcessingCredits": "Upgraded to {plan} — credits are being processed"
+    "upgradeProcessingCredits": "Upgraded to {plan} — credits are being processed",
+    "totalCharge": "Total"
   }
 }
