@@ -46,14 +46,63 @@
 
 ---
 
+## Milestone: v1.1 — Upgrade Flow
+
+**Shipped:** 2026-02-27
+**Phases:** 3 | **Plans:** 6 | **Commits:** 25
+
+### What Was Built
+- Proration date pinning between preview and execution (exact charge match)
+- Tri-state toast feedback: actual credits on success, processing on grant failure, error on card decline
+- Webhook-driven backup path for pro-rata credit grants via invoice.paid handler
+- Upgrade metadata atomically written to Stripe subscriptions for webhook classification
+- subscription_update firewall preventing double-grants (with regression test)
+- Payment method display (card brand + last4) in upgrade confirmation dialog
+- Proration line item breakdown (credit for unused + charge for new plan)
+- Dismiss guard preventing dialog close during upgrade processing
+- Full i18n translations for upgrade dialog across 6 locales
+
+### What Worked
+- Phase dependency chain (Correctness -> Resilience -> UX) meant each phase built cleanly on the last
+- Average 2min per plan — all 6 plans completed in ~13 minutes total (faster than v1.0)
+- Research phase before planning caught important details (Stripe billing_reason values, Radix dialog events)
+- Atomic metadata write pattern eliminated a class of stale-data races in webhook handling
+
+### What Was Inefficient
+- ROADMAP.md plan checkboxes not updated during execution (same issue as v1.0)
+- totalCharge i18n key had to be added as a deviation in Plan 01 to prevent runtime error — should have been in Plan 02's scope from the start
+- paymentMethod i18n key added to all 6 locales but not consumed in JSX (caught by audit, one-line fix)
+
+### Patterns Established
+- Proration date pinning: capture timestamp at preview, thread through to execution call
+- Dual-path convergence: action grants credits immediately, webhook grants as backup, dedup prevents doubles
+- Radix dismiss prevention: onEscapeKeyDown + onPointerDownOutside + onInteractOutside for processing states
+- Fresh Stripe API read for period boundaries (avoids stale local DB when webhook fires before sync)
+
+### Key Lessons
+1. Always thread server-reported values to UI — never fall back to preview estimates for financial amounts
+2. Webhook backup paths need metadata written atomically in the same API call as the primary action
+3. i18n keys should be planned alongside the component code that consumes them, not in a separate plan
+4. Radix Dialog requires three separate event handlers for complete dismiss prevention (Escape, pointer, interact)
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: 1 session for full milestone
+- Notable: 6 plans in ~13 minutes — 38% faster per-plan than v1.0
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
 
-| Milestone | Commits | Phases | Key Change |
-|-----------|---------|--------|------------|
-| v1.0 | 29 | 3 | First milestone — established billing audit patterns |
+| Milestone | Commits | Phases | Plans | Avg/Plan | Key Change |
+|-----------|---------|--------|-------|----------|------------|
+| v1.0 | 29 | 3 | 7 | 3min | Established billing audit patterns |
+| v1.1 | 25 | 3 | 6 | 2min | Dual-path convergence, i18n integration |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. (To be validated in future milestones)
+1. Always re-fetch from Stripe API before syncing — event payloads and local DB can be stale (v1.0 + v1.1)
+2. ROADMAP.md plan checkboxes not updating during execution — recurring process gap (v1.0 + v1.1)
+3. Audit-first approach prevents regressions and catches orphaned code (v1.0 audit, v1.1 i18n key catch)

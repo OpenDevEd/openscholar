@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A comprehensive audit and fix of the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. Subscription plans, credit purchasing, and webhook handling have been verified, corrected, and hardened to match industry best practices.
+A comprehensive audit and fix of the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. Subscription plans, credit purchasing, upgrade flows, and webhook handling have been verified, corrected, and hardened to match industry best practices — including a reliable upgrade flow with proration preview, dual-path credit grants, and a polished confirmation dialog.
 
 ## Core Value
 
@@ -28,13 +28,14 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 - ✓ Payment failure handling with 7-day grace period and auto-downgrade — v1.0
 - ✓ All webhook handlers idempotent with documented contracts — v1.0
 - ✓ Reconciliation cron paginates and has safety cap (500 invoices) — v1.0
+- ✓ Reliable upgrade flow with pinned proration_date, tri-state toast, and dual-path credit grants — v1.1
+- ✓ Proration preview dialog with line item breakdown and payment method display — v1.1
+- ✓ Pro-rata credit grants on mid-cycle upgrades (action + webhook backup path) — v1.1
+- ✓ Upgrade error handling: processing toast on grant failure, webhook recovery, dismiss guard — v1.1
 
 ### Active
 
-- [ ] Reliable upgrade flow: charge, sync plan, and grant credits atomically
-- [ ] Proration preview dialog before confirming upgrade
-- [ ] Pro-rata credit grants on mid-cycle upgrades
-- [ ] Upgrade error handling that never leaves user in broken state
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -47,11 +48,12 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 
 ## Context
 
-Shipped v1.0 with 38 files changed, +3181/-172 lines across 29 commits.
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`.
+Shipped v1.0 (38 files, +3181/-172, 29 commits) and v1.1 (36 files, +4136/-210, 25 commits).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales).
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`.
-Known issue: upgrade flow broken in production — plan changes but errors and doesn't grant credits. Existing uncommitted attempt at fix (confirmation dialog, pro-rata credits) needs to be scrapped and redone properly.
+Upgrade flow fully operational: proration preview, dual-path credit grants (action + webhook), confirmation dialog with payment method, line items, and dismiss guard.
 TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
+9 human verification items pending Stripe test mode validation across v1.1 phases.
 
 ## Constraints
 
@@ -73,16 +75,12 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | Safety cap of 500 invoices per customer | Prevent unbounded iteration in reconciliation | ✓ Good — defensive limit |
 | TOCTOU mitigation = per-user workpool | Simpler than version field, triggers on incident | — Pending (documented, not yet needed) |
 | Sonner toast for credit feedback | AppToastApi only exposes error methods | ✓ Good — direct sonner usage |
-
-## Current Milestone: v1.1 Upgrade Flow
-
-**Goal:** Fix the broken upgrade flow so it reliably charges, syncs, and grants credits — with a confirmation dialog so users know what they're paying before committing.
-
-**Target features:**
-- Proration preview dialog before upgrade
-- Reliable pro-rata credit grants on upgrade
-- Error handling that keeps user state consistent
-- Clear feedback on success/failure
+| Pin proration_date between preview and execution | Prevents charge drift from Stripe per-second proration | ✓ Good — exact match guaranteed |
+| Tri-state toast (success/processing/error) | Server-reported creditsGranted drives feedback, never preview estimate | ✓ Good — no misleading UI |
+| Webhook backup path for credit grants | Dual-path convergence with dedup ensures credits always granted | ✓ Good — resilient to action-path failures |
+| Atomic metadata write on Stripe subscription | Webhook can classify proration invoices without local DB race | ✓ Good — eliminates stale data |
+| Radix dismiss prevention for processing state | onEscapeKeyDown + onPointerDownOutside + onInteractOutside | ✓ Good — prevents accidental dismissal |
+| HTML entities for card dots | Avoids Unicode bullet encoding issues across locales | ✓ Good — consistent rendering |
 
 ---
-*Last updated: 2026-02-27 after v1.1 milestone started*
+*Last updated: 2026-02-27 after v1.1 milestone completed*
