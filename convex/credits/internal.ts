@@ -1093,8 +1093,47 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
 });
 
 /**
- * Deduct credits for usage
- * Consumes free credits first, then paid credits
+ * TOCTOU CONTRACT (INFRA-04):
+ *
+ * Credit deduction race condition analysis and mitigation strategy.
+ * Consumes free credits first, then paid credits.
+ *
+ * ## Current Protection
+ * This mutation is atomic: it reads the balance, checks sufficiency, and writes
+ * the deduction within a single Convex mutation transaction. Convex OCC provides
+ * serializable isolation -- two concurrent deductCredits mutations touching the
+ * same credits record will conflict. One commits, the other retries with fresh
+ * data (up to 32 retries with exponential backoff).
+ *
+ * The critical invariant is that the sufficiency check (`totalAvailable < amount`)
+ * is INSIDE this mutation, not in the calling action. This means even if two
+ * actions concurrently decide the user "has enough credits" and both call
+ * deductCredits, the OCC serialization ensures:
+ * - First mutation: reads balance=100, deducts 80, commits balance=20
+ * - Second mutation: retries, reads balance=20, deducts 80, throws INSUFFICIENT_CREDITS
+ *
+ * ## Theoretical Risk Window
+ * The action-level pattern `query(balance) -> business logic -> mutation(deduct)`
+ * has a gap where stale balance data could inform business logic decisions. However,
+ * the mutation-level re-read prevents financial incorrectness (negative balances).
+ * The gap only causes UX issues: a user might start an operation expecting success
+ * but get INSUFFICIENT_CREDITS when the mutation runs.
+ *
+ * ## Why This Is Safe Today
+ * No user can reach a negative balance. The worst case is a rejected deduction that
+ * the user expected to succeed. This is correct behavior for concurrent usage.
+ *
+ * ## Trigger for Additional Mitigation
+ * Implement additional mitigation ONLY on observed incident: a real double-deduction
+ * producing a negative balance in production. This would indicate a bug in the
+ * mutation logic (sufficiency check bypassed), not an OCC failure.
+ *
+ * ## Recommended Mitigation Path (when trigger hits)
+ * Option A (preferred): Route all deductCredits callers through a per-user workpool
+ * with maxParallelism: 1. This serializes deduction requests at the action level,
+ * eliminating the gap entirely.
+ * Option B: Add a version field to the credits record and assert expected version
+ * in the mutation (optimistic locking on top of OCC -- defense in depth).
  */
 export const deductCredits = internalMutation({
   args: {
