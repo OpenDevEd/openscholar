@@ -11,11 +11,18 @@ crons.interval(
   internal.maintenance.internal.cleanupDeletedUsers
 );
 
-// Daily subscription status check
+// Hourly subscription status check: corrective sync + past-due expiry
 crons.interval(
   "check subscription status",
-  { hours: 24 },
+  { hours: 1 },
   internal.maintenance.internal.checkSubscriptionStatus
+);
+
+// Hourly monitoring for stale failed Stripe events (flag only, no auto-retry)
+crons.interval(
+  "monitor failed stripe events",
+  { hours: 1 },
+  internal.maintenance.internal.monitorFailedStripeEvents
 );
 
 crons.interval(
