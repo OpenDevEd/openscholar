@@ -42,7 +42,10 @@ export function CreditBalanceCard({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{t("totalBalance")}</span>
-            <span className="text-2xl font-bold font-mono">
+            <span className={cn(
+              "text-2xl font-bold font-mono",
+              totalBalance < 0 && "text-red-600"
+            )}>
               {format.number(totalBalance)}
             </span>
           </div>
@@ -75,11 +78,14 @@ export function CreditBalanceCard({
         </div>
 
         {/* Paid Credits */}
-        {paidBalance > 0 && (
+        {paidBalance !== 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{t("purchasedCredits")}</span>
-              <span className="text-muted-foreground font-mono">
+              <span className={cn(
+                "text-muted-foreground font-mono",
+                paidBalance < 0 && "text-red-600"
+              )}>
                 {format.number(paidBalance)}
               </span>
             </div>
