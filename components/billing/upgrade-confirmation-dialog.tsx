@@ -88,6 +88,9 @@ export function UpgradeConfirmationDialog({
           {cardLast4 && (
             <div className="flex items-center gap-2 text-sm">
               <CreditCard className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                {t("paymentMethod")}:
+              </span>
               <span className="capitalize text-muted-foreground">
                 {cardBrand}
               </span>
