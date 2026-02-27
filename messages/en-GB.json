@@ -1420,5 +1420,21 @@
     "privacyPolicy": "Privacy policy",
     "cookiePolicy": "Cookie policy",
     "backToSite": "← Back to OpenScholar"
+  },
+  "upgradeDialog": {
+    "title": "Upgrade to {plan}",
+    "currentPlan": "Current plan",
+    "newPlan": "New plan",
+    "prorationCharge": "Prorated charge",
+    "prorationExplanation": "for the {days} remaining days in your billing cycle",
+    "creditsGranted": "{credits} credits granted immediately",
+    "creditsDetail": "Based on {days} remaining days in your cycle",
+    "monthlyCreditsAfter": "Then {credits}/month going forward",
+    "confirmUpgrade": "Confirm upgrade",
+    "cancel": "Cancel",
+    "upgrading": "Upgrading...",
+    "upgradeSuccess": "Upgrade successful",
+    "upgradeSuccessCredits": "Upgraded to {plan} — {credits} credits added",
+    "upgradeProcessingCredits": "Upgraded to {plan} — credits are being processed"
   }
 }

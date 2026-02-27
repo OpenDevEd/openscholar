@@ -1418,5 +1418,21 @@
     "privacyPolicy": "隐私政策",
     "cookiePolicy": "Cookie 政策",
     "backToSite": "← 返回 OpenScholar"
+  },
+  "upgradeDialog": {
+    "title": "升级到 {plan}",
+    "currentPlan": "当前方案",
+    "newPlan": "新方案",
+    "prorationCharge": "按比例收费",
+    "prorationExplanation": "适用于计费周期剩余的 {days} 天",
+    "creditsGranted": "立即获得 {credits} 积分",
+    "creditsDetail": "基于您周期中剩余的 {days} 天",
+    "monthlyCreditsAfter": "之后每月 {credits} 积分",
+    "confirmUpgrade": "确认升级",
+    "cancel": "取消",
+    "upgrading": "升级中...",
+    "upgradeSuccess": "升级成功",
+    "upgradeSuccessCredits": "已升级到{plan} — 已添加{credits}积分",
+    "upgradeProcessingCredits": "已升级到{plan} — 积分正在处理中"
   }
 }

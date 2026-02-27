@@ -1418,5 +1418,21 @@
     "privacyPolicy": "गोपनीयता नीति",
     "cookiePolicy": "कुकी नीति",
     "backToSite": "← OpenScholar पर वापस जाएं"
+  },
+  "upgradeDialog": {
+    "title": "{plan} में अपग्रेड करें",
+    "currentPlan": "वर्तमान योजना",
+    "newPlan": "नई योजना",
+    "prorationCharge": "आनुपातिक शुल्क",
+    "prorationExplanation": "आपके बिलिंग चक्र के शेष {days} दिनों के लिए",
+    "creditsGranted": "{credits} क्रेडिट तुरंत प्रदान किए गए",
+    "creditsDetail": "आपके चक्र में शेष {days} दिनों के आधार पर",
+    "monthlyCreditsAfter": "फिर आगे हर महीने {credits}",
+    "confirmUpgrade": "अपग्रेड की पुष्टि करें",
+    "cancel": "रद्द करें",
+    "upgrading": "अपग्रेड हो रहा है...",
+    "upgradeSuccess": "अपग्रेड सफल",
+    "upgradeSuccessCredits": "{plan} में अपग्रेड किया गया — {credits} क्रेडिट जोड़े गए",
+    "upgradeProcessingCredits": "{plan} में अपग्रेड किया गया — क्रेडिट प्रोसेस हो रहे हैं"
   }
 }

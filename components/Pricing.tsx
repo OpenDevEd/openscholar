@@ -325,16 +325,30 @@ export function Pricing() {
         setSubscriptionDetails(refreshed.data as SubscriptionDetails);
       }
 
+      // Save reference before clearing state
+      const targetPlan = upgradePreview.targetPlan;
+
       setIsUpgradeDialogOpen(false);
       setUpgradePreview(null);
 
-      const creditsGranted = result.creditsGranted || upgradePreview.proRataCredits;
-      sonnerToast.success(td("upgradeSuccess"), {
-        description: td("upgradeSuccessDescription", {
-          plan: upgradePreview.targetPlan,
-          credits: creditsGranted.toLocaleString(),
-        }),
-      });
+      if (result.creditsGranted > 0) {
+        // Happy path: credits granted immediately — show actual count from server
+        sonnerToast.success(td("upgradeSuccess"), {
+          description: td("upgradeSuccessCredits", {
+            plan: targetPlan,
+            credits: result.creditsGranted.toLocaleString(),
+          }),
+          duration: 5000,
+        });
+      } else {
+        // Grant failed or zero: credits are being processed — info-level tone
+        sonnerToast(td("upgradeSuccess"), {
+          description: td("upgradeProcessingCredits", {
+            plan: targetPlan,
+          }),
+          duration: 5000,
+        });
+      }
     } catch (err) {
       console.error(err);
       toast.billing.checkoutFailed(err);

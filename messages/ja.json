@@ -1418,5 +1418,21 @@
     "privacyPolicy": "プライバシーポリシー",
     "cookiePolicy": "Cookieポリシー",
     "backToSite": "← OpenScholarに戻る"
+  },
+  "upgradeDialog": {
+    "title": "{plan}にアップグレード",
+    "currentPlan": "現在のプラン",
+    "newPlan": "新しいプラン",
+    "prorationCharge": "日割り料金",
+    "prorationExplanation": "請求サイクルの残り{days}日分",
+    "creditsGranted": "{credits}クレジットを即時付与",
+    "creditsDetail": "サイクルの残り{days}日に基づく",
+    "monthlyCreditsAfter": "以降は毎月{credits}クレジット",
+    "confirmUpgrade": "アップグレードを確認",
+    "cancel": "キャンセル",
+    "upgrading": "アップグレード中...",
+    "upgradeSuccess": "アップグレード成功",
+    "upgradeSuccessCredits": "{plan}にアップグレードしました — {credits}クレジットが追加されました",
+    "upgradeProcessingCredits": "{plan}にアップグレードしました — クレジットを処理中です"
   }
 }

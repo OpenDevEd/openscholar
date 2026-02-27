@@ -1418,5 +1418,21 @@
     "privacyPolicy": "Politique de confidentialité",
     "cookiePolicy": "Politique de cookies",
     "backToSite": "← Retour à OpenScholar"
+  },
+  "upgradeDialog": {
+    "title": "Passer au plan {plan}",
+    "currentPlan": "Plan actuel",
+    "newPlan": "Nouveau plan",
+    "prorationCharge": "Montant au prorata",
+    "prorationExplanation": "pour les {days} jours restants de votre cycle de facturation",
+    "creditsGranted": "{credits} crédits accordés immédiatement",
+    "creditsDetail": "Basé sur {days} jours restants dans votre cycle",
+    "monthlyCreditsAfter": "Puis {credits}/mois par la suite",
+    "confirmUpgrade": "Confirmer la mise à niveau",
+    "cancel": "Annuler",
+    "upgrading": "Mise à niveau...",
+    "upgradeSuccess": "Mise à niveau réussie",
+    "upgradeSuccessCredits": "Mise à niveau vers {plan} — {credits} crédits ajoutés",
+    "upgradeProcessingCredits": "Mise à niveau vers {plan} — les crédits sont en cours de traitement"
   }
 }
