@@ -1,6 +1,6 @@
 "use node";
 
-import { action, type ActionCtx } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { requireActionAuth } from "../lib/auth";
 import { internal, components } from "../_generated/api";
@@ -149,6 +149,53 @@ async function syncLocalSubscriptionFromStripe(
     metadata: subscription.metadata as Record<string, string>,
   });
 }
+
+/**
+ * Re-fetch a subscription from the Stripe API (source of truth) and sync to local DB.
+ * Called from webhook handlers to prevent out-of-order event payload corruption (SUB-02).
+ *
+ * On Stripe API failure, this action throws so that runAuditedStripeHandler marks the
+ * event as failed and returns HTTP 500, causing Stripe to retry the webhook.
+ */
+export const handleSubscriptionWebhook = internalAction({
+  args: {
+    stripeSubscriptionId: v.string(),
+    eventId: v.string(),
+    eventStatus: v.optional(v.string()),
+    eventPriceId: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Re-fetch from Stripe API (source of truth) -- per locked decision
+    const fresh = await stripe.subscriptions.retrieve(args.stripeSubscriptionId);
+
+    const freshItem = fresh.items.data[0];
+
+    // Log divergence when event payload disagrees with re-fetched state
+    // (groundwork for Phase 3 monitoring)
+    if (
+      (args.eventStatus && fresh.status !== args.eventStatus) ||
+      (args.eventPriceId && freshItem?.price?.id !== args.eventPriceId)
+    ) {
+      console.warn("[WebhookDivergence]", {
+        eventId: args.eventId,
+        subscriptionId: args.stripeSubscriptionId,
+        divergence: {
+          status: { event: args.eventStatus, fresh: fresh.status },
+          priceId: {
+            event: args.eventPriceId,
+            fresh: freshItem?.price?.id,
+          },
+        },
+      });
+    }
+
+    // Sync from fresh data, not event payload
+    await syncLocalSubscriptionFromStripe(ctx, fresh);
+
+    return null;
+  },
+});
 
 /**
  * Create a Stripe Checkout session for a first-time subscription purchase.
@@ -583,6 +630,20 @@ export const changePlan = action({
           })
         ) {
           await stripe.subscriptionSchedules.release(schedule.id);
+
+          // Verify schedule is detached (SUB-05)
+          const verifiedSub = await stripe.subscriptions.retrieve(stripeSubscription.id);
+          if (verifiedSub.schedule !== null) {
+            console.error("[ScheduleLeak] schedule still attached after release", {
+              subscriptionId: stripeSubscription.id,
+              scheduleId: schedule.id,
+              scheduleStillAttached: verifiedSub.schedule,
+            });
+            throw createError(
+              "BILLING_PLAN_CHANGE_CONFLICT",
+              "Failed to release pending schedule. Please try again.",
+            );
+          }
         }
 
         const metadataCleared = await stripe.subscriptions.update(stripeSubscription.id, {
@@ -607,6 +668,20 @@ export const changePlan = action({
           })
         ) {
           await stripe.subscriptionSchedules.release(schedule.id);
+
+          // Verify schedule is detached (SUB-05)
+          const verifiedSub = await stripe.subscriptions.retrieve(stripeSubscription.id);
+          if (verifiedSub.schedule !== null) {
+            console.error("[ScheduleLeak] schedule still attached after release", {
+              subscriptionId: stripeSubscription.id,
+              scheduleId: schedule.id,
+              scheduleStillAttached: verifiedSub.schedule,
+            });
+            throw createError(
+              "BILLING_PLAN_CHANGE_CONFLICT",
+              "Failed to release pending schedule. Please try again.",
+            );
+          }
         }
 
         const updated = await stripe.subscriptions.update(stripeSubscription.id, {
@@ -617,7 +692,8 @@ export const changePlan = action({
               quantity: item.quantity ?? 1,
             },
           ],
-          proration_behavior: "create_prorations",
+          proration_behavior: "always_invoice",
+          payment_behavior: "error_if_incomplete",
           cancel_at_period_end: false,
           metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
         });
@@ -628,7 +704,7 @@ export const changePlan = action({
           success: true,
           mode: "updated",
           changeType,
-          message: `Plan changed to ${targetPlan}.`,
+          message: `Plan upgraded to ${targetPlan}. Proration charged immediately.`,
         };
       }
 
@@ -683,6 +759,19 @@ export const changePlan = action({
         effectiveDate: endDate * 1000,
       };
     } catch (error: any) {
+      if (error instanceof Stripe.errors.StripeCardError) {
+        console.warn("[changePlan] Card declined during upgrade", {
+          requestId: error.requestId,
+          code: error.code,
+          declineCode: (error as any).decline_code,
+          targetPriceId: args.targetPriceId,
+          userId: user._id,
+        });
+        throw createError(
+          "BILLING_CHARGE_FAILED",
+          "Upgrade failed — your card was declined. Please update your payment method and try again.",
+        );
+      }
       if (error instanceof Stripe.errors.StripeInvalidRequestError) {
         console.error("[changePlan] Stripe invalid request", {
           requestId: error.requestId,
