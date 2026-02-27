@@ -348,6 +348,67 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
     };
   }
 
+  // --- Upgrade proration detection (UPGR-01) ---
+  // When classifyMonthlyCreditInvoice returns "ignore_non_recurring" for a
+  // subscription_update invoice, check if this is an upgrade proration invoice
+  // by reading upgrade metadata from the Stripe subscription.
+  if (
+    decision.decision === "ignore_non_recurring" &&
+    invoiceBillingReason === "subscription_update" &&
+    stripeSubscriptionId
+  ) {
+    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const meta = subscription.metadata ?? {};
+    const upgradeFromPlan = meta.upgradeFromPlan;
+    const upgradeToPlan = meta.upgradeToPlan;
+    const upgradeTimestamp = meta.upgradeTimestamp;
+
+    if (upgradeFromPlan && upgradeToPlan && upgradeTimestamp) {
+      // Resolve the user from the subscription via internal query
+      const subRecord = await ctx.runQuery(
+        internalApi.subscriptions.internal.getSubscriptionByStripeId,
+        { stripeSubscriptionId },
+      );
+
+      if (subRecord?.userId) {
+        // Read period boundaries from the fresh Stripe subscription object
+        // (not local DB -- may be stale when webhook fires before syncSubscription)
+        const periodStartMs = ((subscription as any).current_period_start ?? 0) * 1000;
+        const periodEndMs = ((subscription as any).current_period_end ?? 0) * 1000;
+
+        const grantResult = await ctx.runMutation(
+          internalApi.credits.internal.grantUpgradeProRataCredits,
+          {
+            userId: subRecord.userId,
+            fromPlan: upgradeFromPlan,
+            toPlan: upgradeToPlan,
+            currentPeriodStartMs: periodStartMs,
+            currentPeriodEndMs: periodEndMs,
+            stripeSubscriptionId,
+          },
+        );
+
+        console.log("[processInvoiceForGrant] Upgrade proration credit grant via webhook path", {
+          stripeInvoiceId: args.stripeInvoiceId,
+          stripeSubscriptionId,
+          upgradeFromPlan,
+          upgradeToPlan,
+          outcome: grantResult.outcome,
+          grantedCredits: grantResult.grantedCredits,
+        });
+
+        return {
+          outcome: grantResult.outcome,
+          message: grantResult.message,
+          usedFallbackSubscription,
+        };
+      }
+    }
+
+    // No upgrade metadata or no user found -- fall through to normal ignore
+    // (This preserves existing behavior for non-upgrade subscription_update invoices)
+  }
+
   const result: { outcome: string; message: string } = await ctx.runMutation(
     internalApi.credits.internal.grantMonthlyCredits,
     {
