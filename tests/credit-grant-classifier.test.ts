@@ -49,3 +49,19 @@ describe("credit grant classifier", () => {
     expect(result.decision).toBe("retry_with_reconcile");
   });
 });
+
+describe("upgrade resilience firewall", () => {
+  it("subscription_update never triggers monthly credit grant (UPGR-03)", () => {
+    const result = classifyMonthlyCreditInvoice({
+      stripeSubscriptionId: "sub_123",
+      invoiceStatus: "paid",
+      invoiceBillingReason: "subscription_update",
+    });
+
+    // CRITICAL: subscription_update must ALWAYS be classified as non-recurring.
+    // If this changes, upgrade proration invoices would trigger both a monthly
+    // credit grant AND an upgrade pro-rata grant, causing double-grants.
+    expect(result.decision).toBe("ignore_non_recurring");
+    expect(result.classification).toBe("ignored_non_recurring_reason");
+  });
+});
