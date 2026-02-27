@@ -14,7 +14,7 @@ Requirements for the audit milestone. Each maps to roadmap phases.
 - [x] **SUB-03**: Cancellation handler preserves Stripe subscription ID on canceled records instead of creating orphan free-plan records
 - [x] **SUB-04**: Downgrade schedule survives mid-period subscription updates (payment method change, metadata update)
 - [x] **SUB-05**: Schedule leak is prevented on re-upgrade — verify `subscription.schedule === null` after upgrade; detect orphaned schedules
-- [ ] **SUB-06**: Payment failure handling correctly transitions to `past_due` and retains user access during grace period
+- [x] **SUB-06**: Payment failure handling correctly transitions to `past_due` and retains user access during grace period
 
 ### Credit System
 
@@ -68,7 +68,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUB-03 | Phase 1 | Complete |
 | SUB-04 | Phase 1 | Complete |
 | SUB-05 | Phase 1 | Complete |
-| SUB-06 | Phase 1 | Pending |
+| SUB-06 | Phase 1 | Complete |
 | CRED-01 | Phase 2 | Pending |
 | CRED-02 | Phase 2 | Pending |
 | CRED-03 | Phase 2 | Pending |

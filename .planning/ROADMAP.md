@@ -12,7 +12,7 @@ This audit fixes three confirmed billing bugs (upgrade proration not charged, ou
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Subscription Lifecycle Correctness** - Fix the three critical billing bugs and harden subscription state transitions against edge cases
+- [x] **Phase 1: Subscription Lifecycle Correctness** - Fix the three critical billing bugs and harden subscription state transitions against edge cases
 - [ ] **Phase 2: Credit System Correctness** - Verify and fix credit grant idempotency, top-up flow, refund reversal, and free credit cap UX
 - [ ] **Phase 3: Operational Hardening** - Add monitoring, corrective cron actions, global idempotency verification, and TOCTOU scale documentation
 
@@ -31,9 +31,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Webhook re-fetch + cancellation fix (SUB-02, SUB-03, SUB-04)
-- [ ] 01-02-PLAN.md -- Upgrade proration fix + schedule leak prevention (SUB-01, SUB-05)
-- [ ] 01-03-PLAN.md -- Payment failure UX + grace period (SUB-06)
+- [x] 01-01-PLAN.md -- Webhook re-fetch + cancellation fix (SUB-02, SUB-03, SUB-04)
+- [x] 01-02-PLAN.md -- Upgrade proration fix + schedule leak prevention (SUB-01, SUB-05)
+- [x] 01-03-PLAN.md -- Payment failure UX + grace period (SUB-06)
 
 ### Phase 2: Credit System Correctness
 **Goal**: Credit grants, top-up purchases, and refund reversals produce correct credit balances under all event combinations, and the free credit cap is communicated clearly to users
@@ -73,6 +73,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Subscription Lifecycle Correctness | 0/3 | Not started | - |
+| 1. Subscription Lifecycle Correctness | 3/3 | Complete | 2026-02-27 |
 | 2. Credit System Correctness | 0/2 | Not started | - |
 | 3. Operational Hardening | 0/2 | Not started | - |
