@@ -293,6 +293,17 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                   </span>
                 </div>
               )}
+              {showCredits && creditsFeatureFlags.topupsEnabled && (
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/settings/billing#topup-section");
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
+                >
+                  {tc("buyCredits")}
+                </button>
+              )}
               {showUpgradeButton && (
                 <Button
                   size="sm"

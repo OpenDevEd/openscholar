@@ -169,6 +169,7 @@
     "planUpdated": "Abonnement mis à jour",
     "openBillingPortal": "Ouvrir le portail de facturation",
     "keepCurrentPlan": "Conserver l'abonnement actuel",
+    "buyCredits": "Acheter des credits",
     "anotherPlan": "un autre abonnement",
     "onDate": "le {date}",
     "localeLabels": {

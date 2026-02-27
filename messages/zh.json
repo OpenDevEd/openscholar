@@ -169,6 +169,7 @@
     "planUpdated": "计划已更新",
     "openBillingPortal": "打开计费门户",
     "keepCurrentPlan": "保留当前计划",
+    "buyCredits": "Buy Credits",
     "anotherPlan": "其他计划",
     "onDate": "于{date}",
     "localeLabels": {
