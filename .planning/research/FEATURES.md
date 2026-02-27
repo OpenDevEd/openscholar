@@ -1,212 +1,169 @@
 # Feature Research
 
-**Domain:** Stripe billing integration for SaaS subscription + credit system
+**Domain:** SaaS upgrade flow with proration preview and pro-rata credit grants
 **Researched:** 2026-02-27
-**Confidence:** HIGH (codebase analysis + Stripe official docs + established industry patterns)
+**Confidence:** HIGH (Stripe official docs + codebase analysis + established SaaS patterns)
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = billing is broken or trust is lost.
+Features users assume exist when upgrading a paid subscription. Missing any of these = broken or untrustworthy billing.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Immediate upgrade with proration** | Users who pay more want access now and expect a fair charge for the remaining period | MEDIUM | Already implemented: `changePlan` uses `proration_behavior: "create_prorations"` on `stripe.subscriptions.update`. Releases any pending downgrade schedule first. Verified in `convex/subscriptions/actions.ts`. |
-| **Deferred downgrade (end of period)** | Users paid for the current period and expect to keep that plan until it expires | HIGH | Already implemented via `SubscriptionSchedule` API. `buildDowngradeSchedulePhases` creates a two-phase schedule (current plan until period end, then target plan). In `convex/subscriptions/lib/schedulePlanning.ts`. |
-| **Cancellation at period end** | Users should not lose access immediately when they cancel; they already paid | LOW | Implemented via Stripe Customer Portal. `isSubscriptionScheduledToCancel` handles both `cancel_at_period_end` and `cancel_at` with tolerance. `handleSubscriptionCanceled` creates a free-plan record on `customer.subscription.deleted`. |
-| **Webhook idempotency** | Double-processing causes double charges or double credit grants -- catastrophic for trust | MEDIUM | Implemented: `stripeEventLogs` table with `by_stripe_event_id` index. `upsertStripeEventLog` tracks received/processed/retrying/failed/ignored states. `creditTransactions` has `by_stripe_invoice` and `by_stripe_payment_intent` indexes for grant deduplication. |
-| **Monthly credit grant on invoice.paid** | Subscription credits are the core value prop; not granting them = users cannot use the product | HIGH | Implemented: `processInvoiceForGrant` action fetches invoice from Stripe, `classifyMonthlyCreditInvoice` determines eligibility (only `subscription_create` and `subscription_cycle` billing reasons), `grantMonthlyCredits` mutation applies free-credit cap per tier. Includes retry with exponential backoff (5s, 15s, 30s, 60s, 120s, 300s). |
-| **Credit top-up purchase (one-time)** | Users who exhaust monthly credits need to buy more without waiting for renewal | MEDIUM | Implemented: `createTopupCheckoutSession` creates Stripe Checkout in `payment` mode. Three bundles: 10k, 50k, 100k credits. `grantPurchasedCreditsFromPaymentIntent` fires on `payment_intent.succeeded`. |
-| **Credit deduction (free first, then paid)** | Users expect free credits consumed before purchased credits -- standard for dual-wallet systems | LOW | Implemented in `credits/internal.ts:deductCredits`. Free balance consumed first, then paid. Transaction log maintained for both. |
-| **Subscription sync on lifecycle events** | Local DB must reflect Stripe truth; stale state causes entitlement bugs | MEDIUM | Implemented: `syncSubscription` mutation fires on `customer.subscription.created`, `updated`, and `deleted` webhook events. Resolves userId via billing customer link, component store, or metadata fallback chain. |
-| **Payment failure handling** | Users need to know their payment failed and still have a grace window to fix it | LOW | Implemented: `invoice.payment_failed` webhook fires `handlePaymentFailed`, setting subscription status to `past_due`. `past_due` is still an entitled status (users retain access while retrying). |
-| **Stripe Customer Portal** | Users expect self-service for updating payment method, viewing invoices, and managing subscription | LOW | Implemented: `createPortalSession` resolves customer ID from billing customer link, local subscription, or component store fallback. |
-| **Entitlement gating** | Access to premium features must be instantly gated on subscription status | LOW | Implemented: `isEntitledStatus` checks for `active`, `trialing`, `past_due`. `resolveEffectivePlan` returns `free` for non-entitled statuses. Used by AI mode routing layer. |
-| **Invoice reconciliation cron** | Webhooks can be dropped; periodic reconciliation catches missed grants | HIGH | Implemented: hourly cron `reconcileRecentPaidInvoicesFromStripe` scans eligible customers, retrieves recent paid invoices, re-runs grant logic (deduplicated by `creditTransactions.by_stripe_invoice` index). |
-| **Refund credit reversal** | When a credit top-up is refunded in Stripe, the credits must be clawed back proportionally | MEDIUM | Implemented: `charge.refunded` webhook fires `reversePurchasedCreditsFromRefund`. Calculates proportional credit reversal based on refund-to-charge ratio. Tracks `alreadyReversedCredits` for partial refund idempotency. |
-| **Structured error handling for billing** | Users seeing generic "something went wrong" on billing actions will not trust the system | LOW | Implemented: Typed error codes (`BILLING_NO_SUBSCRIPTION_LINKED`, `BILLING_PLAN_CHANGE_CONFLICT`, etc.). `mapSubscriptionDetailsErrorCode` maps Stripe SDK errors to domain codes. |
+| **Proration preview before confirming upgrade** | Users must know exactly what they will be charged before committing. Surprise charges destroy trust and trigger chargebacks. Every major SaaS (Slack, Notion, GitHub) shows the amount before charging. | MEDIUM | Partially implemented. `getUpgradePreview` action uses `stripe.invoices.createPreview()` which is the correct current API (replaces deprecated `retrieveUpcoming`). Dialog component exists (`upgrade-confirmation-dialog.tsx`) and renders the preview data. **Key gap:** The `proration_date` is not pinned between preview and execution. Stripe prorates to the second, so the preview amount can drift from the actual charge. Must pass the same `proration_date` to both `createPreview` and `subscriptions.update`. |
+| **Immediate plan upgrade with correct proration charge** | When a user upgrades mid-cycle, they expect instant access to the higher tier and a fair charge for the remaining days only. Industry standard since Stripe made it default. | LOW | Already implemented. `changePlan` uses `proration_behavior: "always_invoice"` with `payment_behavior: "error_if_incomplete"`. This charges the proration difference immediately and fails the request if payment cannot be collected. No changes needed to the Stripe API call itself. |
+| **Pro-rata credit grant on mid-cycle upgrade** | If upgrading from Go (3,000 credits/month) to Pro (15,000 credits/month) with 15 days remaining, the user expects ~6,000 bonus credits immediately (not waiting until next renewal). | MEDIUM | Implemented but fragile. `grantUpgradeProRataCredits` calculates `floor(remainingRatio * creditDelta)` and applies the tier free-credit cap. **Key gap:** Credit grant is a separate mutation call after `subscriptions.update` succeeds. If the mutation fails (Convex transient error, timeout), the plan changes but credits are not granted. Currently this is logged as non-fatal (`console.error`) but the user sees a success toast with potentially wrong credit count. |
+| **Atomic upgrade flow (charge + sync + grant succeed together, or user sees clear failure)** | If payment succeeds but credit grant fails, the user has paid more but has no additional credits. This is the known production bug. The user must never be left in a "paid but not credited" state without clear recovery. | HIGH | **This is the primary problem to solve.** Currently: (1) Stripe update succeeds, (2) local sync succeeds, (3) credit grant may fail silently. The `changePlan` action wraps the credit grant in try/catch and logs failures, but returns `success: true` with potentially `creditsGranted: undefined`. The client falls back to `upgradePreview.proRataCredits` for the toast, which may not match reality. |
+| **Upgrade error recovery (card declined, network failure)** | When payment fails during upgrade, the user must see a clear message ("card declined") and remain on their current plan. No partial state changes. | LOW | Already implemented correctly. `error_if_incomplete` ensures Stripe does not change the subscription if payment fails. `StripeCardError` is caught and mapped to `BILLING_CHARGE_FAILED` with a user-friendly message. `StripeInvalidRequestError` maps to `BILLING_PLAN_CHANGE_CONFLICT`. The user stays on their current plan. |
+| **Success feedback with accurate credit count** | After a successful upgrade, the user needs confirmation of: (a) new plan name, (b) amount charged, (c) credits granted. Generic "upgrade successful" is insufficient. | LOW | Partially implemented. The success toast shows plan name and credits via sonner. **Key gap:** `creditsGranted` in the `changePlan` response may be `undefined` if the grant mutation failed, and the UI falls back to the preview estimate. This means the toast could say "7,500 credits granted" when 0 were actually granted. Must make the toast reflect actual grant outcome. |
+| **Confirmation dialog that prevents accidental upgrades** | Clicking "Upgrade" must not immediately charge the user. A confirmation step showing the exact charge amount is necessary to prevent support tickets and chargebacks. | LOW | Implemented. The `UpgradeConfirmationDialog` component gates the upgrade behind a two-step flow: (1) click "Upgrade to Pro" triggers `getUpgradePreview`, (2) dialog shows preview, (3) user clicks "Confirm upgrade" to execute. Dialog disables close during confirmation (prevents double-submit). |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required, but make the billing experience polished.
+Features that make the upgrade experience polished beyond the basics.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Pending change visibility in UI** | Users see "Downgrade to Go scheduled for March 15" instead of wondering if the change took effect | LOW | Already implemented: `getSubscriptionDetails` returns `hasPendingChange`, `pendingTargetPriceId`, `pendingTargetPlan`, and `pendingEffectiveDate` by inspecting the subscription schedule. |
-| **Smart pending-change cancellation** | If a user schedules a downgrade then changes their mind, one click clears the schedule and keeps the current plan | MEDIUM | Already implemented: `changePlan` detects `pending_change_cleared` via `determineChangeType`. Releases the schedule and clears pending metadata. |
-| **Free credit cap per tier** | Prevents abuse of free credit accumulation; unused credits do not pile up forever | LOW | Already implemented: `applyTierFreeCreditCap` caps free balance at plan's `freeCreditCap` (e.g., Go = 3,000 cap, Pro = 15,000 cap). |
-| **Backfill action for billing recovery** | After deployment or data migration, one action links billing customers, creates credit records, and reconciles invoices | HIGH | Already implemented: `backfillBillingAndCredits` iterates eligible subscriptions, upserts billing customer links, ensures credit records exist, then runs invoice reconciliation. |
-| **Dual credit type (free + paid) with separate tracking** | Users can see exactly how their credits are being consumed and what they purchased vs. what was granted | LOW | Already implemented: `creditTransactions` table records `creditType` (free/paid) and `type` (grant/purchase/usage/refund) per transaction. |
-| **Entitlement state in subscription details** | UI can show "Payment pending -- complete in billing portal" instead of silently failing | LOW | Already implemented: `getSubscriptionDetails` returns `entitlementState` (entitled/payment_pending/not_entitled) and `entitlementMessage`. |
-| **Event log with classifications** | Ops can debug "why didn't credits arrive?" by querying `stripeEventLogs` with classification filters | MEDIUM | Already implemented: Events classified as `eligible_recurring_invoice`, `retry_invoice_not_paid`, `config_drift_missing_billing_reason`, `already_granted`, etc. |
-| **Automatic retry with backoff for credit grants** | Webhooks arriving before subscription sync completes do not permanently fail; they self-heal | MEDIUM | Already implemented: 6-step exponential backoff (5s to 5min). Both action-level retries (processInvoiceForGrant) and mutation-level retries (grantMonthlyCredits, reconcileInvoiceCreditGrant). |
-| **Payment method display** | Users see "Visa ending in 4242" next to their subscription -- builds confidence that billing is working | LOW | Already implemented: `getSubscriptionDetails` expands `default_payment_method` and returns `cardBrand` and `cardLast4`. |
-| **Graceful degradation for credits-disabled mode** | If credits feature is toggled off, billing still functions for subscription management without crashing | LOW | Already implemented: `requireCreditsEnabled()` and `requireCreditTopupsEnabled()` feature flags gate credit operations. |
-| **Usage-based credit metering with AI cost markup** | Credits map to real AI token costs with a configurable 1.3x markup, making pricing transparent and sustainable | LOW | Already implemented: `AI_COST_MARKUP = 1.3` in constants. Credit deduction happens in `withAuthAndCreditsBatch` per AI action. |
+| **Payment method display in confirmation dialog** | Showing "Visa ending 4242 will be charged $X.XX" gives users confidence they know which card is being used. Reduces "wait, which card?" anxiety. | LOW | `getSubscriptionDetails` already returns `cardBrand` and `cardLast4`. Just needs to be threaded into the dialog preview data and rendered. Currently not shown in the confirmation dialog. |
+| **Proration breakdown (credit + charge line items)** | Instead of just showing the net charge, showing "-$5.00 credit for unused Go" and "+$10.00 Pro for 15 days" helps users understand the math. Stripe's preview invoice contains line items for this. | MEDIUM | `stripe.invoices.createPreview()` returns line items in `preview.lines.data`. These are not currently extracted by `getUpgradePreview` -- only the net `amount_due` and `total` are returned. Adding line item extraction would require expanding the return type. |
+| **Credit grant guarantee with reconciliation fallback** | If the in-flow credit grant fails, a background reconciliation detects the gap and retries. Users never permanently lose credits they paid for. | HIGH | The hourly `reconcileRecentPaidInvoicesFromStripe` cron handles monthly grants but does not currently handle upgrade pro-rata grants. The pro-rata grant uses a separate `upgrade_prorate` grant type. A reconciliation mechanism for failed upgrade grants would need to detect "plan changed but no upgrade_prorate transaction in this period" and re-run the grant. |
+| **Animated transition in dialog** | Smooth loading state while preview is fetched, animated charge reveal, and success state give a premium feel to an otherwise anxious moment (being charged money). | LOW | Dialog currently shows a loading spinner while preview loads. Could be enhanced with skeleton states and a brief success animation before closing. Low priority but polished. |
+| **Localized currency formatting** | Already using `next-intl`'s `useFormatter` for currency display. Users see "$12.50" or "12,50 EUR" based on locale. | LOW | Already implemented in both the pricing page and dialog. `format.number()` with `style: "currency"` handles this correctly. No changes needed. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems. Deliberately excluded.
+Features that seem good but create problems for the upgrade flow specifically.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Immediate downgrade** | "I want to pay less right now" | User already paid for the current period. Immediate downgrade requires calculating and issuing a credit refund for unused time, which creates accounting complexity, Stripe proration edge cases, and user confusion when their credit balance changes unexpectedly. | Deferred downgrade via SubscriptionSchedule (already implemented). User keeps current plan until period end, new plan starts automatically. |
-| **Custom proration logic (bypass Stripe)** | "We want to handle proration ourselves for special cases" | Maintaining a parallel proration engine creates divergence between Stripe's records and your DB. Invoice amounts will not match, tax calculations break, and dispute resolution becomes impossible. | Use Stripe's built-in `create_prorations` behavior. It handles currency rounding, tax recalculation, and invoice line items correctly. |
-| **Credit expiry / time-based credit decay** | "Unused free credits should expire monthly to encourage usage" | Adds significant complexity (scheduled jobs, edge-case handling for mid-period grants, user anger when credits vanish). Cap-based approach already limits accumulation. | Free credit cap per tier already prevents infinite accumulation. Cap is checked on every grant; excess is silently discarded. |
-| **Client-side subscription state polling** | "Check Stripe directly from the browser for real-time status" | Exposes Stripe API keys, creates rate limit issues, and the client can be manipulated. State desync between client poll and webhook creates race conditions. | Webhook-driven state synced to Convex (real-time queries auto-update all subscribing components). Convex's reactivity eliminates the need for polling. |
-| **Multiple active subscriptions per user** | "Let users stack subscriptions for more credits" | Massively increases complexity: which subscription drives entitlement? What happens when one is canceled? How do credits reconcile? Stripe's invoicing becomes confusing with multiple concurrent subscriptions. | Single subscription with quantity scaling or credit top-ups for extra capacity (both already implemented). |
-| **Build custom payment UI (skip Checkout/Portal)** | "We want a fully branded payment form" | PCI compliance burden, payment method handling, SCA/3DS flows, error handling, and localization. Stripe Checkout handles all of this with no PCI scope for you. | Stripe Checkout for new subscriptions + Customer Portal for management. Both support branding customization. |
-| **Webhook-free architecture (poll Stripe API)** | "Webhooks are unreliable, just poll every minute" | API rate limits (25 requests/sec in test, 100 in live), increased latency for state changes, and higher cost. Polling at scale becomes a reliability problem itself. | Webhooks as primary + hourly reconciliation cron as safety net (already implemented). Best of both approaches. |
-| **Real-time credit deduction notifications** | "Show a toast every time credits are consumed during AI operations" | Distracting during batch operations (extraction can consume hundreds of credits). Creates notification fatigue. | Credit balance query updates reactively in Convex. Users can check balance in settings. Show warnings only at low-balance thresholds. |
+| **Custom proration math (bypass Stripe's calculation)** | "We want to round proration amounts to the nearest dollar" or "We want to give a discount on the proration" | Stripe's invoicing, tax calculation, and dispute resolution all depend on Stripe computing the proration. Custom math creates discrepancies between what you charge and what Stripe records, breaking refund flows and tax reporting. Already documented as out-of-scope in PROJECT.md. | Use Stripe's `invoices.createPreview()` for display and `always_invoice` for charging. Stripe handles rounding, tax, and currency correctly. |
+| **Rollback upgrade on credit grant failure** | "If credits fail to grant, reverse the Stripe subscription back to the old plan" | Rolling back the subscription creates a second proration (this time a credit), a new invoice, and potentially a second webhook storm. The user's payment method gets charged then credited, which looks suspicious on bank statements. Far more disruptive than a delayed credit grant. | Grant credits as best-effort in the primary flow, with a reconciliation safety net for failures. The plan upgrade (the expensive Stripe operation) should be considered committed once Stripe confirms it. |
+| **Upgrade preview caching (show preview without Stripe API call each time)** | "Cache the preview so users see it instantly when they click upgrade" | Proration amounts change by the second (Stripe prorates to the second). A cached preview becomes stale within minutes. Showing a stale amount and then charging a different amount is worse than a brief loading delay. | Fetch preview on demand when user clicks "Upgrade to X". Show a loading state in the dialog. The Stripe API call typically completes in 200-500ms. |
+| **Optimistic UI for credit grant** | "Show the new credit balance immediately in the dialog before the server confirms" | If the grant fails or is capped, the displayed balance is wrong. Users who see "15,000 credits" then refresh to see "3,000 credits" will file support tickets. | Show credits from the server response only. The `changePlan` action returns `creditsGranted` -- use that for the success toast. If the value is missing/zero due to grant failure, show "Credits are being processed" instead of a specific number. |
+| **Require email confirmation for upgrade** | "Send a confirmation email before charging" | Adds friction to a moment where the user has already decided to upgrade. Email delivery delays (seconds to minutes) create a terrible UX. No major SaaS does this for upgrades (though some do for cancellations). | In-app confirmation dialog (already implemented) is sufficient. The dialog shows the charge amount and requires an explicit "Confirm upgrade" click. |
 
 ## Feature Dependencies
 
 ```
-[Stripe Checkout Session]
-    |--requires--> [Stripe Customer Resolution]
-    |                  |--requires--> [billingCustomers table]
-    |
-    |--triggers--> [customer.subscription.created webhook]
-                       |--triggers--> [syncSubscription mutation]
-                       |                  |--requires--> [billingCustomers link]
-                       |                  |--writes--> [subscriptions table]
-                       |
-                       |--triggers--> [invoice.paid webhook]
-                                          |--triggers--> [processInvoiceForGrant]
-                                                             |--requires--> [subscriptions table populated]
-                                                             |--requires--> [credits record exists]
-                                                             |--writes--> [credits table + creditTransactions]
+[Proration Preview]
+    |--requires--> [Active Stripe subscription]
+    |--requires--> [Valid target price ID]
+    |--calls--> [stripe.invoices.createPreview()]
+    |--returns--> [Preview data for confirmation dialog]
 
-[changePlan (upgrade)]
-    |--requires--> [Active subscription in local DB]
-    |--requires--> [Valid target priceId]
-    |--may-release--> [Existing SubscriptionSchedule]
-    |--triggers--> [customer.subscription.updated webhook]
-    |--triggers--> [Proration invoice]
+[Confirmation Dialog]
+    |--requires--> [Proration Preview data]
+    |--displays--> [Charge amount, plan change, credit estimate]
+    |--on-confirm--> [changePlan action]
 
-[changePlan (downgrade)]
-    |--requires--> [Active subscription in local DB]
-    |--creates--> [SubscriptionSchedule with 2 phases]
-    |--triggers--> [customer.subscription.updated at period end]
+[changePlan (upgrade path)]
+    |--step 1: releases--> [Existing SubscriptionSchedule if any]
+    |--step 2: calls--> [stripe.subscriptions.update with always_invoice]
+    |--step 3: calls--> [syncLocalSubscriptionFromStripe]
+    |--step 4: calls--> [grantUpgradeProRataCredits]
+    |                        |--requires--> [credits record exists]
+    |                        |--deduplicates-via--> [creditTransactions by_user + upgrade_prorate + period]
+    |                        |--applies--> [applyTierFreeCreditCap]
+    |--returns--> [success + creditsGranted]
 
-[Credit Top-up Purchase]
-    |--requires--> [Stripe Customer Resolution]
-    |--triggers--> [payment_intent.succeeded webhook]
-                       |--triggers--> [grantPurchasedCreditsFromPaymentIntent]
-                                          |--requires--> [credits record exists]
-                                          |--deduplicates-via--> [by_stripe_payment_intent index]
+[Success Toast]
+    |--requires--> [changePlan response.creditsGranted]
+    |--fallback--> [upgradePreview.proRataCredits] (PROBLEM: may not match reality)
 
-[Refund Reversal]
-    |--requires--> [Original purchase transaction exists]
-    |--triggers--> [charge.refunded webhook]
-                       |--triggers--> [reversePurchasedCreditsFromRefund]
-                                          |--requires--> [purchase transaction in creditTransactions]
-
-[Invoice Reconciliation Cron]
-    |--requires--> [subscriptions table with stripeCustomerId]
-    |--requires--> [Stripe API access]
-    |--reuses--> [processInvoiceForGrant logic]
-    |--deduplicates-via--> [creditTransactions.by_stripe_invoice index]
+[Credit Grant Reconciliation] (NEW -- not yet implemented)
+    |--requires--> [subscriptions table shows upgrade happened]
+    |--requires--> [creditTransactions table missing upgrade_prorate for period]
+    |--triggers--> [grantUpgradeProRataCredits retry]
 ```
 
 ### Dependency Notes
 
-- **processInvoiceForGrant requires subscriptions table populated**: The invoice.paid webhook often arrives before customer.subscription.created is fully processed. The retry mechanism (5s-5min exponential backoff) handles this race condition by re-attempting subscription lookup.
-- **changePlan requires active subscription**: Cannot upgrade/downgrade without an existing Stripe subscription. Users must go through Checkout first.
-- **Credit top-up requires billing customer link**: The `resolveTopupUserId` function falls back to metadata and billingCustomers table. If neither exists (edge case), the grant fails.
-- **Refund reversal requires original purchase**: If `charge.refunded` arrives but the `payment_intent.succeeded` has not been processed yet, the reversal silently no-ops (`ignored_no_purchase`). No retry mechanism for this -- relies on Stripe event ordering.
-- **Reconciliation cron enhances webhook reliability**: The cron is not a dependency but a safety net. If all webhooks fire correctly, the cron detects `already_granted` and no-ops.
+- **Proration preview requires active subscription**: Cannot preview if the user has no Stripe subscription. The `getUpgradePreview` action validates this and throws `BILLING_NO_ACTIVE_SUBSCRIPTION`.
+- **Confirmation dialog requires preview data**: Dialog renders `null` if preview is not loaded. This is correct -- prevents showing empty/stale data.
+- **changePlan step 2 is the point of no return**: Once `stripe.subscriptions.update` succeeds, the plan has changed in Stripe. Steps 3 and 4 can fail independently. Step 3 failure is self-healing (next webhook will sync). Step 4 failure needs reconciliation.
+- **Success toast depends on changePlan response accuracy**: Currently the response `creditsGranted` can be `undefined` if step 4 fails, and the UI falls back to the preview estimate. This dependency is the source of the "wrong credit count" bug.
+- **Proration date must be pinned**: The `proration_date` used in preview must match the one used in execution. Currently they are computed independently (`Math.floor(Date.now() / 1000)` at different times), which can cause a few-seconds drift in the charge amount.
 
 ## MVP Definition
 
-### Already Implemented (v1 -- Current State)
+### Must Ship (v1.1 -- This Milestone)
 
-All table-stakes features are implemented. The codebase has a mature billing integration.
+These are required to fix the broken upgrade flow and ship a reliable experience.
 
-- [x] Subscription checkout via Stripe Checkout
-- [x] Upgrade with immediate proration
-- [x] Downgrade via SubscriptionSchedule (deferred)
-- [x] Cancellation at period end (via Customer Portal)
-- [x] Monthly credit grants on invoice.paid
-- [x] Credit top-up purchases
-- [x] Webhook idempotency via event log
-- [x] Invoice reconciliation cron (hourly)
-- [x] Refund credit reversal
-- [x] Payment failure handling (past_due status)
-- [x] Entitlement gating
-- [x] Structured billing error codes
+- [ ] **Pin `proration_date` between preview and execution** -- Pass the same unix timestamp from `getUpgradePreview` through the confirmation dialog to `changePlan`. Ensures the charge amount matches the preview exactly. Stripe documentation explicitly recommends this.
+- [ ] **Make credit grant failure visible to the user** -- If `grantUpgradeProRataCredits` fails after plan change succeeds, the `changePlan` response must communicate this clearly. The UI must show "Your plan has been upgraded. Credits are being processed and will appear shortly." instead of claiming a specific credit count that was not actually granted.
+- [ ] **Handle `creditsGranted: undefined` in success toast** -- The client currently falls back to `upgradePreview.proRataCredits` which may not match reality (cap applied, rounding, or grant failure). Replace with: if `creditsGranted` is present, show it; if absent, show a generic "credits processing" message.
+- [ ] **Ensure confirmation dialog cannot be double-submitted** -- Currently `isConfirming` disables the close button and confirm button. Verify this also prevents keyboard dismissal (Escape key) and click-outside during the upgrade API call.
 
-### Audit & Harden (v1.1 -- This Milestone)
+### Add After Validation (v1.x)
 
-Verify correctness and harden edge cases in existing implementation.
+Features to add once the core upgrade flow is stable and confirmed working in production.
 
-- [ ] Verify proration invoice is actually charged (not just created) on upgrade -- confirm `payment_behavior` setting
-- [ ] Verify downgrade schedule survives mid-period subscription updates (e.g., payment method change)
-- [ ] Verify credit grant deduplication handles the exact-same-invoice-ID-different-event-ID case
-- [ ] Verify `handleSubscriptionCanceled` correctly creates a free-plan record when subscription has custom metadata
-- [ ] Verify reconciliation cron handles API pagination for customers with >100 invoices
-- [ ] Verify credit top-up handles edge case where checkout session is abandoned and a new one is started
-- [ ] Verify `checkSubscriptionStatus` maintenance job actually takes corrective action (currently just logs warnings)
-- [ ] Add monitoring/alerting for `stripeEventLogs` with `failed` status that are not resolved within N hours
+- [ ] **Payment method display in dialog** -- Thread `cardBrand` and `cardLast4` into the preview and show "Visa ...4242 will be charged $X.XX". Trigger: first production upgrade completes successfully.
+- [ ] **Proration line item breakdown** -- Extract `preview.lines.data` from `createPreview` response and show credit/debit line items. Trigger: user feedback requesting more transparency.
+- [ ] **Upgrade credit grant reconciliation** -- Extend the existing reconciliation cron to detect missing `upgrade_prorate` grants and re-run them. Trigger: observed instance of credit grant failure in production logs.
 
 ### Future Consideration (v2+)
 
-- [ ] Trial period support (currently no trial config in PLAN_CONFIG) -- add when onboarding conversion is a priority
-- [ ] Stripe Billing Credits API integration (native Stripe credit system) -- evaluate when Stripe's credits feature matures beyond its current state
-- [ ] Usage-based metered billing via Stripe (report actual AI token usage to Stripe) -- currently credits are managed locally, which is simpler but less Stripe-native
-- [ ] Multi-currency credit purchases -- currently USD-only, `CREDIT_TOPUP_CURRENCY = "usd"`
-- [ ] Team/org billing with seat management -- currently single-user subscriptions with quantity field reserved
-- [ ] Retention flows (cancellation survey, discount offers) -- consider when churn metrics indicate need
+Features to defer until the upgrade flow is proven stable.
+
+- [ ] **Flexible billing mode migration** -- Stripe recommends migrating existing subscriptions to flexible billing mode for more accurate prorations and mixed intervals. Requires testing all existing flows against the new mode.
+- [ ] **Upgrade path suggestions** -- When a user runs low on credits, suggest upgrading with a preview of what they would get. Requires usage pattern analysis.
+- [ ] **A/B testing upgrade dialog copy** -- Test different wordings for the proration explanation to see which converts better. Requires analytics infrastructure.
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Verify upgrade proration charging | HIGH | LOW | P1 |
-| Verify downgrade schedule resilience | HIGH | LOW | P1 |
-| Verify credit grant deduplication completeness | HIGH | LOW | P1 |
-| Make `checkSubscriptionStatus` take corrective action | MEDIUM | MEDIUM | P1 |
-| Add failed-event monitoring/alerting | MEDIUM | LOW | P1 |
-| Verify cancellation flow creates correct free-plan record | HIGH | LOW | P1 |
-| Verify reconciliation handles pagination | MEDIUM | LOW | P2 |
-| Verify abandoned checkout edge cases | LOW | LOW | P2 |
-| Trial period support | MEDIUM | MEDIUM | P3 |
-| Multi-currency support | LOW | HIGH | P3 |
-| Team/org billing | MEDIUM | HIGH | P3 |
-| Retention/churn flows | MEDIUM | MEDIUM | P3 |
+| Pin `proration_date` between preview and execution | HIGH | LOW | P1 |
+| Handle credit grant failure visibility | HIGH | LOW | P1 |
+| Fix success toast for `creditsGranted: undefined` | HIGH | LOW | P1 |
+| Verify dialog cannot be double-submitted | HIGH | LOW | P1 |
+| Payment method in confirmation dialog | MEDIUM | LOW | P2 |
+| Proration line item breakdown | LOW | MEDIUM | P2 |
+| Upgrade credit grant reconciliation | MEDIUM | HIGH | P2 |
+| Flexible billing mode migration | LOW | HIGH | P3 |
+| Upgrade path suggestions | MEDIUM | MEDIUM | P3 |
 
 **Priority key:**
-- P1: Must verify/fix in this audit milestone -- correctness-critical
-- P2: Should verify -- edge cases that could surface under load
-- P3: Future consideration -- not part of the current audit scope
+- P1: Must fix for v1.1 -- correctness-critical for the upgrade flow
+- P2: Should add once v1.1 is stable -- enhances confidence and resilience
+- P3: Future consideration -- not part of upgrade flow fix scope
 
-## Competitor Feature Analysis
+## Confirmation Dialog: What Good Looks Like
 
-Not directly applicable -- this is a billing infrastructure audit, not a competitive product analysis. However, the implementation aligns with patterns seen in well-regarded SaaS billing systems:
+Based on Stripe documentation, SaaS best practices (Slack, Notion, GitHub patterns), and the existing codebase, a good upgrade confirmation dialog shows:
 
-| Pattern | Industry Standard | OpenAlex Count Approach | Assessment |
-|---------|-------------------|-------------------------|------------|
-| Upgrade proration | Immediate with `create_prorations` | Same | Correct |
-| Downgrade timing | Deferred to period end | Same (via SubscriptionSchedule) | Correct |
-| Cancellation | `cancel_at_period_end` | Customer Portal handles this | Correct |
-| Webhook idempotency | Store event IDs, check before processing | `stripeEventLogs` + `creditTransactions` indexes | Correct |
-| Credit grants | On invoice.paid for subscription_cycle/create | Same, with retry backoff | Correct |
-| Reconciliation | Periodic cron as safety net | Hourly cron | Correct |
-| Credit wallet | Dual-wallet (free + paid), free consumed first | Same | Correct |
-| Refund handling | Proportional credit reversal | Same | Correct |
+### Required Information (Table Stakes)
+1. **Plan transition**: "Go -> Pro" with visual arrow/indicator
+2. **Prorated charge amount**: The exact dollar amount that will be charged right now (from `invoices.createPreview`)
+3. **Time context**: "for the 15 remaining days in your billing cycle" -- explains why the amount is less than full price
+4. **Credits granted**: "7,500 credits granted immediately" -- the primary value the user gets from upgrading mid-cycle
+5. **Going-forward rate**: "Then 15,000 credits/month starting next cycle" -- sets expectation for future billing
+6. **Clear confirm/cancel actions**: "Confirm upgrade" (primary) and "Cancel" (secondary)
+7. **Loading state during execution**: Spinner + "Upgrading..." text with both buttons disabled
+
+### Good-to-Have Information (Differentiators)
+8. **Payment method**: "Visa ending 4242 will be charged" -- removes ambiguity about which card
+9. **Proration math breakdown**: "-$5.00 unused Go time / +$10.00 Pro for 15 days = $5.00 due now"
+10. **Current balance context**: "Your current balance: 1,200 credits + 7,500 new = 8,700 total"
+
+### What the Existing Dialog Already Has
+The current `upgrade-confirmation-dialog.tsx` covers items 1-7 correctly. The i18n strings are already localized into 6 languages (en-US, en-GB, fr, zh, hi, ja). The component structure is clean with `DialogHeader`, content sections, and `DialogFooter`. The primary gaps are the proration date pinning (backend), credit grant failure handling (backend + frontend), and the optional card display (frontend).
 
 ## Sources
 
-- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- proration behavior options and best practices (HIGH confidence)
-- [Stripe Subscription Schedules](https://docs.stripe.com/billing/subscriptions/subscription-schedules) -- schedule API for deferred plan changes (HIGH confidence)
-- [Stripe Cancel Subscriptions](https://docs.stripe.com/billing/subscriptions/cancel) -- cancellation flow options and `cancel_at_period_end` (HIGH confidence)
-- [Stripe Billing Credits](https://docs.stripe.com/billing/subscriptions/usage-based/billing-credits) -- native credit system for comparison (MEDIUM confidence)
-- [Stripe Idempotent Requests](https://docs.stripe.com/api/idempotent_requests) -- idempotency key patterns (HIGH confidence)
-- [Stigg: Stripe Webhook Best Practices](https://www.stigg.io/blog-posts/best-practices-i-wish-we-knew-when-integrating-stripe-webhooks) -- webhook integration lessons learned (MEDIUM confidence)
-- [Stripe Subscription Webhooks](https://docs.stripe.com/billing/subscriptions/webhooks) -- required webhook events for lifecycle management (HIGH confidence)
-- Codebase analysis: `convex/subscriptions/`, `convex/credits/`, `convex/http.ts`, `convex/crons.ts`, `convex/lib/constants.ts`, `lib/billing/entitlements.ts` (HIGH confidence)
+- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- proration behavior, `createPreview` API, `proration_date` pinning recommendation (HIGH confidence)
+- [Stripe Create Preview Invoice API](https://docs.stripe.com/api/invoices/create_preview) -- parameters and response shape for preview (HIGH confidence)
+- [Stripe Pending Updates](https://docs.stripe.com/billing/subscriptions/pending-updates) -- `error_if_incomplete` and `pending_if_incomplete` behaviors (HIGH confidence)
+- [Stripe Modify Subscriptions](https://docs.stripe.com/billing/subscriptions/change) -- upgrade/downgrade patterns (HIGH confidence)
+- [Stigg: Upgrade & Downgrade Flows Guide](https://www.stigg.io/blog-posts/the-only-guide-youll-ever-need-to-implement-upgrade-downgrade-flows-part-2) -- SaaS patterns for mid-cycle changes (MEDIUM confidence)
+- [Chargebee: Proration in SaaS](https://www.chargebee.com/blog/ask-us-proration-saas-important/) -- industry proration patterns (MEDIUM confidence)
+- [Zenskar: Prorated Billing for SaaS](https://www.zenskar.com/blog/prorated-billing) -- pro-rata credit calculation patterns (MEDIUM confidence)
+- Codebase analysis: `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx`, `convex/lib/constants.ts` (HIGH confidence)
 
 ---
-*Feature research for: Stripe billing integration audit & fix*
+*Feature research for: SaaS upgrade flow with proration preview and pro-rata credit grants*
 *Researched: 2026-02-27*

@@ -1,241 +1,238 @@
-# Stack Research: Stripe Billing in Convex + Next.js
+# Stack Research: v1.1 Upgrade Flow
 
-**Domain:** Stripe billing integration (subscriptions, proration, credit purchases) in a Convex + Next.js app
+**Domain:** Stripe upgrade flow with proration preview, pro-rata credit grants, atomic operations
 **Researched:** 2026-02-27
 **Confidence:** HIGH
 
-## Existing Stack (Already Installed)
+## Executive Finding: No New Dependencies Required
 
-These are already in the codebase and form the foundation. The audit does not replace them; it fixes how they are used.
+The existing stack fully covers all v1.1 requirements. The broken upgrade flow is a coordination logic problem, not a missing library problem. Every technology needed for proration preview, atomic upgrade operations, confirmation dialogs, and pro-rata credit grants is already installed and partially implemented.
 
-| Technology | Installed | Latest | Purpose | Status |
-|------------|-----------|--------|---------|--------|
-| `stripe` | 20.3.1 | 20.4.0 | Stripe Node.js SDK | Current (minor patch behind) |
-| `@convex-dev/stripe` | 0.1.3 | 0.1.3 | Convex Stripe component | Latest |
-| `convex` | 1.32.0 | 1.32.0 | Backend runtime | Latest |
-| Next.js | 16.1.6 | -- | Frontend framework | Current |
+## Existing Stack (Validated for v1.1)
 
-**Confidence: HIGH** -- Verified via `npm view` against npm registry on 2026-02-27.
+### Core Technologies
 
-## Stripe API Version
+| Technology | Version | Purpose | v1.1 Status |
+|------------|---------|---------|-------------|
+| stripe | ^20.3.0 (API `2026-01-28.clover`) | Stripe SDK for proration preview and subscription updates | Already uses `invoices.createPreview()` and `subscriptions.update()`. No upgrade needed. |
+| convex | ^1.31.7 | Backend runtime; OCC-atomic mutations, action coordination | `changePlan` action already coordinates Stripe API calls with `ctx.runMutation`. Pattern is correct. |
+| @convex-dev/stripe | ^0.1.3 | Checkout sessions, customer management, webhook routing | Not used for plan changes (correct -- component lacks subscription update methods). |
+| @convex-dev/workflow | ^0.3.4 | Durable workflow execution | Already installed. **Not recommended for upgrade flow** (see rationale below). |
+| @radix-ui/react-dialog | ^1.1.15 | Confirmation dialog primitive | `UpgradeConfirmationDialog` already built with this. |
+| sonner | ^2.0.7 | Toast notifications | Already used for upgrade success/failure feedback. |
+| next-intl | ^4.8.2 | i18n for dialog text | Translation keys for `upgradeDialog` already exist. |
+| swr | ^2.3.3 | Client-side data fetching | Used for Stripe price fetching. Not needed for single-use upgrade previews. |
 
-The codebase explicitly pins `apiVersion: "2026-01-28.clover"` in both `convex/subscriptions/actions.ts` and `convex/credits/actions.ts`. The installed `stripe@20.3.1` SDK defaults to this same version (`2026-01-28.clover`).
+### Supporting Libraries (Already Installed)
 
-**Version lineage:** Basil (2025-03-31 through 2025-08-27) -> Clover (2025-09-30 through 2026-02-25). Clover inherits all Basil breaking changes.
+| Library | Version | Purpose | v1.1 Relevance |
+|---------|---------|---------|----------------|
+| date-fns | ^4.1.0 | Date formatting | Available for period remaining display in confirmation dialog |
+| zod | ^4.3.6 | Runtime validation | Convex validators already handle action input/output validation |
+| convex-helpers | ^0.1.111 | Utility functions for Convex | Available but not needed for upgrade flow |
 
-### Critical Basil->Clover Inherited Change: Item-Level Billing Periods
+## Stripe API Endpoints for v1.1
 
-Starting with Basil (2025-03-31), Stripe deprecated subscription-level `current_period_start` and `current_period_end`. These fields now live on subscription **items** (`items.data[0].current_period_start` / `items.data[0].current_period_end`).
+All available in `stripe@^20.3.0` with API version `2026-01-28.clover`.
 
-**Current codebase status:** Already handled correctly. The codebase uses a fallback pattern throughout:
+### Proration Preview
+
+**Endpoint:** `POST /v1/invoices/create_preview`
+**SDK Method:** `stripe.invoices.createPreview()`
+**Status:** Already implemented in `getUpgradePreview` action.
+
 ```typescript
-// Pattern found in convex/http.ts and convex/subscriptions/actions.ts
-const currentPeriodEnd =
-  subscription.current_period_end ??   // legacy (pre-Basil)
-  item?.current_period_end ??           // current (Basil+)
-  Math.floor(Date.now() / 1000);        // last resort
+// Existing implementation (convex/subscriptions/actions.ts:892)
+const preview = await stripe.invoices.createPreview({
+  customer: customerId,
+  subscription: stripeSub.id,
+  subscription_details: {
+    items: [{ id: item.id, price: args.targetPriceId }],
+    proration_behavior: "always_invoice",
+    proration_date: Math.floor(Date.now() / 1000),
+  },
+});
 ```
 
-This is correct and forward-compatible. No migration needed.
+**Key response fields used:** `preview.total` (proration amount), `preview.amount_due` (immediate charge), `preview.currency`.
 
-**Confidence: HIGH** -- Verified via Stripe official changelog (https://docs.stripe.com/changelog/basil/2025-03-31/deprecate-subscription-current-period-start-and-end) and Stripe API reference for subscription item object.
+**Note:** `GET /v1/invoices/upcoming` was removed in API version `2025-03-31.basil`. The codebase correctly uses the replacement `createPreview` method. No migration needed.
 
-## `@convex-dev/stripe` Component: Capabilities and Limitations
+### Subscription Update with Proration
 
-### What It Does (Use These)
-
-| Capability | Method | Notes |
-|------------|--------|-------|
-| Checkout sessions | `createCheckoutSession()` | Supports `payment`, `subscription`, `setup` modes. Handles `subscriptionMetadata` and `paymentIntentMetadata` |
-| Customer management | `getOrCreateCustomer()`, `createCustomer()` | Idempotency-key based dedup. Checks existing subscriptions/payments before creating |
-| Customer portal | `createCustomerPortalSession()` | Simple redirect URL generation |
-| Webhook routing | `registerRoutes()` | Signature verification, default DB sync for 10+ event types, custom event handlers run *after* built-in processing |
-| Cancel subscription | `cancelSubscription()` | Supports `cancelAtPeriodEnd` flag |
-| Reactivate subscription | `reactivateSubscription()` | Sets `cancel_at_period_end: false` |
-| Seat-based quantity | `updateSubscriptionQuantity()` | Updates Stripe + local DB |
-
-### What It Does NOT Do (Must Use Stripe SDK Directly)
-
-| Gap | Why It Matters | Pattern to Use |
-|-----|---------------|----------------|
-| Subscription plan changes (upgrade/downgrade) | No `updateSubscription()` or `changePlan()` method. Cannot set `proration_behavior` or swap price IDs | Direct `stripe.subscriptions.update()` |
-| Subscription schedules | No schedule creation/management. Cannot defer downgrades to period end | Direct `stripe.subscriptionSchedules.create()` / `.update()` / `.release()` |
-| Proration preview | Cannot preview proration amounts before committing | Direct `stripe.invoices.createPreview()` |
-| Invoice retrieval/listing | No method to list or retrieve invoices for reconciliation | Direct `stripe.invoices.list()` / `.retrieve()` |
-| Price retrieval | No method to fetch price details for display | Direct `stripe.prices.retrieve()` |
-| One-time payment (non-checkout) | `createCheckoutSession` only; no direct PaymentIntent creation | Direct `stripe.checkout.sessions.create()` with `mode: "payment"` |
-
-**Confidence: HIGH** -- Verified by reading `@convex-dev/stripe` source code at `node_modules/@convex-dev/stripe/src/client/index.ts`.
-
-### Component Architecture Detail
-
-The `registerRoutes()` function runs built-in handlers FIRST (DB sync), then `onEvent` (generic), then specific event handlers. This means:
-
-1. By the time your custom `events.["customer.subscription.updated"]` handler runs, the component has already synced the subscription to its internal tables
-2. Your custom handlers supplement the component's processing -- they do not replace it
-3. The component's internal tables (`subscriptions`, `payments`, `invoices`, `customers`) are a convenience data mirror, not the source of truth for billing logic
-
-**Implication for this audit:** The app correctly maintains its own `subscriptions`, `credits`, `billingCustomers` tables separate from the component's internal tables. This is the right pattern -- the component's tables provide denormalized convenience data, while the app's tables hold domain-specific billing state (credit balances, plan entitlements, event audit logs).
-
-## Stripe API Patterns for Billing Operations
-
-### Upgrade: Immediate Proration
-
-**Pattern:** `stripe.subscriptions.update()` with `proration_behavior: "create_prorations"`
+**Endpoint:** `POST /v1/subscriptions/{id}`
+**SDK Method:** `stripe.subscriptions.update()`
+**Status:** Already implemented in `changePlan` action.
 
 ```typescript
-// Current codebase pattern (convex/subscriptions/actions.ts line 612)
+// Existing implementation (convex/subscriptions/actions.ts:690)
 const updated = await stripe.subscriptions.update(stripeSubscription.id, {
-  items: [{ id: item.id, price: targetPriceId, quantity: item.quantity ?? 1 }],
-  proration_behavior: "create_prorations",
+  items: [{ id: item.id, price: args.targetPriceId, quantity: item.quantity ?? 1 }],
+  proration_behavior: "always_invoice",
+  payment_behavior: "error_if_incomplete",
   cancel_at_period_end: false,
   metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
 });
 ```
 
-**`create_prorations` vs `always_invoice`:**
+**Critical parameters:**
+- `proration_behavior: "always_invoice"` -- creates proration AND immediately generates + charges an invoice
+- `payment_behavior: "error_if_incomplete"` -- if payment fails, the API throws and subscription is NOT changed. This is the atomicity guarantee from Stripe's side.
 
-| Behavior | What Happens | When to Use |
-|----------|-------------|-------------|
-| `create_prorations` | Creates proration line items; invoiced at next billing cycle | When you want prorations added to next invoice |
-| `always_invoice` | Creates prorations AND immediately generates + charges an invoice | When you want the customer charged right now |
-| `none` | No proration; customer pays full new price at next cycle | Downgrades where you don't want to credit |
+### Critical Fix: `proration_date` Alignment
 
-**Recommendation for upgrades:** Use `always_invoice` if the product requires immediate payment on upgrade. Use `create_prorations` (current pattern) if it's acceptable to charge the proration at next renewal. The PROJECT.md states "Upgrade flow charges the proration difference immediately" -- this suggests `always_invoice` may be needed.
+**Problem:** Stripe prorates to the second. The preview captures `proration_date: Math.floor(Date.now() / 1000)`, but the actual `subscriptions.update()` does NOT pass a `proration_date`, so Stripe uses the moment of the update call. The user sees one number in the dialog but could be charged a slightly different amount.
 
-**Confidence: HIGH** -- Verified via Stripe official documentation (https://docs.stripe.com/billing/subscriptions/prorations).
+**Fix:** Return `proration_date` from `getUpgradePreview`, pass it through the client, and send it to `changePlan` as `proration_date` on the `subscriptions.update()` call.
 
-### Downgrade: Schedule at Period End
+**Risk if not fixed:** LOW for monthly subscriptions (cents of drift), but fixing it is trivial and matches Stripe's documented best practice.
 
-**Pattern:** Subscription Schedules with two phases.
+**Source:** [Stripe Prorations docs](https://docs.stripe.com/billing/subscriptions/prorations) -- "Because Stripe prorates to the second, prorated amounts might change between the time they're previewed and the time the update is made."
 
-```typescript
-// Current codebase pattern (convex/subscriptions/actions.ts, schedulePlanning.ts)
-// 1. Create schedule from existing subscription
-schedule = await stripe.subscriptionSchedules.create({
-  from_subscription: stripeSubscription.id,
-});
+## Convex Patterns for Atomic Upgrade Operations
 
-// 2. Set phases: current plan until period end, then new plan
-await stripe.subscriptionSchedules.update(schedule.id, {
-  end_behavior: "release",
-  proration_behavior: "none",
-  phases: [
-    {
-      start_date: currentPhaseStart,
-      end_date: currentPhaseEnd,
-      items: [{ price: currentPriceId, quantity: currentQuantity }],
-    },
-    {
-      start_date: currentPhaseEnd,
-      items: [{ price: targetPriceId, quantity: targetQuantity }],
-    },
-  ],
-});
+### Current Pattern (Correct Architecture)
+
+The `changePlan` action follows this sequence:
+
+```
+1. ACTION: Validate input, fetch subscription from Stripe API
+2. ACTION: Release pending schedule if exists (Stripe API call)
+3. ACTION: stripe.subscriptions.update() with proration (Stripe API call)
+   -> Stripe guarantees: payment succeeds OR throws, no partial state
+4. ACTION -> MUTATION: ctx.runMutation(syncSubscription) -- sync local DB
+   -> Convex guarantees: atomic via OCC, auto-retried on conflict
+5. ACTION -> MUTATION: ctx.runMutation(grantUpgradeProRataCredits) -- grant credits
+   -> Currently wrapped in try/catch (non-fatal)
 ```
 
-**Key rules:**
-- Maximum 10 phases per schedule
-- Must pass ALL phases (current + future) when updating
-- `end_behavior: "release"` detaches the schedule after the last phase completes, leaving the subscription running
-- Release the schedule before making direct subscription modifications (the codebase does this correctly)
-- Schedules cannot be modified while a phase transition is in progress
+**Why this is correct:**
+- Stripe's `error_if_incomplete` provides atomicity for the payment step -- subscription either changes AND payment succeeds, or nothing happens
+- Convex mutations are individually atomic via OCC
+- The action coordinates the sequence; failures at any step have clear semantics
 
-**Confidence: HIGH** -- Verified via Stripe docs (https://docs.stripe.com/billing/subscriptions/subscription-schedules).
+### Why NOT to Use @convex-dev/workflow
 
-### Credit Purchase: One-Time Payment via Checkout
+Despite being installed, `@convex-dev/workflow` should NOT be used for the upgrade flow:
 
-**Pattern:** `stripe.checkout.sessions.create()` with `mode: "payment"` and `price_data`.
+| Reason | Detail |
+|--------|--------|
+| Operation is fast | Total duration ~2-3 seconds (two Stripe calls + two mutations). Workflows add durable execution overhead for operations that are already fast. |
+| Stripe provides atomicity | `payment_behavior: "error_if_incomplete"` means the primary operation (subscription update + payment) is already atomic on Stripe's side. No saga-style rollback needed. |
+| Credit grant has fallback | If `grantUpgradeProRataCredits` fails after the subscription update succeeds, the `invoice.paid` webhook handles monthly credit grants. The user's plan is correct; only the bonus credits are delayed. |
+| Unnecessary complexity | A workflow with compensation steps for an operation that has a clear "primary succeeds, secondary is best-effort" pattern adds code without adding reliability. |
 
-The codebase correctly uses inline `price_data` (not a pre-created Price object) for credit bundles, which is the right approach for variable-amount one-time purchases.
+**When workflow WOULD be appropriate:** Multi-step operations where each step has external side effects that need rollback (e.g., provision infrastructure + charge payment + send notification), or long-running operations (>30 seconds).
 
-**Key detail:** Metadata is passed to both the session AND the `payment_intent_data.metadata` -- this is critical because the `payment_intent.succeeded` webhook reads metadata from the PaymentIntent, not the session.
+### Recommended Pattern: "Primary + Best-Effort Secondary" (Existing)
 
-**Confidence: HIGH** -- Verified by reading codebase (`convex/credits/actions.ts`).
+```typescript
+// PRIMARY: Must succeed or entire operation fails
+const updated = await stripe.subscriptions.update(subId, { ... });
 
-## What NOT to Use
+// SYNC: Must succeed (deterministic, OCC auto-retried)
+await ctx.runMutation(internal.subscriptions.internal.syncSubscription, { ... });
+
+// SECONDARY: Best-effort, non-fatal, has fallback path
+try {
+  const result = await ctx.runMutation(
+    internal.credits.internal.grantUpgradeProRataCredits, { ... }
+  );
+  creditsGranted = result.grantedCredits;
+} catch (err) {
+  console.error("[changePlan] Pro-rata credit grant failed (non-fatal)", { ... });
+  // Fallback: invoice.paid webhook grants monthly credits; user can contact support
+}
+```
+
+### What Needs Fixing in the Pattern
+
+The code architecture is correct, but three implementation issues cause the "broken upgrade flow":
+
+| Issue | Current Behavior | Fix |
+|-------|-----------------|-----|
+| Credit grant failure is silent to user | `creditsGranted` is `undefined` on failure; UI shows generic success | Return `creditsGranted: 0` explicitly and show "credits will be granted shortly" message |
+| No retry for failed credit grants | Unlike `grantMonthlyCredits` which schedules retries, `grantUpgradeProRataCredits` failures are fire-and-forget | Schedule a retry mutation via `ctx.scheduler.runAfter()` on failure |
+| Preview-to-confirm gap may cause stale data | Time between preview and confirm could invalidate subscription state | Re-validate subscription state at the start of `changePlan` (already done -- fetches fresh from Stripe) |
+
+**These are logic fixes within existing code, NOT stack additions.**
+
+## UI Pattern: Confirmation Dialog (Already Implemented)
+
+### Current Implementation
+
+`components/billing/upgrade-confirmation-dialog.tsx` uses `@radix-ui/react-dialog` and displays:
+- Current plan -> target plan transition
+- Prorated charge amount (formatted with `next-intl` formatter)
+- Pro-rata credits to be granted
+- Remaining days in billing period
+- Confirm/Cancel buttons with loading state
+
+### Flow
+
+```
+User clicks "Upgrade" -> getUpgradePreview() -> Dialog opens with preview data
+User clicks "Confirm" -> changePlan() -> Dialog closes -> Success toast
+```
+
+### Minor Enhancements (No New Dependencies)
+
+| Enhancement | Implementation | Complexity |
+|-------------|---------------|------------|
+| Show card last4 in dialog | Data already available in `subscriptionDetails.cardLast4` from `getSubscriptionDetails` | LOW -- pass through to preview |
+| Pass `proration_date` round-trip | Add to `getUpgradePreview` return, pass to `changePlan` args | LOW -- two field additions |
+| "Credits will arrive shortly" fallback text | When `creditsGranted` is 0 or undefined after confirm | LOW -- conditional text in success toast |
+
+## Installation
+
+```bash
+# No new packages to install.
+# The existing stack fully covers v1.1 requirements.
+```
+
+## Alternatives Considered
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| Raw `stripe.invoices.createPreview()` in Convex action | Stripe Customer Portal for upgrades | Portal cannot grant pro-rata credits. Custom dialog required for credit display. |
+| Action with `ctx.runMutation()` | `@convex-dev/workflow` saga | Over-engineered. Operation is fast, Stripe provides payment atomicity, credit grant has webhook fallback. |
+| `@radix-ui/react-dialog` | `@radix-ui/react-alert-dialog` | AlertDialog prevents outside-click dismiss, which is stronger. But Dialog already prevents close during `isConfirming`. Either works; keep current. |
+| `sonner` toast for feedback | Custom notification component | sonner is already integrated, provides stacking, auto-dismiss, and promise-based toasts. No reason to replace. |
+| `useState` for dialog state | Global state (Zustand/Jotai) | Dialog state is local to the Pricing component lifecycle. Global state adds complexity for no benefit. |
+
+## What NOT to Add
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `stripe@stripe-js` (client-side SDK) for billing mutations | All billing logic must run server-side in Convex actions; client-side Stripe.js is for Elements/card forms only | Stripe Node SDK in Convex `"use node"` actions |
-| `@convex-dev/stripe` for plan changes | Component has no subscription update method that supports proration or price swaps | Direct Stripe SDK `stripe.subscriptions.update()` |
-| `proration_behavior: "none"` for upgrades | Customer gets upgraded without paying the difference; effectively giving away service | `create_prorations` or `always_invoice` |
-| `stripe.subscriptions.update({ items: [{ price: newPrice }] })` for downgrades | Immediately switches plan and potentially credits the customer; wrong UX | Subscription Schedules to defer to period end |
-| Polling Stripe for subscription state from the client | Expensive, not real-time, violates webhook-driven architecture | Webhook handlers sync state to Convex; client reads from Convex queries |
-| `@ras-sh/convex-stripe` (community fork) | Unmaintained alternative; `@convex-dev/stripe` is the official component | Stick with `@convex-dev/stripe@0.1.3` |
-| Custom webhook signature verification | Error-prone; the component handles it correctly | `registerRoutes()` from `@convex-dev/stripe` |
+| `@stripe/stripe-js` or `@stripe/react-stripe-js` | No Stripe Elements needed. Charge goes through payment method already on file. | Server-side Stripe SDK via Convex actions |
+| Additional state management (Redux, Zustand for billing) | Convex reactive queries already propagate subscription state changes to all components. `syncSubscription` mutation triggers re-render automatically. | Convex queries + React `useState` for local dialog state |
+| Custom retry/queue library | `grantMonthlyCredits` already has `retryPolicy.ts` with `shouldRetryCreditGrant` + `getCreditGrantRetryDelayMs`. Reuse this for upgrade credit retry. | Existing retry infrastructure |
+| `@convex-dev/workflow` for upgrade flow | See rationale above. | Direct action with try/catch |
+| Client-side polling for upgrade result | `syncLocalSubscriptionFromStripe` writes to Convex DB, which triggers reactive query updates automatically. | Convex reactive queries (already used via `useSubscriptionState`) |
+| `stripe.invoices.retrieveUpcoming()` | Removed in API version `2025-03-31.basil`. Not available with `2026-01-28.clover`. | `stripe.invoices.createPreview()` (already used) |
 
 ## Version Compatibility
 
 | Package | Compatible With | Notes |
-|---------|----------------|-------|
-| `stripe@20.3.1` | API version `2026-01-28.clover` | SDK default matches pinned version |
-| `stripe@20.4.0` | API version `2026-01-28.clover` | Safe upgrade; same API version, bug fixes only |
-| `@convex-dev/stripe@0.1.3` | `convex@^1.x` | Component API stable; source-verified |
-| `@convex-dev/stripe@0.1.3` | `stripe@^20.x` | Uses `stripe` as peer-ish dependency (imports `stripe` SDK) |
-
-**Safe upgrade path:** `stripe` 20.3.1 -> 20.4.0 is non-breaking (same major, same API version). The `20.5.0-alpha.1` exists but is private-preview -- do not use.
-
-## Stack Patterns by Billing Operation
-
-**For new subscription checkout:**
-- Use `stripeClient.createCheckoutSession()` from `@convex-dev/stripe`
-- Checkout session handles payment collection, customer creation, subscription setup
-- Webhook `checkout.session.completed` triggers credit reconciliation
-
-**For upgrade (immediate):**
-- Use direct `stripe.subscriptions.update()` with `proration_behavior`
-- Release any existing subscription schedule first
-- Sync local subscription state after update
-- Clear pending plan change metadata
-
-**For downgrade (deferred):**
-- Use `stripe.subscriptionSchedules.create({ from_subscription })` + `.update()`
-- Two phases: current plan until period end, target plan after
-- Set `end_behavior: "release"` and `proration_behavior: "none"`
-- Store pending change info in subscription metadata for UI display
-
-**For credit top-up:**
-- Use direct `stripe.checkout.sessions.create({ mode: "payment" })` with `price_data`
-- Pass metadata to both session and `payment_intent_data.metadata`
-- Webhook `payment_intent.succeeded` grants credits
-
-**For cancellation:**
-- Use `stripeClient.cancelSubscription({ cancelAtPeriodEnd: true })` from `@convex-dev/stripe`
-- Or redirect to Customer Portal for self-service cancellation
-
-**For invoice reconciliation:**
-- Use direct `stripe.invoices.list()` with customer filter
-- Cron-based reconciliation catches missed webhooks
-- Retry with exponential backoff for transient failures
-
-## Installation
-
-No new packages needed. The existing stack is complete:
-
-```bash
-# Already installed -- no changes required
-# stripe@20.3.1     -> optionally upgrade to 20.4.0
-# @convex-dev/stripe@0.1.3
-# convex@1.32.0
-
-# Optional upgrade (safe, non-breaking):
-npm install stripe@20.4.0
-```
+|---------|-----------------|-------|
+| stripe@^20.3.0 | API `2026-01-28.clover` | `invoices.createPreview` available since stripe@18.0.0 (API `2025-03-31.basil`). Codebase uses correct method. |
+| convex@^1.31.7 | @convex-dev/stripe@^0.1.3, @convex-dev/workflow@^0.3.4 | All compatible. OCC guarantees apply to all mutations called from actions. |
+| @radix-ui/react-dialog@^1.1.15 | react@^19.2.4 | Radix UI v1.x fully supports React 19. |
+| sonner@^2.0.7 | react@^19.2.4 | Sonner v2.x supports React 19. |
+| next-intl@^4.8.2 | next@^16.1.6 | Formatter and translation hooks used in dialog work correctly. |
 
 ## Sources
 
-- [Stripe API Changelog: Clover](https://docs.stripe.com/changelog/clover) -- API version verification (HIGH confidence)
-- [Stripe Basil: Item-level billing periods](https://docs.stripe.com/changelog/basil/2025-03-31/deprecate-subscription-current-period-start-and-end) -- `current_period_end` migration (HIGH confidence)
-- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- `proration_behavior` values (HIGH confidence)
-- [Stripe Subscription Schedules](https://docs.stripe.com/billing/subscriptions/subscription-schedules) -- Downgrade deferral pattern (HIGH confidence)
-- [Stripe Modify Subscriptions](https://docs.stripe.com/billing/subscriptions/change) -- Upgrade/downgrade patterns (HIGH confidence)
-- [`@convex-dev/stripe` source code](https://github.com/get-convex/stripe) -- Component capabilities verified via installed `node_modules/@convex-dev/stripe/src/client/index.ts` (HIGH confidence)
-- [`@convex-dev/stripe` npm](https://www.npmjs.com/package/@convex-dev/stripe) -- Version verification (HIGH confidence)
-- [Stripe npm](https://www.npmjs.com/package/stripe) -- Version verification (HIGH confidence)
-- [Convex npm](https://www.npmjs.com/package/convex) -- Version verification (HIGH confidence)
-- npm registry queries (`npm view`) -- Installed vs latest version checks (HIGH confidence)
+- [Stripe: Create a preview invoice](https://docs.stripe.com/api/invoices/create_preview) -- `subscription_details` parameters, `proration_behavior`, `proration_date` reference (HIGH confidence)
+- [Stripe: Prorations documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- `proration_date` alignment guidance, `always_invoice` behavior, preview-then-confirm workflow (HIGH confidence)
+- [Stripe: Update a subscription](https://docs.stripe.com/api/subscriptions/update) -- `payment_behavior: error_if_incomplete` semantics (HIGH confidence)
+- [Stripe: Invoice preview API deprecation](https://docs.stripe.com/changelog/basil/2025-03-31/invoice-preview-api-deprecations) -- `GET /v1/invoices/upcoming` removed in `2025-03-31.basil`, replaced by `createPreview` (HIGH confidence)
+- [Convex: OCC and Atomicity](https://docs.convex.dev/database/advanced/occ) -- mutation atomicity guarantees, automatic retry on OCC conflict (HIGH confidence)
+- [Convex: Actions](https://docs.convex.dev/functions/actions) -- `ctx.runMutation` from actions, error handling responsibility, anti-pattern of sequential `runMutation` calls without batching (HIGH confidence)
+- [Convex: Best Practices](https://docs.convex.dev/understanding/best-practices/) -- batch database operations in single transactions (HIGH confidence)
+- [Convex Workflow component](https://www.convex.dev/components/workflow) -- durable workflow capabilities, when appropriate vs. simple actions (MEDIUM confidence)
+- Codebase review: `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx` (HIGH confidence)
 
 ---
-*Stack research for: Stripe billing integration audit in Convex + Next.js*
+*Stack research for: v1.1 Upgrade Flow -- proration preview, pro-rata credit grants, atomic operations*
 *Researched: 2026-02-27*

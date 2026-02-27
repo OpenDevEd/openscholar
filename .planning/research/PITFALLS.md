@@ -1,250 +1,256 @@
-# Pitfalls Research
+# Domain Pitfalls: v1.1 Upgrade Flow
 
-**Domain:** Stripe billing integration (subscriptions, credits, webhooks) in a Convex + Next.js SaaS
+**Domain:** Stripe upgrade proration + pro-rata credit grants in Convex + Next.js
 **Researched:** 2026-02-27
-**Confidence:** HIGH (verified against codebase, Stripe docs, and community sources)
+**Confidence:** HIGH (verified against codebase, Stripe API docs, and tested patterns)
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Upgrade proration uses `create_prorations` instead of `always_invoice`
+Mistakes that cause incorrect charges, missing credits, or broken user state.
 
-**What goes wrong:**
-The current `changePlan` action uses `proration_behavior: "create_prorations"` for upgrades. This creates proration line items but does NOT immediately invoice the customer. The proration difference accumulates as a pending invoice item and only gets charged on the next billing cycle. Users upgrade, get immediate access to the higher plan, but are not charged the difference until renewal. If they downgrade before renewal, they may never pay the proration.
+### Pitfall 1: Action-Webhook Race on Upgrade State
 
-**Why it happens:**
-`create_prorations` is Stripe's default behavior, so developers often use it without realizing it defers payment. The name "create prorations" sounds like it handles billing, but it only creates the line items without invoicing them.
+**What goes wrong:** The `changePlan` action calls `stripe.subscriptions.update()`, then immediately runs `syncLocalSubscriptionFromStripe()` and `grantUpgradeProRataCredits()`. Meanwhile, the `customer.subscription.updated` webhook fires asynchronously and calls `handleSubscriptionWebhook`, which re-fetches from Stripe and runs its own `syncLocalSubscriptionFromStripe()`. These two code paths race against each other:
 
-**How to avoid:**
-Use `proration_behavior: "always_invoice"` for upgrades. This creates the prorations AND immediately generates and finalizes an invoice for the difference. The customer pays the proration amount right away. Only use `create_prorations` (or `none`) when you explicitly want to defer billing.
+1. Action calls `syncLocalSubscriptionFromStripe()` with the `updated` response object (new plan)
+2. Webhook fires, action `handleSubscriptionWebhook` re-fetches from Stripe, calls `syncLocalSubscriptionFromStripe()` (same new plan)
+3. If the webhook's action happens to run between the action's sync and the credit grant, the subscription data could be written twice
 
-**Warning signs:**
-- Users upgrade but no immediate charge appears in Stripe dashboard
-- Proration line items visible as "pending invoice items" on the customer in Stripe
-- Revenue leakage when users upgrade then downgrade within the same billing period
+**Why it happens:** In Convex, actions are non-transactional. The `changePlan` action makes multiple sequential calls: a Stripe API call, then a mutation (sync), then another mutation (credit grant). The webhook handler is a completely separate execution path triggered by Stripe. There is no coordination between them.
 
-**Phase to address:**
-Phase 1 (Subscription lifecycle fixes) -- this is the known bug mentioned in PROJECT.md.
+**Consequences:** In the current code, both paths write the same correct data (because `handleSubscriptionWebhook` re-fetches from Stripe), so the sync race is benign. The real danger is if the webhook also triggered a credit grant -- which it does NOT in the current design because `subscription_update` invoices are classified as non-recurring by `invoiceGrantPolicy.ts`. However, the `invoice.paid` event for the proration invoice could arrive and trigger `processInvoiceForGrant`, which would correctly classify it as `ignored_non_recurring_reason`. If that classification were ever wrong, double-grants would occur.
 
----
+**Prevention:**
+- KEEP the `invoiceGrantPolicy.ts` guard that classifies `subscription_update` billing_reason as non-recurring -- this is the critical firewall
+- The `changePlan` action's inline credit grant (`grantUpgradeProRataCredits`) is the single owner of upgrade credit grants -- do NOT add a webhook-driven upgrade credit grant path
+- Add a comment/contract in `http.ts` documenting that upgrade credits are granted by the action, not by webhooks
 
-### Pitfall 2: Webhook event out-of-order delivery corrupts subscription state
+**Detection:** Log when both the action and webhook write to the same subscription within 5 seconds (the `[WebhookDivergence]` log already partially covers this).
 
-**What goes wrong:**
-Stripe does not guarantee event delivery order. A `customer.subscription.updated` event from an older state can arrive after a newer one, causing the local `subscriptions` table to revert to stale data. For example: user upgrades, two `subscription.updated` events fire. If the first (pre-upgrade) arrives after the second (post-upgrade), `syncSubscription` overwrites the correct state with the old plan.
-
-**Why it happens:**
-The current `syncSubscription` mutation unconditionally writes whatever data the webhook delivers. It does not compare timestamps or version counters to determine if the incoming event is newer than what is already stored.
-
-**How to avoid:**
-Compare `event.created` (Unix timestamp on the Stripe event) or `subscription.updated` timestamp against the locally stored `updatedAt`. Only apply the mutation if the incoming event is newer. Alternatively, after receiving a webhook, re-fetch the subscription from Stripe's API to get the canonical current state (the "single source of truth" pattern).
-
-**Warning signs:**
-- Users report their plan reverted after an upgrade/downgrade
-- `subscriptions` table shows a plan that doesn't match what Stripe dashboard shows
-- `stripeEventLogs` shows multiple events for the same subscription processed in rapid succession
-
-**Phase to address:**
-Phase 1 (Webhook hardening) -- add timestamp guards to `syncSubscription`.
+**Phase to address:** Phase 1 (Reliable upgrade flow) -- document the contract, add guard comments.
 
 ---
 
-### Pitfall 3: Credit deduction race condition between concurrent AI operations
+### Pitfall 2: Charge Succeeds But Credit Grant Fails (Partial Success)
 
-**What goes wrong:**
-The `deductCredits` mutation reads the current balance, checks sufficiency, then writes the new balance. In Convex, mutations are serialized per-document, so this is safe within a single mutation. However, `withAuthAndCreditsBatch` in `ai/helpers.ts` checks the balance *before* the AI operation runs (an action), then deducts *after*. Between the check and the deduction, another operation could drain the balance. Two concurrent AI operations could both pass the balance check with 100 credits, each use 80, and the final balance goes to -60.
+**What goes wrong:** This is the KNOWN BROKEN STATE described in PROJECT.md. The `changePlan` action calls `stripe.subscriptions.update()` with `always_invoice` + `error_if_incomplete`. The Stripe charge succeeds, the plan changes in Stripe, and `syncLocalSubscriptionFromStripe` updates the local DB. Then `grantUpgradeProRataCredits` throws (e.g., Convex OCC conflict, credits record missing, invalid plan config). The user is charged and their plan changes, but they receive zero pro-rata credits.
 
-**Why it happens:**
-Actions in Convex are not transactional -- the balance check (query) and the deduction (mutation) run as separate transactions with the AI call in between. This is a classic TOCTOU (time-of-check-to-time-of-use) problem.
+**Why it happens:** The current code wraps the credit grant in a try/catch that logs the error but does NOT roll back the plan change:
 
-**How to avoid:**
-Accept that the pre-check is optimistic and the deduction mutation is the real guard. The `deductCredits` mutation already throws on insufficient balance, which is correct. The risk is that the AI operation runs and consumes provider costs before the deduction fails. Mitigation options: (1) Reserve credits before the operation (pessimistic locking via a "hold" mutation), (2) Allow small negative balances and reconcile later, (3) Accept the rare overspend as a business cost. Option 2 is the pragmatic choice for this scale.
+```typescript
+try {
+  const grantResult = await ctx.runMutation(
+    internalApi.credits.internal.grantUpgradeProRataCredits, { ... }
+  );
+  creditsGranted = grantResult.grantedCredits;
+} catch (err) {
+  // Plan change already succeeded -- don't roll it back for a credit grant failure
+  console.error("[changePlan] Pro-rata credit grant failed (non-fatal)", { ... });
+}
+```
 
-**Warning signs:**
-- `INSUFFICIENT_CREDITS` errors appearing after successful AI operations
-- Credit balances occasionally going negative (if the guard is relaxed)
-- Users seeing "operation succeeded" but credits not deducted
+This is the correct error-handling philosophy (don't undo a successful charge), but the credits are silently lost. The user's success toast may even show `creditsGranted: 0` from the undefined fallback.
 
-**Phase to address:**
-Phase 3 (Edge case hardening) -- not urgent at current scale, but important before significant user growth.
+**Consequences:** User pays proration, sees "upgrade successful", but gets fewer credits than promised. Support ticket. Manual credit grant needed.
 
----
+**Prevention:**
+- On credit grant failure, schedule a retry via `ctx.scheduler.runAfter()` with exponential backoff (same pattern as `processInvoiceForGrantNonBlocking`)
+- Store the pending grant attempt in a durable record (e.g., `stripeEventLogs` or a new `pendingUpgradeGrants` concept) so the reconciliation cron can pick it up
+- Return `creditsGranted: undefined` to the UI explicitly, and show a different toast: "Upgrade complete. Credits will appear shortly." instead of claiming credits were granted when they were not
+- Include the `stripeSubscriptionId` + `fromPlan` + `toPlan` in the scheduled retry args so the retry can reconstruct the grant
 
-### Pitfall 4: Double credit grant from overlapping invoice events
+**Detection:** Monitor for `[changePlan] Pro-rata credit grant failed (non-fatal)` log lines. Alert on any occurrence.
 
-**What goes wrong:**
-When a subscription is created or renewed, Stripe can fire `invoice.paid`, `invoice.payment_succeeded`, `checkout.session.completed`, and `payment_intent.succeeded` events -- all for the same underlying payment. If multiple event handlers trigger credit grants independently, credits are granted more than once for the same billing cycle.
-
-**Why it happens:**
-Developers wire up credit granting to multiple event types "to be safe" without realizing they overlap. In the current codebase, `invoice.paid` triggers `processInvoiceForGrant`, and `checkout.session.completed` triggers `reconcileRecentPaidInvoicesFromStripe` which processes the same invoice. Additionally, the hourly cron also runs `reconcileRecentPaidInvoicesFromStripe`.
-
-**How to avoid:**
-The codebase already has the right idempotency guard: `grantMonthlyCredits` checks for existing `creditTransactions` by `stripeInvoiceId` before granting. This is correct. The risk is if different code paths use different identifiers (e.g., one uses `stripeInvoiceId`, another uses `stripePaymentIntentId`). Ensure ALL grant paths converge on a single idempotency key: the invoice ID. The current code does this correctly -- maintain this invariant.
-
-**Warning signs:**
-- Credit transaction log shows multiple "grant" entries for the same billing period
-- `creditTransactions` with overlapping timestamps and similar descriptions
-- Total granted credits exceed `creditsPerMonth` for a subscription
-
-**Phase to address:**
-Phase 2 (Credit system audit) -- verify existing guards, add monitoring/alerting.
+**Phase to address:** Phase 1 (Reliable upgrade flow) -- this is the primary bug to fix.
 
 ---
 
-### Pitfall 5: Subscription schedule leak on rapid plan changes
+### Pitfall 3: Preview-to-Execution Staleness (Amount Mismatch)
 
-**What goes wrong:**
-When a user schedules a downgrade (which creates a `SubscriptionSchedule`), then changes their mind and upgrades, the old schedule must be released before applying the upgrade. If `stripe.subscriptionSchedules.release()` fails (network error, Stripe outage) but the subsequent `stripe.subscriptions.update()` succeeds, the subscription gets upgraded but the old schedule remains attached. When the schedule fires at period end, it silently downgrades the user.
+**What goes wrong:** `getUpgradePreview` calls `stripe.invoices.createPreview()` with `proration_date: Math.floor(Date.now() / 1000)`. The user reviews the dialog for 30 seconds to 5 minutes. Then `changePlan` calls `stripe.subscriptions.update()` WITHOUT passing a `proration_date`. Stripe calculates the actual proration using the current time at execution, which differs from the preview time. The charged amount differs from what was shown.
 
-**Why it happens:**
-The `changePlan` action does release the schedule before upgrading, but these are two separate Stripe API calls with no transactional guarantee. A partial failure leaves the system in an inconsistent state.
+**Why it happens:** Stripe prorates to the second. If the preview runs at 14:00:00 and the actual update runs at 14:02:30, the remaining time in the period is 150 seconds shorter, producing a slightly different proration amount. The Stripe docs explicitly warn: "prorated amounts might change between the time they are previewed and the time the update is made."
 
-**How to avoid:**
-After any plan change that should clear a schedule, verify that `subscription.schedule` is `null` on the returned subscription object. If it is still attached, retry the release. Add a background job (or extend the existing cron) that checks active subscriptions for orphaned schedules that conflict with the current plan.
+**Consequences:**
+- Small amounts: user is charged $14.23 instead of the previewed $14.25 -- minor discrepancy
+- Large amounts or near-period-end: the difference can be significant (percentage grows as remaining time shrinks)
+- Credit calculation also diverges: `getUpgradePreview` calculates `proRataCredits` using `Date.now()` at preview time, but `grantUpgradeProRataCredits` recalculates using `Date.now()` at execution time
 
-**Warning signs:**
-- Users report unexpected downgrades after a successful upgrade
-- Stripe dashboard shows a subscription with both a schedule and a mismatching current price
-- `subscription.updated` webhooks arriving with unexpected price changes at period boundaries
+**Prevention:**
+- Store the `proration_date` from the preview and pass it to `stripe.subscriptions.update()` via the `proration_date` parameter
+- Pass the same timestamp to `grantUpgradeProRataCredits` so the credit calculation matches the preview exactly
+- Add a staleness check: if the preview is older than N minutes (e.g., 5), re-fetch before confirming
+- Show "approximate" language in the dialog: "You will be charged approximately $14.25" or re-fetch the preview when the confirm button is clicked
 
-**Phase to address:**
-Phase 1 (Subscription lifecycle fixes) -- add post-change schedule verification.
+**Detection:** Compare `preview.immediateChargeCents` with the actual `invoice.amount_due` from the webhook's `invoice.paid` event. Log discrepancies.
 
----
-
-### Pitfall 6: Free credit cap blocks legitimate monthly grants
-
-**What goes wrong:**
-The `applyTierFreeCreditCap` function caps free credits at the plan's `freeCreditCap` (e.g., 3,000 for "go"). If a user has not consumed their credits from the previous month and their free balance is already at cap, the monthly grant returns `actualAdded: 0`. The user paid for the month but received zero new credits. This is by design but creates a negative user experience when users expect credits to roll over or accumulate.
-
-**Why it happens:**
-The cap exists to prevent unbounded credit accumulation, which is a valid business constraint. But the interaction between "paid subscription credits" and "free balance cap" is confusing. Users who use credits slowly get penalized.
-
-**How to avoid:**
-Clearly communicate the cap in the billing UI: "Your plan includes 3,000 credits/month, capped at 3,000 total free credits." Consider whether the cap should be higher than `creditsPerMonth` (e.g., 2x) to allow one month of rollover. Alternatively, separate "subscription credits" from "free credits" so monthly grants always land even if the user has unused prior credits.
-
-**Warning signs:**
-- Support tickets: "I'm paying but not getting credits"
-- `grantMonthlyCredits` returning `processed_no_credits` with classification `cap_reached_or_zero_grant` for paying subscribers
-- Low credit utilization rates in analytics
-
-**Phase to address:**
-Phase 2 (Credit system audit) -- evaluate cap policy and UX messaging.
+**Phase to address:** Phase 1 (Proration preview dialog) -- pass `proration_date` through the flow.
 
 ---
 
-### Pitfall 7: `handleSubscriptionCanceled` clears `stripeSubscriptionId` and creates orphan records
+### Pitfall 4: Pro-Rata Credit Grant Double-Grant on Rapid Re-Upgrade
 
-**What goes wrong:**
-When a subscription is canceled, `handleSubscriptionCanceled` sets `stripeSubscriptionId: undefined` on the old record and creates a new "free" subscription record. This means (1) the old subscription can no longer be found by `by_stripe_sub` index, breaking any subsequent webhook events that reference it, and (2) the user accumulates multiple subscription records over time (one canceled, one free, then a new paid one if they resubscribe).
+**What goes wrong:** User upgrades Go -> Pro, receives pro-rata credits. Then immediately (within seconds) goes to billing, sees they are on Pro, and clicks "Upgrade to Enterprise" (if such an option existed, or re-clicks before UI updates). The `grantUpgradeProRataCredits` dedup checks for an existing `upgrade_prorate` grant where `fromPlan === "go"` AND `toPlan === "pro"` in the current period. But the second upgrade is `fromPlan === "pro"` AND `toPlan === "enterprise"` -- different plan pair, so the dedup does NOT catch it. User receives two pro-rata grants in the same period, one for each upgrade step.
 
-**Why it happens:**
-The intent is to cleanly transition the user to "free" status. But clearing the Stripe ID breaks the linkage, and inserting a new record without cleaning up or linking adds complexity to `selectCanonicalSubscription`.
+**Why it happens:** The dedup key is `(userId, fromPlan, toPlan, currentPeriodStart)`. Each upgrade step has a unique `(fromPlan, toPlan)` pair, so the dedup gate passes for each. This is CORRECT behavior for genuine multi-step upgrades (Go -> Pro -> Enterprise within one period should grant credits for each step). The pitfall is if the credit calculations overlap -- the first grant gives credits for `Pro - Go` remaining time, but the second grant calculates credits for `Enterprise - Pro` remaining time using the SAME period boundaries, which is correct.
 
-**How to avoid:**
-Keep `stripeSubscriptionId` on canceled records (set status to "canceled" but preserve the ID for audit). Do not create a new free subscription record -- instead, let `resolveEffectivePlan` return "free" when no active subscription exists. This simplifies the data model and prevents the N+1 subscription record problem.
+**Assessment:** This is actually NOT a bug in the current implementation -- each upgrade step independently calculates the correct pro-rata delta. However, it becomes a pitfall if:
+1. The first upgrade's credits have not been written yet (OCC retry) when the second upgrade reads the balance -- the second grant would see an artificially low `freeBalance`, potentially granting more than intended under the cap
+2. The UI does not prevent rapid re-clicking
 
-**Warning signs:**
-- Users with 5+ subscription records in the `subscriptions` table
-- `selectCanonicalSubscription` returning the wrong record
-- Webhook events for canceled subscriptions logging "No subscription found"
+**Prevention:**
+- Add a loading/cooldown state on the pricing page that prevents starting a new upgrade within 10 seconds of confirming one
+- The Convex OCC will handle the mutation-level race correctly (serialize the two `grantUpgradeProRataCredits` calls), but the action-level state (period dates) could be stale if the subscription period shifted between upgrades
+- Consider adding a broader dedup: if ANY `upgrade_prorate` grant exists in this period (regardless of plan pair), require a longer cooldown
 
-**Phase to address:**
-Phase 1 (Subscription lifecycle fixes) -- refactor cancellation handler.
+**Phase to address:** Phase 2 (Edge case hardening) -- UI cooldown + broad dedup option.
 
-## Technical Debt Patterns
+---
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Using `any` type for Stripe event objects in webhook handlers | Faster development, no type import hassle | Silently accessing wrong properties, runtime errors on Stripe API version changes | Never in production -- use `Stripe.Invoice`, `Stripe.Subscription`, etc. |
-| Casting `internal` to `any` (`const internalApi = internal as any`) | Bypasses Convex codegen type issues | No compile-time safety for mutation/action arg mismatches | Only during rapid prototyping, should be replaced with proper typing |
-| Hourly reconciliation cron as safety net | Catches missed webhooks, eventual consistency | Masks webhook handler bugs, adds Stripe API load, delays credit grants by up to 1 hour | Acceptable as belt-and-suspenders, but should not be relied on as primary mechanism |
-| Fallback subscription resolution via `stripe.subscriptions.list` | Recovers from missing subscription pointers | Extra Stripe API call per invoice, rate limit pressure at scale | Acceptable for now, but add caching or fix root cause (ensure subscription pointer is always set) |
+## Moderate Pitfalls
 
-## Integration Gotchas
+### Pitfall 5: `createPreview` API Differences From Deprecated `retrieveUpcoming`
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Stripe Subscription Schedules | Creating a schedule `from_subscription` but not handling the schedule's `released` / `canceled` lifecycle events | Listen for `subscription_schedule.completed`, `subscription_schedule.released`, and `subscription_schedule.canceled` events; sync local state accordingly |
-| Stripe Customer Portal | Assuming portal handles all plan changes and not intercepting user actions | If using custom plan change logic (like `changePlan`), configure the portal to disable self-service plan changes, or handle portal-initiated changes via webhooks |
-| `@convex-dev/stripe` component | Assuming the component handles all billing logic including credits | The component only provides webhook registration, customer management, and subscription state mirroring. Custom credit systems, proration logic, and plan change flows must be built manually on top |
-| Stripe API versioning | Not pinning the webhook endpoint API version separately from the SDK version | Pin the webhook endpoint's API version in Stripe Dashboard to match the version your code expects. The SDK version (`apiVersion: "2026-01-28.clover"`) and the webhook endpoint version can differ, causing field shape mismatches |
+**What goes wrong:** The current code uses `stripe.invoices.createPreview()` (the new API), but many Stripe docs, tutorials, and Stack Overflow answers reference `stripe.invoices.retrieveUpcoming()` (the older API). The two APIs have subtly different parameter shapes:
 
-## Performance Traps
+- `createPreview` uses `subscription_details.items` (nested under `subscription_details`)
+- `retrieveUpcoming` uses top-level `subscription_items` parameter
+- `createPreview` returns a preview invoice that cannot be listed or paid
+- `retrieveUpcoming` returns the actual upcoming invoice object
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Reconciliation cron calling `stripe.invoices.list` for every active customer every hour | Stripe API rate limits (25 req/s live, 100 req/s test), slow cron execution, 429 errors | Batch requests, add jitter, only reconcile customers with recent activity, increase cron interval as customer count grows | 100+ active subscribers (~100 API calls/hour, fine) to 1,000+ (hits rate limits) |
-| `selectCanonicalSubscription` collecting ALL subscription records per user on every query | Query latency grows linearly with subscription record count | Add a `.take(10)` limit since users rarely have more than 3-5 subscriptions, or clean up old canceled records | 50+ subscription records per user (unlikely but possible with churn) |
-| Credit deduction creating a new `creditTransactions` record for every AI operation | Table grows quickly with heavy AI usage, slows down `by_user` index scans | Consider batching small operations, or archiving old transactions periodically | 100K+ transactions per user (heavy extraction users) |
+The comment in the code says "replacement for deprecated retrieveUpcoming" but `retrieveUpcoming` is NOT actually deprecated -- it still works. The two serve different purposes.
 
-## Security Mistakes
+**Prevention:** The current `createPreview` usage is correct for preview-only scenarios. Just be aware that `retrieveUpcoming` is still valid and may be more appropriate if you need the actual upcoming invoice (e.g., for reconciliation). Do not mix parameter shapes between the two APIs.
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Trusting `metadata.userId` from Stripe webhooks without verification | Attacker could forge metadata if they gain access to Stripe Dashboard or intercept API calls | Always verify the Stripe customer -> user mapping via `billingCustomers` table lookup, not just metadata. The current code does this as a fallback, which is correct |
-| Not validating `amountReceived` against expected price for credit top-ups | Users could potentially receive credits for a lower payment if the PaymentIntent is modified | The current code validates `amountReceivedCents >= expectedMinimumAmountCents`, which is correct. Maintain this validation |
-| Stripe webhook secret stored as environment variable without rotation | Secret compromise allows forged webhooks | Implement secret rotation process. Use Stripe's recommended pattern of supporting two secrets simultaneously during rotation |
-| Credit balance going negative allowing free AI operations | Users consume AI resources without paying | The `deductCredits` mutation checks `totalAvailable < args.amount`, which is correct. Ensure this check is never bypassed. The TOCTOU issue in actions is the gap (see Pitfall 3) |
+**Phase to address:** No action needed -- current implementation is correct.
 
-## UX Pitfalls
+---
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| No immediate feedback after plan change -- state depends on webhook | User clicks "Upgrade", nothing changes for seconds/minutes until webhook fires | Optimistically update the UI immediately, then confirm via webhook. Show a "processing" state if the webhook takes more than 2 seconds |
-| Credit cap silently blocks monthly grants | Paying user sees no credit increase, assumes billing is broken | Show a clear message: "Credits capped at X. Use credits to receive your full monthly grant." |
-| Proration amount not shown before confirming upgrade | User upgrades without knowing what they will be charged today | Call `stripe.invoices.createPreview()` or `stripe.invoices.retrieveUpcoming()` to show the prorated amount before the user confirms |
-| Downgrade effective date not communicated clearly | User downgrades, expects immediate price reduction, finds they are still charged at the higher rate until period end | Show: "You will be on the Go plan starting [date]. Until then, you keep all Pro features." |
+### Pitfall 6: Webhook `invoice.paid` for Proration Invoice Triggers Monthly Credit Logic
 
-## "Looks Done But Isn't" Checklist
+**What goes wrong:** When `always_invoice` creates a proration invoice, Stripe fires `invoice.paid` with `billing_reason: "subscription_update"`. This hits the `invoice.paid` handler in `http.ts`, which calls `processInvoiceForGrantNonBlocking`, which calls the full `processInvoiceForGrant` action, which re-fetches the invoice from Stripe and runs `classifyMonthlyCreditInvoice`.
 
-- [ ] **Upgrade flow:** Often missing immediate invoicing -- verify `proration_behavior: "always_invoice"` is set and a charge actually appears in Stripe
-- [ ] **Downgrade flow:** Often missing schedule cleanup on reupgrade -- verify that upgrading after scheduling a downgrade correctly releases the old schedule
-- [ ] **Cancellation flow:** Often missing credit expiration -- verify that when a subscription is canceled, remaining free credits are handled (expired, preserved, or clearly communicated)
-- [ ] **Webhook idempotency:** Often missing duplicate event handling -- verify that replaying the same Stripe event twice produces the same outcome (check `stripeEventLogs` deduplication)
-- [ ] **Credit top-up:** Often missing refund reversal -- verify that `charge.refunded` correctly reverses the credit grant proportionally
-- [ ] **Monthly grant:** Often missing cap communication -- verify that users at the free credit cap are informed and the grant outcome is logged
-- [ ] **Subscription status sync:** Often missing out-of-order event protection -- verify that a stale `subscription.updated` event does not overwrite a newer state
-- [ ] **Payment failure handling:** Often missing grace period logic -- verify that `past_due` subscriptions still grant feature access for a configurable grace period before cutting off credits
+If `classifyMonthlyCreditInvoice` were to classify `subscription_update` as eligible for a monthly grant, the user would receive BOTH the upgrade pro-rata credits (from the action) AND a full monthly credit grant (from the webhook). This would be a critical double-grant.
+
+**Why it does NOT happen today:** `invoiceGrantPolicy.ts` line 9 explicitly lists `subscription_update` in `NON_RECURRING_REASONS`, causing `classifyMonthlyCreditInvoice` to return `ignore_non_recurring`. This is correct and critical.
+
+**Prevention:**
+- NEVER add `subscription_update` to `ELIGIBLE_MONTHLY_CREDIT_BILLING_REASONS`
+- Add a unit test that explicitly asserts `classifyMonthlyCreditInvoice({ invoiceBillingReason: "subscription_update", ... })` returns `ignore_non_recurring`
+- Add a comment in `invoiceGrantPolicy.ts` explaining why `subscription_update` must stay in the non-recurring set
+
+**Phase to address:** Phase 1 -- add the unit test as a regression guard.
+
+---
+
+### Pitfall 7: Period Boundary Timestamps From Pre-Upgrade Subscription
+
+**What goes wrong:** The `changePlan` action reads `currentPeriodStart` and `currentPeriodEnd` from `stripeSubscription` BEFORE calling `stripe.subscriptions.update()`:
+
+```typescript
+const periodStartMs = (stripeSubscription.current_period_start ?? ...) * 1000;
+const periodEndMs = (stripeSubscription.current_period_end ?? ...) * 1000;
+```
+
+After the update, if the subscription's billing period changed (e.g., Stripe resets the period on immediate proration), these timestamps would be stale. The pro-rata credit calculation would use the old period boundaries to compute the remaining ratio, potentially granting too many or too few credits.
+
+**Why it matters:** With `always_invoice`, Stripe does NOT reset the billing period -- the subscription retains its original `current_period_start` and `current_period_end`. The period only resets on `subscription_cycle` events (renewals). So this is actually safe for the current `always_invoice` usage. It would become a bug if the proration behavior were changed to `create_prorations` with a different billing anchor.
+
+**Prevention:**
+- Read period dates from the `updated` subscription object (the return value of `stripe.subscriptions.update()`), not from the pre-update fetch
+- This is a defensive fix even though `always_invoice` does not change periods
+
+**Phase to address:** Phase 1 -- use post-update timestamps.
+
+---
+
+### Pitfall 8: UI Shows Stale Credits After Upgrade
+
+**What goes wrong:** After `handleConfirmUpgrade` succeeds, the Pricing component calls `getSubscriptionDetails` to refresh subscription state, then shows a success toast with `creditsGranted`. But the credits balance displayed elsewhere in the app (e.g., a header credit counter) reads from the Convex `credits` query, which is reactive. The credit grant mutation may not have propagated to the reactive query by the time the user navigates away from the pricing page.
+
+**Why it happens:** Convex mutations are atomic and immediately visible to subsequent queries in the SAME mutation context. But the UI reads from a separate reactive query subscription, which may have a brief propagation delay (typically <100ms but can be longer under load).
+
+**Prevention:**
+- The success toast already shows the granted amount, which is correct
+- If there is a separate credit balance display, it will update reactively within milliseconds -- this is a non-issue for Convex
+- Do NOT add manual polling or cache invalidation -- let Convex reactivity handle it
+
+**Phase to address:** No action needed -- Convex reactivity handles this correctly.
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 9: `Math.floor(Date.now() / 1000)` Timezone and Precision Issues
+
+**What goes wrong:** Multiple places in the upgrade flow use `Math.floor(Date.now() / 1000)` to generate Unix timestamps for Stripe API calls. If the Convex action runtime's clock is slightly skewed from Stripe's clock, the `proration_date` could be in the past relative to Stripe, causing Stripe to reject it with "proration_date must be at or after the start of the current period."
+
+**Prevention:** The Convex runtime uses NTP-synced clocks, so skew is typically <1 second. Add error handling for the `proration_date` rejection case -- if it fails, retry without a `proration_date` and accept the slight amount difference.
+
+**Phase to address:** Phase 2 -- add error handling for clock skew.
+
+---
+
+### Pitfall 10: Credit Cap Interaction With Upgrade Pro-Rata Grants
+
+**What goes wrong:** `grantUpgradeProRataCredits` applies `applyTierFreeCreditCap` using the NEW plan's cap. If the user is already at the old plan's cap (e.g., Go cap = 3000, user has 3000 free credits), and they upgrade to Pro (cap = 10000), the grant would succeed because 3000 < 10000. But if the user had accumulated credits near the Pro cap through purchases, the grant could be silently reduced by the cap. The preview dialog would show "You will receive X credits" but the actual grant is less.
+
+**Prevention:**
+- Calculate the post-cap grant amount in `getUpgradePreview` using the same `applyTierFreeCreditCap` logic with the user's current `freeBalance`
+- Or show the preview amount as "up to X credits" rather than a guaranteed amount
+- This is an edge case affecting users who have both a high free balance AND are upgrading
+
+**Phase to address:** Phase 2 -- align preview with actual cap behavior.
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Proration preview dialog | Preview amount diverges from actual charge (Pitfall 3) | Pass `proration_date` through preview -> execution flow |
+| Reliable credit grant | Charge succeeds but grant fails (Pitfall 2) | Schedule retry on grant failure, store pending state |
+| Invoice.paid for proration invoices | Proration invoice triggers monthly credit grant (Pitfall 6) | Unit test that `subscription_update` billing_reason is classified as non-recurring |
+| Action vs webhook race | Both paths try to sync subscription state (Pitfall 1) | Document ownership contract: action owns sync + credits, webhook is idempotent backup |
+| UI confirmation flow | User confirms stale preview after long delay (Pitfall 3) | Add staleness timeout or re-fetch on confirm |
+| Error feedback | User charged but sees no credits (Pitfall 2) | Different toast for "credits pending" vs "credits granted" |
+| Period date usage | Pre-update period dates used for credit calculation (Pitfall 7) | Read from post-update subscription object |
+| Rapid re-upgrade | Multiple pro-rata grants stack within same period (Pitfall 4) | UI cooldown + broad dedup consideration |
+
+## "Looks Done But Isn't" Checklist for v1.1
+
+- [ ] **proration_date flow-through:** Preview and execution use the same timestamp -- not just "both use Date.now()" but literally the same stored value
+- [ ] **Credit grant retry on failure:** `grantUpgradeProRataCredits` failure does not silently eat the error -- a retry is scheduled
+- [ ] **subscription_update firewall:** Unit test proves proration invoices do not trigger monthly credit grants
+- [ ] **Post-update timestamps:** Credit calculation uses period dates from the UPDATED subscription, not the pre-update fetch
+- [ ] **UI feedback accuracy:** Toast message distinguishes between "credits granted" and "credits pending"
+- [ ] **Preview staleness:** Dialog either re-fetches or warns if preview is >5 minutes old
+- [ ] **Error recovery path:** Admin can manually trigger credit grant for failed upgrades without re-charging
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Double credit grant | LOW | Query `creditTransactions` for duplicate `stripeInvoiceId`, void the extra grant, adjust `credits.freeBalance` |
-| Stale subscription state from out-of-order webhooks | LOW | Re-fetch subscription from Stripe API (`stripe.subscriptions.retrieve`), re-run `syncSubscription` with current data |
-| Orphaned subscription schedule causing unexpected downgrade | MEDIUM | List subscription schedules via `stripe.subscriptionSchedules.list`, release any that conflict with the current plan, re-sync subscription |
-| Credit balance went negative from TOCTOU race | LOW | Set balance to 0 or absorb the cost. If recurring, implement credit reservation |
-| Proration not charged (used `create_prorations` instead of `always_invoice`) | MEDIUM | Generate a manual invoice for the outstanding proration items via `stripe.invoices.create` for the customer, then finalize and pay |
-| Cancellation handler created orphan free subscription records | LOW | Query for users with multiple active subscription records, delete the duplicates, ensure canonical resolution logic is correct |
-| Free credit cap silently blocked grants for paying users | LOW | Backfill grants using `backfillBillingAndCredits` action after adjusting the cap policy |
-
-## Pitfall-to-Phase Mapping
-
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| Upgrade uses `create_prorations` instead of `always_invoice` | Phase 1: Subscription lifecycle | Stripe dashboard shows immediate charge on upgrade; `invoice.paid` webhook fires within seconds |
-| Out-of-order webhook events corrupt state | Phase 1: Webhook hardening | Replay same event twice via Stripe CLI; verify `subscriptions` table shows correct state |
-| Credit deduction TOCTOU race | Phase 3: Edge case hardening | Run two concurrent AI operations with near-zero balance; verify no negative balance |
-| Double credit grant from overlapping events | Phase 2: Credit system audit | Trigger `invoice.paid` + reconciliation for same invoice; verify single `creditTransactions` entry |
-| Subscription schedule leak on plan change | Phase 1: Subscription lifecycle | Upgrade after scheduling downgrade; verify schedule is released in Stripe dashboard |
-| Free credit cap blocks monthly grants | Phase 2: Credit system audit | User at cap receives monthly grant; verify cap policy matches business intent |
-| Cancellation handler creates orphan records | Phase 1: Subscription lifecycle | Cancel subscription; verify single subscription record per user; resubscribe and verify clean state |
-| Stale subscription state from portal changes | Phase 1: Webhook hardening | Change plan via Stripe Customer Portal; verify local state matches |
+| Charge succeeded but credits not granted (Pitfall 2) | LOW | Run `grantUpgradeProRataCredits` manually via Convex dashboard with the correct args. Or use `addCredits` mutation to grant the missing amount. |
+| Preview amount differs from actual charge (Pitfall 3) | NEGLIGIBLE | The difference is typically <$1 for monthly subscriptions. No refund needed. Inform user if they complain. |
+| Double pro-rata grant from rapid re-upgrade (Pitfall 4) | LOW | Query `creditTransactions` for multiple `upgrade_prorate` grants in the same period. Void the excess via `deductCredits`. |
+| Proration invoice accidentally triggers monthly grant (Pitfall 6) | MEDIUM | Query `creditTransactions` for grants with `stripeInvoiceId` matching the proration invoice. Void the incorrect grant. Fix the `invoiceGrantPolicy.ts` classification. |
+| Period date mismatch causes wrong credit amount (Pitfall 7) | LOW | Recalculate the correct pro-rata amount using the actual period dates from Stripe. Adjust via `addCredits` or `deductCredits`. |
 
 ## Sources
 
-- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- `create_prorations` vs `always_invoice` behavior
-- [Stripe Subscription Webhooks](https://docs.stripe.com/billing/subscriptions/webhooks) -- event ordering is not guaranteed
-- [Stripe Subscription Schedules](https://docs.stripe.com/billing/subscriptions/subscription-schedules) -- downgrade deferral patterns
-- [Stripe Idempotent Requests](https://docs.stripe.com/api/idempotent_requests) -- API-level idempotency
-- [Stripe Webhooks: Solving Race Conditions](https://www.pedroalonso.net/blog/stripe-webhooks-deep-dive/) -- webhook idempotency and optimistic locking patterns
-- [The Race Condition You're Probably Shipping Right Now With Stripe Webhooks](https://dev.to/belazy/the-race-condition-youre-probably-shipping-right-now-with-stripe-webhooks-mj4) -- eager sync anti-pattern
-- [Billing Webhook Race Condition Solution Guide](https://excessivecoding.com/blog/billing-webhook-race-condition-solution-guide) -- single-writer pattern for webhook handling
-- [Stripe: Modify Subscriptions](https://docs.stripe.com/billing/subscriptions/change) -- official guide for plan changes
-- [Stripe: Cancel Subscriptions](https://docs.stripe.com/billing/subscriptions/cancel) -- cancellation lifecycle
-- [Stripe Customer Invoice Balance](https://docs.stripe.com/billing/customer/balance) -- credit and balance edge cases
-- Current codebase analysis: `convex/http.ts`, `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `convex/credits/actions.ts`, `convex/ai/helpers.ts`
+- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- `proration_date` must match between preview and execution; prorations are calculated to the second
+- [Stripe Create Preview Invoice API](https://docs.stripe.com/api/invoices/create_preview) -- `subscription_details.proration_date` parameter behavior and caveats
+- [Stripe Update Subscription API](https://docs.stripe.com/api/subscriptions/update) -- `error_if_incomplete` reverts subscription on payment failure; `always_invoice` creates and charges proration invoice immediately
+- [Stripe Pending Updates](https://docs.stripe.com/billing/subscriptions/pending-updates) -- alternative approach using `pending_if_incomplete` for safer updates
+- [Stripe Subscription Webhooks](https://docs.stripe.com/billing/subscriptions/webhooks) -- event ordering not guaranteed; `customer.subscription.updated` and `invoice.paid` events fire on subscription update
+- [Billing Webhook Race Condition Solution Guide](https://excessivecoding.com/blog/billing-webhook-race-condition-solution-guide) -- webhook arrives 1-5s after API call; idempotent sync pattern
+- [`customer.subscription.updated` webhook issue with @convex-dev/stripe](https://github.com/get-convex/stripe/issues/7) -- known issue with priceId not updating in component state
+- [Stripe Preview Invoice Documentation](https://docs.stripe.com/invoicing/preview) -- exchange rates may vary between preview and actual creation; preview is a point-in-time snapshot
+- Codebase analysis: `convex/subscriptions/actions.ts` (changePlan, getUpgradePreview), `convex/credits/internal.ts` (grantUpgradeProRataCredits), `convex/credits/lib/invoiceGrantPolicy.ts` (subscription_update classification), `convex/http.ts` (webhook handlers)
 
 ---
-*Pitfalls research for: Stripe billing integration in OpenAlex Count*
+*Pitfalls research for: v1.1 Upgrade Flow -- OpenAlex Count*
 *Researched: 2026-02-27*

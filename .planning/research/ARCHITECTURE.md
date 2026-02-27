@@ -1,483 +1,529 @@
-# Architecture Research
+# Architecture Research: Upgrade Flow with Proration Preview
 
-**Domain:** Stripe billing integration in Convex + Next.js (subscription management, credit system, webhook handling)
+**Domain:** Stripe subscription upgrade flow in Convex + Next.js (proration preview, pro-rata credit grants, atomicity)
 **Researched:** 2026-02-27
-**Confidence:** HIGH (based on direct codebase analysis of existing implementation)
+**Confidence:** HIGH (based on direct codebase analysis + Stripe/Convex documentation)
 
-## System Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          STRIPE (External)                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
-│  │  Subscriptions│  │   Invoices   │  │   Checkout   │  │   Customer   │   │
-│  │  API          │  │   API        │  │   Sessions   │  │   Portal     │   │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘   │
-│         │                 │                  │                  │           │
-│         └────────┬────────┴─────────┬────────┘                 │           │
-│                  │                  │                           │           │
-│          Webhook Events      Checkout Redirect           Portal Redirect   │
-└──────────────────┼──────────────────┼──────────────────────────┼───────────┘
-                   ↓                  ↓                          ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       CONVEX HTTP ROUTER (convex/http.ts)                   │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  @convex-dev/stripe registerRoutes                                  │   │
-│  │  POST /webhooks/stripe  →  onEvent (audit log)  →  event handlers  │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                    WEBHOOK EVENT HANDLER (Audited Router)                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │ Subscription │  │  Invoice    │  │  Payment     │  │  Charge     │      │
-│  │ Events       │  │  Events     │  │  Intent      │  │  Refund     │      │
-│  │ (3 handlers) │  │ (5 handlers)│  │ (1 handler)  │  │ (1 handler) │      │
-│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘      │
-│         │                │                 │                │              │
-├─────────┴────────────────┴─────────────────┴────────────────┴──────────────┤
-│                        DOMAIN MODULES (convex/)                            │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐         │
-│  │  subscriptions/   │  │  credits/         │  │  ai/helpers.ts   │         │
-│  │  ├── actions.ts   │  │  ├── actions.ts   │  │  (credit         │         │
-│  │  ├── internal.ts  │  │  ├── internal.ts  │  │   deduction      │         │
-│  │  ├── queries.ts   │  │  ├── queries.ts   │  │   at usage time) │         │
-│  │  └── lib/         │  │  └── lib/         │  └──────────────────┘         │
-│  └──────────────────┘  └──────────────────┘                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                        DATA LAYER (convex/schema.ts)                       │
-│  ┌──────────┐ ┌────────────────┐ ┌───────────────┐ ┌───────────────────┐  │
-│  │subscrip- │ │credits         │ │creditTransac-  │ │billingCustomers   │  │
-│  │tions     │ │                │ │tions           │ │                   │  │
-│  └──────────┘ └────────────────┘ └───────────────┘ └───────────────────┘  │
-│  ┌───────────────────┐                                                     │
-│  │stripeEventLogs    │                                                     │
-│  └───────────────────┘                                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                        CRON LAYER (convex/crons.ts)                        │
-│  ┌──────────────────────────────────────────────────────────┐             │
-│  │ hourly: reconcileRecentPaidInvoicesFromStripe             │             │
-│  │ daily:  checkSubscriptionStatus                           │             │
-│  └──────────────────────────────────────────────────────────┘             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Responsibility | Location |
-|-----------|----------------|----------|
-| **Webhook Router** | Receives Stripe events, verifies signatures, dispatches to typed handlers, records every event in audit log | `convex/http.ts` (via `@convex-dev/stripe` `registerRoutes`) |
-| **Subscription Manager** | Creates checkout sessions, manages plan changes (upgrade/downgrade via subscription schedules), syncs Stripe state to local DB, handles cancellation | `convex/subscriptions/actions.ts`, `convex/subscriptions/internal.ts` |
-| **Credit System** | Grants monthly credits on invoice.paid, grants purchased credits on payment_intent.succeeded, deducts credits on AI usage (free-first then paid), reverses credits on refund | `convex/credits/actions.ts`, `convex/credits/internal.ts` |
-| **Billing Customer Linker** | Maintains durable user-to-Stripe-customer mapping (`billingCustomers` table), deduplicates on conflict | `convex/subscriptions/internal.ts` (upsertBillingCustomerLinkRecord) |
-| **Event Audit Log** | Records lifecycle of every Stripe event (received -> processed/retrying/failed/ignored), prevents double-processing | `convex/subscriptions/internal.ts` (stripeEventLogs mutations) |
-| **Invoice Grant Policy** | Classifies invoices as grant-eligible (subscription_create, subscription_cycle), non-recurring, or config drift | `convex/credits/lib/invoiceGrantPolicy.ts` |
-| **Retry Policy** | Exponential backoff for credit grants (5s, 15s, 30s, 60s, 120s, 300s) -- 6 attempts max | `convex/credits/lib/retryPolicy.ts` |
-| **Schedule Planning** | Builds Stripe SubscriptionSchedule phases for downgrades, resolves pending changes, determines change type | `convex/subscriptions/lib/schedulePlanning.ts` |
-| **Entitlements** | Resolves effective plan from subscription status, defines entitled vs non-entitled statuses | `lib/billing/entitlements.ts` |
-| **Credit Billing (AI)** | Converts AI token usage to credit cost via provider pricing + 1.3x markup, enforces minimum 1-credit floor | `convex/ai/lib/creditBilling.ts` |
-| **User Creation** | Provisions new users with free subscription + 1,000 signup credits | `convex/lib/userCreation.ts` |
-| **Reconciliation Cron** | Hourly pull-based reconciliation of paid invoices (catches missed webhooks) | `convex/crons.ts` -> `credits.actions.reconcileRecentPaidInvoicesFromStripe` |
-| **Feature Flags** | Gate subscriptions, credits, and topups via env vars | `convex/lib/featureFlags.ts` |
-
-## Data Flow
-
-### 1. New Subscription (Checkout)
+## Existing System Overview
 
 ```
-User clicks "Subscribe"
-    |
-    v
-[subscriptions/actions.ts: createCheckoutSession]
-    |-- Validates price ID against allowed list
-    |-- Gets/creates Stripe customer (via @convex-dev/stripe)
-    |-- Upserts billingCustomers link
-    |-- Creates Stripe Checkout Session (mode: "subscription")
-    |
-    v
-User redirected to Stripe Checkout
-    |
-    v
-Stripe fires events:
-    |
-    |-- checkout.session.completed
-    |       |-- Triggers immediate reconcile for the customer
-    |
-    |-- customer.subscription.created
-    |       |-- syncSubscription mutation
-    |       |-- Resolves userId from subscription/customer/metadata
-    |       |-- Upserts billingCustomers link
-    |       |-- Creates/updates subscriptions record (plan, status, period, creditsPerMonth)
-    |
-    |-- invoice.paid
-    |       |-- processInvoiceForGrantNonBlocking
-    |       |-- Retrieves full invoice from Stripe API
-    |       |-- Classifies via invoiceGrantPolicy (subscription_create -> grant)
-    |       |-- Finds subscription in local DB
-    |       |-- Grants monthly credits to credits.freeBalance (capped by plan tier)
-    |       |-- Records creditTransaction (type: "grant")
-    |       |-- Marks stripeEventLog as "processed"
-    |
-    v
-UI reactively updates via Convex subscriptions
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT (Next.js)                           │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │  Pricing.tsx                                                      │  │
+│  │    handleSubscribe() → getUpgradePreview() → open dialog          │  │
+│  │    handleConfirmUpgrade() → changePlan() → refresh state          │  │
+│  └─────────────────┬──────────────────────────┬─────────────────────┘  │
+│                    │ useAction()               │ useAction()            │
+├────────────────────┼──────────────────────────┼─────────────────────────┤
+│                    ↓                          ↓                         │
+│  CONVEX ACTIONS (Node.js runtime, NOT transactional)                   │
+│  ┌──────────────────────────┐  ┌───────────────────────────────────┐  │
+│  │ getUpgradePreview        │  │ changePlan                         │  │
+│  │  1. Fetch Stripe sub     │  │  1. Fetch Stripe sub               │  │
+│  │  2. invoices.createPreview│  │  2. Determine upgrade/downgrade   │  │
+│  │  3. Calculate pro-rata   │  │  3. Release schedule if needed     │  │
+│  │  4. Return preview data  │  │  4. stripe.subscriptions.update()  │  │
+│  │     (read-only, safe)    │  │  5. syncLocalSubscriptionFromStripe│  │
+│  └──────────────────────────┘  │  6. grantUpgradeProRataCredits     │  │
+│                                │     (try/catch, non-fatal)         │  │
+│                                └───────────┬───────────────────────┘  │
+│                                            │                           │
+│  CONVEX MUTATIONS (transactional, atomic)  │                           │
+│  ┌─────────────────────┐  ┌───────────────┴───────────────────────┐  │
+│  │ syncSubscription     │  │ grantUpgradeProRataCredits            │  │
+│  │  - upsert plan/status│  │  - dedup by grantType+period          │  │
+│  │  - update period     │  │  - calculate pro-rata                 │  │
+│  │  - link customer     │  │  - apply tier cap                     │  │
+│  └─────────────────────┘  │  - insert creditTransaction            │  │
+│                            └──────────────────────────────────────┘  │
+│                                                                       │
+│  WEBHOOK PATH (separate, async)                                       │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  customer.subscription.updated → handleSubscriptionWebhook     │  │
+│  │    → re-fetch from Stripe API → syncLocalSubscriptionFromStripe│  │
+│  │  invoice.paid → processInvoiceForGrantNonBlocking              │  │
+│  │    → grantMonthlyCredits (deduped by stripeInvoiceId)          │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Plan Change (Upgrade / Downgrade)
+## The Core Atomicity Problem
+
+The existing `changePlan` action performs three sequential operations that are NOT in a single transaction:
 
 ```
-User selects new plan
-    |
-    v
-[subscriptions/actions.ts: changePlan]
-    |-- Retrieves current Stripe subscription + schedule
-    |-- Determines changeType via schedulePlanning.ts:
-    |
-    |-- UPGRADE (targetTier > currentTier):
-    |       |-- Releases any pending downgrade schedule
-    |       |-- stripe.subscriptions.update with proration_behavior: "create_prorations"
-    |       |-- Syncs local subscription immediately
-    |       |-- Proration invoice generated by Stripe -> invoice.paid -> credit grant
-    |
-    |-- DOWNGRADE (targetTier < currentTier):
-    |       |-- Creates SubscriptionSchedule from existing subscription
-    |       |-- Sets 2-phase schedule: current plan until period end, then target plan
-    |       |-- end_behavior: "release", proration_behavior: "none"
-    |       |-- User keeps current plan until period ends
-    |       |-- At period end, Stripe fires customer.subscription.updated -> syncSubscription
-    |
-    |-- SAME PLAN with pending change:
-    |       |-- Releases existing schedule (clears pending downgrade)
-    |       |-- Clears pending metadata
-    |
-    v
-Local state synced, UI updates reactively
+Step 1: stripe.subscriptions.update()     → Stripe API (external, irreversible)
+Step 2: syncLocalSubscriptionFromStripe()  → Convex mutation (transactional)
+Step 3: grantUpgradeProRataCredits()       → Convex mutation (transactional)
 ```
 
-### 3. Credit Purchase (Top-up)
+**Current failure modes in the existing code:**
+
+| Failure Point | What Happens | User Impact |
+|---------------|-------------|-------------|
+| Step 1 fails (card declined) | Nothing changes | Clean -- `error_if_incomplete` ensures atomic Stripe behavior |
+| Step 2 fails after Step 1 | Stripe charged, local DB stale | **Broken** -- plan shows old, user charged. Webhook eventually fixes plan sync but may be delayed |
+| Step 3 fails after Steps 1+2 | Charged + plan synced, no credits | **Credits lost** -- user upgraded and paid but did not receive pro-rata credits. Currently logged as `console.error` but no recovery path |
+
+The existing code wraps Step 3 in try/catch and logs the error as "non-fatal." This is correct in the sense that you should not roll back a successful Stripe charge for a credit-grant failure. But it means credits can silently go missing with no automated recovery.
+
+## Recommended Architecture: Webhook-Driven Credit Grants
+
+### Principle: Credit grants should NEVER depend on action-chain success
+
+The Convex documentation is unambiguous: actions are NOT transactional. When an action calls a mutation, then another mutation, and the second fails, the first mutation's changes persist. There is no rollback across multiple `ctx.runMutation` calls within an action.
+
+**The correct pattern for Convex + Stripe is:**
+
+1. **Actions** handle Stripe API calls and optimistic local sync
+2. **Webhooks** are the authoritative trigger for credit grants
+3. **Mutations** provide the atomicity boundary (each mutation is individually transactional)
+
+### Recommended Upgrade Flow Architecture
 
 ```
-User selects credit bundle
-    |
-    v
-[credits/actions.ts: createTopupCheckoutSession]
-    |-- Validates bundle key against catalog
-    |-- Creates Stripe Checkout Session (mode: "payment", one-time)
-    |-- Embeds metadata: billingType="credit_topup", credits, amountCents, creditsPerUsd
-    |
-    v
-Stripe fires: payment_intent.succeeded
-    |
-    v
-[http.ts handler]
-    |-- grantPurchasedCreditsFromPaymentIntent
-    |-- Validates billingType === "credit_topup"
-    |-- Validates currency, amount, credits metadata
-    |-- Checks idempotency (by stripePaymentIntentId)
-    |-- Resolves userId from metadata or billingCustomers
-    |-- Adds credits to credits.paidBalance
-    |-- Records creditTransaction (type: "purchase", creditType: "paid")
+┌──────────────────────────────────────────────────────────────────────┐
+│  PHASE 1: PREVIEW (read-only, no side effects)                       │
+│                                                                      │
+│  Client                          Convex Action                       │
+│  ──────                          ────────────                        │
+│  User clicks "Upgrade"  ──→  getUpgradePreview                      │
+│                               │ 1. stripe.subscriptions.retrieve()  │
+│                               │ 2. stripe.invoices.createPreview()  │
+│                               │ 3. Calculate pro-rata credits       │
+│                               │ 4. Return preview data              │
+│  Show confirmation dialog ←──┘                                      │
+│                                                                      │
+│  STATUS: No changes anywhere. Safe to abandon.                       │
+└──────────────────────────────────────────────────────────────────────┘
+         │
+         │ User clicks "Confirm Upgrade"
+         ↓
+┌──────────────────────────────────────────────────────────────────────┐
+│  PHASE 2: EXECUTE (Stripe API call + optimistic sync)                │
+│                                                                      │
+│  Client                          Convex Action                       │
+│  ──────                          ────────────                        │
+│  handleConfirmUpgrade()  ──→  changePlan                             │
+│                               │ 1. Release pending schedule          │
+│                               │ 2. stripe.subscriptions.update({     │
+│                               │      proration_behavior:             │
+│                               │        "always_invoice",             │
+│                               │      payment_behavior:               │
+│                               │        "error_if_incomplete"         │
+│                               │    })                                │
+│                               │                                      │
+│                               │ STRIPE CHARGE POINT ← atomic in     │
+│                               │ Stripe: if charge fails, sub reverts │
+│                               │                                      │
+│                               │ 3. syncLocalSubscriptionFromStripe() │
+│                               │    (optimistic -- webhook will       │
+│                               │     also fire and converge)          │
+│                               │                                      │
+│                               │ 4. grantUpgradeProRataCredits()      │
+│                               │    (optimistic -- webhook is the     │
+│                               │     authoritative backup)            │
+│                               │                                      │
+│  Show success toast       ←──┘ Return { success, creditsGranted }    │
+│                                                                      │
+│  STATUS: Stripe is source of truth. Local DB is optimistic.          │
+└──────────────────────────────────────────────────────────────────────┘
+         │
+         │ Stripe fires webhooks (within seconds, possibly minutes)
+         ↓
+┌──────────────────────────────────────────────────────────────────────┐
+│  PHASE 3: CONVERGENCE (webhook-driven, authoritative)                │
+│                                                                      │
+│  Stripe Webhook                  Convex Handlers                     │
+│  ──────────────                  ───────────────                     │
+│  customer.subscription.updated   handleSubscriptionWebhook           │
+│    ──→ Re-fetch from Stripe API ──→ syncSubscription mutation        │
+│         (converges plan/status to match Stripe)                      │
+│                                                                      │
+│  invoice.paid (proration invoice)                                    │
+│    ──→ processInvoiceForGrantNonBlocking                             │
+│         ──→ NEW: detectUpgradeProrationInvoice()                     │
+│              If this invoice is for a plan upgrade proration:        │
+│              ──→ grantUpgradeProRataCredits (idempotent, deduped)    │
+│                                                                      │
+│  STATUS: Even if action's Step 4 failed, webhook catches it.         │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Credit Deduction (AI Usage)
+### Why This Architecture
+
+**Problem:** The action's credit grant (Step 4) can fail after Stripe charges the user.
+
+**Solution:** Make the webhook `invoice.paid` handler ALSO trigger upgrade credit grants. Since `grantUpgradeProRataCredits` is already idempotent (deduped by `grantType + fromPlan + toPlan + period`), calling it from both the action and the webhook is safe.
+
+**Result:** Credits are granted in the happy path immediately (action), and in the failure path eventually (webhook, within minutes). The user never permanently loses credits.
+
+## Component Responsibilities
+
+| Component | Responsibility | New vs Modified |
+|-----------|---------------|-----------------|
+| `Pricing.tsx` | Preview flow orchestration, confirmation dialog | **Modified** -- wire up preview fetch on upgrade click, open dialog |
+| `upgrade-confirmation-dialog.tsx` | Display proration preview, collect confirmation | **Modified** -- already exists, needs refinement |
+| `getUpgradePreview` action | Fetch proration preview from Stripe, calculate pro-rata credits | **Existing** -- already implemented, may need minor fixes |
+| `changePlan` action | Execute upgrade via Stripe API, optimistic local sync + credit grant | **Modified** -- add metadata to Stripe subscription for webhook detection |
+| `grantUpgradeProRataCredits` mutation | Idempotent pro-rata credit grant with dedup | **Existing** -- already implemented, already idempotent |
+| `invoice.paid` webhook handler | Detect proration invoices and trigger credit grants | **Modified** -- add upgrade proration invoice detection |
+| `processInvoiceForGrant` action | Inspect invoice to decide grant type | **Modified** -- add upgrade proration classification |
+
+## Data Flow: Preview
 
 ```
-User triggers AI operation (e.g., extraction, search enhancement)
-    |
-    v
-[ai/helpers.ts: withAuthAndCredits / withAuthAndCreditsBatch]
-    |-- Authenticates user
-    |-- Checks subscription tier (optional minPlanTier gate)
-    |-- Checks credit balance > 0
-    |-- Executes AI operation
-    |-- Calculates credits: token usage -> dollar cost -> * 1.3 markup -> credits (min 1)
-    |-- Calls credits.internal.deductCredits:
-    |       |-- Deducts from freeBalance first, then paidBalance
-    |       |-- Records creditTransaction(s) (type: "usage")
-    |       |-- Increments lifetimeUsed
+Client                    Action                         Stripe API
+  │                         │                               │
+  │ getUpgradePreview({     │                               │
+  │   targetPriceId         │                               │
+  │ })                      │                               │
+  │────────────────────────→│                               │
+  │                         │ subscriptions.retrieve()      │
+  │                         │──────────────────────────────→│
+  │                         │←──────────────────────────────│
+  │                         │                               │
+  │                         │ invoices.createPreview({      │
+  │                         │   subscription_details: {     │
+  │                         │     items: [new price],       │
+  │                         │     proration_behavior:       │
+  │                         │       "always_invoice",       │
+  │                         │     proration_date: now       │
+  │                         │   }                           │
+  │                         │ })                            │
+  │                         │──────────────────────────────→│
+  │                         │←──────────────────────────────│
+  │                         │                               │
+  │ {                       │                               │
+  │   prorationAmountCents, │                               │
+  │   immediateChargeCents, │                               │
+  │   proRataCredits,       │                               │
+  │   remainingDays,        │                               │
+  │   currentPlan,          │                               │
+  │   targetPlan            │                               │
+  │ }                       │                               │
+  │←────────────────────────│                               │
 ```
 
-### 5. Refund Flow
+## Data Flow: Execute Upgrade
 
 ```
-Stripe fires: charge.refunded
-    |
-    v
-[http.ts handler]
-    |-- reversePurchasedCreditsFromRefund
-    |-- Finds original purchase transaction by stripePaymentIntentId
-    |-- Calculates proportional credit reversal
-    |-- Subtracts from credits.paidBalance
-    |-- Records creditTransaction (type: "refund", amount negative)
-```
-
-### 6. Reconciliation (Cron)
-
-```
-Every hour:
-    |
-    v
-[credits/actions.ts: reconcileRecentPaidInvoicesFromStripe]
-    |-- Lists eligible subscriptions from local DB
-    |-- For each customer, fetches invoices from Stripe API (7-day lookback)
-    |-- For each paid invoice, runs processInvoiceForGrantLogic
-    |-- Catches missed webhooks by re-processing paid invoices
-    |-- Reports: customersScanned, invoicesChecked, grantsTriggered, alreadyGranted
-```
-
-### State Management
-
-```
-                          ┌──────────────┐
-                          │  Stripe      │
-                          │  (source of  │
-                          │  truth for   │
-                          │  billing)    │
-                          └──────┬───────┘
-                                 │ webhooks + API calls
-                                 ↓
-┌──────────────────────────────────────────────────────────────┐
-│  Convex DB (denormalized mirror + app-specific state)       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │subscriptions │  │billingCust-  │  │stripeEvent-  │      │
-│  │(mirror of    │  │omers         │  │Logs          │      │
-│  │Stripe sub    │  │(user↔cust    │  │(audit +      │      │
-│  │status)       │  │mapping)      │  │idempotency)  │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│  ┌──────────────┐  ┌──────────────┐                         │
-│  │credits       │  │creditTrans-  │  <-- app-owned state    │
-│  │(balances)    │  │actions       │      (not in Stripe)    │
-│  │              │  │(audit log)   │                         │
-│  └──────────────┘  └──────────────┘                         │
-└──────────────────────────────┬───────────────────────────────┘
-                               │ Convex real-time subscriptions
-                               ↓
-┌──────────────────────────────────────────────────────────────┐
-│  Next.js UI (reactive via Convex hooks)                     │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ app/settings/billing/page.tsx                         │   │
-│  │ - Subscription status, plan details, pending changes  │   │
-│  │ - Credit balance, transaction history                 │   │
-│  │ - Upgrade/downgrade actions                           │   │
-│  │ - Portal link, credit purchase                        │   │
-│  └──────────────────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────┘
+Client              Action                  Stripe API            Webhook Path
+  │                   │                        │                      │
+  │ changePlan({      │                        │                      │
+  │  targetPriceId    │                        │                      │
+  │ })                │                        │                      │
+  │──────────────────→│                        │                      │
+  │                   │                        │                      │
+  │                   │ subscriptions.update({ │                      │
+  │                   │   items: [new price],  │                      │
+  │                   │   proration_behavior:  │                      │
+  │                   │     "always_invoice",  │                      │
+  │                   │   payment_behavior:    │                      │
+  │                   │     "error_if_incomplete",                    │
+  │                   │   metadata: {          │                      │
+  │                   │     upgradeFromPlan,   │                      │
+  │                   │     upgradeToPlan,     │                      │
+  │                   │     upgradeTimestamp   │                      │
+  │                   │   }                    │                      │
+  │                   │ })                     │                      │
+  │                   │───────────────────────→│                      │
+  │                   │                        │                      │
+  │                   │ (if charge fails)      │                      │
+  │                   │←── 402 error ──────────│                      │
+  │←─ BILLING_CHARGE_ │                        │                      │
+  │   FAILED error    │                        │                      │
+  │                   │                        │                      │
+  │                   │ (if charge succeeds)   │                      │
+  │                   │←── updated sub ────────│                      │
+  │                   │                        │                      │
+  │                   │ syncSubscription()     │                      │
+  │                   │ (mutation - plan sync) │                      │
+  │                   │                        │                      │
+  │                   │ grantUpgradeProRata()  │                      │
+  │                   │ (mutation - credits)   │                      │
+  │                   │                        │                      │
+  │←─ { success: true,│                        │                      │
+  │     creditsGranted│                        │                      │
+  │   }               │                        │                      │
+  │                   │                        │                      │
+  │                   │                        │ Fires webhooks:      │
+  │                   │                        │──────────────────────→│
+  │                   │                        │ subscription.updated │
+  │                   │                        │ invoice.paid         │
+  │                   │                        │                      │
+  │                   │                        │  Webhook handlers:   │
+  │                   │                        │  - syncSubscription  │
+  │                   │                        │    (converges, noop  │
+  │                   │                        │     if already synced│
+  │                   │                        │  - grantUpgradeProRata
+  │                   │                        │    (idempotent, noop │
+  │                   │                        │     if already       │
+  │                   │                        │     granted)         │
 ```
 
 ## Architectural Patterns
 
-### Pattern 1: Audited Webhook Handler
+### Pattern 1: Optimistic Action + Authoritative Webhook (Dual-Path Convergence)
 
-**What:** Every webhook event is wrapped in `runAuditedStripeHandler` which records success/failure to `stripeEventLogs`, plus `onEvent` records initial receipt. This creates a full event lifecycle: received -> processed/retrying/failed/ignored.
+**What:** The action performs an optimistic write (credit grant) for fast user feedback, while the webhook provides an authoritative backup that converges to the correct state regardless of action failures.
 
-**When to use:** Every Stripe event handler in `http.ts`.
+**When to use:** Whenever a Convex action calls an external API (Stripe) and needs to update local state based on the result, but the action's local writes can fail independently.
 
-**Trade-offs:** Adds one extra mutation per event but provides complete observability and enables retry tracking. Critical for diagnosing missed grants.
+**Trade-offs:**
+- PRO: User sees credits immediately if action succeeds
+- PRO: Credits are never permanently lost even if action fails
+- PRO: No new infrastructure needed (existing webhook handlers + idempotent mutations)
+- CON: Brief window (seconds to minutes) where credits might not appear if action fails before webhook arrives
+- CON: Must ensure idempotency in the grant mutation (already done)
+
+**Implementation in this codebase:**
 
 ```typescript
-async function runAuditedStripeHandler(ctx, event, handler) {
-  try {
-    await handler();
-    await ctx.runMutation(markStripeEventProcessed, { ... });
-  } catch (error) {
-    await recordStripeEventFailure(ctx, event, error);
-    throw error;
-  }
+// In changePlan action (optimistic path):
+try {
+  const grantResult = await ctx.runMutation(
+    internalApi.credits.internal.grantUpgradeProRataCredits,
+    { userId, fromPlan, toPlan, currentPeriodStartMs, currentPeriodEndMs, stripeSubscriptionId }
+  );
+  creditsGranted = grantResult.grantedCredits;
+} catch (err) {
+  // Non-fatal: webhook will catch this
+  console.error("[changePlan] Pro-rata credit grant failed (non-fatal)", { ... });
 }
+
+// In invoice.paid webhook handler (authoritative path):
+// Detect that this invoice is a proration invoice for an upgrade
+// and trigger the same idempotent grant mutation
 ```
 
-### Pattern 2: Non-Blocking Invoice Processing with Scheduled Retry
+### Pattern 2: Stripe Metadata as Cross-System State Transfer
 
-**What:** `invoice.paid` handler delegates to `processInvoiceForGrantNonBlocking`, which attempts the grant action and on failure schedules a retry via `ctx.scheduler.runAfter` with exponential backoff (5s to 5min, 6 attempts).
+**What:** Write upgrade context (fromPlan, toPlan, timestamp) into Stripe subscription metadata during the `subscriptions.update()` call, so that webhook handlers can read it back without needing to re-derive the upgrade direction.
 
-**When to use:** Any webhook handler where the downstream processing depends on data that may not have synced yet (e.g., subscription record not created when invoice.paid arrives before customer.subscription.created).
+**When to use:** When the webhook handler needs context about the user's intent that is not available in the event payload alone.
 
-**Trade-offs:** Adds complexity but handles the common Stripe race condition where events arrive out of order.
+**Trade-offs:**
+- PRO: Webhook handler knows the exact fromPlan/toPlan without querying local DB history
+- PRO: Metadata survives action failures (it is persisted in Stripe)
+- CON: Metadata must be cleared after processing to avoid stale state
+- CON: Metadata is limited to string key-value pairs
 
-### Pattern 3: Invoice Grant Policy Classification
+**Implementation:**
 
-**What:** `classifyMonthlyCreditInvoice` separates billing reasons into grant-eligible (subscription_create, subscription_cycle), non-recurring (subscription_update, manual), and config drift categories before any database writes.
+```typescript
+// In changePlan action:
+const updated = await stripe.subscriptions.update(stripeSubscription.id, {
+  items: [{ id: item.id, price: args.targetPriceId }],
+  proration_behavior: "always_invoice",
+  payment_behavior: "error_if_incomplete",
+  metadata: {
+    ...clearPendingPlanMetadata(stripeSubscription.metadata),
+    upgradeFromPlan: currentPlan,
+    upgradeToPlan: targetPlan,
+    upgradeTimestamp: String(Date.now()),
+  },
+});
 
-**When to use:** Before granting monthly credits from any invoice event or reconciliation path.
+// In invoice.paid webhook handler:
+// Read metadata.upgradeFromPlan/upgradeToPlan from the subscription
+// to determine if this is a proration invoice that needs credit grants
+```
 
-**Trade-offs:** Prevents accidental credit grants on proration invoices or one-time charges. Config drift detection surfaces API version mismatches.
+### Pattern 3: Invoice Classification for Grant Routing
 
-### Pattern 4: Canonical Subscription Selection
+**What:** When `invoice.paid` fires, classify the invoice to determine what kind of credit grant (if any) it triggers. The existing `classifyMonthlyCreditInvoice` handles recurring subscription invoices. A new classifier handles proration invoices from upgrades.
 
-**What:** `selectCanonicalSubscription` picks the "best" subscription from a user's history: active paid with Stripe link > active paid > active free > any free > any with Stripe link > first. Prevents confusion when user has multiple subscription records.
+**When to use:** Always, in the invoice.paid handler, to route different invoice types to different grant logic.
 
-**When to use:** Every subscription lookup by userId.
+**Trade-offs:**
+- PRO: Single entry point for all credit grants (invoice.paid webhook)
+- PRO: Each grant type has its own idempotency mechanism
+- CON: Must correctly classify proration invoices vs. recurring invoices vs. one-time charges
 
-**Trade-offs:** Deterministic behavior when data is messy, but could hide real issues with duplicate subscriptions.
+**Classification logic:**
 
-### Pattern 5: Dual Credit Pool (Free + Paid)
-
-**What:** Credits are split into `freeBalance` (from monthly grants, capped per tier) and `paidBalance` (from purchases, uncapped). Deduction consumes free first, then paid. Refunds only affect paid pool.
-
-**When to use:** All credit operations.
-
-**Trade-offs:** Clean separation of subscription value vs purchased value. Free credits can safely expire/cap without affecting purchased credits.
-
-### Pattern 6: Subscription Schedule for Downgrades
-
-**What:** Downgrades use Stripe `SubscriptionSchedule` with two phases: current plan until period end, target plan starting at period end. Upgrades bypass scheduling and apply immediately with proration.
-
-**When to use:** `changePlan` action.
-
-**Trade-offs:** Industry-standard behavior (users keep what they paid for). More complex than simple subscription update, but correct billing semantics.
+```
+Invoice arrives at invoice.paid handler
+  │
+  ├─ billing_reason === "subscription_cycle"
+  │    → Monthly credit grant (existing: grantMonthlyCredits)
+  │
+  ├─ billing_reason === "subscription_update"
+  │    AND subscription.metadata.upgradeFromPlan exists
+  │    AND subscription.metadata.upgradeToPlan exists
+  │    → Upgrade pro-rata credit grant (grantUpgradeProRataCredits)
+  │
+  ├─ billing_reason === "subscription_create"
+  │    → Initial subscription credit grant (existing path via reconciliation)
+  │
+  └─ Other
+       → No credit grant action needed
+```
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Direct Stripe State Mutation Without Local Sync
+### Anti-Pattern 1: Credit Grants Only in the Action
 
-**What people do:** Call `stripe.subscriptions.update` and assume the webhook will handle the local sync.
-**Why it's wrong:** Race conditions between the action response and the webhook arrival. UI may show stale state.
-**Do this instead:** The codebase correctly calls `syncLocalSubscriptionFromStripe` immediately after every `stripe.subscriptions.update` in `changePlan`. Maintain this pattern.
+**What people do:** Call `grantUpgradeProRataCredits` only from the `changePlan` action, with no webhook backup path.
 
-### Anti-Pattern 2: Trusting Client-Reported Plan Changes
+**Why it is wrong:** The action is NOT transactional across multiple `ctx.runMutation` calls. If the Stripe charge succeeds (Step 1) and the local sync succeeds (Step 2) but the credit grant fails (Step 3), the user loses credits permanently. The current `console.error` log is the only evidence. There is no automated recovery, no retry, and no alert.
 
-**What people do:** Let the frontend determine which plan the user should be on.
-**Why it's wrong:** Users could manipulate client code to grant themselves higher plans.
-**Do this instead:** All plan resolution goes through `getPlanFromPriceId(priceId)` which maps Stripe price IDs to plans server-side. Price IDs are validated against `ALLOWED_STRIPE_PRICE_IDS`.
+**Do this instead:** Keep the optimistic grant in the action for fast UX, but ALSO trigger the same idempotent grant from the `invoice.paid` webhook. The webhook serves as a durable, automatically-retried convergence path.
 
-### Anti-Pattern 3: Single-Point Credit Granting
+### Anti-Pattern 2: Rolling Back Stripe on Credit Grant Failure
 
-**What people do:** Only grant credits from `invoice.paid` webhook.
-**Why it's wrong:** Webhooks can be missed, delayed, or delivered out of order.
-**Do this instead:** The codebase uses a belt-and-suspenders approach: webhook-driven grants + hourly cron reconciliation + checkout.session.completed triggers immediate reconcile. This is the correct pattern.
+**What people do:** If `grantUpgradeProRataCredits` fails, attempt to reverse the Stripe subscription update (downgrade back to old plan).
 
-### Anti-Pattern 4: Granting Credits on Proration Invoices
+**Why it is wrong:** Rolling back a successful Stripe charge introduces MORE failure modes (refund fails, double-charge, subscription in limbo). The user already authorized the upgrade and payment succeeded. Reversing it is confusing and potentially creates billing disputes.
 
-**What people do:** Grant monthly credits on every paid invoice.
-**Why it's wrong:** Proration invoices (from upgrades) have `billing_reason: "subscription_update"` -- granting credits here would double-grant.
-**Do this instead:** The `invoiceGrantPolicy` correctly filters to only `subscription_create` and `subscription_cycle` billing reasons.
+**Do this instead:** Let the upgrade stand. Use webhook-driven retry to eventually grant the credits. Alert on persistent failures.
 
-## Component Boundaries and Dependencies
+### Anti-Pattern 3: Using `pending_if_incomplete` for Upgrades
 
-### Dependency Graph (Build/Audit Order)
+**What people do:** Use `payment_behavior: "pending_if_incomplete"` to avoid hard failures on charge attempts.
+
+**Why it is wrong:** With `pending_if_incomplete`, a failed charge leaves the subscription in a "pending update" state -- the price change is not applied, but the subscription object contains a `pending_update` hash. This is confusing to handle: you need to poll or wait for the customer to complete payment, and the local DB may show stale data for an indeterminate period.
+
+**Do this instead:** Use `payment_behavior: "error_if_incomplete"`. This ensures the Stripe charge is atomic: either the charge succeeds and the subscription updates, or the charge fails and nothing changes. The action can surface a clear "card declined" error to the user.
+
+## Integration Points: New vs Modified
+
+### New Components
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| Upgrade proration invoice classifier | Detect `billing_reason === "subscription_update"` + upgrade metadata in invoice.paid handler | `convex/credits/lib/invoiceGrantPolicy.ts` (extend existing) |
+
+### Modified Components
+
+| Component | Change | Risk |
+|-----------|--------|------|
+| `convex/subscriptions/actions.ts` :: `changePlan` | Add upgrade metadata to Stripe subscription during `subscriptions.update()`. Clear metadata after successful processing. | LOW -- metadata is additive, does not change charge behavior |
+| `convex/http.ts` :: `invoice.paid` handler | After processing monthly grants, also check for upgrade proration invoices and trigger `grantUpgradeProRataCredits` | LOW -- new code path, existing paths unchanged. Idempotent mutation prevents double-grants. |
+| `convex/credits/internal.ts` :: `grantUpgradeProRataCredits` | No changes needed. Already idempotent by `grantType + fromPlan + toPlan + period`. | NONE |
+| `convex/credits/actions.ts` :: `processInvoiceForGrant` | Add classification branch for upgrade proration invoices | MEDIUM -- must correctly identify proration invoices to avoid granting credits on non-upgrade invoices |
+| `components/Pricing.tsx` | Already wired up for preview + dialog. May need error state refinements. | LOW |
+| `components/billing/upgrade-confirmation-dialog.tsx` | Already implemented. May need minor UX polish. | LOW |
+
+### Unchanged Components
+
+| Component | Why Unchanged |
+|-----------|--------------|
+| `getUpgradePreview` action | Already correctly uses `invoices.createPreview`. Works as-is. |
+| `syncSubscription` mutation | Already converges local state from Stripe. Webhook path already calls this. |
+| `handleSubscriptionWebhook` internal action | Already re-fetches from Stripe API and syncs. No credit logic needed here. |
+| Schema (creditTransactions) | Already has all needed fields: `metadata.grantType`, `userId` index for dedup queries. |
+
+## Build Order (Dependency-Aware)
+
+### Step 1: Add Stripe Metadata to Upgrade Path
+
+**What:** In `changePlan`, write `upgradeFromPlan`, `upgradeToPlan`, `upgradeTimestamp` into Stripe subscription metadata during `subscriptions.update()`.
+
+**Why first:** This is the data contract that the webhook handler will depend on. Must be deployed before the webhook handler can detect upgrades.
+
+**Files:** `convex/subscriptions/actions.ts`
+
+**Risk:** LOW -- purely additive metadata. Does not affect charge behavior or existing webhook handlers.
+
+### Step 2: Extend Invoice Classification
+
+**What:** Add a classification function that detects proration invoices from upgrades by checking `billing_reason === "subscription_update"` AND the presence of upgrade metadata on the associated subscription.
+
+**Files:** `convex/credits/lib/invoiceGrantPolicy.ts` (extend), `convex/credits/actions.ts` (extend `processInvoiceForGrant`)
+
+**Why second:** Depends on Step 1 (metadata must be present in Stripe for classification to work).
+
+**Risk:** MEDIUM -- must not misclassify existing invoice types. Requires careful testing.
+
+### Step 3: Wire Webhook Handler
+
+**What:** In the `invoice.paid` webhook handler, after existing monthly-grant processing, call the extended `processInvoiceForGrant` which now handles upgrade proration invoices.
+
+**Files:** `convex/http.ts` (minor), `convex/credits/actions.ts` (already extended in Step 2)
+
+**Why third:** Depends on Steps 1 and 2.
+
+**Risk:** LOW -- additive code path. Existing invoice.paid handling is unchanged. New path is gated by invoice classification.
+
+### Step 4: Verify Idempotency End-to-End
+
+**What:** Test that when both the action's optimistic grant AND the webhook's authoritative grant fire, the user receives credits exactly once.
+
+**Test scenario:**
+1. Trigger upgrade via action (credits granted optimistically)
+2. Webhook fires invoice.paid with the proration invoice
+3. Webhook handler classifies it as upgrade proration
+4. Calls `grantUpgradeProRataCredits` -- should return `already_granted`
+5. Verify: credit balance unchanged after webhook (no double-grant)
+
+**Files:** Test files only
+
+### Step 5: UX Polish (if needed)
+
+**What:** Refine the confirmation dialog, error messages, loading states, and success toasts.
+
+**Files:** `components/Pricing.tsx`, `components/billing/upgrade-confirmation-dialog.tsx`
+
+**Why last:** Functional correctness (Steps 1-4) before cosmetic refinements.
+
+## Key Decision: Should Credit Grants Happen in the Action or Be Triggered by Webhooks?
+
+**Answer: BOTH.** Use the dual-path convergence pattern:
+
+1. **Action path (optimistic):** Grant credits immediately in the `changePlan` action after the Stripe charge succeeds. This gives the user instant feedback. If it fails, log the error and continue -- the webhook will catch it.
+
+2. **Webhook path (authoritative):** When `invoice.paid` fires for a proration invoice, classify it as an upgrade and trigger the same idempotent grant mutation. This catches cases where the action's grant failed.
+
+3. **Idempotency layer:** The `grantUpgradeProRataCredits` mutation deduplicates by `grantType + fromPlan + toPlan + currentPeriodStartMs`. Whether called once (action only), once (webhook only), or twice (both), the result is the same: exactly one credit grant.
+
+## Key Decision: How to Handle the Atomicity Problem
+
+**Answer: Accept partial success and converge.**
+
+Convex actions are explicitly non-transactional across multiple mutation calls. The correct response is NOT to try to make them transactional (impossible) or to roll back on failure (dangerous). Instead:
+
+1. **Stripe `error_if_incomplete`** ensures the charge itself is atomic -- either the subscription updates and charge succeeds, or nothing happens.
+2. **Optimistic local sync** in the action provides fast UX. If it fails, the webhook converges within minutes.
+3. **Optimistic credit grant** in the action provides instant credits. If it fails, the webhook-driven grant converges.
+4. **No operation leaves the user in a permanently broken state.** The worst case is a brief delay (webhook latency) before credits appear.
+
+## Key Decision: Preview -> Confirm -> Execute Architecture in Convex
+
+**Answer: Three separate action calls from the client.**
 
 ```
-lib/billing/entitlements.ts            (0 deps - pure logic)
-convex/lib/constants.ts                (0 deps - config)
-convex/lib/creditTopups.ts             (0 deps - pure math)
-convex/lib/freeCredits.ts              (depends on: constants)
-convex/lib/featureFlags.ts             (0 deps - env checks)
-convex/lib/userCreation.ts             (depends on: constants, freeCredits)
-    |
-    v
-convex/subscriptions/lib/              (pure logic libraries)
-  stripeStatus.ts                      (0 deps)
-  cancellation.ts                      (0 deps)
-  eventLogPolicy.ts                    (0 deps)
-  selectCanonicalSubscription.ts       (0 deps)
-  schedulePlanning.ts                  (0 deps)
-    |
-    v
-convex/credits/lib/                    (pure logic libraries)
-  invoiceGrantPolicy.ts                (0 deps)
-  retryPolicy.ts                       (0 deps)
-    |
-    v
-convex/subscriptions/internal.ts       (depends on: constants, lib/*)
-convex/credits/internal.ts             (depends on: constants, lib/*, subscriptions/lib)
-    |
-    v
-convex/subscriptions/actions.ts        (depends on: internal, Stripe SDK, lib/*)
-convex/credits/actions.ts              (depends on: internal, Stripe SDK, lib/*)
-    |
-    v
-convex/http.ts                         (depends on: actions, internal, @convex-dev/stripe)
-    |
-    v
-convex/crons.ts                        (depends on: credits/actions)
-convex/ai/helpers.ts                   (depends on: credits/internal, subscriptions/internal)
+1. getUpgradePreview (action)   → Read-only. No side effects. Safe to call multiple times.
+2. User reviews dialog          → Client-side only. No backend calls.
+3. changePlan (action)          → Mutating. Calls Stripe API + local mutations.
 ```
 
-### Suggested Audit/Fix Order
-
-The dependency graph reveals the correct order for auditing and fixing:
-
-1. **Pure policy libraries first** (zero-risk, no side effects)
-   - `lib/billing/entitlements.ts` -- entitlement rules
-   - `convex/lib/constants.ts` -- plan config, price ID mapping
-   - `convex/credits/lib/invoiceGrantPolicy.ts` -- grant eligibility
-   - `convex/credits/lib/retryPolicy.ts` -- retry budget
-   - `convex/subscriptions/lib/schedulePlanning.ts` -- downgrade schedule
-   - `convex/subscriptions/lib/cancellation.ts` -- cancel detection
-   - `convex/lib/freeCredits.ts` -- free credit cap logic
-
-2. **Internal mutations/queries** (database operations, testable in isolation)
-   - `convex/subscriptions/internal.ts` -- syncSubscription, handleSubscriptionCanceled, handlePaymentFailed, event log mutations
-   - `convex/credits/internal.ts` -- grantMonthlyCredits, grantPurchasedCreditsFromPaymentIntent, reversePurchasedCreditsFromRefund, deductCredits
-
-3. **Actions (Stripe API callers)** (depends on 1+2 being correct)
-   - `convex/subscriptions/actions.ts` -- createCheckoutSession, changePlan, createPortalSession, getSubscriptionDetails
-   - `convex/credits/actions.ts` -- createTopupCheckoutSession, processInvoiceForGrant, reconcileRecentPaidInvoicesFromStripe
-
-4. **Webhook router** (depends on everything above)
-   - `convex/http.ts` -- all 10 event handlers, audit wrapper, non-blocking grant processing
-
-5. **Background jobs and consumers** (depends on 1-4)
-   - `convex/crons.ts` -- reconciliation schedule
-   - `convex/ai/helpers.ts` -- credit deduction at AI usage time
-   - `convex/maintenance/internal.ts` -- subscription status checker
-
-6. **Frontend** (depends on all backend being correct)
-   - `app/settings/billing/page.tsx` -- subscription display, plan change UI, credit balance
-
-### Key Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| http.ts -> subscriptions/internal | `ctx.runMutation(internalApi.subscriptions.internal.*)` | Webhook dispatches are synchronous within the handler |
-| http.ts -> credits/actions | `ctx.runAction(internalApi.credits.actions.*)` | Invoice grant is an action (calls Stripe API to hydrate invoice) |
-| credits/actions -> credits/internal | `ctx.runMutation(internalApi.credits.internal.*)` | Action retrieves from Stripe, mutation writes to DB |
-| subscriptions/actions -> subscriptions/internal | `ctx.runMutation(internalApi.subscriptions.internal.*)` | Action calls Stripe API, syncs via mutation |
-| ai/helpers -> credits/internal | `ctx.runMutation(internal.credits.internal.deductCredits)` | Usage deduction at AI execution time |
-| crons -> credits/actions | Direct reference to internal action | Hourly reconciliation |
-| Credits grant retry -> scheduler | `ctx.scheduler.runAfter(delayMs, ...)` | Exponential backoff via Convex scheduler |
+This is the correct pattern for Convex because:
+- **Actions cannot hold state between calls.** There is no "session" or "transaction" that spans preview and execute.
+- **The preview data may be slightly stale** by the time the user confirms (proration amounts can shift by cents). This is acceptable and matches Stripe's own documentation: "prorated amounts might change between the time they are previewed and the time the update is made."
+- **The client holds the preview state** in React state (`upgradePreview`), which is appropriate for ephemeral UI data.
 
 ## Scaling Considerations
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0-1k users | Current architecture is appropriate. Hourly reconciliation scan is fast. |
-| 1k-100k users | Reconciliation cron becomes bottleneck (iterates all eligible subscriptions). Add pagination, consider per-customer scheduled reconciliation instead of global scan. |
-| 100k+ users | Replace global reconciliation with event-driven reconciliation only. Trust webhooks more, use per-customer scheduled checks only for flagged accounts. stripeEventLogs table will grow large -- add TTL/archival. |
-
-### First Bottleneck
-
-The hourly `reconcileRecentPaidInvoicesFromStripe` cron scans up to 200 customers and fetches invoices for each from Stripe API. At scale, this will hit Stripe rate limits and Convex action timeout (10 min).
-
-### Second Bottleneck
-
-The `creditTransactions` table is append-only audit log. Over time it grows unbounded. The `by_stripe_invoice` and `by_stripe_payment_intent` indexes keep lookups fast, but listing transactions for a user (`by_credits` index) will slow down.
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Stripe API | Direct SDK calls from Convex actions (`"use node"`) | API version: `2026-01-28.clover`. Two Stripe client instances: `@convex-dev/stripe` component + direct `new Stripe()` |
-| Stripe Webhooks | `@convex-dev/stripe` `registerRoutes` handles signature verification | Secret from `STRIPE_WEBHOOK_SECRET` env var |
-| Stripe Checkout | Redirect-based flow | Success/cancel URLs point to `/settings/billing` |
-| Stripe Customer Portal | Redirect-based flow | For self-service cancellation, payment method updates |
-
-### Key Configuration
-
-| Config | Source | Purpose |
-|--------|--------|---------|
-| `STRIPE_GO_PRICE_ID` / `STRIPE_PRO_PRICE_ID` / `STRIPE_ENTERPRISE_PRICE_ID` | Env vars | Map Stripe prices to internal plans |
-| `STRIPE_CREDITS_PRODUCT_ID` | Env var | Product for one-time credit purchases |
-| `CREDITS_PER_USD` | Env var (default: 10,000) | Exchange rate for credit purchases |
-| `NEXT_PUBLIC_SUBSCRIPTIONS_ENABLED` | Env var | Feature flag for subscription system |
-| `NEXT_PUBLIC_CREDITS_ENABLED` | Env var | Feature flag for credit system |
-| `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` | Env var | Feature flag for credit purchases |
+| Scale | Concern | Approach |
+|-------|---------|---------|
+| Current (low volume) | Webhook latency for credit convergence | Acceptable -- seconds to minutes |
+| 1K+ upgrades/day | Webhook ordering and dedup load | Already handled -- idempotent mutations + `stripeEventLogs` table |
+| 10K+ upgrades/day | Invoice classification overhead | Monitor -- `processInvoiceForGrant` makes one Stripe API call per invoice. Add caching if needed. |
 
 ## Sources
 
-- Direct codebase analysis of all files listed above (HIGH confidence -- primary source)
-- Stripe API docs for SubscriptionSchedule, proration, and webhook event types
-- `@convex-dev/stripe` component used for webhook registration and customer management
+- [Convex Actions Documentation](https://docs.convex.dev/functions/actions) -- Actions are NOT transactional, cannot be auto-retried
+- [Convex OCC and Atomicity](https://docs.convex.dev/database/advanced/occ) -- Mutations ARE transactional with OCC
+- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- Preview + execute flow, `always_invoice` behavior
+- [Stripe Subscription Update API](https://docs.stripe.com/api/subscriptions/update) -- `error_if_incomplete` behavior
+- [Stripe Pending Updates](https://docs.stripe.com/billing/subscriptions/pending-updates) -- Why `pending_if_incomplete` is NOT recommended here
+- [Convex + Stripe Integration Guide](https://stack.convex.dev/stripe-with-convex) -- Mutation-first pattern for durable workflows
+- [Convex Action Retry Patterns](https://stack.convex.dev/retry-actions) -- Scheduler-based retry for idempotent actions
+- Direct codebase analysis of `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `convex/http.ts`
 
 ---
-*Architecture research for: Stripe billing integration audit in Convex + Next.js*
+*Architecture research for: Upgrade flow with proration preview in Convex + Stripe*
 *Researched: 2026-02-27*
