@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Upgrade Flow
 status: in_progress
-last_updated: "2026-02-27T13:59:08Z"
+last_updated: "2026-02-27T14:04:02Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -22,25 +22,26 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 
 ## Current Position
 
-Phase: 5 of 6 (Upgrade Resilience)
-Plan: 1 of 2 complete
-Status: Plan 05-01 complete, 05-02 remaining
-Last activity: 2026-02-27 -- Completed 05-01 (upgrade metadata + firewall test)
+Phase: 5 of 6 (Upgrade Resilience) -- COMPLETE
+Plan: 2 of 2 complete
+Status: Phase 05 complete, all plans executed
+Last activity: 2026-02-27 -- Completed 05-02 (webhook backup path for upgrade credits)
 
-Progress: [███████░░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (v1.1)
+- Total plans completed: 4 (v1.1)
 - Average duration: 2min
-- Total execution time: 5min
+- Total execution time: 7min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 04 | 01 | 2min | 2 | 1 |
 | 04 | 02 | 2min | 2 | 8 |
 | 05 | 01 | 1min | 2 | 2 |
+| 05 | 02 | 2min | 2 | 2 |
 
 *Updated after each plan completion*
 
@@ -56,6 +57,8 @@ See PROJECT.md Key Decisions table for full log.
 - [04-02] Save targetPlan to local variable before clearing upgradePreview state to avoid null reference
 - [05-01] Upgrade metadata written only in upgraded_immediately branch, not in pending_change_cleared or downgrade_scheduled
 - [05-01] No metadata clearing needed -- dedup by grantType+fromPlan+toPlan+period prevents re-granting
+- [05-02] Period boundaries read from Stripe API subscription object, not local DB -- avoids stale data race when webhook fires before syncSubscription
+- [05-02] Non-upgrade subscription_update invoices fall through to existing ignore behavior -- no change to normal flow
 
 ### Pending Todos
 
@@ -68,5 +71,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 05-01-PLAN.md
+Stopped at: Completed 05-02-PLAN.md (Phase 05 complete)
 Resume file: None
