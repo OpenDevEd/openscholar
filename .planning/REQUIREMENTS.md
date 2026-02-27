@@ -29,8 +29,8 @@ Requirements for the audit milestone. Each maps to roadmap phases.
 
 - [ ] **INFRA-01**: `checkSubscriptionStatus` cron takes corrective action on stale/expired subscriptions (not just log warnings)
 - [ ] **INFRA-02**: Failed Stripe events (`stripeEventLogs` with `failed` status) trigger monitoring/alerting if unresolved within N hours
-- [ ] **INFRA-03**: All webhook handlers are idempotent — reprocessing the same event produces identical outcomes
-- [ ] **INFRA-04**: TOCTOU credit deduction race condition is documented with mitigation strategy for scale
+- [x] **INFRA-03**: All webhook handlers are idempotent — reprocessing the same event produces identical outcomes
+- [x] **INFRA-04**: TOCTOU credit deduction race condition is documented with mitigation strategy for scale
 
 ## v2 Requirements
 
@@ -77,8 +77,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CRED-06 | Phase 2 | Complete |
 | INFRA-01 | Phase 3 | Pending |
 | INFRA-02 | Phase 3 | Pending |
-| INFRA-03 | Phase 3 | Pending |
-| INFRA-04 | Phase 3 | Pending |
+| INFRA-03 | Phase 3 | Complete |
+| INFRA-04 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 16 total
