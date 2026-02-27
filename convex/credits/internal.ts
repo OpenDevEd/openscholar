@@ -466,6 +466,17 @@ export const reconcileInvoiceCreditGrant = internalMutation({
 /**
  * Grant monthly credits for subscription.
  * Free credits are capped per subscription tier.
+ *
+ * DEDUP CONTRACT (CRED-01):
+ * Credit grants are deduplicated at the INVOICE ID level, not the event ID level.
+ * This is the canonical dedup gate -- both the invoice.paid webhook path and the
+ * reconciliation cron path converge on this mutation. The same invoice can arrive
+ * via different event IDs (webhook: evt_xxx, cron: reconcile.pull:in_xxx), so
+ * event-ID dedup would fail. Invoice-ID dedup catches both.
+ *
+ * Concurrency safety: Convex mutations are serializable (OCC). Two concurrent
+ * mutations attempting to write creditTransactions for the same stripeInvoiceId
+ * will conflict -- one succeeds, the other retries and finds the existing record.
  */
 export const grantMonthlyCredits = internalMutation({
   args: {

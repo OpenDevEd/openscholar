@@ -421,14 +421,24 @@ async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: any, args: any) {
   let retried = 0;
 
   for (const stripeCustomerId of customers) {
-    const invoices = await stripe.invoices.list({
+    const MAX_INVOICES_PER_CUSTOMER = 500;
+    const allInvoiceData: StripeInvoiceReconcileLike[] = [];
+    for await (const invoice of stripe.invoices.list({
       customer: stripeCustomerId,
       created: { gte: cutoffUnixSeconds },
       limit: 100,
-    });
+    })) {
+      allInvoiceData.push(invoice as unknown as StripeInvoiceReconcileLike);
+      if (allInvoiceData.length >= MAX_INVOICES_PER_CUSTOMER) {
+        console.warn(
+          `[reconcileRecentPaidInvoices] Safety cap reached for customer ${stripeCustomerId}: ${MAX_INVOICES_PER_CUSTOMER} invoices. Some invoices may be skipped.`
+        );
+        break;
+      }
+    }
 
     const candidates = selectReconcileInvoiceCandidates({
-      invoices: invoices.data,
+      invoices: allInvoiceData,
       cutoffUnixSeconds,
     });
 
