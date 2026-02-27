@@ -56,28 +56,63 @@ export const cleanupDeletedUsers = internalMutation({
 });
 
 /**
- * Check subscription statuses and handle past-due subscriptions
+ * Check subscription statuses and handle past-due subscriptions.
+ * Auto-downgrades subscriptions past the 7-day grace period to free plan.
  */
 export const checkSubscriptionStatus = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
+    const GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days per locked decision
 
-    // Find subscriptions that are past their period end
-    const subscriptions = await ctx.db
+    // Find past_due subscriptions
+    const pastDueSubs = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_status", (q) => q.eq("status", "past_due"))
+      .collect();
+
+    let downgradeCount = 0;
+
+    for (const sub of pastDueSubs) {
+      const pastDueSince = sub.pastDueSince ?? sub.updatedAt;
+      if (now - pastDueSince > GRACE_PERIOD_MS) {
+        // Grace period expired -- downgrade to free plan
+        // Per locked decision: automatically downgrade to free plan after grace period
+        await ctx.db.patch(sub._id, {
+          status: "canceled",
+          plan: "free",
+          canceledAt: now,
+          updatedAt: now,
+          creditsPerMonth: 0,
+          pastDueSince: undefined,
+          // stripeSubscriptionId preserved for audit trail (consistent with SUB-03 fix)
+        });
+        downgradeCount++;
+        console.warn(`[checkSubscriptionStatus] Grace period expired, downgraded subscription ${sub._id} to free`, {
+          userId: sub.userId,
+          pastDueSince,
+          gracePeriodDays: 7,
+        });
+      }
+    }
+
+    // Also check for active subscriptions past their period end (existing behavior, kept)
+    const activeSubscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
-    for (const sub of subscriptions) {
+    for (const sub of activeSubscriptions) {
       if (sub.currentPeriodEnd && sub.currentPeriodEnd < now) {
-        // Subscription period has ended without renewal
-        // This typically means Stripe webhook was missed
-        console.warn(`Subscription ${sub._id} past period end, needs attention`);
+        console.warn(`[checkSubscriptionStatus] Subscription ${sub._id} past period end, needs attention`);
       }
     }
 
-    console.log("Subscription status check completed");
+    if (downgradeCount > 0) {
+      console.log(`[checkSubscriptionStatus] Downgraded ${downgradeCount} past-due subscriptions after grace period`);
+    }
+
+    return null;
   },
 });

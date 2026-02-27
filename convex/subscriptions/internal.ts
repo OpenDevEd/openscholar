@@ -434,6 +434,7 @@ export const syncSubscription = internalMutation({
         cancelAtPeriodEnd: args.cancelAtPeriodEnd,
         seats: quantity,
         creditsPerMonth: totalCredits,
+        pastDueSince: undefined,
         createdAt: now,
         updatedAt: now,
       });
@@ -452,6 +453,9 @@ export const syncSubscription = internalMutation({
       seats: quantity,
       creditsPerMonth: totalCredits,
       updatedAt: now,
+      // Clear pastDueSince when subscription recovers from past_due
+      // (e.g., payment succeeds during grace period)
+      ...(args.status !== "past_due" ? { pastDueSince: undefined } : {}),
     });
 
     return null;
@@ -517,10 +521,19 @@ export const handlePaymentFailed = internalMutation({
 
     if (!subscription) return null;
 
-    await ctx.db.patch(subscription._id, {
+    const now = Date.now();
+    const patch: Record<string, any> = {
       status: "past_due" satisfies SubscriptionStatus,
-      updatedAt: Date.now(),
-    });
+      updatedAt: now,
+    };
+
+    // Set pastDueSince only on the FIRST past_due transition
+    // (not overwritten by subsequent payment failure events)
+    if (!subscription.pastDueSince) {
+      patch.pastDueSince = now;
+    }
+
+    await ctx.db.patch(subscription._id, patch);
 
     return null;
   },
