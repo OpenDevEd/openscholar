@@ -57,22 +57,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| UPGC-01 | — | Pending |
-| UPGC-02 | — | Pending |
-| UPGC-03 | — | Pending |
-| UPGC-04 | — | Pending |
-| UPGR-01 | — | Pending |
-| UPGR-02 | — | Pending |
-| UPGR-03 | — | Pending |
-| UXPL-01 | — | Pending |
-| UXPL-02 | — | Pending |
-| UXPL-03 | — | Pending |
+| UPGC-01 | Phase 4 | Pending |
+| UPGC-02 | Phase 4 | Pending |
+| UPGC-03 | Phase 4 | Pending |
+| UPGC-04 | Phase 4 | Pending |
+| UPGR-01 | Phase 5 | Pending |
+| UPGR-02 | Phase 5 | Pending |
+| UPGR-03 | Phase 5 | Pending |
+| UXPL-01 | Phase 6 | Pending |
+| UXPL-02 | Phase 6 | Pending |
+| UXPL-03 | Phase 6 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10
+- Mapped to phases: 10
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-27*
-*Last updated: 2026-02-27 after initial definition*
+*Last updated: 2026-02-27 after roadmap creation*
