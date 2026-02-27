@@ -28,11 +28,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. When a user cancels their subscription, the existing subscription record is updated in place (no orphan free-plan records created, Stripe subscription ID preserved on the canceled record)
   4. When a user has a scheduled downgrade and changes their payment method or metadata mid-period, the scheduled downgrade is not disrupted
   5. When a user re-upgrades after scheduling a downgrade, the orphaned subscription schedule is fully released and verified null on the subscription object
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Webhook re-fetch + cancellation fix (SUB-02, SUB-03, SUB-04)
+- [ ] 01-02-PLAN.md -- Upgrade proration fix + schedule leak prevention (SUB-01, SUB-05)
+- [ ] 01-03-PLAN.md -- Payment failure UX + grace period (SUB-06)
 
 ### Phase 2: Credit System Correctness
 **Goal**: Credit grants, top-up purchases, and refund reversals produce correct credit balances under all event combinations, and the free credit cap is communicated clearly to users
@@ -72,6 +73,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Subscription Lifecycle Correctness | 0/2 | Not started | - |
+| 1. Subscription Lifecycle Correctness | 0/3 | Not started | - |
 | 2. Credit System Correctness | 0/2 | Not started | - |
 | 3. Operational Hardening | 0/2 | Not started | - |
