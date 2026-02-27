@@ -65,10 +65,11 @@ Plans:
   1. User sees their payment method (card brand + last 4 digits) in the upgrade confirmation dialog
   2. User sees proration line item breakdown (credit for unused time + charge for new plan) in the confirmation dialog
   3. User cannot dismiss the confirmation dialog via Escape key or click-outside while an upgrade is processing
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
+- [ ] 06-01-PLAN.md -- Backend getUpgradePreview extension + dialog component (payment method, line items, dismiss guard)
+- [ ] 06-02-PLAN.md -- i18n keys for all 6 locales + human verification checkpoint
 
 ## Progress
 

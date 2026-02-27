@@ -22,9 +22,9 @@ Requirements for the Upgrade Flow milestone. Each maps to roadmap phases.
 
 ### UX Polish
 
-- [ ] **UXPL-01**: User sees payment method (card brand + last 4 digits) in upgrade confirmation dialog
-- [ ] **UXPL-02**: User sees proration line item breakdown (credit for unused time + charge for new plan) in confirmation dialog
-- [ ] **UXPL-03**: User cannot dismiss confirmation dialog via Escape key or click-outside while upgrade is processing
+- [x] **UXPL-01**: User sees payment method (card brand + last 4 digits) in upgrade confirmation dialog
+- [x] **UXPL-02**: User sees proration line item breakdown (credit for unused time + charge for new plan) in confirmation dialog
+- [x] **UXPL-03**: User cannot dismiss confirmation dialog via Escape key or click-outside while upgrade is processing
 
 ## Future Requirements
 
@@ -64,9 +64,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UPGR-01 | Phase 5 | Complete |
 | UPGR-02 | Phase 5 | Complete |
 | UPGR-03 | Phase 5 | Complete |
-| UXPL-01 | Phase 6 | Pending |
-| UXPL-02 | Phase 6 | Pending |
-| UXPL-03 | Phase 6 | Pending |
+| UXPL-01 | Phase 6 | Complete |
+| UXPL-02 | Phase 6 | Complete |
+| UXPL-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 10 total

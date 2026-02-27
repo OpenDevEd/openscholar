@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Upgrade Flow
-status: unknown
-last_updated: "2026-02-27T14:08:13.316Z"
+status: in_progress
+last_updated: "2026-02-27T14:26:40Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-27)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** Phase 5 -- Upgrade Resilience (webhook backup path for durable credit grant recovery)
+**Current focus:** Phase 6 -- UX Polish (upgrade dialog improvements)
 
 ## Current Position
 
-Phase: 5 of 6 (Upgrade Resilience) -- COMPLETE
-Plan: 2 of 2 complete
-Status: Phase 05 complete, all plans executed
-Last activity: 2026-02-27 -- Completed 05-02 (webhook backup path for upgrade credits)
+Phase: 6 of 6 (UX Polish) -- IN PROGRESS
+Plan: 1 of 2 complete
+Status: Executing Phase 06 plans
+Last activity: 2026-02-27 -- Completed 06-01 (upgrade dialog payment method, line items, dismiss guard)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (v1.1)
+- Total plans completed: 5 (v1.1)
 - Average duration: 2min
-- Total execution time: 7min
+- Total execution time: 11min
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -42,6 +42,7 @@ Progress: [██████████] 100%
 | 04 | 02 | 2min | 2 | 8 |
 | 05 | 01 | 1min | 2 | 2 |
 | 05 | 02 | 2min | 2 | 2 |
+| 06 | 01 | 4min | 2 | 9 |
 
 *Updated after each plan completion*
 
@@ -59,6 +60,8 @@ See PROJECT.md Key Decisions table for full log.
 - [05-01] No metadata clearing needed -- dedup by grantType+fromPlan+toPlan+period prevents re-granting
 - [05-02] Period boundaries read from Stripe API subscription object, not local DB -- avoids stale data race when webhook fires before syncSubscription
 - [05-02] Non-upgrade subscription_update invoices fall through to existing ignore behavior -- no change to normal flow
+- [06-01] Used HTML entities for card dots instead of Unicode bullet to avoid encoding issues
+- [06-01] Added totalCharge i18n key in this plan rather than deferring to Plan 02 to prevent runtime error
 
 ### Pending Todos
 
@@ -71,5 +74,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-27
-Stopped at: Completed 05-02-PLAN.md (Phase 05 complete)
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
