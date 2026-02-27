@@ -18,6 +18,11 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAppToast } from "@/lib/toast";
+import { toast as sonnerToast } from "sonner";
+import {
+  UpgradeConfirmationDialog,
+  type UpgradePreview,
+} from "@/components/billing/upgrade-confirmation-dialog";
 import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
@@ -95,8 +100,14 @@ export function Pricing() {
   const getSubscriptionDetails = useAction(
     api.subscriptions.actions.getSubscriptionDetails,
   );
+  const getUpgradePreview = useAction(
+    api.subscriptions.actions.getUpgradePreview,
+  );
 
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
+  const [upgradePreview, setUpgradePreview] = useState<(UpgradePreview & { targetPriceId: string }) | null>(null);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null);
 
@@ -239,11 +250,21 @@ export function Pricing() {
       );
 
       if (isEntitled && resolvedPlan && resolvedPlan !== "free") {
-        const result = await changePlan({ targetPriceId: priceId });
+        const targetTier = getPlanTier(planType);
+        const isUpgrade = resolvedTier !== null && targetTier > resolvedTier;
 
-        const refreshed = await getSubscriptionDetails({});
-        if (refreshed.status === "success" && refreshed.data) {
-          setSubscriptionDetails(refreshed.data as SubscriptionDetails);
+        if (isUpgrade) {
+          // Show confirmation dialog with proration preview
+          const preview = await getUpgradePreview({ targetPriceId: priceId });
+          setUpgradePreview({ ...preview, targetPriceId: priceId });
+          setIsUpgradeDialogOpen(true);
+        } else {
+          // Downgrade: keep existing behavior (no dialog)
+          await changePlan({ targetPriceId: priceId });
+          const refreshed = await getSubscriptionDetails({});
+          if (refreshed.status === "success" && refreshed.data) {
+            setSubscriptionDetails(refreshed.data as SubscriptionDetails);
+          }
         }
       } else {
         if (hasLinkedStripeSubscription) {
@@ -285,6 +306,40 @@ export function Pricing() {
       toast.billing.portalFailed(err);
     } finally {
       setLoadingPriceId(null);
+    }
+  };
+
+  const td = useTranslations("upgradeDialog");
+
+  const handleConfirmUpgrade = async () => {
+    if (!upgradePreview) return;
+    try {
+      setIsConfirmingUpgrade(true);
+      const result = await changePlan({
+        targetPriceId: upgradePreview.targetPriceId,
+        prorationDate: upgradePreview.prorationDate,
+      });
+
+      const refreshed = await getSubscriptionDetails({});
+      if (refreshed.status === "success" && refreshed.data) {
+        setSubscriptionDetails(refreshed.data as SubscriptionDetails);
+      }
+
+      setIsUpgradeDialogOpen(false);
+      setUpgradePreview(null);
+
+      const creditsGranted = result.creditsGranted || upgradePreview.proRataCredits;
+      sonnerToast.success(td("upgradeSuccess"), {
+        description: td("upgradeSuccessDescription", {
+          plan: upgradePreview.targetPlan,
+          credits: creditsGranted.toLocaleString(),
+        }),
+      });
+    } catch (err) {
+      console.error(err);
+      toast.billing.checkoutFailed(err);
+    } finally {
+      setIsConfirmingUpgrade(false);
     }
   };
 
@@ -645,6 +700,19 @@ export function Pricing() {
           );
         })}
       </div>
+
+      <UpgradeConfirmationDialog
+        open={isUpgradeDialogOpen}
+        onOpenChange={(open) => {
+          if (!isConfirmingUpgrade) {
+            setIsUpgradeDialogOpen(open);
+            if (!open) setUpgradePreview(null);
+          }
+        }}
+        onConfirm={handleConfirmUpgrade}
+        isConfirming={isConfirmingUpgrade}
+        preview={upgradePreview}
+      />
     </div>
   );
 }
