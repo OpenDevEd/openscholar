@@ -866,6 +866,11 @@ export const getUpgradePreview = action({
     targetPlanCreditsPerMonth: v.number(),
     remainingDays: v.number(),
     prorationDate: v.number(),
+    lineItems: v.array(v.object({
+      description: v.string(),
+      amountCents: v.number(),
+      currency: v.string(),
+    })),
   }),
   handler: async (ctx, args) => {
     requireSubscriptionsEnabled();
@@ -915,6 +920,13 @@ export const getUpgradePreview = action({
       },
     });
 
+    // Extract line items from Stripe preview for display
+    const lineItems = (preview.lines?.data ?? []).map((line) => ({
+      description: line.description ?? "Line item",
+      amountCents: line.amount,
+      currency: line.currency,
+    }));
+
     // Calculate pro-rata credit info
     const nowMs = Date.now();
     const sub = stripeSub as any;
@@ -940,6 +952,7 @@ export const getUpgradePreview = action({
       targetPlanCreditsPerMonth,
       remainingDays,
       prorationDate,
+      lineItems,
     };
   },
 });
