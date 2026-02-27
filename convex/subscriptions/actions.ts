@@ -12,6 +12,7 @@ import {
   getPlanTier,
   getPlanTypeFromMetadata,
   isAllowedPriceId,
+  PLAN_CONFIG,
 } from "../lib/constants";
 import { planValidator } from "../lib/validators";
 import Stripe from "stripe";
@@ -525,6 +526,7 @@ export const getSubscriptionDetails = action({
 export const changePlan = action({
   args: {
     targetPriceId: v.string(),
+    prorationDate: v.optional(v.number()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -537,6 +539,7 @@ export const changePlan = action({
     ),
     message: v.string(),
     effectiveDate: v.optional(v.number()),
+    creditsGranted: v.optional(v.number()),
   }),
   handler: async (ctx, args): Promise<{
     success: boolean;
@@ -544,6 +547,7 @@ export const changePlan = action({
     changeType: ChangeType;
     message: string;
     effectiveDate?: number;
+    creditsGranted?: number;
   }> => {
     await requireActionAuth(ctx);
     const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
@@ -693,6 +697,7 @@ export const changePlan = action({
             },
           ],
           proration_behavior: "always_invoice",
+          proration_date: args.prorationDate,
           payment_behavior: "error_if_incomplete",
           cancel_at_period_end: false,
           metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
@@ -700,11 +705,53 @@ export const changePlan = action({
 
         await syncLocalSubscriptionFromStripe(ctx, updated);
 
+        // Grant pro-rata credits for the upgrade
+        let creditsGranted: number | undefined;
+        const periodStartMs = (stripeSubscription.current_period_start ?? item.current_period_start ?? Math.floor(Date.now() / 1000)) * 1000;
+        const periodEndMs = (stripeSubscription.current_period_end ?? item.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60) * 1000;
+
+        try {
+          const grantResult = await ctx.runMutation(
+            internalApi.credits.internal.grantUpgradeProRataCredits,
+            {
+              userId: user._id,
+              fromPlan: currentPlan,
+              toPlan: targetPlan,
+              currentPeriodStartMs: periodStartMs,
+              currentPeriodEndMs: periodEndMs,
+              stripeSubscriptionId: stripeSubscription.id,
+            },
+          );
+          console.log("[changePlan] Pro-rata credit grant result", {
+            userId: user._id,
+            fromPlan: currentPlan,
+            toPlan: targetPlan,
+            periodStartMs,
+            periodEndMs,
+            outcome: grantResult.outcome,
+            grantedCredits: grantResult.grantedCredits,
+            message: grantResult.message,
+          });
+          creditsGranted = grantResult.grantedCredits;
+        } catch (err) {
+          // Plan change already succeeded — don't roll it back for a credit grant failure
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error("[changePlan] Pro-rata credit grant failed (non-fatal)", {
+            userId: user._id,
+            fromPlan: currentPlan,
+            toPlan: targetPlan,
+            periodStartMs,
+            periodEndMs,
+            error: errorMessage,
+          });
+        }
+
         return {
           success: true,
           mode: "updated",
           changeType,
           message: `Plan upgraded to ${targetPlan}. Proration charged immediately.`,
+          creditsGranted,
         };
       }
 
@@ -805,6 +852,11 @@ export const getUpgradePreview = action({
     immediateChargeCents: v.number(),
     currentPlan: planValidator,
     targetPlan: planValidator,
+    proRataCredits: v.number(),
+    currentPlanCreditsPerMonth: v.number(),
+    targetPlanCreditsPerMonth: v.number(),
+    remainingDays: v.number(),
+    prorationDate: v.number(),
   }),
   handler: async (ctx, args) => {
     requireSubscriptionsEnabled();
@@ -840,6 +892,8 @@ export const getUpgradePreview = action({
 
     const currentPlan = getPlanFromPriceId(item.price.id);
 
+    const prorationDate = Math.floor(Date.now() / 1000);
+
     const preview = await stripe.invoices.createPreview({
       customer: typeof stripeSub.customer === "string"
         ? stripeSub.customer
@@ -848,9 +902,23 @@ export const getUpgradePreview = action({
       subscription_details: {
         items: [{ id: item.id, price: args.targetPriceId }],
         proration_behavior: "always_invoice",
-        proration_date: Math.floor(Date.now() / 1000),
+        proration_date: prorationDate,
       },
     });
+
+    // Calculate pro-rata credit info
+    const nowMs = Date.now();
+    const sub = stripeSub as any;
+    const periodStartMs = (sub.current_period_start ?? item.current_period_start ?? Math.floor(nowMs / 1000)) * 1000;
+    const periodEndMs = (sub.current_period_end ?? item.current_period_end ?? Math.floor(nowMs / 1000) + 30 * 24 * 60 * 60) * 1000;
+    const periodLength = periodEndMs - periodStartMs;
+    const remaining = Math.max(0, periodEndMs - nowMs);
+    const remainingRatio = periodLength > 0 ? remaining / periodLength : 0;
+    const currentPlanCreditsPerMonth = PLAN_CONFIG[currentPlan]?.creditsPerMonth ?? 0;
+    const targetPlanCreditsPerMonth = PLAN_CONFIG[targetPlan]?.creditsPerMonth ?? 0;
+    const creditDelta = targetPlanCreditsPerMonth - currentPlanCreditsPerMonth;
+    const proRataCredits = creditDelta > 0 ? Math.floor(remainingRatio * creditDelta) : 0;
+    const remainingDays = Math.ceil(remaining / (24 * 60 * 60 * 1000));
 
     return {
       prorationAmountCents: preview.total,
@@ -858,6 +926,11 @@ export const getUpgradePreview = action({
       immediateChargeCents: preview.amount_due,
       currentPlan,
       targetPlan,
+      proRataCredits,
+      currentPlanCreditsPerMonth,
+      targetPlanCreditsPerMonth,
+      remainingDays,
+      prorationDate,
     };
   },
 });
