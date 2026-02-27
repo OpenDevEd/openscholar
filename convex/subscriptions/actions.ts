@@ -702,7 +702,12 @@ export const changePlan = action({
           proration_date: args.prorationDate,
           payment_behavior: "error_if_incomplete",
           cancel_at_period_end: false,
-          metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
+          metadata: {
+            ...clearPendingPlanMetadata(stripeSubscription.metadata || {}),
+            upgradeFromPlan: currentPlan,
+            upgradeToPlan: targetPlan,
+            upgradeTimestamp: String(Date.now()),
+          },
         });
 
         await syncLocalSubscriptionFromStripe(ctx, updated);
