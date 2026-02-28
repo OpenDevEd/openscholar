@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: E2E Billing Tests
-status: unknown
-last_updated: "2026-02-28T07:55:04.689Z"
+status: complete
+last_updated: "2026-02-28T08:13:05Z"
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 5
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** Phase 11 -- Tech Debt Cleanup (next)
+**Current focus:** v1.2 milestone complete
 
 ## Current Position
 
-Phase: 10 of 11 (Fix Credits Spec Auth Wiring) -- fourth phase of v1.2
-Plan: 10-01 complete, all 1 plans done
-Status: Phase 10 complete -- moving to Phase 11
-Last activity: 2026-02-28 -- Plan 10-01 credits spec auth fix complete
+Phase: 11 of 11 (Tech Debt Cleanup) -- fifth phase of v1.2
+Plan: 11-01 complete, all 1 plans done
+Status: Phase 11 complete -- v1.2 milestone complete
+Last activity: 2026-02-28 -- Plan 11-01 tech debt cleanup complete
 
-Progress: [████████████████░░░░] 80% (v1.2: 4/5 phases complete, 8/9 plans done)
+Progress: [████████████████████] 100% (v1.2: 5/5 phases complete, 9/9 plans done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18 (v1.0: 7, v1.1: 6, v1.2: 5)
-- v1.2 plans completed: 5
-- v1.2 total execution time: 11min
+- Total plans completed: 19 (v1.0: 7, v1.1: 6, v1.2: 6)
+- v1.2 plans completed: 6
+- v1.2 total execution time: 13min
 
 **By Phase (v1.2):**
 
@@ -44,6 +44,7 @@ Progress: [████████████████░░░░] 80% (v1
 | 8 | 2/2 | 3min | 1.5min |
 | 9 | 2/2 | 5min | 2.5min |
 | 10 | 1/1 | 3min | 3min |
+| 11 | 1/1 | 2min | 2min |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Recent decisions affecting current work:
 - Subscription item period fields (items.data[0]) for Stripe clover API compatibility (09-02)
 - Pro-rata credit tolerance +-2 accounts for timing gap between test and server calculation (09-02)
 - Credit topup test subscribes to Go first to establish Stripe customer with payment method (09-02)
+- CI credits env guard checks only explicit "false" -- unset passes, matching runtime behavior (11-01)
 
 ### Pending Todos
 
@@ -78,5 +80,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 10-01-PLAN.md -- added clerkUser fixture to CRED-01 and CRED-05 credits tests
+Stopped at: Completed 11-01-PLAN.md -- tech debt cleanup (bracket notation, duplicate testid, CI env guards)
 Resume file: None

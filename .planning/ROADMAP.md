@@ -38,7 +38,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 8: Subscription and Upgrade Specs** - E2E specs for subscription creation, upgrade flow, and subscription credit grants (completed 2026-02-28)
 - [x] **Phase 9: Lifecycle and Credit Specs** - E2E specs for downgrade, cancellation, credit topup, pro-rata credits, and free credit cap (completed 2026-02-28)
 - [x] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure) (completed 2026-02-28)
-- [ ] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard
+- [x] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard (completed 2026-02-28)
 
 ## Phase Details
 
@@ -136,4 +136,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 8. Subscription and Upgrade Specs | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
 | 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
-| 11. Tech Debt Cleanup | v1.2 | Pending | - | - |
+| 11. Tech Debt Cleanup | 1/1 | Complete   | 2026-02-28 | - |
