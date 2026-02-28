@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useQueryStates } from "nuqs";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
@@ -13,6 +14,10 @@ import {
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { showConfirmation } from "@/lib/confirmation";
 import { useRatingsStore } from "@/lib/store";
+import {
+  librarySearchParams,
+  savedPresetToTimestamp,
+} from "@/lib/library/search-params";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LibrarySearchBar } from "./library-search-bar";
@@ -21,22 +26,32 @@ import { LibraryItemRow } from "./library-item-row";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 import { LibraryEmptyState } from "./library-empty-state";
 
-type SortBy = "savedAt" | "rating" | "publicationYear";
-type SortOrder = "asc" | "desc";
-
 export function LibraryPageClient() {
   const t = useTranslations("libraryPage");
 
-  // State
-  const [searchText, setSearchText] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("savedAt");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  // URL-driven state (single source of truth for filter/sort/search)
+  const [params, setParams] = useQueryStates(librarySearchParams);
+
+  // Local search input for debounce (don't write every keystroke to URL)
+  const [rawSearch, setRawSearch] = useState(params.q);
+  const debouncedSearch = useDebouncedValue(rawSearch, 300);
+
+  // Sync debounced search to URL
+  useEffect(() => {
+    if (debouncedSearch !== params.q) {
+      setParams({ q: debouncedSearch });
+    }
+  }, [debouncedSearch, params.q, setParams]);
+
+  // UI-local state (not URL-persisted)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
-  // Debounced search
-  const debouncedSearch = useDebouncedValue(searchText, 300);
+  // Derive query arguments from params
   const hasSearchText = debouncedSearch.trim().length > 0;
+  const savedAfter = savedPresetToTimestamp(params.saved);
+  const minRating = params.rating ?? undefined;
+  const yearFrom = params.yf ?? undefined;
+  const yearTo = params.yt ?? undefined;
 
   // Stale-while-revalidate: hold the last non-empty result set
   const lastResultsRef = useRef<Doc<"libraryItems">[]>([]);
@@ -45,7 +60,7 @@ export function LibraryPageClient() {
   const searchResults = useProtectedPaginatedQuery(
     api.library.queries.searchLibrary,
     hasSearchText
-      ? { searchText: debouncedSearch, minRating }
+      ? { searchText: debouncedSearch, minRating, savedAfter, yearFrom, yearTo }
       : "skip",
     { initialNumItems: 20 },
   );
@@ -53,7 +68,7 @@ export function LibraryPageClient() {
   const browseResults = useProtectedPaginatedQuery(
     api.library.queries.browseLibrary,
     !hasSearchText
-      ? { sortBy, sortOrder, minRating }
+      ? { sortBy: params.sort, sortOrder: params.order, minRating, savedAfter, yearFrom, yearTo }
       : "skip",
     { initialNumItems: 20 },
   );
@@ -102,11 +117,17 @@ export function LibraryPageClient() {
 
   // Clear all filters
   const clearFilters = useCallback(() => {
-    setSearchText("");
-    setMinRating(undefined);
-    setSortBy("savedAt");
-    setSortOrder("desc");
-  }, []);
+    setRawSearch("");
+    setParams({
+      q: "",
+      rating: null,
+      saved: null,
+      yf: null,
+      yt: null,
+      sort: "savedAt",
+      order: "desc",
+    });
+  }, [setParams]);
 
   // Determine display results (stale-while-revalidate)
   const displayResults =
@@ -121,7 +142,11 @@ export function LibraryPageClient() {
   const isFirstLoad =
     activeResults.isInitialLoading && lastResultsRef.current.length === 0;
   const hasFiltersActive =
-    hasSearchText || minRating !== undefined;
+    hasSearchText ||
+    minRating !== undefined ||
+    savedAfter !== undefined ||
+    yearFrom !== undefined ||
+    yearTo !== undefined;
   const isEmpty =
     activeResults.hasLoadedFirstPage && activeResults.results.length === 0;
   const isEmptyLibrary = isEmpty && !hasFiltersActive && totalCount === 0;
@@ -143,19 +168,19 @@ export function LibraryPageClient() {
 
       {/* Search bar */}
       <LibrarySearchBar
-        value={searchText}
-        onChange={setSearchText}
+        value={rawSearch}
+        onChange={setRawSearch}
         className="mb-3"
       />
 
       {/* Filters */}
       <LibraryFilters
         minRating={minRating}
-        onMinRatingChange={setMinRating}
-        sortBy={sortBy}
-        onSortByChange={setSortBy}
-        sortOrder={sortOrder}
-        onSortOrderChange={setSortOrder}
+        onMinRatingChange={(r) => setParams({ rating: r === undefined ? null : r })}
+        sortBy={params.sort}
+        onSortByChange={(s) => setParams({ sort: s })}
+        sortOrder={params.order}
+        onSortOrderChange={(o) => setParams({ order: o })}
         sortDisabled={hasSearchText}
       />
 
