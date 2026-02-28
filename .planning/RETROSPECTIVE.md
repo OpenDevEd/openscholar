@@ -138,6 +138,56 @@
 
 ---
 
+## Milestone: v2.0 — TDD & Test Coverage
+
+**Shipped:** 2026-02-28
+**Phases:** 8 | **Plans:** 17 | **Commits:** 63
+
+### What Was Built
+- Multi-environment Vitest config (node, edge-runtime, jsdom) with zero-regression on existing 43 tests
+- AI prompt builder structural tests, Zod schema contract tests, question key codec round-trip tests
+- Fail-soft batch processing tests covering all-success, all-fail, and partial-failure with mock isolation
+- Cost calculation tests with IEEE 754 precision handling and model registry tests across 4 providers
+- Search parameter construction, region codec bijectivity, filter builder, and URL serialization round-trip tests
+- CSV/JSON export, answer formatting, citation helper, download output tests with PDF feature flag gating
+- Auth state machine access control, user creation atomicity, ensureUser first-login/return-visit, profile sync
+- Plan config shape contracts, tier enforcement via mocked Convex query chain, feature flag env var isolation, subscription selection priority
+
+### What Worked
+- Test-first approach: every phase had clear success criteria with specific function-level assertions
+- Pure function extraction pattern: testing extracted pure logic avoided convex-test issue #50 (getUserIdentity bug)
+- vi.mock at module boundary pattern: batch processing tests ran independently of AI SDK
+- vi.resetModules() pattern: reliable env var isolation for feature flag and config tests
+- Parametric it.each tests: compact coverage across many input variations (plan types, providers, codecs)
+- Auto-advance pipeline executed all 8 phases in a single day
+
+### What Was Inefficient
+- REQUIREMENTS.md checkboxes for SRCH-* and EXPRT-* not updated when phases 18/19 completed — same recurring issue
+- Some SUMMARY.md files lacked one_liner fields, requiring manual accomplishment extraction at milestone completion
+- STATE.md execution metrics only captured 9 of 17 plans (phases 18/19/20 metrics missing)
+
+### Patterns Established
+- vi.resetModules() + dynamic import for testing module-load-time env var behavior
+- toBeCloseTo(x, 6) for IEEE 754 floating-point cost assertions
+- makeSub() factory pattern for DRY test data construction
+- Mock 4-step Convex query chain (query -> withIndex -> order -> collect) for server-side testing
+- Structural prompt testing: assert fields/markers, never AI output quality
+- Representative model sampling instead of full model snapshot for maintainability
+
+### Key Lessons
+1. Pure function extraction is the best mitigation when framework test tooling has bugs (convex-test #50)
+2. Module-load-time env vars require vi.resetModules() + dynamic import — vi.stubEnv alone is insufficient
+3. toBeCloseTo is essential for any floating-point arithmetic tests — exact equality causes false failures
+4. Testing representative samples per category is more maintainable than exhaustive snapshots of all values
+5. REQUIREMENTS.md checkbox updates during execution remain an unsolved process gap (4th milestone in a row)
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: 1 session for full milestone
+- Notable: 17 plans in ~30 minutes — consistent ~2min/plan velocity, 8 phases in one day
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -147,11 +197,14 @@
 | v1.0 | 29 | 3 | 7 | 3min | Established billing audit patterns |
 | v1.1 | 25 | 3 | 6 | 2min | Dual-path convergence, i18n integration |
 | v1.2 | ~50 | 7 | 11 | 1.5min | Auto-advance pipeline, 3-source audit |
+| v2.0 | 63 | 8 | 17 | ~2min | TDD patterns, pure function extraction, vi.mock/resetModules |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Always re-fetch from Stripe API before syncing — event payloads and local DB can be stale (v1.0 + v1.1)
-2. ROADMAP.md plan checkboxes not updating during execution — recurring process gap (v1.0 + v1.1 + v1.2)
+2. ROADMAP.md/REQUIREMENTS.md checkboxes not updating during execution — recurring process gap (v1.0 + v1.1 + v1.2 + v2.0)
 3. Audit-first approach prevents regressions and catches orphaned code (v1.0 audit, v1.1 i18n key catch, v1.2 gap closures)
 4. Discuss-phase before planning catches design decisions early — skipping it leads to reactive gap closure phases (v1.2)
 5. CI env preflight validation must be comprehensive — partial coverage causes confusing runtime failures (v1.2)
+6. Pure function extraction is the best mitigation for framework test tooling bugs — test the logic, not the framework (v2.0)
+7. Module-load-time env vars require vi.resetModules() + dynamic import — vi.stubEnv alone is insufficient (v2.0)

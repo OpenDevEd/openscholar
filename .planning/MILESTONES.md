@@ -60,3 +60,24 @@
 
 ---
 
+
+## v2.0 TDD & Test Coverage (Shipped: 2026-02-28)
+
+**Phases completed:** 8 phases, 17 plans
+**Git range:** `a3eb1ea..de4ff5a` (63 commits)
+**Files changed:** 91 files, +14,768/-100 lines
+
+**Key accomplishments:**
+- Multi-environment Vitest config (node, edge-runtime, jsdom) with zero-regression on 43 existing tests
+- AI prompt builder structural tests, Zod schema contract tests, and question key codec round-trip tests
+- Fail-soft batch processing tests covering all-success, all-fail, and partial-failure scenarios with mock isolation
+- Cost calculation and model registry tests across 4 AI providers (OpenAI, Anthropic, Google, DeepSeek)
+- Search parameter, region codec bijectivity, filter builder, and URL serialization round-trip tests
+- CSV/JSON export, answer formatting, citation helper, and download output tests with PDF feature flag gating
+- Auth state machine, user creation atomicity, ensureUser first-login/return-visit, and profile sync guard tests
+- Plan config shape contracts, tier enforcement, feature flag env var isolation, and subscription selection priority tests
+
+**Delivered:** 41/41 requirements complete across 7 test domains (infrastructure, AI prompts, AI batch, AI cost, search, export, auth/plan)
+
+---
+

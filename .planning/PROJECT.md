@@ -1,12 +1,12 @@
-# OpenAlex Count — TDD & Test Coverage
+# OpenAlex Count — Academic Search & Extraction Platform
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. Previous milestones (v1.0–v1.2) audited, hardened, and E2E-tested the Stripe billing integration. This milestone establishes strict TDD (red-green-refactor) as the development standard and backfills high test coverage across the three core domains: search & extraction, AI/LLM features, and user management.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, and a comprehensive test suite covering billing, AI, search, export, and auth domains.
 
 ## Core Value
 
-Every major code path in search, AI, and user management has tests — and every new feature is built test-first using strict red-green-refactor TDD.
+Reliable, well-tested academic search and AI extraction — every major code path has tests, and every new feature is built test-first.
 
 ## Requirements
 
@@ -32,38 +32,21 @@ Every major code path in search, AI, and user management has tests — and every
 - ✓ Proration preview dialog with line item breakdown and payment method display — v1.1
 - ✓ Pro-rata credit grants on mid-cycle upgrades (action + webhook backup path) — v1.1
 - ✓ Upgrade error handling: processing toast on grant failure, webhook recovery, dismiss guard — v1.1
-- ✓ E2E test framework configured with Playwright billing project (INFRA-01) — v1.2
-- ✓ Fresh Clerk test user created and deleted per test scenario (INFRA-02) — v1.2
-- ✓ Webhook waiter polls Convex for state convergence before UI assertions (INFRA-03) — v1.2
-- ✓ Stripe helpers for subscriptions, payment methods, and cleanup (INFRA-04) — v1.2
-- ✓ Page Object Models for billing and pricing pages with data-testid selectors (INFRA-05) — v1.2
-- ✓ data-testid attributes on billing UI components for stable test targeting (INFRA-06) — v1.2
-- ✓ Billing fixture composes user lifecycle, Stripe, webhooks, and cleanup (INFRA-07) — v1.2
-- ✓ Subscribe free to Go and Pro via checkout-bypass (SUB-01, SUB-02) — v1.2
-- ✓ Upgrade Go to Pro via in-app confirmation dialog with proration (PLAN-01) — v1.2
-- ✓ Downgrade Pro to Go with pending-change banner and scheduled badge (PLAN-02) — v1.2
-- ✓ Cancel scheduled downgrade to keep Pro (PLAN-03) — v1.2
-- ✓ Cancel subscription shows "Expires on" (CNCL-01) — v1.2
-- ✓ Free signup credits on account creation (CRED-01) — v1.2
-- ✓ Monthly credits on subscription 3k Go / 15k Pro with dedicated regression test (CRED-02) — v1.2
-- ✓ Pro-rata credits on upgrade matching calculated floor(remainingRatio * creditDelta) (CRED-03) — v1.2
-- ✓ Credit topup via checkout-bypass (CRED-04) — v1.2
-- ✓ Free-tier credit cap banner (CRED-05) — v1.2
-
-## Current Milestone: v2.0 TDD & Test Coverage
-
-**Goal:** Backfill high test coverage across search & extraction, AI/LLM features, and user management — unit tests first, then integration — while establishing strict TDD as the standard for all future development.
-
-**Target features:**
-- Unit tests for all untested search/filter/export logic
-- Unit tests for all untested AI prompt builders, batch processing, and utility functions
-- Unit tests for auth state machine, plan enforcement, user creation, and feature flag guards
-- Integration tests for critical cross-cutting flows
-- TDD workflow documentation and patterns
+- ✓ E2E billing test infrastructure with Playwright, Clerk isolation, and Stripe bypass — v1.2
+- ✓ 11 billing E2E tests covering subscribe, upgrade, downgrade, cancel, credits — v1.2
+- ✓ CI pipeline integration for billing E2E across 3 jobs — v1.2
+- ✓ Multi-environment Vitest config (node, edge-runtime, jsdom) with zero-regression — v2.0
+- ✓ AI prompt builder structural tests and Zod schema contract tests — v2.0
+- ✓ AI batch processing fail-soft tests (all-success, all-fail, partial-failure) — v2.0
+- ✓ AI cost calculation and model registry tests across 4 providers — v2.0
+- ✓ Search param construction, region codec bijectivity, and filter builder tests — v2.0
+- ✓ CSV/JSON export, citation helper, and download output tests — v2.0
+- ✓ Auth state machine, user creation atomicity, and profile sync guard tests — v2.0
+- ✓ Plan config, tier enforcement, feature flag, and subscription selection tests — v2.0
 
 ### Active
 
-(Defined in REQUIREMENTS.md)
+(No active requirements — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -72,20 +55,17 @@ Every major code path in search, AI, and user management has tests — and every
 - Stripe Connect or marketplace payments — not applicable
 - Mobile payment flows (Apple Pay, Google Pay) — web-only
 - Custom proration logic (bypass Stripe) — use Stripe's built-in proration
-- Real-time credit deduction notifications — notification fatigue during batch AI operations
 - Automating Stripe Checkout card entry — Stripe actively blocks automated testing of hosted checkout
-- Automating Stripe Customer Portal UI — portal is a Stripe-hosted iframe
 - Visual regression / screenshot tests — separate concern, notoriously flaky
-- Recurring payment cycle credit grants E2E — requires Stripe test clocks, incompatible with browser checkout
-- Payment failure E2E — requires Stripe Checkout iframe automation
+- `convex-test` end-to-end auth-gated functions — blocked by convex-test issue #50
 
 ## Context
 
-Shipped v1.0 (38 files, +3181/-172, 29 commits), v1.1 (36 files, +4136/-210, 25 commits), and v1.2 (1,248 LOC TypeScript test infrastructure, 351 LOC CI YAML).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), Playwright.
+Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), and v2.0 (91 files, +14,768/-100).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), Playwright, Vitest.
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`.
-Test infrastructure: Vitest unit tests (43 files), backend live-billing integration tests, Playwright billing E2E suite (6 spec files, 11 tests).
-CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly) run both Vitest + Playwright suites.
+Test suite: 60+ Vitest test files covering unit tests across 7 domains, Playwright billing E2E suite (6 spec files, 11 tests).
+CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
 
 ## Constraints
@@ -95,6 +75,7 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 - **Webhook-driven**: Stripe state changes must be driven by webhooks, not client-side polling
 - **Idempotency**: All webhook handlers must be idempotent (events can be delivered multiple times)
 - **Test isolation**: Each E2E test gets a fresh Clerk user — no shared state between tests
+- **TDD standard**: All new features must be built test-first using red-green-refactor
 
 ## Key Decisions
 
@@ -108,23 +89,17 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | 7-day grace period for past_due | Balance user access with payment recovery | ✓ Good — auto-downgrades after expiry |
 | Safety cap of 500 invoices per customer | Prevent unbounded iteration in reconciliation | ✓ Good — defensive limit |
 | TOCTOU mitigation = per-user workpool | Simpler than version field, triggers on incident | — Pending (documented, not yet needed) |
-| Sonner toast for credit feedback | AppToastApi only exposes error methods | ✓ Good — direct sonner usage |
 | Pin proration_date between preview and execution | Prevents charge drift from Stripe per-second proration | ✓ Good — exact match guaranteed |
-| Tri-state toast (success/processing/error) | Server-reported creditsGranted drives feedback, never preview estimate | ✓ Good — no misleading UI |
-| Webhook backup path for credit grants | Dual-path convergence with dedup ensures credits always granted | ✓ Good — resilient to action-path failures |
-| Atomic metadata write on Stripe subscription | Webhook can classify proration invoices without local DB race | ✓ Good — eliminates stale data |
-| Radix dismiss prevention for processing state | onEscapeKeyDown + onPointerDownOutside + onInteractOutside | ✓ Good — prevents accidental dismissal |
-| HTML entities for card dots | Avoids Unicode bullet encoding issues across locales | ✓ Good — consistent rendering |
+| Tri-state toast (success/processing/error) | Server-reported creditsGranted drives feedback | ✓ Good — no misleading UI |
+| Webhook backup path for credit grants | Dual-path convergence with dedup | ✓ Good — resilient to action-path failures |
 | Checkout-bypass pattern for E2E tests | Stripe blocks hosted checkout automation | ✓ Good — reliable, fast, deterministic |
 | workers: 1 for billing tests | Clerk concurrent auth bug (#7891) | ✓ Good — eliminates flakes |
-| WebhookWaiter polls Convex state | Eliminates timing flakes between Stripe webhook and UI | ✓ Good — deterministic assertions |
-| Fresh Clerk user per test | Full isolation, no shared state contamination | ✓ Good — clean teardown |
-| toBe() exact match for CRED-02 regression | Regression tests must catch any credit grant drift | ✓ Good — strict validation |
-| CI credits env guard checks only "false" | Unset passes, matching runtime feature flag behavior | ✓ Good — consistent with app logic |
-
-| Structural prompt testing (assert fields/markers, not AI quality) | Decouples test suite from AI model behavior; pure structural checks | ✓ Good — stable tests |
-| .parse()/.safeParse() only for Zod testing | Avoids coupling to Zod internals (.shape, .element) | ✓ Good — version-stable |
-| it.each parametric round-trip tests | Compact coverage across ASCII, Unicode, special chars | ✓ Good — readable, extensible |
+| Structural prompt testing (no AI quality) | Decouples test suite from AI model behavior | ✓ Good — stable tests |
+| .parse()/.safeParse() only for Zod testing | Avoids coupling to Zod internals | ✓ Good — version-stable |
+| vi.resetModules() for env var isolation | Module-load-time env vars need fresh imports | ✓ Good — reliable feature flag tests |
+| toBeCloseTo for cost assertions | IEEE 754 floating-point precision | ✓ Good — no false failures |
+| Representative models per provider | Avoid brittle snapshot of all 40+ models | ✓ Good — maintainable |
+| Mock at module boundary (vi.mock) | Tests batch orchestration independent of AI SDK | ✓ Good — fast, isolated |
 
 ---
-*Last updated: 2026-02-28 after Phase 15*
+*Last updated: 2026-02-28 after v2.0 milestone*
