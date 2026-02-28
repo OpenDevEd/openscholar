@@ -43,7 +43,7 @@ Progress: [##########..........] 50% (v2.1: 5/6 plans in Phases 22-24)
 | v1.1 | 3 | 6 | 2026-02-27 |
 | v1.2 | 7 | 11 | 2026-02-28 |
 | v2.0 | 8 | 17 | 2026-02-28 |
-| v2.1 | 5 | TBD | In progress |
+| v2.1 | 6 | TBD | In progress |
 
 ## Accumulated Context
 
@@ -65,6 +65,10 @@ See PROJECT.md Key Decisions table for full log.
 - [23-02] Added removeFromLibraryByOpenalexId mutation for RatingSelector to delete by openalexId (doesn't know Convex _id)
 - [24-01] Debounce bridge pattern: rawSearch (local useState) syncs to URL param q via useEffect after 300ms debounce
 - [24-01] null vs undefined convention: nuqs uses null to clear params, Convex uses undefined for optional args -- conversion at derivation point
+
+### Roadmap Evolution
+
+- Phase 27 added: Library UI Redesign — DRY shared components with search, match codebase patterns
 
 ### Pending Todos
 
