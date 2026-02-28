@@ -1,0 +1,94 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - button [ref=e6]:
+        - generic [ref=e7]:
+          - img
+      - generic [ref=e9]:
+        - generic [ref=e11]:
+          - link [ref=e14] [cursor=pointer]:
+            - /url: /
+            - img [ref=e16]
+          - link [ref=e21] [cursor=pointer]:
+            - /url: /bookmarks
+            - img [ref=e23]
+          - link [ref=e27] [cursor=pointer]:
+            - /url: /history
+            - img [ref=e29]
+          - link [ref=e34] [cursor=pointer]:
+            - /url: /extraction
+            - img [ref=e36]
+        - generic [ref=e41]:
+          - button "Toggle theme" [ref=e42]:
+            - img
+            - img
+            - generic [ref=e43]: Toggle theme
+          - button "🇺🇸" [ref=e45]:
+            - generic [ref=e46]: 🇺🇸
+          - button "More" [ref=e47]:
+            - img
+            - generic [ref=e48]: More
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - link "OpenScholar" [ref=e56] [cursor=pointer]:
+            - /url: http://127.0.0.1:3000/
+            - img "OpenScholar" [ref=e57]
+          - generic [ref=e58]:
+            - heading "Sign in to OpenScholar" [level=1] [ref=e59]
+            - paragraph [ref=e60]: Welcome back! Please sign in to continue
+        - generic [ref=e61]:
+          - button "Sign in with Google Continue with Google" [ref=e64] [cursor=pointer]:
+            - generic [ref=e65]:
+              - img "Sign in with Google" [ref=e67]
+              - generic [ref=e68]: Continue with Google
+          - paragraph [ref=e71]: or
+          - generic [ref=e73]:
+            - generic [ref=e74]:
+              - generic [ref=e77]:
+                - generic [ref=e79]: Email address
+                - textbox "Email address" [ref=e80]:
+                  - /placeholder: Enter your email address
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: Password
+                    - generic:
+                      - textbox "Password":
+                        - /placeholder: Enter your password
+                      - button "Show password":
+                        - img
+            - button "Continue" [ref=e83] [cursor=pointer]:
+              - generic [ref=e84]:
+                - text: Continue
+                - img [ref=e85]
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]: Don’t have an account?
+          - link "Sign up" [ref=e90] [cursor=pointer]:
+            - /url: http://127.0.0.1:3000/sign-up#/?redirect_url=http%3A%2F%2F127.0.0.1%3A3000%2Fsettings%2Fbilling
+        - paragraph [ref=e93]: Development mode
+  - region "Notifications alt+T"
+  - alert [ref=e94]
+  - generic [ref=e96]:
+    - generic [ref=e97]:
+      - generic [ref=e98]:
+        - img [ref=e100]
+        - generic [ref=e102]:
+          - heading "We value your privacy" [level=3] [ref=e103]
+          - paragraph [ref=e104]: We use analytics cookies to understand how you use OpenScholar and improve the product. Choose your preference below.
+      - generic [ref=e105]:
+        - button "Reject non-essential" [ref=e106]
+        - button "Accept all" [ref=e107]
+    - paragraph [ref=e109]:
+      - text: Learn more in our
+      - link "Privacy policy" [ref=e110] [cursor=pointer]:
+        - /url: /privacy
+      - text: and
+      - link "Cookie policy" [ref=e111] [cursor=pointer]:
+        - /url: /cookie-policy
+```
