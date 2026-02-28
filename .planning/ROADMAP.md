@@ -36,7 +36,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 
 - [ ] **Phase 7: Test Infrastructure Foundation** - Support utilities, fixtures, page object models, and data-testid attributes
 - [x] **Phase 8: Subscription and Upgrade Specs** - E2E specs for subscription creation, upgrade flow, and subscription credit grants (completed 2026-02-28)
-- [ ] **Phase 9: Lifecycle and Credit Specs** - E2E specs for downgrade, cancellation, credit topup, pro-rata credits, and free credit cap
+- [x] **Phase 9: Lifecycle and Credit Specs** - E2E specs for downgrade, cancellation, credit topup, pro-rata credits, and free credit cap (completed 2026-02-28)
 
 ## Phase Details
 
@@ -105,4 +105,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 6. UX Polish | v1.1 | 2/2 | Complete | 2026-02-27 |
 | 7. Test Infrastructure Foundation | v1.2 | 3/3 | Complete | 2026-02-28 |
 | 8. Subscription and Upgrade Specs | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
-| 9. Lifecycle and Credit Specs | v1.2 | 0/? | Not started | - |
+| 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
