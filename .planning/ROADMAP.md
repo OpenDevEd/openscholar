@@ -85,7 +85,10 @@ Plans:
   3. `repairJSON` and `repairSingleField` recover parseable output from common malformed AI response patterns
   4. All Zod schemas accept valid inputs and reject inputs with missing or wrong-typed fields
   5. `encodeQuestionKey`/`decodeQuestionKey` and `encodeQuestionResponseMap`/`decodeQuestionResponseMap` round-trip correctly for ASCII and non-ASCII text
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 15-01-PLAN.md -- Prompt builder structural tests + validateQuery/repairJSON/repairSingleField tests
+- [ ] 15-02-PLAN.md -- Zod schema accept/reject tests + question key codec round-trip tests
 
 ### Phase 16: AI Batch Processing Tests
 **Goal**: Batch processors handle success, failure, and partial-failure scenarios with correct result accumulation and error capture
