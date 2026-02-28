@@ -5,6 +5,7 @@
     "bookmarks": "Bookmarks",
     "history": "History",
     "extraction": "Extraction",
+    "library": "Library",
     "settings": "Settings",
     "save": "Save",
     "cancel": "Cancel",
@@ -958,7 +959,9 @@
     "privacyTitle": "Privacy Policy | OpenScholar",
     "privacyDescription": "OpenScholar.ai customer privacy notice. Learn how Open Development & Education collects, uses, and protects your personal information.",
     "cookiePolicyTitle": "Cookie Policy | OpenScholar",
-    "cookiePolicyDescription": "Learn how OpenScholar.ai uses cookies for analytics and how to manage your cookie preferences."
+    "cookiePolicyDescription": "Learn how OpenScholar.ai uses cookies for analytics and how to manage your cookie preferences.",
+    "libraryTitle": "Library - OpenScholar",
+    "libraryDescription": "Browse and manage your saved academic papers"
   },
   "validation": {
     "bookmarkNameRequired": "Bookmark name is required",
@@ -1436,5 +1439,33 @@
     "upgradeProcessingCredits": "Upgraded to {plan} — credits are being processed",
     "totalCharge": "Total due now",
     "paymentMethod": "Payment method"
+  },
+  "libraryPage": {
+    "title": "Your Library",
+    "paperCount": "{count, plural, =0 {No papers} one {1 paper} other {# papers}} in your library",
+    "searchPlaceholder": "Search by title, author, or abstract...",
+    "sortBy": "Sort by",
+    "sortDateSaved": "Date saved",
+    "sortRating": "Rating",
+    "sortPublicationYear": "Publication year",
+    "sortAscending": "Ascending",
+    "sortDescending": "Descending",
+    "ratingFilter": "Filter by minimum rating",
+    "clearRatingFilter": "Clear rating filter",
+    "loadMore": "Load more",
+    "emptyLibraryTitle": "Your library is empty",
+    "emptyLibraryDescription": "Start rating papers from search results to build your library.",
+    "emptyLibraryCta": "Search papers",
+    "noResultsTitle": "No papers match your search or filters",
+    "clearFilters": "Clear filters",
+    "removeFromLibrary": "Remove from library",
+    "removeConfirmTitle": "Remove from library",
+    "removeConfirmMessage": "Remove \"{title}\" from your library?",
+    "removeButton": "Remove",
+    "cancelButton": "Cancel",
+    "viewFullPaper": "View full paper",
+    "openAccess": "Open Access",
+    "citations": "{count, plural, one {1 citation} other {# citations}}",
+    "sortDisabledInSearch": "Sort is disabled during search"
   }
 }

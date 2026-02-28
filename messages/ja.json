@@ -5,6 +5,7 @@
     "bookmarks": "ブックマーク",
     "history": "履歴",
     "extraction": "抽出",
+    "library": "ライブラリ",
     "settings": "設定",
     "save": "保存",
     "cancel": "キャンセル",
@@ -958,7 +959,9 @@
     "privacyTitle": "プライバシーポリシー | OpenScholar",
     "privacyDescription": "OpenScholar.ai顧客のプライバシーに関する通知。Open Development & Educationがどのように個人情報を収集、使用、保護するかについて説明します。",
     "cookiePolicyTitle": "Cookieポリシー | OpenScholar",
-    "cookiePolicyDescription": "OpenScholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。"
+    "cookiePolicyDescription": "OpenScholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。",
+    "libraryTitle": "ライブラリ - OpenScholar",
+    "libraryDescription": "保存した学術論文を閲覧・管理する"
   },
   "validation": {
     "bookmarkNameRequired": "ブックマーク名は必須です",
@@ -1436,5 +1439,33 @@
     "upgradeProcessingCredits": "{plan}にアップグレードしました — クレジットを処理中です",
     "totalCharge": "現在の請求合計",
     "paymentMethod": "お支払い方法"
+  },
+  "libraryPage": {
+    "title": "マイライブラリ",
+    "paperCount": "{count, plural, =0 {論文なし} other {# 件の論文}}がライブラリにあります",
+    "searchPlaceholder": "タイトル、著者、要旨で検索...",
+    "sortBy": "並べ替え",
+    "sortDateSaved": "保存日",
+    "sortRating": "評価",
+    "sortPublicationYear": "出版年",
+    "sortAscending": "昇順",
+    "sortDescending": "降順",
+    "ratingFilter": "最低評価でフィルター",
+    "clearRatingFilter": "評価フィルターをクリア",
+    "loadMore": "もっと読み込む",
+    "emptyLibraryTitle": "ライブラリは空です",
+    "emptyLibraryDescription": "検索結果から論文を評価して、ライブラリを構築しましょう。",
+    "emptyLibraryCta": "論文を検索",
+    "noResultsTitle": "検索やフィルターに一致する論文はありません",
+    "clearFilters": "フィルターをクリア",
+    "removeFromLibrary": "ライブラリから削除",
+    "removeConfirmTitle": "ライブラリから削除",
+    "removeConfirmMessage": "「{title}」をライブラリから削除しますか？",
+    "removeButton": "削除",
+    "cancelButton": "キャンセル",
+    "viewFullPaper": "論文全文を見る",
+    "openAccess": "オープンアクセス",
+    "citations": "{count, plural, other {# 件の引用}}",
+    "sortDisabledInSearch": "検索中は並べ替えが無効です"
   }
 }

@@ -5,6 +5,7 @@
     "bookmarks": "बुकमार्क्स",
     "history": "इतिहास",
     "extraction": "एक्सट्रैक्शन",
+    "library": "लाइब्रेरी",
     "settings": "सेटिंग्स",
     "save": "सहेजें",
     "cancel": "रद्द करें",
@@ -958,7 +959,9 @@
     "privacyTitle": "गोपनीयता नीति | OpenScholar",
     "privacyDescription": "OpenScholar.ai ग्राहक गोपनीयता सूचना। जानें कि Open Development & Education आपकी व्यक्तिगत जानकारी को कैसे एकत्र, उपयोग और सुरक्षित करता है।",
     "cookiePolicyTitle": "कुकी नीति | OpenScholar",
-    "cookiePolicyDescription": "जानें कि OpenScholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।"
+    "cookiePolicyDescription": "जानें कि OpenScholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।",
+    "libraryTitle": "लाइब्रेरी - OpenScholar",
+    "libraryDescription": "अपने सहेजे गए शैक्षणिक शोधपत्रों को ब्राउज़ करें और प्रबंधित करें"
   },
   "validation": {
     "bookmarkNameRequired": "बुकमार्क नाम आवश्यक है",
@@ -1436,5 +1439,33 @@
     "upgradeProcessingCredits": "{plan} में अपग्रेड किया गया — क्रेडिट प्रोसेस हो रहे हैं",
     "totalCharge": "अभी देय कुल राशि",
     "paymentMethod": "भुगतान का तरीका"
+  },
+  "libraryPage": {
+    "title": "आपकी लाइब्रेरी",
+    "paperCount": "{count, plural, =0 {कोई शोधपत्र नहीं} one {1 शोधपत्र} other {# शोधपत्र}} आपकी लाइब्रेरी में",
+    "searchPlaceholder": "शीर्षक, लेखक या सार से खोजें...",
+    "sortBy": "क्रमबद्ध करें",
+    "sortDateSaved": "सहेजने की तिथि",
+    "sortRating": "रेटिंग",
+    "sortPublicationYear": "प्रकाशन वर्ष",
+    "sortAscending": "आरोही",
+    "sortDescending": "अवरोही",
+    "ratingFilter": "न्यूनतम रेटिंग से फ़िल्टर करें",
+    "clearRatingFilter": "रेटिंग फ़िल्टर हटाएं",
+    "loadMore": "और लोड करें",
+    "emptyLibraryTitle": "आपकी लाइब्रेरी खाली है",
+    "emptyLibraryDescription": "अपनी लाइब्रेरी बनाने के लिए खोज परिणामों से शोधपत्रों को रेट करना शुरू करें।",
+    "emptyLibraryCta": "शोधपत्र खोजें",
+    "noResultsTitle": "आपकी खोज या फ़िल्टर से कोई शोधपत्र मेल नहीं खाता",
+    "clearFilters": "फ़िल्टर हटाएं",
+    "removeFromLibrary": "लाइब्रेरी से हटाएं",
+    "removeConfirmTitle": "लाइब्रेरी से हटाएं",
+    "removeConfirmMessage": "क्या आप \"{title}\" को अपनी लाइब्रेरी से हटाना चाहते हैं?",
+    "removeButton": "हटाएं",
+    "cancelButton": "रद्द करें",
+    "viewFullPaper": "पूरा शोधपत्र देखें",
+    "openAccess": "ओपन एक्सेस",
+    "citations": "{count, plural, one {1 उद्धरण} other {# उद्धरण}}",
+    "sortDisabledInSearch": "खोज के दौरान क्रमबद्ध करना अक्षम है"
   }
 }

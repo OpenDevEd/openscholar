@@ -5,6 +5,7 @@
     "bookmarks": "书签",
     "history": "历史",
     "extraction": "提取",
+    "library": "文献库",
     "settings": "设置",
     "save": "保存",
     "cancel": "取消",
@@ -958,7 +959,9 @@
     "privacyTitle": "隐私政策 | OpenScholar",
     "privacyDescription": "OpenScholar.ai 客户隐私声明。了解 Open Development & Education 如何收集、使用和保护您的个人信息。",
     "cookiePolicyTitle": "Cookie 政策 | OpenScholar",
-    "cookiePolicyDescription": "了解 OpenScholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。"
+    "cookiePolicyDescription": "了解 OpenScholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。",
+    "libraryTitle": "文献库 - OpenScholar",
+    "libraryDescription": "浏览和管理您保存的学术论文"
   },
   "validation": {
     "bookmarkNameRequired": "书签名称是必需的",
@@ -1436,5 +1439,33 @@
     "upgradeProcessingCredits": "已升级到{plan} — 积分正在处理中",
     "totalCharge": "现在应付总额",
     "paymentMethod": "支付方式"
+  },
+  "libraryPage": {
+    "title": "我的文献库",
+    "paperCount": "{count, plural, =0 {暂无论文} other {# 篇论文}}在您的文献库中",
+    "searchPlaceholder": "按标题、作者或摘要搜索...",
+    "sortBy": "排序方式",
+    "sortDateSaved": "保存日期",
+    "sortRating": "评分",
+    "sortPublicationYear": "发表年份",
+    "sortAscending": "升序",
+    "sortDescending": "降序",
+    "ratingFilter": "按最低评分筛选",
+    "clearRatingFilter": "清除评分筛选",
+    "loadMore": "加载更多",
+    "emptyLibraryTitle": "您的文献库为空",
+    "emptyLibraryDescription": "在搜索结果中对论文评分，即可将其加入文献库。",
+    "emptyLibraryCta": "搜索论文",
+    "noResultsTitle": "没有符合您搜索或筛选条件的论文",
+    "clearFilters": "清除筛选",
+    "removeFromLibrary": "从文献库中移除",
+    "removeConfirmTitle": "从文献库中移除",
+    "removeConfirmMessage": "确定要将「{title}」从您的文献库中移除吗？",
+    "removeButton": "移除",
+    "cancelButton": "取消",
+    "viewFullPaper": "查看完整论文",
+    "openAccess": "开放获取",
+    "citations": "{count, plural, other {# 次引用}}",
+    "sortDisabledInSearch": "搜索时无法排序"
   }
 }

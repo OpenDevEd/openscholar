@@ -5,6 +5,7 @@
     "bookmarks": "Favoris",
     "history": "Historique",
     "extraction": "Extraction",
+    "library": "Bibliothèque",
     "settings": "Paramètres",
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -958,7 +959,9 @@
     "privacyTitle": "Politique de confidentialité | OpenScholar",
     "privacyDescription": "Avis de confidentialité clients OpenScholar.ai. Découvrez comment Open Development & Education collecte, utilise et protège vos données personnelles.",
     "cookiePolicyTitle": "Politique de cookies | OpenScholar",
-    "cookiePolicyDescription": "Découvrez comment OpenScholar.ai utilise les cookies pour l'analyse et comment gérer vos préférences de cookies."
+    "cookiePolicyDescription": "Découvrez comment OpenScholar.ai utilise les cookies pour l'analyse et comment gérer vos préférences de cookies.",
+    "libraryTitle": "Bibliothèque - OpenScholar",
+    "libraryDescription": "Parcourez et gérez vos articles académiques sauvegardés"
   },
   "validation": {
     "bookmarkNameRequired": "Le nom du favori est requis",
@@ -1436,5 +1439,33 @@
     "upgradeProcessingCredits": "Mise à niveau vers {plan} — les crédits sont en cours de traitement",
     "totalCharge": "Total a payer maintenant",
     "paymentMethod": "Moyen de paiement"
+  },
+  "libraryPage": {
+    "title": "Votre bibliothèque",
+    "paperCount": "{count, plural, =0 {Aucun article} one {1 article} other {# articles}} dans votre bibliothèque",
+    "searchPlaceholder": "Rechercher par titre, auteur ou résumé...",
+    "sortBy": "Trier par",
+    "sortDateSaved": "Date d'ajout",
+    "sortRating": "Note",
+    "sortPublicationYear": "Année de publication",
+    "sortAscending": "Croissant",
+    "sortDescending": "Décroissant",
+    "ratingFilter": "Filtrer par note minimale",
+    "clearRatingFilter": "Effacer le filtre de note",
+    "loadMore": "Charger plus",
+    "emptyLibraryTitle": "Votre bibliothèque est vide",
+    "emptyLibraryDescription": "Commencez à noter des articles depuis les résultats de recherche pour construire votre bibliothèque.",
+    "emptyLibraryCta": "Rechercher des articles",
+    "noResultsTitle": "Aucun article ne correspond à votre recherche ou vos filtres",
+    "clearFilters": "Effacer les filtres",
+    "removeFromLibrary": "Retirer de la bibliothèque",
+    "removeConfirmTitle": "Retirer de la bibliothèque",
+    "removeConfirmMessage": "Retirer « {title} » de votre bibliothèque ?",
+    "removeButton": "Retirer",
+    "cancelButton": "Annuler",
+    "viewFullPaper": "Voir l'article complet",
+    "openAccess": "Accès libre",
+    "citations": "{count, plural, one {1 citation} other {# citations}}",
+    "sortDisabledInSearch": "Le tri est désactivé pendant la recherche"
   }
 }

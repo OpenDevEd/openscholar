@@ -39,6 +39,7 @@ import { AuthButton } from "./auth-button";
 import {
   Home,
   BookOpen,
+  Library,
   Clock,
   Database,
   PanelLeft,
@@ -313,6 +314,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     if (!pathname) return null;
     if (pathname === "/") return "home";
     if (pathname.includes("/bookmarks")) return "bookmarks";
+    if (pathname.includes("/library")) return "library";
     if (pathname.includes("/history")) return "history";
     if (extractionFeatureFlags.enabled && pathname.includes("/extraction"))
       return "extraction";
@@ -381,12 +383,22 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           />
 
           <NavItem
+            href="/library"
+            icon={Library}
+            label={tc("library")}
+            isActive={currentPageValue === "library"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={2}
+          />
+
+          <NavItem
             href="/history"
             icon={Clock}
             label={tc("history")}
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
-            index={2}
+            index={3}
           />
 
           {extractionFeatureFlags.enabled && (
@@ -397,7 +409,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               isActive={currentPageValue === "extraction"}
               isCollapsed={isCollapsed && !isMobile}
               onClick={handleNavClick}
-              index={3}
+              index={4}
             />
           )}
         </motion.div>
