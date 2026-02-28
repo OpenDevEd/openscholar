@@ -40,6 +40,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure) (completed 2026-02-28)
 - [x] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard (completed 2026-02-28)
 - [x] **Phase 12: Billing E2E CI Wiring** - NPM script, Clerk credentials in CI env blocks (gap closure) (completed 2026-02-28)
+- [ ] **Phase 13: CI Env Hardening & CRED-02 Regression Test** - Explicit CLERK_PUBLISHABLE_KEY in CI, dedicated monthly credit-grant test (tech debt closure)
 
 ## Phase Details
 
@@ -135,6 +136,18 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md -- Add NPM script and CI env/step wiring for billing E2E tests (completed 2026-02-28)
 
+### Phase 13: CI Env Hardening & CRED-02 Regression Test
+**Goal**: Eliminate CI env fragility by setting explicit CLERK_PUBLISHABLE_KEY in billing jobs, and add a dedicated CRED-02 regression test for monthly credit grants
+**Depends on**: Phase 12
+**Requirements**: CRED-02 (hardening), INFRA-02 (hardening)
+**Tech Debt Closure**: Closes CLERK_PUBLISHABLE_KEY_ALIAS and CRED-02_IMPLICIT_COVERAGE from v1.2 audit
+**Success Criteria** (what must be TRUE):
+  1. CI billing jobs (`billing-live`, `billing-live-extended`, `billing-nightly`) set `CLERK_PUBLISHABLE_KEY` explicitly alongside `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+  2. A dedicated test asserts monthly credit grants (3,000 for Go, 15,000 for Pro) independently of the subscription happy-path tests
+
+Plans:
+- [ ] 13-01-PLAN.md -- Add explicit CLERK_PUBLISHABLE_KEY to CI and dedicated CRED-02 regression test
+
 ## Progress
 
 **Execution Order:**
@@ -154,3 +167,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 11. Tech Debt Cleanup | 1/1 | Complete    | 2026-02-28 | - |
 | 12. Billing E2E CI Wiring | 1/1 | Complete    | 2026-02-28 | - |
+| 13. CI Env Hardening & CRED-02 Regression | v1.2 | 0/1 | Planned | - |

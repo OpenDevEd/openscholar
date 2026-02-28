@@ -65,7 +65,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INFRA-01 | Phase 7 | Complete |
-| INFRA-02 | Phase 7 | Complete |
+| INFRA-02 | Phase 7, Phase 13 (hardening) | Complete |
 | INFRA-03 | Phase 7 | Complete |
 | INFRA-04 | Phase 7 | Complete |
 | INFRA-05 | Phase 7 | Complete |
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAN-03 | Phase 9 | Complete |
 | CNCL-01 | Phase 9 | Complete |
 | CRED-01 | Phase 9, Phase 10 (gap closure) | Complete |
-| CRED-02 | Phase 8 | Complete |
+| CRED-02 | Phase 8, Phase 13 (hardening) | Complete |
 | CRED-03 | Phase 9 | Complete |
 | CRED-04 | Phase 9 | Complete |
 | CRED-05 | Phase 9, Phase 10 (gap closure) | Complete |
