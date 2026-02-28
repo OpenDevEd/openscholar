@@ -115,7 +115,7 @@ export function UpgradeConfirmationDialog({
 
           {/* Proration breakdown */}
           <div className="rounded-lg border p-3 space-y-2">
-            {(preview.lineItems ?? []).length > 0 ? (
+            {(preview.lineItems ?? []).length > 0 && (
               <>
                 {preview.lineItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
@@ -131,17 +131,14 @@ export function UpgradeConfirmationDialog({
                     </span>
                   </div>
                 ))}
-                <div className="border-t pt-2 flex items-center justify-between">
-                  <span className="text-sm font-medium">{t("totalCharge")}</span>
-                  <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
-                </div>
               </>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{t("prorationCharge")}</span>
-                <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
-              </div>
             )}
+            <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex items-center justify-between" : "flex items-center justify-between"}>
+              <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
+                {(preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge")}
+              </span>
+              <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
+            </div>
           </div>
 
           {/* Credits info */}
