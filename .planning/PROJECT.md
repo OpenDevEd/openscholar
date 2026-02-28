@@ -35,7 +35,25 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 
 ### Active
 
-(None — planning next milestone)
+- [ ] Full browser E2E test suite for all Stripe billing flows (Playwright + Clerk test mode + Stripe sandbox + Convex dev)
+- [ ] Test coverage: subscription, upgrade, downgrade, cancellation, credit granting (sub + upgrade), recurring payment credit grants, credit topup, free credit capping
+- [ ] Fresh Clerk test user per test for isolation
+- [ ] Proper test infrastructure: fixtures, utilities, cleanup
+
+## Current Milestone: v1.2 E2E Billing Tests
+
+**Goal:** Comprehensive Playwright E2E tests exercising every billing flow through the actual UI against Clerk test mode, Stripe sandbox, and Convex dev backend.
+
+**Target features:**
+- Subscription E2E (free → Go, free → Pro via UI checkout)
+- Upgrade E2E (Go → Pro via upgrade dialog with proration preview)
+- Downgrade E2E (Pro → Go via customer portal or UI)
+- Cancellation E2E
+- Credit granting verification (on subscribe, on upgrade pro-rata)
+- Recurring payment cycle credit grants
+- Credit topup purchase flow
+- Free credit capping behavior
+- Fresh test user isolation per scenario
 
 ### Out of Scope
 
@@ -54,6 +72,8 @@ Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`
 Upgrade flow fully operational: proration preview, dual-path credit grants (action + webhook), confirmation dialog with payment method, line items, and dismiss guard.
 TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
 9 human verification items pending Stripe test mode validation across v1.1 phases.
+Existing test infrastructure: Vitest unit tests (43 files), backend live-billing integration tests (Stripe test clocks + Convex CLI), Playwright E2E auth spec with Clerk test mode.
+Test environment: local Next.js dev server + deployed Convex dev instance + Stripe sandbox + Clerk test mode.
 
 ## Constraints
 
@@ -83,4 +103,4 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | HTML entities for card dots | Avoids Unicode bullet encoding issues across locales | ✓ Good — consistent rendering |
 
 ---
-*Last updated: 2026-02-27 after v1.1 milestone completed*
+*Last updated: 2026-02-28 after v1.2 milestone started*
