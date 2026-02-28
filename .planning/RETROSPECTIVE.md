@@ -92,6 +92,52 @@
 
 ---
 
+## Milestone: v1.2 — E2E Billing Tests
+
+**Shipped:** 2026-02-28
+**Phases:** 7 | **Plans:** 11 | **Deliverables:** 1,248 LOC TypeScript, 351 LOC YAML
+
+### What Was Built
+- Complete Playwright billing test infrastructure: fixtures with fresh Clerk user isolation, Stripe checkout-bypass helpers, Convex webhook waiter, BillingPage + PricingPage POMs
+- 18 data-testid attributes across billing UI components for stable test targeting
+- 6 spec files covering all billing flows: subscribe (Go/Pro), upgrade (Go-to-Pro), downgrade (Pro-to-Go), cancellation, credits (signup, pro-rata, topup, cap), and dedicated CRED-02 regression
+- CI pipeline integration: test:billing:e2e npm script, 7 env vars, Playwright browser install, test execution, and artifact upload in all 3 billing CI jobs
+- Gap closures: credits spec auth wiring (Phase 10), tech debt cleanup (Phase 11), CI env hardening + CRED-02 regression (Phase 13)
+
+### What Worked
+- Checkout-bypass pattern eliminated Stripe hosted checkout automation entirely — fast, deterministic, reliable
+- WebhookWaiter polling pattern removed timing flakes between Stripe webhook delivery and UI assertion
+- Auto-advance pipeline (research -> plan -> verify -> execute) ran 5 of 7 phases without manual intervention
+- 3-source cross-reference audit (VERIFICATION + SUMMARY + REQUIREMENTS) caught real gaps: missing clerkUser fixture, implicit CRED-02 coverage, CLERK_PUBLISHABLE_KEY alias fragility
+- Integration checker spawn validated all 18 requirements were properly wired across phase boundaries
+
+### What Was Inefficient
+- Phase 7 had no CONTEXT.md (discuss-phase skipped) — planner had to infer all infrastructure design decisions from research alone
+- Gap closure phases (10, 11, 12, 13) were created reactively after audit findings — could have been caught during initial planning if discuss-phase had been run for Phases 7-9
+- ROADMAP.md plan checkboxes still not updated during execution (same recurring issue from v1.0 + v1.1)
+- Milestone audit had to run 3 times total (first found gaps → Phase 10-11 closures, second found more → Phase 12-13 closures, third passed)
+
+### Patterns Established
+- Checkout-bypass pattern for E2E subscription tests (createSubscriptionBypass + cleanupStripeCustomer)
+- WebhookWaiter convergence polling (waitForSubscriptionPlan + waitForCreditBalance) before UI assertions
+- Page Object Model pattern with data-testid selectors (no raw CSS classes in test code)
+- Fresh Clerk user per test for full isolation (create + sign-in + teardown)
+- CI env guard pattern: `if [ "$VAR" = "false" ]; then exit 1; fi` for feature flags
+
+### Key Lessons
+1. Stripe blocks all automation of hosted checkout pages — checkout-bypass via API is the only viable E2E approach
+2. Clerk concurrent auth bug (#7891) requires `workers: 1` — parallel billing tests are not possible
+3. Exact toBe() assertions in regression tests catch drift; >= assertions in feature tests absorb timing variation — use the right match for the purpose
+4. CI env preflight validation should cover ALL secrets used by E2E tests, not just a subset — missing guards cause confusing runtime failures
+5. Running discuss-phase before planning catches design decisions early; skipping it leads to reactive gap closure phases
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant for planning/execution, sonnet for verification)
+- Sessions: 3 sessions (main build, gap closures, final hardening)
+- Notable: 11 plans across 7 phases — more phases than v1.0/v1.1 combined due to iterative gap closures
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -100,9 +146,12 @@
 |-----------|---------|--------|-------|----------|------------|
 | v1.0 | 29 | 3 | 7 | 3min | Established billing audit patterns |
 | v1.1 | 25 | 3 | 6 | 2min | Dual-path convergence, i18n integration |
+| v1.2 | ~50 | 7 | 11 | 1.5min | Auto-advance pipeline, 3-source audit |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Always re-fetch from Stripe API before syncing — event payloads and local DB can be stale (v1.0 + v1.1)
-2. ROADMAP.md plan checkboxes not updating during execution — recurring process gap (v1.0 + v1.1)
-3. Audit-first approach prevents regressions and catches orphaned code (v1.0 audit, v1.1 i18n key catch)
+2. ROADMAP.md plan checkboxes not updating during execution — recurring process gap (v1.0 + v1.1 + v1.2)
+3. Audit-first approach prevents regressions and catches orphaned code (v1.0 audit, v1.1 i18n key catch, v1.2 gap closures)
+4. Discuss-phase before planning catches design decisions early — skipping it leads to reactive gap closure phases (v1.2)
+5. CI env preflight validation must be comprehensive — partial coverage causes confusing runtime failures (v1.2)
