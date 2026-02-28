@@ -123,7 +123,10 @@ Plans:
   3. `buildFilterData` assembles correct filter sections for each filter type and filter active predicates return correct booleans
   4. `validateAndExpandKeywords` rejects invalid queries and expands keyword bookmarks correctly
   5. URL param serialization round-trips: `parse(serialize(params))` produces identical params
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 18-01-PLAN.md — Search parameter construction + filter predicates (SRCH-01, SRCH-04)
+- [ ] 18-02-PLAN.md — Region codec bijectivity + URL serialization round-trips (SRCH-02, SRCH-06)
+- [ ] 18-03-PLAN.md — Filter builder sections + keyword validation (SRCH-03, SRCH-05)
 
 ### Phase 19: Data Export Tests
 **Goal**: CSV and JSON exports produce correct output with proper formatting, escaping, and field inclusion based on export options
