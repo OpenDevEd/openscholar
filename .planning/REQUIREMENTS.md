@@ -1,7 +1,7 @@
-# Requirements: OpenAlex Count — Stripe Integration Audit
+# Requirements: OpenAlex Count -- Stripe Integration Audit
 
 **Defined:** 2026-02-28
-**Core Value:** Every billing operation produces correct financial outcomes — the right amount charged, at the right time, with proper proration and user feedback.
+**Core Value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
 
 ## v1.2 Requirements
 
@@ -45,7 +45,7 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 ### Deferred to live-billing integration suite
 
 - **LIVE-01**: Recurring payment cycle credit grants (requires Stripe test clocks, incompatible with browser checkout)
-- **LIVE-02**: Payment failure E2E (requires Stripe Checkout iframe automation — anti-feature)
+- **LIVE-02**: Payment failure E2E (requires Stripe Checkout iframe automation -- anti-feature)
 
 ## Out of Scope
 
@@ -64,30 +64,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| INFRA-06 | — | Pending |
-| INFRA-07 | — | Pending |
-| SUB-01 | — | Pending |
-| SUB-02 | — | Pending |
-| PLAN-01 | — | Pending |
-| PLAN-02 | — | Pending |
-| PLAN-03 | — | Pending |
-| CNCL-01 | — | Pending |
-| CRED-01 | — | Pending |
-| CRED-02 | — | Pending |
-| CRED-03 | — | Pending |
-| CRED-04 | — | Pending |
-| CRED-05 | — | Pending |
+| INFRA-01 | Phase 7 | Pending |
+| INFRA-02 | Phase 7 | Pending |
+| INFRA-03 | Phase 7 | Pending |
+| INFRA-04 | Phase 7 | Pending |
+| INFRA-05 | Phase 7 | Pending |
+| INFRA-06 | Phase 7 | Pending |
+| INFRA-07 | Phase 7 | Pending |
+| SUB-01 | Phase 8 | Pending |
+| SUB-02 | Phase 8 | Pending |
+| PLAN-01 | Phase 8 | Pending |
+| PLAN-02 | Phase 9 | Pending |
+| PLAN-03 | Phase 9 | Pending |
+| CNCL-01 | Phase 9 | Pending |
+| CRED-01 | Phase 9 | Pending |
+| CRED-02 | Phase 8 | Pending |
+| CRED-03 | Phase 9 | Pending |
+| CRED-04 | Phase 9 | Pending |
+| CRED-05 | Phase 9 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18 ⚠️
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 after roadmap creation*
