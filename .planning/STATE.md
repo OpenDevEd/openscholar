@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: E2E Billing Tests
 status: unknown
-last_updated: "2026-02-28T08:16:50.108Z"
+last_updated: "2026-02-28T08:42:44Z"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 9
-  completed_plans: 9
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** v1.2 milestone complete
+**Current focus:** Phase 12 gap closure complete
 
 ## Current Position
 
-Phase: 11 of 11 (Tech Debt Cleanup) -- fifth phase of v1.2
-Plan: 11-01 complete, all 1 plans done
-Status: Phase 11 complete -- v1.2 milestone complete
-Last activity: 2026-02-28 -- Plan 11-01 tech debt cleanup complete
+Phase: 12 of 12 (Billing E2E CI Wiring) -- gap closure phase
+Plan: 12-01 complete, all 1 plans done
+Status: Phase 12 complete -- billing E2E CI wiring done
+Last activity: 2026-02-28 -- Plan 12-01 billing E2E CI wiring complete
 
-Progress: [████████████████████] 100% (v1.2: 5/5 phases complete, 9/9 plans done)
+Progress: [████████████████████] 100% (gap closure: 1/1 phase complete, 1/1 plan done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0: 7, v1.1: 6, v1.2: 6)
-- v1.2 plans completed: 6
-- v1.2 total execution time: 13min
+- Total plans completed: 20 (v1.0: 7, v1.1: 6, v1.2: 6, gap: 1)
+- Gap closure plans completed: 1
+- Gap closure total execution time: 1min
 
 **By Phase (v1.2):**
 
@@ -45,6 +45,7 @@ Progress: [████████████████████] 100% (v
 | 9 | 2/2 | 5min | 2.5min |
 | 10 | 1/1 | 3min | 3min |
 | 11 | 1/1 | 2min | 2min |
+| 12 | 1/1 | 1min | 1min |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - Pro-rata credit tolerance +-2 accounts for timing gap between test and server calculation (09-02)
 - Credit topup test subscribes to Go first to establish Stripe customer with payment method (09-02)
 - CI credits env guard checks only explicit "false" -- unset passes, matching runtime behavior (11-01)
+- No --config flag in test:billing:e2e script -- playwright.config.ts is the default (12-01)
+- Artifact names use ${{ github.job }} to avoid collision across billing jobs in same workflow run (12-01)
 
 ### Pending Todos
 
@@ -80,5 +83,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 11-01-PLAN.md -- tech debt cleanup (bracket notation, duplicate testid, CI env guards)
+Stopped at: Completed 12-01-PLAN.md -- billing E2E CI wiring (npm script, env vars, CI steps)
 Resume file: None
