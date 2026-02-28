@@ -39,6 +39,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 9: Lifecycle and Credit Specs** - E2E specs for downgrade, cancellation, credit topup, pro-rata credits, and free credit cap (completed 2026-02-28)
 - [x] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure) (completed 2026-02-28)
 - [x] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard (completed 2026-02-28)
+- [ ] **Phase 12: Billing E2E CI Wiring** - NPM script, Clerk credentials in CI env blocks (gap closure)
 
 ## Phase Details
 
@@ -119,6 +120,19 @@ Plans:
 Plans:
 - [ ] 11-01-PLAN.md -- Fix bracket notation, duplicate testid, and CI env guard
 
+### Phase 12: Billing E2E CI Wiring
+**Goal**: Billing E2E Playwright tests are invocable in CI with correct credentials, so the 9 billing specs can run in CI pipelines
+**Depends on**: Phase 11
+**Requirements**: None (CI operational, not requirements)
+**Gap Closure**: Closes integration gaps MISSING-01, MISSING-02 from v1.2 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. `package.json` contains a `test:billing:e2e` script that runs `playwright test --project=billing`
+  2. CI billing jobs (`billing-live`, `billing-live-extended`, `billing-nightly`) include `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in their env blocks
+  3. A new CI step in billing jobs runs `npm run test:billing:e2e` after the existing live-billing Vitest suite
+
+Plans:
+- [ ] 12-01-PLAN.md -- Add NPM script and CI env/step wiring for billing E2E tests
+
 ## Progress
 
 **Execution Order:**
@@ -137,3 +151,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
 | 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 11. Tech Debt Cleanup | 1/1 | Complete    | 2026-02-28 | - |
+| 12. Billing E2E CI Wiring | v1.2 | 0/1 | Pending | - |
