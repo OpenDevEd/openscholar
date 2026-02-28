@@ -1,12 +1,12 @@
-# OpenAlex Count — Stripe Integration Audit
+# OpenAlex Count — TDD & Test Coverage
 
 ## What This Is
 
-A comprehensive audit, fix, and E2E test suite for the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. Subscription plans, credit purchasing, upgrade flows, and webhook handling have been verified, corrected, hardened, and covered by Playwright E2E tests exercising every billing flow through the actual UI.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. Previous milestones (v1.0–v1.2) audited, hardened, and E2E-tested the Stripe billing integration. This milestone establishes strict TDD (red-green-refactor) as the development standard and backfills high test coverage across the three core domains: search & extraction, AI/LLM features, and user management.
 
 ## Core Value
 
-Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits) must produce correct financial outcomes — the right amount charged, at the right time, with proper proration and user feedback.
+Every major code path in search, AI, and user management has tests — and every new feature is built test-first using strict red-green-refactor TDD.
 
 ## Requirements
 
@@ -50,9 +50,20 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 - ✓ Credit topup via checkout-bypass (CRED-04) — v1.2
 - ✓ Free-tier credit cap banner (CRED-05) — v1.2
 
+## Current Milestone: v2.0 TDD & Test Coverage
+
+**Goal:** Backfill high test coverage across search & extraction, AI/LLM features, and user management — unit tests first, then integration — while establishing strict TDD as the standard for all future development.
+
+**Target features:**
+- Unit tests for all untested search/filter/export logic
+- Unit tests for all untested AI prompt builders, batch processing, and utility functions
+- Unit tests for auth state machine, plan enforcement, user creation, and feature flag guards
+- Integration tests for critical cross-cutting flows
+- TDD workflow documentation and patterns
+
 ### Active
 
-(None — planning next milestone)
+(Defined in REQUIREMENTS.md)
 
 ### Out of Scope
 
@@ -112,4 +123,4 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | CI credits env guard checks only "false" | Unset passes, matching runtime feature flag behavior | ✓ Good — consistent with app logic |
 
 ---
-*Last updated: 2026-02-28 after v1.2 milestone*
+*Last updated: 2026-02-28 after v2.0 milestone start*

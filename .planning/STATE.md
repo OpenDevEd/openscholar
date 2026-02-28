@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: E2E Billing Tests
-status: complete
-last_updated: "2026-02-28T12:00:00.000Z"
+milestone: v2.0
+milestone_name: TDD & Test Coverage
+status: active
+last_updated: "2026-02-28T14:00:00.000Z"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -17,15 +17,15 @@ progress:
 
 See: .planning/PROJECT.md (updated 2026-02-28)
 
-**Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** v1.2 E2E Billing Tests milestone complete -- planning next milestone
+**Core value:** Every major code path in search, AI, and user management has tests — and every new feature is built test-first using strict red-green-refactor TDD.
+**Current focus:** Defining requirements for v2.0 TDD & Test Coverage
 
 ## Current Position
 
-Milestone: v1.2 E2E Billing Tests -- SHIPPED 2026-02-28
-All 13 phases complete across 3 milestones (v1.0, v1.1, v1.2)
-
-Progress: [████████████████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-28 — Milestone v2.0 started
 
 ## Performance Metrics
 
@@ -65,5 +65,5 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed quick task 1: currently screening deducts points for each item, but translation does not, translation should be the same
+Last activity: 2026-02-28 - Started milestone v2.0 TDD & Test Coverage
 Resume file: None
