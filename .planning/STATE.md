@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: E2E Billing Tests
-status: unknown
-last_updated: "2026-02-28T06:47:05.524Z"
+status: in-progress
+last_updated: "2026-02-28T07:15:17Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 8
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** Phase 8 -- Subscription and Upgrade Specs (complete)
+**Current focus:** Phase 9 -- Lifecycle and Credit Specs (in progress)
 
 ## Current Position
 
-Phase: 8 of 9 (Subscription and Upgrade Specs) -- second phase of v1.2
-Plan: 08-02 complete, all 2 plans done
-Status: Phase 8 complete
-Last activity: 2026-02-28 -- Plan 08-02 upgrade spec complete
+Phase: 9 of 9 (Lifecycle and Credit Specs) -- third phase of v1.2
+Plan: 09-01 complete, 1 of 2 plans done
+Status: Phase 9 in progress
+Last activity: 2026-02-28 -- Plan 09-01 downgrade and cancel specs complete
 
-Progress: [████████████████░░░░] 63% (v1.2: 2/3 phases complete, 5/8 plans done)
+Progress: [███████████████░░░░░] 75% (v1.2: 2/3 phases complete, 6/8 plans done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15 (v1.0: 7, v1.1: 6, v1.2: 2)
-- v1.2 plans completed: 2
-- v1.2 total execution time: 3min
+- Total plans completed: 16 (v1.0: 7, v1.1: 6, v1.2: 3)
+- v1.2 plans completed: 3
+- v1.2 total execution time: 5min
 
 **By Phase (v1.2):**
 
@@ -42,7 +42,7 @@ Progress: [████████████████░░░░] 63% (v1
 |-------|-------|-------|----------|
 | 7 | 3/3 | - | - |
 | 8 | 2/2 | 3min | 1.5min |
-| 9 | 0/? | - | - |
+| 9 | 1/2 | 2min | 2min |
 
 ## Accumulated Context
 
@@ -58,6 +58,9 @@ Recent decisions affecting current work:
 - Credit assertions use >= because free signup credits (2,000) are always present (08-01)
 - Upgrade credit assertion uses > 5000 threshold (not exact Pro amount) since pro-rata credits vary with timing (08-02)
 - Dialog verification checks plan names only, not dollar amounts (volatile proration values) (08-02)
+- Downgrade triggers no confirmation dialog -- re-navigate after clickSubscribe to see updated state (09-01)
+- Cancel subscription uses Stripe API bypass (cancel_at_period_end) since Customer Portal cannot be automated (09-01)
+- Assert text patterns only (visibility, /expires on/i) -- no exact dates in lifecycle tests (09-01)
 
 ### Pending Todos
 
@@ -71,5 +74,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 08-02-PLAN.md -- upgrade spec with Go-to-Pro test
+Stopped at: Completed 09-01-PLAN.md -- downgrade and cancel specs
 Resume file: None

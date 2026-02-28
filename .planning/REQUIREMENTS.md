@@ -25,12 +25,12 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 ### Plan Changes
 
 - [x] **PLAN-01**: User can upgrade from Go to Pro via in-app confirmation dialog with proration preview
-- [ ] **PLAN-02**: User can downgrade from Pro to Go, sees pending-change banner and scheduled badge
-- [ ] **PLAN-03**: User can cancel a scheduled downgrade to keep current Pro plan
+- [x] **PLAN-02**: User can downgrade from Pro to Go, sees pending-change banner and scheduled badge
+- [x] **PLAN-03**: User can cancel a scheduled downgrade to keep current Pro plan
 
 ### Cancellation
 
-- [ ] **CNCL-01**: User can cancel subscription and billing page shows "Expires on" instead of "Renews on"
+- [x] **CNCL-01**: User can cancel subscription and billing page shows "Expires on" instead of "Renews on"
 
 ### Credits
 
@@ -74,9 +74,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUB-01 | Phase 8 | Complete |
 | SUB-02 | Phase 8 | Complete |
 | PLAN-01 | Phase 8 | Complete |
-| PLAN-02 | Phase 9 | Pending |
-| PLAN-03 | Phase 9 | Pending |
-| CNCL-01 | Phase 9 | Pending |
+| PLAN-02 | Phase 9 | Complete |
+| PLAN-03 | Phase 9 | Complete |
+| CNCL-01 | Phase 9 | Complete |
 | CRED-01 | Phase 9 | Pending |
 | CRED-02 | Phase 8 | Complete |
 | CRED-03 | Phase 9 | Pending |

@@ -84,11 +84,11 @@ Plans:
   5. A test upgrades Go to Pro and verifies the pro-rata credit grant matches the calculated `floor(remainingRatio * creditDelta)`
   6. A test purchases a credit topup via checkout-bypass and the billing page shows the increased balance
   7. A test verifies a free-tier user at the credit cap sees the cap banner on the billing page
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: TBD
-- [ ] 09-02: TBD
+- [ ] 09-01: Downgrade and cancel specs (downgrade.spec.ts, cancel.spec.ts)
+- [ ] 09-02: Credit specs (credits.spec.ts) with topup bypass helper
 
 ## Progress
 
