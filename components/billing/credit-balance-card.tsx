@@ -42,7 +42,7 @@ export function CreditBalanceCard({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">{t("totalBalance")}</span>
-            <span className={cn(
+            <span data-testid="billing-credit-balance" className={cn(
               "text-2xl font-bold font-mono",
               totalBalance < 0 && "text-red-600"
             )}>
@@ -62,7 +62,7 @@ export function CreditBalanceCard({
                 </span>
               )}
             </span>
-            <span className="text-muted-foreground font-mono">
+            <span data-testid="billing-free-credits" className="text-muted-foreground font-mono">
               {format.number(freeBalance)} / {format.number(freeCreditCap)}
             </span>
           </div>
@@ -82,7 +82,7 @@ export function CreditBalanceCard({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{t("purchasedCredits")}</span>
-              <span className={cn(
+              <span data-testid="billing-paid-credits" className={cn(
                 "text-muted-foreground font-mono",
                 paidBalance < 0 && "text-red-600"
               )}>

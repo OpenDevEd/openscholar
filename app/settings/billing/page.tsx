@@ -357,6 +357,7 @@ export default function BillingPage() {
           </p>
         </div>
         <Button
+          data-testid="billing-manage-button"
           variant={showUpgradeCta ? "default" : "outline"}
           onClick={handleManageSubscription}
           disabled={
@@ -399,10 +400,11 @@ export default function BillingPage() {
           <div className="rounded-xl border border-border/50 bg-muted/30 overflow-hidden">
             <div className="p-4 flex items-center justify-between border-b border-border/40 min-h-[80px]">
               <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold capitalize">
+                <span data-testid="billing-plan-name" className="text-2xl font-bold capitalize">
                   {t("planLabel", { plan: displayPlan })}
                 </span>
                 <span
+                  data-testid="billing-status-badge"
                   className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${status === "active" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}`}
                 >
                   {statusLabels[status] ?? status}
@@ -485,7 +487,7 @@ export default function BillingPage() {
             )}
 
             {hasPendingChange && details && (
-              <div className="bg-blue-500/10 p-3 text-blue-700 text-sm flex items-center justify-between gap-3">
+              <div data-testid="billing-pending-change-banner" className="bg-blue-500/10 p-3 text-blue-700 text-sm flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
                   <span>
@@ -504,6 +506,7 @@ export default function BillingPage() {
                   </span>
                 </div>
                 <Button
+                  data-testid="billing-keep-plan-button"
                   variant="outline"
                   size="sm"
                   onClick={handleKeepCurrentPlan}
@@ -531,7 +534,7 @@ export default function BillingPage() {
                 ) : (
                   details && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
+                      <div data-testid="billing-renewal-date" className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span className="text-muted-foreground">
                           {details.cancelAtPeriodEnd
@@ -576,7 +579,7 @@ export default function BillingPage() {
 
         {/* Credits Section */}
         {isFreeCapReached && (
-          <div className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center gap-2 rounded-lg">
+          <div data-testid="billing-credit-cap-banner" className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center gap-2 rounded-lg">
             <Info className="w-4 h-4 flex-shrink-0" />
             <span>{t("creditCapBanner")}</span>
           </div>
