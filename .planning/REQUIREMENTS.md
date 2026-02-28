@@ -52,10 +52,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### AI Cost & Billing
 
-- [ ] **AICB-01**: `calculateCostInDollars` returns correct cost for each provider's pricing model (OpenAI, Anthropic, Google, DeepSeek)
-- [ ] **AICB-02**: `aggregateUsage` correctly sums token counts across multiple usage objects
-- [ ] **AICB-03**: `getModelPricing` returns `{0, 0}` for unknown models and correct pricing for known models
-- [ ] **AICB-04**: `getModelById`, `getModelsForProvider`, `getDefaultModelForProvider` return correct model configs
+- [x] **AICB-01**: `calculateCostInDollars` returns correct cost for each provider's pricing model (OpenAI, Anthropic, Google, DeepSeek)
+- [x] **AICB-02**: `aggregateUsage` correctly sums token counts across multiple usage objects
+- [x] **AICB-03**: `getModelPricing` returns `{0, 0}` for unknown models and correct pricing for known models
+- [x] **AICB-04**: `getModelById`, `getModelsForProvider`, `getDefaultModelForProvider` return correct model configs
 
 ### User Auth & State Machine
 
@@ -133,10 +133,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AIBP-04 | Phase 16 | Complete |
 | AIBP-05 | Phase 16 | Complete |
 | AIBP-06 | Phase 16 | Complete |
-| AICB-01 | Phase 17 | Pending |
-| AICB-02 | Phase 17 | Pending |
-| AICB-03 | Phase 17 | Pending |
-| AICB-04 | Phase 17 | Pending |
+| AICB-01 | Phase 17 | Complete |
+| AICB-02 | Phase 17 | Complete |
+| AICB-03 | Phase 17 | Complete |
+| AICB-04 | Phase 17 | Complete |
 | AUTH-01 | Phase 20 | Pending |
 | AUTH-02 | Phase 20 | Pending |
 | AUTH-03 | Phase 20 | Pending |

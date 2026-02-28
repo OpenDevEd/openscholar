@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: TDD & Test Coverage
 status: unknown
-last_updated: "2026-02-28T14:00:23.783Z"
+last_updated: "2026-02-28T14:10:10.612Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every major code path in search, AI, and user management has tests -- and every new feature is built test-first using strict red-green-refactor TDD.
-**Current focus:** Phase 17 -- AI Cost & Billing Tests
+**Current focus:** Phase 18 -- Search & Filters Tests
 
 ## Current Position
 
-Phase: 16 of 21 (AI Batch Processing Tests)
+Phase: 17 of 21 (AI Cost & Billing Tests)
 Plan: 2 of 2 (complete)
-Status: Phase 16 complete
-Last activity: 2026-02-28 -- Completed 16-02 screening utils missing combinations tests
+Status: Phase 17 complete
+Last activity: 2026-02-28 -- Completed 17-02 model registry and pricing lookup tests
 
-Progress: [████████████████████] 5/5 plans (100%)
+Progress: [████████████████████] 7/7 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 2)
+- Total plans completed: 28 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 4)
 - Total milestones shipped: 3
 
 **By Milestone:**
@@ -53,6 +53,8 @@ Progress: [████████████████████] 5/5 pla
 | 15-ai-prompts-schema-tests | 02 | 1min | 2 | 2 |
 | 16-ai-batch-processing-tests | 01 | 2min | 1 | 1 |
 | 16-ai-batch-processing-tests | 02 | 1min | 1 | 1 |
+| 17-ai-cost-billing-tests | 01 | 2min | 1 | 1 |
+| 17-ai-cost-billing-tests | 02 | 2min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -70,6 +72,9 @@ See PROJECT.md Key Decisions table for full log.
 - [16-01] Mocked executeAIOperation at module boundary via vi.mock -- tests batch orchestration logic independent of AI SDK
 - [16-01] Used {} as LanguageModel stub since model never invoked through mock
 - [16-02] No mocking needed for generateMissingScreeningCombinationsByPaper -- pure synchronous function
+- [17-01] Used toBeCloseTo(x, 6) for cost assertions to handle IEEE 754 floating-point precision
+- [17-01] Tested field fallback chain (promptTokens >> inputTokens) explicitly -- documents the priority order
+- [17-02] Tested representative models per provider instead of snapshotting all 40+ models -- avoids brittle tests
 
 ### Pending Todos
 
@@ -90,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Phase 16 complete, ready to plan Phase 17
-Stopped at: Phase 16 complete, ready to plan Phase 17
+Last activity: 2026-02-28 - Phase 17 complete, ready to plan Phase 18
+Stopped at: Phase 17 complete, ready to plan Phase 18
 Resume file: None
