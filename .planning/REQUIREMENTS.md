@@ -34,11 +34,11 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 
 ### Credits
 
-- [ ] **CRED-01**: User receives free signup credits on account creation and sees balance on billing page
+- [x] **CRED-01**: User receives free signup credits on account creation and sees balance on billing page
 - [x] **CRED-02**: User receives correct monthly credits on subscription (3,000 Go / 15,000 Pro)
-- [ ] **CRED-03**: User receives pro-rata credits on upgrade matching calculated `floor(remainingRatio * creditDelta)`
-- [ ] **CRED-04**: User can purchase credit topup via checkout-bypass and see increased balance
-- [ ] **CRED-05**: Free-tier user at credit cap sees cap banner on billing page
+- [x] **CRED-03**: User receives pro-rata credits on upgrade matching calculated `floor(remainingRatio * creditDelta)`
+- [x] **CRED-04**: User can purchase credit topup via checkout-bypass and see increased balance
+- [x] **CRED-05**: Free-tier user at credit cap sees cap banner on billing page
 
 ## Future Requirements
 
@@ -77,11 +77,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAN-02 | Phase 9 | Complete |
 | PLAN-03 | Phase 9 | Complete |
 | CNCL-01 | Phase 9 | Complete |
-| CRED-01 | Phase 9 | Pending |
+| CRED-01 | Phase 9 | Complete |
 | CRED-02 | Phase 8 | Complete |
-| CRED-03 | Phase 9 | Pending |
-| CRED-04 | Phase 9 | Pending |
-| CRED-05 | Phase 9 | Pending |
+| CRED-03 | Phase 9 | Complete |
+| CRED-04 | Phase 9 | Complete |
+| CRED-05 | Phase 9 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 18 total
