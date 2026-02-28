@@ -130,6 +130,8 @@ Plans:
   2. CI billing jobs (`billing-live`, `billing-live-extended`, `billing-nightly`) include `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in their env blocks
   3. A new CI step in billing jobs runs `npm run test:billing:e2e` after the existing live-billing Vitest suite
 
+**Plans:** 1 plan
+
 Plans:
 - [ ] 12-01-PLAN.md -- Add NPM script and CI env/step wiring for billing E2E tests
 
