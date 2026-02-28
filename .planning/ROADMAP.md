@@ -167,4 +167,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 11. Tech Debt Cleanup | 1/1 | Complete    | 2026-02-28 | - |
 | 12. Billing E2E CI Wiring | 1/1 | Complete    | 2026-02-28 | - |
-| 13. CI Env Hardening & CRED-02 Regression | 1/1 | Complete   | 2026-02-28 | - |
+| 13. CI Env Hardening & CRED-02 Regression | 1/1 | Complete    | 2026-02-28 | - |
