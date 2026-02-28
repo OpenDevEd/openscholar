@@ -50,6 +50,7 @@ Progress: [██░░░░░░░░] 25.0% (2/8 phases with plans complete
 |-------|------|----------|-------|-------|
 | 14-test-infrastructure | 01 | 2min | 2 | 5 |
 | 15-ai-prompts-schema-tests | 01 | 2min | 2 | 2 |
+| 15-ai-prompts-schema-tests | 02 | 1min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -62,6 +63,8 @@ See PROJECT.md Key Decisions table for full log.
 - [14-01] Conditional dynamic import guard for RTL cleanup to avoid crashing node-environment tests
 - [14-01] Lazy import.meta.glob for convex-test module discovery per docs recommendation
 - [15-01] Tested prompt builder output structure only (system/prompt fields, content markers) -- no AI quality assertions
+- [15-02] Used only .parse()/.safeParse() for Zod schema testing -- no internal introspection for version stability
+- [15-02] Used it.each for parametric round-trip coverage across ASCII, Unicode, and special characters
 
 ### Pending Todos
 
@@ -82,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 15-01-PLAN.md (AI prompt & validation tests)
-Stopped at: Completed 15-01-PLAN.md
+Last activity: 2026-02-28 - Completed 15-02-PLAN.md (AI schema and codec tests)
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None

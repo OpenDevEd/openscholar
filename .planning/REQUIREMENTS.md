@@ -37,9 +37,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **AIPR-01**: All prompt builders (`buildEnhanceQueryPrompts`, `buildScreeningQuestionsPrompts`, `buildScreeningResponsesPrompts`, `buildTranslateQueryPrompts`, `buildTranslatePaperContentPrompts`, `buildExtractionQuestionsPrompts`) produce structurally correct prompts with required fields
 - [x] **AIPR-02**: `validateQuery` detects unbalanced parentheses and trailing Boolean operators
 - [x] **AIPR-03**: `repairJSON` and `repairSingleField` recover malformed AI responses for common failure patterns
-- [ ] **AIPR-04**: All Zod schemas (`queryEnhancementSchema`, `screeningQuestionsSchema`, dynamic `createScreeningResponsesSchema`) accept valid inputs and reject invalid ones
-- [ ] **AIPR-05**: `encodeQuestionKey` / `decodeQuestionKey` round-trip correctly for ASCII and non-ASCII question text
-- [ ] **AIPR-06**: `encodeQuestionResponseMap` / `decodeQuestionResponseMap` preserve all key-value pairs through round-trip encoding
+- [x] **AIPR-04**: All Zod schemas (`queryEnhancementSchema`, `screeningQuestionsSchema`, dynamic `createScreeningResponsesSchema`) accept valid inputs and reject invalid ones
+- [x] **AIPR-05**: `encodeQuestionKey` / `decodeQuestionKey` round-trip correctly for ASCII and non-ASCII question text
+- [x] **AIPR-06**: `encodeQuestionResponseMap` / `decodeQuestionResponseMap` preserve all key-value pairs through round-trip encoding
 
 ### AI Batch Processing
 
@@ -124,9 +124,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AIPR-01 | Phase 15 | Complete |
 | AIPR-02 | Phase 15 | Complete |
 | AIPR-03 | Phase 15 | Complete |
-| AIPR-04 | Phase 15 | Pending |
-| AIPR-05 | Phase 15 | Pending |
-| AIPR-06 | Phase 15 | Pending |
+| AIPR-04 | Phase 15 | Complete |
+| AIPR-05 | Phase 15 | Complete |
+| AIPR-06 | Phase 15 | Complete |
 | AIBP-01 | Phase 16 | Pending |
 | AIBP-02 | Phase 16 | Pending |
 | AIBP-03 | Phase 16 | Pending |
