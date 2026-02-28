@@ -1,7 +1,7 @@
 # Requirements: OpenAlex Count v2.1 Library & Collections
 
 **Defined:** 2026-02-28
-**Core Value:** Reliable, well-tested academic search and AI extraction — with persistent library for organizing rated papers
+**Core Value:** Reliable, well-tested academic search and AI extraction -- with persistent library for organizing rated papers
 
 ## v2.1 Requirements
 
@@ -10,13 +10,13 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 ### Library Core
 
 - [ ] **LIB-01**: Rating a paper (signed-in user) saves/upserts it to the user's Convex-backed library with slim normalized metadata
-- [ ] **LIB-02**: Library stores trimmed paper data (title, authors, DOI, abstract, year, journal, cited_by_count, open access status, OpenAlex ID) — not the full Work blob
+- [ ] **LIB-02**: Library stores trimmed paper data (title, authors, DOI, abstract, year, journal, cited_by_count, open access status, OpenAlex ID) -- not the full Work blob
 - [ ] **LIB-03**: User can view all saved items on a dedicated `/library` page
 - [ ] **LIB-04**: User can search within their library by title, author, or abstract text via Convex search index
 - [ ] **LIB-05**: User can filter library items by rating value
 - [ ] **LIB-06**: User can sort library by date saved, rating, or publication year
 - [ ] **LIB-07**: User can remove items from their library with confirmation
-- [ ] **LIB-08**: Library page is auth-gated — unauthenticated users are redirected to sign-in
+- [ ] **LIB-08**: Library page is auth-gated -- unauthenticated users are redirected to sign-in
 - [ ] **LIB-09**: Library page shows helpful empty state when no items are saved
 - [ ] **LIB-10**: Library items are paginated server-side via Convex `.paginate()`
 - [ ] **LIB-11**: Dual-path query strategy: search mode (relevance order via searchIndex) vs browse mode (custom sort via regular index)
@@ -65,7 +65,7 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Nested/hierarchical collections | Tree views, drag-drop, breadcrumbs — significant complexity for minimal MVP value; flat collections sufficient |
+| Nested/hierarchical collections | Tree views, drag-drop, breadcrumbs -- significant complexity for minimal MVP value; flat collections sufficient |
 | Tags (separate from collections) | Parallel organizational system confuses users; collections serve the same purpose |
 | Smart collections / saved searches | Requires continuous query engine; too complex for v2.1 |
 | PDF storage and annotation | Scope expansion; users have Zotero for this |
@@ -81,40 +81,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIB-01 | — | Pending |
-| LIB-02 | — | Pending |
-| LIB-03 | — | Pending |
-| LIB-04 | — | Pending |
-| LIB-05 | — | Pending |
-| LIB-06 | — | Pending |
-| LIB-07 | — | Pending |
-| LIB-08 | — | Pending |
-| LIB-09 | — | Pending |
-| LIB-10 | — | Pending |
-| LIB-11 | — | Pending |
-| LIB-12 | — | Pending |
-| COL-01 | — | Pending |
-| COL-02 | — | Pending |
-| COL-03 | — | Pending |
-| COL-04 | — | Pending |
-| COL-05 | — | Pending |
-| COL-06 | — | Pending |
-| COL-07 | — | Pending |
-| FILT-01 | — | Pending |
-| FILT-02 | — | Pending |
-| FILT-03 | — | Pending |
-| FILT-04 | — | Pending |
-| FILT-05 | — | Pending |
-| EXP-01 | — | Pending |
-| EXP-02 | — | Pending |
-| EXP-03 | — | Pending |
-| EXP-04 | — | Pending |
+| LIB-01 | Phase 22 | Pending |
+| LIB-02 | Phase 22 | Pending |
+| LIB-03 | Phase 23 | Pending |
+| LIB-04 | Phase 23 | Pending |
+| LIB-05 | Phase 23 | Pending |
+| LIB-06 | Phase 23 | Pending |
+| LIB-07 | Phase 23 | Pending |
+| LIB-08 | Phase 23 | Pending |
+| LIB-09 | Phase 23 | Pending |
+| LIB-10 | Phase 23 | Pending |
+| LIB-11 | Phase 23 | Pending |
+| LIB-12 | Phase 22 | Pending |
+| COL-01 | Phase 25 | Pending |
+| COL-02 | Phase 25 | Pending |
+| COL-03 | Phase 25 | Pending |
+| COL-04 | Phase 25 | Pending |
+| COL-05 | Phase 25 | Pending |
+| COL-06 | Phase 25 | Pending |
+| COL-07 | Phase 25 | Pending |
+| FILT-01 | Phase 24 | Pending |
+| FILT-02 | Phase 24 | Pending |
+| FILT-03 | Phase 25 | Pending |
+| FILT-04 | Phase 24 | Pending |
+| FILT-05 | Phase 24 | Pending |
+| EXP-01 | Phase 26 | Pending |
+| EXP-02 | Phase 26 | Pending |
+| EXP-03 | Phase 26 | Pending |
+| EXP-04 | Phase 26 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28 ⚠️
+- Mapped to phases: 28
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 after roadmap creation*
