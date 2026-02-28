@@ -1,770 +1,510 @@
-# Architecture Research: E2E Billing Test Integration
+# Architecture Research: TDD & Test Coverage Integration
 
-**Domain:** Playwright E2E billing tests for Stripe + Clerk + Convex + Next.js
+**Domain:** TDD workflow and test coverage backfill for Next.js + Convex app
 **Researched:** 2026-02-28
-**Confidence:** HIGH (direct codebase analysis + Stripe docs + Playwright docs + Clerk testing docs)
+**Confidence:** HIGH (direct codebase analysis — all patterns drawn from existing tests/ and e2e/)
 
 ## System Overview
 
+The existing test architecture has two distinct tiers that must remain separate. New v2.0 tests slot into the existing Vitest unit tier and extend it with a thin integration layer.
+
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                         E2E TEST LAYER (new)                                  │
-│                                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │  Playwright   │  │  Billing     │  │  Page Object │  │  Webhook     │    │
-│  │  Fixtures     │  │  Test Utils  │  │  Models      │  │  Waiter      │    │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘    │
-│         │                  │                  │                  │            │
-├─────────┴──────────────────┴──────────────────┴──────────────────┴────────────┤
-│                                                                              │
-│  EXISTING INFRASTRUCTURE (untouched)                                         │
-│                                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
-│  │ @clerk/test  │  │ Next.js App  │  │ Convex Dev   │  │ Stripe       │    │
-│  │ (global      │  │ (webServer   │  │ Instance     │  │ Sandbox      │    │
-│  │  setup)      │  │  auto-start) │  │ (deployed)   │  │ (test mode)  │    │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
-│                                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                       │
-│  │ convex/      │  │ Stripe       │  │ Convex CLI   │                       │
-│  │ testing/     │  │ Webhook at   │  │ (convex run) │                       │
-│  │ billing.ts   │  │ /webhooks/   │  │              │                       │
-│  │ (existing)   │  │ stripe       │  │              │                       │
-│  └──────────────┘  └──────────────┘  └──────────────┘                       │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     PLAYWRIGHT E2E LAYER (existing)                      │
+│  e2e/auth.spec.ts          e2e/billing/*.spec.ts (7 specs)              │
+│  e2e/global.setup.ts       e2e/billing/fixtures.ts                      │
+│  Requires: live Clerk + Convex + Next.js + Stripe sandbox               │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│               VITEST UNIT / INTEGRATION LAYER (43 files)                 │
+│                                                                         │
+│  ┌──────────────────┐  ┌────────────────────┐  ┌──────────────────┐    │
+│  │  Search/Extract  │  │     AI / LLM       │  │ User Management  │    │
+│  │  (lib/extraction │  │  (lib/ai/core/*    │  │ (convex/users/*  │    │
+│  │   lib/filters/*  │  │   convex/ai/*      │  │  convex/lib/     │    │
+│  │   lib/search/*   │  │   convex/extract/  │  │   auth.ts        │    │
+│  │   lib/search-    │  │   prompts.ts)      │  │   userCreation   │    │
+│  │   utils.ts)      │  │                    │  │   featureFlags)  │    │
+│  └──────────────────┘  └────────────────────┘  └──────────────────┘    │
+│                                                                         │
+│  vitest.config.ts: environment=node, include=tests/**/*.test.ts         │
+│  Excludes: tests/live-billing/**                                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│              VITEST LIVE-BILLING LAYER (separate config)                 │
+│  tests/live-billing/required.test.ts   extended.test.ts                 │
+│  vitest.live.config.ts: 300s timeouts, requires Convex + Stripe         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Key Architectural Decision: Two-Layer Strategy
+## Component Responsibilities
 
-The central challenge: Stripe Checkout hosted pages (`checkout.stripe.com`) have **security measures that prevent automated card entry** (confirmed by Stripe official docs). This is not a bug -- it is an intentional anti-automation measure.
-
-**Decision: Hybrid approach combining browser E2E with server-side Stripe API orchestration.**
-
-| Flow Category | Browser Testing | Server-Side Orchestration |
-|---|---|---|
-| Subscription checkout (free -> Go/Pro) | Navigate to pricing, click subscribe, verify redirect URL | Pre-attach payment method via Stripe API, create subscription server-side, verify UI updates |
-| Upgrade (Go -> Pro) | Full browser flow -- upgrade dialog is in-app, no Stripe redirect | N/A -- entire flow is in-app UI |
-| Downgrade (Pro -> Go) | Full browser flow -- changePlan action, verify UI | N/A -- entire flow is in-app UI |
-| Credit top-up | Click bundle, verify redirect URL format | Complete payment server-side, verify UI credit update |
-| Customer portal | Click manage, verify redirect URL | N/A -- Stripe portal not automatable |
-| Webhook effects | Verify UI state changes reactively | Trigger via Stripe API operations |
-| Cancellation | Verify portal redirect | Cancel subscription via API, verify UI state |
-
-**Rationale:** Attempting to fill card details on Stripe-hosted checkout pages is fragile, breaks in CI, and is explicitly unsupported by Stripe. Instead, we verify the *redirect intent* (correct URL generation) in the browser, and use server-side Stripe API calls to complete the actual payment, then verify the downstream UI effects (plan change, credit grants, toast messages).
-
-## Component Boundaries
-
-### New Components to Build
-
-| Component | Location | Responsibility |
-|-----------|----------|----------------|
-| `billingFixture` | `e2e/fixtures/billing.fixture.ts` | Extends Playwright test with Stripe client, Convex CLI runner, test user lifecycle, cleanup |
-| `BillingPage` POM | `e2e/pages/billing.page.ts` | Page Object for `/settings/billing` -- plan display, credit balance, topup buttons, manage button |
-| `PricingPage` POM | `e2e/pages/pricing.page.ts` | Page Object for `/pricing` -- plan cards, subscribe/upgrade/downgrade buttons, upgrade dialog |
-| `webhookWaiter` | `e2e/support/webhook-waiter.ts` | Poll Convex via CLI to wait for webhook-driven state changes (subscription sync, credit grants) |
-| `stripeTestHelpers` | `e2e/support/stripe-helpers.ts` | Attach payment methods, create subscriptions, advance test clocks -- reuses patterns from `tests/live-billing/support.ts` |
-| `clerkTestUser` | `e2e/support/clerk-user.ts` | Create/delete fresh Clerk users via Backend API for test isolation |
-
-### Existing Components (Reused, Not Modified)
-
-| Component | Location | Role in E2E |
-|-----------|----------|-------------|
-| `convex/testing/billing.ts` | Backend | `getBillingSnapshotForUser`, `resetBillingStateForUser` -- already exist |
-| `tests/live-billing/support.ts` | Test infra | Reference for patterns: `waitForCondition`, `runConvexFunction`, Stripe helpers |
-| `e2e/global.setup.ts` | E2E infra | `clerkSetup()` + disposable user creation -- already exists |
-| `playwright.config.ts` | Config | 120s timeout, webServer auto-start, Clerk global setup -- already configured |
+| Component | Responsibility | Test Approach |
+|-----------|----------------|---------------|
+| `lib/extraction/*` | Filtering, citation panel, feature flags, insights, PDF text | Direct import, env var manipulation via `vi.resetModules()` |
+| `lib/filters/*` | Filter builder, filter config, filter types | Direct import, pure function unit tests |
+| `lib/search/*`, `lib/search-utils.ts`, `lib/search-actions.ts` | URL-based search state, filter assembly, export logic | Direct import; source-code assertion pattern for export contracts |
+| `lib/ai/core/*` | `executeAIOperation`, batch processor, prompt builders, validate, errors | Direct import; mock `LanguageModel` interface |
+| `lib/ai/client/*` | Mode routing, providers, executor, hook-factory | Direct import; pure logic, no React |
+| `convex/ai/*` | Server-side actions, helpers, credit billing | Direct import from `convex/ai/lib/creditBilling.ts` etc. |
+| `convex/extraction/prompts.ts` | `buildEnhancedExtractionPrompt` | Direct import |
+| `convex/extraction/workpoolActions.ts` | Evidence policy, abstract-only policy, validation | Direct import of exported pure functions |
+| `convex/users/mutations.ts` | `ensureUser`, `updateProfile` | Mock `ctx` object pattern |
+| `convex/lib/auth.ts` | `requireAuth`, `getCurrentUser` | Mock `ctx.auth` + `ctx.db` pattern |
+| `convex/lib/userCreation.ts` | `createUserWithDefaults` | Mock `ctx.db.insert` |
+| `convex/lib/featureFlags.ts` | `requireCreditsEnabled`, etc. | Direct import, env var manipulation |
+| `convex/webhooks/clerk.ts` | `processClerkWebhookEvent` | Inject mock `runMutation` (existing pattern) |
+| `convex/webhooks/clerk_mappers.ts` | `mapClerkUserToUpsertArgs` etc. | Direct import, pure function |
 
 ## Recommended Project Structure
 
+The v2.0 milestone adds no new directories — all new tests go in `tests/` following existing conventions. No new fixture or helper files are needed for unit tests.
+
 ```
-e2e/
-├── global.setup.ts              # EXISTING -- Clerk setup, disposable user
-├── auth.spec.ts                 # EXISTING -- Clerk auth tests
-├── fixtures/
-│   └── billing.fixture.ts       # NEW -- extended test object with Stripe/Convex/Clerk
-├── pages/
-│   ├── billing.page.ts          # NEW -- POM for /settings/billing
-│   └── pricing.page.ts          # NEW -- POM for /pricing (with upgrade dialog)
-├── support/
-│   ├── webhook-waiter.ts        # NEW -- poll Convex for state convergence
-│   ├── stripe-helpers.ts        # NEW -- Stripe API helpers for E2E context
-│   └── clerk-user.ts            # NEW -- fresh Clerk user creation/cleanup
-└── billing/
-    ├── subscribe.spec.ts        # NEW -- free -> Go, free -> Pro
-    ├── upgrade.spec.ts          # NEW -- Go -> Pro via upgrade dialog
-    ├── downgrade.spec.ts        # NEW -- Pro -> Go scheduled
-    ├── cancellation.spec.ts     # NEW -- cancel via portal redirect
-    ├── credit-grant.spec.ts     # NEW -- on-subscribe, on-upgrade pro-rata
-    ├── credit-topup.spec.ts     # NEW -- purchase credits via checkout
-    └── free-credit-cap.spec.ts  # NEW -- cap enforcement on free plan
+tests/
+├── [existing 40 files — unchanged]
+│
+│ ── Search & Extraction domain (NEW files)
+├── search-filter-builder.test.ts          # lib/filters/filter-builder.ts
+├── search-filter-config.test.ts           # lib/filters/filter-config.ts
+├── search-params-converters.test.ts       # lib/search-params/* URL parsing
+├── search-utils.test.ts                   # lib/search-utils.ts (query building)
+├── search-state-actions.test.ts           # lib/search/actions.ts (submitNewSearch)
+├── extraction-export.test.ts              # lib/extraction/export.ts
+├── extraction-reviews.test.ts             # lib/extraction/reviews.ts
+│
+│ ── AI / LLM domain (NEW files)
+├── ai-execute-operation.test.ts           # lib/ai/core/execute.ts
+├── ai-batch-processor.test.ts             # lib/ai/core/batch.ts
+├── ai-prompts.test.ts                     # lib/ai/core/prompts.ts
+├── ai-validate.test.ts                    # lib/ai/core/validate.ts
+├── ai-errors.test.ts                      # lib/ai/core/errors.ts
+├── ai-question-key-codec.test.ts          # lib/ai/core/question-key-codec.ts
+├── ai-cost.test.ts                        # lib/ai/core/cost.ts
+│
+│ ── User Management domain (NEW files)
+├── user-creation-with-defaults.test.ts    # convex/lib/userCreation.ts
+├── user-auth-state-machine.test.ts        # convex/lib/auth.ts (requireAuth states)
+├── user-feature-flag-guards.test.ts       # convex/lib/featureFlags.ts
+├── user-plan-enforcement.test.ts          # convex/lib/freeCredits.ts + constants
+├── user-ensure-user-mutation.test.ts      # convex/users/mutations.ts:ensureUser
+│
+│ ── Integration tests (NEW files)
+├── integration-ai-credit-flow.test.ts     # AI call -> credit deduction -> balance
+└── integration-search-export-format.test.ts  # Filter state -> export shape
+│
+tests/live-billing/                        # UNCHANGED — separate Vitest config
+├── required.test.ts
+├── extended.test.ts
+└── support.ts
 ```
 
 ### Structure Rationale
 
-- **`fixtures/`:** Single billing fixture file that composes all test infrastructure. Keeps spec files clean -- they only describe user-visible behavior.
-- **`pages/`:** Page Object Model isolates DOM selectors from test logic. When UI changes, only the POM updates.
-- **`support/`:** Low-level utilities shared across specs. Mirrors the `tests/live-billing/support.ts` pattern but adapted for Playwright context (no Vitest dependency).
-- **`billing/`:** One spec file per billing flow. Tests are grouped by user intent, not by technical mechanism.
+- **Flat `tests/` directory:** Matches the existing 40-file convention. No subdirectory grouping exists and adding one now would split the test surface inconsistently. Prefix naming (`search-`, `ai-`, `user-`) provides enough grouping.
+- **No new test helpers or fixtures:** Every existing test uses direct imports and inline mocks. Introducing a shared helpers file would be inconsistent with the established pattern and create a dependency that complicates TDD's red-green cycle.
+- **Integration tests stay in `tests/`:** They run with the same `vitest run` command and same config. The distinction from unit tests is conceptual (they wire two modules together), not structural.
 
 ## Architectural Patterns
 
-### Pattern 1: Billing Test Fixture (core pattern)
+### Pattern 1: Direct Import Unit Test (primary pattern — use for all pure functions)
 
-**What:** A custom Playwright fixture that provides `stripeClient`, `convexRunner`, `testUser`, and `cleanup` to every billing test, with automatic teardown.
+**What:** Import the module directly and call it with plain data. No framework. No mocks unless the module calls external I/O.
 
-**When to use:** Every billing E2E test.
+**When to use:** Any pure function in `lib/` or `convex/lib/` that takes data and returns data. Covers ~80% of v2.0 test targets.
 
-**Trade-offs:** Slight overhead per test (~3-5s for user creation + payment method attachment), but guarantees complete isolation.
-
-```typescript
-// e2e/fixtures/billing.fixture.ts
-import { test as base, type Page } from "@playwright/test";
-import { clerk } from "@clerk/testing/playwright";
-import Stripe from "stripe";
-
-type BillingFixtures = {
-  stripeClient: Stripe;
-  testUser: {
-    clerkUserId: string;
-    email: string;
-    password: string;
-    convexUserId: string;
-    stripeCustomerId: string;
-  };
-  billingPage: BillingPage;
-  pricingPage: PricingPage;
-  signInAsTestUser: () => Promise<void>;
-  waitForWebhook: WebhookWaiter;
-};
-
-export const test = base.extend<BillingFixtures>({
-  stripeClient: async ({}, use) => {
-    const client = new Stripe(process.env.STRIPE_SECRET_KEY!);
-    await use(client);
-  },
-
-  testUser: async ({ stripeClient }, use) => {
-    // 1. Create fresh Clerk user via Backend API
-    // 2. Sign in via Clerk to trigger Convex user sync
-    // 3. Create Stripe customer with test payment method
-    // 4. Link customer to Convex user
-    const user = await createFreshBillingTestUser(stripeClient);
-    await use(user);
-    // Teardown: delete Clerk user, clean Stripe, reset Convex
-    await cleanupBillingTestUser(stripeClient, user);
-  },
-
-  signInAsTestUser: async ({ page, testUser }, use) => {
-    await use(async () => {
-      await page.goto("/");
-      await clerk.loaded({ page });
-      await clerk.signIn({
-        page,
-        signInParams: {
-          strategy: "password",
-          identifier: testUser.email,
-          password: testUser.password,
-        },
-      });
-    });
-  },
-
-  waitForWebhook: async ({ testUser }, use) => {
-    const waiter = new WebhookWaiter(testUser.convexUserId);
-    await use(waiter);
-  },
-});
-```
-
-### Pattern 2: Server-Side Checkout Bypass
-
-**What:** Instead of automating Stripe's hosted checkout page, pre-create the subscription via Stripe API (with `tok_visa` payment method), then verify the UI reflects the change.
-
-**When to use:** Any flow that redirects to `checkout.stripe.com` (initial subscription, credit top-up).
-
-**Trade-offs:** Does not test the actual Stripe Checkout UI form-fill. Does test: checkout URL generation, redirect behavior, webhook processing, UI state convergence. This is the correct trade-off because Stripe's hosted page is Stripe's responsibility to test, not ours.
+**Trade-offs:** Fast, no setup overhead, easy to write in TDD style. Cannot test modules that call `ctx.db` or `ctx.auth` without the mock context pattern.
 
 ```typescript
-// Pattern: Verify redirect intent, then complete server-side
-test("subscribe to Go plan", async ({
-  page, testUser, stripeClient, signInAsTestUser, waitForWebhook
-}) => {
-  await signInAsTestUser();
+// tests/ai-validate.test.ts
+import { describe, expect, it } from "vitest";
+import { validateQuery, repairJSON } from "../lib/ai/core/validate";
 
-  // Navigate to pricing
-  const pricingPage = new PricingPage(page);
-  await pricingPage.goto();
-
-  // Click subscribe -- verify redirect URL is generated
-  const [redirectUrl] = await Promise.all([
-    page.waitForURL(/checkout\.stripe\.com/, { timeout: 15_000 })
-      .then(() => page.url())
-      .catch(() => null),
-    pricingPage.clickSubscribe("go"),
-  ]);
-
-  // Checkpoint: checkout URL was generated correctly
-  // (Stripe hosted page is not automatable -- complete server-side)
-
-  // Server-side: create subscription directly
-  const paymentMethodId = await attachTestPaymentMethod(
-    stripeClient, testUser.stripeCustomerId
-  );
-  const subscription = await stripeClient.subscriptions.create({
-    customer: testUser.stripeCustomerId,
-    items: [{ price: process.env.STRIPE_GO_PRICE_ID! }],
-    default_payment_method: paymentMethodId,
-    payment_behavior: "error_if_incomplete",
-    metadata: { userId: testUser.convexUserId },
+describe("validateQuery", () => {
+  it("throws on unbalanced parentheses", () => {
+    expect(() => validateQuery("(term AND other")).toThrow("unbalanced parentheses");
   });
 
-  // Wait for webhook to process and sync to Convex
-  await waitForWebhook.subscriptionSynced(subscription.id);
+  it("throws when query ends with operator", () => {
+    expect(() => validateQuery("machine AND")).toThrow("incomplete operator");
+  });
 
-  // Navigate to billing page and verify UI
-  await page.goto("/settings/billing");
-  const billingPage = new BillingPage(page);
-  await billingPage.expectPlan("go");
-  await billingPage.expectStatus("active");
+  it("passes a valid boolean query unchanged", () => {
+    const q = "(machine OR deep) AND learning";
+    expect(validateQuery(q)).toBe(q);
+  });
 });
 ```
 
-### Pattern 3: In-App Flow Full Browser Testing
+### Pattern 2: Environment Variable Gate Test (for feature flags and env-dependent branches)
 
-**What:** Flows that stay entirely within the app (upgrade dialog, downgrade) are tested fully in the browser with no server-side bypass.
+**What:** Manipulate `process.env.*` before import, use `vi.resetModules()` to force module re-evaluation, restore env in `afterEach`.
 
-**When to use:** Upgrade (Go -> Pro), downgrade (Pro -> Go), keep current plan.
+**When to use:** Any module whose behavior branches on `NEXT_PUBLIC_*` env vars. Established in `extraction-filtering.test.ts`, `extraction-citation-panel.test.ts`, `extraction-feature-flags.test.ts`.
 
-**Trade-offs:** These are the highest-value E2E tests because they exercise the full stack: UI -> Convex action -> Stripe API -> webhook -> Convex mutation -> reactive UI update.
-
-```typescript
-test("upgrade Go to Pro via confirmation dialog", async ({
-  page, testUser, stripeClient, signInAsTestUser, waitForWebhook
-}) => {
-  // Pre-condition: user on Go plan (set up via fixture)
-  await signInAsTestUser();
-
-  const pricingPage = new PricingPage(page);
-  await pricingPage.goto();
-
-  // Click "Upgrade to Pro" -- opens in-app dialog, no redirect
-  await pricingPage.clickUpgrade("pro");
-
-  // Verify upgrade confirmation dialog appears
-  await pricingPage.upgradeDialog.expectVisible();
-  await pricingPage.upgradeDialog.expectCurrentPlan("go");
-  await pricingPage.upgradeDialog.expectTargetPlan("pro");
-  await pricingPage.upgradeDialog.expectChargeAmount(); // non-zero
-
-  // Confirm upgrade
-  await pricingPage.upgradeDialog.confirm();
-
-  // Wait for success toast
-  await expect(page.getByText(/upgraded/i)).toBeVisible({ timeout: 30_000 });
-
-  // Verify billing page reflects new plan
-  await page.goto("/settings/billing");
-  const billingPage = new BillingPage(page);
-  await billingPage.expectPlan("pro");
-});
-```
-
-### Pattern 4: Webhook Waiting via Convex CLI Polling
-
-**What:** After a Stripe API operation, poll Convex via `convex run` CLI to verify the webhook has been processed and state has converged.
-
-**When to use:** Every test that triggers Stripe events (subscription creation, upgrade, payment).
-
-**Trade-offs:** Polling adds 2-10s per wait. But it is reliable, deterministic, and decoupled from UI rendering timing. Using `expect.poll` on the UI is the alternative, but is more fragile because it couples to rendering timing and animation states.
+**Trade-offs:** `vi.resetModules()` requires async dynamic imports per test case. Slightly verbose but completely reliable.
 
 ```typescript
-// e2e/support/webhook-waiter.ts
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-const execFileAsync = promisify(execFile);
+// tests/user-feature-flag-guards.test.ts
+import { afterEach, describe, expect, it } from "vitest";
 
-export class WebhookWaiter {
-  constructor(
-    private convexUserId: string,
-    private timeoutMs: number = 60_000,
-    private intervalMs: number = 2_000,
-  ) {}
+const ORIG = process.env.NEXT_PUBLIC_CREDITS_ENABLED;
 
-  async subscriptionSynced(stripeSubscriptionId: string): Promise<void> {
-    await this.pollUntil(
-      `subscription ${stripeSubscriptionId} synced`,
-      async () => {
-        const snapshot = await this.getSnapshot();
-        return snapshot.subscriptions.some(
-          (s: any) => s.stripeSubscriptionId === stripeSubscriptionId
-        );
-      },
-    );
-  }
-
-  async creditGrantForInvoice(invoiceId: string): Promise<void> {
-    await this.pollUntil(
-      `credit grant for invoice ${invoiceId}`,
-      async () => {
-        const snapshot = await this.getSnapshot();
-        return snapshot.creditTransactions.some(
-          (t: any) => t.type === "grant" && t.stripeInvoiceId === invoiceId
-        );
-      },
-    );
-  }
-
-  async planEquals(plan: string): Promise<void> {
-    await this.pollUntil(
-      `plan equals ${plan}`,
-      async () => {
-        const snapshot = await this.getSnapshot();
-        return snapshot.subscriptions.some((s: any) => s.plan === plan);
-      },
-    );
-  }
-
-  private async getSnapshot(): Promise<any> {
-    const { stdout } = await execFileAsync("npx", [
-      "convex", "run", "testing/billing:getBillingSnapshotForUser",
-      JSON.stringify({ userId: this.convexUserId }),
-      "--typecheck", "disable",
-      "--codegen", "disable",
-    ], { env: process.env, timeout: 30_000 });
-    return JSON.parse(stdout.trim());
-  }
-
-  private async pollUntil(
-    description: string,
-    check: () => Promise<boolean>,
-  ): Promise<void> {
-    const start = Date.now();
-    while (Date.now() - start < this.timeoutMs) {
-      if (await check()) return;
-      await new Promise(r => setTimeout(r, this.intervalMs));
-    }
-    throw new Error(`Timed out waiting for: ${description}`);
-  }
+async function loadModule() {
+  vi.resetModules();
+  return import("../convex/lib/featureFlags");
 }
+
+afterEach(() => {
+  if (ORIG === undefined) delete process.env.NEXT_PUBLIC_CREDITS_ENABLED;
+  else process.env.NEXT_PUBLIC_CREDITS_ENABLED = ORIG;
+});
+
+describe("requireCreditsEnabled", () => {
+  it("throws when NEXT_PUBLIC_CREDITS_ENABLED is 'false'", async () => {
+    process.env.NEXT_PUBLIC_CREDITS_ENABLED = "false";
+    const { requireCreditsEnabled } = await loadModule();
+    expect(() => requireCreditsEnabled()).toThrow("disabled");
+  });
+
+  it("does not throw when NEXT_PUBLIC_CREDITS_ENABLED is unset", async () => {
+    delete process.env.NEXT_PUBLIC_CREDITS_ENABLED;
+    const { requireCreditsEnabled } = await loadModule();
+    expect(() => requireCreditsEnabled()).not.toThrow();
+  });
+});
 ```
+
+### Pattern 3: Injected Mock Context (for Convex mutations and queries)
+
+**What:** Create a minimal `ctx` object that stubs only the methods the unit under test actually calls. Use `vi.fn()` for `ctx.db.insert`, `ctx.db.query`, `ctx.auth.getUserIdentity`.
+
+**When to use:** Testing `convex/users/mutations.ts`, `convex/lib/auth.ts`, `convex/lib/userCreation.ts` — any function that takes a Convex context as its first argument.
+
+**Trade-offs:** Tests the handler logic in isolation from the actual Convex runtime. Cannot catch schema validation errors or index mismatches — those require live integration tests. But covers the logical branches (suspended user, missing user, state transitions) cleanly.
+
+```typescript
+// tests/user-auth-state-machine.test.ts
+import { describe, expect, it, vi } from "vitest";
+import { requireAuth } from "../convex/lib/auth";
+
+function makeCtx(overrides: {
+  identity?: object | null;
+  user?: object | null;
+}) {
+  return {
+    auth: {
+      getUserIdentity: vi.fn().mockResolvedValue(
+        overrides.identity !== undefined
+          ? overrides.identity
+          : { subject: "clerk_123" }
+      ),
+    },
+    db: {
+      query: vi.fn().mockReturnValue({
+        withIndex: vi.fn().mockReturnValue({
+          unique: vi.fn().mockResolvedValue(overrides.user ?? null),
+        }),
+      }),
+    },
+  } as any;
+}
+
+describe("requireAuth", () => {
+  it("throws UNAUTHENTICATED when no identity", async () => {
+    const ctx = makeCtx({ identity: null });
+    await expect(requireAuth(ctx)).rejects.toMatchObject({ data: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("throws FORBIDDEN when user is suspended", async () => {
+    const ctx = makeCtx({ user: { state: "suspended", clerkId: "clerk_123" } });
+    await expect(requireAuth(ctx)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  });
+
+  it("returns user when active", async () => {
+    const user = { _id: "user_1", state: "active", clerkId: "clerk_123" };
+    const ctx = makeCtx({ user });
+    await expect(requireAuth(ctx)).resolves.toEqual(user);
+  });
+});
+```
+
+### Pattern 4: Mock runMutation Injection (for Convex webhook dispatchers)
+
+**What:** Pass a `vi.fn()` mock as the `runMutation` argument. The handler is already extracted to a pure function (see `convex/webhooks/clerk.ts`). Verify which mutation was called with which args.
+
+**When to use:** Already established for `clerk-webhook-handler.test.ts`. Apply the same pattern to any new webhook handler or action that accepts its dependencies as arguments.
+
+**Trade-offs:** Requires that the production code accepts its dependencies as arguments (dependency injection) rather than importing them directly. This is a good design constraint that TDD enforces naturally.
+
+```typescript
+// Already established — reuse exactly this pattern
+import { processClerkWebhookEvent } from "../convex/webhooks/clerk";
+const runMutation = vi.fn().mockResolvedValue(null);
+const outcome = await processClerkWebhookEvent({
+  eventId: "evt_1", eventType: "user.created", data: { ... },
+  runMutation, mutationRefs,
+});
+expect(runMutation).toHaveBeenCalledWith(mutationRefs.upsertUserFromClerk, { ... });
+```
+
+### Pattern 5: AI Model Mock (for AI core unit tests)
+
+**What:** Create a minimal object satisfying the `LanguageModel` interface from the `ai` SDK. Return controlled `text` payloads from `doGenerate`. Verify that `executeAIOperation` parses the output, applies repair, and returns the expected schema.
+
+**When to use:** Testing `lib/ai/core/execute.ts`, `lib/ai/core/batch.ts` — the orchestration logic around the AI SDK, not the AI model itself.
+
+**Trade-offs:** Cannot test actual AI response quality. Tests the orchestration logic: retry on validation failure, repair strategy invocation, usage accumulation, fail-soft behavior in `Promise.allSettled`.
+
+```typescript
+// tests/ai-execute-operation.test.ts
+import { describe, expect, it, vi } from "vitest";
+import { executeAIOperation } from "../lib/ai/core/execute";
+import { z } from "zod";
+
+function makeModel(responses: string[]) {
+  let call = 0;
+  return {
+    specificationVersion: "v1",
+    modelId: "mock-model",
+    provider: "mock",
+    defaultObjectGenerationMode: "json",
+    doGenerate: vi.fn().mockImplementation(async () => ({
+      text: responses[call++] ?? "{}",
+      usage: { promptTokens: 10, completionTokens: 5 },
+      finishReason: "stop",
+      rawCall: { rawPrompt: "", rawSettings: {} },
+    })),
+  } as any;
+}
+
+describe("executeAIOperation", () => {
+  it("returns parsed output on first success", async () => {
+    const model = makeModel(['{"enhancedQuery": "machine AND learning"}']);
+    const { output } = await executeAIOperation({
+      model,
+      schema: z.object({ enhancedQuery: z.string() }),
+      buildPrompts: () => ({ system: "sys", prompt: "q" }),
+      input: {},
+      repairStrategy: { type: "full-json" },
+      temperature: 0.1,
+    });
+    expect(output.enhancedQuery).toBe("machine AND learning");
+  });
+});
+```
+
+### Pattern 6: Source-Code Assertion (for contract/regression tests)
+
+**What:** Use `readFileSync` to read a source file and assert specific patterns exist. Guards against regressions where a refactor silently breaks a contract.
+
+**When to use:** Only for contracts that are hard to unit-test (e.g., the screening export format guaranteeing certain fields appear together). Already established in `search-actions-screening-export.test.ts`. Use sparingly — prefer behavioral tests.
+
+**Trade-offs:** Brittle to refactors (whitespace changes, extractions). Valuable as a regression guard when the behavioral test would require too much setup. Never use as a substitute for a proper behavioral test.
 
 ## Data Flow
 
-### Subscription E2E Flow (Checkout Bypass)
+### Unit Test Data Flow (no I/O)
 
 ```
-Test Setup:
-  Clerk Backend API ──create user──> Clerk
-  Stripe API ──create customer + attach tok_visa──> Stripe
-
-Test Execution:
-  Browser ──navigate /pricing──> Next.js App
-  Browser ──click Subscribe──> Convex action (createCheckoutSession)
-  Convex ──return checkout URL──> Browser
-  Test ──intercept redirect, verify URL──> Assertion
-
-  (Bypass: create subscription server-side)
-  Stripe API ──create subscription──> Stripe
-  Stripe ──webhook──> Convex HTTP endpoint
-  Convex ──syncSubscription mutation──> Convex DB
-  Convex ──grantMonthlyCredits mutation──> Convex DB
-
-  Test ──poll via Convex CLI──> Convex (getBillingSnapshotForUser)
-  Browser ──navigate /settings/billing──> Next.js App
-  Browser ──assert plan, credits, status──> Assertions
-
-Test Teardown:
-  Stripe API ──cancel subscription, delete customer──> Stripe
-  Convex CLI ──resetBillingStateForUser──> Convex DB
-  Clerk Backend API ──delete user──> Clerk
+Test file
+  ↓ import
+Pure function (lib/* or convex/lib/*)
+  ↓ call with plain data
+Return value / thrown error
+  ↓
+expect() assertions
 ```
 
-### Upgrade E2E Flow (Full Browser)
+### Convex Context Mock Data Flow
 
 ```
-Pre-condition:
-  Fixture ──server-side setup Go subscription──> Stripe + Convex
-
-Test Execution:
-  Browser ──navigate /pricing──> Next.js App
-  Browser ──click "Upgrade to Pro"──> triggers getUpgradePreview action
-  Convex action ──Stripe API invoice preview──> Stripe
-  Convex ──return preview data──> Browser
-  Browser ──UpgradeConfirmationDialog renders──> DOM
-
-  Browser ──click "Confirm Upgrade"──> triggers changePlan action
-  Convex action ──update subscription (always_invoice)──> Stripe
-  Convex action ──grantUpgradeProRataCredits mutation──> Convex DB
-  Stripe ──webhooks (sub.updated, invoice.paid)──> Convex HTTP endpoint
-
-  Browser ──sonner toast appears──> DOM
-  Browser ──navigate /settings/billing──> Next.js App
-  Browser ──assert plan=pro, credits updated──> Assertions
+Test file
+  ↓ build ctx = { auth: vi.fn(), db: { query: vi.fn() } }
+Convex handler (users/mutations.ts, convex/lib/auth.ts)
+  ↓ calls ctx.auth.getUserIdentity()
+  ↓ calls ctx.db.query(...)
+Mock returns controlled value
+  ↓
+Handler returns result / throws structured error
+  ↓
+expect() assertions on result or error.data.code
 ```
 
-### Credit Top-Up E2E Flow (Checkout Bypass)
+### AI Operation Data Flow (mocked model)
 
 ```
-Pre-condition:
-  Fixture ──setup user with Go plan──> Stripe + Convex
-
-Test Execution:
-  Browser ──navigate /settings/billing──> Next.js App
-  Browser ──click top-up bundle──> triggers createTopupCheckoutSession action
-  Convex action ──create checkout.sessions──> Stripe
-  Browser ──redirect to checkout.stripe.com──> Test intercepts URL
-
-  (Bypass: create payment intent server-side)
-  Stripe API ──create + confirm PaymentIntent with tok_visa──> Stripe
-  Stripe ──webhook (payment_intent.succeeded)──> Convex HTTP endpoint
-  Convex ──grantPurchasedCreditsFromPaymentIntent──> Convex DB
-
-  Browser ──navigate /settings/billing──> Next.js App
-  Browser ──assert credit balance increased──> Assertions
+Test file
+  ↓ build mock LanguageModel (doGenerate returns controlled text)
+lib/ai/core/execute.ts::executeAIOperation
+  ↓ calls model.doGenerate
+  ↓ parses text as JSON via zod schema
+  ↓ repairs if invalid (calls repairJSON)
+  ↓ retries on validation failure (up to maxRetries)
+  ↓ accumulates usage tokens
+Returns { output, usage }
+  ↓
+expect() on output shape + usage values
 ```
 
-## Fresh User Lifecycle (Critical Isolation Pattern)
-
-Each billing test gets a completely fresh user to avoid state contamination:
+### Integration Test Data Flow (two modules wired together)
 
 ```
-1. CREATE CLERK USER
-   - Clerk Backend API: createUser({ email: unique, password, ... })
-   - Email format: e2e-billing-{uuid}@test.openalex.org
-   - skipPasswordChecks: true (test-only)
-
-2. SIGN IN VIA BROWSER
-   - page.goto("/")
-   - clerk.signIn({ page, signInParams: { ... } })
-   - This triggers Convex user sync (webhook: user.created)
-
-3. WAIT FOR CONVEX USER
-   - Poll Convex CLI: users/queries:getCurrentUser with identity
-   - Or: check via getBillingSnapshotForUser returning non-null user
-
-4. CREATE STRIPE CUSTOMER
-   - Stripe API: customers.create({ email, metadata: { userId } })
-   - Stripe API: paymentMethods.create({ type: "card", card: { token: "tok_visa" } })
-   - Stripe API: paymentMethods.attach + set as default
-   - Convex CLI: upsertBillingCustomerLink (link Stripe customer to Convex user)
-
-5. RUN TEST
-   - All billing operations use this user's Stripe customer
-
-6. TEARDOWN (automatic via fixture)
-   - Stripe: cancel all subscriptions, delete customer
-   - Convex: resetBillingStateForUser
-   - Clerk: deleteUser
+Test file
+  ↓ compose Module A output → Module B input
+Module A (e.g., credit billing calculation)
+  ↓ returns credits amount
+Module B (e.g., balance enforcement check)
+  ↓ returns allow/deny decision
+expect() on final decision
 ```
 
-**Why not reuse users across tests:**
-- Billing state is stateful and cumulative (credit transactions, event logs)
-- Subscription status depends on prior operations
-- The existing `tests/live-billing` pattern uses `beforeEach` cleanup but shares a user -- this works for API-only tests but is fragile for browser tests where Clerk session state persists
+## Integration Points: New vs Existing
 
-## Page Object Models
+### New Test Files (build from scratch)
 
-### BillingPage POM (`/settings/billing`)
+All are in `tests/` flat directory, no new subdirectories.
+
+| File | Tests | Module Under Test |
+|------|-------|------------------|
+| `tests/search-filter-builder.test.ts` | Filter assembly from params | `lib/filters/filter-builder.ts` |
+| `tests/search-filter-config.test.ts` | Section config, sort options | `lib/filters/filter-config.ts` |
+| `tests/search-params-converters.test.ts` | URL serialization/parsing | `lib/search-params/*` |
+| `tests/search-utils.test.ts` | Query building, date/country helpers | `lib/search-utils.ts` |
+| `tests/search-state-actions.test.ts` | `submitNewSearch`, `restoreFromHistory` | `lib/search/actions.ts` |
+| `tests/extraction-export.test.ts` | CSV/JSON export formatting | `lib/extraction/export.ts` |
+| `tests/extraction-reviews.test.ts` | Review status logic | `lib/extraction/reviews.ts` |
+| `tests/ai-execute-operation.test.ts` | Retry, repair, usage accumulation | `lib/ai/core/execute.ts` |
+| `tests/ai-batch-processor.test.ts` | `Promise.allSettled` fail-soft, error collection | `lib/ai/core/batch.ts` |
+| `tests/ai-prompts.test.ts` | Prompt builder outputs (enhance query, screening Q) | `lib/ai/core/prompts.ts` |
+| `tests/ai-validate.test.ts` | `validateQuery`, `repairJSON`, `repairSingleField` | `lib/ai/core/validate.ts` |
+| `tests/ai-errors.test.ts` | Error class hierarchy, code properties | `lib/ai/core/errors.ts` |
+| `tests/ai-question-key-codec.test.ts` | Encode/decode question-response map | `lib/ai/core/question-key-codec.ts` |
+| `tests/ai-cost.test.ts` | Token cost calculation | `lib/ai/core/cost.ts` |
+| `tests/user-creation-with-defaults.test.ts` | Credit + subscription rows on new user | `convex/lib/userCreation.ts` |
+| `tests/user-auth-state-machine.test.ts` | Active/suspended/deleted state branches | `convex/lib/auth.ts` |
+| `tests/user-feature-flag-guards.test.ts` | Credits/subscriptions/topups enable/disable | `convex/lib/featureFlags.ts` |
+| `tests/user-plan-enforcement.test.ts` | Free credit cap, tier cap amounts | `convex/lib/freeCredits.ts` |
+| `tests/user-ensure-user-mutation.test.ts` | `ensureUser` creates vs returns existing | `convex/users/mutations.ts` |
+| `tests/integration-ai-credit-flow.test.ts` | Usage → credits deducted → balance enforced | `convex/ai/lib/creditBilling.ts` + `convex/lib/freeCredits.ts` |
+| `tests/integration-search-export-format.test.ts` | Filter state → export field presence | `lib/extraction/filtering.ts` + `lib/extraction/export.ts` |
+
+### Existing Test Files (unchanged)
+
+All 43 existing files in `tests/` continue running unchanged. The new tests are additive only.
+
+### vitest.config.ts (no modification needed)
+
+The existing config already covers all new test files:
 
 ```typescript
-// e2e/pages/billing.page.ts
-import { type Page, type Locator, expect } from "@playwright/test";
-
-export class BillingPage {
-  readonly page: Page;
-  readonly planLabel: Locator;
-  readonly statusBadge: Locator;
-  readonly manageButton: Locator;
-  readonly creditBalanceFree: Locator;
-  readonly creditBalancePaid: Locator;
-  readonly creditBalanceTotal: Locator;
-  readonly topupSection: Locator;
-  readonly processingBanner: Locator;
-  readonly creditCapBanner: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-    // Selectors based on actual component structure in billing/page.tsx
-    this.planLabel = page.locator("[class*='text-2xl font-bold capitalize']");
-    this.statusBadge = page.locator("[class*='rounded-full'][class*='text-xs']");
-    this.manageButton = page.getByRole("button", { name: /manage|upgrade/i });
-    this.topupSection = page.locator("#topup-section");
-    this.processingBanner = page.getByText(/processing/i);
-    this.creditCapBanner = page.getByText(/credit.*cap/i);
-    // CreditBalanceCard selectors -- to be refined with data-testid
-    this.creditBalanceFree = page.getByTestId("credit-balance-free");
-    this.creditBalancePaid = page.getByTestId("credit-balance-paid");
-    this.creditBalanceTotal = page.getByTestId("credit-balance-total");
-  }
-
-  async goto() {
-    await this.page.goto("/settings/billing");
-    await this.page.waitForLoadState("networkidle");
-  }
-
-  async expectPlan(plan: "free" | "go" | "pro") {
-    await expect(this.planLabel).toContainText(new RegExp(plan, "i"));
-  }
-
-  async expectStatus(status: "active" | "inactive" | "past_due" | "canceled") {
-    await expect(this.statusBadge).toContainText(new RegExp(status.replace("_", " "), "i"));
-  }
-
-  async expectCreditBalanceAtLeast(amount: number) {
-    // Use expect.poll for reactive Convex data
-    await expect.poll(async () => {
-      const text = await this.creditBalanceTotal.textContent();
-      return parseInt(text?.replace(/[^0-9]/g, "") ?? "0", 10);
-    }, { timeout: 30_000 }).toBeGreaterThanOrEqual(amount);
-  }
-
-  async clickTopupBundle(index: number) {
-    const bundles = this.topupSection.getByRole("button");
-    await bundles.nth(index).click();
-  }
-}
+// vitest.config.ts — unchanged
+export default defineConfig({
+  test: {
+    environment: "node",
+    include: ["tests/**/*.test.ts"],       // picks up all new files automatically
+    exclude: ["tests/live-billing/**/*.test.ts"],
+  },
+});
 ```
 
-### PricingPage POM (`/pricing`)
+No config change is needed. New test files are picked up automatically.
 
-```typescript
-// e2e/pages/pricing.page.ts
-import { type Page, type Locator, expect } from "@playwright/test";
+### package.json (no modification needed)
 
-export class PricingPage {
-  readonly page: Page;
-  readonly upgradeDialog: UpgradeDialogFragment;
+`npm run test` already runs all unit tests via `vitest run`. No new script is needed for the v2.0 unit tests.
 
-  constructor(page: Page) {
-    this.page = page;
-    this.upgradeDialog = new UpgradeDialogFragment(page);
-  }
+## Build Order (Optimal TDD Sequence)
 
-  async goto() {
-    await this.page.goto("/pricing");
-    await this.page.waitForLoadState("networkidle");
-  }
-
-  planCard(plan: "free" | "go" | "pro" | "enterprise"): Locator {
-    // Each plan card has its name as text content
-    return this.page.locator(`[class*="rounded-xl"]`)
-      .filter({ hasText: new RegExp(`^${plan}$`, "i") });
-  }
-
-  async clickSubscribe(plan: "go" | "pro") {
-    const card = this.planCard(plan);
-    await card.getByRole("button").click();
-  }
-
-  async clickUpgrade(plan: "pro") {
-    await this.clickSubscribe(plan);
-    // For upgrades, this opens the dialog instead of redirecting
-  }
-
-  async expectCurrentPlanBadge(plan: string) {
-    await expect(
-      this.page.getByText("Current plan", { exact: false })
-    ).toBeVisible();
-  }
-}
-
-class UpgradeDialogFragment {
-  readonly dialog: Locator;
-  readonly confirmButton: Locator;
-  readonly cancelButton: Locator;
-
-  constructor(private page: Page) {
-    this.dialog = page.getByRole("dialog");
-    this.confirmButton = this.dialog.getByRole("button", {
-      name: /confirm upgrade/i,
-    });
-    this.cancelButton = this.dialog.getByRole("button", {
-      name: /cancel/i,
-    });
-  }
-
-  async expectVisible() {
-    await expect(this.dialog).toBeVisible({ timeout: 15_000 });
-  }
-
-  async expectCurrentPlan(plan: string) {
-    await expect(this.dialog.getByText(new RegExp(plan, "i"))).toBeVisible();
-  }
-
-  async expectTargetPlan(plan: string) {
-    await expect(this.dialog.getByText(new RegExp(plan, "i"))).toBeVisible();
-  }
-
-  async expectChargeAmount() {
-    // Proration amount should be non-zero for an upgrade
-    await expect(this.dialog.locator("[class*='font-semibold']").last()).not.toHaveText("$0.00");
-  }
-
-  async confirm() {
-    await this.confirmButton.click();
-  }
-}
-```
-
-## Webhook Waiting Strategy: Poll Convex vs Poll UI
-
-**Decision: Poll Convex via CLI for state convergence, then assert UI separately.**
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Poll Convex CLI** (chosen) | Deterministic, decoupled from render timing, can check exact DB state | Adds ~2-10s, requires CLI access |
-| Poll UI with `expect.poll` | Tests full reactive pipeline | Fragile: skeleton states, loading spinners, animation delays |
-| Listen for Stripe events | Real-time, event-driven | Complex setup, not available from browser context |
-| Fixed `sleep()` | Simple | Unreliable, slow, flaky |
-
-The Convex CLI approach mirrors what `tests/live-billing/support.ts` already does with `waitForCondition + getBillingSnapshotForUser`. In E2E context, we add a thin wrapper that:
-
-1. Polls Convex CLI every 2s
-2. Checks the billing snapshot for expected state
-3. Times out after 60s (webhook processing typically takes 3-15s)
-4. Once Convex state is confirmed, we navigate the browser and assert the UI reflects it
-
-This two-phase approach (backend convergence then UI assertion) eliminates the most common E2E flake source: asserting UI before webhook processing completes.
-
-## Test Data Cleanup Strategy
+Build order is driven by three factors: (1) dependency between modules, (2) risk — highest-value coverage first, (3) TDD red-green-refactor requires tests to fail before implementation exists.
 
 ```
-CLEANUP ORDER (reverse of creation):
-1. Stripe: cancel subscriptions, delete customer, delete test clocks
-2. Convex: resetBillingStateForUser (deletes: credits, creditTransactions,
-   subscriptions, billingCustomers, stripeEventLogs)
-3. Clerk: deleteUser (removes session, triggers user.deleted webhook)
+PHASE 1: Pure Function Foundations (no deps on other modules, fastest to write)
+├── tests/ai-errors.test.ts              → lib/ai/core/errors.ts
+├── tests/ai-validate.test.ts            → lib/ai/core/validate.ts
+├── tests/ai-question-key-codec.test.ts  → lib/ai/core/question-key-codec.ts
+├── tests/ai-cost.test.ts                → lib/ai/core/cost.ts
+├── tests/user-feature-flag-guards.test.ts → convex/lib/featureFlags.ts
+├── tests/user-plan-enforcement.test.ts  → convex/lib/freeCredits.ts
+└── tests/search-filter-config.test.ts  → lib/filters/filter-config.ts
 
-WHEN:
-- afterEach via fixture teardown (automatic)
-- Also in beforeAll as safety net (handles leftover from crashed previous run)
+PHASE 2: Core Logic (depends on Phase 1 types/errors)
+├── tests/ai-prompts.test.ts             → lib/ai/core/prompts.ts
+├── tests/ai-execute-operation.test.ts   → lib/ai/core/execute.ts (uses errors, validate)
+├── tests/user-creation-with-defaults.test.ts → convex/lib/userCreation.ts (uses freeCredits)
+├── tests/user-auth-state-machine.test.ts → convex/lib/auth.ts (uses userCreation)
+├── tests/search-filter-builder.test.ts → lib/filters/filter-builder.ts
+└── tests/search-params-converters.test.ts → lib/search-params/*
 
-STRIPE CLEANUP MARKERS:
-- Customer metadata: { e2eBillingTest: "true", testRunId: "<uuid>" }
-- Enables targeted cleanup without affecting non-test data
-- Pattern reused from existing cleanupStripeForTestUser in live-billing/support.ts
+PHASE 3: Orchestration (depends on Phase 2 foundations)
+├── tests/ai-batch-processor.test.ts     → lib/ai/core/batch.ts (uses execute)
+├── tests/user-ensure-user-mutation.test.ts → convex/users/mutations.ts (uses auth + userCreation)
+├── tests/search-utils.test.ts           → lib/search-utils.ts (uses filter-builder, params)
+├── tests/search-state-actions.test.ts   → lib/search/actions.ts (uses search-params)
+├── tests/extraction-export.test.ts      → lib/extraction/export.ts
+└── tests/extraction-reviews.test.ts     → lib/extraction/reviews.ts
+
+PHASE 4: Integration Tests (wire Phase 2 + 3 modules together)
+├── tests/integration-ai-credit-flow.test.ts     → creditBilling + freeCredits
+└── tests/integration-search-export-format.test.ts → filtering + export
 ```
 
-## Integration Points: New vs Modified
-
-### New Components (to build from scratch)
-
-| File | Type | Dependencies |
-|------|------|-------------|
-| `e2e/fixtures/billing.fixture.ts` | Test fixture | `@clerk/testing/playwright`, `stripe`, `e2e/support/*` |
-| `e2e/pages/billing.page.ts` | Page Object | `@playwright/test` |
-| `e2e/pages/pricing.page.ts` | Page Object | `@playwright/test` |
-| `e2e/support/webhook-waiter.ts` | Utility | `node:child_process` (Convex CLI) |
-| `e2e/support/stripe-helpers.ts` | Utility | `stripe` |
-| `e2e/support/clerk-user.ts` | Utility | `@clerk/backend` |
-| `e2e/billing/*.spec.ts` | Test specs (7 files) | `billing.fixture`, `pages/*` |
-
-### Existing Components Modified
-
-| File | Modification | Reason |
-|------|-------------|--------|
-| `components/billing/credit-balance-card.tsx` | Add `data-testid` attributes | POM selectors need stable hooks |
-| `components/billing/credit-topup-card.tsx` | Add `data-testid` attributes | POM selectors need stable hooks |
-| `components/billing/upgrade-confirmation-dialog.tsx` | Add `data-testid` attributes | POM selectors need stable hooks |
-| `components/Pricing.tsx` | Add `data-testid` on plan cards and buttons | POM selectors need stable hooks |
-| `app/settings/billing/page.tsx` | Add `data-testid` on key elements | POM selectors need stable hooks |
-| `playwright.config.ts` | Add billing test project with `testDir: ./e2e/billing` | Separate billing tests from auth tests |
-| `package.json` | Add `test:e2e:billing` script | Entry point for running billing E2E |
-
-### Existing Components Reused (no modification)
-
-| File | How Used |
-|------|----------|
-| `convex/testing/billing.ts` | `getBillingSnapshotForUser`, `resetBillingStateForUser` via Convex CLI |
-| `e2e/global.setup.ts` | `clerkSetup()` still handles Clerk testing token injection |
-| `convex/http.ts` | Stripe webhook handler processes events as normal |
-
-## Suggested Build Order
-
-Build order is driven by dependency chains:
-
-```
-Phase 1: Test Infrastructure Foundation
-├── e2e/support/clerk-user.ts          (no deps)
-├── e2e/support/stripe-helpers.ts      (no deps)
-├── e2e/support/webhook-waiter.ts      (depends on Convex CLI, testing/billing.ts)
-└── Add data-testid to billing UI      (no test deps)
-
-Phase 2: Fixture + Page Objects
-├── e2e/fixtures/billing.fixture.ts    (depends on Phase 1)
-├── e2e/pages/billing.page.ts          (depends on data-testid additions)
-└── e2e/pages/pricing.page.ts          (depends on data-testid additions)
-
-Phase 3: Core Specs (highest value)
-├── e2e/billing/subscribe.spec.ts      (depends on Phase 2)
-├── e2e/billing/upgrade.spec.ts        (depends on Phase 2)
-└── e2e/billing/credit-grant.spec.ts   (depends on Phase 2)
-
-Phase 4: Extended Specs
-├── e2e/billing/downgrade.spec.ts      (depends on Phase 2)
-├── e2e/billing/cancellation.spec.ts   (depends on Phase 2)
-├── e2e/billing/credit-topup.spec.ts   (depends on Phase 2)
-└── e2e/billing/free-credit-cap.spec.ts (depends on Phase 2)
-
-Phase 5: Config + CI
-├── playwright.config.ts updates       (depends on Phase 3 working)
-├── package.json script additions      (depends on Phase 3 working)
-└── CI pipeline configuration          (depends on all phases)
-```
+**Rationale for this order:**
+- AI errors and validate are depended on by `executeAIOperation` — test them first so the execute tests can be written against a stable contract.
+- `userCreation` depends on `freeCredits` — `freeCredits` goes in Phase 1.
+- `auth.ts` calls `userCreation` on user-not-found with `allowSyncing` — `userCreation` goes in Phase 2 so auth tests can set correct expectations.
+- Integration tests go last because they import from two already-tested modules and verify the composition, not the individual functions.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Automating Stripe Hosted Checkout
+### Anti-Pattern 1: Shared Test Helper Files
 
-**What people do:** Use Playwright to fill card numbers on `checkout.stripe.com` pages.
-**Why it's wrong:** Stripe explicitly blocks automated testing of their hosted checkout. It works locally sometimes but fails in CI due to bot detection, timezone issues, and iframe security restrictions. This creates the most common E2E flake in billing test suites.
-**Do this instead:** Verify the redirect URL is correct, then complete the payment server-side via Stripe API with `tok_visa`. Test your code, not Stripe's checkout form.
+**What people do:** Create `tests/helpers/` or `tests/fixtures/` with shared factory functions, mock builders, and test data.
 
-### Anti-Pattern 2: Shared User Across Billing Tests
+**Why it's wrong:** Every existing test in this codebase uses inline mocks and local helpers. Introducing a shared helpers module creates a dependency — a change in the helper can break unrelated tests, and the helper file itself becomes untested infrastructure. In TDD, each test should set up exactly what it needs, making the test self-describing.
 
-**What people do:** Create one test user in `beforeAll` and share it across all billing tests.
-**Why it's wrong:** Billing state is cumulative. Test A subscribes, Test B upgrades, Test C checks credits -- but if Test B fails, Test C has wrong preconditions. The `beforeEach` cleanup helps but does not reset Clerk session state or handle webhook race conditions from previous tests.
-**Do this instead:** Fresh Clerk user per test (or per describe block for tightly coupled sequential flows). The 3-5s overhead is worth the isolation guarantee.
+**Do this instead:** Copy the `makeCtx()` helper inline per test file. For common data shapes (e.g., a minimal `ExtractionQuestion`), define them as constants at the top of the file that uses them. If three or more test files share identical setup, extract to a helper only then — and test the helper itself.
 
-### Anti-Pattern 3: Fixed sleep() for Webhook Waiting
+### Anti-Pattern 2: Testing Convex Actions via Convex CLI in Unit Tests
 
-**What people do:** `await page.waitForTimeout(10_000)` after creating a subscription.
-**Why it's wrong:** Webhooks take 1-30s depending on Stripe load. Fixed sleep is either too short (flaky) or too long (slow). In CI, Stripe webhook delivery can be delayed by 20+ seconds.
-**Do this instead:** Poll Convex state with exponential backoff and a generous timeout (60s). Return as soon as the condition is met.
+**What people do:** Use `convex run` via `child_process` in Vitest tests to test Convex actions end-to-end.
 
-### Anti-Pattern 4: Asserting UI Before Backend Convergence
+**Why it's wrong:** This is what `tests/live-billing/` does, and it runs under `vitest.live.config.ts` with 300s timeouts and a separate CI job. Mixing this pattern into the standard `vitest.config.ts` would make `npm run test` depend on a live Convex deployment, breaking offline development.
 
-**What people do:** After clicking "Confirm Upgrade", immediately check `await expect(page.getByText("Pro")).toBeVisible()`.
-**Why it's wrong:** The UI depends on Convex reactive queries, which depend on webhook processing. The UI may still show "Go" while the webhook is in flight. Auto-retry via `expect` helps but adds unpredictable timing.
-**Do this instead:** First confirm backend state via Convex CLI poll, then navigate to the page fresh and assert. This separates "did the backend process correctly?" from "does the UI render correctly?"
+**Do this instead:** Unit-test the pure helper functions extracted from actions (e.g., `calculateCreditsToDeductFromUsage` from `convex/ai/lib/creditBilling.ts`). Reserve live Convex tests for the `tests/live-billing/` tier when behavioral coverage genuinely requires it.
 
-### Anti-Pattern 5: Testing Stripe Customer Portal UI
+### Anti-Pattern 3: Testing via the React Hook
 
-**What people do:** Navigate into the Stripe Customer Portal and click buttons.
-**Why it's wrong:** Like Checkout, the Customer Portal is a Stripe-hosted page with bot detection. It is Stripe's UI, not yours.
-**Do this instead:** Verify the portal URL is generated (test your `createPortalSession` action), then perform the desired action (cancel, update payment method) via Stripe API. Verify your app's response to the resulting webhooks.
+**What people do:** Use `renderHook` from `@testing-library/react` to test hooks like `useProtectedQuery`, `useSearch`, `useSubscriptionState`.
 
-## Stripe Test Mode Limitations (Reference)
+**Why it's wrong:** All existing tests bypass React entirely — they import and call functions directly. React hook testing requires `jsdom` environment and adds significant setup complexity. The actual logic in these hooks is typically thin wiring between a Convex query and a returned value — the interesting logic lives in the underlying pure functions.
 
-| Limitation | Impact on E2E | Mitigation |
-|---|---|---|
-| Hosted Checkout not automatable | Cannot fill card details | Server-side bypass pattern |
-| Customer Portal not automatable | Cannot click cancel/update | API-driven cancellation |
-| Test clocks required for time-advance | Cannot test renewal in real-time | Use Stripe test clocks (already in live-billing tests) |
-| Webhook delivery 1-30s latency | Tests must wait for webhook processing | Poll Convex CLI with timeout |
-| No real card validation | Card decline scenarios limited | Use Stripe test tokens (`tok_chargeCustomerFail`) |
-| Test mode rate limits | 25 API calls/second in test mode | Sequential test execution |
+**Do this instead:** Test the pure functions that the hook delegates to. For `useSubscriptionState`, test `resolveEffectivePlan` (already done in `subscription-entitlements.test.ts`). For `useProtectedQuery`, test `getSettlementState` as a standalone function. If the hook itself has real logic, extract it to a pure function first (TDD red-green-refactor pushes this naturally).
+
+### Anti-Pattern 4: Asserting `vi.fn()` Call Counts Instead of Return Values
+
+**What people do:** Write `expect(mockFn).toHaveBeenCalledTimes(1)` as the primary assertion, without verifying what was passed or what the caller returned.
+
+**Why it's wrong:** This tests implementation details (how many times a mock was called) rather than behavior (what the module produces). The existing pattern in `clerk-webhook-handler.test.ts` is correct: verify `runMutation.mock.calls[0]?.[1]` — the actual args passed — which is the behavioral contract.
+
+**Do this instead:** Assert the return value of the module under test first. Then, if side-effect ordering matters (e.g., mutation called before second mutation), assert the call arguments in order.
+
+### Anti-Pattern 5: One Test File Per Domain Instead of Per Module
+
+**What people do:** Create `tests/ai.test.ts` with 50 tests covering all of `lib/ai/core/*`.
+
+**Why it's wrong:** When one test fails, the failure message is ambiguous. A large file is harder to navigate during TDD (you're looking for the red test). All 43 existing tests are single-responsibility — one file per module or concept.
+
+**Do this instead:** One test file per source module (or per distinct concept within a large module). The file name should mirror the source path: `lib/ai/core/validate.ts` → `tests/ai-validate.test.ts`.
 
 ## Sources
 
-- [Stripe Automated Testing Documentation](https://docs.stripe.com/automated-testing) -- official recommendation to simulate rather than automate checkout UI
-- [Stripe Test Card Numbers](https://docs.stripe.com/testing) -- test tokens for various payment scenarios
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices) -- fixture pattern, locator strategy
-- [Playwright Fixtures](https://playwright.dev/docs/test-fixtures) -- custom fixture extension pattern
-- [Clerk Testing with Playwright](https://clerk.com/docs/guides/development/testing/playwright/test-authenticated-flows) -- `clerkSetup()`, `clerk.signIn()`, testing token
-- [Playwright Issue #19709](https://github.com/microsoft/playwright/issues/19709) -- Stripe checkout submission failures in CI
-- [Playwright Assertions](https://playwright.dev/docs/test-assertions) -- `expect.poll` for async state verification
+- Direct codebase analysis: `tests/*.test.ts` (40 files), `vitest.config.ts`, `vitest.live.config.ts`, `package.json`
+- Pattern sources: `tests/extraction-filtering.test.ts` (env var gate pattern), `tests/clerk-webhook-handler.test.ts` (mock injection pattern), `tests/ai-credit-billing.test.ts` (direct import pattern), `tests/search-actions-screening-export.test.ts` (source-code assertion pattern)
+- Module inventory: `lib/ai/core/`, `lib/extraction/`, `lib/filters/`, `convex/ai/`, `convex/users/`, `convex/lib/`, `convex/webhooks/`
 
 ---
-*Architecture research for: E2E Billing Test Integration (v1.2 milestone)*
+*Architecture research for: TDD & Test Coverage backfill — v2.0 milestone*
 *Researched: 2026-02-28*

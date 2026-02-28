@@ -1,232 +1,205 @@
 # Project Research Summary
 
-**Project:** OpenAlex Count — v1.2 E2E Billing Tests
-**Domain:** Playwright E2E test suite for SaaS billing flows (Stripe + Clerk + Convex + Next.js)
+**Project:** OpenAlex Count — v2.0 TDD & Test Coverage Backfill
+**Domain:** Unit and integration testing for Next.js + Convex + AI application
 **Researched:** 2026-02-28
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This milestone adds a browser-level E2E test suite that validates the user-visible billing flows in OpenAlex Count: subscribing to a plan, upgrading, downgrading, cancelling, and purchasing credit top-ups. The project already has a mature Vitest live-billing integration test suite that covers backend correctness (webhook idempotency, credit grant logic, Stripe API interactions). The E2E suite is deliberately scoped to cover what integration tests cannot: UI reactivity after webhook processing, in-app upgrade dialog behavior, redirect flows, and billing page rendering. No new npm packages are required — all tooling (`@playwright/test`, `@clerk/testing`, `@clerk/backend`, `stripe`) is already installed.
+This milestone adds structured test coverage across six untested domains in an existing Next.js + Convex + AI application that already has 43 Vitest unit tests and 11 Playwright E2E tests. The core pattern throughout the codebase is the same: extract pure functions, import them directly, assert against business-specification-derived expected values. The six domains to cover are search parameter building and filter logic, AI prompt construction and structured output schemas, batch processing with fail-soft patterns, auth state machine transitions, plan-based feature gating, and data export (CSV/JSON/Excel). All six domains are primarily covered by direct-import pure function tests in the existing `node` environment — no new testing tier or test runner changes are needed for the bulk of the work.
 
-The central architectural decision is a hybrid approach to Stripe Checkout. Stripe's hosted checkout page (`checkout.stripe.com`) has security measures that actively prevent reliable automated card-filling. Attempting to fill card details there is the number one source of flakiness in billing test suites. The recommended approach: verify that the app generates the correct redirect URL in the browser, then complete the payment server-side via Stripe API using `tok_visa`, navigate to the return URL, and verify the UI updates correctly. In-app flows that stay on your domain (upgrade confirmation dialog, downgrade, plan display) are tested fully in the browser end-to-end.
+The recommended approach adds exactly 7 new devDependencies (`convex-test`, `@edge-runtime/vm`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, `@vitejs/plugin-react`) and updates `vitest.config.ts` to route test files to three environments via `environmentMatchGlobs`. Critically, several testing capabilities that might appear to require new packages are already available: `ai/test` exports `MockLanguageModelV3` from the installed `ai@6.0.91`, and `nuqs/adapters/testing` exports `withNuqsTestingAdapter` from the installed `nuqs@2.8.8`. The 43 existing tests remain completely unchanged — all new tests are additive in the flat `tests/` directory.
 
-The most significant risks are timing-related: Stripe webhooks are delivered asynchronously (1–30 seconds) and must be processed by Convex before the UI reflects updated state. The mitigation is a polling-based `WebhookWaiter` utility (built on the existing `waitForCondition` pattern from `tests/live-billing/support.ts`) that confirms backend state convergence before asserting on the UI. Test isolation is enforced by creating a fresh Clerk user per test scenario — different Stripe customer IDs mean in-flight webhooks from one test cannot contaminate another. Sequential execution (`workers: 1`) is mandatory due to a confirmed `@clerk/testing` bug with concurrent workers.
+The key risk is the boundary between what can be unit-tested and what requires a live Convex backend. The `convex-test` library has a confirmed open bug (issue #50, open as of February 2026) where `ctx.auth.getUserIdentity()` fails inside queries and mutations, blocking auth-gated code from being tested end-to-end through `convex-test`. The mitigation is already established in the codebase: extract pure decision logic from Convex handlers and test that directly. A secondary risk is backfill tests encoding existing bugs as correct behavior — guard against this by deriving expected values from the business specification, not from running the implementation.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies are required. The full stack for E2E billing tests is already installed. The work is entirely about writing test infrastructure code (fixtures, page object models, utilities) and spec files. See `.planning/research/STACK.md` for full details.
+The existing testing stack (Vitest `^3.2.4`, Playwright `^1.58.2`) needs only targeted additions to unlock the five missing testing capabilities. The installed `ai@6.0.91` and `nuqs@2.8.8` already expose their respective testing utilities as subpath exports. The critical infrastructure addition is `convex-test@^0.0.41` + `@edge-runtime/vm@^5.0.0` for in-memory Convex backend isolation, and `@testing-library/react@^16.3.2` + `jsdom@^28.1.0` for React hook testing. The vitest config change enables three environments via `environmentMatchGlobs`: `edge-runtime` for `convex/**/*.test.ts`, `jsdom` for `tests/hooks/**/*.test.ts`, and `node` for everything else (preserving existing behavior).
 
 **Core technologies:**
-- `@playwright/test ^1.58.2`: E2E test runner — already configured with `webServer` auto-start, `fullyParallel: false`, `workers: 1` in CI
-- `@clerk/testing ^1.14.1`: `clerkSetup()`, `clerk.signIn()`, `clerk.loaded()` — already used in `e2e/global.setup.ts`
-- `@clerk/backend ^2.32.1`: `createClerkClient()` for programmatic user creation/deletion — already used in global setup
-- `stripe ^20.3.0`: Stripe API client for server-side subscription creation, cleanup, and state verification — already used in live-billing tests
-- `convex ^1.31.7`: Convex CLI (`npx convex run`) for backend function invocation — already used in live-billing tests
+- `convex-test@^0.0.41`: In-memory Convex backend for mutation/query/action isolation — the only way to test Convex functions without a live backend; peer-compatible with installed `convex@1.31.7`
+- `@edge-runtime/vm@^5.0.0`: Required peer dependency of `convex-test`; provides the edge-runtime Vitest environment
+- `@testing-library/react@^16.3.2`: `renderHook` + `act` for React hooks; React 19 compatible; ships `renderHook` directly (no deprecated `@testing-library/react-hooks` needed)
+- `MockLanguageModelV3` (from `ai/test`, already installed): Deterministic LLM mock for AI operation tests; use `mockValues()` to stage failure responses for retry/repair testing
+- `withNuqsTestingAdapter` (from `nuqs/adapters/testing`, already installed): Required wrapper for any hook or component using `useQueryState`; without it, URL mutations silently no-op
 
-**Configuration changes needed:**
-- Increase `playwright.config.ts` test timeout from 120s to 180s (billing flows include Stripe roundtrips + webhook processing)
-- Increase `expect.timeout` from 15s to 30s
-- Add `locale: 'en-US'` to prevent locale-dependent currency formatting failures in assertions
+**Version compatibility confirmed:** RTL 16 with React 19, `convex-test` with `convex@1.31.7`, `@testing-library/jest-dom/vitest` (not `/jest`) for Vitest matcher compatibility.
 
 ### Expected Features
 
-The test suite must cover two priority tiers. See `.planning/research/FEATURES.md` for full coverage matrix and dependency graph.
+The research identifies a clear P1/P2/P3 priority breakdown based on risk, extraction effort, and dependencies. The v2.0 launch set covers the 16 highest-risk test targets with the lowest extraction cost. See `.planning/research/FEATURES.md` for the complete per-domain breakdown with table stakes, differentiators, and anti-features.
 
-**Must have (table stakes — P0):**
-- Subscription creation E2E (free to Go, free to Pro) — the primary revenue conversion path
-- Upgrade E2E (Go to Pro via in-app confirmation dialog) — highest-value test, stays fully in-app
-- Downgrade E2E (Pro to Go via subscription schedule) — verify pending-change banner and scheduled badge
-- Cancellation E2E — verify billing page shows "Expires on" after cancel
-- Credit grant on subscription — assert exact credit amounts (3,000 for Go, 15,000 for Pro)
-- Credit top-up purchase E2E — full checkout-bypass flow for credit bundles
-- Test infrastructure (fixtures, utilities, cleanup) — foundational; every other test depends on it
+**Must have — v2.0 table stakes (P1):**
+- Search param round-trip (`paramsToSearchResult` + `searchResultToParams`) — URL sharing regressions are user-visible immediately
+- Region encoding bijectivity (`encodeRegions`/`decodeRegions`) — all 30+ INTERNAL_TO_URL_CODE entries, both directions
+- Filter active predicates (`isDateFilterActive`, `isRatingFilterActive`) — wrong predicates send spurious or missing constraints to OpenAlex API
+- `buildFilterData` section assembly — drives filter badge display; wrong sections mislead users about active filters
+- CSV escape and `jsonToCSV` — corrupt exports permanently damage user trust in downloaded data
+- `formatAnswerForCSV` / `formatAnswerForExcel` — all answer types including null, boolean, number, array
+- AI prompt structural invariants — operator preservation, abstract-only mode, evidence ID format
+- Zod schema parse contracts — `queryEnhancementSchema`, `screeningQuestionsSchema`, dynamic `createScreeningResponsesSchema`
+- `validateQuery` balanced parentheses and trailing operator detection
+- `encodeQuestionKey` / `decodeQuestionKey` round-trip with special characters
+- Batch fail-soft: all-success, all-fail, partial failure, empty batch, single item
+- Auth state machine: `assertActiveUser` for active, suspended, and deleted states
+- `PLAN_CONFIG` shape contract — credit amounts and tier values are load-bearing constants
+- `getPlanTypeFromMetadata` — all four plan strings plus unknown input
+- `subscriptionsFeatureFlags.enabled` env var (with `vi.resetModules()` pattern)
+- `generateMissingScreeningCombinationsByPaper` — missing detection correctness
 
-**Should have (differentiators — P1):**
-- Upgrade pro-rata credit verification — assert calculated `floor(remainingRatio * creditDelta)` matches UI
-- Free credit capping behavior — cap banner visible for free-tier users at cap
-- Downgrade cancel / keep current plan — verify scheduled downgrade can be cancelled via UI
-- Credit top-up return state handling — "Processing purchase" banner + URL cleanup on `?topup=success`
+**Should have — v2.x (P2):**
+- `createSearchParameters` API params shape — full filter-to-OpenAlex-API translation correctness
+- `getScreeningQuestionsConfig` deduplication post-process — requires logic extraction before testing
+- `repairJSON` / `repairSingleField` malformed AI response recovery paths
+- `applyTierFreeCreditCap` all plan caps — cap enforcement for all four plan tiers
+- `syncProfileFromSession` no-overwrite guard — profile field retention on re-login
+- `exportToCSV` column inclusion/exclusion by `ExportOptions` flags — requires DOM separation refactor
 
-**Defer (not for this milestone):**
-- Recurring payment cycle credit grant — keep in existing Vitest live-billing suite (test clocks are incompatible with Checkout-created customers)
-- Payment failure E2E — requires Checkout iframe automation (explicitly an anti-feature); live-billing suite already covers this
-- Per-locale billing page screenshots — visual regression is a separate concern and notoriously flaky
-
-**Anti-features to avoid:**
-- Automating Stripe Checkout or Customer Portal UI — Stripe explicitly blocks this; tests break on Stripe's update schedule, not yours
-- Testing webhook delivery itself — tests should assert outcomes (UI state), not mechanisms (webhook arrival)
-- Duplicating live-billing integration test assertions in E2E — E2E answers "does the USER see the right thing?", not "does the BACKEND do the right thing?"
+**Defer to v3+:**
+- Integration tests for cross-cutting flows (auth check to plan gate to credit deduction to result) — requires Convex test environment or full mock context
+- `exportToExcel` worksheet cell type validation — requires sheet-data builder extraction from DOM download wrapper
+- TDD workflow integration tests for features added after v2.0
 
 ### Architecture Approach
 
-The architecture follows a two-layer hybrid strategy: browser automation for in-app flows (upgrade dialog, downgrade, plan display) and server-side Stripe API orchestration for flows that involve Stripe-hosted pages (subscription checkout, credit top-up). Page Object Models isolate DOM selectors from test logic. A central `billingFixture` composes all test infrastructure — Stripe client, Convex CLI runner, fresh test user lifecycle, and cleanup — into a single extended Playwright test object. See `.planning/research/ARCHITECTURE.md` for full POM implementations and data flow diagrams.
+The project already has a well-established two-tier architecture (Playwright E2E + Vitest unit) with a separate live-billing layer. New v2.0 tests slot into the existing Vitest unit tier — no new directories, no new configs for the bulk of the work. The flat `tests/` convention (40+ files, one-per-module naming) is the established law; all new files follow `[domain]-[module].test.ts` naming. Six architecture patterns handle all test scenarios across the six domains. See `.planning/research/ARCHITECTURE.md` for full pattern implementations and data flow diagrams.
 
-**Major components to build:**
-1. `e2e/support/clerk-user.ts` — fresh Clerk user creation/deletion via Backend API; no deps on other new files
-2. `e2e/support/stripe-helpers.ts` — attach payment methods, create subscriptions via Stripe API; configure with `maxNetworkRetries: 3`
-3. `e2e/support/webhook-waiter.ts` — poll Convex CLI to confirm webhook-driven state convergence before UI assertions
-4. `e2e/fixtures/billing.fixture.ts` — composes all three support modules into a Playwright fixture with automatic teardown
-5. `e2e/pages/billing.page.ts` — POM for `/settings/billing`; depends on `data-testid` additions to UI components
-6. `e2e/pages/pricing.page.ts` — POM for `/pricing` including upgrade dialog fragment; depends on `data-testid` additions
-7. `e2e/billing/*.spec.ts` — 7 spec files organized by billing flow (subscribe, upgrade, downgrade, cancellation, credit-grant, credit-topup, free-credit-cap)
+**Major components:**
+1. `vitest.config.ts` (updated) — `environmentMatchGlobs` routes `convex/**` to `edge-runtime`, `tests/hooks/**` to `jsdom`, all else stays `node`; also adds `plugins: [react()]` and `server.deps.inline: ["convex-test"]`
+2. `tests/setup.ts` (new) — global `@testing-library/jest-dom/vitest` import + RTL `cleanup` in `afterEach`
+3. `convex/test.setup.ts` (new) — Vite `import.meta.glob` for `convex-test` module discovery
+4. 21 new test files in `tests/` — flat directory, one per source module, following the established `[domain]-[module].test.ts` naming convention
 
-**Existing components that need minor changes:**
-- `components/billing/credit-balance-card.tsx`, `credit-topup-card.tsx`, `upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx`, `app/settings/billing/page.tsx` — add `data-testid` attributes for stable POM selectors
-- `playwright.config.ts` — add billing test project, increase timeouts, set `locale: 'en-US'`
-- `package.json` — add `test:e2e:billing` script
+**Six test patterns by use case:**
+- Pattern 1 (Direct Import): Pure functions — no mocks; covers ~80% of all test targets
+- Pattern 2 (Env Var Gate): Feature flags — `vi.resetModules()` + dynamic `import()` per test
+- Pattern 3 (Injected Mock Context): Convex mutations/queries — `makeCtx()` with `vi.fn()` stubs
+- Pattern 4 (Mock runMutation Injection): Webhook dispatchers — inject `vi.fn()` as `runMutation` arg
+- Pattern 5 (AI Model Mock): LLM orchestration — `MockLanguageModelV3` from `ai/test`
+- Pattern 6 (Source-Code Assertion): Structural contracts — `readFileSync` assertions; use sparingly
 
 ### Critical Pitfalls
 
-1. **Webhook timing flakiness** — Never use `page.waitForTimeout()`. Always poll Convex state via `WebhookWaiter` (2s intervals, 60s timeout) before navigating to the UI for final assertions. The two-phase approach (backend convergence then UI assertion) eliminates the most common E2E flake source.
+1. **`convex-test` getUserIdentity bug blocks auth-gated mutation/query testing** — Do not test `requireAuth`-gated functions end-to-end through `convex-test`. The `asyncSyscall does not support: 1.0/getUserIdentity` error is a confirmed open bug (issue #50, February 2026). Extract pure business logic (state checks, field merge logic) into standalone functions and test those directly with Pattern 3 (injected mock context).
 
-2. **Stripe Checkout automation brittleness** — Do not automate `checkout.stripe.com`. Use the Stripe API to create subscriptions server-side, then navigate the browser to the return URL. Reserve any direct Checkout page interaction for at most one smoke test; remove it if it proves flaky.
+2. **Encoding existing bugs as test assertions during backfill** — Never derive expected values by running the implementation and copying output. Derive from the business specification: for credit billing, compute from documented pricing (`$0.25/1M tokens at 40x markup = X credits`). Any assertion whose expected value adjusts automatically when the implementation changes is encoding a bug, not specifying correct behavior.
 
-3. **Cross-test state pollution via shared Convex backend** — Use a fresh Clerk user per test scenario. Different users have different Stripe customer IDs, so late-arriving webhooks from Test A cannot contaminate Test B. After cleanup, allow a short settling period for in-flight webhooks to exhaust before the next test creates state.
+3. **`MockLanguageModelV3` imported outside test files crashes production** — Gate all `from 'ai/test'` imports strictly to `*.test.ts` files. Importing `ai/test` in server code or startup scripts throws `"Vitest failed to access its internal state"` at runtime (confirmed ai@5.0.27+ regression, GitHub issue #8356).
 
-4. **Clerk concurrent worker authentication timeout** — `clerk.signIn()` has a confirmed bug with `workers >= 2` (GitHub issue #7891). Set `workers: 1` globally (not just in CI) and document the constraint.
+4. **`Promise.allSettled` batch tests covering only the all-success path** — Require three scenarios for every batch processor test: all-success, all-fail, and partial-failure (item[1] fails, items[0] and [2] succeed). The fail-soft guarantee is the critical correctness property of the batch processor; it is invisible to tests that configure a uniformly successful mock model.
 
-5. **Orphaned Stripe test objects from failed tests** — Implement a global cleanup sweep at the START of the test suite that queries Stripe for test-email-pattern customers and deletes them before creating new state. Configure the Stripe client with `maxNetworkRetries: 3` to handle sandbox rate limits (25 ops/sec cap).
+5. **Feature flag module cache — env mutations after import have no effect** — Modules that read `process.env` at import time cache the value. Always combine env mutation with `vi.resetModules()` and dynamic `import()` in each test case. The exact pattern is already established in `tests/extraction-filtering.test.ts` — replicate exactly for every feature flag test file.
 
 ## Implications for Roadmap
 
-The natural build order is driven by dependency chains: support utilities must exist before fixtures, fixtures before page objects, page objects before specs. The phase structure below follows this dependency order. All four research files agree on the same phase groupings.
+Based on combined research, suggest four phases following the dependency order established in ARCHITECTURE.md. The build order is driven by three factors: module dependency chains, risk (highest-value coverage first), and TDD red-green-refactor (tests must be writable before the target code changes).
 
-### Phase 1: Test Infrastructure Foundation
+### Phase 1: Test Infrastructure and Pure Function Foundations
 
-**Rationale:** Every billing spec depends on the support utilities, fixtures, and stable DOM selectors. Building these first means each subsequent phase can focus purely on test scenario logic. This phase addresses infrastructure-level pitfalls before they can affect actual test writing — specifically Pitfalls 1, 2, 4, 5, 7, 8, 10, and 12 (the majority of pitfalls are infrastructure concerns, not spec-level concerns).
+**Rationale:** Install the 7 new packages, update `vitest.config.ts` with `environmentMatchGlobs`, create `tests/setup.ts` and `convex/test.setup.ts`. Establish which code is testable via direct import vs. `convex-test` vs. local backend. Write the fastest, zero-dependency tests first: AI errors, AI validate, question key codec, AI cost, feature flag guards, plan enforcement constants, filter config. These have no mocks and validate the infrastructure is working correctly before writing more complex tests.
 
-**Delivers:** A complete, reusable test harness. At the end of this phase, a developer can write a billing test with a handful of lines using the fixture and POM, and it will have correct isolation, cleanup, and timing behavior out of the box.
+**Delivers:** Working multi-environment Vitest config that preserves all 43 existing tests, 7 new test files covering zero-dependency pure utility functions, documented testability boundaries for Convex code.
 
-**Addresses (from FEATURES.md):** Test infrastructure (fixtures, utilities, cleanup)
+**Addresses:** Feature flag env var guard, plan constants snapshot, `validateQuery`, `encodeQuestionKey`/`decodeQuestionKey`, AI error hierarchy, feature flag guards, plan tier cap enforcement.
 
-**Implements:**
-- `e2e/support/clerk-user.ts` — fresh user creation with `skipPasswordChecks: true`, Convex user sync verification after Clerk webhook
-- `e2e/support/stripe-helpers.ts` — `attachTestPaymentMethod`, `createGoSubscription`, `createProSubscription`, `cleanupStripeForTestUser`; wraps existing live-billing patterns; Stripe client configured with `maxNetworkRetries: 3`
-- `e2e/support/webhook-waiter.ts` — `WebhookWaiter` class polling Convex CLI for `subscriptionSynced`, `creditGrantForInvoice`, `planEquals`
-- `e2e/fixtures/billing.fixture.ts` — extends Playwright test with `stripeClient`, `testUser`, `signInAsTestUser`, `waitForWebhook`, and automatic teardown (Stripe cancel + Convex reset + Clerk delete)
-- Add `data-testid` attributes to billing UI components (prerequisite for stable POM selectors)
-- `e2e/pages/billing.page.ts` and `e2e/pages/pricing.page.ts` — POMs with `expectPlan()`, `expectStatus()`, `expectCreditBalanceAtLeast()`, upgrade dialog fragment
-- `playwright.config.ts` updates: billing test project, 180s timeout, 30s expect timeout, `locale: 'en-US'`, global cleanup sweep in `globalSetup`
+**Avoids:** Pitfall 10 (feature flag module cache) — establish `vi.resetModules()` utility pattern on the first feature flag test. Pitfall 3 (`MockLanguageModelV3` in production) — establish import discipline from day one. Pitfall 4 (encoding bugs) — establish the expected-value-from-spec rule in code review.
 
-**Avoids:** Pitfall 4 (`workers: 1` enforced), Pitfall 7 (global cleanup sweep in `globalSetup`), Pitfall 8 (Stripe client retry config), Pitfall 12 (fixed locale)
+**Research flag:** Standard patterns, all fully specified. Skip `gsd:research-phase` — the `environmentMatchGlobs` config and `tests/setup.ts` content are specified in STACK.md with exact code. Validate existing 43 tests still pass after config change before adding new tests.
 
-**Research flag:** Standard patterns, well-documented. Skip `gsd:research-phase` — implementation patterns are fully specified in the research files with working code examples. The existing `tests/live-billing/support.ts` provides proven reference implementations for most utilities.
+### Phase 2: AI and Batch Processing Tests
 
-### Phase 2: Core Subscription and Upgrade Specs
+**Rationale:** With Phase 1 foundations in place, add the AI domain tests that depend on the error/validate layer from Phase 1. The AI batch processor's `Promise.allSettled` fail-soft pattern is the highest credit-risk code path in the application — a partial failure that silently loses results would cause incorrect credit charges. This phase also establishes `MockLanguageModelV3` as the team standard before any other developer writes an AI mock.
 
-**Rationale:** Subscription creation is the foundational billing operation — every other flow (upgrade, downgrade, cancel) requires an active subscription as a precondition. The upgrade dialog is the highest-value target because it is the v1.1 feature most exposed to regressions and involves the most UI components. These specs generate the most confidence per line of test code.
+**Delivers:** 7 new test files covering `executeAIOperation` retry/repair/usage, `processBatch` all three scenarios, AI prompt builders structural invariants, Zod schema parse contracts, question key codec, and `generateMissingScreeningCombinationsByPaper`.
 
-**Delivers:** Coverage of the primary revenue path (free to paid) and the primary upsell path (Go to Pro). These are the two flows most financially impactful if they break silently.
+**Uses:** `MockLanguageModelV3` from `ai/test` (already installed — no new package required).
 
-**Addresses (from FEATURES.md):** Subscription creation E2E (both tiers), Upgrade E2E, Credit grant on subscription
+**Avoids:** Pitfall 3 (wrong `generateObject` mocking — use `MockLanguageModelV3` not `vi.mock('ai', ...)`), Pitfall 5 (`withAuthAndCreditsBatch` testing through full stack — test constituent pure functions instead), Pitfall 9 (only happy path for `Promise.allSettled` — enforce three-scenario rule).
 
-**Implements:**
-- `e2e/billing/subscribe.spec.ts` — free to Go and free to Pro using checkout-bypass pattern; verifies redirect URL generated, plan visible on billing page, credit balance shown
-- `e2e/billing/upgrade.spec.ts` — full browser flow (Pattern 3, in-app only): upgrade dialog opens, proration amount displayed, confirm button triggers upgrade, success toast appears, billing page shows Pro
-- `e2e/billing/credit-grant.spec.ts` — assert exact credit amounts (3,000 / 15,000) on billing page after subscription and after upgrade
+**Research flag:** Standard patterns fully documented. Skip `gsd:research-phase`. The `MockLanguageModelV3` usage pattern and `processBatch` mock structure are specified in detail in STACK.md and ARCHITECTURE.md.
 
-**Avoids:** Pitfall 3 (checkout bypass for subscription specs), Pitfall 5 (coverage matrix — not duplicating live-billing backend assertions), Pitfall 6 (mandate at least one `page.locator()` assertion per test)
+### Phase 3: Search Parameter, Filter, and Export Tests
 
-**Research flag:** Standard patterns. Upgrade dialog (full-browser flow) and checkout bypass are both fully specified in ARCHITECTURE.md with code examples. Skip `gsd:research-phase`.
+**Rationale:** Search param and export tests are pure function tests with no mocks — highest-value per line of test code. The region codec bijectivity test (both directions, all 30+ entries) is the first test to write in this phase to catch URL sharing regressions. Export tests require extracting column-building logic from DOM-dependent download functions before testing — this refactor is a positive side effect that makes the production code more testable.
 
-### Phase 3: Downgrade, Cancellation, Credits, and Edge Cases
+**Delivers:** 7 new test files covering search param round-trips, region codec bijectivity, filter builder section assembly, filter active predicates, CSV escaping, `jsonToCSV` header derivation and row generation, `formatAnswerForCSV`/`formatAnswerForExcel` all answer types.
 
-**Rationale:** These flows build on the subscription and upgrade tests and share the same infrastructure. They can be implemented once Phase 2 specs prove the fixture and POM layers work correctly under real conditions. Grouping them in one phase avoids context-switching between infrastructure work and spec writing.
+**Avoids:** Pitfall 6 (one-directional codec tests — require both `parse(serialize(x)) === x` and `serialize(parse(s)) === s` for every INTERNAL_TO_URL_CODE entry), Pitfall 7 (missing `withNuqsTestingAdapter` — note: nuqs hook integration tests requiring jsdom are deferred to v2.x; this phase covers all pure serialization logic in node environment).
 
-**Delivers:** Complete lifecycle coverage (subscribe, upgrade, downgrade, cancel) plus credit-specific flows (top-up purchase, free credit cap). All P0 and P1 features covered.
+**Research flag:** All targets are pure functions with direct imports. Skip `gsd:research-phase`. One gap: `exportToCSV` column-building logic is currently coupled to `downloadFile` (DOM). Assess the extraction scope at the start of this phase — the refactor may reveal unexpected dependencies.
 
-**Addresses (from FEATURES.md):** Downgrade E2E, Cancellation E2E, Credit top-up E2E, Free credit capping, Upgrade pro-rata credit verification, Downgrade cancel / keep current plan
+### Phase 4: User Management and Auth State Machine Tests
 
-**Implements:**
-- `e2e/billing/downgrade.spec.ts` — Pro to Go via subscription schedule; verifies pending-change banner, "Scheduled" badge on Go card, plan still shows Pro before billing boundary
-- `e2e/billing/cancellation.spec.ts` — cancel via Stripe API (bypass portal); billing page shows "Expires on" instead of "Renews on"
-- `e2e/billing/credit-topup.spec.ts` — checkout-bypass flow for credit bundles; "Processing purchase" banner, credit balance increases reactively
-- `e2e/billing/free-credit-cap.spec.ts` — cap banner visible for free-tier users at limit
-- P1 differentiators: pro-rata credit verification within `upgrade.spec.ts`; downgrade cancel / keep current plan within `downgrade.spec.ts`
+**Rationale:** Auth tests come last because they require the most care around testability boundaries and layer separation. The Convex identity system (`convex-test` getUserIdentity bug) and the Clerk client identity system (`useAuth()` mocks) must not be conflated in the same test file. Establishing this boundary explicitly before writing the tests prevents the most expensive rework of the milestone.
 
-**Avoids:** Pitfall 3 (cancellation is API-driven, no portal iframe), Pitfall 9 (test clock constraints — subscription renewal stays in live-billing suite), Pitfall 14 (Stripe portal redirect — verify URL generation only, drive cancellation via API)
+**Delivers:** 5 new test files covering `assertActiveUser` for all three states, `createUserWithDefaults` initial state correctness, `getPlanTypeFromMetadata` all plan strings, `ensureUser` create vs. update path, and two integration tests wiring credit billing to balance enforcement and filter state to export shape.
 
-**Research flag:** Cancellation and downgrade via Stripe API follow the same patterns as subscription creation. Credit top-up checkout-bypass is identical to subscription checkout-bypass. Skip `gsd:research-phase`.
+**Implements:** Injected mock context pattern (Pattern 3) for Convex functions; integration test data flow (two modules composed in sequence).
 
-### Phase 4: Configuration, CI, and Hardening
+**Avoids:** Pitfall 1 (`convex-test` getUserIdentity bug — test pure extracted logic via injected mock context instead), Pitfall 8 (conflating Clerk client identity with Convex server identity — each test file must document which auth layer it tests), Pitfall 4 (encoding suspended-user bug as correct behavior — derive expected FORBIDDEN error from the documented state machine spec).
 
-**Rationale:** Once all specs are working locally, finalize CI integration, add failure artifact capture, and document operational requirements (Convex deployment stability, periodic Stripe sandbox maintenance).
-
-**Delivers:** A reliable, maintainable CI pipeline that does not require manual intervention to keep the Stripe sandbox clean or the tests green.
-
-**Implements:**
-- `package.json` `test:e2e:billing` script with correct env setup
-- CI pipeline configuration (separate billing E2E job from unit/integration jobs)
-- Artifact capture on failure: billing snapshot + Stripe event list saved as test artifacts for debugging
-- Operational documentation: Convex deployment must be stable (`convex deploy` before E2E, not `convex dev`); periodic Stripe sandbox cleanup schedule
-- Validation of the "looks done but isn't" checklist from PITFALLS.md
-
-**Research flag:** May benefit from a brief `gsd:research-phase` if the specific CI provider has constraints around external network access to `api.stripe.com` or secrets management for billing API keys. Otherwise standard CI configuration.
+**Research flag:** Needs targeted assessment at phase kickoff. Determine per-function whether `ensureUser` can be tested via injected mock context or requires pure function extraction first. Check convex-test issue #50 status — if fixed, some tests can use `convex-test` end-to-end instead of mock context.
 
 ### Phase Ordering Rationale
 
-- Infrastructure before specs is mandatory: fixtures and POMs have no value without the support utilities beneath them
-- Subscribe before upgrade: the upgrade spec requires an active subscription as a precondition; the subscribe spec also validates the fixture infrastructure under real conditions for the first time
-- Downgrade and cancel after upgrade: these are lower-risk flows (less financial impact if they regress) and share patterns already proven in Phase 2
-- CI hardening last: ensures artifact capture and timeout budgets are tuned against real test output rather than theoretical estimates
+- Infrastructure before feature tests: `vitest.config.ts` changes affect all subsequent tests; validate existing tests still pass before adding new ones.
+- AI before search/export: the AI batch processor is the highest credit-risk code path; cover it before lower-risk pure functions.
+- Search/export before user management: search and export are the simplest pure-function tests; build team confidence with the patterns before tackling the more complex Convex auth boundary decisions.
+- Integration tests at the end of each domain: they wire already-tested modules together and cannot be written meaningfully before the individual modules are understood.
 
 ### Research Flags
 
-**Phases likely needing deeper research during planning:**
-- **Phase 4 (CI):** If the CI provider has unusual constraints around external network calls to Stripe's sandbox or secrets management for billing API keys, a brief `gsd:research-phase` is warranted.
+Phases likely needing deeper research during planning:
+- **Phase 1 (infrastructure):** The `environmentMatchGlobs` config interacts with the existing 43 test file paths. Validate that all existing tests still pass after the config change before proceeding.
+- **Phase 4 (auth state machine):** The testability boundary for `ensureUser` (mock context vs. pure extraction) must be assessed function-by-function before test planning. Check convex-test issue #50 at phase kickoff.
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1 (Infrastructure):** All patterns are fully specified in STACK.md and ARCHITECTURE.md with working code examples. The existing `tests/live-billing/support.ts` provides proven reference implementations for most utilities.
-- **Phase 2 (Subscribe + Upgrade):** Checkout-bypass and full-browser upgrade dialog patterns are both fully documented with code.
-- **Phase 3 (Downgrade + Credits):** Follows the same checkout-bypass and API-driven patterns established in Phase 2.
+Phases with standard patterns (skip research-phase):
+- **Phase 2 (AI tests):** `MockLanguageModelV3` is fully documented with official examples. `processBatch` structure is well-understood from codebase inspection.
+- **Phase 3 (search/export tests):** All targets are pure functions with direct imports. No novel testing infrastructure required.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Direct codebase inspection confirms all packages installed. No new dependencies needed. All version constraints verified. |
-| Features | HIGH | Stripe official docs confirm the anti-automation stance on hosted pages. Codebase analysis confirms what UI components exist to test. Coverage matrix clearly separates E2E scope from live-billing scope. |
-| Architecture | HIGH | Hybrid checkout-bypass pattern is confirmed by Stripe docs, Playwright community reports, and existing live-billing code patterns. POM and fixture patterns are well-established Playwright idioms with full code examples in research. |
-| Pitfalls | HIGH | Each pitfall is sourced from official docs (Stripe rate limits, test clock limits, Clerk concurrent worker bug) and direct codebase analysis of the existing live-billing test suite. Mitigation strategies are concrete and actionable, not theoretical. |
+| Stack | HIGH | All package versions verified via `npm show`; `ai/test` and `nuqs/adapters/testing` verified by direct `node_modules` inspection of installed packages |
+| Features | HIGH | Direct codebase inspection of all 6 domain source files + all 43 existing test files; gaps are clearly identified with implementation notes |
+| Architecture | HIGH | All six test patterns drawn from existing tests in the repository; no speculative patterns introduced; build order validated against module dependency graph |
+| Pitfalls | HIGH | Critical pitfalls verified against official docs, confirmed open GitHub issues (convex-test #50, ai issue #8356), and direct codebase analysis |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Stripe Checkout selector stability (low impact if avoided):** If the team decides to exercise the actual Stripe Checkout page for even one smoke test, the DOM selectors (`[name="cardNumber"]`, `[data-testid="hosted-payment-submit-button"]`) are not officially documented. Treat them as fragile and isolate them in a single helper file. The full checkout-bypass approach eliminates this gap entirely — this is the recommendation.
-
-- **Convex user sync timing after Clerk user creation:** The Clerk `user.created` webhook to Convex is asynchronous. The `clerkTestUser` utility must include an explicit poll for the Convex `users` row before proceeding with billing setup. The code pattern is specified in ARCHITECTURE.md but the exact timing window (typically 1–5s) needs empirical validation in the target environment during Phase 1.
-
-- **CI provider specifics:** The research did not inspect the CI pipeline configuration. Phase 4 should verify that the billing E2E job has network access to `checkout.stripe.com` (for URL capture in the browser), `api.stripe.com`, and the deployed Convex endpoint.
+- **`ensureUser` testability boundary:** Whether `convex/users/mutations.ts:ensureUser` can be tested via injected mock context or requires further pure function extraction is not yet confirmed. Assess at the start of Phase 4 before writing Phase 4 tests.
+- **`exportToCSV` column logic coupling:** The column-building logic in `exportToCSV` is currently coupled to `downloadFile` (DOM-dependent). Extracting it is a required refactor before Phase 3 column-inclusion tests can be written. The refactor scope may reveal unexpected dependencies — assess at Phase 3 kickoff.
+- **convex-test issue #50 resolution timeline:** If the `getUserIdentity` bug is fixed before Phase 4 begins, some auth tests can shift from the injected mock context pattern to `convex-test` end-to-end tests. Check the GitHub issue status at Phase 4 kickoff.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Stripe Automated Testing Documentation](https://docs.stripe.com/automated-testing) — checkout anti-automation, simulation approach
-- [Stripe Test Card Numbers](https://docs.stripe.com/testing) — 4242424242424242, tok_visa, tok_chargeCustomerFail
-- [Stripe Rate Limits](https://docs.stripe.com/rate-limits) — 25 ops/sec sandbox limit, subscription-level limits
-- [Stripe Test Clocks Documentation](https://docs.stripe.com/billing/testing/test-clocks) — 3 customers/clock, 3 subscriptions/customer limits
-- [Stripe Test Clock API Advanced Usage](https://docs.stripe.com/billing/testing/test-clocks/api-advanced-usage) — list API limitations for test clock objects
-- [Clerk Testing with Playwright](https://clerk.com/docs/guides/development/testing/playwright/overview) — clerkSetup(), clerk.signIn(), testing token
-- [Clerk Playwright Test Helpers](https://clerk.com/docs/guides/development/testing/playwright/test-helpers) — signIn/signOut/loaded API reference
-- [Clerk Backend SDK createUser](https://clerk.com/docs/reference/backend/user/create-user) — skipPasswordChecks flag
-- [Clerk signIn() Timeout with Concurrent Workers — Issue #7891](https://github.com/clerk/javascript/issues/7891) — confirmed bug, workers: 1 required
-- [Playwright Assertions — expect.poll](https://playwright.dev/docs/test-assertions) — polling pattern for async state
-- [Playwright Best Practices](https://playwright.dev/docs/best-practices) — fixture pattern, locator strategy
-- Codebase direct inspection: `package.json`, `playwright.config.ts`, `e2e/global.setup.ts`, `e2e/auth.spec.ts`, `tests/live-billing/support.ts`, `tests/live-billing/required.test.ts`, `convex/testing/billing.ts`, `components/Pricing.tsx`, `app/settings/billing/page.tsx`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/billing/credit-topup-card.tsx`
+
+- Direct codebase inspection: `tests/*.test.ts` (43 files), `vitest.config.ts`, `package.json`, `node_modules/ai/package.json`, `node_modules/nuqs/package.json`, all 6 domain source files — confirmed package versions, subpath exports, existing test patterns
+- [convex-test official docs](https://docs.convex.dev/testing/convex-test) — `environmentMatchGlobs` config, `modules` glob pattern, `convexTest()` usage, documented limitations
+- [AI SDK Core Testing docs](https://ai-sdk.dev/docs/ai-sdk-core/testing) — `MockLanguageModelV3`, `mockValues()`, `simulateReadableStream`, import from `ai/test`
+- [nuqs Testing Documentation](https://nuqs.dev/docs/testing) — `withNuqsTestingAdapter`, `hasMemory`, `onUrlUpdate`, bijectivity test helpers
+- [convex-test GitHub issue #50](https://github.com/get-convex/convex-test/issues/50) — `getUserIdentity` fails in queries/mutations via `asyncSyscall`; confirmed open February 2026
+- [ai@5.0.27+ runtime issue #8356](https://github.com/vercel/ai/issues/8356) — `MockLanguageModelV3` imported outside Vitest worker crashes production with "Vitest failed to access its internal state"
+- `npm show convex-test`, `npm show @edge-runtime/vm`, `npm show @testing-library/react`, `npm show @testing-library/user-event`, `npm show @testing-library/jest-dom`, `npm show jsdom`, `npm show @vitejs/plugin-react` — all versions verified
 
 ### Secondary (MEDIUM confidence)
-- [Playwright Issue #19709: Stripe Checkout submission](https://github.com/microsoft/playwright/issues/19709) — confirms Checkout automation is fragile in CI
-- [stripe-node Retry on 429 Issue #1110](https://github.com/stripe/stripe-node/issues/1110) — auto-retry not enabled by default; must configure `maxNetworkRetries`
-- [Convex Testing Patterns](https://stack.convex.dev/testing-patterns) — sequential execution and cleanup patterns for shared backends
-- [Testing SaaS Billing with Playwright and Stripe Test Clocks (HackerNoon)](https://hackernoon.com/no-more-ship-and-pray-testing-saas-billing-systems-with-playwright-and-stripe-test-clocks) — three-layer architecture, webhook polling
-- [Testing Stripe Billing Cycles in 5 Minutes (DEV Community)](https://dev.to/paultowers/how-we-test-stripe-billing-cycles-in-5-minutes-instead-of-waiting-40-days-30jd) — test clock patterns, polling with exponential backoff
 
-### Tertiary (LOW confidence — needs validation in target environment)
-- Stripe Checkout hosted page DOM selectors (`[name="cardNumber"]`, `[data-testid="hosted-payment-submit-button"]`) — community-reported, not officially documented; moot if checkout bypass is used consistently (which it should be)
+- [Testing React Components with Convex](https://stack.convex.dev/testing-react-components-with-convex) — `vi.mock("convex/react")` pattern, `ConvexReactClientFake`
+- [Backfilling Tests — professorbeekums.com](https://blog.professorbeekums.com/backfilling-tests/) — encoding existing bugs as correct behavior risk during backfill
+- [TDD anti-patterns chapter 1 — codurance.com](https://www.codurance.com/publications/tdd-anti-patterns-chapter-1) — over-mocking, testing mocks not behavior
+- [nuqs GitHub discussion #259](https://github.com/47ng/nuqs/issues/259) — community testing patterns and missing adapter gotchas
+- [Clerk Next.js Testing Guide](https://clerk.com/blog/testing-clerk-nextjs) — mock `@clerk/nextjs` hooks; layer boundary discipline
+
+### Tertiary (LOW confidence)
+
+- None — all critical findings are HIGH or MEDIUM confidence from official or directly verified sources.
 
 ---
 *Research completed: 2026-02-28*
