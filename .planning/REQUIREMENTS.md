@@ -9,13 +9,13 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 
 ### Test Infrastructure
 
-- [ ] **INFRA-01**: E2E test framework configured with Playwright billing project, 180s timeout, `workers: 1`, `locale: 'en-US'`
-- [ ] **INFRA-02**: Fresh Clerk test user created and deleted per test scenario via `@clerk/backend` API
-- [ ] **INFRA-03**: Webhook waiter utility polls Convex backend for state convergence before UI assertions
-- [ ] **INFRA-04**: Stripe helpers create subscriptions, attach payment methods, and clean up test objects via API
-- [ ] **INFRA-05**: Page Object Models for billing page and pricing page with `data-testid` selectors
-- [ ] **INFRA-06**: `data-testid` attributes added to billing UI components for stable test targeting
-- [ ] **INFRA-07**: Billing fixture composes user lifecycle, Stripe client, webhook waiter, and auto-cleanup into single test extension
+- [x] **INFRA-01**: E2E test framework configured with Playwright billing project, 180s timeout, `workers: 1`, `locale: 'en-US'`
+- [x] **INFRA-02**: Fresh Clerk test user created and deleted per test scenario via `@clerk/backend` API
+- [x] **INFRA-03**: Webhook waiter utility polls Convex backend for state convergence before UI assertions
+- [x] **INFRA-04**: Stripe helpers create subscriptions, attach payment methods, and clean up test objects via API
+- [x] **INFRA-05**: Page Object Models for billing page and pricing page with `data-testid` selectors
+- [x] **INFRA-06**: `data-testid` attributes added to billing UI components for stable test targeting
+- [x] **INFRA-07**: Billing fixture composes user lifecycle, Stripe client, webhook waiter, and auto-cleanup into single test extension
 
 ### Subscription
 
@@ -64,24 +64,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 7 | Pending |
-| INFRA-02 | Phase 7 | Pending |
-| INFRA-03 | Phase 7 | Pending |
-| INFRA-04 | Phase 7 | Pending |
-| INFRA-05 | Phase 7 | Pending |
-| INFRA-06 | Phase 7 | Pending |
-| INFRA-07 | Phase 7 | Pending |
+| INFRA-01 | Phase 7 | Complete |
+| INFRA-02 | Phase 7 | Complete |
+| INFRA-03 | Phase 7 | Complete |
+| INFRA-04 | Phase 7 | Complete |
+| INFRA-05 | Phase 7 | Complete |
+| INFRA-06 | Phase 7 | Complete |
+| INFRA-07 | Phase 7 | Complete |
 | SUB-01 | Phase 8 | Complete |
 | SUB-02 | Phase 8 | Complete |
 | PLAN-01 | Phase 8 | Complete |
 | PLAN-02 | Phase 9 | Complete |
 | PLAN-03 | Phase 9 | Complete |
 | CNCL-01 | Phase 9 | Complete |
-| CRED-01 | Phase 9 | Complete |
+| CRED-01 | Phase 9, Phase 10 (gap closure) | Pending |
 | CRED-02 | Phase 8 | Complete |
 | CRED-03 | Phase 9 | Complete |
 | CRED-04 | Phase 9 | Complete |
-| CRED-05 | Phase 9 | Complete |
+| CRED-05 | Phase 9, Phase 10 (gap closure) | Pending |
 
 **Coverage:**
 - v1.2 requirements: 18 total
@@ -90,4 +90,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after roadmap creation*
+*Last updated: 2026-02-28 after gap closure phase creation*

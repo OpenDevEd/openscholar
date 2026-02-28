@@ -37,6 +37,8 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 - [ ] **Phase 7: Test Infrastructure Foundation** - Support utilities, fixtures, page object models, and data-testid attributes
 - [x] **Phase 8: Subscription and Upgrade Specs** - E2E specs for subscription creation, upgrade flow, and subscription credit grants (completed 2026-02-28)
 - [x] **Phase 9: Lifecycle and Credit Specs** - E2E specs for downgrade, cancellation, credit topup, pro-rata credits, and free credit cap (completed 2026-02-28)
+- [ ] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure)
+- [ ] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard
 
 ## Phase Details
 
@@ -90,6 +92,31 @@ Plans:
 - [ ] 09-01: Downgrade and cancel specs (downgrade.spec.ts, cancel.spec.ts)
 - [ ] 09-02: Credit specs (credits.spec.ts) with topup bypass helper
 
+### Phase 10: Fix Credits Spec Authentication Wiring
+**Goal**: Credits E2E tests run with authenticated sessions so signup-credits and credit-cap flows pass instead of timing out
+**Depends on**: Phase 9
+**Requirements**: CRED-01, CRED-05
+**Gap Closure**: Closes integration gaps CRED-01, CRED-05 and flow gaps "Free user sees signup credits", "Free user at credit cap sees cap banner" from v1.2 audit
+**Success Criteria** (what must be TRUE):
+  1. `credits.spec.ts` test "free user sees 2,000 signup credits" destructures `{ clerkUser, billingPage }` and runs with an authenticated session
+  2. `credits.spec.ts` test "free user at credit cap sees cap banner" destructures `{ clerkUser, billingPage }` and runs with an authenticated session
+  3. Both tests navigate to /settings/billing and see billing content instead of perpetual loading skeleton
+
+Plans:
+- [ ] 10-01-PLAN.md -- Add clerkUser fixture to credits spec tests
+
+### Phase 11: Tech Debt Cleanup
+**Goal**: Resolve tech debt items identified by v1.2 milestone audit to improve code consistency and CI reliability
+**Depends on**: Phase 10
+**Requirements**: None (tech debt, not requirements)
+**Success Criteria** (what must be TRUE):
+  1. `upgrade.spec.ts` uses `webhookWaiter.userId` public getter instead of bracket notation `webhookWaiter["convexUserId"]`
+  2. `upgrade-confirmation-dialog.tsx` has a single `data-testid="upgrade-total-charge"` element (no duplicates)
+  3. CI configuration confirms `NEXT_PUBLIC_CREDITS_ENABLED` is not set to `"false"` (or a test guard validates this)
+
+Plans:
+- [ ] 11-01-PLAN.md -- Fix bracket notation, duplicate testid, and CI env guard
+
 ## Progress
 
 **Execution Order:**
@@ -106,3 +133,5 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 7. Test Infrastructure Foundation | v1.2 | 3/3 | Complete | 2026-02-28 |
 | 8. Subscription and Upgrade Specs | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
+| 10. Fix Credits Spec Auth Wiring | v1.2 | Pending | - | - |
+| 11. Tech Debt Cleanup | v1.2 | Pending | - | - |
