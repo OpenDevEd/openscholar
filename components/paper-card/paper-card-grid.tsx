@@ -181,7 +181,7 @@ export function PaperCardGrid({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <RatingSelector paperId={result.id} variant="compact" />
+            <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
             
             <div className="flex items-center gap-2">
               {/* Cited by count */}

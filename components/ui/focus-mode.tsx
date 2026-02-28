@@ -50,6 +50,10 @@ import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { ScreeningResponses, useTranslate } from "../paper-card";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { trimPaperData } from "@/lib/library/trim-paper-data";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 interface PaperContentProps {
   paper: any;
@@ -382,6 +386,8 @@ export function FocusMode({
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+  const { phase } = useAuthReadiness();
+  const saveToLibraryMutation = useMutation(api.library.mutations.saveToLibrary);
 
   const tLabels = useTranslations("labels");
   const tAccessibility = useTranslations("accessibility");
@@ -537,13 +543,31 @@ export function FocusMode({
 
   const handleRatingChange = useCallback(
     (paperId: string, rating: string) => {
+      const newRating = rating === "no-rating" ? null : parseInt(rating);
+
+      // 1. Always update Zustand (optimistic, localStorage)
       if (rating === "no-rating") {
         setRating(paperId, null);
       } else {
         setRating(paperId, parseInt(rating));
       }
+
+      // 2. If signed-in AND rating is not removal, save to Convex
+      if (phase === "authenticated" && newRating !== null) {
+        // Find the paper object from the papers array
+        const paper = papers.find((p: any) => p.id === paperId);
+        if (paper) {
+          const trimmed = trimPaperData(paper);
+          saveToLibraryMutation({
+            ...trimmed,
+            rating: newRating,
+          }).catch((error) => {
+            console.error("[Library] Failed to save to library:", error);
+          });
+        }
+      }
     },
-    [setRating]
+    [setRating, phase, papers, saveToLibraryMutation]
   );
 
   const goToNext = () => {
@@ -844,7 +868,7 @@ export function FocusMode({
               <div className="flex items-center justify-center md:justify-end gap-1 md:mr-8">
                 {/* Compact rating selector - only on mobile */}
                 <div className="md:hidden">
-                  <RatingSelector paperId={currentPaper.id} variant="compact" />
+                  <RatingSelector paperId={currentPaper.id} paperResult={currentPaper} variant="compact" />
                 </div>
                 <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
 

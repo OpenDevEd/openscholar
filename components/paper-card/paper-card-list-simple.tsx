@@ -79,7 +79,7 @@ export function PaperCardListSimple({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <RatingSelector paperId={result.id} variant="compact" />
+            <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
           </div>
 
           {/* Main content area */}

@@ -333,7 +333,7 @@ export function PaperCardListDetail({
           /* Mobile Layout */
           <div className="space-y-3 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between">
-              <RatingSelector paperId={result.id} variant="compact" />
+              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
               <div className="flex items-center gap-2">
                 <DownloadMenu
                   variant="icon"
@@ -403,7 +403,7 @@ export function PaperCardListDetail({
           /* Desktop Layout */
           <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border/50">
             <div className="flex items-center gap-3">
-              <RatingSelector paperId={result.id} variant="compact" />
+              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
             </div>
 
             <div className="flex items-center gap-2">
