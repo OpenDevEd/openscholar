@@ -46,7 +46,14 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active requirements — next milestone not yet defined)
+**Current Milestone: v2.1 Library & Collections**
+
+- [ ] Rating an item saves it to user's library (full JSON entry in Convex)
+- [ ] Dedicated /library page with full filtering (rating, collection, date saved, search, sort)
+- [ ] Collection CRUD — users can create, rename, delete collections
+- [ ] Items can belong to multiple collections
+- [ ] Users can remove items from their library
+- [ ] Auth-gated — library only available to signed-in users
 
 ### Out of Scope
 
@@ -101,5 +108,16 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | Representative models per provider | Avoid brittle snapshot of all 40+ models | ✓ Good — maintainable |
 | Mock at module boundary (vi.mock) | Tests batch orchestration independent of AI SDK | ✓ Good — fast, isolated |
 
+## Current Milestone: v2.1 Library & Collections
+
+**Goal:** Persistent server-side library where rating items auto-saves them, with collections and full filtering on a dedicated page.
+
+**Target features:**
+- Auto-save rated items to Convex-backed library (full JSON)
+- Dedicated /library page with filtering by rating, collection, date saved, text search, and sort
+- Collection management (create, rename, delete, assign items to multiple)
+- Remove items from library
+- Auth-gated (signed-in users only)
+
 ---
-*Last updated: 2026-02-28 after v2.0 milestone*
+*Last updated: 2026-02-28 after v2.1 milestone started*

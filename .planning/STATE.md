@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: TDD & Test Coverage
-status: shipped
+milestone: v2.1
+milestone_name: Library & Collections
+status: defining_requirements
 last_updated: "2026-02-28"
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 17
-  completed_plans: 17
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.0 shipped — planning next milestone
+**Current focus:** v2.1 Library & Collections
 
 ## Current Position
 
-Milestone: v2.0 TDD & Test Coverage — SHIPPED 2026-02-28
-All phases (14-21) complete, all 17 plans executed.
-
-Progress: [████████████████████] 17/17 plans (100%)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-28 — Milestone v2.1 started
 
 ## Performance Metrics
 
@@ -66,6 +66,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - v2.0 milestone shipped
-Stopped at: Milestone complete, ready for /gsd:new-milestone
+Last activity: 2026-02-28 - Milestone v2.1 started
+Stopped at: Defining requirements
 Resume file: None
