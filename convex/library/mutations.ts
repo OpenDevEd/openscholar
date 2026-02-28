@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
+import { createError } from "../lib/errors";
 
 export const saveToLibrary = mutation({
   args: {
@@ -50,5 +51,26 @@ export const saveToLibrary = mutation({
       savedAt: Date.now(),
       updatedAt: Date.now(),
     });
+  },
+});
+
+export const removeFromLibrary = mutation({
+  args: {
+    itemId: v.id("libraryItems"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const item = await ctx.db.get(args.itemId);
+
+    if (!item) {
+      throw createError("NOT_FOUND", "Library item not found");
+    }
+    if (item.userId !== user._id) {
+      throw createError("FORBIDDEN", "Not your library item");
+    }
+
+    await ctx.db.delete(args.itemId);
+    return null;
   },
 });
