@@ -60,4 +60,20 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
+  projects: [
+    {
+      name: "default",
+      testIgnore: "**/billing/**",
+    },
+    {
+      name: "billing",
+      testDir: "./e2e/billing",
+      timeout: 180_000,
+      workers: 1,
+      fullyParallel: false,
+      use: {
+        locale: "en-US",
+      },
+    },
+  ],
 });
