@@ -12,14 +12,14 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 - [x] **LIB-01**: Rating a paper (signed-in user) saves/upserts it to the user's Convex-backed library with slim normalized metadata
 - [x] **LIB-02**: Library stores trimmed paper data (title, authors, DOI, abstract, year, journal, cited_by_count, open access status, OpenAlex ID) -- not the full Work blob
 - [ ] **LIB-03**: User can view all saved items on a dedicated `/library` page
-- [ ] **LIB-04**: User can search within their library by title, author, or abstract text via Convex search index
-- [ ] **LIB-05**: User can filter library items by rating value
-- [ ] **LIB-06**: User can sort library by date saved, rating, or publication year
-- [ ] **LIB-07**: User can remove items from their library with confirmation
+- [x] **LIB-04**: User can search within their library by title, author, or abstract text via Convex search index
+- [x] **LIB-05**: User can filter library items by rating value
+- [x] **LIB-06**: User can sort library by date saved, rating, or publication year
+- [x] **LIB-07**: User can remove items from their library with confirmation
 - [ ] **LIB-08**: Library page is auth-gated -- unauthenticated users are redirected to sign-in
 - [ ] **LIB-09**: Library page shows helpful empty state when no items are saved
-- [ ] **LIB-10**: Library items are paginated server-side via Convex `.paginate()`
-- [ ] **LIB-11**: Dual-path query strategy: search mode (relevance order via searchIndex) vs browse mode (custom sort via regular index)
+- [x] **LIB-10**: Library items are paginated server-side via Convex `.paginate()`
+- [x] **LIB-11**: Dual-path query strategy: search mode (relevance order via searchIndex) vs browse mode (custom sort via regular index)
 - [x] **LIB-12**: Anonymous users retain existing localStorage rating behavior (Zustand fallback)
 
 ### Collections
@@ -84,14 +84,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-01 | Phase 22 | Complete |
 | LIB-02 | Phase 22 | Complete |
 | LIB-03 | Phase 23 | Pending |
-| LIB-04 | Phase 23 | Pending |
-| LIB-05 | Phase 23 | Pending |
-| LIB-06 | Phase 23 | Pending |
-| LIB-07 | Phase 23 | Pending |
+| LIB-04 | Phase 23 | Complete |
+| LIB-05 | Phase 23 | Complete |
+| LIB-06 | Phase 23 | Complete |
+| LIB-07 | Phase 23 | Complete |
 | LIB-08 | Phase 23 | Pending |
 | LIB-09 | Phase 23 | Pending |
-| LIB-10 | Phase 23 | Pending |
-| LIB-11 | Phase 23 | Pending |
+| LIB-10 | Phase 23 | Complete |
+| LIB-11 | Phase 23 | Complete |
 | LIB-12 | Phase 22 | Complete |
 | COL-01 | Phase 25 | Pending |
 | COL-02 | Phase 25 | Pending |

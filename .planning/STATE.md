@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-02-28T21:44:43.188Z"
+last_updated: "2026-02-28T22:20:24.000Z"
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.1 Library & Collections -- Phase 22 complete, ready for Phase 23
+**Current focus:** v2.1 Library & Collections -- Phase 23 Plan 01 complete, Plan 02 next
 
 ## Current Position
 
-Phase: 22 of 26 (Schema & Rating Bridge) -- COMPLETE
-Plan: 2 of 2 complete
-Status: Phase 22 complete
-Last activity: 2026-02-28 -- Completed Plan 02 (UI rating bridge to Convex saveToLibrary)
+Phase: 23 of 26 (Core Library Page) -- IN PROGRESS
+Plan: 1 of 2 complete
+Status: Plan 01 complete (library queries + remove mutation), Plan 02 next (library UI)
+Last activity: 2026-02-28 -- Completed Plan 01 (library backend queries and mutations)
 
-Progress: [####................] 20% (v2.1: 2/2 plans in Phase 22)
+Progress: [######..............] 30% (v2.1: 3/4 plans in Phases 22-23)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 43 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 2)
+- Total plans completed: 44 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 3)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -58,6 +58,9 @@ See PROJECT.md Key Decisions table for full log.
 - [22-02] Fire-and-forget mutation pattern -- Zustand optimistic, Convex failure logged but never blocks UI
 - [22-02] Rating removal (no-rating) does not call mutation -- library deletion is Phase 23 (LIB-07)
 - [22-02] FocusMode looks up paper by ID from papers array rather than receiving as prop
+- [23-01] Dual-path query: search mode (relevance via searchIndex) vs browse mode (custom sort via regular indexes)
+- [23-01] convex-helpers filter() for rating >= N on both browse and search paths (pages may be undersized)
+- [23-01] getLibraryCount uses .collect().length (acceptable for libraries up to 1024 items)
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 22-02-PLAN.md (UI rating bridge to Convex)
-Stopped at: Phase 22 complete, ready for Phase 23 (Library UI)
+Last activity: 2026-02-28 - Completed 23-01-PLAN.md (library queries and remove mutation)
+Stopped at: Phase 23 Plan 01 complete, Plan 02 next (library UI page)
 Resume file: None
