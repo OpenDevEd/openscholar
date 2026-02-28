@@ -177,15 +177,31 @@ export const generateBatchTranslations = action({
       async () => {
         const model = await getModel();
         
-        const { results, errors, usages } = await processTranslationBatch({
+        const { results, errors, usages, usageByItemId } = await processTranslationBatch({
           model,
           papers,
           targetLanguage,
         });
 
+        const usageBreakdown = Object.entries(usageByItemId).map(
+          ([paperId, usage]) => {
+            const amount = calculateServerCreditsToDeduct(usage);
+            return {
+              usage,
+              description: `AI: Batch translation (${paperId})`,
+              metadata: {
+                billingType: "batch_translation",
+                paperId,
+                chargedCredits: String(amount),
+              },
+            };
+          },
+        );
+
         return {
           result: { results, errors },
           totalUsage: aggregateUsage(usages),
+          usageBreakdown,
         };
       },
       { minPlanTier: 10 }
