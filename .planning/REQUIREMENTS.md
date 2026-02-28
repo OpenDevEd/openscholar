@@ -9,11 +9,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Test Infrastructure
 
-- [ ] **INFRA-01**: Vitest config updated with `environmentMatchGlobs` routing convex tests to edge-runtime, hook tests to jsdom, and all existing tests to node
-- [ ] **INFRA-02**: 7 new devDependencies installed (`convex-test`, `@edge-runtime/vm`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, `@vitejs/plugin-react`)
-- [ ] **INFRA-03**: Global test setup file (`tests/setup.ts`) with jest-dom matchers and RTL cleanup
-- [ ] **INFRA-04**: Convex test setup module (`convex/test.setup.ts`) for convex-test module discovery
-- [ ] **INFRA-05**: All 43 existing tests pass after infrastructure changes with zero modifications
+- [x] **INFRA-01**: Vitest config updated with `environmentMatchGlobs` routing convex tests to edge-runtime, hook tests to jsdom, and all existing tests to node
+- [x] **INFRA-02**: 7 new devDependencies installed (`convex-test`, `@edge-runtime/vm`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, `@vitejs/plugin-react`)
+- [x] **INFRA-03**: Global test setup file (`tests/setup.ts`) with jest-dom matchers and RTL cleanup
+- [x] **INFRA-04**: Convex test setup module (`convex/test.setup.ts`) for convex-test module discovery
+- [x] **INFRA-05**: All 43 existing tests pass after infrastructure changes with zero modifications
 
 ### Search & Filters
 
@@ -105,11 +105,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 14 | Pending |
-| INFRA-02 | Phase 14 | Pending |
-| INFRA-03 | Phase 14 | Pending |
-| INFRA-04 | Phase 14 | Pending |
-| INFRA-05 | Phase 14 | Pending |
+| INFRA-01 | Phase 14 | Complete |
+| INFRA-02 | Phase 14 | Complete |
+| INFRA-03 | Phase 14 | Complete |
+| INFRA-04 | Phase 14 | Complete |
+| INFRA-05 | Phase 14 | Complete |
 | SRCH-01 | Phase 18 | Pending |
 | SRCH-02 | Phase 18 | Pending |
 | SRCH-03 | Phase 18 | Pending |

@@ -50,7 +50,7 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
 
 **Milestone Goal:** Backfill high test coverage across search & extraction, AI/LLM features, and user management with unit tests, establishing strict TDD as the standard for all future development.
 
-- [ ] **Phase 14: Test Infrastructure** - Multi-environment Vitest config, new dependencies, setup files, zero-regression validation
+- [x] **Phase 14: Test Infrastructure** - Multi-environment Vitest config, new dependencies, setup files, zero-regression validation (completed 2026-02-28)
 - [ ] **Phase 15: AI Prompts & Schema Tests** - Prompt builder structural invariants, Zod schema contracts, query validation, JSON repair
 - [ ] **Phase 16: AI Batch Processing Tests** - Fail-soft batch processing with all-success, all-fail, and partial-failure coverage
 - [ ] **Phase 17: AI Cost & Billing Tests** - Provider pricing models, usage aggregation, model registry lookups
@@ -71,7 +71,7 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
   3. Global test setup file provides jest-dom matchers and RTL cleanup in afterEach
   4. Convex test setup module discovers all Convex modules for convex-test isolation
   5. All 7 new devDependencies (convex-test, @edge-runtime/vm, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, jsdom, @vitejs/plugin-react) are installed and importable
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 Plans:
 - [ ] 14-01-PLAN.md -- Install dependencies, create setup files, update Vitest config with multi-environment routing
 
@@ -179,7 +179,7 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 11. Tech Debt Cleanup | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 12. Billing E2E CI Wiring | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 13. CI Env Hardening & CRED-02 Regression | v1.2 | 1/1 | Complete | 2026-02-28 |
-| 14. Test Infrastructure | v2.0 | 0/1 | Planning complete | - |
+| 14. Test Infrastructure | 1/1 | Complete   | 2026-02-28 | - |
 | 15. AI Prompts & Schema Tests | v2.0 | 0/0 | Not started | - |
 | 16. AI Batch Processing Tests | v2.0 | 0/0 | Not started | - |
 | 17. AI Cost & Billing Tests | v2.0 | 0/0 | Not started | - |
