@@ -122,5 +122,9 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | toBe() exact match for CRED-02 regression | Regression tests must catch any credit grant drift | ✓ Good — strict validation |
 | CI credits env guard checks only "false" | Unset passes, matching runtime feature flag behavior | ✓ Good — consistent with app logic |
 
+| Structural prompt testing (assert fields/markers, not AI quality) | Decouples test suite from AI model behavior; pure structural checks | ✓ Good — stable tests |
+| .parse()/.safeParse() only for Zod testing | Avoids coupling to Zod internals (.shape, .element) | ✓ Good — version-stable |
+| it.each parametric round-trip tests | Compact coverage across ASCII, Unicode, special chars | ✓ Good — readable, extensible |
+
 ---
-*Last updated: 2026-02-28 after v2.0 milestone start*
+*Last updated: 2026-02-28 after Phase 15*
