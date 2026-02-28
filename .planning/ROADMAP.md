@@ -114,11 +114,11 @@ Plans:
   1. User can filter library items by date saved (last week, last month, last year) and by publication year range
   2. All filter, sort, and search state is persisted in the URL -- refreshing the page or sharing the link restores the exact view
   3. User can switch between list-detail and grid view modes
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 24-01: TBD
-- [ ] 24-02: TBD
+- [ ] 24-01-PLAN.md -- URL state foundation: nuqs parser module, Convex query date/year filter args, useState-to-useQueryStates migration
+- [ ] 24-02-PLAN.md -- Filter UI and view modes: date preset buttons, year range inputs, list/grid toggle, grid card component, 6-locale i18n
 
 ### Phase 25: Collections
 **Goal**: Users can organize library items into named collections with full CRUD and many-to-many assignment
