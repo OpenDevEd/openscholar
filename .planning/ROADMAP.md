@@ -54,7 +54,7 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
 - [x] **Phase 15: AI Prompts & Schema Tests** - Prompt builder structural invariants, Zod schema contracts, query validation, JSON repair (completed 2026-02-28)
 - [x] **Phase 16: AI Batch Processing Tests** - Fail-soft batch processing with all-success, all-fail, and partial-failure coverage (completed 2026-02-28)
 - [x] **Phase 17: AI Cost & Billing Tests** - Provider pricing models, usage aggregation, model registry lookups (completed 2026-02-28)
-- [ ] **Phase 18: Search & Filter Tests** - Search param translation, region codec bijectivity, filter builders, URL serialization round-trips
+- [x] **Phase 18: Search & Filter Tests** - Search param translation, region codec bijectivity, filter builders, URL serialization round-trips (completed 2026-02-28)
 - [ ] **Phase 19: Data Export Tests** - CSV/JSON export correctness, answer formatting, citation helpers, download output shape
 - [ ] **Phase 20: User Auth & State Machine Tests** - Auth state transitions, user creation atomicity, profile sync guards
 - [ ] **Phase 21: Plan Enforcement & Feature Gating Tests** - Plan config contracts, tier enforcement, feature flag guards, subscription selection
@@ -189,7 +189,7 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 15. AI Prompts & Schema Tests | 2/2 | Complete    | 2026-02-28 | - |
 | 16. AI Batch Processing Tests | 2/2 | Complete    | 2026-02-28 | - |
 | 17. AI Cost & Billing Tests | 2/2 | Complete    | 2026-02-28 | - |
-| 18. Search & Filter Tests | v2.0 | 0/0 | Not started | - |
+| 18. Search & Filter Tests | v2.0 | Complete    | 2026-02-28 | - |
 | 19. Data Export Tests | v2.0 | 0/0 | Not started | - |
 | 20. User Auth & State Machine Tests | v2.0 | 0/0 | Not started | - |
 | 21. Plan Enforcement & Feature Gating Tests | v2.0 | 0/0 | Not started | - |
