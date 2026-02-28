@@ -1,510 +1,493 @@
-# Architecture Research: TDD & Test Coverage Integration
+# Architecture Research
 
-**Domain:** TDD workflow and test coverage backfill for Next.js + Convex app
+**Domain:** Library & Collections integration into existing Next.js + Convex academic search app
 **Researched:** 2026-02-28
-**Confidence:** HIGH (direct codebase analysis — all patterns drawn from existing tests/ and e2e/)
+**Confidence:** HIGH
 
 ## System Overview
 
-The existing test architecture has two distinct tiers that must remain separate. New v2.0 tests slot into the existing Vitest unit tier and extend it with a thin integration layer.
-
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     PLAYWRIGHT E2E LAYER (existing)                      │
-│  e2e/auth.spec.ts          e2e/billing/*.spec.ts (7 specs)              │
-│  e2e/global.setup.ts       e2e/billing/fixtures.ts                      │
-│  Requires: live Clerk + Convex + Next.js + Stripe sandbox               │
-└─────────────────────────────────────────────────────────────────────────┘
+Current State (v2.0)                         New (v2.1)
+========================                     ========================
 
-┌─────────────────────────────────────────────────────────────────────────┐
-│               VITEST UNIT / INTEGRATION LAYER (43 files)                 │
-│                                                                         │
-│  ┌──────────────────┐  ┌────────────────────┐  ┌──────────────────┐    │
-│  │  Search/Extract  │  │     AI / LLM       │  │ User Management  │    │
-│  │  (lib/extraction │  │  (lib/ai/core/*    │  │ (convex/users/*  │    │
-│  │   lib/filters/*  │  │   convex/ai/*      │  │  convex/lib/     │    │
-│  │   lib/search/*   │  │   convex/extract/  │  │   auth.ts        │    │
-│  │   lib/search-    │  │   prompts.ts)      │  │   userCreation   │    │
-│  │   utils.ts)      │  │                    │  │   featureFlags)  │    │
-│  └──────────────────┘  └────────────────────┘  └──────────────────┘    │
-│                                                                         │
-│  vitest.config.ts: environment=node, include=tests/**/*.test.ts         │
-│  Excludes: tests/live-billing/**                                        │
-└─────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│              VITEST LIVE-BILLING LAYER (separate config)                 │
-│  tests/live-billing/required.test.ts   extended.test.ts                 │
-│  vitest.live.config.ts: 300s timeouts, requires Convex + Stripe         │
-└─────────────────────────────────────────────────────────────────────────┘
+Browser                                      Browser
+  |                                            |
+  |-- Zustand (ratings, search history,        |-- Zustand (UI prefs only for library)
+  |    bookmarks -- all localStorage)          |
+  |                                            |-- Convex React hooks
+  |-- OpenAlex API (via server action)         |    (useProtectedQuery, useProtectedPaginatedQuery)
+  |                                            |
+  v                                            v
+Next.js Server Action                        Convex Backend
+  |                                            |
+  |-- getSearchResults()                       |-- libraryItems table (full JSON)
+  |                                            |-- collections table
+  v                                            |-- collectionItems table (junction)
+Convex Backend                                 |
+  |                                            |-- library/ domain module
+  |-- users, credits, subscriptions,           |    queries.ts, mutations.ts
+  |    extraction jobs, etc.                   |
+  |                                            v
+  v                                          Search Index + DB Indexes
+Database (existing tables)                   (text search on title/authors)
 ```
+
+### What Changes
+
+The key architectural shift for v2.1: **ratings move from client-only Zustand state to server-persisted Convex documents**. Today, `useRatingsStore` in `lib/store.ts` stores ratings as `Record<string, number>` in localStorage. Rating an item will now trigger a Convex mutation that persists the full OpenAlex Work JSON alongside the rating.
+
+### What Stays the Same
+
+- Search flow (OpenAlex API via server action) -- unchanged
+- Existing Convex domain modules (users, credits, subscriptions, extraction) -- untouched
+- Auth pattern (`requireAuth` from `convex/lib/auth.ts`) -- reused
+- Protected query wrappers (`useProtectedQuery`, `useProtectedPaginatedQuery`) -- reused
+- Command Center UI pattern -- reused for /library page
 
 ## Component Responsibilities
 
-| Component | Responsibility | Test Approach |
-|-----------|----------------|---------------|
-| `lib/extraction/*` | Filtering, citation panel, feature flags, insights, PDF text | Direct import, env var manipulation via `vi.resetModules()` |
-| `lib/filters/*` | Filter builder, filter config, filter types | Direct import, pure function unit tests |
-| `lib/search/*`, `lib/search-utils.ts`, `lib/search-actions.ts` | URL-based search state, filter assembly, export logic | Direct import; source-code assertion pattern for export contracts |
-| `lib/ai/core/*` | `executeAIOperation`, batch processor, prompt builders, validate, errors | Direct import; mock `LanguageModel` interface |
-| `lib/ai/client/*` | Mode routing, providers, executor, hook-factory | Direct import; pure logic, no React |
-| `convex/ai/*` | Server-side actions, helpers, credit billing | Direct import from `convex/ai/lib/creditBilling.ts` etc. |
-| `convex/extraction/prompts.ts` | `buildEnhancedExtractionPrompt` | Direct import |
-| `convex/extraction/workpoolActions.ts` | Evidence policy, abstract-only policy, validation | Direct import of exported pure functions |
-| `convex/users/mutations.ts` | `ensureUser`, `updateProfile` | Mock `ctx` object pattern |
-| `convex/lib/auth.ts` | `requireAuth`, `getCurrentUser` | Mock `ctx.auth` + `ctx.db` pattern |
-| `convex/lib/userCreation.ts` | `createUserWithDefaults` | Mock `ctx.db.insert` |
-| `convex/lib/featureFlags.ts` | `requireCreditsEnabled`, etc. | Direct import, env var manipulation |
-| `convex/webhooks/clerk.ts` | `processClerkWebhookEvent` | Inject mock `runMutation` (existing pattern) |
-| `convex/webhooks/clerk_mappers.ts` | `mapClerkUserToUpsertArgs` etc. | Direct import, pure function |
+| Component | Responsibility | New / Modified |
+|-----------|----------------|----------------|
+| `convex/library/mutations.ts` | Save/remove library items, update ratings | NEW |
+| `convex/library/queries.ts` | List library items with filters, get item by ID | NEW |
+| `convex/collections/mutations.ts` | CRUD collections, assign/remove items | NEW |
+| `convex/collections/queries.ts` | List user collections, get collection details | NEW |
+| `convex/schema.ts` | Add 3 new tables + indexes + search index | MODIFIED |
+| `convex/lib/validators.ts` | Add library/collection validators | MODIFIED |
+| `components/rating-selector.tsx` | Trigger Convex mutation on rating change | MODIFIED |
+| `app/library/page.tsx` | New /library route | NEW |
+| `components/library-command-center/` | Library page UI shell | NEW |
+| `lib/store.ts` (useRatingsStore) | Bridge: read from Convex, write triggers mutation | MODIFIED |
+
+## New Convex Tables
+
+### Table 1: `libraryItems`
+
+Stores the full academic item JSON when a user rates it. One row per user-item pair.
+
+```typescript
+libraryItems: defineTable({
+  userId: v.id("users"),
+  openalexId: v.string(),          // OpenAlex Work ID (e.g., "W2741809807")
+  rating: v.number(),              // 0-5 star rating
+  title: v.string(),               // Denormalized for search index + display
+  authors: v.optional(v.string()), // Comma-joined author names for search
+  publicationYear: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  itemData: v.any(),               // Full OpenAlex Work JSON (~5-20KB typically)
+  savedAt: v.number(),             // When first saved
+  updatedAt: v.number(),           // When rating last changed
+})
+  .index("by_user", ["userId"])
+  .index("by_user_openalex", ["userId", "openalexId"])
+  .index("by_user_rating", ["userId", "rating"])
+  .index("by_user_saved", ["userId", "savedAt"])
+  .searchIndex("search_title", {
+    searchField: "title",
+    filterFields: ["userId"],
+  })
+```
+
+**Why `v.any()` for `itemData`:**
+- The OpenAlex Work type has ~40 optional fields, deeply nested objects (authorships, locations, concepts), and evolves independently of our schema. Defining it exhaustively with Convex validators would be brittle and high-maintenance.
+- A typical Work JSON is 5-20KB, well under the 1MB Convex document limit.
+- The fields we need to filter/search on (`title`, `authors`, `publicationYear`, `rating`) are extracted as top-level typed fields. `itemData` is the opaque blob for rendering.
+- This is the same pattern used in `extractionJobs.searchFilters` (which uses `v.record(v.string(), v.any())`).
+
+**Why denormalize `title` and `authors`:**
+- Convex search indexes only work on top-level string fields defined in the schema. You cannot search inside `v.any()`.
+- Denormalizing `title` as a proper `v.string()` field enables the `search_title` search index for text search.
+- `authors` as a comma-joined string enables search to find papers by author name.
+
+### Table 2: `collections`
+
+User-created groupings for organizing library items.
+
+```typescript
+collections: defineTable({
+  userId: v.id("users"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  color: v.optional(v.string()),    // Optional UI color tag
+  itemCount: v.number(),            // Denormalized count for display
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_user", ["userId"])
+  .index("by_user_name", ["userId", "name"])
+```
+
+**Why denormalize `itemCount`:**
+- Counting items by querying the junction table on every list render is expensive (N+1 queries or collect + count).
+- Increment/decrement `itemCount` atomically in the mutation that adds/removes items.
+- This is standard practice in Convex apps for computed aggregates.
+
+### Table 3: `collectionItems` (junction table)
+
+Many-to-many relationship between library items and collections.
+
+```typescript
+collectionItems: defineTable({
+  collectionId: v.id("collections"),
+  libraryItemId: v.id("libraryItems"),
+  addedAt: v.number(),
+})
+  .index("by_collection", ["collectionId"])
+  .index("by_library_item", ["libraryItemId"])
+  .index("by_collection_item", ["collectionId", "libraryItemId"])
+```
+
+**Why a junction table (not an array field):**
+- Convex arrays are capped at 8,192 entries. While unlikely to hit for collections, it would be a hard ceiling.
+- Junction tables allow efficient bidirectional queries: "which collections contain item X?" and "which items are in collection Y?"
+- Standard Convex pattern documented at stack.convex.dev. The project already has `convex-helpers` (v0.1.111) which provides `getManyVia` for this pattern.
+- Adding metadata to the relationship (e.g., `addedAt`, future `notes`) is trivial.
+
+## Data Flow
+
+### Rating a Paper (Save to Library)
+
+```
+User clicks star rating on search results page
+    |
+    v
+RatingSelector component
+    |-- (1) Call Convex mutation: library.mutations.saveOrUpdateItem
+    |       Args: { openalexId, rating, itemData (full Work JSON) }
+    |
+    v
+Convex mutation (library/mutations.ts)
+    |-- (2) requireAuth(ctx) --> get userId
+    |-- (3) Check existing: db.query("libraryItems")
+    |       .withIndex("by_user_openalex", q => q.eq("userId", userId).eq("openalexId", openalexId))
+    |       .unique()
+    |-- (4a) EXISTS: db.patch(existing._id, { rating, updatedAt: Date.now() })
+    |-- (4b) NEW: db.insert("libraryItems", {
+    |         userId, openalexId, rating,
+    |         title: itemData.display_name ?? itemData.title ?? "",
+    |         authors: (itemData.authorships ?? []).map(a => a.author.display_name).join(", "),
+    |         publicationYear: itemData.publication_year,
+    |         doi: itemData.doi,
+    |         itemData,
+    |         savedAt: Date.now(), updatedAt: Date.now()
+    |       })
+    |
+    v
+Convex reactive query invalidation
+    |-- Library page auto-updates if open
+    |-- Rating display on search results can read from Convex
+```
+
+### Loading Library Page
+
+```
+User navigates to /library
+    |
+    v
+AuthRouteGate (existing) -- blocks until authenticated
+    |
+    v
+LibraryCommandCenter component
+    |-- useProtectedPaginatedQuery(api.library.queries.listItems, {
+    |     filters: { rating, collectionId, searchQuery, sortBy },
+    |     paginationOpts
+    |   })
+    |
+    v
+Convex query (library/queries.ts)
+    |-- requireAuth(ctx) --> userId
+    |-- If searchQuery provided:
+    |     db.query("libraryItems")
+    |       .withSearchIndex("search_title", q =>
+    |         q.search("title", searchQuery).eq("userId", userId)
+    |       )
+    |       .paginate(paginationOpts)
+    |-- If no search, filter by rating/date:
+    |     db.query("libraryItems")
+    |       .withIndex("by_user_rating", q => q.eq("userId", userId).eq("rating", rating))
+    |       .order("desc")
+    |       .paginate(paginationOpts)
+    |-- If filtering by collection:
+    |     (1) Get collectionItems for collectionId
+    |     (2) Resolve each libraryItemId via db.get()
+    |     (3) Apply client-side rating filter if needed
+    |
+    v
+Return paginated results to client
+    |-- Each item includes itemData for full rendering
+    |-- Client renders using existing paper-card components
+```
+
+### Collection Management
+
+```
+Create Collection:
+  mutation: collections.mutations.create({ name, description?, color? })
+  --> insert into collections, return collectionId
+
+Add Item to Collection:
+  mutation: collections.mutations.addItem({ collectionId, libraryItemId })
+  --> (1) Verify user owns both collection and libraryItem
+  --> (2) Check uniqueness via by_collection_item index
+  --> (3) Insert into collectionItems
+  --> (4) Increment collections.itemCount
+
+Remove Item from Collection:
+  mutation: collections.mutations.removeItem({ collectionId, libraryItemId })
+  --> (1) Find junction row via by_collection_item index
+  --> (2) Delete junction row
+  --> (3) Decrement collections.itemCount
+
+Delete Collection:
+  mutation: collections.mutations.remove({ collectionId })
+  --> (1) Delete all collectionItems for this collection
+  --> (2) Delete the collection itself
+  --> (Note: libraryItems remain -- they exist independently)
+```
+
+## Architectural Patterns
+
+### Pattern 1: Optimistic Ratings via Convex Mutations
+
+**What:** When the user rates a paper, call a Convex mutation directly. Convex's reactive system ensures the UI updates immediately on the client that triggered the mutation, and within milliseconds on other tabs/devices.
+
+**When to use:** All rating operations.
+
+**Trade-offs:** No need for separate optimistic UI layer (Convex handles this). However, the first rating on a new item must send the full Work JSON (~5-20KB) to Convex. Subsequent rating changes only send the new rating value (patch, not full replacement).
+
+```typescript
+// In RatingSelector component
+const saveItem = useMutation(api.library.mutations.saveOrUpdateItem);
+
+const handleRatingChange = async (rating: number | null) => {
+  if (rating === null) {
+    // Remove from library
+    await removeItem({ openalexId: paperId });
+  } else {
+    // Save or update -- itemData only needed on first save
+    await saveItem({ openalexId: paperId, rating, itemData: paperWork });
+  }
+};
+```
+
+### Pattern 2: Dual-Path Ratings (Convex + Zustand Fallback)
+
+**What:** Signed-in users get server-persisted ratings via Convex. Anonymous users (or before auth settles) fall back to the existing Zustand localStorage store. The RatingSelector component checks auth state and routes accordingly.
+
+**When to use:** The rating-selector component on search results pages where the user may or may not be signed in.
+
+**Trade-offs:** Slightly more complex component logic, but preserves the existing anonymous experience. When a user signs in, a one-time migration could sync localStorage ratings to Convex (optional stretch goal).
+
+```typescript
+// Pseudocode for dual-path rating
+function useRating(paperId: string) {
+  const { phase } = useAuthReadiness();
+  const zustandRating = useRatingsStore(s => s.ratings[paperId]);
+  const convexItem = useOptionalAuthQuery(api.library.queries.getItemRating,
+    phase === "authenticated" ? { openalexId: paperId } : "skip"
+  );
+
+  if (phase === "authenticated" && convexItem.data !== undefined) {
+    return convexItem.data?.rating ?? null;
+  }
+  return zustandRating ?? null;
+}
+```
+
+### Pattern 3: Search Index for Text Filtering
+
+**What:** Use Convex's built-in full-text search on the `title` field of `libraryItems`. The search index automatically supports prefix matching for typeahead-style filtering.
+
+**When to use:** When the user types in the search box on the /library page.
+
+**Trade-offs:**
+- Search results are ordered by relevance (BM25), not by saved date or rating. If the user wants to search AND sort by date, you must post-filter after search (collect up to 1024 results, then sort client-side).
+- Only one search field per index. To search across title AND authors, either: (a) create two search indexes and merge results, or (b) combine title + authors into a single searchable string field.
+- Recommendation: Use a single `searchableText` field combining title + first few authors, indexed once.
+
+```typescript
+// Alternative: combined search field
+libraryItems: defineTable({
+  // ...
+  searchableText: v.string(),  // "Paper Title | Author1, Author2, Author3"
+  // ...
+}).searchIndex("search_items", {
+  searchField: "searchableText",
+  filterFields: ["userId", "rating"],
+})
+```
+
+### Pattern 4: Pagination with `useProtectedPaginatedQuery`
+
+**What:** The library page uses the existing `useProtectedPaginatedQuery` wrapper (from `lib/auth/use-auth-query.ts`) which already handles auth settlement, deferred state, and "load more" patterns. The Convex query uses `.paginate(paginationOpts)`.
+
+**When to use:** The library items list on /library.
+
+**Trade-offs:** This is the established pattern used by the extraction results page. No new abstraction needed. Infinite scroll or "Load More" button -- both work with this pattern.
+
+```typescript
+const {
+  results, status, loadMore, isSettled, settlement
+} = useProtectedPaginatedQuery(
+  api.library.queries.listItems,
+  { filters: currentFilters },
+  { initialNumItems: 20 }
+);
+```
 
 ## Recommended Project Structure
 
-The v2.0 milestone adds no new directories — all new tests go in `tests/` following existing conventions. No new fixture or helper files are needed for unit tests.
+### New Files
 
 ```
-tests/
-├── [existing 40 files — unchanged]
-│
-│ ── Search & Extraction domain (NEW files)
-├── search-filter-builder.test.ts          # lib/filters/filter-builder.ts
-├── search-filter-config.test.ts           # lib/filters/filter-config.ts
-├── search-params-converters.test.ts       # lib/search-params/* URL parsing
-├── search-utils.test.ts                   # lib/search-utils.ts (query building)
-├── search-state-actions.test.ts           # lib/search/actions.ts (submitNewSearch)
-├── extraction-export.test.ts              # lib/extraction/export.ts
-├── extraction-reviews.test.ts             # lib/extraction/reviews.ts
-│
-│ ── AI / LLM domain (NEW files)
-├── ai-execute-operation.test.ts           # lib/ai/core/execute.ts
-├── ai-batch-processor.test.ts             # lib/ai/core/batch.ts
-├── ai-prompts.test.ts                     # lib/ai/core/prompts.ts
-├── ai-validate.test.ts                    # lib/ai/core/validate.ts
-├── ai-errors.test.ts                      # lib/ai/core/errors.ts
-├── ai-question-key-codec.test.ts          # lib/ai/core/question-key-codec.ts
-├── ai-cost.test.ts                        # lib/ai/core/cost.ts
-│
-│ ── User Management domain (NEW files)
-├── user-creation-with-defaults.test.ts    # convex/lib/userCreation.ts
-├── user-auth-state-machine.test.ts        # convex/lib/auth.ts (requireAuth states)
-├── user-feature-flag-guards.test.ts       # convex/lib/featureFlags.ts
-├── user-plan-enforcement.test.ts          # convex/lib/freeCredits.ts + constants
-├── user-ensure-user-mutation.test.ts      # convex/users/mutations.ts:ensureUser
-│
-│ ── Integration tests (NEW files)
-├── integration-ai-credit-flow.test.ts     # AI call -> credit deduction -> balance
-└── integration-search-export-format.test.ts  # Filter state -> export shape
-│
-tests/live-billing/                        # UNCHANGED — separate Vitest config
-├── required.test.ts
-├── extended.test.ts
-└── support.ts
+convex/
+  library/
+    mutations.ts       # saveOrUpdateItem, removeItem, updateRating
+    queries.ts         # listItems (paginated), getItemRating, getItemByOpenalexId
+  collections/
+    mutations.ts       # create, rename, remove, addItem, removeItem
+    queries.ts         # listCollections, getCollection, getCollectionItems
+
+app/
+  library/
+    page.tsx           # /library route (auth-gated)
+
+components/
+  library-command-center/
+    index.tsx          # Main shell (follows CommandCenter pattern)
+    library-toolbar.tsx       # Search, filter controls, sort, view mode
+    library-item.tsx          # Single library item card
+    library-filters.tsx       # Rating filter, collection filter, date filter
+    collection-manager.tsx    # Create/rename/delete collections dialog
+    collection-picker.tsx     # Assign item to collections popover
+
+lib/
+  hooks/
+    use-library-rating.ts    # Dual-path rating hook (Convex + Zustand fallback)
+```
+
+### Modified Files
+
+```
+convex/schema.ts              # Add 3 tables + indexes + search index
+convex/lib/validators.ts      # Add libraryItem, collection validators
+components/rating-selector.tsx # Wire to Convex mutation when authenticated
+lib/store.ts                  # Keep Zustand ratings for anonymous fallback
+app/layout.tsx                # Add /library to sidebar navigation
+components/app-sidebar.tsx    # Add Library nav item
 ```
 
 ### Structure Rationale
 
-- **Flat `tests/` directory:** Matches the existing 40-file convention. No subdirectory grouping exists and adding one now would split the test surface inconsistently. Prefix naming (`search-`, `ai-`, `user-`) provides enough grouping.
-- **No new test helpers or fixtures:** Every existing test uses direct imports and inline mocks. Introducing a shared helpers file would be inconsistent with the established pattern and create a dependency that complicates TDD's red-green cycle.
-- **Integration tests stay in `tests/`:** They run with the same `vitest run` command and same config. The distinction from unit tests is conceptual (they wire two modules together), not structural.
+- **`convex/library/` and `convex/collections/`**: Follows the existing domain module pattern (`convex/users/`, `convex/credits/`, `convex/extraction/`). Each domain owns its queries, mutations, and internal functions.
+- **`components/library-command-center/`**: Follows the existing Command Center pattern used by bookmarks, search history, and extraction. Provides consistent UI shell with header, toolbar, and list sections.
+- **`lib/hooks/use-library-rating.ts`**: Isolates the dual-path rating logic so `RatingSelector` stays simple and the hook can be tested independently.
 
-## Architectural Patterns
+## Scaling Considerations
 
-### Pattern 1: Direct Import Unit Test (primary pattern — use for all pure functions)
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| 0-1k library items per user | Current design works perfectly. Paginated queries, search index handles filtering. |
+| 1k-10k items per user | Still fine. Convex pagination handles this. Collection filtering via junction table may slow if a single collection has thousands of items -- but `.collect()` on junction rows + `db.get()` for each is O(N) and Convex optimizes this. |
+| 10k+ items per user | Unlikely for academic tool. If needed: add composite indexes for common filter combos, consider caching collection membership counts. |
 
-**What:** Import the module directly and call it with plain data. No framework. No mocks unless the module calls external I/O.
+### Scaling Priorities
 
-**When to use:** Any pure function in `lib/` or `convex/lib/` that takes data and returns data. Covers ~80% of v2.0 test targets.
-
-**Trade-offs:** Fast, no setup overhead, easy to write in TDD style. Cannot test modules that call `ctx.db` or `ctx.auth` without the mock context pattern.
-
-```typescript
-// tests/ai-validate.test.ts
-import { describe, expect, it } from "vitest";
-import { validateQuery, repairJSON } from "../lib/ai/core/validate";
-
-describe("validateQuery", () => {
-  it("throws on unbalanced parentheses", () => {
-    expect(() => validateQuery("(term AND other")).toThrow("unbalanced parentheses");
-  });
-
-  it("throws when query ends with operator", () => {
-    expect(() => validateQuery("machine AND")).toThrow("incomplete operator");
-  });
-
-  it("passes a valid boolean query unchanged", () => {
-    const q = "(machine OR deep) AND learning";
-    expect(validateQuery(q)).toBe(q);
-  });
-});
-```
-
-### Pattern 2: Environment Variable Gate Test (for feature flags and env-dependent branches)
-
-**What:** Manipulate `process.env.*` before import, use `vi.resetModules()` to force module re-evaluation, restore env in `afterEach`.
-
-**When to use:** Any module whose behavior branches on `NEXT_PUBLIC_*` env vars. Established in `extraction-filtering.test.ts`, `extraction-citation-panel.test.ts`, `extraction-feature-flags.test.ts`.
-
-**Trade-offs:** `vi.resetModules()` requires async dynamic imports per test case. Slightly verbose but completely reliable.
-
-```typescript
-// tests/user-feature-flag-guards.test.ts
-import { afterEach, describe, expect, it } from "vitest";
-
-const ORIG = process.env.NEXT_PUBLIC_CREDITS_ENABLED;
-
-async function loadModule() {
-  vi.resetModules();
-  return import("../convex/lib/featureFlags");
-}
-
-afterEach(() => {
-  if (ORIG === undefined) delete process.env.NEXT_PUBLIC_CREDITS_ENABLED;
-  else process.env.NEXT_PUBLIC_CREDITS_ENABLED = ORIG;
-});
-
-describe("requireCreditsEnabled", () => {
-  it("throws when NEXT_PUBLIC_CREDITS_ENABLED is 'false'", async () => {
-    process.env.NEXT_PUBLIC_CREDITS_ENABLED = "false";
-    const { requireCreditsEnabled } = await loadModule();
-    expect(() => requireCreditsEnabled()).toThrow("disabled");
-  });
-
-  it("does not throw when NEXT_PUBLIC_CREDITS_ENABLED is unset", async () => {
-    delete process.env.NEXT_PUBLIC_CREDITS_ENABLED;
-    const { requireCreditsEnabled } = await loadModule();
-    expect(() => requireCreditsEnabled()).not.toThrow();
-  });
-});
-```
-
-### Pattern 3: Injected Mock Context (for Convex mutations and queries)
-
-**What:** Create a minimal `ctx` object that stubs only the methods the unit under test actually calls. Use `vi.fn()` for `ctx.db.insert`, `ctx.db.query`, `ctx.auth.getUserIdentity`.
-
-**When to use:** Testing `convex/users/mutations.ts`, `convex/lib/auth.ts`, `convex/lib/userCreation.ts` — any function that takes a Convex context as its first argument.
-
-**Trade-offs:** Tests the handler logic in isolation from the actual Convex runtime. Cannot catch schema validation errors or index mismatches — those require live integration tests. But covers the logical branches (suspended user, missing user, state transitions) cleanly.
-
-```typescript
-// tests/user-auth-state-machine.test.ts
-import { describe, expect, it, vi } from "vitest";
-import { requireAuth } from "../convex/lib/auth";
-
-function makeCtx(overrides: {
-  identity?: object | null;
-  user?: object | null;
-}) {
-  return {
-    auth: {
-      getUserIdentity: vi.fn().mockResolvedValue(
-        overrides.identity !== undefined
-          ? overrides.identity
-          : { subject: "clerk_123" }
-      ),
-    },
-    db: {
-      query: vi.fn().mockReturnValue({
-        withIndex: vi.fn().mockReturnValue({
-          unique: vi.fn().mockResolvedValue(overrides.user ?? null),
-        }),
-      }),
-    },
-  } as any;
-}
-
-describe("requireAuth", () => {
-  it("throws UNAUTHENTICATED when no identity", async () => {
-    const ctx = makeCtx({ identity: null });
-    await expect(requireAuth(ctx)).rejects.toMatchObject({ data: { code: "UNAUTHENTICATED" } });
-  });
-
-  it("throws FORBIDDEN when user is suspended", async () => {
-    const ctx = makeCtx({ user: { state: "suspended", clerkId: "clerk_123" } });
-    await expect(requireAuth(ctx)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
-  });
-
-  it("returns user when active", async () => {
-    const user = { _id: "user_1", state: "active", clerkId: "clerk_123" };
-    const ctx = makeCtx({ user });
-    await expect(requireAuth(ctx)).resolves.toEqual(user);
-  });
-});
-```
-
-### Pattern 4: Mock runMutation Injection (for Convex webhook dispatchers)
-
-**What:** Pass a `vi.fn()` mock as the `runMutation` argument. The handler is already extracted to a pure function (see `convex/webhooks/clerk.ts`). Verify which mutation was called with which args.
-
-**When to use:** Already established for `clerk-webhook-handler.test.ts`. Apply the same pattern to any new webhook handler or action that accepts its dependencies as arguments.
-
-**Trade-offs:** Requires that the production code accepts its dependencies as arguments (dependency injection) rather than importing them directly. This is a good design constraint that TDD enforces naturally.
-
-```typescript
-// Already established — reuse exactly this pattern
-import { processClerkWebhookEvent } from "../convex/webhooks/clerk";
-const runMutation = vi.fn().mockResolvedValue(null);
-const outcome = await processClerkWebhookEvent({
-  eventId: "evt_1", eventType: "user.created", data: { ... },
-  runMutation, mutationRefs,
-});
-expect(runMutation).toHaveBeenCalledWith(mutationRefs.upsertUserFromClerk, { ... });
-```
-
-### Pattern 5: AI Model Mock (for AI core unit tests)
-
-**What:** Create a minimal object satisfying the `LanguageModel` interface from the `ai` SDK. Return controlled `text` payloads from `doGenerate`. Verify that `executeAIOperation` parses the output, applies repair, and returns the expected schema.
-
-**When to use:** Testing `lib/ai/core/execute.ts`, `lib/ai/core/batch.ts` — the orchestration logic around the AI SDK, not the AI model itself.
-
-**Trade-offs:** Cannot test actual AI response quality. Tests the orchestration logic: retry on validation failure, repair strategy invocation, usage accumulation, fail-soft behavior in `Promise.allSettled`.
-
-```typescript
-// tests/ai-execute-operation.test.ts
-import { describe, expect, it, vi } from "vitest";
-import { executeAIOperation } from "../lib/ai/core/execute";
-import { z } from "zod";
-
-function makeModel(responses: string[]) {
-  let call = 0;
-  return {
-    specificationVersion: "v1",
-    modelId: "mock-model",
-    provider: "mock",
-    defaultObjectGenerationMode: "json",
-    doGenerate: vi.fn().mockImplementation(async () => ({
-      text: responses[call++] ?? "{}",
-      usage: { promptTokens: 10, completionTokens: 5 },
-      finishReason: "stop",
-      rawCall: { rawPrompt: "", rawSettings: {} },
-    })),
-  } as any;
-}
-
-describe("executeAIOperation", () => {
-  it("returns parsed output on first success", async () => {
-    const model = makeModel(['{"enhancedQuery": "machine AND learning"}']);
-    const { output } = await executeAIOperation({
-      model,
-      schema: z.object({ enhancedQuery: z.string() }),
-      buildPrompts: () => ({ system: "sys", prompt: "q" }),
-      input: {},
-      repairStrategy: { type: "full-json" },
-      temperature: 0.1,
-    });
-    expect(output.enhancedQuery).toBe("machine AND learning");
-  });
-});
-```
-
-### Pattern 6: Source-Code Assertion (for contract/regression tests)
-
-**What:** Use `readFileSync` to read a source file and assert specific patterns exist. Guards against regressions where a refactor silently breaks a contract.
-
-**When to use:** Only for contracts that are hard to unit-test (e.g., the screening export format guaranteeing certain fields appear together). Already established in `search-actions-screening-export.test.ts`. Use sparingly — prefer behavioral tests.
-
-**Trade-offs:** Brittle to refactors (whitespace changes, extractions). Valuable as a regression guard when the behavioral test would require too much setup. Never use as a substitute for a proper behavioral test.
-
-## Data Flow
-
-### Unit Test Data Flow (no I/O)
-
-```
-Test file
-  ↓ import
-Pure function (lib/* or convex/lib/*)
-  ↓ call with plain data
-Return value / thrown error
-  ↓
-expect() assertions
-```
-
-### Convex Context Mock Data Flow
-
-```
-Test file
-  ↓ build ctx = { auth: vi.fn(), db: { query: vi.fn() } }
-Convex handler (users/mutations.ts, convex/lib/auth.ts)
-  ↓ calls ctx.auth.getUserIdentity()
-  ↓ calls ctx.db.query(...)
-Mock returns controlled value
-  ↓
-Handler returns result / throws structured error
-  ↓
-expect() assertions on result or error.data.code
-```
-
-### AI Operation Data Flow (mocked model)
-
-```
-Test file
-  ↓ build mock LanguageModel (doGenerate returns controlled text)
-lib/ai/core/execute.ts::executeAIOperation
-  ↓ calls model.doGenerate
-  ↓ parses text as JSON via zod schema
-  ↓ repairs if invalid (calls repairJSON)
-  ↓ retries on validation failure (up to maxRetries)
-  ↓ accumulates usage tokens
-Returns { output, usage }
-  ↓
-expect() on output shape + usage values
-```
-
-### Integration Test Data Flow (two modules wired together)
-
-```
-Test file
-  ↓ compose Module A output → Module B input
-Module A (e.g., credit billing calculation)
-  ↓ returns credits amount
-Module B (e.g., balance enforcement check)
-  ↓ returns allow/deny decision
-expect() on final decision
-```
-
-## Integration Points: New vs Existing
-
-### New Test Files (build from scratch)
-
-All are in `tests/` flat directory, no new subdirectories.
-
-| File | Tests | Module Under Test |
-|------|-------|------------------|
-| `tests/search-filter-builder.test.ts` | Filter assembly from params | `lib/filters/filter-builder.ts` |
-| `tests/search-filter-config.test.ts` | Section config, sort options | `lib/filters/filter-config.ts` |
-| `tests/search-params-converters.test.ts` | URL serialization/parsing | `lib/search-params/*` |
-| `tests/search-utils.test.ts` | Query building, date/country helpers | `lib/search-utils.ts` |
-| `tests/search-state-actions.test.ts` | `submitNewSearch`, `restoreFromHistory` | `lib/search/actions.ts` |
-| `tests/extraction-export.test.ts` | CSV/JSON export formatting | `lib/extraction/export.ts` |
-| `tests/extraction-reviews.test.ts` | Review status logic | `lib/extraction/reviews.ts` |
-| `tests/ai-execute-operation.test.ts` | Retry, repair, usage accumulation | `lib/ai/core/execute.ts` |
-| `tests/ai-batch-processor.test.ts` | `Promise.allSettled` fail-soft, error collection | `lib/ai/core/batch.ts` |
-| `tests/ai-prompts.test.ts` | Prompt builder outputs (enhance query, screening Q) | `lib/ai/core/prompts.ts` |
-| `tests/ai-validate.test.ts` | `validateQuery`, `repairJSON`, `repairSingleField` | `lib/ai/core/validate.ts` |
-| `tests/ai-errors.test.ts` | Error class hierarchy, code properties | `lib/ai/core/errors.ts` |
-| `tests/ai-question-key-codec.test.ts` | Encode/decode question-response map | `lib/ai/core/question-key-codec.ts` |
-| `tests/ai-cost.test.ts` | Token cost calculation | `lib/ai/core/cost.ts` |
-| `tests/user-creation-with-defaults.test.ts` | Credit + subscription rows on new user | `convex/lib/userCreation.ts` |
-| `tests/user-auth-state-machine.test.ts` | Active/suspended/deleted state branches | `convex/lib/auth.ts` |
-| `tests/user-feature-flag-guards.test.ts` | Credits/subscriptions/topups enable/disable | `convex/lib/featureFlags.ts` |
-| `tests/user-plan-enforcement.test.ts` | Free credit cap, tier cap amounts | `convex/lib/freeCredits.ts` |
-| `tests/user-ensure-user-mutation.test.ts` | `ensureUser` creates vs returns existing | `convex/users/mutations.ts` |
-| `tests/integration-ai-credit-flow.test.ts` | Usage → credits deducted → balance enforced | `convex/ai/lib/creditBilling.ts` + `convex/lib/freeCredits.ts` |
-| `tests/integration-search-export-format.test.ts` | Filter state → export field presence | `lib/extraction/filtering.ts` + `lib/extraction/export.ts` |
-
-### Existing Test Files (unchanged)
-
-All 43 existing files in `tests/` continue running unchanged. The new tests are additive only.
-
-### vitest.config.ts (no modification needed)
-
-The existing config already covers all new test files:
-
-```typescript
-// vitest.config.ts — unchanged
-export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["tests/**/*.test.ts"],       // picks up all new files automatically
-    exclude: ["tests/live-billing/**/*.test.ts"],
-  },
-});
-```
-
-No config change is needed. New test files are picked up automatically.
-
-### package.json (no modification needed)
-
-`npm run test` already runs all unit tests via `vitest run`. No new script is needed for the v2.0 unit tests.
-
-## Build Order (Optimal TDD Sequence)
-
-Build order is driven by three factors: (1) dependency between modules, (2) risk — highest-value coverage first, (3) TDD red-green-refactor requires tests to fail before implementation exists.
-
-```
-PHASE 1: Pure Function Foundations (no deps on other modules, fastest to write)
-├── tests/ai-errors.test.ts              → lib/ai/core/errors.ts
-├── tests/ai-validate.test.ts            → lib/ai/core/validate.ts
-├── tests/ai-question-key-codec.test.ts  → lib/ai/core/question-key-codec.ts
-├── tests/ai-cost.test.ts                → lib/ai/core/cost.ts
-├── tests/user-feature-flag-guards.test.ts → convex/lib/featureFlags.ts
-├── tests/user-plan-enforcement.test.ts  → convex/lib/freeCredits.ts
-└── tests/search-filter-config.test.ts  → lib/filters/filter-config.ts
-
-PHASE 2: Core Logic (depends on Phase 1 types/errors)
-├── tests/ai-prompts.test.ts             → lib/ai/core/prompts.ts
-├── tests/ai-execute-operation.test.ts   → lib/ai/core/execute.ts (uses errors, validate)
-├── tests/user-creation-with-defaults.test.ts → convex/lib/userCreation.ts (uses freeCredits)
-├── tests/user-auth-state-machine.test.ts → convex/lib/auth.ts (uses userCreation)
-├── tests/search-filter-builder.test.ts → lib/filters/filter-builder.ts
-└── tests/search-params-converters.test.ts → lib/search-params/*
-
-PHASE 3: Orchestration (depends on Phase 2 foundations)
-├── tests/ai-batch-processor.test.ts     → lib/ai/core/batch.ts (uses execute)
-├── tests/user-ensure-user-mutation.test.ts → convex/users/mutations.ts (uses auth + userCreation)
-├── tests/search-utils.test.ts           → lib/search-utils.ts (uses filter-builder, params)
-├── tests/search-state-actions.test.ts   → lib/search/actions.ts (uses search-params)
-├── tests/extraction-export.test.ts      → lib/extraction/export.ts
-└── tests/extraction-reviews.test.ts     → lib/extraction/reviews.ts
-
-PHASE 4: Integration Tests (wire Phase 2 + 3 modules together)
-├── tests/integration-ai-credit-flow.test.ts     → creditBilling + freeCredits
-└── tests/integration-search-export-format.test.ts → filtering + export
-```
-
-**Rationale for this order:**
-- AI errors and validate are depended on by `executeAIOperation` — test them first so the execute tests can be written against a stable contract.
-- `userCreation` depends on `freeCredits` — `freeCredits` goes in Phase 1.
-- `auth.ts` calls `userCreation` on user-not-found with `allowSyncing` — `userCreation` goes in Phase 2 so auth tests can set correct expectations.
-- Integration tests go last because they import from two already-tested modules and verify the composition, not the individual functions.
+1. **First bottleneck: Collection filtering with large collections.** When filtering by collection, we query `collectionItems` by collectionId, then resolve each `libraryItemId`. For 500+ items in a collection, this is 500 `db.get()` calls. Mitigation: Convex batches these efficiently, but if it becomes an issue, paginate the junction table query itself.
+2. **Second bottleneck: Search + sort conflict.** Convex search indexes return results in relevance order only. If users search AND want to sort by date, we must collect results (max 1024) and sort client-side. This is a Convex platform limitation, not a design flaw.
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Shared Test Helper Files
+### Anti-Pattern 1: Storing Items as Array in User Document
 
-**What people do:** Create `tests/helpers/` or `tests/fixtures/` with shared factory functions, mock builders, and test data.
+**What people do:** Add a `library: v.array(v.any())` field to the `users` table.
+**Why it's wrong:** Convex documents are capped at 1MB. Each Work is 5-20KB. At 50-200 items, you hit the limit. Also, every library read/write loads the entire array. No indexing, no pagination, no search.
+**Do this instead:** Separate `libraryItems` table with per-item documents. Enables indexes, pagination, search, and independent reads/writes.
 
-**Why it's wrong:** Every existing test in this codebase uses inline mocks and local helpers. Introducing a shared helpers module creates a dependency — a change in the helper can break unrelated tests, and the helper file itself becomes untested infrastructure. In TDD, each test should set up exactly what it needs, making the test self-describing.
+### Anti-Pattern 2: Using Collections as an Array Field on libraryItems
 
-**Do this instead:** Copy the `makeCtx()` helper inline per test file. For common data shapes (e.g., a minimal `ExtractionQuestion`), define them as constants at the top of the file that uses them. If three or more test files share identical setup, extract to a helper only then — and test the helper itself.
+**What people do:** Add `collections: v.array(v.id("collections"))` to `libraryItems`.
+**Why it's wrong:** You cannot efficiently query "all items in collection X" -- you'd have to scan all library items and check array membership. No index support for array-contains queries in Convex.
+**Do this instead:** Junction table (`collectionItems`) with indexes on both foreign keys. O(1) lookup in either direction.
 
-### Anti-Pattern 2: Testing Convex Actions via Convex CLI in Unit Tests
+### Anti-Pattern 3: Duplicating Full Work JSON in Each Collection
 
-**What people do:** Use `convex run` via `child_process` in Vitest tests to test Convex actions end-to-end.
+**What people do:** Store a copy of the item data in `collectionItems` for convenience.
+**Why it's wrong:** Data duplication, inconsistency risk (rating changes in libraryItems not reflected in copies), wasted storage.
+**Do this instead:** Junction table stores only IDs. Resolve the full item via `db.get(libraryItemId)` when needed.
 
-**Why it's wrong:** This is what `tests/live-billing/` does, and it runs under `vitest.live.config.ts` with 300s timeouts and a separate CI job. Mixing this pattern into the standard `vitest.config.ts` would make `npm run test` depend on a live Convex deployment, breaking offline development.
+### Anti-Pattern 4: Client-Side Filtering of All Library Items
 
-**Do this instead:** Unit-test the pure helper functions extracted from actions (e.g., `calculateCreditsToDeductFromUsage` from `convex/ai/lib/creditBilling.ts`). Reserve live Convex tests for the `tests/live-billing/` tier when behavioral coverage genuinely requires it.
+**What people do:** Fetch all items and filter in React.
+**Why it's wrong:** Scales terribly. A user with 200 items sends 200 * 15KB = 3MB on every page load. No pagination benefit.
+**Do this instead:** Server-side filtering via Convex indexes and search indexes. Only return the current page of results.
 
-### Anti-Pattern 3: Testing via the React Hook
+## Integration Points
 
-**What people do:** Use `renderHook` from `@testing-library/react` to test hooks like `useProtectedQuery`, `useSearch`, `useSubscriptionState`.
+### With Existing Rating System
 
-**Why it's wrong:** All existing tests bypass React entirely — they import and call functions directly. React hook testing requires `jsdom` environment and adds significant setup complexity. The actual logic in these hooks is typically thin wiring between a Convex query and a returned value — the interesting logic lives in the underlying pure functions.
+| Aspect | Current (v2.0) | New (v2.1) | Migration |
+|--------|----------------|------------|-----------|
+| Storage | Zustand localStorage (`paper-ratings-store`) | Convex `libraryItems` table (authenticated) | Zustand remains as anonymous fallback |
+| Rating values | `Record<string, number>` (paperId -> 0-5) | `libraryItems.rating` field (0-5) | Same range, same semantics |
+| Where used | `RatingSelector`, `RatingRangePicker` (search filter) | Same components + /library page | RatingSelector modified to call mutation |
+| Search filter | Zustand ratings applied client-side to search results | Still client-side for search results (ratings are per-session context) | No change to search filter behavior |
 
-**Do this instead:** Test the pure functions that the hook delegates to. For `useSubscriptionState`, test `resolveEffectivePlan` (already done in `subscription-entitlements.test.ts`). For `useProtectedQuery`, test `getSettlementState` as a standalone function. If the hook itself has real logic, extract it to a pure function first (TDD red-green-refactor pushes this naturally).
+### With Existing Auth System
 
-### Anti-Pattern 4: Asserting `vi.fn()` Call Counts Instead of Return Values
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Library mutations | `requireAuth(ctx)` from `convex/lib/auth.ts` | Every mutation verifies active user. Same pattern as extraction/credits. |
+| Library queries | `getCurrentUser(ctx)` / `requireAuth(ctx)` | Queries return null or deny for unauthenticated users. |
+| Route protection | `AuthRouteGate` in layout already gates routes | /library page needs to be added to protected routes list |
+| Query wrappers | `useProtectedPaginatedQuery` from `lib/auth/use-auth-query.ts` | Handles auth_loading -> query_loading -> ready settlement |
 
-**What people do:** Write `expect(mockFn).toHaveBeenCalledTimes(1)` as the primary assertion, without verifying what was passed or what the caller returned.
+### With Existing UI Patterns
 
-**Why it's wrong:** This tests implementation details (how many times a mock was called) rather than behavior (what the module produces). The existing pattern in `clerk-webhook-handler.test.ts` is correct: verify `runMutation.mock.calls[0]?.[1]` — the actual args passed — which is the behavioral contract.
+| Pattern | Reuse | Notes |
+|---------|-------|-------|
+| Command Center shell | Full reuse | Header + Toolbar + List. Same as bookmarks, history, extraction. |
+| Paper card components | Full reuse | `components/paper-card/` already renders Work objects. Library items carry the same data. |
+| View mode toggle | Full reuse | List/grid toggle from `lib/store.ts` UI state (add `libraryViewMode`, `librarySortBy`). |
+| PageWrapper | Full reuse | Standard page layout wrapper. |
+| Sidebar navigation | Add entry | Add "Library" item to `components/app-sidebar.tsx`. |
 
-**Do this instead:** Assert the return value of the module under test first. Then, if side-effect ordering matters (e.g., mutation called before second mutation), assert the call arguments in order.
+### With Internationalization
 
-### Anti-Pattern 5: One Test File Per Domain Instead of Per Module
+| Aspect | Approach |
+|--------|----------|
+| Library page strings | Add `library` namespace to `messages/*.json` (6 locales) |
+| Collection names | User-entered, not translated |
+| Filter labels | Add to existing `searchFilters` namespace or new `libraryFilters` namespace |
 
-**What people do:** Create `tests/ai.test.ts` with 50 tests covering all of `lib/ai/core/*`.
+## Suggested Build Order
 
-**Why it's wrong:** When one test fails, the failure message is ambiguous. A large file is harder to navigate during TDD (you're looking for the red test). All 43 existing tests are single-responsibility — one file per module or concept.
+Build order is driven by dependencies: tables must exist before queries/mutations, mutations before UI, and the library item concept before collections (which depend on library items existing).
 
-**Do this instead:** One test file per source module (or per distinct concept within a large module). The file name should mirror the source path: `lib/ai/core/validate.ts` → `tests/ai-validate.test.ts`.
+| Phase | What | Why This Order |
+|-------|------|----------------|
+| 1 | Schema: Add `libraryItems` table + indexes + search index | Everything depends on this |
+| 2 | `convex/library/mutations.ts`: saveOrUpdateItem, removeItem, updateRating | Core write path |
+| 3 | `convex/library/queries.ts`: listItems (paginated + filtered), getItemRating | Core read path |
+| 4 | `components/rating-selector.tsx`: Wire to Convex mutation (dual-path) | Connects existing UI to new backend |
+| 5 | `app/library/page.tsx` + `components/library-command-center/`: Basic list with pagination | Dedicated page to view saved items |
+| 6 | Library filtering: search, rating filter, sort, date filter | Full filtering on library page |
+| 7 | Schema: Add `collections` + `collectionItems` tables | Collections depend on libraryItems |
+| 8 | `convex/collections/mutations.ts`: CRUD + add/remove items | Collection write path |
+| 9 | `convex/collections/queries.ts`: list, get, getItems | Collection read path |
+| 10 | Collection UI: manager dialog, picker popover, filter by collection | End-to-end collection feature |
+
+**Rationale:** Items 1-6 deliver a fully functional library with filtering. Items 7-10 layer collections on top. This lets you ship the library incrementally -- the core value (save + browse rated papers) is usable before collections are built.
 
 ## Sources
 
-- Direct codebase analysis: `tests/*.test.ts` (40 files), `vitest.config.ts`, `vitest.live.config.ts`, `package.json`
-- Pattern sources: `tests/extraction-filtering.test.ts` (env var gate pattern), `tests/clerk-webhook-handler.test.ts` (mock injection pattern), `tests/ai-credit-billing.test.ts` (direct import pattern), `tests/search-actions-screening-export.test.ts` (source-code assertion pattern)
-- Module inventory: `lib/ai/core/`, `lib/extraction/`, `lib/filters/`, `convex/ai/`, `convex/users/`, `convex/lib/`, `convex/webhooks/`
+- [Convex Full Text Search Documentation](https://docs.convex.dev/search/text-search) -- search index definition, query API, filter expressions, pagination, relevance ordering, 1024-result scan limit
+- [Convex Relationship Structures](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas) -- many-to-many junction table pattern, schema examples, query patterns
+- [Convex Database Relationship Helpers](https://stack.convex.dev/functional-relationships-helpers) -- `getManyVia`, `getManyFrom` helpers from convex-helpers package
+- [Convex Data Types](https://docs.convex.dev/database/types) -- document size limit (1MB), array cap (8,192), object cap (1,024), nesting depth (16)
+- [Convex Schemas](https://docs.convex.dev/database/schemas) -- schema definition, `v.any()`, `v.record()` usage
+- Existing codebase: `convex/schema.ts`, `convex/extraction/queries.ts` (pagination pattern), `lib/auth/use-auth-query.ts` (protected query wrappers), `lib/store.ts` (current Zustand ratings store), `components/rating-selector.tsx` (current rating UI)
 
 ---
-*Architecture research for: TDD & Test Coverage backfill — v2.0 milestone*
+*Architecture research for: Library & Collections integration into OpenAlex Count*
 *Researched: 2026-02-28*

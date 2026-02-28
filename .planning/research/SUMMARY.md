@@ -1,205 +1,224 @@
 # Project Research Summary
 
-**Project:** OpenAlex Count — v2.0 TDD & Test Coverage Backfill
-**Domain:** Unit and integration testing for Next.js + Convex + AI application
+**Project:** v2.1 Library & Collections — OpenAlex Count
+**Domain:** Persistent library with collections for academic search and extraction tool
 **Researched:** 2026-02-28
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This milestone adds structured test coverage across six untested domains in an existing Next.js + Convex + AI application that already has 43 Vitest unit tests and 11 Playwright E2E tests. The core pattern throughout the codebase is the same: extract pure functions, import them directly, assert against business-specification-derived expected values. The six domains to cover are search parameter building and filter logic, AI prompt construction and structured output schemas, batch processing with fail-soft patterns, auth state machine transitions, plan-based feature gating, and data export (CSV/JSON/Excel). All six domains are primarily covered by direct-import pure function tests in the existing `node` environment — no new testing tier or test runner changes are needed for the bulk of the work.
+This milestone adds a server-persisted library to an existing Next.js 16 + Convex 1.32 + Clerk academic search tool. The core architectural shift is moving ratings from client-only Zustand localStorage to Convex-backed documents: when a signed-in user rates a paper, slim normalized metadata is saved to a new `libraryItems` table. Collections are layered on top as a junction-table many-to-many relationship. The existing codebase already has every technology required — zero new npm dependencies are needed. The main implementation challenge is correctly designing the Convex schema and query patterns before writing any code, because schema decisions are difficult to reverse once data exists.
 
-The recommended approach adds exactly 7 new devDependencies (`convex-test`, `@edge-runtime/vm`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`, `@vitejs/plugin-react`) and updates `vitest.config.ts` to route test files to three environments via `environmentMatchGlobs`. Critically, several testing capabilities that might appear to require new packages are already available: `ai/test` exports `MockLanguageModelV3` from the installed `ai@6.0.91`, and `nuqs/adapters/testing` exports `withNuqsTestingAdapter` from the installed `nuqs@2.8.8`. The 43 existing tests remain completely unchanged — all new tests are additive in the flat `tests/` directory.
+The recommended approach is a two-phase build: (1) core library — save on rate, `/library` page with filtering, text search, sort, and remove; (2) collections — CRUD, item assignment, filter by collection. This order is driven by hard data dependencies (collections require `libraryItems` to exist first) and by the fact that the library alone delivers the primary user value (cross-device persistence of rated papers). Research from Elicit, Zotero, Semantic Scholar, and Mendeley confirms this is the standard feature set for academic library tools.
 
-The key risk is the boundary between what can be unit-tested and what requires a live Convex backend. The `convex-test` library has a confirmed open bug (issue #50, open as of February 2026) where `ctx.auth.getUserIdentity()` fails inside queries and mutations, blocking auth-gated code from being tested end-to-end through `convex-test`. The mitigation is already established in the codebase: extract pure decision logic from Convex handlers and test that directly. A secondary risk is backfill tests encoding existing bugs as correct behavior — guard against this by deriving expected values from the business specification, not from running the implementation.
+The top risks are all schema-level and must be addressed before any mutations are written. Three schema pitfalls have HIGH recovery cost if missed: (1) storing the full OpenAlex `Work` blob (~5-30 KB) instead of a slim normalized document, (2) using array fields instead of a junction table for collection membership, and (3) applying TypeScript filters after `.paginate()` which produces undersized pages. All three have well-understood prevention strategies documented in Convex's official documentation and confirmed against the existing codebase.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing testing stack (Vitest `^3.2.4`, Playwright `^1.58.2`) needs only targeted additions to unlock the five missing testing capabilities. The installed `ai@6.0.91` and `nuqs@2.8.8` already expose their respective testing utilities as subpath exports. The critical infrastructure addition is `convex-test@^0.0.41` + `@edge-runtime/vm@^5.0.0` for in-memory Convex backend isolation, and `@testing-library/react@^16.3.2` + `jsdom@^28.1.0` for React hook testing. The vitest config change enables three environments via `environmentMatchGlobs`: `edge-runtime` for `convex/**/*.test.ts`, `jsdom` for `tests/hooks/**/*.test.ts`, and `node` for everything else (preserving existing behavior).
+No new packages are required. The existing stack covers every v2.1 need: Convex 1.32 for data storage, search indexes, and pagination; `convex-helpers` 0.1.112 (already installed, not yet used) for `getManyVia` junction table traversal; `nuqs` 2.8.8 for URL-driven filter state; Zustand 5.0.5 as an optimistic write-through cache for ratings; `sonner` for toast feedback; and the full shadcn/Radix component library for UI. The existing Command Center UI pattern (`CommandCenterContainer`, `CommandCenterToolbar`, `CommandCenterList`, `CommandCenterPagination`) provides the `/library` page shell with minimal new components needed beyond library-specific cards and collection management dialogs.
 
 **Core technologies:**
-- `convex-test@^0.0.41`: In-memory Convex backend for mutation/query/action isolation — the only way to test Convex functions without a live backend; peer-compatible with installed `convex@1.31.7`
-- `@edge-runtime/vm@^5.0.0`: Required peer dependency of `convex-test`; provides the edge-runtime Vitest environment
-- `@testing-library/react@^16.3.2`: `renderHook` + `act` for React hooks; React 19 compatible; ships `renderHook` directly (no deprecated `@testing-library/react-hooks` needed)
-- `MockLanguageModelV3` (from `ai/test`, already installed): Deterministic LLM mock for AI operation tests; use `mockValues()` to stage failure responses for retry/repair testing
-- `withNuqsTestingAdapter` (from `nuqs/adapters/testing`, already installed): Required wrapper for any hook or component using `useQueryState`; without it, URL mutations silently no-op
-
-**Version compatibility confirmed:** RTL 16 with React 19, `convex-test` with `convex@1.31.7`, `@testing-library/jest-dom/vitest` (not `/jest`) for Vitest matcher compatibility.
+- **Convex `searchIndex`**: Full-text search on library items — native Convex feature, reactive, scoped to user, supports pagination; no external search service needed for personal library scale
+- **Convex compound indexes**: Filter/sort by `userId + rating`, `userId + savedAt`, `userId + publicationYear` — enables efficient index range queries without post-fetch filtering
+- **Convex `.paginate()` + `useProtectedPaginatedQuery`**: Cursor-based server-side pagination — established pattern from extraction queries; wrapper hook already built in `lib/auth/use-auth-query.ts`
+- **Junction table + `getManyVia`**: Many-to-many item-to-collections — only correct Convex pattern (arrays are not indexable); `getManyVia` from `convex-helpers` eliminates boilerplate
+- **`nuqs` URL state**: Filter/sort state on `/library` page — already in use for pagination; extend with `parseAsString`, `parseAsStringLiteral` for filter params to make views bookmarkable
 
 ### Expected Features
 
-The research identifies a clear P1/P2/P3 priority breakdown based on risk, extraction effort, and dependencies. The v2.0 launch set covers the 16 highest-risk test targets with the lowest extraction cost. See `.planning/research/FEATURES.md` for the complete per-domain breakdown with table stakes, differentiators, and anti-features.
+Research against Elicit, Zotero, Semantic Scholar, Mendeley, and Paperpile confirms the following feature tiers.
 
-**Must have — v2.0 table stakes (P1):**
-- Search param round-trip (`paramsToSearchResult` + `searchResultToParams`) — URL sharing regressions are user-visible immediately
-- Region encoding bijectivity (`encodeRegions`/`decodeRegions`) — all 30+ INTERNAL_TO_URL_CODE entries, both directions
-- Filter active predicates (`isDateFilterActive`, `isRatingFilterActive`) — wrong predicates send spurious or missing constraints to OpenAlex API
-- `buildFilterData` section assembly — drives filter badge display; wrong sections mislead users about active filters
-- CSV escape and `jsonToCSV` — corrupt exports permanently damage user trust in downloaded data
-- `formatAnswerForCSV` / `formatAnswerForExcel` — all answer types including null, boolean, number, array
-- AI prompt structural invariants — operator preservation, abstract-only mode, evidence ID format
-- Zod schema parse contracts — `queryEnhancementSchema`, `screeningQuestionsSchema`, dynamic `createScreeningResponsesSchema`
-- `validateQuery` balanced parentheses and trailing operator detection
-- `encodeQuestionKey` / `decodeQuestionKey` round-trip with special characters
-- Batch fail-soft: all-success, all-fail, partial failure, empty batch, single item
-- Auth state machine: `assertActiveUser` for active, suspended, and deleted states
-- `PLAN_CONFIG` shape contract — credit amounts and tier values are load-bearing constants
-- `getPlanTypeFromMetadata` — all four plan strings plus unknown input
-- `subscriptionsFeatureFlags.enabled` env var (with `vi.resetModules()` pattern)
-- `generateMissingScreeningCombinationsByPaper` — missing detection correctness
+**Must have (table stakes) — launch blockers:**
+- Auto-save on rating (rating IS the save action in this product)
+- Full paper metadata stored (title, authors, DOI, abstract, year — NOT raw OpenAlex blob)
+- Dedicated `/library` page with item list, item count, and empty state
+- Text search within library (title + authors + abstract via single `searchableText` field)
+- Filter by rating (reuse existing `RatingRangePicker` component)
+- Sort options: date saved, rating, publication year
+- Collection CRUD (create, rename, delete) — flat, not nested
+- Multi-collection assignment (many-to-many, not exclusive folders)
+- Remove from library (delete with confirmation)
+- Remove from collection without deleting from library (distinction is critical)
+- Auth-gated access with redirect, not silent empty state
+- Server-side pagination (Convex `.paginate()`, not client-side slicing)
 
-**Should have — v2.x (P2):**
-- `createSearchParameters` API params shape — full filter-to-OpenAlex-API translation correctness
-- `getScreeningQuestionsConfig` deduplication post-process — requires logic extraction before testing
-- `repairJSON` / `repairSingleField` malformed AI response recovery paths
-- `applyTierFreeCreditCap` all plan caps — cap enforcement for all four plan tiers
-- `syncProfileFromSession` no-overwrite guard — profile field retention on re-login
-- `exportToCSV` column inclusion/exclusion by `ExportOptions` flags — requires DOM separation refactor
+**Should have (differentiators) — high value, low complexity:**
+- Filter by date saved
+- Filter by collection on main library view
+- Filter by publication year range
+- Collection item count badges (denormalized `itemCount` on `collections` table)
+- View mode switching (list-detail / grid — pattern already exists in codebase)
+- Export library items (reuse existing `jsonToCSV`/`downloadAsFile` utilities)
 
-**Defer to v3+:**
-- Integration tests for cross-cutting flows (auth check to plan gate to credit deduction to result) — requires Convex test environment or full mock context
-- `exportToExcel` worksheet cell type validation — requires sheet-data builder extraction from DOM download wrapper
-- TDD workflow integration tests for features added after v2.0
+**Defer to v2.2+:**
+- Bulk operations (multi-select + bulk-add/remove/delete)
+- Bridge to extraction workflow ("extract from these saved papers")
+- Bidirectional rating sync between search results and library
+- "Already saved" indicator on search result cards
+- Manual "refresh" button to fetch fresh OpenAlex metadata per item
+
+**Confirmed anti-features (do not build):**
+- Nested/hierarchical collections (tree views, drag-drop, breadcrumbs — significant complexity for minimal MVP value)
+- Tags as a separate organizational system (parallel to collections, confuses users)
+- Smart collections / saved searches (requires continuous query engine; too complex for v2.1)
+- PDF storage and annotation (scope expansion; users have Zotero for this)
+- Citation formatting / BibTeX export (entire product category; Zotero already integrated)
+- Collaborative/shared libraries (requires permission models; v3+ at earliest)
 
 ### Architecture Approach
 
-The project already has a well-established two-tier architecture (Playwright E2E + Vitest unit) with a separate live-billing layer. New v2.0 tests slot into the existing Vitest unit tier — no new directories, no new configs for the bulk of the work. The flat `tests/` convention (40+ files, one-per-module naming) is the established law; all new files follow `[domain]-[module].test.ts` naming. Six architecture patterns handle all test scenarios across the six domains. See `.planning/research/ARCHITECTURE.md` for full pattern implementations and data flow diagrams.
+The architecture follows the existing domain module pattern. New Convex modules go in `convex/library/` and `convex/collections/` alongside existing `convex/users/`, `convex/credits/`, and `convex/extraction/`. Three new Convex tables are required: `libraryItems` (one row per user per paper; stores slim normalized metadata plus `paperData: v.any()` blob for display-only rendering), `collections` (user-created groupings with denormalized `itemCount`), and `libraryItemCollections` junction table (many-to-many with dual indexes). The `RatingSelector` component is modified to trigger a Convex mutation when the user is authenticated, while retaining Zustand as fallback for anonymous users. A critical two-code-path strategy is required on the library page: search mode (uses `withSearchIndex`, relevance order) vs. browse mode (uses `withIndex`, custom sort) — Convex cannot sort search results by arbitrary fields.
 
 **Major components:**
-1. `vitest.config.ts` (updated) — `environmentMatchGlobs` routes `convex/**` to `edge-runtime`, `tests/hooks/**` to `jsdom`, all else stays `node`; also adds `plugins: [react()]` and `server.deps.inline: ["convex-test"]`
-2. `tests/setup.ts` (new) — global `@testing-library/jest-dom/vitest` import + RTL `cleanup` in `afterEach`
-3. `convex/test.setup.ts` (new) — Vite `import.meta.glob` for `convex-test` module discovery
-4. 21 new test files in `tests/` — flat directory, one per source module, following the established `[domain]-[module].test.ts` naming convention
-
-**Six test patterns by use case:**
-- Pattern 1 (Direct Import): Pure functions — no mocks; covers ~80% of all test targets
-- Pattern 2 (Env Var Gate): Feature flags — `vi.resetModules()` + dynamic `import()` per test
-- Pattern 3 (Injected Mock Context): Convex mutations/queries — `makeCtx()` with `vi.fn()` stubs
-- Pattern 4 (Mock runMutation Injection): Webhook dispatchers — inject `vi.fn()` as `runMutation` arg
-- Pattern 5 (AI Model Mock): LLM orchestration — `MockLanguageModelV3` from `ai/test`
-- Pattern 6 (Source-Code Assertion): Structural contracts — `readFileSync` assertions; use sparingly
+1. `convex/library/mutations.ts` — upsert save, remove item, update rating; all library write operations
+2. `convex/library/queries.ts` — paginated list with filter/sort, `getItemRating`, dual search/browse code paths
+3. `convex/collections/mutations.ts` — CRUD plus addItem/removeItem with cascade delete and atomic `itemCount` updates
+4. `convex/collections/queries.ts` — list collections, get collection items via junction table traversal
+5. `components/library-command-center/` — new page shell reusing Command Center pattern; includes toolbar, item cards, collection manager dialog, collection picker popover
+6. `lib/hooks/use-library-rating.ts` — dual-path rating hook (Convex for authenticated, Zustand fallback for anonymous)
 
 ### Critical Pitfalls
 
-1. **`convex-test` getUserIdentity bug blocks auth-gated mutation/query testing** — Do not test `requireAuth`-gated functions end-to-end through `convex-test`. The `asyncSyscall does not support: 1.0/getUserIdentity` error is a confirmed open bug (issue #50, February 2026). Extract pure business logic (state checks, field merge logic) into standalone functions and test those directly with Pattern 3 (injected mock context).
+1. **Storing full OpenAlex `Work` blob as-is (HIGH recovery cost)** — A Work JSON is 5-30 KB with 40+ fields including deeply nested authorships, `abstract_inverted_index`, `referenced_works[]` (often 30-100 IDs), and `related_works[]`. Stored verbatim, 200+ items causes 3+ MB page loads and Convex bandwidth billing. Prevention: define a slim schema with explicit typed fields for the 10-12 fields needed for display and filtering; strip `referenced_works`, `related_works`, `abstract_inverted_index`, `grants`, `apc_list`, `mesh` before storage. Target 1-2 KB per document. A `trimPaperData(work: Work)` utility should be the first function written in Phase 1.
 
-2. **Encoding existing bugs as test assertions during backfill** — Never derive expected values by running the implementation and copying output. Derive from the business specification: for credit billing, compute from documented pricing (`$0.25/1M tokens at 40x markup = X credits`). Any assertion whose expected value adjusts automatically when the implementation changes is encoding a bug, not specifying correct behavior.
+2. **Arrays instead of junction table for collection membership (HIGH recovery cost)** — Convex arrays cannot be indexed. Querying "all items in collection X" from an array field requires a full table scan. Prevention: always use the `libraryItemCollections` junction table with `by_collection`, `by_item`, and `by_item_collection` indexes. The composite index enables O(1) existence checks. Schema must include the junction table from Phase 1 even though collection UI ships in Phase 4.
 
-3. **`MockLanguageModelV3` imported outside test files crashes production** — Gate all `from 'ai/test'` imports strictly to `*.test.ts` files. Importing `ai/test` in server code or startup scripts throws `"Vitest failed to access its internal state"` at runtime (confirmed ai@5.0.27+ regression, GitHub issue #8356).
+3. **Pagination + TypeScript filter mismatch (MEDIUM recovery cost)** — Using `.paginate()` then filtering in TypeScript produces undersized or empty pages. Prevention: express all filters via Convex indexes (`withIndex`) or the search index (`withSearchIndex`). Use `convex-helpers` `filter` only for non-indexable predicates. Never use `.paginate()` followed by an array `.filter()`.
 
-4. **`Promise.allSettled` batch tests covering only the all-success path** — Require three scenarios for every batch processor test: all-success, all-fail, and partial-failure (item[1] fails, items[0] and [2] succeed). The fail-soft guarantee is the critical correctness property of the batch processor; it is invisible to tests that configure a uniformly successful mock model.
+4. **Collection deletion without cascade (accumulates over time)** — Convex has no foreign key cascade. Deleting a `collections` document without deleting its `libraryItemCollections` rows leaves orphaned junction records. Prevention: collection delete mutation must query and delete all junction rows before deleting the collection document — implement this from day one.
 
-5. **Feature flag module cache — env mutations after import have no effect** — Modules that read `process.env` at import time cache the value. Always combine env mutation with `vi.resetModules()` and dynamic `import()` in each test case. The exact pattern is already established in `tests/extraction-filtering.test.ts` — replicate exactly for every feature flag test file.
+5. **Auth guard inconsistency (HIGH security risk)** — Library queries that use `getCurrentUser()` (returns null) instead of `requireAuth()` (throws) silently show empty state for unauthenticated users. Queries that accept `itemId` without ownership validation expose other users' data. Prevention: every library/collection query and mutation uses `requireAuth(ctx)` and validates `item.userId === user._id`. Follow the `resolveOwnedJob` pattern from `convex/extraction/queries.ts`.
+
+---
 
 ## Implications for Roadmap
 
-Based on combined research, suggest four phases following the dependency order established in ARCHITECTURE.md. The build order is driven by three factors: module dependency chains, risk (highest-value coverage first), and TDD red-green-refactor (tests must be writable before the target code changes).
+Both FEATURES.md and ARCHITECTURE.md independently converge on the same 10-step build order. The dependency chain is unambiguous: schema precedes mutations, mutations precede UI, and the library concept must precede collections. The suggested phases below reflect this, grouping the 10 steps into logical deliverable increments.
 
-### Phase 1: Test Infrastructure and Pure Function Foundations
+### Phase 1: Foundation — Schema, Auth Helpers, and Rating Bridge
 
-**Rationale:** Install the 7 new packages, update `vitest.config.ts` with `environmentMatchGlobs`, create `tests/setup.ts` and `convex/test.setup.ts`. Establish which code is testable via direct import vs. `convex-test` vs. local backend. Write the fastest, zero-dependency tests first: AI errors, AI validate, question key codec, AI cost, feature flag guards, plan enforcement constants, filter config. These have no mocks and validate the infrastructure is working correctly before writing more complex tests.
+**Rationale:** Schema decisions are irreversible without data migrations. All three HIGH-cost pitfalls (blob storage, array membership, auth inconsistency) manifest at the schema layer. This phase also wires the rating-to-save bridge, which is the entry point for all library data — nothing else works without it.
 
-**Delivers:** Working multi-environment Vitest config that preserves all 43 existing tests, 7 new test files covering zero-dependency pure utility functions, documented testability boundaries for Convex code.
+**Delivers:** Three new Convex tables with correct indexes and search index; `trimPaperData` utility; upsert save mutation; rating mutation wired into `RatingSelector` with Zustand fallback for anonymous users; `resolveOwnedLibraryItem` auth helper; toast on save.
 
-**Addresses:** Feature flag env var guard, plan constants snapshot, `validateQuery`, `encodeQuestionKey`/`decodeQuestionKey`, AI error hierarchy, feature flag guards, plan tier cap enforcement.
+**Addresses:** Auto-save on rating, full metadata storage (table stakes)
 
-**Avoids:** Pitfall 10 (feature flag module cache) — establish `vi.resetModules()` utility pattern on the first feature flag test. Pitfall 3 (`MockLanguageModelV3` in production) — establish import discipline from day one. Pitfall 4 (encoding bugs) — establish the expected-value-from-spec rule in code review.
+**Avoids:** Pitfall 1 (blob schema — slim documents from day one), Pitfall 2 (array membership — junction table schema defined now even though collection UI ships later), Pitfall 5 (auth guard inconsistency — `requireAuth` + ownership pattern established before any other code)
 
-**Research flag:** Standard patterns, all fully specified. Skip `gsd:research-phase` — the `environmentMatchGlobs` config and `tests/setup.ts` content are specified in STACK.md with exact code. Validate existing 43 tests still pass after config change before adding new tests.
+**Research flag:** SKIP — schema design is fully documented in STACK.md with exact TypeScript definitions. No additional research needed.
 
-### Phase 2: AI and Batch Processing Tests
+### Phase 2: Core Library Page
 
-**Rationale:** With Phase 1 foundations in place, add the AI domain tests that depend on the error/validate layer from Phase 1. The AI batch processor's `Promise.allSettled` fail-soft pattern is the highest credit-risk code path in the application — a partial failure that silently loses results would cause incorrect credit charges. This phase also establishes `MockLanguageModelV3` as the team standard before any other developer writes an AI mock.
+**Rationale:** With data flowing into `libraryItems`, the dedicated page is the minimum user-visible deliverable. This phase establishes the dual-path query strategy (search vs. browse) and server-side pagination before the collection filter adds a third query path.
 
-**Delivers:** 7 new test files covering `executeAIOperation` retry/repair/usage, `processBatch` all three scenarios, AI prompt builders structural invariants, Zod schema parse contracts, question key codec, and `generateMissingScreeningCombinationsByPaper`.
+**Delivers:** `/library` route (auth-gated with redirect); `LibraryCommandCenter` shell; paginated list view (default sort: `savedAt` desc); text search via `searchIndex` on `searchableText` field; filter by rating (reuse `RatingRangePicker`); sort dropdown (savedAt, rating, year); remove from library with confirmation; empty states (no items; no items matching filter); `savedAt` display on cards for staleness awareness.
 
-**Uses:** `MockLanguageModelV3` from `ai/test` (already installed — no new package required).
+**Addresses:** Dedicated library page, text search, filter by rating, sort options, remove from library, auth-gated access, pagination, empty state (all table stakes)
 
-**Avoids:** Pitfall 3 (wrong `generateObject` mocking — use `MockLanguageModelV3` not `vi.mock('ai', ...)`), Pitfall 5 (`withAuthAndCreditsBatch` testing through full stack — test constituent pure functions instead), Pitfall 9 (only happy path for `Promise.allSettled` — enforce three-scenario rule).
+**Avoids:** Pitfall 3 (pagination + filter mismatch — dual code path established here), Pitfall 6 (stale data — `savedAt` displayed on every card)
 
-**Research flag:** Standard patterns fully documented. Skip `gsd:research-phase`. The `MockLanguageModelV3` usage pattern and `processBatch` mock structure are specified in detail in STACK.md and ARCHITECTURE.md.
+**Research flag:** SKIP — pagination pattern mirrors existing `useProtectedPaginatedQuery` in extraction queries; Command Center pattern is established; two-code-path strategy is fully documented in STACK.md.
 
-### Phase 3: Search Parameter, Filter, and Export Tests
+### Phase 3: Filter State and URL Persistence
 
-**Rationale:** Search param and export tests are pure function tests with no mocks — highest-value per line of test code. The region codec bijectivity test (both directions, all 30+ entries) is the first test to write in this phase to catch URL sharing regressions. Export tests require extracting column-building logic from DOM-dependent download functions before testing — this refactor is a positive side effect that makes the production code more testable.
+**Rationale:** Filter/sort state must be in the URL for bookmarkable views. This is a separate phase because it touches the query layer (adding date and year filters) and the URL state layer simultaneously. The collection filter query path can be built here even though the collection UI ships in Phase 4.
 
-**Delivers:** 7 new test files covering search param round-trips, region codec bijectivity, filter builder section assembly, filter active predicates, CSV escaping, `jsonToCSV` header derivation and row generation, `formatAnswerForCSV`/`formatAnswerForExcel` all answer types.
+**Delivers:** `nuqs`-based URL state for all filter params (`q`, `rating`, `collection`, `sort`); filter by date saved; filter by publication year; collection filter query path (UI wired in Phase 4); view mode switching.
 
-**Avoids:** Pitfall 6 (one-directional codec tests — require both `parse(serialize(x)) === x` and `serialize(parse(s)) === s` for every INTERNAL_TO_URL_CODE entry), Pitfall 7 (missing `withNuqsTestingAdapter` — note: nuqs hook integration tests requiring jsdom are deferred to v2.x; this phase covers all pure serialization logic in node environment).
+**Addresses:** Filter by date saved, filter by collection, filter by publication year, view mode switching, bookmarkable URLs (differentiators)
 
-**Research flag:** All targets are pure functions with direct imports. Skip `gsd:research-phase`. One gap: `exportToCSV` column-building logic is currently coupled to `downloadFile` (DOM). Assess the extraction scope at the start of this phase — the refactor may reveal unexpected dependencies.
+**Research flag:** SKIP — `nuqs` pattern is already established in the codebase; URL state design with `parseAsString`, `parseAsStringLiteral`, `parseAsInteger` is specified in STACK.md.
 
-### Phase 4: User Management and Auth State Machine Tests
+### Phase 4: Collections
 
-**Rationale:** Auth tests come last because they require the most care around testability boundaries and layer separation. The Convex identity system (`convex-test` getUserIdentity bug) and the Clerk client identity system (`useAuth()` mocks) must not be conflated in the same test file. Establishing this boundary explicitly before writing the tests prevents the most expensive rework of the milestone.
+**Rationale:** Collections depend on `libraryItems` existing (Phase 1) and the junction table being in the schema (Phase 1). The UI depends on the library page shell (Phase 2). The collection filter query path exists (Phase 3) and needs only the UI wired. This is the last core feature of v2.1.
 
-**Delivers:** 5 new test files covering `assertActiveUser` for all three states, `createUserWithDefaults` initial state correctness, `getPlanTypeFromMetadata` all plan strings, `ensureUser` create vs. update path, and two integration tests wiring credit billing to balance enforcement and filter state to export shape.
+**Delivers:** `collections` and `libraryItemCollections` mutations and queries; collection CRUD UI (create/rename/delete with confirmation dialog); collection picker popover for item assignment; multi-collection membership; remove from collection (without deleting from library) with toast; filter library by collection (via Phase 3 query path); collection item count badges; cascade delete on collection removal.
 
-**Implements:** Injected mock context pattern (Pattern 3) for Convex functions; integration test data flow (two modules composed in sequence).
+**Addresses:** Collection CRUD, multi-collection assignment, remove from collection, filter by collection, item count badges (table stakes + differentiators)
 
-**Avoids:** Pitfall 1 (`convex-test` getUserIdentity bug — test pure extracted logic via injected mock context instead), Pitfall 8 (conflating Clerk client identity with Convex server identity — each test file must document which auth layer it tests), Pitfall 4 (encoding suspended-user bug as correct behavior — derive expected FORBIDDEN error from the documented state machine spec).
+**Avoids:** Pitfall 4 (cascade delete built from the start); collection name uniqueness validated in create mutation; `itemCount` incremented/decremented atomically.
 
-**Research flag:** Needs targeted assessment at phase kickoff. Determine per-function whether `ensureUser` can be tested via injected mock context or requires pure function extraction first. Check convex-test issue #50 status — if fixed, some tests can use `convex-test` end-to-end instead of mock context.
+**Research flag:** SKIP — junction table pattern, `getManyVia` usage, cascade delete patterns all documented with working code in STACK.md and PITFALLS.md. No novel patterns.
+
+### Phase 5: Export and Polish
+
+**Rationale:** Export is low-complexity (reuse existing utilities). Polish items (mobile responsiveness, edge-case empty states, toast/undo for all destructive actions, i18n) should be a dedicated phase rather than scattered across earlier phases.
+
+**Delivers:** Export library items as CSV/JSON (reuse `jsonToCSV`/`downloadAsFile`); mobile responsive library page and collection dialogs; toast + undo for all destructive actions (remove from library, delete collection, remove from collection); i18n strings for all new library/collection UI (6 locales in `messages/*.json`).
+
+**Addresses:** Export library items, mobile responsiveness, full i18n coverage (differentiators + production quality)
+
+**Research flag:** SKIP — export utilities, i18n namespace pattern, and toast patterns are all established in the codebase.
 
 ### Phase Ordering Rationale
 
-- Infrastructure before feature tests: `vitest.config.ts` changes affect all subsequent tests; validate existing tests still pass before adding new ones.
-- AI before search/export: the AI batch processor is the highest credit-risk code path; cover it before lower-risk pure functions.
-- Search/export before user management: search and export are the simplest pure-function tests; build team confidence with the patterns before tackling the more complex Convex auth boundary decisions.
-- Integration tests at the end of each domain: they wire already-tested modules together and cannot be written meaningfully before the individual modules are understood.
+- **Schema first, always.** Pitfalls 1, 2, and 5 all manifest at the schema layer with HIGH recovery cost or HIGH security risk. Establishing the correct schema before any mutations are written makes all subsequent phases safe.
+- **Library before collections.** Collections reference `libraryItems` IDs. The library page UX must exist before users can meaningfully interact with collections. Phases 1-2 can ship as an incremental release before Phase 4.
+- **Filters after core page.** URL state and additional filters add complexity to the query layer. Building the core page first with a single sort dimension, then adding filter/sort state, reduces the risk of getting the pagination strategy wrong.
+- **Collection filter query path in Phase 3, not Phase 4.** Separating the query logic (Phase 3) from the collection UI (Phase 4) keeps Phase 4 focused on UI work and ensures the query is independently testable.
+- **Export and polish last.** High value for production quality but no functional dependencies from other phases.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 1 (infrastructure):** The `environmentMatchGlobs` config interacts with the existing 43 test file paths. Validate that all existing tests still pass after the config change before proceeding.
-- **Phase 4 (auth state machine):** The testability boundary for `ensureUser` (mock context vs. pure extraction) must be assessed function-by-function before test planning. Check convex-test issue #50 at phase kickoff.
+- **None.** All four research files are HIGH confidence, sourced from official Convex documentation and direct codebase inspection. Technology stack is mature and patterns are fully documented with working TypeScript examples.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 2 (AI tests):** `MockLanguageModelV3` is fully documented with official examples. `processBatch` structure is well-understood from codebase inspection.
-- **Phase 3 (search/export tests):** All targets are pure functions with direct imports. No novel testing infrastructure required.
+- **All phases.** Convex patterns (search index, junction table, paginated queries, `getManyVia`, `nuqs` URL state) are thoroughly documented with working code in STACK.md and ARCHITECTURE.md. UI patterns (Command Center shell, `RatingSelector` mutation wiring, `useProtectedPaginatedQuery`) map directly to existing components in the codebase.
+
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All package versions verified via `npm show`; `ai/test` and `nuqs/adapters/testing` verified by direct `node_modules` inspection of installed packages |
-| Features | HIGH | Direct codebase inspection of all 6 domain source files + all 43 existing test files; gaps are clearly identified with implementation notes |
-| Architecture | HIGH | All six test patterns drawn from existing tests in the repository; no speculative patterns introduced; build order validated against module dependency graph |
-| Pitfalls | HIGH | Critical pitfalls verified against official docs, confirmed open GitHub issues (convex-test #50, ai issue #8356), and direct codebase analysis |
+| Stack | HIGH | All patterns sourced from Convex official docs + direct codebase inspection. Zero new dependencies required, all existing packages verified compatible. Full TypeScript code examples provided. |
+| Features | HIGH | Cross-referenced against Elicit, Zotero, Semantic Scholar, Mendeley, Paperpile. Existing codebase inspected to confirm current capabilities and gaps. Feature tiers are well-supported by multiple independent sources. |
+| Architecture | HIGH | Build order derived from hard data dependencies (not opinion). Every component maps to an existing codebase pattern with a concrete modification or new-file target. No speculative patterns introduced. |
+| Pitfalls | HIGH | All critical pitfalls sourced from Convex official docs, community Discord, and confirmed GitHub issues. Recovery costs are concrete estimates based on Convex's documented transaction limits and migration patterns. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`ensureUser` testability boundary:** Whether `convex/users/mutations.ts:ensureUser` can be tested via injected mock context or requires further pure function extraction is not yet confirmed. Assess at the start of Phase 4 before writing Phase 4 tests.
-- **`exportToCSV` column logic coupling:** The column-building logic in `exportToCSV` is currently coupled to `downloadFile` (DOM-dependent). Extracting it is a required refactor before Phase 3 column-inclusion tests can be written. The refactor scope may reveal unexpected dependencies — assess at Phase 3 kickoff.
-- **convex-test issue #50 resolution timeline:** If the `getUserIdentity` bug is fixed before Phase 4 begins, some auth tests can shift from the injected mock context pattern to `convex-test` end-to-end tests. Check the GitHub issue status at Phase 4 kickoff.
+- **`paperData` trimming strategy — what exactly to strip.** STACK.md recommends `v.any()` with trimmed data; PITFALLS.md warns strongly against full blobs. The resolution is to use `v.any()` but define exactly which OpenAlex fields to strip before storage. A concrete `trimPaperData(work: Work): TrimmedWork` utility must be defined as the first deliverable in Phase 1. Candidate fields to strip: `referenced_works`, `related_works`, `abstract_inverted_index`, `grants`, `apc_list`, `biblio`, `mesh`, `sustainable_development_goals`, `keywords`, full nested `authorships` (retain author names only). Verify final list against what the library item cards actually render.
+
+- **Zustand rating hydration divergence.** When an authenticated user visits search results, their Zustand store (localStorage) may contain ratings that diverge from Convex (e.g., ratings set on another device). ARCHITECTURE.md notes this as acceptable transitional state for v2.1. The UX consequence — stale localStorage ratings shown on search results for papers re-rated elsewhere — should be verified during Phase 2 and addressed if user-visible inconsistency is significant.
+
+- **Collection filter + text search combination.** The two-code-path strategy (search index vs. regular index) does not address the case where a user simultaneously has a text search query AND a collection filter active. This requires either (a) a third query path (search scoped to user, then cross-reference junction table) or (b) accepting that text search ignores the collection filter in v2.1. This edge case should be explicitly decided and documented at the start of Phase 4 planning.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
 
-- Direct codebase inspection: `tests/*.test.ts` (43 files), `vitest.config.ts`, `package.json`, `node_modules/ai/package.json`, `node_modules/nuqs/package.json`, all 6 domain source files — confirmed package versions, subpath exports, existing test patterns
-- [convex-test official docs](https://docs.convex.dev/testing/convex-test) — `environmentMatchGlobs` config, `modules` glob pattern, `convexTest()` usage, documented limitations
-- [AI SDK Core Testing docs](https://ai-sdk.dev/docs/ai-sdk-core/testing) — `MockLanguageModelV3`, `mockValues()`, `simulateReadableStream`, import from `ai/test`
-- [nuqs Testing Documentation](https://nuqs.dev/docs/testing) — `withNuqsTestingAdapter`, `hasMemory`, `onUrlUpdate`, bijectivity test helpers
-- [convex-test GitHub issue #50](https://github.com/get-convex/convex-test/issues/50) — `getUserIdentity` fails in queries/mutations via `asyncSyscall`; confirmed open February 2026
-- [ai@5.0.27+ runtime issue #8356](https://github.com/vercel/ai/issues/8356) — `MockLanguageModelV3` imported outside Vitest worker crashes production with "Vitest failed to access its internal state"
-- `npm show convex-test`, `npm show @edge-runtime/vm`, `npm show @testing-library/react`, `npm show @testing-library/user-event`, `npm show @testing-library/jest-dom`, `npm show jsdom`, `npm show @vitejs/plugin-react` — all versions verified
+- [Convex Full Text Search docs](https://docs.convex.dev/search/text-search) — search index definition, filterFields, 1024 result limit, relevance ordering, 1 searchField per index
+- [Convex Indexes docs](https://docs.convex.dev/database/reading-data/indexes/) — compound indexes, 32 per table limit, index ordering rules
+- [Convex Pagination docs](https://docs.convex.dev/database/pagination) — cursor-based pagination, reactive page sizes, dynamic page size from filtering
+- [Convex Limits docs](https://docs.convex.dev/production/state/limits) — 1 MiB document limit, 8192 array elements, 32K scan / 16K write limits per transaction
+- [Convex Relationship Structures](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas) — junction table pattern, dual indexing, composite index for existence checks
+- [convex-helpers Relationship Helpers](https://stack.convex.dev/functional-relationships-helpers) — `getManyVia`, `getManyFrom` import paths and usage
+- [convex-helpers Complex Filters](https://stack.convex.dev/complex-filters-in-convex) — `filter` helper, hybrid index + filter, known issue #864 (variable page sizes with `.paginate()`)
+- [Convex Best Practices](https://docs.convex.dev/understanding/best-practices/) — index-based filtering, denormalization guidance
+- [Elicit Library documentation](https://support.elicit.com/en/articles/1499969) — library feature set baseline
+- [Elicit Collections documentation](https://support.elicit.com/en/articles/7928641) — collections UX patterns, flat vs. nested decision
+- [Zotero organization guide](https://guides.library.oregonstate.edu/c.php?g=359201&p=2426087) — reference manager feature baseline
+- Direct codebase inspection: `convex/schema.ts`, `convex/lib/auth.ts`, `convex/extraction/queries.ts`, `lib/store.ts`, `lib/auth/use-auth-query.ts`, `components/rating-selector.tsx`, `components/bookmarks-command-center/index.tsx`, `package.json`
 
 ### Secondary (MEDIUM confidence)
 
-- [Testing React Components with Convex](https://stack.convex.dev/testing-react-components-with-convex) — `vi.mock("convex/react")` pattern, `ConvexReactClientFake`
-- [Backfilling Tests — professorbeekums.com](https://blog.professorbeekums.com/backfilling-tests/) — encoding existing bugs as correct behavior risk during backfill
-- [TDD anti-patterns chapter 1 — codurance.com](https://www.codurance.com/publications/tdd-anti-patterns-chapter-1) — over-mocking, testing mocks not behavior
-- [nuqs GitHub discussion #259](https://github.com/47ng/nuqs/issues/259) — community testing patterns and missing adapter gotchas
-- [Clerk Next.js Testing Guide](https://clerk.com/blog/testing-clerk-nextjs) — mock `@clerk/nextjs` hooks; layer boundary discipline
-
-### Tertiary (LOW confidence)
-
-- None — all critical findings are HIGH or MEDIUM confidence from official or directly verified sources.
+- [Semantic Scholar Library features](https://www.semanticscholar.org/faq) — library/folder feature confirmation
+- [Paperpile: Zotero vs Mendeley comparison](https://paperpile.com/r/zotero-vs-mendeley/) — reference manager feature matrix
+- [Research.com reference manager comparison](https://research.com/software/best-reference-management-software) — feature tier validation
+- [Convex cascade delete patterns (Discord)](https://discord-questions.convex.dev/m/1270300293984288779) — manual cascade, scheduled deletion for large relations
+- [Complex filter + pagination issue (Discord)](https://discord-questions.convex.dev/m/1283043121730420808) — undersized page problem confirmed as expected Convex behavior
+- [convex-helpers filter + pagination issue #864](https://github.com/get-convex/convex-helpers/issues/864) — variable page sizes with `filter` + `paginate`, confirmed not a bug
 
 ---
 *Research completed: 2026-02-28*

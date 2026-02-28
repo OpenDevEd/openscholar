@@ -1,408 +1,501 @@
-# Stack Research: v2.0 TDD & Test Coverage
+# Stack Research: v2.1 Library & Collections
 
-**Project:** OpenAlex Count — TDD & Test Coverage Backfill
-**Domain:** Unit and integration testing for Next.js + Convex app
+**Domain:** Persistent user library with collections, full-text search, and filtering for an academic search app
 **Researched:** 2026-02-28
-**Confidence:** HIGH (verified against installed packages, npm registry, official docs)
-**Scope:** NEW packages/config only — excludes already-installed vitest ^3.2.4, @playwright/test ^1.58.2, etc.
+**Confidence:** HIGH
+
+## Context
+
+This research covers ONLY what is needed for v2.1. The existing stack is validated and not re-researched:
+- Next.js 16.1.6, Convex 1.32.0, Clerk auth, next-intl, Stripe billing, Playwright, Vitest, Zustand 5.0.5, nuqs 2.8.8
+
+The v2.1 features are:
+1. Rating an item auto-saves it to a Convex-backed library (full JSON entry)
+2. Dedicated `/library` page with filtering (rating, collection, date saved, text search, sort)
+3. Collection CRUD (create, rename, delete) with many-to-many item assignment
+4. Remove items from library
+5. Auth-gated (signed-in users only)
 
 ---
 
-## Executive Summary
+## Recommended Stack
 
-The project needs five distinct new testing capabilities: (1) Convex mutation/query/action isolation, (2) React hooks with Convex, (3) AI/LLM mock injection, (4) URL param serialization, and (5) export function testing (xlsx/CSV). The existing stack covers none of these.
+### No New Dependencies Required
 
-The critical insight: **existing tests run in `node` environment** (`vitest.config.ts` sets `environment: "node"`). Adding Convex backend tests requires `edge-runtime`, and React hook tests require `jsdom`. These conflict. The fix is `environmentMatchGlobs` to route test files to the right runtime — but this requires updating `vitest.config.ts`.
+The existing stack covers every need for v2.1. This milestone requires **zero new npm packages**.
 
-Fortunately, the AI SDK already exports `MockLanguageModelV3` from `ai/test` (confirmed in installed `ai@6.0.91`), nuqs already exports `withNuqsTestingAdapter` from `nuqs/adapters/testing` (confirmed in installed `nuqs@2.8.8`), and xlsx tests only require `vi.stubGlobal` for `URL.createObjectURL` — so most capabilities are **unlocked through config changes + thin new packages**, not wholesale package additions.
+| Capability Needed | Already Installed | Version | Status |
+|---|---|---|---|
+| Backend data storage | `convex` | 1.32.0 | Full-text search indexes, pagination, compound indexes all supported |
+| Relationship helpers | `convex-helpers` | 0.1.112 | Installed but unused -- `getManyVia`, `filter` ready to use |
+| URL state for filters | `nuqs` | 2.8.8 | Already wired with `NuqsAdapter` in root layout |
+| Client state (optimistic) | `zustand` | 5.0.5 | Already used for ratings store (`useRatingsStore`) |
+| Auth-gated queries | `convex` + `@clerk/nextjs` | -- | `useProtectedQuery`, `useProtectedPaginatedQuery` already built in `lib/auth/use-auth-query.ts` |
+| Date formatting | `date-fns` | 4.1.0 | Already installed |
+| Icons | `lucide-react` | 0.487.0 | Already installed |
+| UI components | Radix primitives + shadcn | -- | Full component library already in place |
+| Pagination UI | CommandCenter components | -- | Reusable `CommandCenterPagination`, `CommandCenterList`, `CommandCenterToolbar` already exist |
+| Toasts | `sonner` | 2.0.7 | Already installed, used throughout app |
+| Analytics | `posthog-js` | 1.342.1 | Already installed, used for rating events |
 
----
+### Core Technologies (Convex Patterns to Use)
 
-## Packages Already Installed — Use These, Don't Re-add
-
-| Package | Installed Version | Relevant Capability |
-|---------|-------------------|---------------------|
-| `vitest` | ^3.2.4 | Test runner, `vi.mock`, `vi.stubGlobal`, `vi.fn` |
-| `convex` | ^1.31.7 | Convex types, schema, `convex/react` hooks |
-| `nuqs` | ^2.6.0 (2.8.8 actual) | `withNuqsTestingAdapter` built-in since v2 |
-| `ai` | ^6.0.62 | `ai/test` subpath: `MockLanguageModelV3`, `MockEmbeddingModelV3` |
-| `xlsx` | ^0.18.5 | Already the library under test; no test-specific package needed |
-| `zod` | ^4.3.6 | Schema validation already tested inline |
-
----
-
-## New Packages Required
-
-### Core Test Infrastructure
-
-| Package | Version | Purpose | Why This One |
-|---------|---------|---------|--------------|
-| `convex-test` | `^0.0.41` | Mock Convex backend for mutation/query/action unit tests | Official Convex testing library. Only way to test Convex functions in JS without a live backend. Peer dep: `convex ^1.16.4` — compatible with installed `1.31.7`. |
-| `@edge-runtime/vm` | `^5.0.0` | Provides the edge-runtime environment that `convex-test` requires | Required peer dep of `convex-test`. Vitest routes `convex/**` tests to this environment via `environmentMatchGlobs`. |
-
-### React Hook Testing
-
-| Package | Version | Purpose | Why This One |
-|---------|---------|---------|--------------|
-| `@testing-library/react` | `^16.3.2` | `renderHook`, `act`, `waitFor` for React hooks | Industry standard, ships `renderHook` directly (no separate `@testing-library/react-hooks` needed since RTL v13+). React 19 compatible. |
-| `@testing-library/user-event` | `^14.6.1` | Simulates realistic user interactions in hook/component tests | Needed for hooks that respond to user events (button clicks, input changes). More realistic than `fireEvent`. |
-| `@testing-library/jest-dom` | `^6.9.1` | Custom matchers: `toBeInTheDocument`, `toHaveValue`, etc. | Standard companion to RTL. Import via `@testing-library/jest-dom/vitest` for Vitest compatibility. |
-| `jsdom` | `^28.1.0` | Browser-like DOM environment for Vitest | Required for React hook tests. Set via `environmentMatchGlobs` for non-Convex tests. |
-
-### React Plugin (Required for JSX in Vitest)
-
-| Package | Version | Purpose | Why This One |
-|---------|---------|---------|--------------|
-| `@vitejs/plugin-react` | `^5.1.4` | Enables JSX transform in Vitest for React component/hook tests | Without this, Vitest cannot process `.tsx` files in jsdom environment. Required when using `@testing-library/react`. |
+| Pattern | Purpose | Why Recommended |
+|---|---|---|
+| Convex `searchIndex` | Full-text search within saved library items (title, abstract, authors) | Native Convex feature, reactive, no external search engine needed. Supports `.paginate()` and `filterFields` for scoped search. |
+| Convex `.index()` compound indexes | Filtering by userId + rating, userId + savedAt for sort | Compound indexes enable efficient range queries; `_creationTime` auto-appended as tiebreaker. |
+| Convex `.paginate()` + `usePaginatedQuery` | Infinite scroll or load-more on `/library` page | Cursor-based, reactive, already used in extraction queries. `useProtectedPaginatedQuery` wrapper already built. |
+| Junction table pattern | Many-to-many: items belong to multiple collections | Standard Convex pattern for M:N. Separate `libraryItemCollections` table with indexes on both foreign keys. |
+| `convex-helpers/server/relationships` `getManyVia` | Traversing item-to-collections and collection-to-items | Eliminates boilerplate for junction table queries. Already installed at 0.1.112, not yet imported anywhere. |
+| `convex-helpers/server/filter` `filter` | Complex TypeScript filtering on paginated queries | Enables filtering by criteria not expressible in index range (e.g., combined OR conditions). Use with caution -- see limitations. |
+| `nuqs` parsers | URL-driven filter/sort state on `/library` page | Already in use for pagination (`parseAsInteger`). Extend with `parseAsString`, `parseAsStringLiteral` for filter params. |
 
 ---
 
-## No New Packages Needed For These Capabilities
+## Convex Schema Design
 
-### AI/LLM Mock Testing
-
-`ai/test` is already available as a subpath export in the installed `ai@6.0.91`. Confirmed by checking `node_modules/ai/package.json` exports — the `./test` key maps to `dist/test/index.mjs`. **No new package needed.**
+### New Tables
 
 ```typescript
-// Use directly in existing Vitest test files
-import { MockLanguageModelV3, mockValues } from 'ai/test';
+// In convex/schema.ts -- ADD these three tables
 
-const mockModel = new MockLanguageModelV3({
-  doGenerate: async () => ({
-    rawCall: { rawPrompt: null, rawSettings: {} },
-    finishReason: 'stop',
-    usage: { promptTokens: 10, completionTokens: 20 },
-    text: JSON.stringify({ enhancedQuery: "machine learning AND cancer" }),
+// Library items -- one per user per saved paper
+libraryItems: defineTable({
+  userId: v.id("users"),
+  openalexId: v.string(),              // OpenAlex work ID (dedup key)
+  rating: v.number(),                   // 0-5 star rating
+  title: v.string(),                    // Denormalized for display
+  searchableText: v.string(),           // title + abstract + authors concatenated for search
+  authors: v.optional(v.string()),      // Flattened author string for display
+  publicationYear: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  abstract: v.optional(v.string()),     // For display
+  paperData: v.any(),                   // Full OpenAlex Work JSON blob
+  savedAt: v.number(),                  // Timestamp when first saved
+  updatedAt: v.number(),
+})
+  .index("by_user", ["userId"])
+  .index("by_user_openalexId", ["userId", "openalexId"])    // Dedup: one item per user per paper
+  .index("by_user_rating", ["userId", "rating"])             // Filter by rating
+  .index("by_user_savedAt", ["userId", "savedAt"])           // Sort by date saved
+  .index("by_user_year", ["userId", "publicationYear"])      // Sort by publication year
+  .searchIndex("search_library", {
+    searchField: "searchableText",                            // Full-text search on concatenated field
+    filterFields: ["userId", "rating"],                       // Scope search to user, optionally filter by rating
   }),
+
+// Collections -- user-created groupings
+collections: defineTable({
+  userId: v.id("users"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  color: v.optional(v.string()),       // Optional color tag for UI
+  itemCount: v.number(),               // Denormalized count for display
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_user", ["userId"])
+  .index("by_user_name", ["userId", "name"]),   // Uniqueness check + alphabetical listing
+
+// Junction table: items <-> collections (many-to-many)
+libraryItemCollections: defineTable({
+  libraryItemId: v.id("libraryItems"),
+  collectionId: v.id("collections"),
+  addedAt: v.number(),
+})
+  .index("by_item", ["libraryItemId"])                        // "What collections is this item in?"
+  .index("by_collection", ["collectionId"])                    // "What items are in this collection?"
+  .index("by_item_collection", ["libraryItemId", "collectionId"]),  // Dedup check via .unique()
+```
+
+### Index Budget
+
+`libraryItems` uses 5 regular indexes + 1 search index = 6 total (limit: 32 per table).
+`collections` uses 2 regular indexes = 2 total.
+`libraryItemCollections` uses 3 regular indexes = 3 total.
+
+All well within Convex limits.
+
+### Design Rationale
+
+**Why denormalize title/authors/year onto `libraryItems`?**
+Convex search indexes and regular indexes operate on fields within the same document. If the paper data were stored in a separate table, every query would require a join. Denormalizing the key searchable/filterable fields onto the library item document enables:
+- Search index on `searchableText` with `userId` as filter field
+- Compound indexes on `userId` + `rating`, `userId` + `savedAt`
+- No joins for the common list/filter/sort operations
+
+**Why `paperData: v.any()` for the full JSON?**
+The OpenAlex `Work` type has 40+ optional fields (`abstract_inverted_index`, `authorships`, `apc_list`, `best_oa_location`, `biblio`, etc.). Defining each one in the Convex schema provides no value since this blob is only used for display/export, not querying. Using `v.any()` avoids schema churn as OpenAlex evolves. All queryable fields are denormalized as properly typed fields above it.
+
+**Why `searchableText` (concatenated) instead of indexing `title` alone?**
+Convex search indexes support exactly 1 `searchField`. A single concatenated field (`title + " " + abstract + " " + authors`) enables searching across all text with one index. Build this string at save time in the mutation, not at query time.
+
+**Why junction table instead of array-of-IDs?**
+- Arrays cannot be indexed in Convex -- no way to efficiently query "all items in collection X"
+- Junction table enables efficient bidirectional queries via separate indexes
+- Easy add/remove without read-modify-write races on the parent document
+- Metadata per association (e.g., `addedAt` timestamp)
+- `by_item_collection` compound index enables `.unique()` for dedup checks
+
+**Why `itemCount` on `collections` (denormalized)?**
+Counting items in a collection requires a full scan of `libraryItemCollections` filtered by `collectionId`. Denormalizing the count avoids this on every render. Increment/decrement atomically in the add/remove mutations.
+
+---
+
+## Key Convex Patterns
+
+### Pattern 1: Rating Triggers Library Save (Upsert)
+
+```typescript
+// convex/library/mutations.ts
+import { mutation } from "../_generated/server";
+import { v } from "convex/values";
+import { getCurrentUser } from "../lib/auth";
+
+export const saveToLibrary = mutation({
+  args: {
+    openalexId: v.string(),
+    rating: v.number(),
+    title: v.string(),
+    authors: v.optional(v.string()),
+    publicationYear: v.optional(v.number()),
+    doi: v.optional(v.string()),
+    abstract: v.optional(v.string()),
+    paperData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthenticated");
+
+    const searchableText = [args.title, args.abstract, args.authors]
+      .filter(Boolean)
+      .join(" ");
+
+    // Upsert: check if already in library
+    const existing = await ctx.db
+      .query("libraryItems")
+      .withIndex("by_user_openalexId", (q) =>
+        q.eq("userId", user._id).eq("openalexId", args.openalexId)
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        rating: args.rating,
+        paperData: args.paperData,
+        searchableText,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("libraryItems", {
+      userId: user._id,
+      openalexId: args.openalexId,
+      rating: args.rating,
+      title: args.title,
+      searchableText,
+      authors: args.authors,
+      publicationYear: args.publicationYear,
+      doi: args.doi,
+      abstract: args.abstract,
+      paperData: args.paperData,
+      savedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
 });
 ```
 
-### URL Param Serialization Testing (nuqs)
-
-`nuqs/adapters/testing` is already available in installed `nuqs@2.8.8`. The `withNuqsTestingAdapter` function was added in nuqs v2. **No new package needed.**
+### Pattern 2: Search with User Scoping + Pagination
 
 ```typescript
-import { withNuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { render } from '@testing-library/react';
+// convex/library/queries.ts
+export const searchLibrary = query({
+  args: {
+    searchQuery: v.string(),
+    rating: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { status: "unauthenticated" as const };
 
-render(<MyComponent />, { wrapper: withNuqsTestingAdapter({ searchParams: '?q=cancer' }) });
-```
-
-For pure serialization logic (`serializeSearchParams`, `encodeRegions`, `decodeRegions`) that has no React dependency, **no additional packages needed at all** — test them as pure functions in the existing `node` environment.
-
-### Export Function Testing (xlsx/CSV/JSON)
-
-The `xlsx` library is already installed. The only challenge is `URL.createObjectURL` not existing in Node.js — stub it with `vi.stubGlobal`. **No new package needed.**
-
-```typescript
-// In test setup or per-test beforeEach
-vi.stubGlobal('URL', {
-  createObjectURL: vi.fn(() => 'blob:mock-url'),
-  revokeObjectURL: vi.fn(),
+    return await ctx.db
+      .query("libraryItems")
+      .withSearchIndex("search_library", (q) => {
+        let search = q.search("searchableText", args.searchQuery).eq("userId", user._id);
+        if (args.rating !== undefined) {
+          search = search.eq("rating", args.rating);
+        }
+        return search;
+      })
+      .paginate(args.paginationOpts);
+  },
 });
 ```
 
-For testing xlsx workbook structure without triggering file download, test the data transformation functions directly (what goes into `XLSX.utils.json_to_sheet`), not the `XLSX.writeFile` call.
+### Pattern 3: Index-Based Filtering + Sorting (No Search Query)
+
+```typescript
+export const listLibrary = query({
+  args: {
+    sortBy: v.union(v.literal("savedAt"), v.literal("rating"), v.literal("year")),
+    rating: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { status: "unauthenticated" as const };
+
+    let q;
+    if (args.rating !== undefined) {
+      q = ctx.db.query("libraryItems")
+        .withIndex("by_user_rating", (idx) =>
+          idx.eq("userId", user._id).eq("rating", args.rating!)
+        );
+    } else if (args.sortBy === "savedAt") {
+      q = ctx.db.query("libraryItems")
+        .withIndex("by_user_savedAt", (idx) => idx.eq("userId", user._id));
+    } else if (args.sortBy === "year") {
+      q = ctx.db.query("libraryItems")
+        .withIndex("by_user_year", (idx) => idx.eq("userId", user._id));
+    } else {
+      q = ctx.db.query("libraryItems")
+        .withIndex("by_user", (idx) => idx.eq("userId", user._id));
+    }
+
+    return await q.order("desc").paginate(args.paginationOpts);
+  },
+});
+```
+
+### Pattern 4: Two-Code-Path Strategy (Search vs Browse)
+
+**Critical design decision:** Convex search queries always return results in **relevance order**. You cannot sort search results by date or rating. This means the `/library` page needs two distinct query paths:
+
+1. **Search mode** (user typed a query): Use `withSearchIndex` -- results ordered by relevance
+2. **Browse mode** (no search query): Use regular `withIndex` -- results ordered by the chosen sort field
+
+The client switches between these based on whether `q` (search query) is non-empty. This is the standard Convex pattern for combining search with custom sort.
+
+### Pattern 5: Many-to-Many with getManyVia
+
+```typescript
+import { getManyVia } from "convex-helpers/server/relationships";
+
+// Get all collections for a library item
+export const getItemCollections = query({
+  args: { itemId: v.id("libraryItems") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { status: "unauthenticated" as const };
+
+    // Verify ownership
+    const item = await ctx.db.get(args.itemId);
+    if (!item || item.userId !== user._id) return { status: "no_access" as const };
+
+    return await getManyVia(
+      ctx.db,
+      "libraryItemCollections",
+      "collectionId",
+      "by_item",
+      args.itemId
+    );
+  },
+});
+
+// Get all items in a collection (with ownership check)
+export const getCollectionItems = query({
+  args: { collectionId: v.id("collections") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { status: "unauthenticated" as const };
+
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection || collection.userId !== user._id) return { status: "no_access" as const };
+
+    const links = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
+      .collect();
+
+    return await Promise.all(
+      links.map((link) => ctx.db.get(link.libraryItemId))
+    ).then((items) => items.filter(Boolean));
+  },
+});
+```
+
+### Pattern 6: Collection Filter on Library Page
+
+When filtering by collection, query the junction table first, then fetch the items:
+
+```typescript
+export const listLibraryByCollection = query({
+  args: {
+    collectionId: v.id("collections"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { status: "unauthenticated" as const };
+
+    // Verify collection ownership
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection || collection.userId !== user._id) return { status: "no_access" as const };
+
+    // Get item IDs in this collection
+    const links = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
+      .collect();
+
+    // Fetch and return the items
+    const items = await Promise.all(
+      links.map((link) => ctx.db.get(link.libraryItemId))
+    );
+
+    return items.filter(Boolean);
+    // Note: For collections with 100+ items, consider paginating the links query
+    // and using getPage from convex-helpers for more control.
+  },
+});
+```
+
+---
+
+## URL State Design for /library Page
+
+Use `nuqs` parsers to keep all filter/sort state in the URL:
+
+```typescript
+// lib/library/url-state.ts
+import { parseAsString, parseAsInteger, parseAsStringLiteral } from "nuqs";
+
+export const librarySearchParams = {
+  q: parseAsString.withDefault(""),
+  rating: parseAsInteger,                                                // null = all ratings
+  collection: parseAsString,                                             // collection ID or null
+  sort: parseAsStringLiteral(["savedAt", "rating", "year"] as const)
+    .withDefault("savedAt"),
+  page: parseAsInteger.withDefault(1),
+};
+```
+
+This enables bookmarkable, shareable library views:
+`/library?q=machine+learning&rating=4&sort=year`
+
+The pattern is already established in the codebase -- `components/bookmarks-command-center/index.tsx` uses `parseAsInteger` with `useQueryState` for pagination, and `components/search-history-pagination.tsx` does the same.
+
+---
+
+## Integration Points
+
+### Rating -> Library Save Bridge
+
+Currently, `useRatingsStore` (Zustand, persisted to localStorage in `paper-ratings-store`) handles ratings client-only. For v2.1:
+
+1. **Keep** `useRatingsStore` for optimistic UI (instant star display on search results)
+2. **Add** a Convex `useMutation` call in the `RatingSelector` component's `handleRatingChange` to save/update the library item server-side
+3. **Sync direction**: Rating change triggers Convex mutation. Library page reads from Convex (source of truth). Zustand ratings store becomes a write-through cache for the search results page.
+4. **On page load**: For signed-in users, consider hydrating `useRatingsStore` from Convex library items so search results show correct saved ratings. Alternatively, query Convex for ratings of displayed results.
+
+### Auth Gating
+
+The existing `useProtectedQuery` and `useProtectedPaginatedQuery` hooks in `lib/auth/use-auth-query.ts` handle auth gating with the settlement state machine (`auth_loading` -> `query_loading` -> `ready`). Use these for all library queries.
+
+The `/library` route should be added as a protected route. The sidebar already shows auth-dependent navigation.
+
+### Existing UI Components to Reuse
+
+| Component | Reuse For |
+|---|---|
+| `CommandCenterContainer` | Library page layout shell |
+| `CommandCenterToolbar` | Filter bar with search input, sort dropdown, view mode toggle |
+| `CommandCenterList` | Library items list with grid/list view modes |
+| `CommandCenterPagination` | Page controls (if using page-based rather than infinite scroll) |
+| `RatingSelector` | Inline rating display/edit on library items |
+| `CommandCenterHeader` | Library page header with item count |
+
+---
+
+## Alternatives Considered
+
+| Recommended | Alternative | Why Not |
+|---|---|---|
+| Convex `searchIndex` for library search | External search (Algolia, Typesense) | Overkill for per-user library search. Convex search handles 1024 results per query, more than sufficient for a personal library. No infra cost or sync complexity. |
+| Junction table for M:N | Array of collection IDs on item document | Arrays are not indexable in Convex. Junction table enables efficient bidirectional queries and avoids read-modify-write races. |
+| `convex-helpers` `getManyVia` | Manual junction table traversal (query + Promise.all) | `getManyVia` reduces 3-4 lines to 1 with identical semantics. Already installed at 0.1.112. |
+| `nuqs` for URL filter state | Zustand for filter state | Filters should survive page refresh and be shareable/bookmarkable. `nuqs` already established in the codebase for this. Zustand is correct for ephemeral client state only. |
+| Denormalized fields on `libraryItems` | Separate papers table + joins | Convex search and regular indexes only work on the queried table's fields. Denormalization avoids N+1 queries on every list render. |
+| `v.any()` for full paper JSON | Typed Convex schema for all 40+ Work fields | No query value from typing the blob. Only denormalized fields need types. `v.any()` avoids schema maintenance as OpenAlex API evolves. |
+| `usePaginatedQuery` (infinite scroll) | `getPage` from convex-helpers | `getPage` is more powerful but more complex. The simpler `usePaginatedQuery` with `loadMore` is already used in extraction queries with the `useProtectedPaginatedQuery` wrapper. Use the established pattern. |
+| Single `searchableText` field | Two separate search indexes on title and abstract | Convex allows 1 `searchField` per search index. A concatenated field gives best coverage in one index. Multiple search indexes would require multiple queries and result merging. |
+
+## What NOT to Use
+
+| Avoid | Why | Use Instead |
+|---|---|---|
+| New search libraries (Algolia, Meilisearch, Typesense) | Personal library is max hundreds of items per user. External search adds cost, latency, sync complexity for zero benefit. | Convex native `searchIndex` |
+| `@tanstack/react-query` or SWR for library data | Library data lives in Convex, not a REST API. Convex queries are already reactive via subscriptions. Adding another data layer creates cache coherence problems. | Convex `useQuery` / `usePaginatedQuery` |
+| Convex Ents (`@convex-dev/ents`) | Full ORM layer. This project has established patterns for direct Convex queries. Ents would add an abstraction boundary inconsistent with the rest of the codebase. | `convex-helpers` relationship helpers (already installed) |
+| `convex-helpers` `getPage` for primary listing | More complex API intended for bidirectional scrolling and virtual scroll. `usePaginatedQuery` with `loadMore` is simpler and already established. | `usePaginatedQuery` + `useProtectedPaginatedQuery` wrapper |
+| Keeping ratings only in Zustand localStorage | Ratings are ephemeral in localStorage today. v2.1 requires server-side persistence for the library feature. | Convex mutation on rating change, with Zustand as optimistic write-through cache |
+| `filter()` from `convex-helpers` for primary pagination | Known issue (#864): `filter` + `paginate` returns variable page sizes -- pages may have fewer items than requested. For primary listing, use indexes. | Use `withIndex()` for all primary filters (rating, user). Reserve `filter()` only for rare secondary predicates that cannot be indexed. |
+| Any new state management library | Zustand already handles client state. Convex handles server state with reactivity. No gap to fill. | Zustand (client) + Convex (server) |
+
+---
+
+## Convex Limitations to Respect
+
+| Limitation | Impact | Mitigation |
+|---|---|---|
+| Search index: exactly 1 `searchField` per index | Cannot search title AND abstract as separate fields | Create `searchableText` field concatenating title + abstract + authors at save time |
+| Search results: max 1024 per query | Library search capped at 1024 matching results | Acceptable for personal library. Users can narrow with filters. |
+| Search results: always relevance-ordered | Cannot sort search results by date or rating | Two code paths: search mode (relevance order) vs browse mode (index-based custom sort) |
+| `filter()` + `paginate()`: variable page sizes | Pages may have fewer items than requested when filter excludes many rows | Use `withIndex()` for primary filters. Only use `filter()` for non-indexable predicates. |
+| 32 indexes per table | Must budget indexes for `libraryItems` | 5 regular + 1 search = 6 total. Plenty of headroom. |
+| 16 filter fields per search index | Limited equality filters in search queries | Only need `userId` and `rating`. Well within limit. |
+| No `.order()` after `.withSearchIndex()` | Search results are always relevance-ordered | Accept relevance order when searching. Use regular indexes when user wants custom sort without search. |
 
 ---
 
 ## Installation
 
 ```bash
-# Convex backend test isolation
-npm install -D convex-test @edge-runtime/vm
-
-# React hook testing
-npm install -D @testing-library/react @testing-library/user-event @testing-library/jest-dom jsdom @vitejs/plugin-react
+# No new packages needed. Zero npm install commands.
+# All required capabilities exist in the current dependency tree:
+#   convex@1.32.0, convex-helpers@0.1.112, nuqs@2.8.8,
+#   zustand@5.0.5, date-fns@4.1.0, sonner@2.0.7
 ```
-
-**Total new devDependencies: 7 packages**
-
----
-
-## Configuration Changes Required
-
-### vitest.config.ts — Critical Update
-
-The current config uses `environment: "node"` globally. This must change to support three environments:
-- `convex/**` tests → `edge-runtime` (for `convex-test`)
-- Hook/component tests → `jsdom` (for `@testing-library/react`)
-- Everything else → `node` (existing behavior preserved)
-
-```typescript
-// vitest.config.ts — replace current config
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
-
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environmentMatchGlobs: [
-      // Convex function tests need edge-runtime to match Convex's JS environment
-      ["convex/**/*.test.ts", "edge-runtime"],
-      // React hook/component tests need jsdom for DOM APIs
-      ["tests/hooks/**/*.test.ts", "jsdom"],
-      ["tests/components/**/*.test.ts", "jsdom"],
-      // All other tests (existing 43 files) stay in node — no change to behavior
-      ["**", "node"],
-    ],
-    server: {
-      deps: {
-        // Required for convex-test's dynamic module loading to work correctly
-        inline: ["convex-test"],
-      },
-    },
-    include: ["tests/**/*.test.ts", "convex/**/*.test.ts"],
-    exclude: ["tests/live-billing/**/*.test.ts"],
-    setupFiles: ["./tests/setup.ts"],
-  },
-});
-```
-
-### tests/setup.ts — New Global Setup File
-
-```typescript
-// tests/setup.ts
-import "@testing-library/jest-dom/vitest";
-import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
-
-// Auto-cleanup React renders after each test
-afterEach(() => {
-  cleanup();
-});
-```
-
-### convex/test.setup.ts — New Convex Module Loader
-
-```typescript
-// convex/test.setup.ts
-/// <reference types="vite/client" />
-
-// Load all Convex function modules for convex-test
-// The glob must match every file containing Convex functions
-export const modules = import.meta.glob("./**/!(*.*.*)*.*s", { eager: true });
-```
-
-Then in each Convex test file:
-```typescript
-import { convexTest } from "convex-test";
-import schema from "../schema";
-import { modules } from "./test.setup";
-
-test("grants credits on subscription creation", async () => {
-  const t = convexTest(schema, modules);
-  // ... test logic
-});
-```
-
----
-
-## Testing Patterns by Capability
-
-### Pattern A: Convex Mutations/Queries in Isolation
-
-**Approach:** `convex-test` with `edge-runtime` environment. Tests live in `convex/**/*.test.ts`.
-
-**What convex-test provides:**
-- `t.mutation(api.credits.mutations.grantCredits, args)` — runs mutation against in-memory mock DB
-- `t.query(api.credits.queries.getBalance, args)` — reads from mock DB
-- `t.action(api.extraction.actions.runExtraction, args)` — runs action with mocked HTTP calls
-- `t.withIdentity({ subject: "user_123" })` — simulate authenticated user
-- `t.finishAllScheduledFunctions()` — flush scheduled jobs
-
-**What convex-test cannot do:**
-- Cron jobs (no support — skip or test the underlying function directly)
-- Real HTTP calls from actions (mock them with `vi.mock`)
-- Component queries (use `@convex-dev/workflow` patterns as documented)
-
-**File location:** `convex/credits/__tests__/mutations.test.ts`, etc.
-
-### Pattern B: React Hooks with Convex
-
-**Approach:** Two-tier. Choose based on what you're testing.
-
-**Tier 1 — Test business logic, mock Convex hooks (preferred for pure logic):**
-```typescript
-// vi.mock the convex/react module — intercepting the generic underlying hooks
-vi.mock("convex/react", async () => {
-  const actual = await vi.importActual<typeof import("convex/react")>("convex/react");
-  return {
-    ...actual,
-    useQueryGeneric: vi.fn(() => undefined),
-    useMutationGeneric: vi.fn(() => vi.fn()),
-  };
-});
-```
-
-**Tier 2 — Test hook behavior with live mock Convex client (for hooks that depend on Convex reactivity):**
-Use `ConvexReactClientFake` from `convex/react` (if available) or wrap with a `ConvexProvider` using a fake client. This is heavier but tests the full hook contract.
-
-**Key insight for this codebase:** `useSubscriptionState` and `useProtectedQuery` wrap `convex/react`'s `useQuery`. Test the wrapper logic with mocked `useQuery` returns — don't try to bring up a real Convex subscription. The value is in testing the settlement state machine (`auth_loading` → `query_loading` → `ready`), not the Convex transport layer.
-
-**File location:** `tests/hooks/use-subscription-state.test.ts`, etc.
-
-### Pattern C: AI Prompt Builders and Batch Processors
-
-**Approach:** Pure function tests in `node` environment. No mock needed for prompt builder functions (`buildEnhanceQueryPrompts`, `buildEnhancedExtractionPrompt`). For functions that call `executeAIOperation`, inject `MockLanguageModelV3`.
-
-```typescript
-import { MockLanguageModelV3 } from 'ai/test';
-import { processBatch } from '../../lib/ai/core/batch';
-
-const model = new MockLanguageModelV3({
-  doGenerate: async () => ({
-    rawCall: { rawPrompt: null, rawSettings: {} },
-    finishReason: 'stop',
-    usage: { promptTokens: 5, completionTokens: 10 },
-    text: '{"enhancedQuery":"machine learning AND cancer"}',
-  }),
-});
-```
-
-**File location:** `tests/ai-*.test.ts` (matches existing naming convention).
-
-### Pattern D: URL Param Serialization (nuqs + search-params)
-
-**Approach:** Split by purity.
-
-**Pure serialization** (`encodeRegions`, `decodeRegions`, `serializeSearchParams`): pure functions, test in `node` environment with no setup. Already testable today.
-
-**nuqs hook integration** (`useQueryStates` with parsers): requires jsdom + `withNuqsTestingAdapter`.
-
-```typescript
-import { withNuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { renderHook } from '@testing-library/react';
-import { useQueryStates } from 'nuqs';
-import { searchParamsParsers } from '../../lib/search-params/parsers';
-
-const { result } = renderHook(
-  () => useQueryStates(searchParamsParsers),
-  { wrapper: withNuqsTestingAdapter({ searchParams: '?q=cancer&yf=2020&yt=2024' }) }
-);
-```
-
-**File location:** `tests/search-params-*.test.ts` (node env), `tests/hooks/use-search-params.test.ts` (jsdom env).
-
-### Pattern E: Export Functions (CSV/JSON/xlsx)
-
-**Approach:** Test data transformation separately from file download.
-
-**Step 1 — Test transformation functions directly** (what data goes into the sheet): pure functions, `node` environment, no DOM stubs needed.
-
-**Step 2 — Test the xlsx workbook builder** with `vi.stubGlobal` for browser APIs:
-```typescript
-beforeEach(() => {
-  vi.stubGlobal('URL', {
-    createObjectURL: vi.fn(() => 'blob:mock-url'),
-    revokeObjectURL: vi.fn(),
-  });
-  vi.stubGlobal('document', {
-    createElement: vi.fn(() => ({ href: '', download: '', click: vi.fn(), style: {} })),
-    body: { appendChild: vi.fn(), removeChild: vi.fn() },
-  });
-});
-```
-
-Verify the xlsx workbook structure using `XLSX.utils.sheet_to_json(workbook.Sheets['Results'])` — this lets you assert on cell values without triggering file download.
-
-**File location:** `tests/extraction-export.test.ts` (matches existing naming convention).
-
----
-
-## Alternatives Considered
-
-| Recommended | Alternative | When to Use Alternative |
-|-------------|-------------|-------------------------|
-| `convex-test` | Local Convex OSS backend | When testing actual cron jobs, real HTTP in actions, or when convex-test limitations block a test scenario. Slower setup but real backend semantics. |
-| `@testing-library/react` + `renderHook` | `@testing-library/react-hooks` (deprecated) | Never — the separate package was deprecated when RTL added `renderHook` directly in v13. Don't add the old package. |
-| `vi.mock("convex/react")` | `ConvexReactClientFake` | Use `ConvexReactClientFake` when testing hooks that depend on Convex's subscription reactivity model, not just return values. |
-| `withNuqsTestingAdapter` | Mocking `useRouter` from Next.js | Use the adapter — it's built for this and avoids fragile Next.js router mocking. |
-| `vi.stubGlobal` for xlsx | Running tests in browser environment | `vi.stubGlobal` is simpler and faster. Browser environment for unit tests adds significant complexity. |
-
----
-
-## What NOT to Add
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `@testing-library/react-hooks` | Deprecated since React Testing Library v13 added `renderHook` directly | `@testing-library/react`'s built-in `renderHook` |
-| `jest-environment-jsdom` | Jest package, not compatible with Vitest | `jsdom` package + `environmentMatchGlobs` in vitest config |
-| `msw` (Mock Service Worker) | Heavyweight network mocking; overkill for unit tests. The AI SDK's `MockLanguageModelV3` handles LLM mocking at the model level. | `MockLanguageModelV3` from `ai/test` for AI calls, `vi.mock` for HTTP fetch |
-| `nock` | Node.js HTTP interceptor; same concern as msw | `vi.mock` for fetch, or `MockLanguageModelV3` for AI SDK calls |
-| `vitest-environment-edge-runtime` | Separate npm package that duplicates `@edge-runtime/vm` functionality. Does not appear to exist as a standalone package. | `@edge-runtime/vm` directly (used by `environmentMatchGlobs: "edge-runtime"`) |
-| `convex/testing` (local Convex backend) | Requires running a local backend process, CI setup, much slower | `convex-test` for unit tests; existing live-billing tests for integration |
-| `promptfoo` or `poyro` | LLM evaluation frameworks — appropriate for eval harnesses, not unit tests | `MockLanguageModelV3` from `ai/test` for deterministic unit testing |
-| `vitest-evals` | LLM eval framework, non-deterministic by design | `MockLanguageModelV3` gives deterministic control |
-| `happy-dom` | Alternative DOM implementation; less mature than jsdom | `jsdom` (more complete, better ecosystem support) |
 
 ---
 
 ## Version Compatibility
 
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| `convex-test@^0.0.41` | `convex@^1.16.4` | Project has `convex@1.31.7` — compatible |
-| `convex-test@^0.0.41` | `vitest` any version | Uses `environmentMatchGlobs: "edge-runtime"` which vitest 3.x supports natively |
-| `@edge-runtime/vm@^5.0.0` | `vitest@^3.x` | Vitest 3's `edge-runtime` environment uses `@edge-runtime/vm` internally |
-| `@testing-library/react@^16.3.2` | React 19 | RTL 16 explicitly supports React 19. Project has `react@19.2.4`. |
-| `@testing-library/jest-dom@^6.9.1` | `vitest` | Import from `@testing-library/jest-dom/vitest` (not `/jest`) for Vitest matchers |
-| `MockLanguageModelV3` (from `ai/test`) | `ai@6.0.91` (installed) | Confirmed: `ai/test` subpath export exists in installed package |
-| `withNuqsTestingAdapter` (from `nuqs/adapters/testing`) | `nuqs@2.8.8` (installed) | Confirmed: nuqs v2+ ships the testing adapter built-in |
-| `@vitejs/plugin-react@^5.1.4` | `vitest@^3.x`, React 19 | Required for JSX transform in jsdom environment |
-
----
-
-## Stack Patterns by Variant
-
-**If testing a Convex mutation or query in isolation:**
-- File in `convex/**/*.test.ts`
-- `environmentMatchGlobs` routes it to `edge-runtime`
-- Use `convexTest(schema, modules)` from `convex-test`
-- Mock external calls with `vi.mock`
-
-**If testing a React hook that calls `useQuery` or `useMutation`:**
-- File in `tests/hooks/*.test.ts`
-- `environmentMatchGlobs` routes it to `jsdom`
-- Use `renderHook` from `@testing-library/react`
-- Mock `convex/react`'s `useQueryGeneric` / `useMutationGeneric` with `vi.mock`
-
-**If testing a pure business logic function (prompt builder, credit calculator, region encoder):**
-- File in `tests/*.test.ts`
-- Stays in `node` environment (existing behavior)
-- No additional setup — exactly like the existing 43 test files
-
-**If testing an AI batch processor or executor:**
-- File in `tests/*.test.ts` (node environment)
-- Import `MockLanguageModelV3` from `ai/test`
-- Control responses via `doGenerate` or `mockValues`
-
-**If testing nuqs-integrated hooks:**
-- File in `tests/hooks/*.test.ts` (jsdom environment)
-- Wrap with `withNuqsTestingAdapter` from `nuqs/adapters/testing`
-- Use `renderHook` to inspect hook state changes
-
-**If testing xlsx/CSV export builders:**
-- Prefer pure function tests in `node` environment
-- For download-triggering code: use `vi.stubGlobal` for `URL` and `document` APIs
+| Package | Version | Compatible With | Notes |
+|---|---|---|---|
+| `convex` | 1.32.0 | `convex-helpers` 0.1.112 | Both current. Search indexes, pagination, compound indexes all stable. |
+| `convex-helpers` | 0.1.112 | `convex` 1.32.0 | Import paths: `convex-helpers/server/relationships`, `convex-helpers/server/filter` |
+| `nuqs` | 2.8.8 | Next.js 16.1.6 | `NuqsAdapter` already configured in root layout. `parseAsString`, `parseAsInteger`, `parseAsStringLiteral` all available. |
+| `zustand` | 5.0.5 | React 19.2.4 | Persist middleware already in use for `useRatingsStore` |
 
 ---
 
 ## Sources
 
-- `npm show convex-test` + `npm show @edge-runtime/vm` — versions 0.0.41 / 5.0.0 verified
-- `npm show @testing-library/react` + `@testing-library/user-event` + `@testing-library/jest-dom` — versions 16.3.2 / 14.6.1 / 6.9.1 verified
-- `npm show jsdom` — version 28.1.0 verified
-- `npm show @vitejs/plugin-react` — version 5.1.4 verified
-- [convex-test official docs](https://docs.convex.dev/testing/convex-test) — `environmentMatchGlobs` config, `modules` glob pattern, `convexTest()` usage — HIGH confidence
-- [Testing React Components with Convex](https://stack.convex.dev/testing-react-components-with-convex) — `vi.mock("convex/react")` pattern, `ConvexReactClientFake` — HIGH confidence
-- [AI SDK Core Testing docs](https://ai-sdk.dev/docs/ai-sdk-core/testing) — `MockLanguageModelV3`, `MockEmbeddingModelV3`, import from `ai/test` — HIGH confidence
-- [nuqs testing docs](https://nuqs.dev/docs/testing) — `withNuqsTestingAdapter` from `nuqs/adapters/testing` — HIGH confidence
-- Direct inspection of `node_modules/ai/package.json` exports — confirmed `./test` subpath exists in `ai@6.0.91` — HIGH confidence
-- Direct inspection of `node_modules/nuqs/package.json` — confirmed `nuqs@2.8.8` installed, adapter available — HIGH confidence
-- [Vitest environmentMatchGlobs docs](https://vitest.dev/config/environment.html) — routing multiple environments in one config — HIGH confidence
-- Direct codebase inspection: `vitest.config.ts`, `package.json`, `lib/ai/core/execute.ts`, `lib/ai/core/batch.ts`, `lib/extraction/export.ts`, `lib/search-params/parsers.ts`, `lib/auth/use-auth-query.ts`, 43 existing test files — HIGH confidence
+- [Convex Full Text Search docs](https://docs.convex.dev/search/text-search) -- searchIndex definition, filterFields, 1024 result limit, relevance ordering, 1 searchField per index (HIGH confidence)
+- [Convex Indexes docs](https://docs.convex.dev/database/reading-data/indexes/) -- compound indexes, 32 per table limit, 16 fields per index, index ordering rules (HIGH confidence)
+- [Convex Pagination docs](https://docs.convex.dev/database/pagination) -- `.paginate()`, `usePaginatedQuery`, cursor-based pagination, reactive page sizes (HIGH confidence)
+- [Convex Relationship Structures](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas) -- junction table pattern for M:N, indexing strategies, composite index for dedup (HIGH confidence)
+- [convex-helpers Relationship Helpers](https://stack.convex.dev/functional-relationships-helpers) -- `getManyVia`, `getManyFrom`, `getAll`, import from `convex-helpers/server/relationships` (HIGH confidence)
+- [convex-helpers Complex Filters](https://stack.convex.dev/complex-filters-in-convex) -- `filter()` helper import and usage, hybrid index + filter pattern (HIGH confidence)
+- [convex-helpers filter + pagination issue #864](https://github.com/get-convex/convex-helpers/issues/864) -- variable page sizes confirmed as expected behavior, not a bug (HIGH confidence)
+- [convex-helpers npm](https://www.npmjs.com/package/convex-helpers) -- latest 0.1.107 on npm, 0.1.112 installed locally (HIGH confidence)
+- [Convex Advanced Pagination (getPage)](https://stack.convex.dev/pagination) -- `getPage` helper capabilities, not needed for this use case (HIGH confidence)
+- Direct codebase inspection: `convex/schema.ts` (existing 11 tables, index patterns), `lib/store.ts` (`useRatingsStore`), `lib/auth/use-auth-query.ts` (`useProtectedPaginatedQuery`), `components/bookmarks-command-center/index.tsx` (nuqs + pagination pattern), `components/rating-selector.tsx` (rating flow), `package.json` (all versions) -- HIGH confidence
 
 ---
-*Stack research for: v2.0 TDD & Test Coverage*
+*Stack research for: v2.1 Library & Collections*
 *Researched: 2026-02-28*

@@ -1,252 +1,199 @@
 # Pitfalls Research
 
-**Domain:** Adding TDD & test coverage backfill to an existing Next.js + Convex + AI app
+**Domain:** Adding library, collections, and saved-items features to an existing Next.js + Convex academic search app
 **Researched:** 2026-02-28
-**Confidence:** HIGH (verified against Convex docs, convex-test GitHub issues, Vercel AI SDK docs, nuqs docs, Clerk docs, codebase analysis)
+**Confidence:** HIGH (verified against Convex official docs, codebase analysis, Convex community patterns)
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: `ctx.auth.getUserIdentity()` Fails Inside convex-test for Queries and Mutations
+### Pitfall 1: Storing Full OpenAlex JSON Blobs Causes Document Bloat and Bandwidth Explosion
 
 **What goes wrong:**
-Functions that call `ctx.auth.getUserIdentity()` inside Convex queries and mutations throw an `asyncSyscall does not support: 1.0/getUserIdentity` error in convex-test. Since most auth-gated code in this codebase flows through `requireAuth()` and `getCurrentUser()` in `convex/lib/auth.ts`, this blocks testing `ensureUser`, `updateProfile`, `requirePlanTier`, `requireExtractionEnabled`, and any mutation that calls those helpers. The convex-test library's `t.withIdentity()` sets an identity for actions via `actionFromPath`, but as of version 0.0.41 (confirmed open issue, February 2026), queries and mutations do NOT propagate this identity context when triggers execute nested functions.
+The v2.1 spec says "rating an item saves it to user's library (full JSON entry in Convex)." An OpenAlex `Work` object is a deeply nested JSON structure containing `authorships[]` (each with `author`, `institutions[]`, `countries[]`), `concepts[]`, `topics[]`, `primary_location` with nested `source`, `biblio`, `open_access`, `apc_list`, `grants[]`, `referenced_works[]` (often 30-100 IDs), `related_works[]` (10 IDs), `abstract_inverted_index` (can be 2-5 KB alone), and more. A single Work can be 5-30 KB of JSON. Storing the full object as-is in a Convex document means:
+
+1. **Document size risk:** Convex has a 1 MiB document limit with max 1024 fields and max nesting depth of 16. The `abstract_inverted_index` alone is a deeply nested object with hundreds of keys, and `authorships` arrays can have 50+ entries each containing nested objects. A paper with 200+ authors (common in physics/medicine) could approach field limits.
+2. **Bandwidth cost:** Every time the library page loads, ALL stored fields are transferred to the client. With Convex's reactive queries, every update to any library item re-sends the full document. At 20 KB per item and 500 items in a library, that is 10 MB per page load. Convex charges $0.20-0.22/GiB for database bandwidth beyond the included tier.
+3. **Array element limit:** Convex arrays are capped at 8192 elements. A paper's `referenced_works` can have hundreds of entries, and `abstract_inverted_index` values are arrays of positions. These won't hit the limit individually but accumulate risk if the schema stores everything.
 
 **Why it happens:**
-The `asyncSyscallImpl()` function in convex-test lacks a handler for the `"1.0/getUserIdentity"` syscall. Additionally, when trigger functions execute nested queries/mutations, the context creation overwrites the original auth context with `_userIdentity: null`. This is a known open bug in the convex-test library (GitHub issue #50, opened October 2025, still open February 2026).
+The requirement says "full JSON" which developers interpret as storing the entire OpenAlex API response verbatim. This feels safe because "we might need it later" and avoids deciding which fields matter upfront. The `PaperResult` type in `lib/types/search.types.ts` is literally `type PaperResult = Work` -- the entire SDK type with no field selection.
 
 **How to avoid:**
-- **Do not try to test `requireAuth`-gated logic end-to-end through convex-test.** Instead, extract the business logic being tested into pure functions that take explicit parameters rather than a `ctx` with identity.
-- For functions like `createUserWithDefaults`, `applyTierFreeCreditCap`, `selectCanonicalSubscription`, and `resolveEffectivePlan`, test them directly as pure functions — these are already extractable.
-- For auth guard logic (`requireAuth`, `getCurrentUser`, `requirePlanTier`), use the **local OSS backend** approach (`convex dev --local`) for integration tests, OR test the guard's error throwing by constructing minimal fake ctx objects with `getUserIdentity` stubbed via `vi.fn()`.
-- Use `convex-test` only for non-auth database operations where `t.withIdentity()` flows through an action (not a query/mutation).
+- Define a `LibraryItem` schema in Convex that stores only the fields needed for display and filtering: `openalexId`, `title`, `authors` (names only, not full authorship objects), `publicationYear`, `doi`, `abstract` (reconstructed text, not inverted index), `citationCount`, `isOpenAccess`, `primarySourceName`, `type`. This covers all display and filter needs.
+- Store the `openalexId` (e.g., `W2741809807`) as the canonical reference. If the user needs full details, fetch fresh from OpenAlex API on demand -- it is free, fast, and always current.
+- Drop `abstract_inverted_index`, `referenced_works`, `related_works`, `grants`, `apc_list`, `biblio`, `mesh`, `sustainable_development_goals`, `keywords`, and the full `authorships` nesting. These are never displayed in a library list view.
+- Target 1-2 KB per library item document instead of 15-30 KB.
 
 **Warning signs:**
-- `asyncSyscall does not support: 1.0/getUserIdentity` in test output
-- Tests for Convex mutations that call `requireAuth` failing at the identity check, not the business logic
+- Library page load time exceeds 500ms for users with 100+ items
+- Convex dashboard shows database bandwidth spiking when library page is open
+- Schema validation errors on documents with deeply nested authorship arrays
+- `v.any()` used in schema for the library item data field (defers validation, hides bloat)
 
-**Phase to address:** Phase 1 (Vitest infrastructure & pure function tests) — establish the boundary between "testable with convex-test" and "requires local backend or pure function extraction."
+**Phase to address:** Phase 1 (Schema design) -- define the normalized `libraryItems` schema before any mutation code is written. This is irreversible without a data migration if done wrong.
 
 ---
 
-### Pitfall 2: Testing "use node" Actions Requires Vitest's Node Environment, Not Convex's Edge Runtime Mock
+### Pitfall 2: Many-to-Many Collection Membership Without a Junction Table
 
 **What goes wrong:**
-All Convex actions in this codebase marked `"use node"` (the entire `convex/ai/` directory, `convex/extraction/workpoolActions.ts`, etc.) use Node.js APIs. The `convex-test` library runs in Vitest's configured environment. But `convex-test` internally uses Vercel's Edge Runtime mock, which diverges from the actual Convex node runtime in important ways. The `AI_PROVIDER` and `AI_MODEL` env vars read in `convex/ai/config.ts`, the `generateObject` import from the `ai` package, and external API calls via `fetch` all behave differently under the edge mock vs. Node.
+Items can belong to multiple collections. There are two ways to model this, and choosing wrong creates cascading problems:
+
+**Bad approach A -- Array of collection IDs on the library item:**
+```typescript
+libraryItems: defineTable({
+  userId: v.id("users"),
+  collectionIds: v.array(v.id("collections")),  // BAD
+  // ...
+})
+```
+This fails because: (a) Convex arrays cannot be indexed -- you cannot query "all items in collection X" without scanning every library item for the user, (b) removing a collection requires scanning ALL items to remove the reference, (c) Convex arrays are limited to 8192 elements (not a real risk here but the pattern is wrong), (d) adding/removing collection membership mutates the library item document, triggering reactive re-renders of unrelated UI.
+
+**Bad approach B -- Array of item IDs on the collection:**
+```typescript
+collections: defineTable({
+  userId: v.id("users"),
+  name: v.string(),
+  itemIds: v.array(v.id("libraryItems")),  // BAD
+  // ...
+})
+```
+Same indexing problem in reverse -- cannot efficiently query "which collections contain item X?" Also, the collection document grows unboundedly as items are added.
 
 **Why it happens:**
-The current `vitest.config.ts` sets `environment: "node"`, which is correct for the test runner itself, but `convex-test` internally wraps functions in a Vercel Edge Runtime mock regardless. This means `process.env` access in `"use node"` actions may behave differently, and global `fetch` mocking via `vi.stubGlobal("fetch", ...)` does NOT affect the `t.fetch()` call path used by HTTP actions.
+Arrays feel simpler than a junction table. Developers think "this is a NoSQL database, just embed it." The Convex docs explicitly recommend relationship tables for many-to-many but developers skip that page.
 
 **How to avoid:**
-- For testing `"use node"` Convex actions that call LLMs: **do not run them through `convex-test` at all**. Import the underlying pure logic functions directly into Vitest and test them in isolation.
-- The pattern already used in this codebase is correct: `createAIAction` wraps logic; test the inner `getEnhanceQueryConfig`, `processScreeningBatch`, `buildEnhancedExtractionPrompt`, etc. directly via import.
-- For `getModel()` which reads `SERVER_AI_CONFIG` (env vars): stub the env before importing using `vi.stubEnv()` or `process.env` mutation followed by `vi.resetModules()` and dynamic import — exactly as `tests/extraction-feature-flags.test.ts` already does.
+Use a dedicated junction table with dual indexes:
+```typescript
+collectionItems: defineTable({
+  collectionId: v.id("collections"),
+  libraryItemId: v.id("libraryItems"),
+  addedAt: v.number(),
+})
+  .index("by_collection", ["collectionId"])
+  .index("by_item", ["libraryItemId"])
+  .index("by_collection_item", ["collectionId", "libraryItemId"])
+```
+The composite index `by_collection_item` enables O(1) existence checks ("is this item in this collection?") via `.withIndex("by_collection_item", q => q.eq("collectionId", x).eq("libraryItemId", y)).unique()`.
 
 **Warning signs:**
-- `fetch is not defined` in tests for Convex actions
-- `process.env.AI_PROVIDER` returning `undefined` despite `vi.stubEnv()` being called before the module is imported
-- convex-test throwing runtime errors for node-only APIs (e.g., `Buffer`, `stream`, `fs`)
+- Schema uses `v.array(v.id(...))` for collection membership
+- Queries use `.filter()` with `.includes()` to check collection membership instead of index lookups
+- Collection deletion requires loading all library items to remove references
 
-**Phase to address:** Phase 1 (test infrastructure) — document which Convex code paths are testable via convex-test vs. direct import vs. local backend.
+**Phase to address:** Phase 1 (Schema design) -- the junction table must exist from the start. Migrating from embedded arrays to a junction table after data exists requires a full data migration.
 
 ---
 
-### Pitfall 3: Mocking `generateObject` from the Vercel AI SDK the Wrong Way
+### Pitfall 3: Pagination with Client-Side Filters Produces Empty or Undersized Pages
 
 **What goes wrong:**
-Developers trying to unit-test AI prompt builders and batch processors mock `generateObject` by importing it and wrapping it with `vi.mock('ai', ...)`. This breaks in two ways: (1) `ai/test` exports `MockLanguageModelV3` which is the official approach, but importing `ai/test` outside a Vitest worker context (e.g., in a startup script or server-side demo) causes `"Vitest failed to access its internal state"` since `ai@5.0.27`. (2) Mocking the module directly often misses the retry/repair path in `executeAIOperation` which calls `generateObject` multiple times on schema validation failures.
+The library page needs filtering by rating, collection, date saved, text search, and sort. If pagination is done at the Convex query level using `.paginate()` and then filters are applied in TypeScript (either server-side in the query function or client-side), pages will be undersized or empty. Example: user requests page of 20 items, Convex returns 20, TypeScript filter for "rating >= 4" keeps only 3. The user sees a page with 3 items and must click "load more" repeatedly.
+
+This is a documented Convex limitation: "filtering in code afterwards can result in a smaller page or even an empty page" and "can slow down load times and cost database bandwidth as it traverses the entire table across many pages."
 
 **Why it happens:**
-The `executeAIOperation` function in `lib/ai/core/execute.ts` calls `generateObject` inside a retry loop with a `repairText` callback. A simple mock that returns a fixed response only covers the happy path — it cannot test that retry logic, the `repairJSON`/`repairSingleField` path, or `AIMaxRetriesExceededError` propagation.
+Convex's `.paginate()` operates on the database cursor level. It returns N documents from the index, then your code filters them. The cursor has already advanced past the filtered-out documents. You cannot "back-fill" the page to reach the requested size without issuing another paginate call, which creates a different cursor chain.
+
+The existing codebase already does client-side pagination for search results (see `results-list.tsx` using `ITEMS_PER_PAGE` with in-memory slicing of `filteredResults`), which works because ALL search results are fetched from OpenAlex at once. But library items live in Convex and could number in the thousands -- loading all items and filtering client-side won't scale.
 
 **How to avoid:**
-- Use `MockLanguageModelV3` from `ai/test` exclusively in Vitest test files. Never import it in production code or startup scripts.
-- To test retry/repair behavior: configure `MockLanguageModelV3` to throw `AIValidationError` on the first call and return a valid response on the second. The `mockValues()` helper from `ai/test` supports this pattern.
-- To test `processBatch` partial failures (`Promise.allSettled` behavior): configure some mock calls to reject and assert on the `errors` array — the batch processor already separates `results` and `errors`.
-- Keep the `MockLanguageModelV3` import gated behind the test file boundary. Never export it from a shared module.
+- **Use indexes for every filterable dimension.** Rating filter: index `by_user_rating` on `["userId", "rating"]`. Date filter: index `by_user_savedAt` on `["userId", "savedAt"]`. Collection filter: query the `collectionItems` junction table by collection, then batch-fetch the items.
+- **Use the `filter` helper from `convex-helpers`** for conditions that cannot be expressed as indexes (e.g., text search on title). This helper integrates with `.paginate()` and handles the undersized-page problem by continuing to scan until the requested page size is filled.
+- **For collection-filtered pagination:** Do NOT paginate `libraryItems` and then check collection membership. Instead, paginate `collectionItems` by collection index, then batch-fetch the library items for each page. This inverts the query direction and ensures full pages.
+- **For text search:** Use Convex's `.withSearchIndex()` which supports pagination natively. Define a search index on the `title` field (and optionally `abstract`).
 
 **Warning signs:**
-- `"Vitest failed to access its internal state"` at runtime (not in tests)
-- Tests that only test the happy path and never trigger retry logic
-- Mocking `generateObject` directly with `vi.mock('ai', ...)` instead of passing a `MockLanguageModelV3` through the config
+- Users report "Load More" button needed 5+ times to see results when filters are active
+- Library page shows 2-3 items when 50 match the filter
+- Query function uses `.paginate()` followed by `.filter()` or array `.filter()` on the result
 
-**Phase to address:** Phase 2 (AI/LLM unit tests) — establish the MockLanguageModelV3 pattern as the team standard before any AI tests are written.
+**Phase to address:** Phase 2 (Library queries) -- design filter-aware pagination from the start. Retrofitting pagination strategy after the queries are written and the UI depends on the cursor format requires rewriting both backend and frontend.
 
 ---
 
-### Pitfall 4: Encoding Existing Bugs as Tests During Backfill
+### Pitfall 4: Collection Deletion Without Cascade Leaves Orphaned Junction Records
 
 **What goes wrong:**
-When backfilling tests for code that already exists, it is easy to write a test that asserts the current (possibly wrong) behavior rather than the intended behavior. For example, if `calculateCreditsToDeductFromUsage` has an off-by-one in the markup multiplier, a backfilled test that directly inverts the implementation to produce the expected value will pass today and also pass when the bug is "fixed" by accident — because the test encoded the bug, not the spec.
+User deletes a collection. The mutation deletes the `collections` document but forgets to delete the corresponding `collectionItems` junction records. Now `collectionItems` rows reference a non-existent collection ID. Symptoms:
+1. "Ghost" items appear when querying junction table by item (the item appears to belong to a deleted collection)
+2. Item count badges show wrong numbers
+3. Re-creating a collection with the same name doesn't recover the old memberships (different `_id`)
+4. Database accumulates unbounded orphan records over time
+
+Worse: if the deletion mutation tries to delete all junction records AND the collection in a single transaction, it can hit Convex's per-transaction limits. A user with 1000+ items in a collection would require deleting 1000+ `collectionItems` documents plus the collection itself -- Convex allows max 16,000 document writes per transaction but scanning 1000+ documents also burns the 32,000 document scan budget.
 
 **Why it happens:**
-Backfill tests are written by reading the implementation, not the specification. The test author defaults to `expect(result).toBe(actualOutput)` rather than `expect(result).toBe(specifiedValue)`. The test becomes a mirror of the code rather than a constraint on it.
+Convex has no foreign key constraints or cascade delete built in. Developers coming from SQL assume the ORM handles it. In Convex, you must manually delete related documents. The mutation looks "done" after `ctx.db.delete(collectionId)` because the UI immediately stops showing the collection (reactive query updates).
 
 **How to avoid:**
-- For every function being backfill-tested, write the expected value from the business specification, not from running the existing code. For `calculateCreditsToDeductFromUsage`, the expected value should be computed from documented pricing (e.g., `$0.25/1M input tokens at 40x markup = X credits`) — this is the pattern already used in `tests/ai-credit-billing.test.ts`.
-- Before writing the test, ask: "If I delete this function's body and rewrite it from scratch, would this test catch a wrong implementation?" If no, the test encodes implementation details.
-- For subscription state machine tests: derive expected states from the documented entitlement spec (`ENTITLED_SUBSCRIPTION_STATUSES`), not by checking what the current code returns. The existing `tests/subscription-entitlements.test.ts` does this correctly.
+- Implement cascade delete in the collection deletion mutation. Query all `collectionItems` with `.withIndex("by_collection", q => q.eq("collectionId", id))`, then delete each one, then delete the collection.
+- For collections with fewer than ~500 items, do this in a single mutation (well within Convex's 16,000 write limit).
+- For potentially large collections, use the scheduled deletion pattern: (1) soft-delete the collection by setting a `deletedAt` field, (2) filter out soft-deleted collections from all queries, (3) schedule a background mutation that deletes junction records in batches of 500, (4) delete the collection document after all junction records are cleaned up.
+- Add a guard in junction-table queries: if `ctx.db.get(collectionId)` returns `null`, skip/delete the orphan record (self-healing).
 
 **Warning signs:**
-- The test was written by running the existing function and copying its output as the assertion
-- Expected values in tests match implementation constants exactly (e.g., `expect(credits).toBe(calculateCreditsToDeductFromUsage(usage))` — circular)
-- No test catches a mutation to the function under test because the test value adjusts with the code
+- Collection delete mutation has no junction table cleanup code
+- `collectionItems` table row count only grows, never shrinks
+- UI shows "1 collection" badge on items after their only collection was deleted
 
-**Phase to address:** All phases — enforce in code review that expected values have documented business justification, not just "that's what the code returns."
+**Phase to address:** Phase 3 (Collection CRUD) -- cascade delete must be part of the delete mutation from the start, not added as a bug fix later.
 
 ---
 
-### Pitfall 5: Testing `withAuthAndCreditsBatch` / `withAuthAndCredits` Through the Full Action Stack
+### Pitfall 5: Auth Guard Inconsistency Between Library Reads and Writes
 
 **What goes wrong:**
-The `withAuthAndCreditsBatch` helper in `convex/ai/helpers.ts` calls `ctx.runQuery(internal.users.internal.getCurrentUser)`, `ctx.runQuery(api.credits.queries.getMyBalance)`, `ctx.runMutation(internal.credits.internal.deductCredits)`, and external PostHog tracking. Trying to test this through `convex-test` requires mocking all of those internal references, which the convex-test library does not support natively (it doesn't intercept `internal.*` calls). Developers spend hours trying to make `t.action(ai.actions.screenPapers, ...)` work, only to discover the action can't run because `internal.users.internal.getCurrentUser` requires a real backend.
+The codebase has two auth patterns: `getCurrentUser()` (returns `null` for unauthenticated -- used in queries) and `requireAuth()` (throws `UNAUTHENTICATED` error -- used in mutations). If library queries use `getCurrentUser()` and return empty results for unauthenticated users (silent failure), but library mutations use `requireAuth()` and throw errors, the UX is inconsistent: an unauthenticated user can visit `/library`, see an empty page (no error), try to rate a paper, and get a hard error.
+
+More dangerously: if a library query forgets BOTH guards and uses `ctx.auth.getUserIdentity()` directly without checking ownership, a user could potentially read another user's library items by guessing document IDs (Convex IDs are not sequential but are guessable if leaked).
 
 **Why it happens:**
-The helper's auth + credits + analytics pipeline combines multiple Convex internal function calls with external I/O. This makes it essentially integration-test territory. But developers treat it as a unit test target because it is "just a function."
+The existing codebase uses both patterns (see `users/queries.ts` using `getCurrentUser` which returns null, vs the `requireAuth` pattern in mutations). Developers copy the query pattern for new library queries but don't consider the full flow. The "return null" pattern is correct for queries like "get my subscription" where a null result is meaningful, but wrong for `/library` where absence of auth should redirect, not show empty.
 
 **How to avoid:**
-- **Test the helper's constituent parts, not the helper itself:**
-  - Test `calculateServerCreditsToDeduct` directly (pure function, already testable)
-  - Test `throwStructuredAIError` by constructing various error types and asserting on the thrown ConvexError code
-  - Test `isApiKeyMissingMessage` and `hasStructuredConvexCode` as pure boolean functions
-  - Test the error classification table exhaustively (every `AIError` subtype maps to the right Convex error code)
-- For integration testing `withAuthAndCreditsBatch` end-to-end: use a local Convex backend with seeded test data.
-- Do not attempt to mock `ctx.runQuery` / `ctx.runMutation` inside convex-test — there is no supported injection point.
+- For ALL library queries AND mutations: use `requireAuth(ctx)` which throws on unauthenticated. The `/library` page should never silently show empty for a logged-out user.
+- Add `userId` ownership check on EVERY library/collection operation: `if (item.userId !== user._id) throw createError("FORBIDDEN", ...)`. Follow the `resolveOwnedJob` pattern from `convex/extraction/queries.ts` -- create a `resolveOwnedLibraryItem` helper.
+- On the Next.js side: protect the `/library` route with Clerk's middleware so unauthenticated users are redirected to sign-in before the page loads. This is defense-in-depth (Convex guards are the real protection).
+- Never expose a query like `getLibraryItem({ id })` without ownership validation -- the item must belong to the requesting user.
 
 **Warning signs:**
-- Test imports `internal` from `convex/_generated/api` and tries to pass it to `t.action()`
-- Test fails with `Cannot find module 'convex/_generated/api'` because the generated file doesn't exist in test context
-- Test requires more than 50 lines of setup mocking before the first `expect()`
+- Library query uses `getCurrentUser()` instead of `requireAuth()`
+- Library query takes an `itemId` argument without checking that the item's `userId` matches the caller
+- `/library` page shows empty state for unauthenticated users instead of redirect/login prompt
+- No test verifies that User A cannot read User B's library items
 
-**Phase to address:** Phase 2 (AI feature unit tests) — draw the unit test boundary at pure functions; integration test at the local backend level.
+**Phase to address:** Phase 1 (Schema + auth helpers) -- establish the `resolveOwnedLibraryItem` pattern before any query/mutation code is written. Phase 2 should include auth boundary tests.
 
 ---
 
-## Moderate Pitfalls
-
-### Pitfall 6: nuqs Custom Parsers Tested for Round-Trip Correctness, Not Bijection
+### Pitfall 6: Stale Library Items When OpenAlex Source Data Changes
 
 **What goes wrong:**
-The custom `parseAsRegions` parser in `lib/search-params/parsers.ts` encodes arrays of region strings (like `['eastern_africa', 'ZA']`) into compact URL codes (`'AF_E,ZA'`). Tests often only check one direction: `expect(decodeRegions(encodeRegions(['africa']))).toEqual(['africa'])` (serialize then parse). They do not check the reverse: `expect(encodeRegions(decodeRegions('AF'))).toBe('AF')`. If the codec is not perfectly bijective — for example, if `encodeRegions(['africa'])` produces `'AF'` but `decodeRegions('AF')` produces `['africa']` while `encodeRegions(['africa'])` still produces `'AF_FULL'` — the URL round-trip silently drops or mutates filter state.
+Library items store a snapshot of paper metadata at save time. OpenAlex updates its data continuously: citation counts change, retractions happen, new authors are added, DOIs are corrected, abstracts are updated. A paper saved in January 2026 with `citationCount: 45` may have `citationCount: 312` by December 2026. If the library displays the stale snapshot, users see outdated citation counts, miss retraction notices, and export incorrect metadata.
+
+The risk is higher for academic tools where citation accuracy matters. A systematic review that exports library data with stale citation counts undermines the research.
 
 **Why it happens:**
-Developers test the common path (known input → known output) but not the codec property that matters most for URL state: every URL string should survive a parse→serialize round-trip unchanged, and every in-memory value should survive a serialize→parse round-trip unchanged.
+Storing the full paper snapshot at save time is the simplest implementation. Developers think "the user saved this, so they want what they saved." But users actually want a living bookmark, not a dead snapshot. The distinction between "save the reference" and "save the data" is not made explicit in the requirements.
 
 **How to avoid:**
-- For `parseAsRegions` and all custom nuqs parsers, write bijectivity property tests:
-  ```typescript
-  // Test every INTERNAL_TO_URL_CODE entry for round-trip correctness
-  for (const [internal, urlCode] of Object.entries(INTERNAL_TO_URL_CODE)) {
-    expect(decodeRegions(encodeRegions([internal]))).toEqual([internal]);
-    expect(encodeRegions(decodeRegions(urlCode))).toBe(urlCode);
-  }
-  ```
-- Use nuqs's `testParseThenSerialize` and `testSerializeThenParse` helpers from `nuqs/testing` if available, or implement equivalent checks.
-- The `clearOnDefault: false` setting on `serializeSearchParams` means empty arrays ARE written to the URL — test that `encodeRegions([])` returns `''` and `decodeRegions('')` returns `[]`.
+- **Store minimal metadata + canonical ID.** The `openalexId` is the canonical reference. Store enough metadata for display (title, authors, year, DOI) but accept that citation counts, open access status, and other mutable fields will go stale.
+- **Display stale data with age indicator.** Show "Saved 3 months ago" next to library items. Users understand that citation counts may be outdated.
+- **Do NOT implement background refresh for v2.1.** This is a premature optimization that adds complexity (cron jobs, rate limiting against OpenAlex API, conflict resolution). OpenAlex's free API has rate limits (10 requests/second), and refreshing 1000 library items would take 100+ seconds.
+- **Provide a manual "refresh" button per item** that fetches current data from OpenAlex and updates the library item. This is simple, user-initiated, and respects API rate limits.
+- **For export:** Always fetch fresh data from OpenAlex at export time, not from the stored snapshot. This ensures exported data is current.
 
 **Warning signs:**
-- Filter state is lost or changed when the user refreshes the page
-- Tests pass with specific test cases but no property-based coverage over the entire codec table
-- `parseAsRegions.parse(parseAsRegions.serialize(['africa']))` assertion not present in any test
+- Library items show citation counts from months ago with no staleness indicator
+- Users report "wrong" citation counts in library vs. search results for the same paper
+- Background cron implemented to refresh library items, hitting OpenAlex rate limits
+- No `savedAt` timestamp displayed alongside library item metadata
 
-**Phase to address:** Phase 3 (URL serialization tests) — write bijectivity tests before any other URL serialization tests.
-
----
-
-### Pitfall 7: `nuqs` Testing Requires `withNuqsTestingAdapter` — Missing it Causes Silent No-Ops
-
-**What goes wrong:**
-Components and hooks that use `useQueryState` from nuqs cannot be rendered or tested in Vitest without wrapping them in `withNuqsTestingAdapter` from `nuqs/adapters/testing`. If the wrapper is omitted, the hook either throws a provider error or — worse — silently returns the default value with no URL interaction, making URL state assertions always pass regardless of the component's actual behavior.
-
-**Why it happens:**
-nuqs v2 is ESM-only. The adapter must be in scope. If developers copy a test from a pre-nuqs component, the wrapper is absent. The default value behavior can mask the missing wrapper: the test passes because the component renders with defaults, but URL updates are silently swallowed.
-
-**How to avoid:**
-- Every test file that touches a component or hook using `useQueryState` / `useQueryStates` MUST include `withNuqsTestingAdapter` as the `wrapper` option in `renderHook()` or `render()`.
-- For URL update assertions, always pass an `onUrlUpdate` callback to `withNuqsTestingAdapter` and assert it was called: `expect(onUrlUpdate).toHaveBeenCalledOnce()`. If the mock is never called despite user interaction, the adapter is missing.
-- Note the `hasMemory: false` default: the adapter does NOT accumulate URL updates between interactions within a test. To test a multi-step filter interaction (change query, then change sort, assert final URL state), set `hasMemory: true`.
-
-**Warning signs:**
-- `useQueryState` tests pass but never assert on URL changes
-- `onUrlUpdate` callback not present in any nuqs test
-- Missing `import { withNuqsTestingAdapter } from 'nuqs/adapters/testing'`
-
-**Phase to address:** Phase 3 (URL serialization tests) — establish the adapter pattern on the first test file.
-
----
-
-### Pitfall 8: Auth State Machine Tests Conflate Convex Identity with Clerk Identity
-
-**What goes wrong:**
-The auth state in this app spans two systems: Clerk identity (session state, `useUser()`, `useAuth()`) on the client, and the Convex `users` table + `subscriptions` table on the server. A test for "unauthenticated user sees no extraction options" might mock Clerk's `useAuth()` returning `{ userId: null }` but leave the Convex query returning stale user data from a previous test's context. The test passes locally because Clerk mock wins, but the actual guard being exercised is `requireAuth(ctx)` which reads `ctx.auth.getUserIdentity()` on the Convex side — completely independent of the Clerk client mock.
-
-**Why it happens:**
-The two identity systems are easy to conflate: both carry "user is logged in" information, but they are separate layers. Client-side Clerk mocks (`vi.mock('@clerk/nextjs', ...)`) test client rendering. Server-side convex-test identity (`t.withIdentity()`) tests Convex function behavior. They do not compose into a single mock.
-
-**How to avoid:**
-- Identify which layer each test is exercising and mock only that layer:
-  - For **client-side auth rendering** (plan badges, credit displays, feature gates in React): mock `@clerk/nextjs` hooks. Do not involve convex-test.
-  - For **Convex-side auth guards** (`requireAuth`, `requirePlanTier`, `requireGoPlan`): test the pure logic directly (e.g., `resolveEffectivePlan`, `selectCanonicalSubscription`) or use local backend integration tests.
-  - For **`resolveEffectivePlan` state machine**: the current `tests/subscription-entitlements.test.ts` already tests this correctly at the pure function level — follow this pattern.
-- Never mix a Clerk mock and a convex-test mock in the same test file — the boundaries don't compose correctly.
-- Document in the test file comment which auth layer is under test.
-
-**Warning signs:**
-- A test file imports both `@clerk/nextjs` mock and `convex-test`
-- A "subscription status" test that stubs `useUser()` but also checks database behavior
-- Missing tests for the `state: "suspended"` and `state: "deleted"` paths in `assertActiveUser()`
-
-**Phase to address:** Phase 4 (User management unit tests) — define the auth layer boundary before writing any user management tests.
-
----
-
-### Pitfall 9: `Promise.allSettled` Batch Tests That Only Cover the All-Success Path
-
-**What goes wrong:**
-`processBatch` in `lib/ai/core/batch.ts` uses `Promise.allSettled` precisely to provide fail-soft behavior: some papers succeed, some fail, and the caller gets both `results` and `errors`. Tests that only configure the mock model to succeed for all items never exercise the branch where `settled.status === 'rejected'`. More subtly, the `getItemId(items[i])` fallback to `'unknown'` on failure is only reached if the items array and the settled results are misaligned — this code path has never been tested.
-
-**Why it happens:**
-The `Promise.allSettled` pattern is robust in production but invisible to tests that mock a uniformly successful model. The error case requires deliberately configuring `MockLanguageModelV3` to reject for specific inputs, which is a non-obvious setup.
-
-**How to avoid:**
-- For every batch processor test: write at minimum three scenarios:
-  1. All succeed: assert `results` has all N entries, `errors` is empty
-  2. All fail: assert `results` is empty, `errors` has all N entries with meaningful error messages
-  3. Partial failure (first item succeeds, second fails): assert `results` has 1 entry, `errors` has 1 entry, and the correct item IDs are in each
-- Use `mockValues()` from `ai/test` to alternate success and failure responses across batch items.
-- Specifically test the `error` field in `BatchError`: verify that `Error` instances serialize to `error.message`, not `[object Error]`.
-- Vitest may emit "unhandled promise rejection" warnings for rejections inside `Promise.allSettled`. These are false positives — the rejections ARE handled by `allSettled`. Suppress with `expect.assertions(N)` or by verifying Vitest's config does not flag settled rejections.
-
-**Warning signs:**
-- Batch processor tests only have `it('processes all papers successfully', ...)` and no failure scenarios
-- `errors` array never asserted on in any test
-- Usage aggregation (`usages.push(usage)`) not verified to be empty when all items fail
-
-**Phase to address:** Phase 2 (AI/LLM unit tests) — enforce the three-scenario test structure for every batch function.
-
----
-
-### Pitfall 10: Feature Flag Tests Require Module Reset or Risk Cached Module State
-
-**What goes wrong:**
-Tests for feature flags like `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` or `NEXT_PUBLIC_EXTRACTION_ENABLED` that mutate `process.env` without resetting module cache will see stale values. The module reads `process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` at module initialization time and caches the result. A test that sets the env var after the module is already loaded will not affect the module's computed value.
-
-**Why it happens:**
-ES modules are cached after their first import. If `convex/extraction/content.ts` reads `process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` in its body (not in a function), the value is captured at import time. Subsequent `process.env` mutations within the same test run won't change the loaded module's behavior.
-
-**How to avoid:**
-- Follow the exact pattern from `tests/extraction-feature-flags.test.ts`: call `vi.resetModules()` before each dynamic `import(...)`. This forces re-evaluation of the module with the new env value.
-- Restore the original env value in `afterEach` to prevent test order contamination.
-- Document this pattern in the test helpers as a `loadModuleWithEnv(path, envOverrides)` utility to avoid boilerplate in every feature flag test file.
-- For `convex/extraction/guard.ts` which checks `process.env.NEXT_PUBLIC_EXTRACTION_ENABLED` in a function body (not at module load time), the reset is not needed — the function reads the env at call time. Know which pattern each module uses before writing the test.
-
-**Warning signs:**
-- Feature flag tests all pass when run individually but fail in a specific order
-- `process.env` mutation does not change the function's behavior in the test
-- Test file lacks `vi.resetModules()` before dynamic `import()`
-
-**Phase to address:** Phase 1 (infrastructure) and Phase 2/4 (wherever feature flag tests appear) — establish the module reset utility early.
+**Phase to address:** Phase 2 (Library queries) -- display `savedAt` and accept staleness. Manual refresh is a Phase 4 enhancement, not a launch blocker.
 
 ---
 
@@ -256,63 +203,85 @@ Shortcuts that seem reasonable but create long-term problems.
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Source-text assertions (`expect(source).toMatch(...)`) for logic tests | Fast to write, no need to import | Tests break on whitespace changes; don't catch logic errors | Only for truly structural contracts like export names or file organization — not for logic |
-| Mocking `@clerk/nextjs` at module level for every test | Simple setup | Clerk mock bleeds across tests via hoisting; partial mock leaves hooks real | Acceptable if each test resets mock return values; not acceptable if tests share a static mock |
-| Testing only the public `api.*` Convex functions, not `internal.*` | Avoids internal API surface | Internal functions containing complex logic go untested | Never — extract internal logic into pure lib functions and test those directly |
-| Generating expected test values by running the implementation | Fast backfill | Encodes bugs as correct behavior | Never for business logic; acceptable only for snapshot-style output that humans review |
-| Skipping `afterEach` cleanup for env mutations | Fewer lines | Env changes leak across test files when run in watch mode | Never — always restore env in afterEach |
+| `v.any()` for the library item data field | No need to define schema for OpenAlex data upfront | No type safety, no validation, document size unconstrained, impossible to add indexes later | Never -- define the schema even if it means omitting fields |
+| Storing `collectionIds: v.array(v.id("collections"))` on library items instead of junction table | One fewer table, simpler queries for "which collections is this item in?" | Cannot index arrays, "all items in collection X" requires full table scan, collection delete requires scanning all items | Never -- junction table is the correct pattern for many-to-many in Convex |
+| Loading all library items and filtering/paginating client-side | Works immediately, reuses existing `results-list.tsx` pagination pattern | Breaks at 200+ items (memory, bandwidth, render time), Convex bandwidth costs scale linearly | Acceptable for MVP if library is capped at ~100 items; must be replaced before removing cap |
+| Skipping ownership check on queries (relying on "users only see their own data in the UI") | Faster development | Any direct API call or URL manipulation exposes other users' data | Never -- always validate `item.userId === user._id` server-side |
+| Storing rating only in Zustand (existing `useRatingsStore`) and also in Convex library without sync | Existing rating system keeps working | Two sources of truth for ratings; Zustand ratings lost on device switch; Convex ratings may conflict with Zustand ratings | Acceptable as transitional state during migration, with explicit plan to deprecate Zustand ratings |
 
 ---
 
 ## Integration Gotchas
 
-Common mistakes when connecting to external services in tests.
+Common mistakes when connecting library features to the existing system.
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Vercel AI SDK (`ai/test`) | Importing `MockLanguageModelV3` in non-test code (server components, scripts) | Strictly gate `from 'ai/test'` to `*.test.ts` files; lint rule to enforce |
-| convex-test + auth | Calling `t.withIdentity()` then `t.mutation(users.mutations.ensureUser, {})` expecting auth to work | Actions propagate identity; queries/mutations do not — test mutations with explicit `userId` args via pure helpers |
-| nuqs testing adapter | Forgetting `withNuqsTestingAdapter` wrapper in React Testing Library tests | Always wrap; assert on `onUrlUpdate` not just state |
-| Clerk mock in Next.js | `vi.mock('@clerk/nextjs')` affects all hooks including ones not under test | Use `vi.mocked(useAuth).mockReturnValue(...)` per-test to scope mock behavior |
-| Process.env in Vitest | Setting `process.env.X = 'value'` in `beforeAll` without `vi.resetModules()` when module reads env at import | Use `vi.stubEnv()` which restores automatically, or combine `process.env` mutation with `vi.resetModules()` and dynamic import |
+| Rating -> Library save trigger | Rating a paper in search results calls a Convex mutation that fails silently if the paper is already in the library, creating duplicate entries | Use upsert pattern: query `libraryItems` by `userId + openalexId` index first. If exists, update the rating. If not, insert. Use a composite index `by_user_openalex` on `["userId", "openalexId"]` for O(1) lookup. |
+| Zustand ratings -> Convex library migration | Copying all Zustand ratings to Convex on first library page visit, creating a massive batch mutation | Do not bulk-migrate. Let ratings sync naturally: when user rates a paper, save to both Zustand (for immediate UI) and Convex (for persistence). Existing Zustand ratings are ephemeral and were never promised to persist. |
+| Clerk auth + Convex library | Using `useUser()` from Clerk to check auth on the library page client-side, but not passing the auth token to Convex queries | Convex queries automatically receive the auth token from `ConvexProviderWithClerk`. Do not manually pass auth -- use `requireAuth(ctx)` in the Convex query function. The existing pattern in `convex/lib/auth.ts` handles this correctly. |
+| OpenAlex SDK types in Convex schema | Importing `Work` type from `@sickrin/openalex-sdk` in Convex schema, causing build errors because the SDK is a client-side dependency | Define a separate `LibraryItemData` type in the Convex schema using Convex validators (`v.string()`, `v.number()`, etc.). Do not import SDK types into Convex backend code. |
+| Search results page + library save | Adding a "Save to Library" button on search results that opens a modal, but the search page loses its scroll position when the modal triggers a re-render | Use `useMutation` with optimistic updates. The save operation should not cause the search results to re-fetch or the page to re-render. Convex mutations do not affect queries on different tables. |
 
 ---
 
 ## Performance Traps
 
-Patterns that work at small scale but degrade as the test suite grows.
+Patterns that work at small scale but fail as usage grows.
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Running `convex-test` for all Convex function tests | Tests slow to 5–10s each due to convex-test initialization overhead | Use `convex-test` only for functions that genuinely need DB context; test pure logic directly | Once test suite grows beyond ~50 convex-test tests |
-| Mocking `generateObject` with real delays | Batch processor tests take 30s+ because MockLanguageModelV3 uses real async timing | Pass `delay: 0` to `simulateReadableStream` or use synchronous mock responses | Immediately — every AI unit test should be sub-100ms |
-| Source-text assertions reading full files with `readFileSync` | Fine for small files; for large files (like `lib/search-actions.ts`), file I/O adds up | Cache the read result in a `beforeAll` or use targeted regex that fails fast | Once there are many source-text tests targeting the same file |
+| Loading all library items to count per-collection badges | UI is snappy with 20 items; freezes with 500+ | Use a dedicated query that counts `collectionItems` per collection using `.withIndex("by_collection").collect().length`. Consider Convex Aggregate component for O(1) counts if scale demands it. | 200+ library items |
+| Reactive query on entire library for the list page | Page re-renders on every library change (new rating, new item, metadata update) | Paginate with cursor-based queries so only the visible page re-renders. Use `usePaginatedQuery` from Convex React. | 100+ items in library, any concurrent modification |
+| N+1 query for collection names on library item cards | Each item card queries `collections` table for each of its collection memberships | Batch-fetch all collections for the user once (they're user-scoped and bounded), pass as context to item cards. Users won't have 100+ collections. | 50+ items displayed with 5+ collections each |
+| Full-text search on library items using `.filter()` with string matching | Works fine at 50 items; scans entire table at 1000+ items | Use Convex search index: `.withSearchIndex("search_title", q => q.search("title", searchTerm))`. Define the search index in the schema. | 200+ library items with active search |
+| Denormalized collection count on library items (stored `collectionCount` field) | Fast reads, but every collection add/remove must update the library item document, causing extra writes and potential OCC conflicts | Query junction table count on demand. The read cost is low with proper indexes. Denormalized counts create write amplification and consistency bugs. | When users frequently add/remove items from collections |
 
 ---
 
 ## Security Mistakes
 
-Domain-specific security issues to avoid in test code.
+Domain-specific security issues beyond general web security.
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Committing real `AI_PROVIDER` / `AI_MODEL` API keys in test stubs | Key exposure via git history | Use placeholder strings (`"test-api-key-placeholder"`) in test env stubs; never real keys |
-| Writing tests that exercise `runMutation(internal.credits.internal.deductCredits)` with a real Convex endpoint in CI | Accidental credit deduction on a live account if env var guard fails | Always check `process.env.BILLING_LIVE_CREDITS !== "false"` guard; the CI credits guard already enforces `"false"` means disabled |
-| Mocking `requireAuth` to always return a user without testing the unauthenticated path | Auth bypass goes untested; regression risk if guard logic changes | Every test for an auth-gated function MUST include a "unauthenticated" test case that asserts the error code |
+| Library query accepts `userId` as an argument instead of deriving it from auth | Any authenticated user can read any other user's library by passing a different `userId` | Always derive `userId` from `requireAuth(ctx)._id` inside the Convex function. Never accept `userId` as an argument for user-scoped data. |
+| Collection sharing endpoint without rate limiting | Malicious user enumerates all collection IDs to discover other users' research interests | Not applicable for v2.1 (no sharing), but if added later, validate ownership on every collection access. Convex IDs are not sequential but are deterministic -- do not treat them as secrets. |
+| Library export includes sensitive fields (user internal IDs, Convex document IDs) | Exported JSON/CSV leaks internal identifiers | Strip `_id`, `_creationTime`, `userId`, and any Convex-internal fields from export output. Export only user-facing data. |
+| Deleting a library item does not check ownership | Any authenticated user can delete any library item if they know the document ID | Delete mutation must verify `item.userId === user._id` before deleting. Follow the `resolveOwnedJob` pattern. |
+
+---
+
+## UX Pitfalls
+
+Common user experience mistakes in library/collections features.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| No confirmation dialog on collection deletion | User accidentally deletes a collection and loses all membership associations; items are NOT deleted but collection organization is lost | Show confirmation: "Delete collection '[name]'? Items in this collection will not be deleted, but will be removed from this collection." |
+| Rating a paper from search results saves to library with no feedback | User doesn't know the paper was saved; visits library later and is confused by items they don't remember saving | Show toast: "Saved to Library" with optional "Undo" action. Make the save-on-rate behavior opt-in or clearly documented in onboarding. |
+| Library page shows all items with no default sort | New users see a random-looking list | Default sort by `savedAt` descending (most recent first). This matches user mental model of "I just saved this, I should see it at the top." |
+| Collection names not validated for uniqueness per user | User creates two collections named "Methods" and gets confused | Validate uniqueness of collection name per user in the create mutation. Return a clear error message. |
+| Removing an item from a collection shows the item disappearing from the list with no way to find it | User panics thinking they deleted the paper | Show toast: "Removed from '[collection name]'. Item is still in your library." with "Undo" action. |
+| Filter state not preserved in URL | User filters library, copies URL to share/bookmark, filter state is lost | Use `nuqs` URL state (already in the codebase) for library filter parameters. Follow the existing `SearchUrlParams` pattern. |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Convex auth guard tests:** `requireAuth` and `requirePlanTier` paths have tests for `null` identity, `state: "suspended"`, and `state: "deleted"` — not just the happy path
-- [ ] **Batch processor tests:** `errors` array asserted non-empty in failure scenarios — not just `results` in success scenarios
-- [ ] **Region codec bijectivity:** Both `parse(serialize(x)) === x` and `serialize(parse(s)) === s` verified for every entry in `INTERNAL_TO_URL_CODE`
-- [ ] **AI credit billing:** Expected credit values derived from documented pricing spec, not from calling the implementation (circular)
-- [ ] **Feature flag tests:** `vi.resetModules()` present before each dynamic import of a module that reads env at load time
-- [ ] **nuqs URL tests:** `onUrlUpdate` callback asserted in every URL mutation test — not just state assertion
-- [ ] **Subscription state machine:** All statuses in `ALL_SUBSCRIPTION_STATUSES` covered — both `ENTITLED` and `NON_ENTITLED` arrays tested exhaustively
-- [ ] **Error classification:** Every `AIError` subtype (`AIApiKeyRequiredError`, `AIUnauthenticatedError`, `AIInsufficientCreditsError`, `AIPlanEntitlementError`, `AIValidationError`, `AIMaxRetriesExceededError`, `AIProviderError`) maps to a tested Convex error code in `throwStructuredAIError`
-- [ ] **`withAuthAndCreditsBatch` contract:** Tests verify that zero-credit state blocks the operation (not just that `deductCredits` is called on success)
+Things that appear complete but are missing critical pieces.
+
+- [ ] **Library save mutation:** Has upsert logic (check existing by `userId + openalexId` before insert) -- not just blind insert that creates duplicates
+- [ ] **Collection delete mutation:** Deletes ALL `collectionItems` junction records for the collection, not just the collection document
+- [ ] **Library item delete mutation:** Deletes ALL `collectionItems` junction records for the item, not just the library item document
+- [ ] **Ownership validation:** Every query and mutation for library/collection data validates `item.userId === currentUser._id`, not just that the user is authenticated
+- [ ] **Pagination with filters:** Filters are applied via indexes or `convex-helpers` filter (not post-pagination JavaScript `.filter()`), ensuring full pages
+- [ ] **Search index defined:** Schema includes a search index on `libraryItems` for title text search, not relying on client-side string matching
+- [ ] **Collection name uniqueness:** Create mutation checks for existing collection with same name for the same user
+- [ ] **Rating sync:** Rating a paper updates both the search-page UI state (Zustand) AND the Convex library item's rating field -- not one or the other
+- [ ] **Auth on /library route:** Next.js middleware or page-level guard redirects unauthenticated users to sign-in, not just showing empty state
+- [ ] **Empty states:** Library page has proper empty states for: no items, no items matching filter, no items in selected collection -- not a blank page
+- [ ] **Mobile responsive:** Library page and collection management work on mobile viewport -- the existing search results page uses responsive grid modes
 
 ---
 
@@ -322,12 +291,12 @@ When pitfalls occur despite prevention, how to recover.
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| convex-test getUserIdentity bug blocks auth tests | MEDIUM | Extract business logic into pure functions; write those tests. Track upstream fix in convex-test; re-enable convex-test tests when issue #50 is closed. |
-| Test suite encoding bugs as correct behavior | HIGH | Compare test assertions against business spec documents. Identify any assertion whose expected value was derived by running the implementation. Rewrite those assertions from spec. |
-| nuqs adapter missing from tests — URL state never actually tested | LOW | Add `withNuqsTestingAdapter` wrapper; add `onUrlUpdate` assertion. If tests then fail, investigate real URL mutation bug. |
-| MockLanguageModelV3 imported in server code, crashing production | LOW | Find the offending import with `grep -r "ai/test" --include="*.ts" --exclude="*.test.ts"`. Remove. The mock was never needed there. |
-| Feature flag tests passing in wrong order — env mutation leaking | LOW | Add `afterEach` that restores original env value. Run tests in random order to expose remaining leaks (`vitest --sequence.shuffle`). |
-| Batch processor tests cover only success — real partial failures undetected in prod | MEDIUM | Add failure scenario tests immediately. Audit prod logs for any `errors: []` assumptions in callers that now need to handle non-empty error arrays. |
+| Full OpenAlex JSON stored in library items (Pitfall 1) | HIGH | Write a migration mutation that reads each library item, extracts only needed fields into the new schema shape, writes the slimmed document back. Must be done in batches of 500 (Convex transaction limits). Cannot be done atomically. |
+| Arrays used instead of junction table (Pitfall 2) | HIGH | Create the `collectionItems` table. Write a migration that reads each library item's `collectionIds` array, creates junction records, then removes the array field. Two-phase: write junction records first, then remove array field. |
+| Pagination returns empty pages (Pitfall 3) | MEDIUM | Swap to `convex-helpers` filter or add appropriate indexes. Frontend pagination component must be updated to handle the new cursor-based API instead of page numbers. |
+| Orphaned junction records from missing cascade delete (Pitfall 4) | LOW | Write a cleanup mutation that scans `collectionItems`, checks if each `collectionId` exists, deletes orphans. Run once, then fix the delete mutation to cascade properly going forward. |
+| Auth guard missing on library queries (Pitfall 5) | LOW | Add `requireAuth` + ownership check to every library/collection query and mutation. No data migration needed, just code changes. But if data was already leaked, the damage is done. |
+| Stale library data with no staleness indicator (Pitfall 6) | LOW | Add `savedAt` display to library item cards. No migration needed if `savedAt` / `_creationTime` is already stored. |
 
 ---
 
@@ -337,33 +306,32 @@ How roadmap phases should address these pitfalls.
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| getUserIdentity fails in convex-test (Pitfall 1) | Phase 1 (infra) — document testability boundary | No test file calls `t.mutation()` on an auth-gated function without a convex-test skip note |
-| "use node" actions need direct import testing (Pitfall 2) | Phase 1 (infra) — establish import-vs-convex-test rule | All AI action tests import pure logic directly, no `t.action()` calls |
-| Wrong way to mock generateObject (Pitfall 3) | Phase 2 (AI tests) — establish MockLanguageModelV3 pattern | All AI tests use `MockLanguageModelV3`, no `vi.mock('ai', ...)` calls |
-| Encoding existing bugs as tests (Pitfall 4) | All phases — code review gate | Expected values have spec justification in test comments |
-| Testing withAuthAndCreditsBatch through full stack (Pitfall 5) | Phase 2 (AI tests) — draw unit boundary | No test file imports `internal` from generated Convex API for mocking |
-| Custom parser bijectivity not tested (Pitfall 6) | Phase 3 (URL tests) — bijectivity tests first | Both round-trip directions tested for every codec entry |
-| Missing withNuqsTestingAdapter (Pitfall 7) | Phase 3 (URL tests) — adapter pattern on first file | Every nuqs test asserts on `onUrlUpdate`, not just state |
-| Auth layers conflated in tests (Pitfall 8) | Phase 4 (user management) — auth layer decision before tests | No test file mixes `@clerk/nextjs` mock and convex-test |
-| Promise.allSettled only tested happy path (Pitfall 9) | Phase 2 (AI tests) — three-scenario rule | Every batch test has all-success, all-fail, and partial-fail scenarios |
-| Feature flag env mutation without module reset (Pitfall 10) | Phase 1 (infra) — `loadModuleWithEnv` utility | Feature flag tests pass when run in reverse order |
+| Full JSON blob storage (Pitfall 1) | Phase 1 (Schema design) | Schema review: `libraryItems` table has explicit typed fields, no `v.any()`, document size under 2 KB per item |
+| Missing junction table (Pitfall 2) | Phase 1 (Schema design) | Schema has `collectionItems` table with `by_collection`, `by_item`, and `by_collection_item` indexes |
+| Pagination + filter mismatch (Pitfall 3) | Phase 2 (Library queries) | Load test: with 100+ items and rating filter active, every page returns the requested number of items (no undersized pages) |
+| Missing cascade delete (Pitfall 4) | Phase 3 (Collection CRUD) | Test: after deleting a collection, `collectionItems` query by that collection ID returns zero results |
+| Auth guard inconsistency (Pitfall 5) | Phase 1 (Auth helpers) | Test: unauthenticated call to every library query/mutation returns UNAUTHENTICATED error. Test: User A cannot read User B's library items. |
+| Stale data without indicator (Pitfall 6) | Phase 2 (Library UI) | UI review: every library item card shows `savedAt` date. Export function fetches fresh data from OpenAlex. |
+| Rating sync between Zustand and Convex | Phase 2 (Library mutations) | Test: rating a paper from search results updates both Zustand store AND creates/updates Convex library item |
+| Collection name uniqueness | Phase 3 (Collection CRUD) | Test: creating two collections with the same name for the same user returns an error on the second attempt |
+| Duplicate library items from missing upsert | Phase 2 (Library mutations) | Test: rating the same paper twice does not create two library items; the second call updates the existing item's rating |
+| `/library` route unprotected | Phase 2 (Library page) | Test: unauthenticated navigation to `/library` redirects to sign-in |
 
 ---
 
 ## Sources
 
-- [convex-test getUserIdentity open issue #50](https://github.com/get-convex/convex-test/issues/50) — confirmed open February 2026; queries/mutations don't propagate identity from `t.withIdentity()`
-- [Convex Testing Documentation](https://docs.convex.dev/testing/convex-test) — known limitations: no size/time enforcement, cron jobs not supported, text search without ranking, edge runtime mock divergence
-- [Vercel AI SDK Testing Documentation](https://ai-sdk.dev/docs/ai-sdk-core/testing) — MockLanguageModelV3, mockValues(), simulateReadableStream patterns
-- [ai@5.0.27 MockLanguageModelV2 runtime regression issue #8356](https://github.com/vercel/ai/issues/8356) — importing `ai/test` outside Vitest crashes with "Vitest failed to access its internal state"
-- [nuqs Testing Documentation](https://nuqs.dev/docs/testing) — withNuqsTestingAdapter, hasMemory, onUrlUpdate, rateLimitFactor, bijectivity helpers
-- [nuqs GitHub discussion #259: testing components with useQueryState](https://github.com/47ng/nuqs/issues/259) — community patterns and gotchas
-- [Clerk Next.js Testing Guide](https://clerk.com/blog/testing-clerk-nextjs) — mock `@clerk/nextjs` hooks at module level; don't test Clerk internals
-- [Clerk Testing Documentation](https://clerk.com/docs/testing/overview) — unit test mocking patterns vs. E2E testing token approach
-- [Backfilling Tests — professorbeekums.com](https://blog.professorbeekums.com/backfilling-tests/) — encoding bugs as correct behavior risk; specify behavior before writing tests
-- [TDD anti-patterns chapter 1 — codurance.com](https://www.codurance.com/publications/tdd-anti-patterns-chapter-1) — testing mocks not behavior; over-coverage anti-patterns
-- Codebase analysis: `convex/ai/helpers.ts` (withAuthAndCreditsBatch dependency chain), `lib/ai/core/batch.ts` (Promise.allSettled usage), `lib/ai/core/execute.ts` (generateObject retry loop), `convex/lib/auth.ts` (getUserIdentity usage), `lib/search-params/parsers.ts` (custom nuqs parsers), `tests/extraction-feature-flags.test.ts` (vi.resetModules pattern), `tests/ai-credit-billing.test.ts` (spec-derived expected values pattern)
+- [Convex Limits Documentation](https://docs.convex.dev/production/state/limits) -- 1 MiB document size, 1024 fields, 8192 array elements, 16 nesting depth, 32K document scan limit, 16K document write limit per transaction, database bandwidth pricing
+- [Convex Pagination Documentation](https://docs.convex.dev/database/pagination) -- reactive pagination, dynamic page sizes, cursor-based pagination behavior
+- [Convex Relationship Structures](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas) -- junction table pattern for many-to-many, dual indexing, composite index for existence checks
+- [Take Control of Pagination (Convex Stack)](https://stack.convex.dev/pagination) -- `getPage()` helper, memory bloat from loading many pages, reactive stitching
+- [Complex Filters in Convex (Convex Stack)](https://stack.convex.dev/complex-filters-in-convex) -- `filter` helper from `convex-helpers`, TypeScript filtering with pagination, performance characteristics
+- [How to apply filter before pagination (Convex Community)](https://discord-questions.convex.dev/m/1283043121730420808) -- empty/small page problem when filtering after pagination
+- [Cascade Delete Patterns (Convex Community)](https://discord-questions.convex.dev/m/1270300293984288779) -- manual cascade delete, scheduled deletion for large relations, soft delete pattern
+- [Convex Ents](https://stack.convex.dev/ents) -- cascading delete helpers, soft deletion behavior, scheduled deletion across mutations
+- [Convex Best Practices](https://docs.convex.dev/understanding/best-practices/) -- index-based filtering preferred over `.filter()`, denormalization guidance
+- Codebase analysis: `convex/schema.ts` (existing schema patterns), `convex/lib/auth.ts` (`getCurrentUser` vs `requireAuth` patterns), `convex/extraction/queries.ts` (`resolveOwnedJob` ownership pattern, paginated query implementation), `lib/store.ts` (Zustand `useRatingsStore` with `persist`), `lib/types/search.types.ts` (`PaperResult = Work` type alias, `SearchFilters` interface), `components/results-list.tsx` (client-side pagination pattern)
 
 ---
-*Pitfalls research for: v2.0 TDD & Test Coverage — OpenAlex Count (Next.js + Convex + AI)*
+*Pitfalls research for: v2.1 Library & Collections -- OpenAlex Count (Next.js + Convex)*
 *Researched: 2026-02-28*
