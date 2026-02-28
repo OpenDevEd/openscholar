@@ -13,6 +13,9 @@ export const browseLibrary = query({
     ),
     sortOrder: v.union(v.literal("asc"), v.literal("desc")),
     minRating: v.optional(v.number()),
+    savedAfter: v.optional(v.number()),
+    yearFrom: v.optional(v.number()),
+    yearTo: v.optional(v.number()),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
@@ -29,11 +32,20 @@ export const browseLibrary = query({
       .withIndex(indexMap[args.sortBy], (q) => q.eq("userId", user._id))
       .order(args.sortOrder);
 
-    if (args.minRating !== undefined) {
-      const minRating = args.minRating;
-      return await filter(q, (item) => item.rating >= minRating).paginate(
-        args.paginationOpts
-      );
+    const needsFilter =
+      args.minRating !== undefined ||
+      args.savedAfter !== undefined ||
+      args.yearFrom !== undefined ||
+      args.yearTo !== undefined;
+
+    if (needsFilter) {
+      return await filter(q, (item) => {
+        if (args.minRating !== undefined && item.rating < args.minRating) return false;
+        if (args.savedAfter !== undefined && item.savedAt < args.savedAfter) return false;
+        if (args.yearFrom !== undefined && (item.publicationYear == null || item.publicationYear < args.yearFrom)) return false;
+        if (args.yearTo !== undefined && (item.publicationYear == null || item.publicationYear > args.yearTo)) return false;
+        return true;
+      }).paginate(args.paginationOpts);
     }
 
     return await q.paginate(args.paginationOpts);
@@ -44,6 +56,9 @@ export const searchLibrary = query({
   args: {
     searchText: v.string(),
     minRating: v.optional(v.number()),
+    savedAfter: v.optional(v.number()),
+    yearFrom: v.optional(v.number()),
+    yearTo: v.optional(v.number()),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
@@ -55,11 +70,20 @@ export const searchLibrary = query({
         q.search("searchableText", args.searchText).eq("userId", user._id)
       );
 
-    if (args.minRating !== undefined) {
-      const minRating = args.minRating;
-      return await filter(q, (item) => item.rating >= minRating).paginate(
-        args.paginationOpts
-      );
+    const needsFilter =
+      args.minRating !== undefined ||
+      args.savedAfter !== undefined ||
+      args.yearFrom !== undefined ||
+      args.yearTo !== undefined;
+
+    if (needsFilter) {
+      return await filter(q, (item) => {
+        if (args.minRating !== undefined && item.rating < args.minRating) return false;
+        if (args.savedAfter !== undefined && item.savedAt < args.savedAfter) return false;
+        if (args.yearFrom !== undefined && (item.publicationYear == null || item.publicationYear < args.yearFrom)) return false;
+        if (args.yearTo !== undefined && (item.publicationYear == null || item.publicationYear > args.yearTo)) return false;
+        return true;
+      }).paginate(args.paginationOpts);
     }
 
     return await q.paginate(args.paginationOpts);
