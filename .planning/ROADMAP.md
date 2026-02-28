@@ -102,6 +102,8 @@ Plans:
   2. `credits.spec.ts` test "free user at credit cap sees cap banner" destructures `{ clerkUser, billingPage }` and runs with an authenticated session
   3. Both tests navigate to /settings/billing and see billing content instead of perpetual loading skeleton
 
+**Plans:** 1 plan
+
 Plans:
 - [ ] 10-01-PLAN.md -- Add clerkUser fixture to credits spec tests
 
