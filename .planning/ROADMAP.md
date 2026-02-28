@@ -50,11 +50,12 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
   3. A test can call the webhook waiter to block until Convex reflects a subscription or credit state change before making UI assertions
   4. A test can use the billing page and pricing page objects to assert on plan name, credit balance, and subscription status without raw CSS selectors
   5. Billing UI components have stable `data-testid` attributes that page objects target
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- Add data-testid attributes to billing UI components
+- [ ] 07-02-PLAN.md -- Configure billing Playwright project, Stripe helpers, webhook waiter
+- [ ] 07-03-PLAN.md -- Create page object models and billing test fixture
 
 ### Phase 8: Subscription and Upgrade Specs
 **Goal**: The two highest-value billing flows -- new subscription and upgrade -- are covered by E2E tests that verify the user sees correct plan, credits, and proration in the browser
@@ -102,6 +103,6 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 4. Upgrade Correctness | v1.1 | 2/2 | Complete | 2026-02-27 |
 | 5. Upgrade Resilience | v1.1 | 2/2 | Complete | 2026-02-27 |
 | 6. UX Polish | v1.1 | 2/2 | Complete | 2026-02-27 |
-| 7. Test Infrastructure Foundation | v1.2 | 0/? | Not started | - |
+| 7. Test Infrastructure Foundation | v1.2 | 0/3 | Not started | - |
 | 8. Subscription and Upgrade Specs | v1.2 | 0/? | Not started | - |
 | 9. Lifecycle and Credit Specs | v1.2 | 0/? | Not started | - |
