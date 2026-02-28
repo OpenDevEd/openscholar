@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
+milestone: v1.0
 milestone_name: Library & Collections
-status: executing
-last_updated: "2026-02-28"
+status: unknown
+last_updated: "2026-02-28T21:44:43.188Z"
 progress:
-  total_phases: 5
+  total_phases: 1
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
