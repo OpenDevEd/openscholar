@@ -40,7 +40,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 - [x] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure) (completed 2026-02-28)
 - [x] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard (completed 2026-02-28)
 - [x] **Phase 12: Billing E2E CI Wiring** - NPM script, Clerk credentials in CI env blocks (gap closure) (completed 2026-02-28)
-- [ ] **Phase 13: CI Env Hardening & CRED-02 Regression Test** - Explicit CLERK_PUBLISHABLE_KEY in CI, dedicated monthly credit-grant test (tech debt closure)
+- [x] **Phase 13: CI Env Hardening & CRED-02 Regression Test** - Explicit CLERK_PUBLISHABLE_KEY in CI, dedicated monthly credit-grant test (tech debt closure) (completed 2026-02-28)
 
 ## Phase Details
 
@@ -167,4 +167,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 11. Tech Debt Cleanup | 1/1 | Complete    | 2026-02-28 | - |
 | 12. Billing E2E CI Wiring | 1/1 | Complete    | 2026-02-28 | - |
-| 13. CI Env Hardening & CRED-02 Regression | v1.2 | 0/1 | Planned | - |
+| 13. CI Env Hardening & CRED-02 Regression | 1/1 | Complete   | 2026-02-28 | - |

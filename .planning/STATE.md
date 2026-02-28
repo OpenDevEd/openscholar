@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: E2E Billing Tests
 status: unknown
-last_updated: "2026-02-28T08:46:38.938Z"
+last_updated: "2026-02-28T09:19:44.058Z"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 10
-  completed_plans: 10
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -18,23 +18,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** Phase 12 gap closure complete
+**Current focus:** Phase 13 complete -- CI env hardening and CRED-02 regression
 
 ## Current Position
 
-Phase: 12 of 12 (Billing E2E CI Wiring) -- gap closure phase
-Plan: 12-01 complete, all 1 plans done
-Status: Phase 12 complete -- billing E2E CI wiring done
-Last activity: 2026-02-28 -- Plan 12-01 billing E2E CI wiring complete
+Phase: 13 of 13 (CI Env Hardening & CRED-02 Regression)
+Plan: 13-01 complete, all 1 plans done
+Status: Phase 13 complete -- CI env hardening and CRED-02 regression test done
+Last activity: 2026-02-28 -- Plan 13-01 CI env hardening and CRED-02 regression complete
 
-Progress: [████████████████████] 100% (gap closure: 1/1 phase complete, 1/1 plan done)
+Progress: [████████████████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20 (v1.0: 7, v1.1: 6, v1.2: 6, gap: 1)
+- Total plans completed: 21 (v1.0: 7, v1.1: 6, v1.2: 6, gap: 1, tech-debt: 1)
 - Gap closure plans completed: 1
 - Gap closure total execution time: 1min
+- Tech debt plans completed: 1
 
 **By Phase (v1.2):**
 
@@ -46,6 +47,7 @@ Progress: [████████████████████] 100% (g
 | 10 | 1/1 | 3min | 3min |
 | 11 | 1/1 | 2min | 2min |
 | 12 | 1/1 | 1min | 1min |
+| 13 | 1/1 | 1min | 1min |
 
 ## Accumulated Context
 
@@ -70,6 +72,8 @@ Recent decisions affecting current work:
 - CI credits env guard checks only explicit "false" -- unset passes, matching runtime behavior (11-01)
 - No --config flag in test:billing:e2e script -- playwright.config.ts is the default (12-01)
 - Artifact names use ${{ github.job }} to avoid collision across billing jobs in same workflow run (12-01)
+- Use toBe() exact match in CRED-02 regression tests, not >= -- regression tests must catch any drift (13-01)
+- CRED-02 tests focus exclusively on credit balance -- no plan name or status badge assertions (13-01)
 
 ### Pending Todos
 
@@ -83,5 +87,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 12-01-PLAN.md -- billing E2E CI wiring (npm script, env vars, CI steps)
+Stopped at: Completed 13-01-PLAN.md -- CI env hardening and CRED-02 regression test
 Resume file: None
