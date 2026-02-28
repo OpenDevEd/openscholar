@@ -84,11 +84,11 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
   2. Rating the same paper again updates the existing library entry (upsert, not duplicate)
   3. Anonymous user can still rate papers using localStorage (existing Zustand behavior unchanged)
   4. Library item documents are 1-2 KB each (full OpenAlex blob fields stripped before storage)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 22-01: TBD
-- [ ] 22-02: TBD
+- [ ] 22-01-PLAN.md -- TDD: Schema, trimPaperData utility, saveToLibrary upsert mutation
+- [ ] 22-02-PLAN.md -- Rating bridge: RatingSelector + FocusMode dual-path wiring
 
 ### Phase 23: Core Library Page
 **Goal**: Users can browse, search, filter, sort, and manage their saved library items on a dedicated page
@@ -182,7 +182,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 19. Data Export Tests | v2.0 | 3/3 | Complete | 2026-02-28 |
 | 20. User Auth & State Machine Tests | v2.0 | 2/2 | Complete | 2026-02-28 |
 | 21. Plan Enforcement & Feature Gating Tests | v2.0 | 2/2 | Complete | 2026-02-28 |
-| 22. Schema & Rating Bridge | v2.1 | 0/? | Not started | - |
+| 22. Schema & Rating Bridge | v2.1 | 0/2 | Not started | - |
 | 23. Core Library Page | v2.1 | 0/? | Not started | - |
 | 24. Advanced Filtering & URL State | v2.1 | 0/? | Not started | - |
 | 25. Collections | v2.1 | 0/? | Not started | - |
