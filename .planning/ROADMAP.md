@@ -69,8 +69,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 08-01: TBD
-- [ ] 08-02: TBD
+- [x] 08-01: Subscribe spec with Go and Pro checkout-bypass tests
+- [x] 08-02: Upgrade spec with Go-to-Pro confirmation dialog test
 
 ### Phase 9: Lifecycle and Credit Specs
 **Goal**: The remaining billing lifecycle flows -- downgrade, cancellation, credit topup, pro-rata upgrade credits, and free credit cap -- are covered by E2E tests
@@ -103,6 +103,6 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 4. Upgrade Correctness | v1.1 | 2/2 | Complete | 2026-02-27 |
 | 5. Upgrade Resilience | v1.1 | 2/2 | Complete | 2026-02-27 |
 | 6. UX Polish | v1.1 | 2/2 | Complete | 2026-02-27 |
-| 7. Test Infrastructure Foundation | v1.2 | 0/3 | Not started | - |
-| 8. Subscription and Upgrade Specs | v1.2 | 0/? | Not started | - |
+| 7. Test Infrastructure Foundation | v1.2 | 3/3 | Complete | 2026-02-28 |
+| 8. Subscription and Upgrade Specs | v1.2 | 2/2 | Complete | 2026-02-28 |
 | 9. Lifecycle and Credit Specs | v1.2 | 0/? | Not started | - |

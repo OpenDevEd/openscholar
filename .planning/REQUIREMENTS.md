@@ -24,7 +24,7 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 
 ### Plan Changes
 
-- [ ] **PLAN-01**: User can upgrade from Go to Pro via in-app confirmation dialog with proration preview
+- [x] **PLAN-01**: User can upgrade from Go to Pro via in-app confirmation dialog with proration preview
 - [ ] **PLAN-02**: User can downgrade from Pro to Go, sees pending-change banner and scheduled badge
 - [ ] **PLAN-03**: User can cancel a scheduled downgrade to keep current Pro plan
 
@@ -73,7 +73,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-07 | Phase 7 | Pending |
 | SUB-01 | Phase 8 | Complete |
 | SUB-02 | Phase 8 | Complete |
-| PLAN-01 | Phase 8 | Pending |
+| PLAN-01 | Phase 8 | Complete |
 | PLAN-02 | Phase 9 | Pending |
 | PLAN-03 | Phase 9 | Pending |
 | CNCL-01 | Phase 9 | Pending |

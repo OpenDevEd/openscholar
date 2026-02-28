@@ -41,7 +41,7 @@ Progress: [████████████████░░░░] 63% (v1
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 7 | 3/3 | - | - |
-| 8 | 1/2 | 1min | 1min |
+| 8 | 2/2 | 3min | 1.5min |
 | 9 | 0/? | - | - |
 
 ## Accumulated Context
@@ -56,6 +56,8 @@ Recent decisions affecting current work:
 - WebhookWaiter polls Convex state before UI assertions (eliminates timing flakes)
 - Each subscribe test gets its own fresh Clerk user for full isolation (08-01)
 - Credit assertions use >= because free signup credits (2,000) are always present (08-01)
+- Upgrade credit assertion uses > 5000 threshold (not exact Pro amount) since pro-rata credits vary with timing (08-02)
+- Dialog verification checks plan names only, not dollar amounts (volatile proration values) (08-02)
 
 ### Pending Todos
 
@@ -69,5 +71,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 08-01-PLAN.md -- subscribe spec with Go and Pro tests
+Stopped at: Completed 08-02-PLAN.md -- upgrade spec with Go-to-Pro test
 Resume file: None
