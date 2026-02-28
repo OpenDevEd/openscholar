@@ -71,7 +71,9 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
   3. Global test setup file provides jest-dom matchers and RTL cleanup in afterEach
   4. Convex test setup module discovers all Convex modules for convex-test isolation
   5. All 7 new devDependencies (convex-test, @edge-runtime/vm, @testing-library/react, @testing-library/user-event, @testing-library/jest-dom, jsdom, @vitejs/plugin-react) are installed and importable
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 14-01-PLAN.md -- Install dependencies, create setup files, update Vitest config with multi-environment routing
 
 ### Phase 15: AI Prompts & Schema Tests
 **Goal**: Every AI prompt builder produces structurally correct output and every Zod schema enforces its contract
@@ -177,7 +179,7 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 11. Tech Debt Cleanup | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 12. Billing E2E CI Wiring | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 13. CI Env Hardening & CRED-02 Regression | v1.2 | 1/1 | Complete | 2026-02-28 |
-| 14. Test Infrastructure | v2.0 | 0/0 | Not started | - |
+| 14. Test Infrastructure | v2.0 | 0/1 | Planning complete | - |
 | 15. AI Prompts & Schema Tests | v2.0 | 0/0 | Not started | - |
 | 16. AI Batch Processing Tests | v2.0 | 0/0 | Not started | - |
 | 17. AI Cost & Billing Tests | v2.0 | 0/0 | Not started | - |
