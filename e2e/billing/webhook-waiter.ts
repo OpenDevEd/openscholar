@@ -55,6 +55,11 @@ export class WebhookWaiter {
     private intervalMs: number = 2_500,
   ) {}
 
+  /** Public accessor for the Convex user ID, needed by stripe-helpers. */
+  get userId(): string {
+    return this.convexUserId;
+  }
+
   /**
    * Wait for the user's subscription to reach the expected plan and active status.
    */
