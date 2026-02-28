@@ -19,8 +19,8 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 
 ### Subscription
 
-- [ ] **SUB-01**: User can subscribe from free to Go plan via checkout-bypass pattern and see plan on billing page
-- [ ] **SUB-02**: User can subscribe from free to Pro plan via checkout-bypass pattern and see plan on billing page
+- [x] **SUB-01**: User can subscribe from free to Go plan via checkout-bypass pattern and see plan on billing page
+- [x] **SUB-02**: User can subscribe from free to Pro plan via checkout-bypass pattern and see plan on billing page
 
 ### Plan Changes
 
@@ -35,7 +35,7 @@ Requirements for E2E Billing Tests milestone. Each maps to roadmap phases.
 ### Credits
 
 - [ ] **CRED-01**: User receives free signup credits on account creation and sees balance on billing page
-- [ ] **CRED-02**: User receives correct monthly credits on subscription (3,000 Go / 15,000 Pro)
+- [x] **CRED-02**: User receives correct monthly credits on subscription (3,000 Go / 15,000 Pro)
 - [ ] **CRED-03**: User receives pro-rata credits on upgrade matching calculated `floor(remainingRatio * creditDelta)`
 - [ ] **CRED-04**: User can purchase credit topup via checkout-bypass and see increased balance
 - [ ] **CRED-05**: Free-tier user at credit cap sees cap banner on billing page
@@ -71,14 +71,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 7 | Pending |
 | INFRA-06 | Phase 7 | Pending |
 | INFRA-07 | Phase 7 | Pending |
-| SUB-01 | Phase 8 | Pending |
-| SUB-02 | Phase 8 | Pending |
+| SUB-01 | Phase 8 | Complete |
+| SUB-02 | Phase 8 | Complete |
 | PLAN-01 | Phase 8 | Pending |
 | PLAN-02 | Phase 9 | Pending |
 | PLAN-03 | Phase 9 | Pending |
 | CNCL-01 | Phase 9 | Pending |
 | CRED-01 | Phase 9 | Pending |
-| CRED-02 | Phase 8 | Pending |
+| CRED-02 | Phase 8 | Complete |
 | CRED-03 | Phase 9 | Pending |
 | CRED-04 | Phase 9 | Pending |
 | CRED-05 | Phase 9 | Pending |
