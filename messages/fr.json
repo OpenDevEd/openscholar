@@ -1466,6 +1466,16 @@
     "viewFullPaper": "Voir l'article complet",
     "openAccess": "Accès libre",
     "citations": "{count, plural, one {1 citation} other {# citations}}",
-    "sortDisabledInSearch": "Le tri est désactivé pendant la recherche"
+    "sortDisabledInSearch": "Le tri est désactivé pendant la recherche",
+    "filterDateSaved": "Date d'enregistrement",
+    "filterLastWeek": "Semaine derniere",
+    "filterLastMonth": "Mois dernier",
+    "filterLastYear": "Annee derniere",
+    "filterAllTime": "Tout",
+    "filterYearRange": "Annee",
+    "filterYearFrom": "De",
+    "filterYearTo": "A",
+    "viewList": "Liste",
+    "viewGrid": "Grille"
   }
 }

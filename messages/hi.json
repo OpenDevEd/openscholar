@@ -1466,6 +1466,16 @@
     "viewFullPaper": "पूरा शोधपत्र देखें",
     "openAccess": "ओपन एक्सेस",
     "citations": "{count, plural, one {1 उद्धरण} other {# उद्धरण}}",
-    "sortDisabledInSearch": "खोज के दौरान क्रमबद्ध करना अक्षम है"
+    "sortDisabledInSearch": "खोज के दौरान क्रमबद्ध करना अक्षम है",
+    "filterDateSaved": "सहेजने की तिथि",
+    "filterLastWeek": "पिछला सप्ताह",
+    "filterLastMonth": "पिछला महीना",
+    "filterLastYear": "पिछला वर्ष",
+    "filterAllTime": "सभी समय",
+    "filterYearRange": "प्रकाशन वर्ष",
+    "filterYearFrom": "से",
+    "filterYearTo": "तक",
+    "viewList": "सूची दृश्य",
+    "viewGrid": "ग्रिड दृश्य"
   }
 }

@@ -1468,6 +1468,16 @@
     "viewFullPaper": "View full paper",
     "openAccess": "Open Access",
     "citations": "{count, plural, one {1 citation} other {# citations}}",
-    "sortDisabledInSearch": "Sort is disabled during search"
+    "sortDisabledInSearch": "Sort is disabled during search",
+    "filterDateSaved": "Date saved",
+    "filterLastWeek": "Last week",
+    "filterLastMonth": "Last month",
+    "filterLastYear": "Last year",
+    "filterAllTime": "All time",
+    "filterYearRange": "Year",
+    "filterYearFrom": "From",
+    "filterYearTo": "To",
+    "viewList": "List view",
+    "viewGrid": "Grid view"
   }
 }

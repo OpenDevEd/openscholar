@@ -1466,6 +1466,16 @@
     "viewFullPaper": "論文全文を見る",
     "openAccess": "オープンアクセス",
     "citations": "{count, plural, other {# 件の引用}}",
-    "sortDisabledInSearch": "検索中は並べ替えが無効です"
+    "sortDisabledInSearch": "検索中は並べ替えが無効です",
+    "filterDateSaved": "保存日",
+    "filterLastWeek": "先週",
+    "filterLastMonth": "先月",
+    "filterLastYear": "昨年",
+    "filterAllTime": "すべて",
+    "filterYearRange": "出版年",
+    "filterYearFrom": "から",
+    "filterYearTo": "まで",
+    "viewList": "リスト表示",
+    "viewGrid": "グリッド表示"
   }
 }

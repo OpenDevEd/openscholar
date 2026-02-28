@@ -1466,6 +1466,16 @@
     "viewFullPaper": "查看完整论文",
     "openAccess": "开放获取",
     "citations": "{count, plural, other {# 次引用}}",
-    "sortDisabledInSearch": "搜索时无法排序"
+    "sortDisabledInSearch": "搜索时无法排序",
+    "filterDateSaved": "保存日期",
+    "filterLastWeek": "最近一周",
+    "filterLastMonth": "最近一月",
+    "filterLastYear": "最近一年",
+    "filterAllTime": "全部时间",
+    "filterYearRange": "出版年份",
+    "filterYearFrom": "从",
+    "filterYearTo": "到",
+    "viewList": "列表视图",
+    "viewGrid": "网格视图"
   }
 }

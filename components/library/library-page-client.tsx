@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { LibrarySearchBar } from "./library-search-bar";
 import { LibraryFilters } from "./library-filters";
 import { LibraryItemRow } from "./library-item-row";
+import { LibraryItemCard } from "./library-item-card";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 import { LibraryEmptyState } from "./library-empty-state";
 
@@ -182,6 +183,14 @@ export function LibraryPageClient() {
         sortOrder={params.order}
         onSortOrderChange={(o) => setParams({ order: o })}
         sortDisabled={hasSearchText}
+        savedPreset={params.saved}
+        onSavedPresetChange={(p) => setParams({ saved: p })}
+        yearFrom={params.yf}
+        yearTo={params.yt}
+        onYearFromChange={(y) => setParams({ yf: y })}
+        onYearToChange={(y) => setParams({ yt: y })}
+        viewMode={params.view}
+        onViewModeChange={(m) => setParams({ view: m })}
       />
 
       {/* Content area */}
@@ -205,15 +214,27 @@ export function LibraryPageClient() {
         {/* Item list */}
         {displayResults.length > 0 && (
           <div className={isTransitioning ? "opacity-60 transition-opacity" : ""}>
-            {displayResults.map((item) => (
-              <LibraryItemRow
-                key={item._id}
-                item={item}
-                isExpanded={expandedItemId === item._id}
-                onToggleExpand={() => handleToggleExpand(item._id)}
-                onRemove={handleRemove}
-              />
-            ))}
+            {params.view === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+                {displayResults.map((item) => (
+                  <LibraryItemCard
+                    key={item._id}
+                    item={item}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </div>
+            ) : (
+              displayResults.map((item) => (
+                <LibraryItemRow
+                  key={item._id}
+                  item={item}
+                  isExpanded={expandedItemId === item._id}
+                  onToggleExpand={() => handleToggleExpand(item._id)}
+                  onRemove={handleRemove}
+                />
+              ))
+            )}
           </div>
         )}
 
