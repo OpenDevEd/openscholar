@@ -36,27 +36,47 @@ import {
 import { useRatingsStore } from "@/lib/store";
 import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { trimPaperData } from "@/lib/library/trim-paper-data";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 interface RatingSelectorProps {
   paperId: string;
+  paperResult?: Record<string, any>;  // Full OpenAlex Work object for library save
   variant?: "default" | "compact";
 }
 
-export function RatingSelector({ paperId, variant = "default" }: RatingSelectorProps) {
+export function RatingSelector({ paperId, paperResult, variant = "default" }: RatingSelectorProps) {
   const t = useTranslations('rating');
   const { ratings, setRating } = useRatingsStore();
+  const { phase } = useAuthReadiness();
+  const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
 
   const handleRatingChange = (rating: string) => {
     const previousRating = ratings[paperId];
     const newRating = rating === "no-rating" ? null : parseInt(rating);
 
+    // 1. ALWAYS update Zustand (optimistic, localStorage) -- unconditional
     if (rating === "no-rating") {
       setRating(paperId, null);
     } else {
       setRating(paperId, parseInt(rating));
     }
 
-    // Track paper rating event
+    // 2. If signed-in AND we have paper data AND rating is not removal, save to Convex
+    if (phase === "authenticated" && paperResult && newRating !== null) {
+      const trimmed = trimPaperData(paperResult);
+      saveToLibrary({
+        ...trimmed,
+        rating: newRating,
+      }).catch((error) => {
+        // Log but don't block -- Zustand already has the rating
+        console.error("[Library] Failed to save to library:", error);
+      });
+    }
+
+    // 3. PostHog tracking (existing, unchanged)
     posthog.capture("paper_rated", {
       paper_id: paperId,
       rating: newRating,
