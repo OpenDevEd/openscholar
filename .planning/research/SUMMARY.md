@@ -1,199 +1,233 @@
 # Project Research Summary
 
-**Project:** v1.1 Upgrade Flow (OpenAlex Count)
-**Domain:** Stripe subscription upgrade flow — proration preview, pro-rata credit grants, atomic operations
-**Researched:** 2026-02-27
+**Project:** OpenAlex Count — v1.2 E2E Billing Tests
+**Domain:** Playwright E2E test suite for SaaS billing flows (Stripe + Clerk + Convex + Next.js)
+**Researched:** 2026-02-28
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The v1.1 milestone is a surgical bug-fix and reliability hardening of an existing Stripe upgrade flow, not a greenfield feature build. The core architecture (Convex action + Stripe API + reactive mutations) is already correct. All required technologies are installed. The broken behavior — users charged but not credited — stems from three implementation gaps, not missing infrastructure: the `proration_date` is not pinned between preview and execution, credit grant failures are silently swallowed, and the success toast falls back to a preview estimate rather than actual granted credits.
+This milestone adds a browser-level E2E test suite that validates the user-visible billing flows in OpenAlex Count: subscribing to a plan, upgrading, downgrading, cancelling, and purchasing credit top-ups. The project already has a mature Vitest live-billing integration test suite that covers backend correctness (webhook idempotency, credit grant logic, Stripe API interactions). The E2E suite is deliberately scoped to cover what integration tests cannot: UI reactivity after webhook processing, in-app upgrade dialog behavior, redirect flows, and billing page rendering. No new npm packages are required — all tooling (`@playwright/test`, `@clerk/testing`, `@clerk/backend`, `stripe`) is already installed.
 
-The recommended approach is a dual-path convergence pattern: the `changePlan` action performs an optimistic credit grant for immediate UX, while the `invoice.paid` webhook provides an authoritative, idempotent backup path. This resolves the "paid but not credited" state without introducing complexity — no workflow engine, no rollback logic, no new dependencies. The key insight is that `grantUpgradeProRataCredits` is already idempotent via a `grantType + fromPlan + toPlan + period` dedup key, so both paths calling it is safe and produces exactly one grant.
+The central architectural decision is a hybrid approach to Stripe Checkout. Stripe's hosted checkout page (`checkout.stripe.com`) has security measures that actively prevent reliable automated card-filling. Attempting to fill card details there is the number one source of flakiness in billing test suites. The recommended approach: verify that the app generates the correct redirect URL in the browser, then complete the payment server-side via Stripe API using `tok_visa`, navigate to the return URL, and verify the UI updates correctly. In-app flows that stay on your domain (upgrade confirmation dialog, downgrade, plan display) are tested fully in the browser end-to-end.
 
-The primary risk is misclassifying proration invoices as monthly subscription invoices, which would cause double-grants. This risk is already mitigated by `invoiceGrantPolicy.ts` listing `subscription_update` as a non-recurring billing reason — but that firewall requires a regression test. Secondary risk is the `proration_date` drift between preview and execution, which is trivially fixed by passing the timestamp round-trip through the client. There are no architectural surprises; this is a well-documented Stripe pattern with established solutions.
+The most significant risks are timing-related: Stripe webhooks are delivered asynchronously (1–30 seconds) and must be processed by Convex before the UI reflects updated state. The mitigation is a polling-based `WebhookWaiter` utility (built on the existing `waitForCondition` pattern from `tests/live-billing/support.ts`) that confirms backend state convergence before asserting on the UI. Test isolation is enforced by creating a fresh Clerk user per test scenario — different Stripe customer IDs mean in-flight webhooks from one test cannot contaminate another. Sequential execution (`workers: 1`) is mandatory due to a confirmed `@clerk/testing` bug with concurrent workers.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies are required. The existing stack fully covers v1.1 requirements. The broken upgrade flow is a coordination logic problem, not a missing library problem. Every technology needed for proration preview, atomic upgrade operations, confirmation dialogs, and pro-rata credit grants is already installed and partially implemented. See `.planning/research/STACK.md` for full version compatibility matrix.
+No new dependencies are required. The full stack for E2E billing tests is already installed. The work is entirely about writing test infrastructure code (fixtures, page object models, utilities) and spec files. See `.planning/research/STACK.md` for full details.
 
 **Core technologies:**
-- `stripe@^20.3.0` (API `2026-01-28.clover`): Proration preview via `invoices.createPreview()`, atomic upgrade via `subscriptions.update()` with `error_if_incomplete` — already used correctly, no upgrade needed
-- `convex@^1.31.7`: OCC-atomic mutations for credit grants, action coordination for Stripe calls — architecture is correct, three implementation gaps need fixing
-- `@radix-ui/react-dialog@^1.1.15`: Confirmation dialog — already built as `upgrade-confirmation-dialog.tsx`, needs minor refinements
-- `sonner@^2.0.7`: Success/failure toast feedback — already integrated, needs toast message logic fix for `creditsGranted: undefined` case
-- `next-intl@^4.8.2`: Localized currency formatting in dialog — already implemented across 6 languages, no changes needed
+- `@playwright/test ^1.58.2`: E2E test runner — already configured with `webServer` auto-start, `fullyParallel: false`, `workers: 1` in CI
+- `@clerk/testing ^1.14.1`: `clerkSetup()`, `clerk.signIn()`, `clerk.loaded()` — already used in `e2e/global.setup.ts`
+- `@clerk/backend ^2.32.1`: `createClerkClient()` for programmatic user creation/deletion — already used in global setup
+- `stripe ^20.3.0`: Stripe API client for server-side subscription creation, cleanup, and state verification — already used in live-billing tests
+- `convex ^1.31.7`: Convex CLI (`npx convex run`) for backend function invocation — already used in live-billing tests
+
+**Configuration changes needed:**
+- Increase `playwright.config.ts` test timeout from 120s to 180s (billing flows include Stripe roundtrips + webhook processing)
+- Increase `expect.timeout` from 15s to 30s
+- Add `locale: 'en-US'` to prevent locale-dependent currency formatting failures in assertions
 
 ### Expected Features
 
-**Must have (table stakes — v1.1, all correctness-critical):**
-- Proration preview before confirming upgrade with pinned `proration_date` — partially implemented; critical fix required to align preview timestamp with execution
-- Immediate plan upgrade with correct proration charge — already works correctly via `always_invoice` + `error_if_incomplete`; no changes needed to the Stripe call itself
-- Pro-rata credit grant on upgrade — implemented but fragile; credit grant failure is silently non-fatal with no retry or recovery path
-- Atomic upgrade flow with clear success/failure states — primary bug: charge can succeed while credit grant silently fails, leaving user with wrong credit count
-- Upgrade error recovery (card declined, network failure) — already correct; `error_if_incomplete` ensures no partial Stripe state on payment failure
-- Accurate success feedback showing actual granted credits — broken; toast falls back to `upgradePreview.proRataCredits` when `creditsGranted` is `undefined`
-- Confirmation dialog preventing accidental upgrades — implemented; needs keyboard-dismiss guard verification during upgrade execution
+The test suite must cover two priority tiers. See `.planning/research/FEATURES.md` for full coverage matrix and dependency graph.
 
-**Should have (differentiators — v1.x, add after v1.1 validation):**
-- Payment method display in confirmation dialog — `cardBrand` and `cardLast4` already available in `subscriptionDetails`, just needs threading into dialog
-- Proration line item breakdown — `preview.lines.data` already returned by Stripe, not yet extracted
-- Upgrade credit grant reconciliation cron — extend existing cron to catch missed upgrade grants
+**Must have (table stakes — P0):**
+- Subscription creation E2E (free to Go, free to Pro) — the primary revenue conversion path
+- Upgrade E2E (Go to Pro via in-app confirmation dialog) — highest-value test, stays fully in-app
+- Downgrade E2E (Pro to Go via subscription schedule) — verify pending-change banner and scheduled badge
+- Cancellation E2E — verify billing page shows "Expires on" after cancel
+- Credit grant on subscription — assert exact credit amounts (3,000 for Go, 15,000 for Pro)
+- Credit top-up purchase E2E — full checkout-bypass flow for credit bundles
+- Test infrastructure (fixtures, utilities, cleanup) — foundational; every other test depends on it
 
-**Defer (v2+):**
-- Flexible billing mode migration (Stripe recommendation for more accurate prorations, requires all-flow regression)
-- Upgrade path suggestions based on credit usage patterns
-- A/B testing upgrade dialog copy
+**Should have (differentiators — P1):**
+- Upgrade pro-rata credit verification — assert calculated `floor(remainingRatio * creditDelta)` matches UI
+- Free credit capping behavior — cap banner visible for free-tier users at cap
+- Downgrade cancel / keep current plan — verify scheduled downgrade can be cancelled via UI
+- Credit top-up return state handling — "Processing purchase" banner + URL cleanup on `?topup=success`
+
+**Defer (not for this milestone):**
+- Recurring payment cycle credit grant — keep in existing Vitest live-billing suite (test clocks are incompatible with Checkout-created customers)
+- Payment failure E2E — requires Checkout iframe automation (explicitly an anti-feature); live-billing suite already covers this
+- Per-locale billing page screenshots — visual regression is a separate concern and notoriously flaky
+
+**Anti-features to avoid:**
+- Automating Stripe Checkout or Customer Portal UI — Stripe explicitly blocks this; tests break on Stripe's update schedule, not yours
+- Testing webhook delivery itself — tests should assert outcomes (UI state), not mechanisms (webhook arrival)
+- Duplicating live-billing integration test assertions in E2E — E2E answers "does the USER see the right thing?", not "does the BACKEND do the right thing?"
 
 ### Architecture Approach
 
-The system uses a dual-path convergence pattern: the `changePlan` action performs an optimistic credit grant for fast user feedback, and the `invoice.paid` webhook provides the authoritative backup path that catches action failures. Both paths call the same idempotent `grantUpgradeProRataCredits` mutation, which deduplicates by `grantType + fromPlan + toPlan + period`. The critical firewall is that `invoiceGrantPolicy.ts` must classify `subscription_update` invoices as non-recurring, preventing the webhook from triggering monthly credit grants on proration invoices. See `.planning/research/ARCHITECTURE.md` for full data flow diagrams.
+The architecture follows a two-layer hybrid strategy: browser automation for in-app flows (upgrade dialog, downgrade, plan display) and server-side Stripe API orchestration for flows that involve Stripe-hosted pages (subscription checkout, credit top-up). Page Object Models isolate DOM selectors from test logic. A central `billingFixture` composes all test infrastructure — Stripe client, Convex CLI runner, fresh test user lifecycle, and cleanup — into a single extended Playwright test object. See `.planning/research/ARCHITECTURE.md` for full POM implementations and data flow diagrams.
 
-**Major components:**
-1. `getUpgradePreview` action — read-only proration preview from Stripe; already implemented; needs `proration_date` returned in response
-2. `changePlan` action — executes Stripe upgrade + optimistic sync + optimistic credit grant; needs `proration_date` passed in, upgrade metadata written to Stripe subscription, and explicit failure handling for credit grant step
-3. `grantUpgradeProRataCredits` mutation — idempotent credit grant with dedup; already correct, no changes needed
-4. `invoice.paid` webhook handler — authoritative backup path; needs extension to classify proration invoices and trigger upgrade credit grants
-5. `upgrade-confirmation-dialog.tsx` — UI gate for two-step confirm flow; already built, needs `proration_date` threading and improved toast messaging for grant failure case
+**Major components to build:**
+1. `e2e/support/clerk-user.ts` — fresh Clerk user creation/deletion via Backend API; no deps on other new files
+2. `e2e/support/stripe-helpers.ts` — attach payment methods, create subscriptions via Stripe API; configure with `maxNetworkRetries: 3`
+3. `e2e/support/webhook-waiter.ts` — poll Convex CLI to confirm webhook-driven state convergence before UI assertions
+4. `e2e/fixtures/billing.fixture.ts` — composes all three support modules into a Playwright fixture with automatic teardown
+5. `e2e/pages/billing.page.ts` — POM for `/settings/billing`; depends on `data-testid` additions to UI components
+6. `e2e/pages/pricing.page.ts` — POM for `/pricing` including upgrade dialog fragment; depends on `data-testid` additions
+7. `e2e/billing/*.spec.ts` — 7 spec files organized by billing flow (subscribe, upgrade, downgrade, cancellation, credit-grant, credit-topup, free-credit-cap)
+
+**Existing components that need minor changes:**
+- `components/billing/credit-balance-card.tsx`, `credit-topup-card.tsx`, `upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx`, `app/settings/billing/page.tsx` — add `data-testid` attributes for stable POM selectors
+- `playwright.config.ts` — add billing test project, increase timeouts, set `locale: 'en-US'`
+- `package.json` — add `test:e2e:billing` script
 
 ### Critical Pitfalls
 
-1. **Charge succeeds but credit grant fails silently (Pitfall 2 in PITFALLS.md)** — The current `try/catch` logs the error as non-fatal but has no retry or recovery path. Users are charged, their plan changes, and they receive zero pro-rata credits with a success toast. Fix: schedule a retry via `ctx.scheduler.runAfter()` on grant failure, and return `creditsGranted: undefined` explicitly so the UI shows "credits will appear shortly" rather than claiming a specific count.
+1. **Webhook timing flakiness** — Never use `page.waitForTimeout()`. Always poll Convex state via `WebhookWaiter` (2s intervals, 60s timeout) before navigating to the UI for final assertions. The two-phase approach (backend convergence then UI assertion) eliminates the most common E2E flake source.
 
-2. **Preview-to-execution amount mismatch (Pitfall 3)** — Stripe prorates to the second; `proration_date` is independently computed at preview time and at execution time, causing drift. Fix: return `proration_date` from `getUpgradePreview`, pass it through the client to `changePlan`, and supply it to `stripe.subscriptions.update()` as the `proration_date` parameter. Two field additions; trivial.
+2. **Stripe Checkout automation brittleness** — Do not automate `checkout.stripe.com`. Use the Stripe API to create subscriptions server-side, then navigate the browser to the return URL. Reserve any direct Checkout page interaction for at most one smoke test; remove it if it proves flaky.
 
-3. **Proration invoice triggers monthly credit grant (Pitfall 6)** — If `invoiceGrantPolicy.ts` ever classifies `subscription_update` billing_reason as eligible for monthly grants, users receive double credits. The firewall is in place but must be protected by a regression test. Fix: add a unit test asserting `classifyMonthlyCreditInvoice({ invoiceBillingReason: "subscription_update", ... })` always returns `ignore_non_recurring`.
+3. **Cross-test state pollution via shared Convex backend** — Use a fresh Clerk user per test scenario. Different users have different Stripe customer IDs, so late-arriving webhooks from Test A cannot contaminate Test B. After cleanup, allow a short settling period for in-flight webhooks to exhaust before the next test creates state.
 
-4. **Action-webhook race on subscription sync (Pitfall 1)** — Both `changePlan` action and the `customer.subscription.updated` webhook call `syncLocalSubscriptionFromStripe`. The race is currently benign, but requires a documented ownership contract to prevent future breakage: action owns optimistic sync and credit grant; webhook is the authoritative idempotent convergence path.
+4. **Clerk concurrent worker authentication timeout** — `clerk.signIn()` has a confirmed bug with `workers >= 2` (GitHub issue #7891). Set `workers: 1` globally (not just in CI) and document the constraint.
 
-5. **Period date staleness for credit calculation (Pitfall 7)** — `changePlan` reads `currentPeriodStart/End` from the pre-update subscription object. Although `always_invoice` does not reset billing periods, reading these from the post-update return value of `stripe.subscriptions.update()` is a defensive fix worth making.
+5. **Orphaned Stripe test objects from failed tests** — Implement a global cleanup sweep at the START of the test suite that queries Stripe for test-email-pattern customers and deletes them before creating new state. Configure the Stripe client with `maxNetworkRetries: 3` to handle sandbox rate limits (25 ops/sec cap).
 
 ## Implications for Roadmap
 
-Based on combined research, the work divides into two focused phases: correctness fixes (the known bug), then reliability hardening (idempotent webhook backup path + edge cases). A third optional phase covers UX polish.
+The natural build order is driven by dependency chains: support utilities must exist before fixtures, fixtures before page objects, page objects before specs. The phase structure below follows this dependency order. All four research files agree on the same phase groupings.
 
-### Phase 1: Fix the Broken Upgrade Flow
+### Phase 1: Test Infrastructure Foundation
 
-**Rationale:** The three correctness bugs (proration date drift, silent credit grant failure, inaccurate success toast) must be fixed before any other work. These are the root cause of the production bug. All fixes are logic changes within existing files — no new infrastructure, no new dependencies.
+**Rationale:** Every billing spec depends on the support utilities, fixtures, and stable DOM selectors. Building these first means each subsequent phase can focus purely on test scenario logic. This phase addresses infrastructure-level pitfalls before they can affect actual test writing — specifically Pitfalls 1, 2, 4, 5, 7, 8, 10, and 12 (the majority of pitfalls are infrastructure concerns, not spec-level concerns).
 
-**Delivers:** A reliable upgrade flow where the proration amount shown matches the amount charged, credit grant failures are retried and communicated to the user, and the success toast reflects actual granted credits (not a preview estimate).
+**Delivers:** A complete, reusable test harness. At the end of this phase, a developer can write a billing test with a handful of lines using the fixture and POM, and it will have correct isolation, cleanup, and timing behavior out of the box.
 
-**Addresses (from FEATURES.md):**
-- Pin `proration_date` between preview and execution (P1)
-- Handle credit grant failure visibility (P1)
-- Fix success toast for `creditsGranted: undefined` (P1)
-- Verify dialog cannot be double-submitted via keyboard dismiss (P1)
+**Addresses (from FEATURES.md):** Test infrastructure (fixtures, utilities, cleanup)
 
-**Avoids (from PITFALLS.md):**
-- Pitfall 3: Preview-to-execution amount mismatch
-- Pitfall 2: Charge succeeds but credits silently not granted
-- Pitfall 7: Pre-update period dates used for credit calculation
+**Implements:**
+- `e2e/support/clerk-user.ts` — fresh user creation with `skipPasswordChecks: true`, Convex user sync verification after Clerk webhook
+- `e2e/support/stripe-helpers.ts` — `attachTestPaymentMethod`, `createGoSubscription`, `createProSubscription`, `cleanupStripeForTestUser`; wraps existing live-billing patterns; Stripe client configured with `maxNetworkRetries: 3`
+- `e2e/support/webhook-waiter.ts` — `WebhookWaiter` class polling Convex CLI for `subscriptionSynced`, `creditGrantForInvoice`, `planEquals`
+- `e2e/fixtures/billing.fixture.ts` — extends Playwright test with `stripeClient`, `testUser`, `signInAsTestUser`, `waitForWebhook`, and automatic teardown (Stripe cancel + Convex reset + Clerk delete)
+- Add `data-testid` attributes to billing UI components (prerequisite for stable POM selectors)
+- `e2e/pages/billing.page.ts` and `e2e/pages/pricing.page.ts` — POMs with `expectPlan()`, `expectStatus()`, `expectCreditBalanceAtLeast()`, upgrade dialog fragment
+- `playwright.config.ts` updates: billing test project, 180s timeout, 30s expect timeout, `locale: 'en-US'`, global cleanup sweep in `globalSetup`
 
-**Files touched:** `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `components/Pricing.tsx`, `components/billing/upgrade-confirmation-dialog.tsx`, `messages/*.json` (toast text)
+**Avoids:** Pitfall 4 (`workers: 1` enforced), Pitfall 7 (global cleanup sweep in `globalSetup`), Pitfall 8 (Stripe client retry config), Pitfall 12 (fixed locale)
 
-**Research flag:** Standard patterns. Implementation is fully specified across STACK.md, FEATURES.md, and ARCHITECTURE.md. No additional research needed.
+**Research flag:** Standard patterns, well-documented. Skip `gsd:research-phase` — implementation patterns are fully specified in the research files with working code examples. The existing `tests/live-billing/support.ts` provides proven reference implementations for most utilities.
 
----
+### Phase 2: Core Subscription and Upgrade Specs
 
-### Phase 2: Add Webhook-Driven Credit Grant Backup Path
+**Rationale:** Subscription creation is the foundational billing operation — every other flow (upgrade, downgrade, cancel) requires an active subscription as a precondition. The upgrade dialog is the highest-value target because it is the v1.1 feature most exposed to regressions and involves the most UI components. These specs generate the most confidence per line of test code.
 
-**Rationale:** The Phase 1 retry (`ctx.scheduler.runAfter()`) handles transient Convex failures, but does not cover the case where the entire `changePlan` action context fails before the retry is scheduled. The webhook-driven path provides a durable, independently-triggered convergence mechanism that catches all remaining failure modes.
+**Delivers:** Coverage of the primary revenue path (free to paid) and the primary upsell path (Go to Pro). These are the two flows most financially impactful if they break silently.
 
-**Delivers:** Credit grants resilient to action failures. Even if `changePlan` crashes after the Stripe charge succeeds, the `invoice.paid` webhook will detect the proration invoice, classify it as an upgrade, and trigger the same idempotent grant mutation.
+**Addresses (from FEATURES.md):** Subscription creation E2E (both tiers), Upgrade E2E, Credit grant on subscription
 
-**Addresses (from FEATURES.md):**
-- Credit grant guarantee with reconciliation fallback (P2 differentiator)
+**Implements:**
+- `e2e/billing/subscribe.spec.ts` — free to Go and free to Pro using checkout-bypass pattern; verifies redirect URL generated, plan visible on billing page, credit balance shown
+- `e2e/billing/upgrade.spec.ts` — full browser flow (Pattern 3, in-app only): upgrade dialog opens, proration amount displayed, confirm button triggers upgrade, success toast appears, billing page shows Pro
+- `e2e/billing/credit-grant.spec.ts` — assert exact credit amounts (3,000 / 15,000) on billing page after subscription and after upgrade
 
-**Avoids (from PITFALLS.md):**
-- Pitfall 1: Action-webhook race (requires documented ownership contract + firewall comments)
-- Pitfall 6: Proration invoice triggering monthly credit grant (requires unit test for `invoiceGrantPolicy.ts`)
+**Avoids:** Pitfall 3 (checkout bypass for subscription specs), Pitfall 5 (coverage matrix — not duplicating live-billing backend assertions), Pitfall 6 (mandate at least one `page.locator()` assertion per test)
 
-**Build order (dependency-aware — must follow this sequence):**
-1. Add upgrade metadata (`upgradeFromPlan`, `upgradeToPlan`, `upgradeTimestamp`) to `stripe.subscriptions.update()` call in `changePlan` — this is the data contract the webhook handler will read
-2. Extend invoice classification in `invoiceGrantPolicy.ts` / `processInvoiceForGrant` to detect `billing_reason === "subscription_update"` + upgrade metadata
-3. Wire `invoice.paid` webhook handler to call the extended classifier and trigger upgrade credit grants
-4. Verify idempotency end-to-end: action path + webhook path = exactly one grant
+**Research flag:** Standard patterns. Upgrade dialog (full-browser flow) and checkout bypass are both fully specified in ARCHITECTURE.md with code examples. Skip `gsd:research-phase`.
 
-**Files touched:** `convex/subscriptions/actions.ts`, `convex/credits/lib/invoiceGrantPolicy.ts`, `convex/credits/actions.ts`, `convex/http.ts`
+### Phase 3: Downgrade, Cancellation, Credits, and Edge Cases
 
-**Research flag:** Architecture is fully specified. Invoice classification requires careful testing against real Stripe test-mode events to confirm `billing_reason` values match expectations. Validate in Stripe test mode before deploying.
+**Rationale:** These flows build on the subscription and upgrade tests and share the same infrastructure. They can be implemented once Phase 2 specs prove the fixture and POM layers work correctly under real conditions. Grouping them in one phase avoids context-switching between infrastructure work and spec writing.
 
----
+**Delivers:** Complete lifecycle coverage (subscribe, upgrade, downgrade, cancel) plus credit-specific flows (top-up purchase, free credit cap). All P0 and P1 features covered.
 
-### Phase 3: UX Polish and Edge Case Hardening (Optional)
+**Addresses (from FEATURES.md):** Downgrade E2E, Cancellation E2E, Credit top-up E2E, Free credit capping, Upgrade pro-rata credit verification, Downgrade cancel / keep current plan
 
-**Rationale:** Once the core upgrade flow is reliable in production, address differentiating UX features and rare edge cases. All data required already exists in the system.
+**Implements:**
+- `e2e/billing/downgrade.spec.ts` — Pro to Go via subscription schedule; verifies pending-change banner, "Scheduled" badge on Go card, plan still shows Pro before billing boundary
+- `e2e/billing/cancellation.spec.ts` — cancel via Stripe API (bypass portal); billing page shows "Expires on" instead of "Renews on"
+- `e2e/billing/credit-topup.spec.ts` — checkout-bypass flow for credit bundles; "Processing purchase" banner, credit balance increases reactively
+- `e2e/billing/free-credit-cap.spec.ts` — cap banner visible for free-tier users at limit
+- P1 differentiators: pro-rata credit verification within `upgrade.spec.ts`; downgrade cancel / keep current plan within `downgrade.spec.ts`
 
-**Delivers:** A polished upgrade experience and protection against rare edge cases (rapid re-upgrade, credit cap mismatches between preview and actual grant).
+**Avoids:** Pitfall 3 (cancellation is API-driven, no portal iframe), Pitfall 9 (test clock constraints — subscription renewal stays in live-billing suite), Pitfall 14 (Stripe portal redirect — verify URL generation only, drive cancellation via API)
 
-**Addresses (from FEATURES.md):**
-- Payment method display in confirmation dialog (card brand/last4 already in `subscriptionDetails`)
-- Proration line item breakdown (line items already in `preview.lines.data`, not yet extracted)
+**Research flag:** Cancellation and downgrade via Stripe API follow the same patterns as subscription creation. Credit top-up checkout-bypass is identical to subscription checkout-bypass. Skip `gsd:research-phase`.
 
-**Avoids (from PITFALLS.md):**
-- Pitfall 4: Rapid re-upgrade double grant (UI cooldown + broad dedup consideration)
-- Pitfall 10: Credit cap interaction with preview amount (align `applyTierFreeCreditCap` in preview calculation)
+### Phase 4: Configuration, CI, and Hardening
 
-**Research flag:** Standard patterns. Skip `/gsd:research-phase`. These are UI additions using data from existing APIs.
+**Rationale:** Once all specs are working locally, finalize CI integration, add failure artifact capture, and document operational requirements (Convex deployment stability, periodic Stripe sandbox maintenance).
 
----
+**Delivers:** A reliable, maintainable CI pipeline that does not require manual intervention to keep the Stripe sandbox clean or the tests green.
+
+**Implements:**
+- `package.json` `test:e2e:billing` script with correct env setup
+- CI pipeline configuration (separate billing E2E job from unit/integration jobs)
+- Artifact capture on failure: billing snapshot + Stripe event list saved as test artifacts for debugging
+- Operational documentation: Convex deployment must be stable (`convex deploy` before E2E, not `convex dev`); periodic Stripe sandbox cleanup schedule
+- Validation of the "looks done but isn't" checklist from PITFALLS.md
+
+**Research flag:** May benefit from a brief `gsd:research-phase` if the specific CI provider has constraints around external network access to `api.stripe.com` or secrets management for billing API keys. Otherwise standard CI configuration.
 
 ### Phase Ordering Rationale
 
-- Phase 1 before Phase 2 because the webhook backup path depends on upgrade metadata written to Stripe during Phase 1. Deploying the webhook handler before the metadata exists would cause silent classification failures.
-- Phase 2 before Phase 3 because UX polish is low-value if the underlying grant mechanism is unreliable. Confirm Phase 2 works in production before investing in optional polish.
-- Phases 1 and 2 directly address the reported production bug; Phase 3 is optional and can be deferred based on user feedback.
-- The idempotency of `grantUpgradeProRataCredits` is the load-bearing assumption for Phase 2. This must be verified before Phase 2 deploys.
+- Infrastructure before specs is mandatory: fixtures and POMs have no value without the support utilities beneath them
+- Subscribe before upgrade: the upgrade spec requires an active subscription as a precondition; the subscribe spec also validates the fixture infrastructure under real conditions for the first time
+- Downgrade and cancel after upgrade: these are lower-risk flows (less financial impact if they regress) and share patterns already proven in Phase 2
+- CI hardening last: ensures artifact capture and timeout budgets are tuned against real test output rather than theoretical estimates
 
 ### Research Flags
 
-Phases needing attention during implementation:
-- **Phase 2 (invoice classification):** Detecting upgrade proration invoices via `billing_reason === "subscription_update"` + subscription metadata is sound, but validate that real Stripe test-mode proration invoices carry the expected `billing_reason` value before shipping. If the behavior differs, the classification silently fails to trigger grants (no double-grant risk, but backup path is ineffective).
+**Phases likely needing deeper research during planning:**
+- **Phase 4 (CI):** If the CI provider has unusual constraints around external network calls to Stripe's sandbox or secrets management for billing API keys, a brief `gsd:research-phase` is warranted.
 
-Phases with standard patterns (skip `/gsd:research-phase`):
-- **Phase 1:** Every fix is clearly specified in research with no ambiguity. Straight implementation.
-- **Phase 3:** UI additions using data already returned by existing APIs.
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (Infrastructure):** All patterns are fully specified in STACK.md and ARCHITECTURE.md with working code examples. The existing `tests/live-billing/support.ts` provides proven reference implementations for most utilities.
+- **Phase 2 (Subscribe + Upgrade):** Checkout-bypass and full-browser upgrade dialog patterns are both fully documented with code.
+- **Phase 3 (Downgrade + Credits):** Follows the same checkout-bypass and API-driven patterns established in Phase 2.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions confirmed compatible. No new dependencies. Validated against installed `package.json` and Stripe API changelog. |
-| Features | HIGH | Derived from Stripe official docs + direct codebase analysis. Table stakes match Stripe's documented proration patterns exactly. Implementation gaps confirmed by reading source code, not inferred. |
-| Architecture | HIGH | Dual-path convergence is the Convex-recommended pattern for Stripe integrations. Data flow verified against actual code in `convex/subscriptions/actions.ts` and `convex/http.ts`. |
-| Pitfalls | HIGH | Each pitfall verified against the actual codebase (confirmed to exist in current code), Stripe docs (proration_date warning is explicit), and Convex docs (non-transactional actions). Not inferred — observed. |
+| Stack | HIGH | Direct codebase inspection confirms all packages installed. No new dependencies needed. All version constraints verified. |
+| Features | HIGH | Stripe official docs confirm the anti-automation stance on hosted pages. Codebase analysis confirms what UI components exist to test. Coverage matrix clearly separates E2E scope from live-billing scope. |
+| Architecture | HIGH | Hybrid checkout-bypass pattern is confirmed by Stripe docs, Playwright community reports, and existing live-billing code patterns. POM and fixture patterns are well-established Playwright idioms with full code examples in research. |
+| Pitfalls | HIGH | Each pitfall is sourced from official docs (Stripe rate limits, test clock limits, Clerk concurrent worker bug) and direct codebase analysis of the existing live-billing test suite. Mitigation strategies are concrete and actionable, not theoretical. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Stripe `billing_reason` for proration invoices:** Research confirms `invoice.paid` fires with `billing_reason: "subscription_update"` for proration invoices created by `always_invoice`. This should be verified in a Stripe test environment before Phase 2 deploys. If the value differs in practice, the webhook classifier in Phase 2 will need adjustment.
-- **Credit cap behavior in preview:** The `applyTierFreeCreditCap` calculation in `getUpgradePreview` may not match the cap applied in `grantUpgradeProRataCredits` if the user's free credit balance changes between preview and execution. This edge case affects users with high free balances near the Pro cap. Address in Phase 3 by aligning the cap calculation in the preview action.
-- **Webhook retry on Phase 2 handler failure:** If the `invoice.paid` webhook handler fails in the Phase 2 code path, Stripe retries the webhook with exponential backoff up to 72 hours. The idempotency of the classification + grant must hold under repeated delivery. Confirm `grantUpgradeProRataCredits` handles this correctly (it already deduplicates, so this should be satisfied).
+- **Stripe Checkout selector stability (low impact if avoided):** If the team decides to exercise the actual Stripe Checkout page for even one smoke test, the DOM selectors (`[name="cardNumber"]`, `[data-testid="hosted-payment-submit-button"]`) are not officially documented. Treat them as fragile and isolate them in a single helper file. The full checkout-bypass approach eliminates this gap entirely — this is the recommendation.
+
+- **Convex user sync timing after Clerk user creation:** The Clerk `user.created` webhook to Convex is asynchronous. The `clerkTestUser` utility must include an explicit poll for the Convex `users` row before proceeding with billing setup. The code pattern is specified in ARCHITECTURE.md but the exact timing window (typically 1–5s) needs empirical validation in the target environment during Phase 1.
+
+- **CI provider specifics:** The research did not inspect the CI pipeline configuration. Phase 4 should verify that the billing E2E job has network access to `checkout.stripe.com` (for URL capture in the browser), `api.stripe.com`, and the deployed Convex endpoint.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) — `proration_date` alignment, `always_invoice` behavior, preview-then-confirm workflow
-- [Stripe Create Preview Invoice API](https://docs.stripe.com/api/invoices/create_preview) — `subscription_details` parameters, response shape for preview
-- [Stripe Update Subscription API](https://docs.stripe.com/api/subscriptions/update) — `payment_behavior: error_if_incomplete` semantics; `always_invoice` creates and immediately charges proration invoice
-- [Stripe Invoice Preview API Deprecations](https://docs.stripe.com/changelog/basil/2025-03-31/invoice-preview-api-deprecations) — `GET /v1/invoices/upcoming` removed in `2025-03-31.basil`, confirmed `createPreview` is the correct replacement
-- [Convex Actions Documentation](https://docs.convex.dev/functions/actions) — non-transactional semantics, `ctx.runMutation` from actions, error handling responsibility
-- [Convex OCC and Atomicity](https://docs.convex.dev/database/advanced/occ) — mutation atomicity guarantees, automatic retry on OCC conflict
-- Codebase review: `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `convex/credits/lib/invoiceGrantPolicy.ts`, `convex/http.ts`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx`
+- [Stripe Automated Testing Documentation](https://docs.stripe.com/automated-testing) — checkout anti-automation, simulation approach
+- [Stripe Test Card Numbers](https://docs.stripe.com/testing) — 4242424242424242, tok_visa, tok_chargeCustomerFail
+- [Stripe Rate Limits](https://docs.stripe.com/rate-limits) — 25 ops/sec sandbox limit, subscription-level limits
+- [Stripe Test Clocks Documentation](https://docs.stripe.com/billing/testing/test-clocks) — 3 customers/clock, 3 subscriptions/customer limits
+- [Stripe Test Clock API Advanced Usage](https://docs.stripe.com/billing/testing/test-clocks/api-advanced-usage) — list API limitations for test clock objects
+- [Clerk Testing with Playwright](https://clerk.com/docs/guides/development/testing/playwright/overview) — clerkSetup(), clerk.signIn(), testing token
+- [Clerk Playwright Test Helpers](https://clerk.com/docs/guides/development/testing/playwright/test-helpers) — signIn/signOut/loaded API reference
+- [Clerk Backend SDK createUser](https://clerk.com/docs/reference/backend/user/create-user) — skipPasswordChecks flag
+- [Clerk signIn() Timeout with Concurrent Workers — Issue #7891](https://github.com/clerk/javascript/issues/7891) — confirmed bug, workers: 1 required
+- [Playwright Assertions — expect.poll](https://playwright.dev/docs/test-assertions) — polling pattern for async state
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices) — fixture pattern, locator strategy
+- Codebase direct inspection: `package.json`, `playwright.config.ts`, `e2e/global.setup.ts`, `e2e/auth.spec.ts`, `tests/live-billing/support.ts`, `tests/live-billing/required.test.ts`, `convex/testing/billing.ts`, `components/Pricing.tsx`, `app/settings/billing/page.tsx`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/billing/credit-topup-card.tsx`
 
 ### Secondary (MEDIUM confidence)
-- [Stripe Pending Updates](https://docs.stripe.com/billing/subscriptions/pending-updates) — why `pending_if_incomplete` is not recommended for upgrade flows
-- [Convex Workflow Component](https://www.convex.dev/components/workflow) — durable workflow capabilities; confirmed NOT appropriate for this use case (fast operation, Stripe provides payment atomicity, credit grant has webhook fallback)
-- [Stripe Subscription Webhooks](https://docs.stripe.com/billing/subscriptions/webhooks) — event ordering, `customer.subscription.updated` and `invoice.paid` timing relative to API call response
-- [Billing Webhook Race Condition Solution Guide](https://excessivecoding.com/blog/billing-webhook-race-condition-solution-guide) — idempotent sync pattern for action-webhook races
-- SaaS proration UX patterns (Stigg, Chargebee, Zenskar) — industry standard confirmation dialog content and required information
+- [Playwright Issue #19709: Stripe Checkout submission](https://github.com/microsoft/playwright/issues/19709) — confirms Checkout automation is fragile in CI
+- [stripe-node Retry on 429 Issue #1110](https://github.com/stripe/stripe-node/issues/1110) — auto-retry not enabled by default; must configure `maxNetworkRetries`
+- [Convex Testing Patterns](https://stack.convex.dev/testing-patterns) — sequential execution and cleanup patterns for shared backends
+- [Testing SaaS Billing with Playwright and Stripe Test Clocks (HackerNoon)](https://hackernoon.com/no-more-ship-and-pray-testing-saas-billing-systems-with-playwright-and-stripe-test-clocks) — three-layer architecture, webhook polling
+- [Testing Stripe Billing Cycles in 5 Minutes (DEV Community)](https://dev.to/paultowers/how-we-test-stripe-billing-cycles-in-5-minutes-instead-of-waiting-40-days-30jd) — test clock patterns, polling with exponential backoff
 
-### Tertiary (LOW confidence)
-- [`customer.subscription.updated` webhook issue with @convex-dev/stripe](https://github.com/get-convex/stripe/issues/7) — known issue with priceId not updating in component state; relevant only if `@convex-dev/stripe` is ever used for subscription updates (currently it is not)
+### Tertiary (LOW confidence — needs validation in target environment)
+- Stripe Checkout hosted page DOM selectors (`[name="cardNumber"]`, `[data-testid="hosted-payment-submit-button"]`) — community-reported, not officially documented; moot if checkout bypass is used consistently (which it should be)
 
 ---
-*Research completed: 2026-02-27*
+*Research completed: 2026-02-28*
 *Ready for roadmap: yes*

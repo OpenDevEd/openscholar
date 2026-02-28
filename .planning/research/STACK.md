@@ -1,238 +1,479 @@
-# Stack Research: v1.1 Upgrade Flow
+# Technology Stack: v1.2 E2E Billing Tests
 
-**Domain:** Stripe upgrade flow with proration preview, pro-rata credit grants, atomic operations
-**Researched:** 2026-02-27
-**Confidence:** HIGH
+**Project:** OpenAlex Count -- E2E Billing Test Suite
+**Researched:** 2026-02-28
+**Scope:** Stack additions/changes for Playwright E2E billing tests with Clerk test mode, Stripe sandbox, and Convex dev backend
 
-## Executive Finding: No New Dependencies Required
+## Executive Decision
 
-The existing stack fully covers all v1.1 requirements. The broken upgrade flow is a coordination logic problem, not a missing library problem. Every technology needed for proration preview, atomic upgrade operations, confirmation dialogs, and pro-rata credit grants is already installed and partially implemented.
+**No new npm dependencies required.** The existing stack (`@playwright/test ^1.58.2`, `@clerk/testing ^1.14.1`, `@clerk/backend ^2.32.1`, `stripe ^20.3.0`) already contains everything needed. The work is about writing test infrastructure code (fixtures, helpers, utilities), not adding packages.
 
-## Existing Stack (Validated for v1.1)
+---
 
-### Core Technologies
+## Existing Stack (Already Installed -- DO NOT Re-add)
 
-| Technology | Version | Purpose | v1.1 Status |
-|------------|---------|---------|-------------|
-| stripe | ^20.3.0 (API `2026-01-28.clover`) | Stripe SDK for proration preview and subscription updates | Already uses `invoices.createPreview()` and `subscriptions.update()`. No upgrade needed. |
-| convex | ^1.31.7 | Backend runtime; OCC-atomic mutations, action coordination | `changePlan` action already coordinates Stripe API calls with `ctx.runMutation`. Pattern is correct. |
-| @convex-dev/stripe | ^0.1.3 | Checkout sessions, customer management, webhook routing | Not used for plan changes (correct -- component lacks subscription update methods). |
-| @convex-dev/workflow | ^0.3.4 | Durable workflow execution | Already installed. **Not recommended for upgrade flow** (see rationale below). |
-| @radix-ui/react-dialog | ^1.1.15 | Confirmation dialog primitive | `UpgradeConfirmationDialog` already built with this. |
-| sonner | ^2.0.7 | Toast notifications | Already used for upgrade success/failure feedback. |
-| next-intl | ^4.8.2 | i18n for dialog text | Translation keys for `upgradeDialog` already exist. |
-| swr | ^2.3.3 | Client-side data fetching | Used for Stripe price fetching. Not needed for single-use upgrade previews. |
+### Core Test Framework
 
-### Supporting Libraries (Already Installed)
+| Technology | Version | Purpose | Status |
+|------------|---------|---------|--------|
+| `@playwright/test` | ^1.58.2 | E2E test runner, browser automation, assertions | Installed, configured |
+| `vitest` | ^3.2.4 | Unit tests and live-billing integration tests | Installed, configured |
 
-| Library | Version | Purpose | v1.1 Relevance |
-|---------|---------|---------|----------------|
-| date-fns | ^4.1.0 | Date formatting | Available for period remaining display in confirmation dialog |
-| zod | ^4.3.6 | Runtime validation | Convex validators already handle action input/output validation |
-| convex-helpers | ^0.1.111 | Utility functions for Convex | Available but not needed for upgrade flow |
+### Auth Testing
 
-## Stripe API Endpoints for v1.1
+| Technology | Version | Purpose | Status |
+|------------|---------|---------|--------|
+| `@clerk/testing` | ^1.14.1 | `clerkSetup()`, `clerk.signIn()`, `clerk.signOut()`, `clerk.loaded()`, `setupClerkTestingToken()` | Installed, used in `e2e/global.setup.ts` and `e2e/auth.spec.ts` |
+| `@clerk/backend` | ^2.32.1 | `createClerkClient()` for server-side user CRUD (`createUser`, `deleteUser`, `updateUser`, `getUserList`) | Installed, used in `e2e/global.setup.ts` |
 
-All available in `stripe@^20.3.0` with API version `2026-01-28.clover`.
+### Billing Integration
 
-### Proration Preview
+| Technology | Version | Purpose | Status |
+|------------|---------|---------|--------|
+| `stripe` | ^20.3.0 | Stripe API client for test cleanup, state verification, test card tokens | Installed, used in `tests/live-billing/support.ts` |
+| `convex` | ^1.31.7 | Convex CLI (`npx convex run`) for backend function invocation | Installed, used in live-billing tests |
 
-**Endpoint:** `POST /v1/invoices/create_preview`
-**SDK Method:** `stripe.invoices.createPreview()`
-**Status:** Already implemented in `getUpgradePreview` action.
+### Confidence: HIGH
+Sources: Direct inspection of `package.json`, `playwright.config.ts`, `e2e/global.setup.ts`, `e2e/auth.spec.ts`, `tests/live-billing/support.ts`.
 
+---
+
+## What To Build (Not Install)
+
+The E2E billing tests need custom infrastructure built from existing packages. Here is what each capability requires.
+
+### 1. Per-Test Clerk User Isolation
+
+**What:** Each billing test needs a fresh Clerk user to prevent cross-test state contamination (subscriptions, credits, Stripe customer records).
+
+**How:** Use `@clerk/backend` (already installed) `createClerkClient()` to create and delete users programmatically. The existing `e2e/global.setup.ts` already demonstrates this pattern with `ensureDisposableClerkUser()`.
+
+**Pattern:**
 ```typescript
-// Existing implementation (convex/subscriptions/actions.ts:892)
-const preview = await stripe.invoices.createPreview({
-  customer: customerId,
-  subscription: stripeSub.id,
-  subscription_details: {
-    items: [{ id: item.id, price: args.targetPriceId }],
-    proration_behavior: "always_invoice",
-    proration_date: Math.floor(Date.now() / 1000),
+// e2e/fixtures/billing.ts -- Playwright fixture
+import { test as base, type Page } from "@playwright/test";
+import { createClerkClient } from "@clerk/backend";
+import { clerk } from "@clerk/testing/playwright";
+
+type BillingFixtures = {
+  testUser: { email: string; password: string; clerkUserId: string };
+  authenticatedPage: Page;
+};
+
+export const test = base.extend<BillingFixtures>({
+  testUser: async ({}, use, testInfo) => {
+    const clerkClient = createClerkClient({
+      secretKey: process.env.CLERK_SECRET_KEY!,
+    });
+    const email = `e2e-billing-${testInfo.testId}@test.example.com`;
+    const password = "TestPassword123!";
+
+    const user = await clerkClient.users.createUser({
+      emailAddress: [email],
+      password,
+      firstName: "E2E",
+      lastName: `Billing-${testInfo.testId.slice(0, 8)}`,
+      skipPasswordChecks: true,
+      skipPasswordRequirement: true,
+    });
+
+    await use({ email, password, clerkUserId: user.id });
+
+    // Teardown: delete user (cascades Clerk-side cleanup)
+    await clerkClient.users.deleteUser(user.id);
+  },
+
+  authenticatedPage: async ({ page, testUser }, use) => {
+    await page.goto("/");
+    await clerk.loaded({ page });
+    await clerk.signIn({ page, emailAddress: testUser.email });
+    await use(page);
+    await clerk.signOut({ page });
   },
 });
 ```
 
-**Key response fields used:** `preview.total` (proration amount), `preview.amount_due` (immediate charge), `preview.currency`.
+**Why this approach:**
+- `@clerk/backend` `createUser` supports `skipPasswordChecks: true` for test users -- avoids password policy interference
+- Clerk `deleteUser` cascades cleanup
+- Each test gets a unique email via `testInfo.testId`, guaranteeing isolation
+- The existing `ensureDisposableClerkUser` in `global.setup.ts` proves this pattern works
 
-**Note:** `GET /v1/invoices/upcoming` was removed in API version `2025-03-31.basil`. The codebase correctly uses the replacement `createPreview` method. No migration needed.
+**Constraint -- single worker:** Clerk testing with Playwright has a known issue where `clerk.signIn()` times out with concurrent workers (`github.com/clerk/javascript#7891`). The existing `playwright.config.ts` already sets `fullyParallel: false` and `workers: 1` in CI. Billing tests MUST run with `workers: 1`.
 
-### Subscription Update with Proration
+**Confidence: HIGH** -- pattern already proven in `e2e/global.setup.ts`, Clerk docs confirm the API.
 
-**Endpoint:** `POST /v1/subscriptions/{id}`
-**SDK Method:** `stripe.subscriptions.update()`
-**Status:** Already implemented in `changePlan` action.
+### 2. Stripe Hosted Checkout Page Interaction
 
-```typescript
-// Existing implementation (convex/subscriptions/actions.ts:690)
-const updated = await stripe.subscriptions.update(stripeSubscription.id, {
-  items: [{ id: item.id, price: args.targetPriceId, quantity: item.quantity ?? 1 }],
-  proration_behavior: "always_invoice",
-  payment_behavior: "error_if_incomplete",
-  cancel_at_period_end: false,
-  metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
-});
-```
+**What:** The app uses Stripe's hosted checkout (redirect to `checkout.stripe.com`). Tests must fill card details on the Stripe-hosted page and submit payment.
 
-**Critical parameters:**
-- `proration_behavior: "always_invoice"` -- creates proration AND immediately generates + charges an invoice
-- `payment_behavior: "error_if_incomplete"` -- if payment fails, the API throws and subscription is NOT changed. This is the atomicity guarantee from Stripe's side.
+**How the app works:**
+- `createCheckoutSession` action creates a Stripe Checkout session, returns a URL
+- UI does `window.location.href = url` (full redirect to `checkout.stripe.com`)
+- Success redirects back to `/settings/billing?success=true`
+- For topups: `createTopupCheckoutSession` follows the same redirect pattern
 
-### Critical Fix: `proration_date` Alignment
+**Testing approach -- fill Stripe Checkout directly:**
 
-**Problem:** Stripe prorates to the second. The preview captures `proration_date: Math.floor(Date.now() / 1000)`, but the actual `subscriptions.update()` does NOT pass a `proration_date`, so Stripe uses the moment of the update call. The user sees one number in the dialog but could be charged a slightly different amount.
-
-**Fix:** Return `proration_date` from `getUpgradePreview`, pass it through the client, and send it to `changePlan` as `proration_date` on the `subscriptions.update()` call.
-
-**Risk if not fixed:** LOW for monthly subscriptions (cents of drift), but fixing it is trivial and matches Stripe's documented best practice.
-
-**Source:** [Stripe Prorations docs](https://docs.stripe.com/billing/subscriptions/prorations) -- "Because Stripe prorates to the second, prorated amounts might change between the time they're previewed and the time the update is made."
-
-## Convex Patterns for Atomic Upgrade Operations
-
-### Current Pattern (Correct Architecture)
-
-The `changePlan` action follows this sequence:
-
-```
-1. ACTION: Validate input, fetch subscription from Stripe API
-2. ACTION: Release pending schedule if exists (Stripe API call)
-3. ACTION: stripe.subscriptions.update() with proration (Stripe API call)
-   -> Stripe guarantees: payment succeeds OR throws, no partial state
-4. ACTION -> MUTATION: ctx.runMutation(syncSubscription) -- sync local DB
-   -> Convex guarantees: atomic via OCC, auto-retried on conflict
-5. ACTION -> MUTATION: ctx.runMutation(grantUpgradeProRataCredits) -- grant credits
-   -> Currently wrapped in try/catch (non-fatal)
-```
-
-**Why this is correct:**
-- Stripe's `error_if_incomplete` provides atomicity for the payment step -- subscription either changes AND payment succeeds, or nothing happens
-- Convex mutations are individually atomic via OCC
-- The action coordinates the sequence; failures at any step have clear semantics
-
-### Why NOT to Use @convex-dev/workflow
-
-Despite being installed, `@convex-dev/workflow` should NOT be used for the upgrade flow:
-
-| Reason | Detail |
-|--------|--------|
-| Operation is fast | Total duration ~2-3 seconds (two Stripe calls + two mutations). Workflows add durable execution overhead for operations that are already fast. |
-| Stripe provides atomicity | `payment_behavior: "error_if_incomplete"` means the primary operation (subscription update + payment) is already atomic on Stripe's side. No saga-style rollback needed. |
-| Credit grant has fallback | If `grantUpgradeProRataCredits` fails after the subscription update succeeds, the `invoice.paid` webhook handles monthly credit grants. The user's plan is correct; only the bonus credits are delayed. |
-| Unnecessary complexity | A workflow with compensation steps for an operation that has a clear "primary succeeds, secondary is best-effort" pattern adds code without adding reliability. |
-
-**When workflow WOULD be appropriate:** Multi-step operations where each step has external side effects that need rollback (e.g., provision infrastructure + charge payment + send notification), or long-running operations (>30 seconds).
-
-### Recommended Pattern: "Primary + Best-Effort Secondary" (Existing)
+Stripe's hosted checkout page CAN be automated with Playwright in test mode. The page uses standard HTML form inputs (not iframes like Stripe Elements). Known selectors for Stripe's hosted checkout in test mode:
 
 ```typescript
-// PRIMARY: Must succeed or entire operation fails
-const updated = await stripe.subscriptions.update(subId, { ... });
+// e2e/helpers/stripe-checkout.ts
+async function fillStripeCheckout(page: Page, options?: {
+  cardNumber?: string;
+  expiry?: string;
+  cvc?: string;
+  email?: string;
+}) {
+  const card = options?.cardNumber ?? "4242424242424242";
+  const expiry = options?.expiry ?? "12/34";
+  const cvc = options?.cvc ?? "123";
 
-// SYNC: Must succeed (deterministic, OCC auto-retried)
-await ctx.runMutation(internal.subscriptions.internal.syncSubscription, { ... });
+  // Wait for Stripe checkout to load
+  await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
 
-// SECONDARY: Best-effort, non-fatal, has fallback path
-try {
-  const result = await ctx.runMutation(
-    internal.credits.internal.grantUpgradeProRataCredits, { ... }
-  );
-  creditsGranted = result.grantedCredits;
-} catch (err) {
-  console.error("[changePlan] Pro-rata credit grant failed (non-fatal)", { ... });
-  // Fallback: invoice.paid webhook grants monthly credits; user can contact support
+  // Email field (if present -- depends on whether customer email was pre-filled)
+  if (options?.email) {
+    const emailField = page.locator("#email");
+    if (await emailField.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await emailField.fill(options.email);
+    }
+  }
+
+  // Card number
+  await page.locator('[name="cardNumber"]').fill(card);
+
+  // Expiry
+  await page.locator('[name="cardExpiry"]').fill(expiry);
+
+  // CVC
+  await page.locator('[name="cardCvc"]').fill(cvc);
+
+  // Submit
+  await page.locator('[data-testid="hosted-payment-submit-button"]').click();
+
+  // Wait for redirect back to app
+  await page.waitForURL(/\/settings\/billing/, { timeout: 60_000 });
 }
 ```
 
-### What Needs Fixing in the Pattern
+**Important caveats:**
+- Stripe hosted checkout DOM selectors are NOT officially documented for automation and can change without notice -- keep selectors in a single helper file for easy maintenance
+- Test mode checkout may show additional fields (billing address, country) depending on Stripe Dashboard settings -- disable "Collect billing address" in Stripe test mode dashboard for simpler tests
+- CI environments may need extra timeout (Stripe checkout loads third-party scripts)
 
-The code architecture is correct, but three implementation issues cause the "broken upgrade flow":
+**Fallback approach if Stripe checkout automation proves flaky:** Use the Stripe API directly (same as live-billing tests) to create a subscription with `tok_visa` and skip the checkout UI entirely. This hybrid approach tests the UI up to the "redirect to checkout" point, then completes payment server-side and verifies the return callback. The existing `tests/live-billing/support.ts` has `attachDefaultVisaPaymentMethod()` and `createGoSubscription()` that prove this works. If the hybrid path is chosen, the test would:
 
-| Issue | Current Behavior | Fix |
-|-------|-----------------|-----|
-| Credit grant failure is silent to user | `creditsGranted` is `undefined` on failure; UI shows generic success | Return `creditsGranted: 0` explicitly and show "credits will be granted shortly" message |
-| No retry for failed credit grants | Unlike `grantMonthlyCredits` which schedules retries, `grantUpgradeProRataCredits` failures are fire-and-forget | Schedule a retry mutation via `ctx.scheduler.runAfter()` on failure |
-| Preview-to-confirm gap may cause stale data | Time between preview and confirm could invalidate subscription state | Re-validate subscription state at the start of `changePlan` (already done -- fetches fresh from Stripe) |
+1. Intercept the `window.location.href = url` assignment via `page.route()` or `page.waitForURL`
+2. Extract the checkout session ID from the URL
+3. Complete the session via Stripe API
+4. Navigate back to the success URL manually
 
-**These are logic fixes within existing code, NOT stack additions.**
+**Confidence: MEDIUM** -- Stripe checkout selectors are not officially documented for automation. Community examples and Playwright GitHub issues confirm it works, but selectors may drift. The hybrid API fallback is HIGH confidence.
 
-## UI Pattern: Confirmation Dialog (Already Implemented)
+### 3. Webhook Waiting / Backend State Verification
 
-### Current Implementation
+**What:** After checkout completes, the app depends on Stripe webhooks to update Convex state. Tests must wait for webhook processing to complete before asserting.
 
-`components/billing/upgrade-confirmation-dialog.tsx` uses `@radix-ui/react-dialog` and displays:
-- Current plan -> target plan transition
-- Prorated charge amount (formatted with `next-intl` formatter)
-- Pro-rata credits to be granted
-- Remaining days in billing period
-- Confirm/Cancel buttons with loading state
+**Three complementary patterns:**
 
-### Flow
+#### Pattern A: Convex Real-Time Reactivity (UI-level) -- PREFERRED
+Since the app uses Convex subscriptions (real-time), the UI updates automatically when backend state changes. Tests can wait for UI elements to reflect the new state:
+
+```typescript
+// Wait for UI to reflect subscription change (Convex reactivity handles propagation)
+await expect(page.getByText(/Go Plan/i)).toBeVisible({ timeout: 60_000 });
+
+// Wait for credit balance to update
+await expect(page.getByText(/credits/i)).not.toContainText("0", { timeout: 60_000 });
+```
+
+This is the **preferred approach** because:
+- It tests what the user actually sees
+- Convex's real-time subscription mechanism means the UI updates within seconds of webhook processing
+- No need for separate API polling -- the reactive query mechanism handles it
+- Failure in UI means failure for users -- exactly what E2E should catch
+
+#### Pattern B: `expect.poll` for Backend State (API-level verification)
+For assertions that require checking backend state not visible in UI, use Playwright's `expect.poll`:
+
+```typescript
+// Poll Convex via CLI to verify credit transactions
+await expect.poll(async () => {
+  const snapshot = await getBillingSnapshot(convexUserId);
+  return snapshot.creditTransactions.filter(t => t.type === "grant").length;
+}, {
+  message: "Expected exactly 1 grant transaction",
+  timeout: 60_000,
+  intervals: [2_000, 3_000, 5_000, 5_000],
+}).toBe(1);
+```
+
+#### Pattern C: Stripe API Direct Verification
+For confirming Stripe-side state when needed:
+
+```typescript
+await expect.poll(async () => {
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  return sub.status;
+}, {
+  message: "Subscription should become active",
+  timeout: 30_000,
+}).toBe("active");
+```
+
+**Key insight:** The existing `tests/live-billing/support.ts` already has `waitForCondition()` that implements polling. The E2E tests should use Playwright's native `expect.poll` (which provides better error messages and integrates with test reporting) while reusing the same backend query functions.
+
+**Confidence: HIGH** -- `expect.poll` is documented Playwright API. Convex reactivity is proven by the live app. `waitForCondition` pattern is battle-tested in live-billing tests.
+
+### 4. Convex Backend Test Utilities
+
+**What:** E2E tests need to read and reset Convex state for test isolation.
+
+**Already built:**
+- `convex/testing/billing.ts` exposes `getBillingSnapshotForUser` and `resetBillingStateForUser` as internal functions
+- `tests/live-billing/support.ts` has `runConvexFunction()` that calls these via `npx convex run`
+
+**Reuse strategy:** Import `runConvexFunction` and type definitions from `tests/live-billing/support.ts`. Create thin wrappers for E2E context:
+
+```typescript
+// e2e/helpers/convex.ts
+import {
+  runConvexFunction,
+  type BillingSnapshot,
+  type BillingIdentity,
+  cleanupStripeForTestUser,
+  resetBillingStateForUser,
+} from "../../tests/live-billing/support";
+
+export { runConvexFunction, cleanupStripeForTestUser };
+export type { BillingSnapshot, BillingIdentity };
+
+export async function getBillingSnapshot(userId: string): Promise<BillingSnapshot> {
+  return runConvexFunction<BillingSnapshot>({
+    functionPath: "testing/billing:getBillingSnapshotForUser",
+    payload: { userId },
+  });
+}
+
+export async function resetBillingState(userId: string) {
+  return runConvexFunction({
+    functionPath: "testing/billing:resetBillingStateForUser",
+    payload: { userId },
+  });
+}
+
+export async function ensureConvexUser(identity: BillingIdentity): Promise<string> {
+  return runConvexFunction<string>({
+    functionPath: "users/mutations:ensureUser",
+    payload: {},
+    identity,
+  });
+}
+```
+
+**Convex user ID resolution:** E2E tests sign in via Clerk, but Convex functions need a Convex `userId` (Id<"users">). The resolution path:
+
+1. Sign in via Clerk in browser (creates Clerk session)
+2. Navigate to any authenticated page (triggers Convex user sync via `ensureUser`)
+3. Call `npx convex run users/mutations:ensureUser` with the Clerk identity to get the Convex user ID
+
+This is the same approach used in live-billing tests (`ensureBillingTestUser` in `support.ts`).
+
+**Confidence: HIGH** -- all building blocks exist and are proven.
+
+### 5. Stripe Test Cleanup
+
+**What:** Each test must clean up Stripe objects (customers, subscriptions) to prevent test pollution.
+
+**Already built:** `tests/live-billing/support.ts` has `cleanupStripeForTestUser()` that handles:
+- Finding customers by email
+- Canceling all subscriptions for each customer
+- Deleting customers
+- Deleting test clocks (if any)
+
+**Reuse strategy:** Import and use directly in E2E test fixture teardown. No modifications needed.
+
+**Confidence: HIGH** -- proven in live-billing test suite.
+
+---
+
+## Recommended File Structure
 
 ```
-User clicks "Upgrade" -> getUpgradePreview() -> Dialog opens with preview data
-User clicks "Confirm" -> changePlan() -> Dialog closes -> Success toast
+e2e/
+  global.setup.ts              # Existing -- clerkSetup(), disposable user
+  auth.spec.ts                 # Existing -- auth flow tests
+  billing/
+    subscription.spec.ts       # Subscribe (free -> Go, free -> Pro)
+    upgrade.spec.ts            # Upgrade (Go -> Pro) with proration preview
+    downgrade.spec.ts          # Downgrade (Pro -> Go)
+    cancellation.spec.ts       # Cancel subscription
+    credits.spec.ts            # Credit grants, topup purchase, free cap
+  fixtures/
+    billing.ts                 # Playwright fixtures (testUser, authenticatedPage, stripe)
+  helpers/
+    stripe-checkout.ts         # fillStripeCheckout() helper for hosted checkout
+    convex.ts                  # Wrappers around runConvexFunction for E2E
+    assertions.ts              # Reusable billing assertion helpers
+    cleanup.ts                 # Stripe + Convex cleanup (re-exports from live-billing)
 ```
 
-### Minor Enhancements (No New Dependencies)
+---
 
-| Enhancement | Implementation | Complexity |
-|-------------|---------------|------------|
-| Show card last4 in dialog | Data already available in `subscriptionDetails.cardLast4` from `getSubscriptionDetails` | LOW -- pass through to preview |
-| Pass `proration_date` round-trip | Add to `getUpgradePreview` return, pass to `changePlan` args | LOW -- two field additions |
-| "Credits will arrive shortly" fallback text | When `creditsGranted` is 0 or undefined after confirm | LOW -- conditional text in success toast |
+## Configuration Changes
 
-## Installation
+### playwright.config.ts Adjustments
 
-```bash
-# No new packages to install.
-# The existing stack fully covers v1.1 requirements.
+```typescript
+export default defineConfig({
+  // ... existing config ...
+  timeout: 180_000,        // Increase from 120s: billing flows involve Stripe roundtrips + webhooks
+  expect: {
+    timeout: 30_000,       // Increase from 15s: webhook processing can take 10-20s
+  },
+  // Keep these -- REQUIRED for Clerk testing:
+  fullyParallel: false,
+  workers: process.env.CI ? 1 : undefined,
+});
 ```
+
+**Rationale for timeout increases:**
+- Stripe checkout redirect + page load: 3-8s
+- Payment processing: 1-3s
+- Webhook delivery to Convex: 2-10s (Stripe retries if initial delivery fails)
+- Convex webhook handler execution: 1-5s
+- UI reactivity propagation: 1-3s
+- Total typical: 15-60s, worst case: ~120s
+
+### Environment Variables (Already Configured)
+
+No new env vars needed. All required variables already exist:
+
+| Variable | Purpose | Already Exists? |
+|----------|---------|-----------------|
+| `CLERK_PUBLISHABLE_KEY` / `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk testing token generation | Yes |
+| `CLERK_SECRET_KEY` | Backend user CRUD, `clerkSetup()` | Yes |
+| `E2E_CLERK_USER_EMAIL` | Base test user email | Yes |
+| `E2E_CLERK_USER_PASSWORD` | Test user password | Yes |
+| `STRIPE_SECRET_KEY` | Stripe API calls for cleanup/verification | Yes |
+| `STRIPE_GO_PRICE_ID` | Go plan price for test assertions | Yes |
+| `STRIPE_PRO_PRICE_ID` | Pro plan price for test assertions | Yes |
+| `NEXT_PUBLIC_CONVEX_URL` | Convex deployment URL for CLI | Yes |
+
+---
+
+## Stripe Test Card Reference
+
+These are Stripe's standard test cards. No package needed -- just string constants in the helper.
+
+| Card Number | Scenario | Use In Test |
+|-------------|----------|-------------|
+| `4242424242424242` | Payment succeeds immediately | Subscription checkout, topup, upgrade proration |
+| `4000000000000002` | Card declined | Checkout error handling test |
+| `4000000000000341` | Attach succeeds, charge fails | Past-due / grace period tests (if in scope) |
+
+Expiry: any future date (e.g., `12/34`). CVC: any 3 digits (e.g., `123`).
+
+**Confidence: HIGH** -- Official Stripe documentation.
+
+---
+
+## What NOT To Add
+
+| Rejected Addition | Why Not |
+|-------------------|---------|
+| `@stripe/stripe-js` or Stripe.js test utilities | App uses hosted checkout (full-page redirect), not embedded Stripe Elements. No iframes to interact with on the app's pages. |
+| `playwright-stripe` or similar third-party plugins | No mature, maintained Playwright plugin for Stripe exists. Roll simple helpers. |
+| `msw` (Mock Service Worker) | These are E2E tests against real services (Stripe sandbox, Convex dev, Clerk test mode). Mocking defeats the purpose. |
+| `stripe-mock` (Stripe's local mock server) | Tests target real Stripe sandbox for webhook flow verification. Mock server does not handle webhook delivery. |
+| `convex-test` | For unit testing Convex functions in isolation. E2E tests interact through the browser and use `npx convex run` for backend assertions. |
+| `dotenv` | Node 22's `process.loadEnvFile()` is already used (see `playwright.config.ts` and `global.setup.ts`). |
+| Additional browser packages (firefox/webkit) | Chromium-only is sufficient for billing E2E. Cross-browser testing adds no value for API/payment flows. |
+| `uuid` or `nanoid` for test IDs | Playwright's `testInfo.testId` provides unique identifiers. |
+| Separate test database | Convex dev deployment serves as the test backend. Live-billing tests prove this works. |
+| `@clerk/testing/cypress` | Wrong framework. |
+
+---
+
+## Integration Flow: Clerk + Stripe + Convex in E2E
+
+```
+Test Setup:
+  1. createUser (Clerk Backend SDK) -> fresh Clerk user with unique email
+  2. clerk.signIn (browser) -> authenticated session
+  3. Navigate to trigger Convex user sync -> ensureUser mutation runs
+
+Subscription Flow (example):
+  4. Navigate to /pricing -> UI loads plan cards
+  5. Click "Subscribe to Go" -> createCheckoutSession action -> Stripe session created
+  6. Redirect to checkout.stripe.com -> fillStripeCheckout helper fills card 4242
+  7. Submit payment -> Stripe processes -> redirect back to /settings/billing?success=true
+  8. Stripe sends webhooks to Convex HTTP endpoint:
+     - checkout.session.completed
+     - customer.subscription.created
+     - invoice.paid
+  9. Convex webhook handlers process events:
+     - syncSubscription mutation updates local DB
+     - grantMonthlyCredits grants initial credits
+  10. Convex reactivity -> UI updates plan display + credit balance
+
+Verification:
+  11. Assert UI shows "Go" plan label, "Active" status badge
+  12. Assert credit balance is > 0 in the UI
+  13. expect.poll Convex snapshot -> exactly 1 grant transaction
+  14. Optional: stripe.subscriptions.retrieve confirms active status
+
+Cleanup:
+  15. cleanupStripeForTestUser -> cancel subs, delete customer
+  16. resetBillingStateForUser -> clear Convex tables
+  17. clerkClient.users.deleteUser -> remove test user
+```
+
+### Timeout Budget Per Test
+
+| Step | Expected Duration | Timeout |
+|------|-------------------|---------|
+| Clerk user creation | 1-2s | 10s |
+| Clerk sign-in via browser | 2-5s | 15s |
+| Page navigation | 1-3s | 10s |
+| Stripe checkout load | 3-8s | 30s |
+| Stripe payment processing + redirect | 2-5s | 30s |
+| Webhook delivery + Convex processing | 5-30s | 60s |
+| Convex reactivity (UI update) | 1-5s after webhook | 30s |
+| Cleanup (Stripe + Convex + Clerk) | 3-10s | 30s |
+| **Total per test** | ~20-70s typical | **180s max** |
+
+---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|-------------|-------------|---------|
-| Raw `stripe.invoices.createPreview()` in Convex action | Stripe Customer Portal for upgrades | Portal cannot grant pro-rata credits. Custom dialog required for credit display. |
-| Action with `ctx.runMutation()` | `@convex-dev/workflow` saga | Over-engineered. Operation is fast, Stripe provides payment atomicity, credit grant has webhook fallback. |
-| `@radix-ui/react-dialog` | `@radix-ui/react-alert-dialog` | AlertDialog prevents outside-click dismiss, which is stronger. But Dialog already prevents close during `isConfirming`. Either works; keep current. |
-| `sonner` toast for feedback | Custom notification component | sonner is already integrated, provides stacking, auto-dismiss, and promise-based toasts. No reason to replace. |
-| `useState` for dialog state | Global state (Zustand/Jotai) | Dialog state is local to the Pricing component lifecycle. Global state adds complexity for no benefit. |
+| Decision | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| Checkout interaction | Fill Stripe hosted checkout directly | Skip checkout, use API-only (like live-billing tests) | E2E should test the actual user flow. API fallback is available if selectors break. |
+| User isolation | Fresh Clerk user per test via `createUser`/`deleteUser` | Reuse single user, reset state between tests | State leaks are the #1 cause of flaky billing tests. Fresh user eliminates cross-test contamination. |
+| Backend assertions | `npx convex run` via `runConvexFunction` | HTTP API to Convex site URL | CLI approach is proven, does not require separate auth token management. |
+| Webhook waiting | UI reactivity (Convex subscription auto-updates) | Poll backend API directly | UI-level waiting tests what users see. Backend polling is complementary for non-visible state. |
+| Test execution | Sequential (`workers: 1`) | Parallel with worker-scoped users | Clerk `signIn()` has confirmed timeout issues with concurrent workers (issue #7891). Sequential is the only reliable option. |
+| Shared test code | Import from `tests/live-billing/support.ts` | Duplicate helpers in `e2e/` | DRY principle. The support utilities are generic enough for both test suites. |
 
-## What NOT to Add
-
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| `@stripe/stripe-js` or `@stripe/react-stripe-js` | No Stripe Elements needed. Charge goes through payment method already on file. | Server-side Stripe SDK via Convex actions |
-| Additional state management (Redux, Zustand for billing) | Convex reactive queries already propagate subscription state changes to all components. `syncSubscription` mutation triggers re-render automatically. | Convex queries + React `useState` for local dialog state |
-| Custom retry/queue library | `grantMonthlyCredits` already has `retryPolicy.ts` with `shouldRetryCreditGrant` + `getCreditGrantRetryDelayMs`. Reuse this for upgrade credit retry. | Existing retry infrastructure |
-| `@convex-dev/workflow` for upgrade flow | See rationale above. | Direct action with try/catch |
-| Client-side polling for upgrade result | `syncLocalSubscriptionFromStripe` writes to Convex DB, which triggers reactive query updates automatically. | Convex reactive queries (already used via `useSubscriptionState`) |
-| `stripe.invoices.retrieveUpcoming()` | Removed in API version `2025-03-31.basil`. Not available with `2026-01-28.clover`. | `stripe.invoices.createPreview()` (already used) |
-
-## Version Compatibility
-
-| Package | Compatible With | Notes |
-|---------|-----------------|-------|
-| stripe@^20.3.0 | API `2026-01-28.clover` | `invoices.createPreview` available since stripe@18.0.0 (API `2025-03-31.basil`). Codebase uses correct method. |
-| convex@^1.31.7 | @convex-dev/stripe@^0.1.3, @convex-dev/workflow@^0.3.4 | All compatible. OCC guarantees apply to all mutations called from actions. |
-| @radix-ui/react-dialog@^1.1.15 | react@^19.2.4 | Radix UI v1.x fully supports React 19. |
-| sonner@^2.0.7 | react@^19.2.4 | Sonner v2.x supports React 19. |
-| next-intl@^4.8.2 | next@^16.1.6 | Formatter and translation hooks used in dialog work correctly. |
+---
 
 ## Sources
 
-- [Stripe: Create a preview invoice](https://docs.stripe.com/api/invoices/create_preview) -- `subscription_details` parameters, `proration_behavior`, `proration_date` reference (HIGH confidence)
-- [Stripe: Prorations documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- `proration_date` alignment guidance, `always_invoice` behavior, preview-then-confirm workflow (HIGH confidence)
-- [Stripe: Update a subscription](https://docs.stripe.com/api/subscriptions/update) -- `payment_behavior: error_if_incomplete` semantics (HIGH confidence)
-- [Stripe: Invoice preview API deprecation](https://docs.stripe.com/changelog/basil/2025-03-31/invoice-preview-api-deprecations) -- `GET /v1/invoices/upcoming` removed in `2025-03-31.basil`, replaced by `createPreview` (HIGH confidence)
-- [Convex: OCC and Atomicity](https://docs.convex.dev/database/advanced/occ) -- mutation atomicity guarantees, automatic retry on OCC conflict (HIGH confidence)
-- [Convex: Actions](https://docs.convex.dev/functions/actions) -- `ctx.runMutation` from actions, error handling responsibility, anti-pattern of sequential `runMutation` calls without batching (HIGH confidence)
-- [Convex: Best Practices](https://docs.convex.dev/understanding/best-practices/) -- batch database operations in single transactions (HIGH confidence)
-- [Convex Workflow component](https://www.convex.dev/components/workflow) -- durable workflow capabilities, when appropriate vs. simple actions (MEDIUM confidence)
-- Codebase review: `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx` (HIGH confidence)
+- [Stripe Automated Testing Documentation](https://docs.stripe.com/automated-testing) -- HIGH confidence
+- [Stripe Test Card Numbers](https://docs.stripe.com/testing) -- HIGH confidence
+- [Clerk Testing with Playwright Overview](https://clerk.com/docs/guides/development/testing/playwright/overview) -- HIGH confidence
+- [Clerk Test Helpers for Playwright](https://clerk.com/docs/guides/development/testing/playwright/test-helpers) -- HIGH confidence
+- [Clerk Backend SDK createUser](https://clerk.com/docs/reference/backend/user/create-user) -- HIGH confidence
+- [Clerk signIn() timeout with concurrent workers -- Issue #7891](https://github.com/clerk/javascript/issues/7891) -- HIGH confidence (confirmed bug)
+- [Playwright Assertions -- expect.poll](https://playwright.dev/docs/test-assertions) -- HIGH confidence
+- [Playwright API Testing -- page.request](https://playwright.dev/docs/api-testing) -- HIGH confidence
+- [Stripe Checkout Playwright Issue #19709](https://github.com/microsoft/playwright/issues/19709) -- MEDIUM confidence (community reports)
+- [Playwright Stripe Payment Element example](https://github.com/matthewling-stripe/playwright-payment-element) -- MEDIUM confidence
+- [Convex Testing Patterns](https://stack.convex.dev/testing-patterns) -- MEDIUM confidence
+- Direct codebase inspection: `package.json`, `playwright.config.ts`, `e2e/global.setup.ts`, `e2e/auth.spec.ts`, `tests/live-billing/support.ts`, `convex/testing/billing.ts`, `convex/subscriptions/actions.ts`, `app/settings/billing/page.tsx`, `components/Pricing.tsx` -- HIGH confidence
 
 ---
-*Stack research for: v1.1 Upgrade Flow -- proration preview, pro-rata credit grants, atomic operations*
-*Researched: 2026-02-27*
+*Stack research for: v1.2 E2E Billing Tests*
+*Researched: 2026-02-28*

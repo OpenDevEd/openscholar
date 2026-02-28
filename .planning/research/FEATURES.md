@@ -1,169 +1,207 @@
-# Feature Research
+# Feature Landscape: E2E Billing Tests
 
-**Domain:** SaaS upgrade flow with proration preview and pro-rata credit grants
-**Researched:** 2026-02-27
-**Confidence:** HIGH (Stripe official docs + codebase analysis + established SaaS patterns)
+**Domain:** Playwright E2E test suite for SaaS billing flows (Stripe + Clerk + Convex)
+**Researched:** 2026-02-28
+**Confidence:** HIGH (Stripe official docs, Clerk testing docs, Playwright docs, codebase analysis of existing live-billing tests and UI components)
 
-## Feature Landscape
+## Table Stakes
 
-### Table Stakes (Users Expect These)
+Features that any serious billing E2E test suite must cover. Missing any of these means you shipped billing code with confidence gaps in the most financially sensitive paths.
 
-Features users assume exist when upgrading a paid subscription. Missing any of these = broken or untrustworthy billing.
+| Feature | Why Expected | Complexity | Dependencies |
+|---------|--------------|------------|--------------|
+| **Subscription creation E2E (free to Go)** | The primary revenue conversion path. If this breaks, no one can subscribe. Must test: click plan on pricing page, navigate to Stripe Checkout, complete payment with test card, return to app, verify plan + status + credits in billing page. | HIGH | Stripe Checkout page automation (iframe card fill), Clerk auth, webhook processing wait |
+| **Subscription creation E2E (free to Pro)** | Same flow but for the higher tier. Different price, different credit grant amount. Verifies the pricing page correctly routes to the right price ID. | HIGH | Same as Go, but validates Pro-specific constants (15,000 credits/month, tier 20) |
+| **Upgrade E2E (Go to Pro)** | Tests the upgrade dialog with proration preview, payment method display, line items, confirm button, and credit grant. This is the v1.1 feature that has the most moving parts and the highest financial risk. | HIGH | Active Go subscription, upgrade dialog interactions, proration math verification, credit balance assertion |
+| **Downgrade E2E (Pro to Go)** | Tests that downgrade schedules correctly via subscription schedule (not immediate). UI must show "Scheduled" badge. Plan must remain Pro until period boundary. | MEDIUM | Active Pro subscription, Stripe subscription schedule, billing page pending-change banner verification |
+| **Cancellation E2E** | Tests that cancelling via customer portal marks the subscription for end-of-period cancellation. Billing page must show "Expires on" instead of "Renews on". | MEDIUM | Active subscription, Stripe customer portal navigation, billing page status verification |
+| **Credit grant on subscription** | After subscribing to Go, the user must receive exactly 3,000 free credits (or for Pro, 15,000). Verify via the credit balance card on the billing page. | MEDIUM | Subscription creation must complete, webhook must be processed, billing page must render updated balance |
+| **Credit topup purchase E2E** | Tests the credit bundle purchase flow: click Buy on a bundle, navigate to Stripe Checkout, complete payment, return to billing page, verify credit balance increased. | HIGH | Stripe Checkout page automation, credit topup webhook processing, billing page credit balance reactivity |
+| **Fresh test user isolation** | Each test scenario must start with a clean user (no prior subscription, no credits beyond free signup grant). Prevents test pollution and false positives. | MEDIUM | Clerk Backend API for user creation, Convex billing state reset, Stripe customer cleanup |
+| **Test infrastructure (fixtures, utilities, cleanup)** | Playwright fixtures for authenticated page, Stripe API client, waitForCondition helpers, billing snapshot assertions. Without these, every test is a copy-paste mess. | MEDIUM | Playwright fixture API, @clerk/testing integration, Stripe SDK |
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Proration preview before confirming upgrade** | Users must know exactly what they will be charged before committing. Surprise charges destroy trust and trigger chargebacks. Every major SaaS (Slack, Notion, GitHub) shows the amount before charging. | MEDIUM | Partially implemented. `getUpgradePreview` action uses `stripe.invoices.createPreview()` which is the correct current API (replaces deprecated `retrieveUpcoming`). Dialog component exists (`upgrade-confirmation-dialog.tsx`) and renders the preview data. **Key gap:** The `proration_date` is not pinned between preview and execution. Stripe prorates to the second, so the preview amount can drift from the actual charge. Must pass the same `proration_date` to both `createPreview` and `subscriptions.update`. |
-| **Immediate plan upgrade with correct proration charge** | When a user upgrades mid-cycle, they expect instant access to the higher tier and a fair charge for the remaining days only. Industry standard since Stripe made it default. | LOW | Already implemented. `changePlan` uses `proration_behavior: "always_invoice"` with `payment_behavior: "error_if_incomplete"`. This charges the proration difference immediately and fails the request if payment cannot be collected. No changes needed to the Stripe API call itself. |
-| **Pro-rata credit grant on mid-cycle upgrade** | If upgrading from Go (3,000 credits/month) to Pro (15,000 credits/month) with 15 days remaining, the user expects ~6,000 bonus credits immediately (not waiting until next renewal). | MEDIUM | Implemented but fragile. `grantUpgradeProRataCredits` calculates `floor(remainingRatio * creditDelta)` and applies the tier free-credit cap. **Key gap:** Credit grant is a separate mutation call after `subscriptions.update` succeeds. If the mutation fails (Convex transient error, timeout), the plan changes but credits are not granted. Currently this is logged as non-fatal (`console.error`) but the user sees a success toast with potentially wrong credit count. |
-| **Atomic upgrade flow (charge + sync + grant succeed together, or user sees clear failure)** | If payment succeeds but credit grant fails, the user has paid more but has no additional credits. This is the known production bug. The user must never be left in a "paid but not credited" state without clear recovery. | HIGH | **This is the primary problem to solve.** Currently: (1) Stripe update succeeds, (2) local sync succeeds, (3) credit grant may fail silently. The `changePlan` action wraps the credit grant in try/catch and logs failures, but returns `success: true` with potentially `creditsGranted: undefined`. The client falls back to `upgradePreview.proRataCredits` for the toast, which may not match reality. |
-| **Upgrade error recovery (card declined, network failure)** | When payment fails during upgrade, the user must see a clear message ("card declined") and remain on their current plan. No partial state changes. | LOW | Already implemented correctly. `error_if_incomplete` ensures Stripe does not change the subscription if payment fails. `StripeCardError` is caught and mapped to `BILLING_CHARGE_FAILED` with a user-friendly message. `StripeInvalidRequestError` maps to `BILLING_PLAN_CHANGE_CONFLICT`. The user stays on their current plan. |
-| **Success feedback with accurate credit count** | After a successful upgrade, the user needs confirmation of: (a) new plan name, (b) amount charged, (c) credits granted. Generic "upgrade successful" is insufficient. | LOW | Partially implemented. The success toast shows plan name and credits via sonner. **Key gap:** `creditsGranted` in the `changePlan` response may be `undefined` if the grant mutation failed, and the UI falls back to the preview estimate. This means the toast could say "7,500 credits granted" when 0 were actually granted. Must make the toast reflect actual grant outcome. |
-| **Confirmation dialog that prevents accidental upgrades** | Clicking "Upgrade" must not immediately charge the user. A confirmation step showing the exact charge amount is necessary to prevent support tickets and chargebacks. | LOW | Implemented. The `UpgradeConfirmationDialog` component gates the upgrade behind a two-step flow: (1) click "Upgrade to Pro" triggers `getUpgradePreview`, (2) dialog shows preview, (3) user clicks "Confirm upgrade" to execute. Dialog disables close during confirmation (prevents double-submit). |
+## Differentiators
 
-### Differentiators (Competitive Advantage)
+Features that go beyond basic "does it work" and test edge cases, resilience, and polish. These catch bugs that would otherwise be discovered by users in production.
 
-Features that make the upgrade experience polished beyond the basics.
+| Feature | Value Proposition | Complexity | Dependencies |
+|---------|-------------------|------------|--------------|
+| **Upgrade pro-rata credit verification** | After upgrading Go to Pro mid-cycle, verify the exact pro-rata credit amount (not just "some credits appeared"). Asserts `floor(remainingRatio * creditDelta)` matches what the billing page shows. | MEDIUM | Requires calculating expected pro-rata credits from proration date, comparing with actual credit balance delta |
+| **Recurring payment credit grant** | Advancing time with Stripe test clocks to trigger a renewal invoice, then verifying monthly credits are granted exactly once. This catches duplicate-grant bugs that are invisible until the second billing cycle. | HIGH | Stripe test clock API (cannot use in browser E2E -- requires hybrid approach with API-level test clock + UI verification) |
+| **Free credit capping behavior** | Verify that a free-tier user who has reached the free credit cap (2,000 for free plan) sees the cap banner on the billing page and cannot accumulate more free credits beyond the cap. | LOW | Free-tier user with credits at or near cap, billing page cap banner visibility assertion |
+| **Payment failure handling visibility** | Subscribe with a failing card token (tok_chargeCustomerFail), verify the subscription lands in incomplete/past_due status, and the billing page shows the payment-failed notice with "Update payment method" CTA. | MEDIUM | Stripe test card for payment failure, webhook processing, billing page error state rendering |
+| **Upgrade dialog dismiss prevention** | While the upgrade is processing (isConfirming=true), verify that Escape key, click-outside, and pointer-down-outside cannot dismiss the dialog. Prevents accidental abandonment during charge. | LOW | Active upgrade in progress, keyboard/mouse event assertions |
+| **Downgrade cancel (keep current plan)** | After scheduling a downgrade from Pro to Go, verify the "Keep current plan" button on both the pricing page and billing page correctly cancels the scheduled change. | MEDIUM | Active downgrade schedule, button click + subscription details refresh verification |
+| **Billing page skeleton loading states** | Verify that the billing page shows skeleton loading states while subscription data is settling, then renders the actual content. Prevents flash-of-empty-content. | LOW | Authenticated user with subscription, loading state timing assertions |
+| **Stripe customer portal redirect** | For subscribed users, verify "Manage subscription" button redirects to Stripe customer portal URL. Does not need to test inside the portal (external domain). | LOW | Active subscription, window.location.href capture or navigation event assertion |
+| **Credit topup return state handling** | After returning from Stripe Checkout with ?topup=success, verify the "Processing purchase" banner appears, and credits update reactively when the webhook processes. Also verify ?topup=canceled cleans the URL silently. | MEDIUM | Stripe Checkout return URL params, billing page reactive state, URL cleanup verification |
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Payment method display in confirmation dialog** | Showing "Visa ending 4242 will be charged $X.XX" gives users confidence they know which card is being used. Reduces "wait, which card?" anxiety. | LOW | `getSubscriptionDetails` already returns `cardBrand` and `cardLast4`. Just needs to be threaded into the dialog preview data and rendered. Currently not shown in the confirmation dialog. |
-| **Proration breakdown (credit + charge line items)** | Instead of just showing the net charge, showing "-$5.00 credit for unused Go" and "+$10.00 Pro for 15 days" helps users understand the math. Stripe's preview invoice contains line items for this. | MEDIUM | `stripe.invoices.createPreview()` returns line items in `preview.lines.data`. These are not currently extracted by `getUpgradePreview` -- only the net `amount_due` and `total` are returned. Adding line item extraction would require expanding the return type. |
-| **Credit grant guarantee with reconciliation fallback** | If the in-flow credit grant fails, a background reconciliation detects the gap and retries. Users never permanently lose credits they paid for. | HIGH | The hourly `reconcileRecentPaidInvoicesFromStripe` cron handles monthly grants but does not currently handle upgrade pro-rata grants. The pro-rata grant uses a separate `upgrade_prorate` grant type. A reconciliation mechanism for failed upgrade grants would need to detect "plan changed but no upgrade_prorate transaction in this period" and re-run the grant. |
-| **Animated transition in dialog** | Smooth loading state while preview is fetched, animated charge reveal, and success state give a premium feel to an otherwise anxious moment (being charged money). | LOW | Dialog currently shows a loading spinner while preview loads. Could be enhanced with skeleton states and a brief success animation before closing. Low priority but polished. |
-| **Localized currency formatting** | Already using `next-intl`'s `useFormatter` for currency display. Users see "$12.50" or "12,50 EUR" based on locale. | LOW | Already implemented in both the pricing page and dialog. `format.number()` with `style: "currency"` handles this correctly. No changes needed. |
+## Anti-Features
 
-### Anti-Features (Commonly Requested, Often Problematic)
+Test scenarios that seem valuable but are actively counterproductive to build or maintain.
 
-Features that seem good but create problems for the upgrade flow specifically.
-
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Custom proration math (bypass Stripe's calculation)** | "We want to round proration amounts to the nearest dollar" or "We want to give a discount on the proration" | Stripe's invoicing, tax calculation, and dispute resolution all depend on Stripe computing the proration. Custom math creates discrepancies between what you charge and what Stripe records, breaking refund flows and tax reporting. Already documented as out-of-scope in PROJECT.md. | Use Stripe's `invoices.createPreview()` for display and `always_invoice` for charging. Stripe handles rounding, tax, and currency correctly. |
-| **Rollback upgrade on credit grant failure** | "If credits fail to grant, reverse the Stripe subscription back to the old plan" | Rolling back the subscription creates a second proration (this time a credit), a new invoice, and potentially a second webhook storm. The user's payment method gets charged then credited, which looks suspicious on bank statements. Far more disruptive than a delayed credit grant. | Grant credits as best-effort in the primary flow, with a reconciliation safety net for failures. The plan upgrade (the expensive Stripe operation) should be considered committed once Stripe confirms it. |
-| **Upgrade preview caching (show preview without Stripe API call each time)** | "Cache the preview so users see it instantly when they click upgrade" | Proration amounts change by the second (Stripe prorates to the second). A cached preview becomes stale within minutes. Showing a stale amount and then charging a different amount is worse than a brief loading delay. | Fetch preview on demand when user clicks "Upgrade to X". Show a loading state in the dialog. The Stripe API call typically completes in 200-500ms. |
-| **Optimistic UI for credit grant** | "Show the new credit balance immediately in the dialog before the server confirms" | If the grant fails or is capped, the displayed balance is wrong. Users who see "15,000 credits" then refresh to see "3,000 credits" will file support tickets. | Show credits from the server response only. The `changePlan` action returns `creditsGranted` -- use that for the success toast. If the value is missing/zero due to grant failure, show "Credits are being processed" instead of a specific number. |
-| **Require email confirmation for upgrade** | "Send a confirmation email before charging" | Adds friction to a moment where the user has already decided to upgrade. Email delivery delays (seconds to minutes) create a terrible UX. No major SaaS does this for upgrades (though some do for cancellations). | In-app confirmation dialog (already implemented) is sufficient. The dialog shows the charge amount and requires an explicit "Confirm upgrade" click. |
+| Anti-Feature | Why Tempting | Why Avoid | What to Do Instead |
+|--------------|-------------|-----------|-------------------|
+| **Testing inside Stripe Checkout iframe** | "We should fill the card number, expiry, CVC in the Stripe Checkout form to make the test fully end-to-end" | Stripe explicitly states their "frontend interfaces have security measures in place that prevent automated testing" (docs.stripe.com/automated-testing). iframe selectors break between Stripe deployments. Tests become flaky and break on Stripe updates you do not control. This is the number one cause of Stripe E2E test failure. | Navigate TO the Stripe Checkout URL (verify redirect works), then use the Stripe API server-side to complete the payment intent/checkout session programmatically. Assert the return to your app with the correct URL params. |
+| **Testing inside Stripe customer portal** | "We should verify the user can update their card and cancel inside the portal" | Same iframe/external-domain problem. Portal UI changes without notice. Your tests break on Stripe's schedule, not yours. | Verify the redirect TO the portal URL. Test cancellation/card-update effects by making direct Stripe API calls and then verifying your app's UI reacts to the webhook-driven state changes. |
+| **Real-time clock-based renewal testing in browser** | "Use Stripe test clocks in the E2E test to advance time and test renewal in the browser" | Test clocks only work with customers created ON the test clock. You cannot attach a test clock to an existing Stripe customer created through Checkout. Browser E2E tests create customers through Checkout (no test clock). Test clocks are fundamentally a server-side tool. | Keep recurring-payment tests in the existing Vitest live-billing suite (which already uses test clocks with API-created customers). E2E tests verify the UI displays renewal-related data correctly -- they do not need to trigger the renewal. |
+| **Testing webhook delivery itself** | "We should verify that Stripe actually delivers webhooks to our endpoint" | Webhook delivery is Stripe's infrastructure responsibility, not yours. Testing it requires Stripe CLI running, network tunneling, and creates flaky CI. Your existing live-billing tests already cover webhook-driven state changes. | E2E tests poll Convex queries to verify that state changes appear in the UI. The webhook is the mechanism, but the test asserts the outcome (UI shows updated plan/credits), not the mechanism. |
+| **Per-locale billing page screenshots** | "We should screenshot the billing page in all 6 locales to catch i18n regressions" | Screenshot comparison tests are notoriously flaky (font rendering, sub-pixel differences, OS differences). They fail on every CI environment change and need constant baseline updates. | Test one locale end-to-end. Use unit tests (already 43 files of Vitest tests) for i18n string coverage. Visual regression testing is a separate concern from billing correctness. |
+| **Testing credit deduction during extraction** | "We should do an extraction in the E2E test and verify credits are deducted" | Mixes billing testing with AI feature testing. Extraction depends on OpenAI API availability, prompt stability, and token costs. Credit deduction logic is already covered by unit tests. Adding this to billing E2E creates false failures from unrelated AI issues. | Keep credit deduction testing in unit tests. E2E billing tests verify credit balance display and credit grant flows only. |
 
 ## Feature Dependencies
 
 ```
-[Proration Preview]
-    |--requires--> [Active Stripe subscription]
-    |--requires--> [Valid target price ID]
-    |--calls--> [stripe.invoices.createPreview()]
-    |--returns--> [Preview data for confirmation dialog]
+[Clerk Auth Fixture]
+    |--provides--> [Authenticated Page]
+    |--used-by--> ALL billing E2E tests
 
-[Confirmation Dialog]
-    |--requires--> [Proration Preview data]
-    |--displays--> [Charge amount, plan change, credit estimate]
-    |--on-confirm--> [changePlan action]
+[Stripe API Fixture]
+    |--provides--> [Stripe client for server-side operations]
+    |--used-by--> Checkout completion, cleanup, payment method attachment
 
-[changePlan (upgrade path)]
-    |--step 1: releases--> [Existing SubscriptionSchedule if any]
-    |--step 2: calls--> [stripe.subscriptions.update with always_invoice]
-    |--step 3: calls--> [syncLocalSubscriptionFromStripe]
-    |--step 4: calls--> [grantUpgradeProRataCredits]
-    |                        |--requires--> [credits record exists]
-    |                        |--deduplicates-via--> [creditTransactions by_user + upgrade_prorate + period]
-    |                        |--applies--> [applyTierFreeCreditCap]
-    |--returns--> [success + creditsGranted]
+[Billing State Reset]
+    |--calls--> [Convex testing/billing:resetBillingStateForUser]
+    |--calls--> [Stripe customer cleanup]
+    |--used-in--> beforeEach hook for test isolation
 
-[Success Toast]
-    |--requires--> [changePlan response.creditsGranted]
-    |--fallback--> [upgradePreview.proRataCredits] (PROBLEM: may not match reality)
+[Subscription Creation E2E]
+    |--step 1--> Navigate to /pricing (authenticated)
+    |--step 2--> Click plan button ("Subscribe to Go"/"Subscribe to Pro")
+    |--step 3--> Capture Stripe Checkout redirect URL
+    |--step 4--> Complete Checkout via Stripe API (bypass iframe)
+    |--step 5--> Navigate to return URL with session_id
+    |--step 6--> Wait for subscription to sync (poll billing page)
+    |--step 7--> Assert plan name, status badge, credit balance
+    |--enables--> Upgrade E2E, Downgrade E2E, Cancellation E2E
 
-[Credit Grant Reconciliation] (NEW -- not yet implemented)
-    |--requires--> [subscriptions table shows upgrade happened]
-    |--requires--> [creditTransactions table missing upgrade_prorate for period]
-    |--triggers--> [grantUpgradeProRataCredits retry]
+[Upgrade E2E]
+    |--requires--> Active Go subscription (from Subscription Creation)
+    |--step 1--> Navigate to /pricing
+    |--step 2--> Click "Upgrade to Pro" button
+    |--step 3--> Wait for upgrade confirmation dialog
+    |--step 4--> Assert dialog contents (plan change, charge, credits, payment method)
+    |--step 5--> Click "Confirm upgrade"
+    |--step 6--> Wait for success toast
+    |--step 7--> Assert billing page shows Pro plan + updated credits
+
+[Downgrade E2E]
+    |--requires--> Active Pro subscription
+    |--step 1--> Navigate to /pricing
+    |--step 2--> Click "Downgrade to Go" button
+    |--step 3--> Wait for billing page to show scheduled change banner
+    |--step 4--> Assert plan still shows Pro + "Scheduled" badge on Go card
+
+[Cancellation E2E]
+    |--requires--> Active subscription
+    |--approach--> Trigger cancellation via Stripe API (bypass portal iframe)
+    |--step 1--> Call stripe.subscriptions.update with cancel_at_period_end: true
+    |--step 2--> Wait for billing page to show "Expires on" instead of "Renews on"
+
+[Credit Topup E2E]
+    |--requires--> Authenticated user (any plan)
+    |--step 1--> Navigate to /settings/billing
+    |--step 2--> Click "Buy" on a credit bundle
+    |--step 3--> Capture Stripe Checkout redirect URL
+    |--step 4--> Complete Checkout via Stripe API (bypass iframe)
+    |--step 5--> Navigate to return URL with ?topup=success
+    |--step 6--> Assert "Processing purchase" banner appears
+    |--step 7--> Wait for credit balance to increase (reactive update)
 ```
 
-### Dependency Notes
+### Critical Dependency: Stripe Checkout Bypass Pattern
 
-- **Proration preview requires active subscription**: Cannot preview if the user has no Stripe subscription. The `getUpgradePreview` action validates this and throws `BILLING_NO_ACTIVE_SUBSCRIPTION`.
-- **Confirmation dialog requires preview data**: Dialog renders `null` if preview is not loaded. This is correct -- prevents showing empty/stale data.
-- **changePlan step 2 is the point of no return**: Once `stripe.subscriptions.update` succeeds, the plan has changed in Stripe. Steps 3 and 4 can fail independently. Step 3 failure is self-healing (next webhook will sync). Step 4 failure needs reconciliation.
-- **Success toast depends on changePlan response accuracy**: Currently the response `creditsGranted` can be `undefined` if step 4 fails, and the UI falls back to the preview estimate. This dependency is the source of the "wrong credit count" bug.
-- **Proration date must be pinned**: The `proration_date` used in preview must match the one used in execution. Currently they are computed independently (`Math.floor(Date.now() / 1000)` at different times), which can cause a few-seconds drift in the charge amount.
+The most important architectural decision for the entire test suite is how to handle Stripe Checkout pages. Stripe's hosted Checkout lives on `checkout.stripe.com` and uses security measures that prevent reliable automated form filling. The pattern used by production billing test suites:
 
-## MVP Definition
+1. **Intercept the redirect**: When the app calls `window.location.href = checkoutUrl`, capture that URL
+2. **Extract the session ID**: Parse `checkout.stripe.com/c/pay/cs_test_...` to get the session ID
+3. **Complete via API**: Call `stripe.checkout.sessions.complete()` (test mode only) or create the payment intent directly via the Stripe API
+4. **Navigate to success URL**: Direct the browser to the success URL that Stripe would redirect to
 
-### Must Ship (v1.1 -- This Milestone)
+This avoids iframe automation entirely while still testing the full flow (button click -> redirect -> payment -> return -> state update).
 
-These are required to fix the broken upgrade flow and ship a reliable experience.
+### Critical Dependency: Webhook Processing Wait
 
-- [ ] **Pin `proration_date` between preview and execution** -- Pass the same unix timestamp from `getUpgradePreview` through the confirmation dialog to `changePlan`. Ensures the charge amount matches the preview exactly. Stripe documentation explicitly recommends this.
-- [ ] **Make credit grant failure visible to the user** -- If `grantUpgradeProRataCredits` fails after plan change succeeds, the `changePlan` response must communicate this clearly. The UI must show "Your plan has been upgraded. Credits are being processed and will appear shortly." instead of claiming a specific credit count that was not actually granted.
-- [ ] **Handle `creditsGranted: undefined` in success toast** -- The client currently falls back to `upgradePreview.proRataCredits` which may not match reality (cap applied, rounding, or grant failure). Replace with: if `creditsGranted` is present, show it; if absent, show a generic "credits processing" message.
-- [ ] **Ensure confirmation dialog cannot be double-submitted** -- Currently `isConfirming` disables the close button and confirm button. Verify this also prevents keyboard dismissal (Escape key) and click-outside during the upgrade API call.
+Every billing E2E test that modifies Stripe state must wait for webhooks to be processed before asserting UI state. The pattern:
 
-### Add After Validation (v1.x)
+1. **Perform action** (subscribe, upgrade, purchase credits)
+2. **Poll UI** using `page.waitForSelector` or `expect(locator).toContainText()` with generous timeouts
+3. **Convex reactive queries** automatically update the UI when the backend state changes via webhooks
+4. **Timeout with clear failure message** if the state does not appear within the expected window (30-60 seconds for webhook processing)
 
-Features to add once the core upgrade flow is stable and confirmed working in production.
+The existing Convex reactive subscription model means the UI will update automatically once the webhook is processed -- no manual refresh needed. The test just needs to wait for the UI to reflect the new state.
 
-- [ ] **Payment method display in dialog** -- Thread `cardBrand` and `cardLast4` into the preview and show "Visa ...4242 will be charged $X.XX". Trigger: first production upgrade completes successfully.
-- [ ] **Proration line item breakdown** -- Extract `preview.lines.data` from `createPreview` response and show credit/debit line items. Trigger: user feedback requesting more transparency.
-- [ ] **Upgrade credit grant reconciliation** -- Extend the existing reconciliation cron to detect missing `upgrade_prorate` grants and re-run them. Trigger: observed instance of credit grant failure in production logs.
+## MVP Recommendation
 
-### Future Consideration (v2+)
+### Phase 1: Infrastructure + Subscription Creation (P0)
 
-Features to defer until the upgrade flow is proven stable.
+Build the test foundation first because every other test depends on it.
 
-- [ ] **Flexible billing mode migration** -- Stripe recommends migrating existing subscriptions to flexible billing mode for more accurate prorations and mixed intervals. Requires testing all existing flows against the new mode.
-- [ ] **Upgrade path suggestions** -- When a user runs low on credits, suggest upgrading with a preview of what they would get. Requires usage pattern analysis.
-- [ ] **A/B testing upgrade dialog copy** -- Test different wordings for the proration explanation to see which converts better. Requires analytics infrastructure.
+1. **Playwright fixtures** -- Authenticated page fixture with Clerk sign-in, Stripe API client fixture, billing state reset fixture
+2. **Fresh user per scenario** -- Clerk Backend API creates a user in beforeAll, billing state is reset in beforeEach, Stripe customers are cleaned up in afterAll
+3. **Stripe Checkout bypass utility** -- Capture redirect URL, complete session via API, navigate to return URL
+4. **Webhook wait utility** -- Poll Convex-driven UI for state changes with configurable timeouts
+5. **Subscription creation (free to Go)** -- First real test using all infrastructure above
+6. **Subscription creation (free to Pro)** -- Validates different price ID routing
 
-## Feature Prioritization Matrix
+### Phase 2: Upgrade, Downgrade, Cancellation (P0)
 
-| Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| Pin `proration_date` between preview and execution | HIGH | LOW | P1 |
-| Handle credit grant failure visibility | HIGH | LOW | P1 |
-| Fix success toast for `creditsGranted: undefined` | HIGH | LOW | P1 |
-| Verify dialog cannot be double-submitted | HIGH | LOW | P1 |
-| Payment method in confirmation dialog | MEDIUM | LOW | P2 |
-| Proration line item breakdown | LOW | MEDIUM | P2 |
-| Upgrade credit grant reconciliation | MEDIUM | HIGH | P2 |
-| Flexible billing mode migration | LOW | HIGH | P3 |
-| Upgrade path suggestions | MEDIUM | MEDIUM | P3 |
+Core lifecycle tests that exercise the v1.1 upgrade flow in the browser.
 
-**Priority key:**
-- P1: Must fix for v1.1 -- correctness-critical for the upgrade flow
-- P2: Should add once v1.1 is stable -- enhances confidence and resilience
-- P3: Future consideration -- not part of upgrade flow fix scope
+7. **Upgrade E2E (Go to Pro)** -- Proration dialog, payment method display, credit grant, success toast
+8. **Downgrade E2E (Pro to Go)** -- Schedule verification, pending change banner, plan stays Pro before boundary
+9. **Cancellation E2E** -- Via Stripe API (bypass portal), billing page shows expires-on
+10. **Keep current plan (cancel downgrade)** -- Click "Cancel scheduled downgrade", verify pending change clears
 
-## Confirmation Dialog: What Good Looks Like
+### Phase 3: Credits + Edge Cases (P1)
 
-Based on Stripe documentation, SaaS best practices (Slack, Notion, GitHub patterns), and the existing codebase, a good upgrade confirmation dialog shows:
+Credit-specific flows and resilience tests.
 
-### Required Information (Table Stakes)
-1. **Plan transition**: "Go -> Pro" with visual arrow/indicator
-2. **Prorated charge amount**: The exact dollar amount that will be charged right now (from `invoices.createPreview`)
-3. **Time context**: "for the 15 remaining days in your billing cycle" -- explains why the amount is less than full price
-4. **Credits granted**: "7,500 credits granted immediately" -- the primary value the user gets from upgrading mid-cycle
-5. **Going-forward rate**: "Then 15,000 credits/month starting next cycle" -- sets expectation for future billing
-6. **Clear confirm/cancel actions**: "Confirm upgrade" (primary) and "Cancel" (secondary)
-7. **Loading state during execution**: Spinner + "Upgrading..." text with both buttons disabled
+11. **Credit grant verification (on subscribe)** -- Assert exact credit amounts after subscription
+12. **Credit topup purchase E2E** -- Full checkout flow for credit bundles
+13. **Free credit capping behavior** -- Cap banner visibility for free-tier users at cap
+14. **Upgrade pro-rata credit verification** -- Assert calculated pro-rata credits match billing page
 
-### Good-to-Have Information (Differentiators)
-8. **Payment method**: "Visa ending 4242 will be charged" -- removes ambiguity about which card
-9. **Proration math breakdown**: "-$5.00 unused Go time / +$10.00 Pro for 15 days = $5.00 due now"
-10. **Current balance context**: "Your current balance: 1,200 credits + 7,500 new = 8,700 total"
+### Defer: Recurring Payment Cycle Credits
 
-### What the Existing Dialog Already Has
-The current `upgrade-confirmation-dialog.tsx` covers items 1-7 correctly. The i18n strings are already localized into 6 languages (en-US, en-GB, fr, zh, hi, ja). The component structure is clean with `DialogHeader`, content sections, and `DialogFooter`. The primary gaps are the proration date pinning (backend), credit grant failure handling (backend + frontend), and the optional card display (frontend).
+Keep in existing Vitest live-billing suite (already implemented with test clocks). E2E tests cannot use test clocks with Checkout-created customers. The live-billing tests at `tests/live-billing/required.test.ts` already cover this comprehensively.
+
+### Defer: Payment Failure E2E
+
+Can be added later. The existing live-billing extended test (`tests/live-billing/extended.test.ts`) already covers payment failure at the API level. A browser E2E for this would require a way to create a subscription with a failing card through the UI, which requires Stripe Checkout iframe automation (anti-feature).
+
+## Complexity Budget
+
+| Test Scenario | Estimated Lines of Test Code | Setup Required | Flakiness Risk |
+|---------------|------------------------------|----------------|----------------|
+| Subscription creation (Go) | 60-80 | High (all infra) | MEDIUM (Checkout + webhook timing) |
+| Subscription creation (Pro) | 40-50 | Low (reuse infra) | MEDIUM |
+| Upgrade Go to Pro | 80-100 | Medium (requires Go sub) | LOW (no Checkout, all in-app) |
+| Downgrade Pro to Go | 50-60 | Medium (requires Pro sub) | LOW |
+| Cancellation | 30-40 | Low | LOW |
+| Credit grant on subscribe | 20-30 | Low (part of sub test) | MEDIUM (webhook timing) |
+| Credit topup | 60-80 | Medium | MEDIUM (Checkout + webhook timing) |
+| Free credit cap banner | 20-30 | Low | LOW |
+| Pro-rata credit verification | 40-50 | Medium | LOW |
+| Fixtures + utilities | 200-300 | One-time | N/A |
+
+**Total estimated new code:** 560-820 lines of test code + 200-300 lines of infrastructure = approximately 760-1,120 lines.
+
+The existing `e2e/` directory has 2 files (150 lines total). The existing `tests/live-billing/` directory has 3 files (845 lines). The new E2E suite will be comparable in size to the live-billing suite.
 
 ## Sources
 
-- [Stripe Prorations Documentation](https://docs.stripe.com/billing/subscriptions/prorations) -- proration behavior, `createPreview` API, `proration_date` pinning recommendation (HIGH confidence)
-- [Stripe Create Preview Invoice API](https://docs.stripe.com/api/invoices/create_preview) -- parameters and response shape for preview (HIGH confidence)
-- [Stripe Pending Updates](https://docs.stripe.com/billing/subscriptions/pending-updates) -- `error_if_incomplete` and `pending_if_incomplete` behaviors (HIGH confidence)
-- [Stripe Modify Subscriptions](https://docs.stripe.com/billing/subscriptions/change) -- upgrade/downgrade patterns (HIGH confidence)
-- [Stigg: Upgrade & Downgrade Flows Guide](https://www.stigg.io/blog-posts/the-only-guide-youll-ever-need-to-implement-upgrade-downgrade-flows-part-2) -- SaaS patterns for mid-cycle changes (MEDIUM confidence)
-- [Chargebee: Proration in SaaS](https://www.chargebee.com/blog/ask-us-proration-saas-important/) -- industry proration patterns (MEDIUM confidence)
-- [Zenskar: Prorated Billing for SaaS](https://www.zenskar.com/blog/prorated-billing) -- pro-rata credit calculation patterns (MEDIUM confidence)
-- Codebase analysis: `convex/subscriptions/actions.ts`, `convex/credits/internal.ts`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/Pricing.tsx`, `convex/lib/constants.ts` (HIGH confidence)
+- [Stripe Automated Testing Documentation](https://docs.stripe.com/automated-testing) -- Official guidance: "frontend interfaces have security measures that prevent automated testing" (HIGH confidence)
+- [Stripe Testing Use Cases](https://docs.stripe.com/testing-use-cases) -- Official test scenarios for charges, disputes, refunds (HIGH confidence)
+- [Stripe Test Card Numbers](https://docs.stripe.com/testing) -- Test card 4242424242424242, tok_visa, tok_chargeCustomerFail (HIGH confidence)
+- [Clerk Testing with Playwright](https://clerk.com/docs/guides/development/testing/playwright/overview) -- clerkSetup(), clerk.signIn(), clerk.loaded() helpers (HIGH confidence)
+- [Clerk Playwright Test Helpers](https://clerk.com/docs/guides/development/testing/playwright/test-helpers) -- signIn/signOut/loaded helper API reference (HIGH confidence)
+- [Playwright Issue #19709: Stripe Checkout submission](https://github.com/microsoft/playwright/issues/19709) -- Confirms Checkout automation works locally but is fragile in CI due to timezone/environment differences (MEDIUM confidence)
+- [Testing SaaS Billing with Playwright & Stripe Test Clocks (HackerNoon)](https://hackernoon.com/no-more-ship-and-pray-testing-saas-billing-systems-with-playwright-and-stripe-test-clocks) -- Three-layer architecture, webhook polling, invoice categorization patterns (MEDIUM confidence)
+- [Testing Stripe Billing Cycles in 5 Minutes (DEV Community)](https://dev.to/paultowers/how-we-test-stripe-billing-cycles-in-5-minutes-instead-of-waiting-40-days-30jd) -- Test clock patterns, configurable polling with exponential backoff (MEDIUM confidence)
+- [Playwright Browser Context Isolation](https://playwright.dev/docs/browser-contexts) -- Each test gets fresh browser context by default (HIGH confidence)
+- Codebase analysis: `e2e/auth.spec.ts`, `e2e/global.setup.ts`, `playwright.config.ts`, `tests/live-billing/support.ts`, `tests/live-billing/required.test.ts`, `tests/live-billing/extended.test.ts`, `components/Pricing.tsx`, `app/settings/billing/page.tsx`, `components/billing/upgrade-confirmation-dialog.tsx`, `components/billing/credit-topup-card.tsx`, `convex/testing/billing.ts` (HIGH confidence)
 
 ---
-*Feature research for: SaaS upgrade flow with proration preview and pro-rata credit grants*
-*Researched: 2026-02-27*
+*Feature research for: E2E Billing Tests (v1.2 milestone)*
+*Researched: 2026-02-28*
