@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-02-28T22:20:24.000Z"
+last_updated: "2026-02-28T22:57:46.000Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.1 Library & Collections -- Phase 23 Plan 01 complete, Plan 02 next
+**Current focus:** v2.1 Library & Collections -- Phase 23 complete (library page shipped), Phase 24 next
 
 ## Current Position
 
-Phase: 23 of 26 (Core Library Page) -- IN PROGRESS
-Plan: 1 of 2 complete
-Status: Plan 01 complete (library queries + remove mutation), Plan 02 next (library UI)
-Last activity: 2026-02-28 -- Completed Plan 01 (library backend queries and mutations)
+Phase: 23 of 26 (Core Library Page) -- COMPLETE
+Plan: 2 of 2 complete
+Status: Phase 23 complete (library backend + UI shipped), Phase 24 next
+Last activity: 2026-02-28 -- Completed Plan 02 (library UI page with all components)
 
-Progress: [######..............] 30% (v2.1: 3/4 plans in Phases 22-23)
+Progress: [####################] 100% (v2.1: 4/4 plans in Phases 22-23)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 44 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 3)
+- Total plans completed: 45 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 4)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -61,6 +61,8 @@ See PROJECT.md Key Decisions table for full log.
 - [23-01] Dual-path query: search mode (relevance via searchIndex) vs browse mode (custom sort via regular indexes)
 - [23-01] convex-helpers filter() for rating >= N on both browse and search paths (pages may be undersized)
 - [23-01] getLibraryCount uses .collect().length (acceptable for libraries up to 1024 items)
+- [23-02] Bidirectional rating-library sync: removing from library clears Zustand stars, clearing stars removes from library
+- [23-02] Added removeFromLibraryByOpenalexId mutation for RatingSelector to delete by openalexId (doesn't know Convex _id)
 
 ### Pending Todos
 
@@ -81,6 +83,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 23-01-PLAN.md (library queries and remove mutation)
-Stopped at: Phase 23 Plan 01 complete, Plan 02 next (library UI page)
+Last activity: 2026-02-28 - Completed 23-02-PLAN.md (library UI page with all components)
+Stopped at: Phase 23 complete, Phase 24 next (URL state for library filters)
 Resume file: None
