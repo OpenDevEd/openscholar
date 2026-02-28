@@ -18,7 +18,7 @@ test.describe("Upgrade: Go to Pro", () => {
     const { customerId } = await createSubscriptionBypass({
       stripe: stripeClient,
       email: clerkUser.email,
-      userId: webhookWaiter["convexUserId"],
+      userId: webhookWaiter.userId,
       priceId: goPriceId,
     });
     await webhookWaiter.waitForSubscriptionPlan("go");
