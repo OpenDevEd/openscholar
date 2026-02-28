@@ -7,6 +7,7 @@ import {
 
 test.describe("Credits", () => {
   test("free user sees 2,000 signup credits on billing page", async ({
+    clerkUser,
     billingPage,
   }) => {
     // A fresh user created by the billing fixture has 2,000 free signup credits
@@ -128,7 +129,10 @@ test.describe("Credits", () => {
     await cleanupStripeCustomer({ stripe: stripeClient, customerId });
   });
 
-  test("free user at credit cap sees cap banner", async ({ billingPage }) => {
+  test("free user at credit cap sees cap banner", async ({
+    clerkUser,
+    billingPage,
+  }) => {
     // A fresh free user has freeBalance = 2,000 and freeCreditCap = 2,000
     // The condition isFreeCapReached = freeBalance >= freeCreditCap is immediately true
     // No setup needed -- the cap banner should be visible for a new free user
