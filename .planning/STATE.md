@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Library & Collections
-status: ready_to_plan
+status: executing
 last_updated: "2026-02-28"
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 22 of 26 (Schema & Rating Bridge) -- first phase of v2.1
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-28 -- Roadmap created for v2.1 (5 phases, 28 requirements)
+Plan: 1 of 2 complete
+Status: Executing Phase 22
+Last activity: 2026-02-28 -- Completed Plan 01 (schema + trimPaperData + saveToLibrary mutation)
 
-Progress: [....................] 0% (v2.1: 0/5 phases)
+Progress: [##..................] 10% (v2.1: 1/2 plans in Phase 22)
 
 ## Performance Metrics
 
@@ -51,6 +51,11 @@ Progress: [....................] 0% (v2.1: 0/5 phases)
 
 See PROJECT.md Key Decisions table for full log.
 
+- [22-01] Slim typed fields instead of v.any() blob for libraryItems (enforces 1-2 KB at schema level)
+- [22-01] All Phase 23 indexes defined upfront (zero cost, avoids second schema migration)
+- [22-01] searchableText concatenated field for Phase 23 full-text search
+- [22-01] Re-rate patches only rating/searchableText/updatedAt, preserves original metadata and savedAt
+
 ### Pending Todos
 
 None.
@@ -70,6 +75,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Roadmap created for v2.1
-Stopped at: Roadmap complete, ready to plan Phase 22
+Last activity: 2026-02-28 - Completed 22-01-PLAN.md (schema + trimPaperData + mutation)
+Stopped at: Completed 22-01-PLAN.md, ready for 22-02-PLAN.md
 Resume file: None

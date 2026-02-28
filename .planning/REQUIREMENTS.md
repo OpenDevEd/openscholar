@@ -9,8 +9,8 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 
 ### Library Core
 
-- [ ] **LIB-01**: Rating a paper (signed-in user) saves/upserts it to the user's Convex-backed library with slim normalized metadata
-- [ ] **LIB-02**: Library stores trimmed paper data (title, authors, DOI, abstract, year, journal, cited_by_count, open access status, OpenAlex ID) -- not the full Work blob
+- [x] **LIB-01**: Rating a paper (signed-in user) saves/upserts it to the user's Convex-backed library with slim normalized metadata
+- [x] **LIB-02**: Library stores trimmed paper data (title, authors, DOI, abstract, year, journal, cited_by_count, open access status, OpenAlex ID) -- not the full Work blob
 - [ ] **LIB-03**: User can view all saved items on a dedicated `/library` page
 - [ ] **LIB-04**: User can search within their library by title, author, or abstract text via Convex search index
 - [ ] **LIB-05**: User can filter library items by rating value
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIB-01 | Phase 22 | Pending |
-| LIB-02 | Phase 22 | Pending |
+| LIB-01 | Phase 22 | Complete |
+| LIB-02 | Phase 22 | Complete |
 | LIB-03 | Phase 23 | Pending |
 | LIB-04 | Phase 23 | Pending |
 | LIB-05 | Phase 23 | Pending |
