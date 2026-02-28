@@ -133,13 +133,13 @@ export function UpgradeConfirmationDialog({
                 ))}
                 <div className="border-t pt-2 flex items-center justify-between">
                   <span className="text-sm font-medium">{t("totalCharge")}</span>
-                  <span className="text-lg font-semibold">{formattedCharge}</span>
+                  <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
                 </div>
               </>
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{t("prorationCharge")}</span>
-                <span className="text-lg font-semibold">{formattedCharge}</span>
+                <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
               </div>
             )}
           </div>
@@ -165,13 +165,14 @@ export function UpgradeConfirmationDialog({
 
         <DialogFooter>
           <Button
+            data-testid="upgrade-cancel-button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isConfirming}
           >
             {t("cancel")}
           </Button>
-          <Button onClick={onConfirm} disabled={isConfirming}>
+          <Button data-testid="upgrade-confirm-button" onClick={onConfirm} disabled={isConfirming}>
             {isConfirming ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

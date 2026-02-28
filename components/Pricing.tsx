@@ -620,6 +620,7 @@ export function Pricing() {
           return (
             <motion.div
               key={plan.id}
+              data-testid={`pricing-plan-${plan.id}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...subtleSpring, delay: index * 0.1 }}
@@ -634,7 +635,7 @@ export function Pricing() {
               {/* Current Plan Badge */}
               {isCurrent && (
                 <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-green-600 uppercase tracking-wider">
+                  <span data-testid="pricing-current-badge" className="text-xs font-semibold text-green-600 uppercase tracking-wider">
                     {tc("currentPlan")}
                   </span>
                 </div>
@@ -651,7 +652,7 @@ export function Pricing() {
 
               {isScheduledTarget && !isCurrent && (
                 <div className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
                     Scheduled
                   </span>
                 </div>
@@ -696,6 +697,7 @@ export function Pricing() {
               {/* CTA */}
               <div className="p-6 pt-0 mt-auto">
                 <Button
+                  data-testid={`pricing-button-${plan.id}`}
                   className="w-full"
                   variant={buttonConfig.variant}
                   disabled={buttonConfig.disabled || loadingPriceId !== null}
