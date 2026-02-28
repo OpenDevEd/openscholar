@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: E2E Billing Tests
-status: unknown
-last_updated: "2026-02-28T07:21:10.129Z"
+status: in-progress
+last_updated: "2026-02-28T07:52:02.349Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 5
+  completed_phases: 4
+  total_plans: 9
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,23 +18,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** Phase 9 -- Lifecycle and Credit Specs (complete)
+**Current focus:** Phase 11 -- Tech Debt Cleanup (next)
 
 ## Current Position
 
-Phase: 9 of 9 (Lifecycle and Credit Specs) -- third phase of v1.2
-Plan: 09-02 complete, all 2 plans done
-Status: Phase 9 complete -- v1.2 milestone complete
-Last activity: 2026-02-28 -- Plan 09-02 credits spec complete
+Phase: 10 of 11 (Fix Credits Spec Auth Wiring) -- fourth phase of v1.2
+Plan: 10-01 complete, all 1 plans done
+Status: Phase 10 complete -- moving to Phase 11
+Last activity: 2026-02-28 -- Plan 10-01 credits spec auth fix complete
 
-Progress: [████████████████████] 100% (v1.2: 3/3 phases complete, 8/8 plans done)
+Progress: [████████████████░░░░] 80% (v1.2: 4/5 phases complete, 8/9 plans done)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17 (v1.0: 7, v1.1: 6, v1.2: 4)
-- v1.2 plans completed: 4
-- v1.2 total execution time: 8min
+- Total plans completed: 18 (v1.0: 7, v1.1: 6, v1.2: 5)
+- v1.2 plans completed: 5
+- v1.2 total execution time: 11min
 
 **By Phase (v1.2):**
 
@@ -43,6 +43,7 @@ Progress: [████████████████████] 100% (v
 | 7 | 3/3 | - | - |
 | 8 | 2/2 | 3min | 1.5min |
 | 9 | 2/2 | 5min | 2.5min |
+| 10 | 1/1 | 3min | 3min |
 
 ## Accumulated Context
 
@@ -77,5 +78,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 09-02-PLAN.md -- credits spec with free signup, pro-rata, topup, and cap tests
+Stopped at: Completed 10-01-PLAN.md -- added clerkUser fixture to CRED-01 and CRED-05 credits tests
 Resume file: None

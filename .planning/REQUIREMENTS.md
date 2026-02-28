@@ -77,11 +77,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAN-02 | Phase 9 | Complete |
 | PLAN-03 | Phase 9 | Complete |
 | CNCL-01 | Phase 9 | Complete |
-| CRED-01 | Phase 9, Phase 10 (gap closure) | Pending |
+| CRED-01 | Phase 9, Phase 10 (gap closure) | Complete |
 | CRED-02 | Phase 8 | Complete |
 | CRED-03 | Phase 9 | Complete |
 | CRED-04 | Phase 9 | Complete |
-| CRED-05 | Phase 9, Phase 10 (gap closure) | Pending |
+| CRED-05 | Phase 9, Phase 10 (gap closure) | Complete |
 
 **Coverage:**
 - v1.2 requirements: 18 total

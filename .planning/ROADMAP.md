@@ -105,7 +105,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 10-01-PLAN.md -- Add clerkUser fixture to credits spec tests
+- [x] 10-01-PLAN.md -- Add clerkUser fixture to credits spec tests (completed 2026-02-28)
 
 ### Phase 11: Tech Debt Cleanup
 **Goal**: Resolve tech debt items identified by v1.2 milestone audit to improve code consistency and CI reliability
@@ -135,5 +135,5 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 7. Test Infrastructure Foundation | v1.2 | 3/3 | Complete | 2026-02-28 |
 | 8. Subscription and Upgrade Specs | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
-| 10. Fix Credits Spec Auth Wiring | v1.2 | Pending | - | - |
+| 10. Fix Credits Spec Auth Wiring | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 11. Tech Debt Cleanup | v1.2 | Pending | - | - |
