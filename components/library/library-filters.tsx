@@ -1,8 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Star, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Star,
+  ArrowUp,
+  ArrowDown,
+  Calendar,
+  LayoutList,
+  LayoutGrid,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -16,18 +24,33 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-
-type SortBy = "savedAt" | "rating" | "publicationYear";
-type SortOrder = "asc" | "desc";
+import type {
+  LibrarySortBy,
+  LibrarySortOrder,
+  LibrarySavedPreset,
+  LibraryViewMode,
+} from "@/lib/library/search-params";
 
 interface LibraryFiltersProps {
+  // Existing
   minRating: number | undefined;
   onMinRatingChange: (rating: number | undefined) => void;
-  sortBy: SortBy;
-  onSortByChange: (sortBy: SortBy) => void;
-  sortOrder: SortOrder;
-  onSortOrderChange: (sortOrder: SortOrder) => void;
+  sortBy: LibrarySortBy;
+  onSortByChange: (sortBy: LibrarySortBy) => void;
+  sortOrder: LibrarySortOrder;
+  onSortOrderChange: (sortOrder: LibrarySortOrder) => void;
   sortDisabled: boolean;
+  // New: Date saved
+  savedPreset: LibrarySavedPreset | null;
+  onSavedPresetChange: (preset: LibrarySavedPreset | null) => void;
+  // New: Year range
+  yearFrom: number | null;
+  yearTo: number | null;
+  onYearFromChange: (year: number | null) => void;
+  onYearToChange: (year: number | null) => void;
+  // New: View mode
+  viewMode: LibraryViewMode;
+  onViewModeChange: (mode: LibraryViewMode) => void;
 }
 
 export function LibraryFilters({
@@ -38,6 +61,14 @@ export function LibraryFilters({
   sortOrder,
   onSortOrderChange,
   sortDisabled,
+  savedPreset,
+  onSavedPresetChange,
+  yearFrom,
+  yearTo,
+  onYearFromChange,
+  onYearToChange,
+  viewMode,
+  onViewModeChange,
 }: LibraryFiltersProps) {
   const t = useTranslations("libraryPage");
 
@@ -53,113 +84,199 @@ export function LibraryFilters({
     onSortOrderChange(sortOrder === "asc" ? "desc" : "asc");
   };
 
-  const sortOptions: { value: SortBy; label: string }[] = [
+  const sortOptions: { value: LibrarySortBy; label: string }[] = [
     { value: "savedAt", label: t("sortDateSaved") },
     { value: "rating", label: t("sortRating") },
     { value: "publicationYear", label: t("sortPublicationYear") },
   ];
 
   return (
-    <div className="flex items-center gap-4 flex-wrap">
-      {/* Rating star filter */}
-      <div className="flex items-center gap-1" role="group" aria-label={t("ratingFilter")}>
-        {[1, 2, 3, 4, 5].map((starValue) => {
-          const isActive = minRating !== undefined && starValue <= minRating;
-          const isSelected = minRating === starValue;
-          return (
-            <Tooltip key={starValue} delayDuration={300}>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => handleStarClick(starValue)}
-                  className={cn(
-                    "p-0.5 rounded transition-colors hover:scale-110",
-                    isSelected && "ring-1 ring-primary/30 rounded-sm",
-                  )}
-                  aria-label={
-                    isSelected
-                      ? t("clearRatingFilter")
-                      : `${starValue}+`
-                  }
-                >
-                  <Star
+    <div className="flex flex-col gap-3">
+      {/* Row 1: Star rating | Date saved presets | View mode toggle */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Rating star filter */}
+        <div className="flex items-center gap-1" role="group" aria-label={t("ratingFilter")}>
+          {[1, 2, 3, 4, 5].map((starValue) => {
+            const isActive = minRating !== undefined && starValue <= minRating;
+            const isSelected = minRating === starValue;
+            return (
+              <Tooltip key={starValue} delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleStarClick(starValue)}
                     className={cn(
-                      "h-4 w-4 transition-colors",
-                      isActive
-                        ? "fill-amber-400 text-amber-400"
-                        : "text-muted-foreground/40 hover:text-amber-300",
+                      "p-0.5 rounded transition-colors hover:scale-110",
+                      isSelected && "ring-1 ring-primary/30 rounded-sm",
                     )}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {isSelected ? t("clearRatingFilter") : `${starValue}+`}
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
+                    aria-label={
+                      isSelected
+                        ? t("clearRatingFilter")
+                        : `${starValue}+`
+                    }
+                  >
+                    <Star
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        isActive
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-muted-foreground/40 hover:text-amber-300",
+                      )}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {isSelected ? t("clearRatingFilter") : `${starValue}+`}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+
+        {/* Date saved presets */}
+        <div className="flex items-center gap-1.5">
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          {(["week", "month", "year"] as const).map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => onSavedPresetChange(savedPreset === preset ? null : preset)}
+              className={cn(
+                "text-xs px-2 py-1 rounded-md transition-colors",
+                savedPreset === preset
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              {t(
+                preset === "week"
+                  ? "filterLastWeek"
+                  : preset === "month"
+                    ? "filterLastMonth"
+                    : "filterLastYear",
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* View mode toggle */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60 ml-auto">
+          <button
+            type="button"
+            onClick={() => onViewModeChange("list")}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              viewMode === "list"
+                ? "text-primary bg-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+            )}
+            title={t("viewList")}
+          >
+            <LayoutList className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange("grid")}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              viewMode === "grid"
+                ? "text-primary bg-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+            )}
+            title={t("viewGrid")}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Sort controls */}
-      <div className="flex items-center gap-1.5 ml-auto">
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span>
-              <Select
-                value={sortBy}
-                onValueChange={(v) => onSortByChange(v as SortBy)}
-                disabled={sortDisabled}
-              >
-                <SelectTrigger
-                  className={cn(
-                    "h-8 w-[160px] text-xs",
-                    sortDisabled && "opacity-50 cursor-not-allowed",
-                  )}
-                >
-                  <span className="text-muted-foreground mr-1">{t("sortBy")}:</span>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </span>
-          </TooltipTrigger>
-          {sortDisabled && (
-            <TooltipContent side="bottom" className="text-xs">
-              {t("sortDisabledInSearch")}
-            </TooltipContent>
-          )}
-        </Tooltip>
+      {/* Row 2: Year range inputs | Sort controls */}
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Year range filter */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">{t("filterYearRange")}:</span>
+          <Input
+            type="number"
+            placeholder={t("filterYearFrom")}
+            value={yearFrom ?? ""}
+            onChange={(e) => onYearFromChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+            className="h-7 w-[72px] text-xs"
+            min={1900}
+            max={2100}
+          />
+          <span className="text-xs text-muted-foreground">-</span>
+          <Input
+            type="number"
+            placeholder={t("filterYearTo")}
+            value={yearTo ?? ""}
+            onChange={(e) => onYearToChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+            className="h-7 w-[72px] text-xs"
+            min={1900}
+            max={2100}
+          />
+        </div>
 
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={toggleSortOrder}
-              disabled={sortDisabled}
-              className={cn(
-                "shrink-0",
-                sortDisabled && "opacity-50 cursor-not-allowed",
-              )}
-              aria-label={sortOrder === "asc" ? t("sortAscending") : t("sortDescending")}
-            >
-              {sortOrder === "asc" ? (
-                <ArrowUp className="h-3.5 w-3.5" />
-              ) : (
-                <ArrowDown className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {sortOrder === "asc" ? t("sortAscending") : t("sortDescending")}
-          </TooltipContent>
-        </Tooltip>
+        {/* Sort controls */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <span>
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) => onSortByChange(v as LibrarySortBy)}
+                  disabled={sortDisabled}
+                >
+                  <SelectTrigger
+                    className={cn(
+                      "h-8 w-[160px] text-xs",
+                      sortDisabled && "opacity-50 cursor-not-allowed",
+                    )}
+                  >
+                    <span className="text-muted-foreground mr-1">{t("sortBy")}:</span>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </span>
+            </TooltipTrigger>
+            {sortDisabled && (
+              <TooltipContent side="bottom" className="text-xs">
+                {t("sortDisabledInSearch")}
+              </TooltipContent>
+            )}
+          </Tooltip>
+
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={toggleSortOrder}
+                disabled={sortDisabled}
+                className={cn(
+                  "shrink-0",
+                  sortDisabled && "opacity-50 cursor-not-allowed",
+                )}
+                aria-label={sortOrder === "asc" ? t("sortAscending") : t("sortDescending")}
+              >
+                {sortOrder === "asc" ? (
+                  <ArrowUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ArrowDown className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {sortOrder === "asc" ? t("sortAscending") : t("sortDescending")}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </div>
   );
