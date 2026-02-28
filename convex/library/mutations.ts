@@ -54,6 +54,27 @@ export const saveToLibrary = mutation({
   },
 });
 
+export const removeFromLibraryByOpenalexId = mutation({
+  args: {
+    openalexId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const item = await ctx.db
+      .query("libraryItems")
+      .withIndex("by_user_openalexId", (q) =>
+        q.eq("userId", user._id).eq("openalexId", args.openalexId)
+      )
+      .unique();
+
+    if (item) {
+      await ctx.db.delete(item._id);
+    }
+    return null;
+  },
+});
+
 export const removeFromLibrary = mutation({
   args: {
     itemId: v.id("libraryItems"),

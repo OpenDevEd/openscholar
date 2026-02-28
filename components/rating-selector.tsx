@@ -52,6 +52,7 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
   const { ratings, setRating } = useRatingsStore();
   const { phase } = useAuthReadiness();
   const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
+  const removeFromLibrary = useMutation(api.library.mutations.removeFromLibraryByOpenalexId);
 
   const handleRatingChange = (rating: string) => {
     const previousRating = ratings[paperId];
@@ -64,16 +65,21 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
       setRating(paperId, parseInt(rating));
     }
 
-    // 2. If signed-in AND we have paper data AND rating is not removal, save to Convex
-    if (phase === "authenticated" && paperResult && newRating !== null) {
-      const trimmed = trimPaperData(paperResult);
-      saveToLibrary({
-        ...trimmed,
-        rating: newRating,
-      }).catch((error) => {
-        // Log but don't block -- Zustand already has the rating
-        console.error("[Library] Failed to save to library:", error);
-      });
+    // 2. If signed-in: save to library on rate, remove from library on clear
+    if (phase === "authenticated") {
+      if (newRating !== null && paperResult) {
+        const trimmed = trimPaperData(paperResult);
+        saveToLibrary({
+          ...trimmed,
+          rating: newRating,
+        }).catch((error) => {
+          console.error("[Library] Failed to save to library:", error);
+        });
+      } else if (newRating === null) {
+        removeFromLibrary({ openalexId: paperId }).catch((error) => {
+          console.error("[Library] Failed to remove from library:", error);
+        });
+      }
     }
 
     // 3. PostHog tracking (existing, unchanged)

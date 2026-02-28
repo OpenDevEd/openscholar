@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/use-auth-query";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { showConfirmation } from "@/lib/confirmation";
+import { useRatingsStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LibrarySearchBar } from "./library-search-bar";
@@ -72,6 +73,7 @@ export function LibraryPageClient() {
 
   // Removal mutation
   const removeItem = useMutation(api.library.mutations.removeFromLibrary);
+  const { setRating } = useRatingsStore();
 
   const handleRemove = useCallback(
     (item: Doc<"libraryItems">) => {
@@ -86,10 +88,11 @@ export function LibraryPageClient() {
             console.error("[Library] Failed to remove:", err);
             toast.error("Failed to remove item");
           });
+          setRating(item.openalexId, null);
         },
       });
     },
-    [removeItem, t],
+    [removeItem, setRating, t],
   );
 
   // Toggle expand
