@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A comprehensive audit and fix of the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. Subscription plans, credit purchasing, upgrade flows, and webhook handling have been verified, corrected, and hardened to match industry best practices — including a reliable upgrade flow with proration preview, dual-path credit grants, and a polished confirmation dialog.
+A comprehensive audit, fix, and E2E test suite for the Stripe billing integration in OpenAlex Count, an academic literature search and extraction tool built with Next.js + Convex. Subscription plans, credit purchasing, upgrade flows, and webhook handling have been verified, corrected, hardened, and covered by Playwright E2E tests exercising every billing flow through the actual UI.
 
 ## Core Value
 
@@ -32,28 +32,27 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 - ✓ Proration preview dialog with line item breakdown and payment method display — v1.1
 - ✓ Pro-rata credit grants on mid-cycle upgrades (action + webhook backup path) — v1.1
 - ✓ Upgrade error handling: processing toast on grant failure, webhook recovery, dismiss guard — v1.1
+- ✓ E2E test framework configured with Playwright billing project (INFRA-01) — v1.2
+- ✓ Fresh Clerk test user created and deleted per test scenario (INFRA-02) — v1.2
+- ✓ Webhook waiter polls Convex for state convergence before UI assertions (INFRA-03) — v1.2
+- ✓ Stripe helpers for subscriptions, payment methods, and cleanup (INFRA-04) — v1.2
+- ✓ Page Object Models for billing and pricing pages with data-testid selectors (INFRA-05) — v1.2
+- ✓ data-testid attributes on billing UI components for stable test targeting (INFRA-06) — v1.2
+- ✓ Billing fixture composes user lifecycle, Stripe, webhooks, and cleanup (INFRA-07) — v1.2
+- ✓ Subscribe free to Go and Pro via checkout-bypass (SUB-01, SUB-02) — v1.2
+- ✓ Upgrade Go to Pro via in-app confirmation dialog with proration (PLAN-01) — v1.2
+- ✓ Downgrade Pro to Go with pending-change banner and scheduled badge (PLAN-02) — v1.2
+- ✓ Cancel scheduled downgrade to keep Pro (PLAN-03) — v1.2
+- ✓ Cancel subscription shows "Expires on" (CNCL-01) — v1.2
+- ✓ Free signup credits on account creation (CRED-01) — v1.2
+- ✓ Monthly credits on subscription 3k Go / 15k Pro with dedicated regression test (CRED-02) — v1.2
+- ✓ Pro-rata credits on upgrade matching calculated floor(remainingRatio * creditDelta) (CRED-03) — v1.2
+- ✓ Credit topup via checkout-bypass (CRED-04) — v1.2
+- ✓ Free-tier credit cap banner (CRED-05) — v1.2
 
 ### Active
 
-- [ ] Full browser E2E test suite for all Stripe billing flows (Playwright + Clerk test mode + Stripe sandbox + Convex dev)
-- [ ] Test coverage: subscription, upgrade, downgrade, cancellation, credit granting (sub + upgrade), recurring payment credit grants, credit topup, free credit capping
-- [ ] Fresh Clerk test user per test for isolation
-- [ ] Proper test infrastructure: fixtures, utilities, cleanup
-
-## Current Milestone: v1.2 E2E Billing Tests
-
-**Goal:** Comprehensive Playwright E2E tests exercising every billing flow through the actual UI against Clerk test mode, Stripe sandbox, and Convex dev backend.
-
-**Target features:**
-- Subscription E2E (free → Go, free → Pro via UI checkout)
-- Upgrade E2E (Go → Pro via upgrade dialog with proration preview)
-- Downgrade E2E (Pro → Go via customer portal or UI)
-- Cancellation E2E
-- Credit granting verification (on subscribe, on upgrade pro-rata)
-- Recurring payment cycle credit grants
-- Credit topup purchase flow
-- Free credit capping behavior
-- Fresh test user isolation per scenario
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -63,17 +62,20 @@ Every billing operation (subscribe, upgrade, downgrade, cancel, purchase credits
 - Mobile payment flows (Apple Pay, Google Pay) — web-only
 - Custom proration logic (bypass Stripe) — use Stripe's built-in proration
 - Real-time credit deduction notifications — notification fatigue during batch AI operations
+- Automating Stripe Checkout card entry — Stripe actively blocks automated testing of hosted checkout
+- Automating Stripe Customer Portal UI — portal is a Stripe-hosted iframe
+- Visual regression / screenshot tests — separate concern, notoriously flaky
+- Recurring payment cycle credit grants E2E — requires Stripe test clocks, incompatible with browser checkout
+- Payment failure E2E — requires Stripe Checkout iframe automation
 
 ## Context
 
-Shipped v1.0 (38 files, +3181/-172, 29 commits) and v1.1 (36 files, +4136/-210, 25 commits).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales).
+Shipped v1.0 (38 files, +3181/-172, 29 commits), v1.1 (36 files, +4136/-210, 25 commits), and v1.2 (1,248 LOC TypeScript test infrastructure, 351 LOC CI YAML).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), Playwright.
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`.
-Upgrade flow fully operational: proration preview, dual-path credit grants (action + webhook), confirmation dialog with payment method, line items, and dismiss guard.
+Test infrastructure: Vitest unit tests (43 files), backend live-billing integration tests, Playwright billing E2E suite (6 spec files, 11 tests).
+CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly) run both Vitest + Playwright suites.
 TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
-9 human verification items pending Stripe test mode validation across v1.1 phases.
-Existing test infrastructure: Vitest unit tests (43 files), backend live-billing integration tests (Stripe test clocks + Convex CLI), Playwright E2E auth spec with Clerk test mode.
-Test environment: local Next.js dev server + deployed Convex dev instance + Stripe sandbox + Clerk test mode.
 
 ## Constraints
 
@@ -81,6 +83,7 @@ Test environment: local Next.js dev server + deployed Convex dev instance + Stri
 - **Existing component**: Must work with `@convex-dev/stripe` — don't bypass it unless necessary
 - **Webhook-driven**: Stripe state changes must be driven by webhooks, not client-side polling
 - **Idempotency**: All webhook handlers must be idempotent (events can be delivered multiple times)
+- **Test isolation**: Each E2E test gets a fresh Clerk user — no shared state between tests
 
 ## Key Decisions
 
@@ -101,6 +104,12 @@ Test environment: local Next.js dev server + deployed Convex dev instance + Stri
 | Atomic metadata write on Stripe subscription | Webhook can classify proration invoices without local DB race | ✓ Good — eliminates stale data |
 | Radix dismiss prevention for processing state | onEscapeKeyDown + onPointerDownOutside + onInteractOutside | ✓ Good — prevents accidental dismissal |
 | HTML entities for card dots | Avoids Unicode bullet encoding issues across locales | ✓ Good — consistent rendering |
+| Checkout-bypass pattern for E2E tests | Stripe blocks hosted checkout automation | ✓ Good — reliable, fast, deterministic |
+| workers: 1 for billing tests | Clerk concurrent auth bug (#7891) | ✓ Good — eliminates flakes |
+| WebhookWaiter polls Convex state | Eliminates timing flakes between Stripe webhook and UI | ✓ Good — deterministic assertions |
+| Fresh Clerk user per test | Full isolation, no shared state contamination | ✓ Good — clean teardown |
+| toBe() exact match for CRED-02 regression | Regression tests must catch any credit grant drift | ✓ Good — strict validation |
+| CI credits env guard checks only "false" | Unset passes, matching runtime feature flag behavior | ✓ Good — consistent with app logic |
 
 ---
-*Last updated: 2026-02-28 after v1.2 milestone started*
+*Last updated: 2026-02-28 after v1.2 milestone*

@@ -40,3 +40,23 @@
 
 ---
 
+
+## v1.2 E2E Billing Tests (Shipped: 2026-02-28)
+
+**Phases completed:** 7 phases, 11 plans
+**Deliverables:** 1,248 LOC TypeScript (e2e/billing), 351 LOC YAML (CI workflows)
+
+**Key accomplishments:**
+- Complete Playwright billing test infrastructure: fixtures with fresh Clerk user isolation, Stripe checkout-bypass helpers, Convex webhook waiter, BillingPage + PricingPage POMs with 18 data-testid attributes
+- 6 E2E spec files (11 tests total) covering subscription, upgrade, downgrade, cancellation, credit grants (signup, pro-rata, topup), free credit cap, and dedicated CRED-02 regression
+- CI pipeline integration: `test:billing:e2e` npm script wired into all 3 billing CI jobs with env vars, Playwright browser install, test execution, and artifact upload
+- Gap closures across 3 phases: credits spec auth wiring (Phase 10), tech debt cleanup (Phase 11), CI env hardening + CRED-02 regression (Phase 13)
+- 18/18 requirements verified across 3 independent sources (VERIFICATION.md + SUMMARY frontmatter + REQUIREMENTS.md traceability) with full cross-phase integration check
+
+**Tech debt carried forward:**
+- STRIPE_PRO_PRICE_ID not validated in CI preflight steps (Low)
+- billing-live-extended job has no secrets validation step (Low)
+- 2 unused POM locators in BillingPage (freeCredits, paidCredits) (Info)
+
+---
+

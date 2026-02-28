@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v1.2
 milestone_name: E2E Billing Tests
-status: unknown
-last_updated: "2026-02-28T09:21:11.588Z"
+status: complete
+last_updated: "2026-02-28T12:00:00.000Z"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -18,62 +18,34 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every billing operation produces correct financial outcomes -- the right amount charged, at the right time, with proper proration and user feedback.
-**Current focus:** Phase 13 complete -- CI env hardening and CRED-02 regression
+**Current focus:** v1.2 E2E Billing Tests milestone complete -- planning next milestone
 
 ## Current Position
 
-Phase: 13 of 13 (CI Env Hardening & CRED-02 Regression)
-Plan: 13-01 complete, all 1 plans done
-Status: Phase 13 complete -- CI env hardening and CRED-02 regression test done
-Last activity: 2026-02-28 -- Plan 13-01 CI env hardening and CRED-02 regression complete
+Milestone: v1.2 E2E Billing Tests -- SHIPPED 2026-02-28
+All 13 phases complete across 3 milestones (v1.0, v1.1, v1.2)
 
 Progress: [████████████████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21 (v1.0: 7, v1.1: 6, v1.2: 6, gap: 1, tech-debt: 1)
-- Gap closure plans completed: 1
-- Gap closure total execution time: 1min
-- Tech debt plans completed: 1
+- Total plans completed: 24 (v1.0: 7, v1.1: 6, v1.2: 11)
+- Total milestones shipped: 3
 
-**By Phase (v1.2):**
+**By Milestone:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 7 | 3/3 | - | - |
-| 8 | 2/2 | 3min | 1.5min |
-| 9 | 2/2 | 5min | 2.5min |
-| 10 | 1/1 | 3min | 3min |
-| 11 | 1/1 | 2min | 2min |
-| 12 | 1/1 | 1min | 1min |
-| 13 | 1/1 | 1min | 1min |
+| Milestone | Phases | Plans | Shipped |
+|-----------|--------|-------|---------|
+| v1.0 | 3 | 7 | 2026-02-27 |
+| v1.1 | 3 | 6 | 2026-02-27 |
+| v1.2 | 7 | 11 | 2026-02-28 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-
-Recent decisions affecting current work:
-- Checkout-bypass pattern for subscription/topup tests (Stripe blocks hosted checkout automation)
-- `workers: 1` mandatory due to Clerk concurrent auth bug (#7891)
-- WebhookWaiter polls Convex state before UI assertions (eliminates timing flakes)
-- Each subscribe test gets its own fresh Clerk user for full isolation (08-01)
-- Credit assertions use >= because free signup credits (2,000) are always present (08-01)
-- Upgrade credit assertion uses > 5000 threshold (not exact Pro amount) since pro-rata credits vary with timing (08-02)
-- Dialog verification checks plan names only, not dollar amounts (volatile proration values) (08-02)
-- Downgrade triggers no confirmation dialog -- re-navigate after clickSubscribe to see updated state (09-01)
-- Cancel subscription uses Stripe API bypass (cancel_at_period_end) since Customer Portal cannot be automated (09-01)
-- Assert text patterns only (visibility, /expires on/i) -- no exact dates in lifecycle tests (09-01)
-- Subscription item period fields (items.data[0]) for Stripe clover API compatibility (09-02)
-- Pro-rata credit tolerance +-2 accounts for timing gap between test and server calculation (09-02)
-- Credit topup test subscribes to Go first to establish Stripe customer with payment method (09-02)
-- CI credits env guard checks only explicit "false" -- unset passes, matching runtime behavior (11-01)
-- No --config flag in test:billing:e2e script -- playwright.config.ts is the default (12-01)
-- Artifact names use ${{ github.job }} to avoid collision across billing jobs in same workflow run (12-01)
-- Use toBe() exact match in CRED-02 regression tests, not >= -- regression tests must catch any drift (13-01)
-- CRED-02 tests focus exclusively on credit balance -- no plan name or status badge assertions (13-01)
 
 ### Pending Todos
 
@@ -83,9 +55,10 @@ None.
 
 - 9 human verification items pending Stripe test mode validation (from v1.1)
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
+- 4 minor CI tech debt items (STRIPE_PRO_PRICE_ID preflight, billing-live-extended validation, unused POM locators)
 
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 13-01-PLAN.md -- CI env hardening and CRED-02 regression test
+Stopped at: v1.2 milestone archived
 Resume file: None
