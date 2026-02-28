@@ -121,6 +121,13 @@ jobs:
       CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
       BILLING_TEST_USER_SUBJECT: billing_live_test_subject
       BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_BASE_URL: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -166,6 +173,20 @@ jobs:
           path: test-results/billing-live
           if-no-files-found: ignore
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run billing E2E tests
+        run: npm run test:billing:e2e
+
+      - name: Upload billing E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-e2e-report-${{ github.job }}
+          path: playwright-report
+          if-no-files-found: ignore
+
   billing-live-extended:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -186,6 +207,13 @@ jobs:
       CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
       BILLING_TEST_USER_SUBJECT: billing_live_test_subject
       BILLING_TEST_USER_EMAIL: billing-live-test@example.com
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_BASE_URL: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -213,4 +241,18 @@ jobs:
         with:
           name: billing-live-extended-artifacts
           path: test-results/billing-live
+          if-no-files-found: ignore
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run billing E2E tests
+        run: npm run test:billing:e2e
+
+      - name: Upload billing E2E report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-e2e-report-${{ github.job }}
+          path: playwright-report
           if-no-files-found: ignore
