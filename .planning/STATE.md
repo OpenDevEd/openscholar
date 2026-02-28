@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: TDD & Test Coverage
 status: unknown
-last_updated: "2026-02-28T14:52:11.951Z"
+last_updated: "2026-02-28T15:02:18.882Z"
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 17
+  completed_plans: 17
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every major code path in search, AI, and user management has tests -- and every new feature is built test-first using strict red-green-refactor TDD.
-**Current focus:** Phase 18 -- Search & Filters Tests
+**Current focus:** Phase 21 complete -- v2.0 milestone ready for verification
 
 ## Current Position
 
-Phase: 17 of 21 (AI Cost & Billing Tests)
+Phase: 21 of 21 (Plan Enforcement & Feature Gating Tests)
 Plan: 2 of 2 (complete)
-Status: Phase 17 complete
-Last activity: 2026-02-28 -- Completed 17-02 model registry and pricing lookup tests
+Status: Phase 21 complete
+Last activity: 2026-02-28 -- Completed 21-02 tier enforcement and subscription selection tests
 
-Progress: [████████████████████] 7/7 plans (100%)
+Progress: [████████████████████] 16/16 plans (100%)
 
 ## Performance Metrics
 
@@ -55,6 +55,8 @@ Progress: [████████████████████] 7/7 pla
 | 16-ai-batch-processing-tests | 02 | 1min | 1 | 1 |
 | 17-ai-cost-billing-tests | 01 | 2min | 1 | 1 |
 | 17-ai-cost-billing-tests | 02 | 2min | 1 | 1 |
+| 21-plan-enforcement-feature-gating-tests | 01 | 2min | 1 | 1 |
+| 21-plan-enforcement-feature-gating-tests | 02 | 2min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -75,6 +77,11 @@ See PROJECT.md Key Decisions table for full log.
 - [17-01] Used toBeCloseTo(x, 6) for cost assertions to handle IEEE 754 floating-point precision
 - [17-01] Tested field fallback chain (promptTokens >> inputTokens) explicitly -- documents the priority order
 - [17-02] Tested representative models per provider instead of snapshotting all 40+ models -- avoids brittle tests
+- [21-01] Used vi.resetModules() + dynamic import for getPlanFromPriceId env-based matching (module-load-time env vars)
+- [21-01] Used it.each for parametric plan utility function coverage
+- [21-01] Used vi.resetModules() for feature flag guard env var isolation per success criteria
+- [21-02] Used makeSub() factory for DRY subscription test data construction
+- [21-02] Mocked 4-step Convex query chain (query -> withIndex -> order -> collect) for requirePlanTier
 
 ### Pending Todos
 
@@ -95,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Phase 17 complete, ready to plan Phase 18
-Stopped at: Phase 17 complete, ready to plan Phase 18
+Last activity: 2026-02-28 - Phase 21 complete, v2.0 milestone ready
+Stopped at: Phase 21 complete, all v2.0 phases done
 Resume file: None

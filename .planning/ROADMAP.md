@@ -57,7 +57,7 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
 - [x] **Phase 18: Search & Filter Tests** - Search param translation, region codec bijectivity, filter builders, URL serialization round-trips (completed 2026-02-28)
 - [x] **Phase 19: Data Export Tests** - CSV/JSON export correctness, answer formatting, citation helpers, download output shape (completed 2026-02-28)
 - [x] **Phase 20: User Auth & State Machine Tests** - Auth state transitions, user creation atomicity, profile sync guards (completed 2026-02-28)
-- [ ] **Phase 21: Plan Enforcement & Feature Gating Tests** - Plan config contracts, tier enforcement, feature flag guards, subscription selection
+- [x] **Phase 21: Plan Enforcement & Feature Gating Tests** - Plan config contracts, tier enforcement, feature flag guards, subscription selection (completed 2026-02-28)
 
 ## Phase Details
 
@@ -161,7 +161,10 @@ Plans:
   3. `requirePlanTier` throws `EXTRACTION_PLAN_REQUIRED` when user tier is below minimum and passes when tier is sufficient
   4. All server-side feature flag guards (`requireCreditsEnabled`, `requireCreditTopupsEnabled`, `requireSubscriptionsEnabled`) throw when disabled and pass when enabled, using `vi.resetModules()` for env var isolation
   5. `selectCanonicalSubscription` returns the correct subscription when multiple rows exist following priority ordering
-**Plans**: TBD
+**Plans**: 2/2 plans complete
+Plans:
+- [x] 21-01-PLAN.md -- PLAN_CONFIG shape contract, plan utility functions, feature flag guards (PLAN-01, PLAN-02, PLAN-04)
+- [x] 21-02-PLAN.md -- requirePlanTier tier enforcement, selectCanonicalSubscription priority ordering (PLAN-03, PLAN-05)
 
 ## Progress
 
@@ -192,4 +195,4 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 18. Search & Filter Tests | v2.0 | Complete    | 2026-02-28 | - |
 | 19. Data Export Tests | 3/3 | Complete    | 2026-02-28 | - |
 | 20. User Auth & State Machine Tests | 2/2 | Complete    | 2026-02-28 | - |
-| 21. Plan Enforcement & Feature Gating Tests | v2.0 | 0/0 | Not started | - |
+| 21. Plan Enforcement & Feature Gating Tests | 2/2 | Complete    | 2026-02-28 | - |

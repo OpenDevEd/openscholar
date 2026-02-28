@@ -66,11 +66,11 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Plan Enforcement & Feature Gating
 
-- [ ] **PLAN-01**: `PLAN_CONFIG` shape contract -- correct credit amounts and tier values for all four plans (free, go, pro, enterprise)
-- [ ] **PLAN-02**: `getPlanTier`, `getFreeCreditCapForPlan`, `getPlanFromPriceId` return correct values for all plan types
-- [ ] **PLAN-03**: `requirePlanTier` throws `EXTRACTION_PLAN_REQUIRED` when user tier is below minimum
-- [ ] **PLAN-04**: All server-side feature flag guards (`requireCreditsEnabled`, `requireCreditTopupsEnabled`, `requireSubscriptionsEnabled`) throw when disabled and pass when enabled
-- [ ] **PLAN-05**: `selectCanonicalSubscription` returns correct subscription when multiple rows exist (priority ordering)
+- [x] **PLAN-01**: `PLAN_CONFIG` shape contract -- correct credit amounts and tier values for all four plans (free, go, pro, enterprise)
+- [x] **PLAN-02**: `getPlanTier`, `getFreeCreditCapForPlan`, `getPlanFromPriceId` return correct values for all plan types
+- [x] **PLAN-03**: `requirePlanTier` throws `EXTRACTION_PLAN_REQUIRED` when user tier is below minimum
+- [x] **PLAN-04**: All server-side feature flag guards (`requireCreditsEnabled`, `requireCreditTopupsEnabled`, `requireSubscriptionsEnabled`) throw when disabled and pass when enabled
+- [x] **PLAN-05**: `selectCanonicalSubscription` returns correct subscription when multiple rows exist (priority ordering)
 
 ## v2.1 Requirements
 
@@ -141,11 +141,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-02 | Phase 20 | Complete |
 | AUTH-03 | Phase 20 | Complete |
 | AUTH-04 | Phase 20 | Complete |
-| PLAN-01 | Phase 21 | Pending |
-| PLAN-02 | Phase 21 | Pending |
-| PLAN-03 | Phase 21 | Pending |
-| PLAN-04 | Phase 21 | Pending |
-| PLAN-05 | Phase 21 | Pending |
+| PLAN-01 | Phase 21 | Complete |
+| PLAN-02 | Phase 21 | Complete |
+| PLAN-03 | Phase 21 | Complete |
+| PLAN-04 | Phase 21 | Complete |
+| PLAN-05 | Phase 21 | Complete |
 
 **Coverage:**
 - v2.0 requirements: 41 total
