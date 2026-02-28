@@ -191,5 +191,5 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 17. AI Cost & Billing Tests | 2/2 | Complete    | 2026-02-28 | - |
 | 18. Search & Filter Tests | v2.0 | Complete    | 2026-02-28 | - |
 | 19. Data Export Tests | 3/3 | Complete    | 2026-02-28 | - |
-| 20. User Auth & State Machine Tests | 2/2 | Complete   | 2026-02-28 | - |
+| 20. User Auth & State Machine Tests | 2/2 | Complete    | 2026-02-28 | - |
 | 21. Plan Enforcement & Feature Gating Tests | v2.0 | 0/0 | Not started | - |

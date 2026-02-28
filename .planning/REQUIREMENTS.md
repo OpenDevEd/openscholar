@@ -59,10 +59,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### User Auth & State Machine
 
-- [ ] **AUTH-01**: `assertActiveUser` allows active users, throws FORBIDDEN for suspended users, throws FORBIDDEN for deleted users
-- [ ] **AUTH-02**: `createUserWithDefaults` atomically creates user row, credits row (freeBalance=2000), and subscription row (plan=free, status=active)
-- [ ] **AUTH-03**: `ensureUser` creates new user on first login and updates `lastLoginAt` on return visits without overwriting existing profile fields
-- [ ] **AUTH-04**: `syncProfileFromSession` only patches blank profile fields and does not overwrite existing values
+- [x] **AUTH-01**: `assertActiveUser` allows active users, throws FORBIDDEN for suspended users, throws FORBIDDEN for deleted users
+- [x] **AUTH-02**: `createUserWithDefaults` atomically creates user row, credits row (freeBalance=2000), and subscription row (plan=free, status=active)
+- [x] **AUTH-03**: `ensureUser` creates new user on first login and updates `lastLoginAt` on return visits without overwriting existing profile fields
+- [x] **AUTH-04**: `syncProfileFromSession` only patches blank profile fields and does not overwrite existing values
 
 ### Plan Enforcement & Feature Gating
 
@@ -137,10 +137,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AICB-02 | Phase 17 | Complete |
 | AICB-03 | Phase 17 | Complete |
 | AICB-04 | Phase 17 | Complete |
-| AUTH-01 | Phase 20 | Pending |
-| AUTH-02 | Phase 20 | Pending |
-| AUTH-03 | Phase 20 | Pending |
-| AUTH-04 | Phase 20 | Pending |
+| AUTH-01 | Phase 20 | Complete |
+| AUTH-02 | Phase 20 | Complete |
+| AUTH-03 | Phase 20 | Complete |
+| AUTH-04 | Phase 20 | Complete |
 | PLAN-01 | Phase 21 | Pending |
 | PLAN-02 | Phase 21 | Pending |
 | PLAN-03 | Phase 21 | Pending |
