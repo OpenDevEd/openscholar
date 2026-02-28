@@ -19,7 +19,7 @@ function downloadFile(content: string | Blob, filename: string, mimeType: string
 /**
  * Formats answer for CSV export
  */
-function formatAnswerForCSV(answer: any, type: string): string {
+export function formatAnswerForCSV(answer: any, type: string): string {
   if (answer === null || answer === undefined) return '';
 
   if (type === 'boolean') {
@@ -36,7 +36,7 @@ function formatAnswerForCSV(answer: any, type: string): string {
 /**
  * Formats answer for Excel export
  */
-function formatAnswerForExcel(answer: any, type: string): any {
+export function formatAnswerForExcel(answer: any, type: string): any {
   if (answer === null || answer === undefined) return '';
 
   if (type === 'boolean') {
