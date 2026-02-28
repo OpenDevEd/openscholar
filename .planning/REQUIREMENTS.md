@@ -34,10 +34,10 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 
 ### Filtering & URL State
 
-- [ ] **FILT-01**: User can filter library items by date saved (e.g., last week, last month, last year)
-- [ ] **FILT-02**: User can filter library items by publication year range
+- [x] **FILT-01**: User can filter library items by date saved (e.g., last week, last month, last year)
+- [x] **FILT-02**: User can filter library items by publication year range
 - [ ] **FILT-03**: User can filter library items by collection
-- [ ] **FILT-04**: All filter and sort state is persisted in the URL via `nuqs` (bookmarkable views)
+- [x] **FILT-04**: All filter and sort state is persisted in the URL via `nuqs` (bookmarkable views)
 - [ ] **FILT-05**: User can switch between view modes (list-detail / grid)
 
 ### Export & Polish
@@ -100,10 +100,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COL-05 | Phase 25 | Pending |
 | COL-06 | Phase 25 | Pending |
 | COL-07 | Phase 25 | Pending |
-| FILT-01 | Phase 24 | Pending |
-| FILT-02 | Phase 24 | Pending |
+| FILT-01 | Phase 24 | Complete |
+| FILT-02 | Phase 24 | Complete |
 | FILT-03 | Phase 25 | Pending |
-| FILT-04 | Phase 24 | Pending |
+| FILT-04 | Phase 24 | Complete |
 | FILT-05 | Phase 24 | Pending |
 | EXP-01 | Phase 26 | Pending |
 | EXP-02 | Phase 26 | Pending |

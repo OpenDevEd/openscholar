@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-02-28T23:03:40.832Z"
+last_updated: "2026-02-28T23:26:50.422Z"
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.1 Library & Collections -- Phase 23 complete (library page shipped), Phase 24 next
+**Current focus:** v2.1 Library & Collections -- Phase 24 in progress (advanced filtering & URL state)
 
 ## Current Position
 
-Phase: 23 of 26 (Core Library Page) -- COMPLETE
-Plan: 2 of 2 complete
-Status: Phase 23 complete (library backend + UI shipped), Phase 24 next
-Last activity: 2026-02-28 -- Completed Plan 02 (library UI page with all components)
+Phase: 24 of 26 (Advanced Filtering & URL State) -- IN PROGRESS
+Plan: 1 of 2 complete
+Status: Plan 01 complete (URL state foundation + Convex query filters), Plan 02 next (filter UI controls)
+Last activity: 2026-02-28 -- Completed Plan 01 (URL state foundation with nuqs parsers, Convex query filters, useQueryStates migration)
 
-Progress: [####################] 100% (v2.1: 4/4 plans in Phases 22-23)
+Progress: [##########..........] 50% (v2.1: 5/6 plans in Phases 22-24)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 45 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 4)
+- Total plans completed: 46 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -63,6 +63,8 @@ See PROJECT.md Key Decisions table for full log.
 - [23-01] getLibraryCount uses .collect().length (acceptable for libraries up to 1024 items)
 - [23-02] Bidirectional rating-library sync: removing from library clears Zustand stars, clearing stars removes from library
 - [23-02] Added removeFromLibraryByOpenalexId mutation for RatingSelector to delete by openalexId (doesn't know Convex _id)
+- [24-01] Debounce bridge pattern: rawSearch (local useState) syncs to URL param q via useEffect after 300ms debounce
+- [24-01] null vs undefined convention: nuqs uses null to clear params, Convex uses undefined for optional args -- conversion at derivation point
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 23-02-PLAN.md (library UI page with all components)
-Stopped at: Phase 23 complete, Phase 24 next (URL state for library filters)
+Last activity: 2026-02-28 - Completed 24-01-PLAN.md (URL state foundation with nuqs parsers, Convex query filters, useQueryStates migration)
+Stopped at: Phase 24 Plan 01 complete, Plan 02 next (filter UI controls)
 Resume file: None

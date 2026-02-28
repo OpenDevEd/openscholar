@@ -183,6 +183,6 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 21. Plan Enforcement & Feature Gating Tests | v2.0 | 2/2 | Complete | 2026-02-28 |
 | 22. Schema & Rating Bridge | 2/2 | Complete    | 2026-02-28 | - |
 | 23. Core Library Page | 2/2 | Complete    | 2026-02-28 | - |
-| 24. Advanced Filtering & URL State | v2.1 | 0/? | Not started | - |
+| 24. Advanced Filtering & URL State | 1/2 | In Progress|  | - |
 | 25. Collections | v2.1 | 0/? | Not started | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
