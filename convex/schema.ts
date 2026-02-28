@@ -626,4 +626,34 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_baseline", ["baselineJobId"])
     .index("by_job_generated", ["jobId", "generatedAt"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // LIBRARY ITEMS - User's saved paper library (rated papers)
+  // ═══════════════════════════════════════════════════════════════
+  libraryItems: defineTable({
+    userId: v.id("users"),
+    openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
+    rating: v.number(), // 0-5
+    title: v.string(),
+    authors: v.optional(v.string()), // Flattened: "John Doe, Jane Smith"
+    doi: v.optional(v.string()),
+    abstract: v.optional(v.string()),
+    publicationYear: v.optional(v.number()),
+    journal: v.optional(v.string()), // primary_location.source.display_name
+    citedByCount: v.optional(v.number()),
+    isOpenAccess: v.optional(v.boolean()),
+    oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
+    searchableText: v.string(), // title + abstract + authors (for Phase 23 search index)
+    savedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_openalexId", ["userId", "openalexId"])
+    .index("by_user_rating", ["userId", "rating"])
+    .index("by_user_savedAt", ["userId", "savedAt"])
+    .index("by_user_year", ["userId", "publicationYear"])
+    .searchIndex("search_library", {
+      searchField: "searchableText",
+      filterFields: ["userId", "rating"],
+    }),
 });
