@@ -15,6 +15,7 @@
     "test:billing:live:ci": "BILLING_LIVE_PUSH_CONVEX=true npm run test:billing:preflight -- --push-convex && npm run test:billing:live",
     "test:billing:extended": "vitest run --config vitest.live.config.ts tests/live-billing/extended.test.ts",
     "test:billing:extended:ci": "BILLING_LIVE_PUSH_CONVEX=true npm run test:billing:preflight -- --push-convex && npm run test:billing:extended",
+    "test:billing:e2e": "playwright test --project=billing",
     "test:e2e:auth": "playwright test e2e/auth.spec.ts --config=playwright.config.ts",
     "test:ci": "npm run test && npm run build && npm run test:e2e:auth"
   },
