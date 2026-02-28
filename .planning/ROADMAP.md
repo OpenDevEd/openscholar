@@ -51,7 +51,7 @@ Full details: `.planning/milestones/v1.2-ROADMAP.md`
 **Milestone Goal:** Backfill high test coverage across search & extraction, AI/LLM features, and user management with unit tests, establishing strict TDD as the standard for all future development.
 
 - [x] **Phase 14: Test Infrastructure** - Multi-environment Vitest config, new dependencies, setup files, zero-regression validation (completed 2026-02-28)
-- [ ] **Phase 15: AI Prompts & Schema Tests** - Prompt builder structural invariants, Zod schema contracts, query validation, JSON repair
+- [x] **Phase 15: AI Prompts & Schema Tests** - Prompt builder structural invariants, Zod schema contracts, query validation, JSON repair (completed 2026-02-28)
 - [ ] **Phase 16: AI Batch Processing Tests** - Fail-soft batch processing with all-success, all-fail, and partial-failure coverage
 - [ ] **Phase 17: AI Cost & Billing Tests** - Provider pricing models, usage aggregation, model registry lookups
 - [ ] **Phase 18: Search & Filter Tests** - Search param translation, region codec bijectivity, filter builders, URL serialization round-trips
@@ -183,7 +183,7 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 12. Billing E2E CI Wiring | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 13. CI Env Hardening & CRED-02 Regression | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 14. Test Infrastructure | 1/1 | Complete    | 2026-02-28 | - |
-| 15. AI Prompts & Schema Tests | v2.0 | 0/0 | Not started | - |
+| 15. AI Prompts & Schema Tests | 2/2 | Complete   | 2026-02-28 | - |
 | 16. AI Batch Processing Tests | v2.0 | 0/0 | Not started | - |
 | 17. AI Cost & Billing Tests | v2.0 | 0/0 | Not started | - |
 | 18. Search & Filter Tests | v2.0 | 0/0 | Not started | - |

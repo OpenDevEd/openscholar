@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: TDD & Test Coverage
 status: unknown
-last_updated: "2026-02-28T12:01:00.617Z"
+last_updated: "2026-02-28T13:45:36.566Z"
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  total_phases: 2
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every major code path in search, AI, and user management has tests -- and every new feature is built test-first using strict red-green-refactor TDD.
-**Current focus:** Phase 14 -- Test Infrastructure
+**Current focus:** Phase 15 -- AI Prompts & Schema Tests
 
 ## Current Position
 
-Phase: 14 of 21 (Test Infrastructure) -- first phase of v2.0
-Plan: 1 of 1 (complete)
-Status: Phase 14 plan 01 complete
-Last activity: 2026-02-28 -- Completed 14-01 test infrastructure setup
+Phase: 15 of 21 (AI Prompts & Schema Tests)
+Plan: 2 of 2 (complete)
+Status: Phase 15 complete
+Last activity: 2026-02-28 -- Completed 15-02 AI schema and codec tests
 
-Progress: [█░░░░░░░░░] 12.5% (1/8 phases with plans complete)
+Progress: [██░░░░░░░░] 25.0% (2/8 phases with plans complete)
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [█░░░░░░░░░] 12.5% (1/8 phases with plans complete
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 14-test-infrastructure | 01 | 2min | 2 | 5 |
+| 15-ai-prompts-schema-tests | 01 | 2min | 2 | 2 |
 
 ## Accumulated Context
 
@@ -60,6 +61,7 @@ See PROJECT.md Key Decisions table for full log.
 - [14-01] Used environmentMatchGlobs for multi-env routing (deprecated in Vitest 3 but functional, simpler than test.projects)
 - [14-01] Conditional dynamic import guard for RTL cleanup to avoid crashing node-environment tests
 - [14-01] Lazy import.meta.glob for convex-test module discovery per docs recommendation
+- [15-01] Tested prompt builder output structure only (system/prompt fields, content markers) -- no AI quality assertions
 
 ### Pending Todos
 
@@ -80,6 +82,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 14-01-PLAN.md (test infrastructure setup)
-Stopped at: Completed 14-01-PLAN.md
+Last activity: 2026-02-28 - Completed 15-01-PLAN.md (AI prompt & validation tests)
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None

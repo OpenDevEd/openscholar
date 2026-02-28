@@ -34,9 +34,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### AI Prompts & Schemas
 
-- [ ] **AIPR-01**: All prompt builders (`buildEnhanceQueryPrompts`, `buildScreeningQuestionsPrompts`, `buildScreeningResponsesPrompts`, `buildTranslateQueryPrompts`, `buildTranslatePaperContentPrompts`, `buildExtractionQuestionsPrompts`) produce structurally correct prompts with required fields
-- [ ] **AIPR-02**: `validateQuery` detects unbalanced parentheses and trailing Boolean operators
-- [ ] **AIPR-03**: `repairJSON` and `repairSingleField` recover malformed AI responses for common failure patterns
+- [x] **AIPR-01**: All prompt builders (`buildEnhanceQueryPrompts`, `buildScreeningQuestionsPrompts`, `buildScreeningResponsesPrompts`, `buildTranslateQueryPrompts`, `buildTranslatePaperContentPrompts`, `buildExtractionQuestionsPrompts`) produce structurally correct prompts with required fields
+- [x] **AIPR-02**: `validateQuery` detects unbalanced parentheses and trailing Boolean operators
+- [x] **AIPR-03**: `repairJSON` and `repairSingleField` recover malformed AI responses for common failure patterns
 - [ ] **AIPR-04**: All Zod schemas (`queryEnhancementSchema`, `screeningQuestionsSchema`, dynamic `createScreeningResponsesSchema`) accept valid inputs and reject invalid ones
 - [ ] **AIPR-05**: `encodeQuestionKey` / `decodeQuestionKey` round-trip correctly for ASCII and non-ASCII question text
 - [ ] **AIPR-06**: `encodeQuestionResponseMap` / `decodeQuestionResponseMap` preserve all key-value pairs through round-trip encoding
@@ -121,9 +121,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXPRT-03 | Phase 19 | Pending |
 | EXPRT-04 | Phase 19 | Pending |
 | EXPRT-05 | Phase 19 | Pending |
-| AIPR-01 | Phase 15 | Pending |
-| AIPR-02 | Phase 15 | Pending |
-| AIPR-03 | Phase 15 | Pending |
+| AIPR-01 | Phase 15 | Complete |
+| AIPR-02 | Phase 15 | Complete |
+| AIPR-03 | Phase 15 | Complete |
 | AIPR-04 | Phase 15 | Pending |
 | AIPR-05 | Phase 15 | Pending |
 | AIPR-06 | Phase 15 | Pending |
