@@ -100,12 +100,11 @@ Plans:
   3. User can filter items by rating value and sort by date saved, rating, or publication year
   4. User can remove an item from their library with a confirmation step
   5. Unauthenticated user visiting /library is redirected to sign-in, and an empty library shows a helpful empty state
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 23-01: TBD
-- [ ] 23-02: TBD
-- [ ] 23-03: TBD
+- [ ] 23-01-PLAN.md -- TDD: Library queries (browseLibrary, searchLibrary, getLibraryCount) and removeFromLibrary mutation
+- [ ] 23-02-PLAN.md -- Library page UI: route, components, sidebar nav, i18n, human verification
 
 ### Phase 24: Advanced Filtering & URL State
 **Goal**: Users can apply date and year filters, switch view modes, and bookmark/share filtered library views via URL
