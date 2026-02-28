@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: E2E Billing Tests
-status: in-progress
-last_updated: "2026-02-28T07:52:02.349Z"
+status: unknown
+last_updated: "2026-02-28T07:55:04.689Z"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 9
+  total_plans: 8
   completed_plans: 8
 ---
 

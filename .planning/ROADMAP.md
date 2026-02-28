@@ -37,7 +37,7 @@ Full details: `.planning/milestones/v1.1-ROADMAP.md`
 - [ ] **Phase 7: Test Infrastructure Foundation** - Support utilities, fixtures, page object models, and data-testid attributes
 - [x] **Phase 8: Subscription and Upgrade Specs** - E2E specs for subscription creation, upgrade flow, and subscription credit grants (completed 2026-02-28)
 - [x] **Phase 9: Lifecycle and Credit Specs** - E2E specs for downgrade, cancellation, credit topup, pro-rata credits, and free credit cap (completed 2026-02-28)
-- [ ] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure)
+- [x] **Phase 10: Fix Credits Spec Authentication Wiring** - Add missing clerkUser fixture to credits tests (gap closure) (completed 2026-02-28)
 - [ ] **Phase 11: Tech Debt Cleanup** - Bracket notation, duplicate testid, CI env guard
 
 ## Phase Details
@@ -102,7 +102,7 @@ Plans:
   2. `credits.spec.ts` test "free user at credit cap sees cap banner" destructures `{ clerkUser, billingPage }` and runs with an authenticated session
   3. Both tests navigate to /settings/billing and see billing content instead of perpetual loading skeleton
 
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [x] 10-01-PLAN.md -- Add clerkUser fixture to credits spec tests (completed 2026-02-28)
@@ -135,5 +135,5 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 7. Test Infrastructure Foundation | v1.2 | 3/3 | Complete | 2026-02-28 |
 | 8. Subscription and Upgrade Specs | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
-| 10. Fix Credits Spec Auth Wiring | v1.2 | 1/1 | Complete | 2026-02-28 |
+| 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 11. Tech Debt Cleanup | v1.2 | Pending | - | - |
