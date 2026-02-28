@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import {
   Star,
@@ -32,7 +33,6 @@ import type {
 } from "@/lib/library/search-params";
 
 interface LibraryFiltersProps {
-  // Existing
   minRating: number | undefined;
   onMinRatingChange: (rating: number | undefined) => void;
   sortBy: LibrarySortBy;
@@ -40,15 +40,12 @@ interface LibraryFiltersProps {
   sortOrder: LibrarySortOrder;
   onSortOrderChange: (sortOrder: LibrarySortOrder) => void;
   sortDisabled: boolean;
-  // New: Date saved
   savedPreset: LibrarySavedPreset | null;
   onSavedPresetChange: (preset: LibrarySavedPreset | null) => void;
-  // New: Year range
   yearFrom: number | null;
   yearTo: number | null;
   onYearFromChange: (year: number | null) => void;
   onYearToChange: (year: number | null) => void;
-  // New: View mode
   viewMode: LibraryViewMode;
   onViewModeChange: (mode: LibraryViewMode) => void;
 }
@@ -71,6 +68,43 @@ export function LibraryFilters({
   onViewModeChange,
 }: LibraryFiltersProps) {
   const t = useTranslations("libraryPage");
+
+  // Local year range state (commit on blur, like the search page year range picker)
+  const [localYearFrom, setLocalYearFrom] = useState(yearFrom?.toString() ?? "");
+  const [localYearTo, setLocalYearTo] = useState(yearTo?.toString() ?? "");
+  const yearFromRef = useRef<HTMLInputElement>(null);
+  const yearToRef = useRef<HTMLInputElement>(null);
+
+  // Keep local state in sync with URL params when they change externally
+  useEffect(() => {
+    if (document.activeElement !== yearFromRef.current) {
+      setLocalYearFrom(yearFrom?.toString() ?? "");
+    }
+  }, [yearFrom]);
+
+  useEffect(() => {
+    if (document.activeElement !== yearToRef.current) {
+      setLocalYearTo(yearTo?.toString() ?? "");
+    }
+  }, [yearTo]);
+
+  const commitYearFrom = (value: string) => {
+    const parsed = value ? parseInt(value, 10) : null;
+    if (parsed !== null && (parsed < 1900 || parsed > 2100 || isNaN(parsed))) {
+      setLocalYearFrom(yearFrom?.toString() ?? "");
+      return;
+    }
+    onYearFromChange(parsed);
+  };
+
+  const commitYearTo = (value: string) => {
+    const parsed = value ? parseInt(value, 10) : null;
+    if (parsed !== null && (parsed < 1900 || parsed > 2100 || isNaN(parsed))) {
+      setLocalYearTo(yearTo?.toString() ?? "");
+      return;
+    }
+    onYearToChange(parsed);
+  };
 
   const handleStarClick = (starValue: number) => {
     if (minRating === starValue) {
@@ -134,18 +168,18 @@ export function LibraryFilters({
         </div>
 
         {/* Date saved presets */}
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
+          <Calendar className="h-3.5 w-3.5 text-muted-foreground mx-1.5 shrink-0" />
           {(["week", "month", "year"] as const).map((preset) => (
             <button
               key={preset}
               type="button"
               onClick={() => onSavedPresetChange(savedPreset === preset ? null : preset)}
               className={cn(
-                "text-xs px-2 py-1 rounded-md transition-colors",
+                "text-xs px-2.5 py-1 rounded-md transition-colors",
                 savedPreset === preset
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  ? "text-primary bg-background shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/50",
               )}
             >
               {t(
@@ -196,20 +230,36 @@ export function LibraryFilters({
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground shrink-0">{t("filterYearRange")}:</span>
           <Input
+            ref={yearFromRef}
             type="number"
             placeholder={t("filterYearFrom")}
-            value={yearFrom ?? ""}
-            onChange={(e) => onYearFromChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+            value={localYearFrom}
+            onChange={(e) => setLocalYearFrom(e.target.value)}
+            onBlur={(e) => commitYearFrom(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
             className="h-7 w-[72px] text-xs"
             min={1900}
             max={2100}
           />
           <span className="text-xs text-muted-foreground">-</span>
           <Input
+            ref={yearToRef}
             type="number"
             placeholder={t("filterYearTo")}
-            value={yearTo ?? ""}
-            onChange={(e) => onYearToChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+            value={localYearTo}
+            onChange={(e) => setLocalYearTo(e.target.value)}
+            onBlur={(e) => commitYearTo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
             className="h-7 w-[72px] text-xs"
             min={1900}
             max={2100}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useQueryStates } from "nuqs";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
@@ -49,7 +49,13 @@ export function LibraryPageClient() {
 
   // Derive query arguments from params
   const hasSearchText = debouncedSearch.trim().length > 0;
-  const savedAfter = savedPresetToTimestamp(params.saved);
+  // Memoize savedAfter so that new Date() is only called when the preset changes,
+  // not on every render (which would produce a new timestamp each time and cause
+  // Convex to re-run the query in an infinite loop).
+  const savedAfter = useMemo(
+    () => savedPresetToTimestamp(params.saved),
+    [params.saved],
+  );
   const minRating = params.rating ?? undefined;
   const yearFrom = params.yf ?? undefined;
   const yearTo = params.yt ?? undefined;
