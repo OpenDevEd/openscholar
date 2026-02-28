@@ -127,3 +127,42 @@ export async function cleanupStripeCustomer(args: {
     // Best-effort cleanup -- customer may already be deleted
   }
 }
+
+/**
+ * Purchase credits via checkout-bypass pattern (PaymentIntent direct).
+ * Creates a confirmed PaymentIntent with credit_topup metadata,
+ * bypassing Stripe Checkout (hosted page that cannot be automated).
+ *
+ * The `payment_intent.succeeded` webhook triggers `grantPurchasedCreditsFromPaymentIntent`
+ * in Convex, which grants credits based on the metadata.
+ */
+export async function createTopupBypass(args: {
+  stripe: Stripe;
+  customerId: string;
+  paymentMethodId: string;
+  userId: string;
+  credits?: number;
+  amountCents?: number;
+}): Promise<{ paymentIntentId: string }> {
+  const credits = args.credits ?? 10_000;
+  const amountCents = args.amountCents ?? 100;
+
+  const pi = await args.stripe.paymentIntents.create({
+    amount: amountCents,
+    currency: "usd",
+    customer: args.customerId,
+    payment_method: args.paymentMethodId,
+    metadata: {
+      billingType: "credit_topup",
+      userId: args.userId,
+      credits: String(credits),
+      bundleKey: `credits_${credits}`,
+      amountCents: String(amountCents),
+      creditsPerUsd: "10000",
+    },
+    confirm: true,
+    off_session: true,
+  });
+
+  return { paymentIntentId: pi.id };
+}
