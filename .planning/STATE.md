@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: TDD & Test Coverage
 status: unknown
-last_updated: "2026-02-28T13:49:08.792Z"
+last_updated: "2026-02-28T14:00:23.783Z"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 5
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Every major code path in search, AI, and user management has tests -- and every new feature is built test-first using strict red-green-refactor TDD.
-**Current focus:** Phase 16 -- AI Batch Processing Tests
+**Current focus:** Phase 17 -- AI Cost & Billing Tests
 
 ## Current Position
 
-Phase: 15 of 21 (AI Prompts & Schema Tests)
+Phase: 16 of 21 (AI Batch Processing Tests)
 Plan: 2 of 2 (complete)
-Status: Phase 15 complete
-Last activity: 2026-02-28 -- Completed 15-02 AI schema and codec tests
+Status: Phase 16 complete
+Last activity: 2026-02-28 -- Completed 16-02 screening utils missing combinations tests
 
-Progress: [████████████████████] 3/3 plans (100%)
+Progress: [████████████████████] 5/5 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24 (v1.0: 7, v1.1: 6, v1.2: 11)
+- Total plans completed: 26 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 2)
 - Total milestones shipped: 3
 
 **By Milestone:**
@@ -51,6 +51,8 @@ Progress: [████████████████████] 3/3 pla
 | 14-test-infrastructure | 01 | 2min | 2 | 5 |
 | 15-ai-prompts-schema-tests | 01 | 2min | 2 | 2 |
 | 15-ai-prompts-schema-tests | 02 | 1min | 2 | 2 |
+| 16-ai-batch-processing-tests | 01 | 2min | 1 | 1 |
+| 16-ai-batch-processing-tests | 02 | 1min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -65,6 +67,9 @@ See PROJECT.md Key Decisions table for full log.
 - [15-01] Tested prompt builder output structure only (system/prompt fields, content markers) -- no AI quality assertions
 - [15-02] Used only .parse()/.safeParse() for Zod schema testing -- no internal introspection for version stability
 - [15-02] Used it.each for parametric round-trip coverage across ASCII, Unicode, and special characters
+- [16-01] Mocked executeAIOperation at module boundary via vi.mock -- tests batch orchestration logic independent of AI SDK
+- [16-01] Used {} as LanguageModel stub since model never invoked through mock
+- [16-02] No mocking needed for generateMissingScreeningCombinationsByPaper -- pure synchronous function
 
 ### Pending Todos
 
@@ -85,6 +90,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Phase 15 complete, ready to plan Phase 16
-Stopped at: Phase 15 complete, ready to plan Phase 16
+Last activity: 2026-02-28 - Phase 16 complete, ready to plan Phase 17
+Stopped at: Phase 16 complete, ready to plan Phase 17
 Resume file: None

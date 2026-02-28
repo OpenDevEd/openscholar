@@ -43,12 +43,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### AI Batch Processing
 
-- [ ] **AIBP-01**: `processBatch` handles all-success scenario -- returns all results with correct `usageByItemId` accumulation
-- [ ] **AIBP-02**: `processBatch` handles all-fail scenario -- returns empty results with all errors captured
-- [ ] **AIBP-03**: `processBatch` handles partial-failure scenario -- returns successful results while capturing errors for failed items
-- [ ] **AIBP-04**: `processScreeningBatch` maps papers to screening configs correctly and passes through question context
-- [ ] **AIBP-05**: `processTranslationBatch` passes target language through to each translation call
-- [ ] **AIBP-06**: `generateMissingScreeningCombinationsByPaper` correctly identifies which (paper, question) pairs lack responses
+- [x] **AIBP-01**: `processBatch` handles all-success scenario -- returns all results with correct `usageByItemId` accumulation
+- [x] **AIBP-02**: `processBatch` handles all-fail scenario -- returns empty results with all errors captured
+- [x] **AIBP-03**: `processBatch` handles partial-failure scenario -- returns successful results while capturing errors for failed items
+- [x] **AIBP-04**: `processScreeningBatch` maps papers to screening configs correctly and passes through question context
+- [x] **AIBP-05**: `processTranslationBatch` passes target language through to each translation call
+- [x] **AIBP-06**: `generateMissingScreeningCombinationsByPaper` correctly identifies which (paper, question) pairs lack responses
 
 ### AI Cost & Billing
 
@@ -127,12 +127,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AIPR-04 | Phase 15 | Complete |
 | AIPR-05 | Phase 15 | Complete |
 | AIPR-06 | Phase 15 | Complete |
-| AIBP-01 | Phase 16 | Pending |
-| AIBP-02 | Phase 16 | Pending |
-| AIBP-03 | Phase 16 | Pending |
-| AIBP-04 | Phase 16 | Pending |
-| AIBP-05 | Phase 16 | Pending |
-| AIBP-06 | Phase 16 | Pending |
+| AIBP-01 | Phase 16 | Complete |
+| AIBP-02 | Phase 16 | Complete |
+| AIBP-03 | Phase 16 | Complete |
+| AIBP-04 | Phase 16 | Complete |
+| AIBP-05 | Phase 16 | Complete |
+| AIBP-06 | Phase 16 | Complete |
 | AICB-01 | Phase 17 | Pending |
 | AICB-02 | Phase 17 | Pending |
 | AICB-03 | Phase 17 | Pending |
