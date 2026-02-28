@@ -183,7 +183,7 @@ Note: Phases 17, 18, 19, 20, 21 all depend only on Phase 14 and can theoreticall
 | 12. Billing E2E CI Wiring | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 13. CI Env Hardening & CRED-02 Regression | v1.2 | 1/1 | Complete | 2026-02-28 |
 | 14. Test Infrastructure | 1/1 | Complete    | 2026-02-28 | - |
-| 15. AI Prompts & Schema Tests | 2/2 | Complete   | 2026-02-28 | - |
+| 15. AI Prompts & Schema Tests | 2/2 | Complete    | 2026-02-28 | - |
 | 16. AI Batch Processing Tests | v2.0 | 0/0 | Not started | - |
 | 17. AI Cost & Billing Tests | v2.0 | 0/0 | Not started | - |
 | 18. Search & Filter Tests | v2.0 | 0/0 | Not started | - |
