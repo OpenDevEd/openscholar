@@ -1,7 +1,7 @@
-# Requirements: OpenAlex Count — v2.0 TDD & Test Coverage
+# Requirements: OpenAlex Count -- v2.0 TDD & Test Coverage
 
 **Defined:** 2026-02-28
-**Core Value:** Every major code path in search, AI, and user management has tests — and every new feature is built test-first using strict red-green-refactor TDD.
+**Core Value:** Every major code path in search, AI, and user management has tests -- and every new feature is built test-first using strict red-green-refactor TDD.
 
 ## v2.0 Requirements
 
@@ -22,7 +22,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **SRCH-03**: `buildFilterData` assembles correct filter sections for each filter type (search, time, geographic, content, ratings, citations)
 - [ ] **SRCH-04**: All filter active predicates (`isDateFilterActive`, `isRatingFilterActive`, `isCountryFilterActive`, `isCitesFilterActive`, `isCitedByFilterActive`, `isRelatedToFilterActive`, `isReviewFilterActive`) return correct boolean for active and inactive states
 - [ ] **SRCH-05**: `validateAndExpandKeywords` detects invalid queries (single char, unbalanced operators) and expands keyword bookmarks correctly
-- [ ] **SRCH-06**: URL param serialization (`serializeSearchParams`) round-trips correctly — serialize then parse produces identical params
+- [ ] **SRCH-06**: URL param serialization (`serializeSearchParams`) round-trips correctly -- serialize then parse produces identical params
 
 ### Data Export
 
@@ -43,9 +43,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### AI Batch Processing
 
-- [ ] **AIBP-01**: `processBatch` handles all-success scenario — returns all results with correct `usageByItemId` accumulation
-- [ ] **AIBP-02**: `processBatch` handles all-fail scenario — returns empty results with all errors captured
-- [ ] **AIBP-03**: `processBatch` handles partial-failure scenario — returns successful results while capturing errors for failed items
+- [ ] **AIBP-01**: `processBatch` handles all-success scenario -- returns all results with correct `usageByItemId` accumulation
+- [ ] **AIBP-02**: `processBatch` handles all-fail scenario -- returns empty results with all errors captured
+- [ ] **AIBP-03**: `processBatch` handles partial-failure scenario -- returns successful results while capturing errors for failed items
 - [ ] **AIBP-04**: `processScreeningBatch` maps papers to screening configs correctly and passes through question context
 - [ ] **AIBP-05**: `processTranslationBatch` passes target language through to each translation call
 - [ ] **AIBP-06**: `generateMissingScreeningCombinationsByPaper` correctly identifies which (paper, question) pairs lack responses
@@ -66,7 +66,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Plan Enforcement & Feature Gating
 
-- [ ] **PLAN-01**: `PLAN_CONFIG` shape contract — correct credit amounts and tier values for all four plans (free, go, pro, enterprise)
+- [ ] **PLAN-01**: `PLAN_CONFIG` shape contract -- correct credit amounts and tier values for all four plans (free, go, pro, enterprise)
 - [ ] **PLAN-02**: `getPlanTier`, `getFreeCreditCapForPlan`, `getPlanFromPriceId` return correct values for all plan types
 - [ ] **PLAN-03**: `requirePlanTier` throws `EXTRACTION_PLAN_REQUIRED` when user tier is below minimum
 - [ ] **PLAN-04**: All server-side feature flag guards (`requireCreditsEnabled`, `requireCreditTopupsEnabled`, `requireSubscriptionsEnabled`) throw when disabled and pass when enabled
@@ -78,8 +78,8 @@ Deferred to next iteration. Tracked but not in current roadmap.
 
 ### Integration Tests
 
-- **INTG-01**: Auth check → plan gate → credit deduction → result flow tested end-to-end
-- **INTG-02**: Filter state → search params → API call → export shape tested across modules
+- **INTG-01**: Auth check -> plan gate -> credit deduction -> result flow tested end-to-end
+- **INTG-02**: Filter state -> search params -> API call -> export shape tested across modules
 - **INTG-03**: `exportToExcel` worksheet cell type validation with sheet-data builder extraction
 
 ### React Hook Tests
@@ -92,11 +92,11 @@ Deferred to next iteration. Tracked but not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| E2E tests for search/extraction flows | Playwright search suite is a separate milestone — this focuses on unit + integration |
+| E2E tests for search/extraction flows | Playwright search suite is a separate milestone -- this focuses on unit + integration |
 | React component rendering tests | Component tests require extensive mock setup with diminishing returns vs E2E |
 | `convex-test` end-to-end auth-gated functions | Blocked by convex-test issue #50 (`getUserIdentity` bug) |
 | TDD for features not yet built | TDD workflow established but applied to future milestones, not retroactively |
-| CI pipeline changes for new tests | New tests run under existing `vitest` command — no CI changes needed |
+| CI pipeline changes for new tests | New tests run under existing `vitest` command -- no CI changes needed |
 | Visual regression tests | Separate concern, notoriously flaky |
 
 ## Traceability
@@ -105,53 +105,53 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| SRCH-01 | — | Pending |
-| SRCH-02 | — | Pending |
-| SRCH-03 | — | Pending |
-| SRCH-04 | — | Pending |
-| SRCH-05 | — | Pending |
-| SRCH-06 | — | Pending |
-| EXPRT-01 | — | Pending |
-| EXPRT-02 | — | Pending |
-| EXPRT-03 | — | Pending |
-| EXPRT-04 | — | Pending |
-| EXPRT-05 | — | Pending |
-| AIPR-01 | — | Pending |
-| AIPR-02 | — | Pending |
-| AIPR-03 | — | Pending |
-| AIPR-04 | — | Pending |
-| AIPR-05 | — | Pending |
-| AIPR-06 | — | Pending |
-| AIBP-01 | — | Pending |
-| AIBP-02 | — | Pending |
-| AIBP-03 | — | Pending |
-| AIBP-04 | — | Pending |
-| AIBP-05 | — | Pending |
-| AIBP-06 | — | Pending |
-| AICB-01 | — | Pending |
-| AICB-02 | — | Pending |
-| AICB-03 | — | Pending |
-| AICB-04 | — | Pending |
-| AUTH-01 | — | Pending |
-| AUTH-02 | — | Pending |
-| AUTH-03 | — | Pending |
-| AUTH-04 | — | Pending |
-| PLAN-01 | — | Pending |
-| PLAN-02 | — | Pending |
-| PLAN-03 | — | Pending |
-| PLAN-04 | — | Pending |
-| PLAN-05 | — | Pending |
+| INFRA-01 | Phase 14 | Pending |
+| INFRA-02 | Phase 14 | Pending |
+| INFRA-03 | Phase 14 | Pending |
+| INFRA-04 | Phase 14 | Pending |
+| INFRA-05 | Phase 14 | Pending |
+| SRCH-01 | Phase 18 | Pending |
+| SRCH-02 | Phase 18 | Pending |
+| SRCH-03 | Phase 18 | Pending |
+| SRCH-04 | Phase 18 | Pending |
+| SRCH-05 | Phase 18 | Pending |
+| SRCH-06 | Phase 18 | Pending |
+| EXPRT-01 | Phase 19 | Pending |
+| EXPRT-02 | Phase 19 | Pending |
+| EXPRT-03 | Phase 19 | Pending |
+| EXPRT-04 | Phase 19 | Pending |
+| EXPRT-05 | Phase 19 | Pending |
+| AIPR-01 | Phase 15 | Pending |
+| AIPR-02 | Phase 15 | Pending |
+| AIPR-03 | Phase 15 | Pending |
+| AIPR-04 | Phase 15 | Pending |
+| AIPR-05 | Phase 15 | Pending |
+| AIPR-06 | Phase 15 | Pending |
+| AIBP-01 | Phase 16 | Pending |
+| AIBP-02 | Phase 16 | Pending |
+| AIBP-03 | Phase 16 | Pending |
+| AIBP-04 | Phase 16 | Pending |
+| AIBP-05 | Phase 16 | Pending |
+| AIBP-06 | Phase 16 | Pending |
+| AICB-01 | Phase 17 | Pending |
+| AICB-02 | Phase 17 | Pending |
+| AICB-03 | Phase 17 | Pending |
+| AICB-04 | Phase 17 | Pending |
+| AUTH-01 | Phase 20 | Pending |
+| AUTH-02 | Phase 20 | Pending |
+| AUTH-03 | Phase 20 | Pending |
+| AUTH-04 | Phase 20 | Pending |
+| PLAN-01 | Phase 21 | Pending |
+| PLAN-02 | Phase 21 | Pending |
+| PLAN-03 | Phase 21 | Pending |
+| PLAN-04 | Phase 21 | Pending |
+| PLAN-05 | Phase 21 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 41 total
-- Mapped to phases: 0
-- Unmapped: 41 ⚠️
+- Mapped to phases: 41
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after initial definition*
+*Last updated: 2026-02-28 after roadmap creation*
