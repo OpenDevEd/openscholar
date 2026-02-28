@@ -67,7 +67,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 
 **Milestone Goal:** Persistent server-side library where rating items auto-saves them, with collections and full filtering on a dedicated page.
 
-- [ ] **Phase 22: Schema & Rating Bridge** - Convex tables, indexes, trimPaperData utility, rating-to-save mutation, anonymous Zustand fallback
+- [x] **Phase 22: Schema & Rating Bridge** - Convex tables, indexes, trimPaperData utility, rating-to-save mutation, anonymous Zustand fallback (completed 2026-02-28)
 - [ ] **Phase 23: Core Library Page** - Dedicated /library route with auth gate, paginated item list, search, filter by rating, sort, remove, empty states
 - [ ] **Phase 24: Advanced Filtering & URL State** - Date saved and publication year filters, nuqs URL persistence for all filter/sort state, view mode switching
 - [ ] **Phase 25: Collections** - Collection CRUD, junction table mutations, item-to-collection assignment, filter by collection, item count badges
@@ -182,7 +182,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 19. Data Export Tests | v2.0 | 3/3 | Complete | 2026-02-28 |
 | 20. User Auth & State Machine Tests | v2.0 | 2/2 | Complete | 2026-02-28 |
 | 21. Plan Enforcement & Feature Gating Tests | v2.0 | 2/2 | Complete | 2026-02-28 |
-| 22. Schema & Rating Bridge | 1/2 | In Progress|  | - |
+| 22. Schema & Rating Bridge | 2/2 | Complete   | 2026-02-28 | - |
 | 23. Core Library Page | v2.1 | 0/? | Not started | - |
 | 24. Advanced Filtering & URL State | v2.1 | 0/? | Not started | - |
 | 25. Collections | v2.1 | 0/? | Not started | - |

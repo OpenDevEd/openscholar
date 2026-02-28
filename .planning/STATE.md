@@ -6,9 +6,9 @@ status: executing
 last_updated: "2026-02-28"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.1 Library & Collections -- Phase 22 (Schema & Rating Bridge)
+**Current focus:** v2.1 Library & Collections -- Phase 22 complete, ready for Phase 23
 
 ## Current Position
 
-Phase: 22 of 26 (Schema & Rating Bridge) -- first phase of v2.1
-Plan: 1 of 2 complete
-Status: Executing Phase 22
-Last activity: 2026-02-28 -- Completed Plan 01 (schema + trimPaperData + saveToLibrary mutation)
+Phase: 22 of 26 (Schema & Rating Bridge) -- COMPLETE
+Plan: 2 of 2 complete
+Status: Phase 22 complete
+Last activity: 2026-02-28 -- Completed Plan 02 (UI rating bridge to Convex saveToLibrary)
 
-Progress: [##..................] 10% (v2.1: 1/2 plans in Phase 22)
+Progress: [####................] 20% (v2.1: 2/2 plans in Phase 22)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 41 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17)
+- Total plans completed: 43 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 2)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -55,6 +55,9 @@ See PROJECT.md Key Decisions table for full log.
 - [22-01] All Phase 23 indexes defined upfront (zero cost, avoids second schema migration)
 - [22-01] searchableText concatenated field for Phase 23 full-text search
 - [22-01] Re-rate patches only rating/searchableText/updatedAt, preserves original metadata and savedAt
+- [22-02] Fire-and-forget mutation pattern -- Zustand optimistic, Convex failure logged but never blocks UI
+- [22-02] Rating removal (no-rating) does not call mutation -- library deletion is Phase 23 (LIB-07)
+- [22-02] FocusMode looks up paper by ID from papers array rather than receiving as prop
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 22-01-PLAN.md (schema + trimPaperData + mutation)
-Stopped at: Completed 22-01-PLAN.md, ready for 22-02-PLAN.md
+Last activity: 2026-02-28 - Completed 22-02-PLAN.md (UI rating bridge to Convex)
+Stopped at: Phase 22 complete, ready for Phase 23 (Library UI)
 Resume file: None

@@ -20,7 +20,7 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 - [ ] **LIB-09**: Library page shows helpful empty state when no items are saved
 - [ ] **LIB-10**: Library items are paginated server-side via Convex `.paginate()`
 - [ ] **LIB-11**: Dual-path query strategy: search mode (relevance order via searchIndex) vs browse mode (custom sort via regular index)
-- [ ] **LIB-12**: Anonymous users retain existing localStorage rating behavior (Zustand fallback)
+- [x] **LIB-12**: Anonymous users retain existing localStorage rating behavior (Zustand fallback)
 
 ### Collections
 
@@ -92,7 +92,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-09 | Phase 23 | Pending |
 | LIB-10 | Phase 23 | Pending |
 | LIB-11 | Phase 23 | Pending |
-| LIB-12 | Phase 22 | Pending |
+| LIB-12 | Phase 22 | Complete |
 | COL-01 | Phase 25 | Pending |
 | COL-02 | Phase 25 | Pending |
 | COL-03 | Phase 25 | Pending |
