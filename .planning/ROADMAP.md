@@ -136,4 +136,4 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 8. Subscription and Upgrade Specs | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
 | 9. Lifecycle and Credit Specs | v1.2 | Complete    | 2026-02-28 | - |
 | 10. Fix Credits Spec Auth Wiring | v1.2 | Complete    | 2026-02-28 | 2026-02-28 |
-| 11. Tech Debt Cleanup | 1/1 | Complete   | 2026-02-28 | - |
+| 11. Tech Debt Cleanup | 1/1 | Complete    | 2026-02-28 | - |
