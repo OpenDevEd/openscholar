@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library UI Overhaul
-status: unknown
-last_updated: "2026-03-01T11:20:35.362Z"
+status: in-progress
+last_updated: "2026-03-01T12:00:00Z"
 progress:
   total_phases: 2
   completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 32 -- Search Page Sidebar Refactor
+**Current focus:** Phase 33 -- Library Page UI Overhaul
 
 ## Current Position
 
-Phase: 32 of 34 (Search Page Sidebar Refactor) -- COMPLETE
-Plan: 1 of 1 in current phase (all plans complete)
-Status: Phase 32 complete, ready for phase 33
-Last activity: 2026-03-01 -- Completed 32-01 Search Page Sidebar Refactor
+Phase: 33 of 34 (Library Page UI Overhaul) -- IN PROGRESS
+Plan: 1 of 2 in current phase (33-01 complete)
+Status: Plan 33-01 complete, ready for 33-02
+Last activity: 2026-03-01 -- Completed 33-01 Library Filter Sidebar Components
 
-Progress: [██████████] 100% (phase 32)
+Progress: [█████-----] 50% (phase 33)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 59 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 3)
+- Total plans completed: 60 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 4)
 - Total milestones shipped: 5
 
 **By Milestone:**
@@ -44,15 +44,15 @@ Progress: [██████████] 100% (phase 32)
 | v1.2 | 7 | 11 | 2026-02-28 |
 | v2.0 | 8 | 17 | 2026-02-28 |
 | v2.1 | 8 | 15 | 2026-03-01 |
-| v2.2 | 4 | 3 | — |
+| v2.2 | 4 | 4 | — |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-Recent: hideHeader always true on SidebarContent (FilterSidebar provides chrome on desktop, SidebarLayout provides tabs on mobile), SearchSidebar retained with mode=page fallback for backward compat.
-Previous: FilterSidebarState re-declared locally in filter-sidebar.tsx (not exported from store), sidebarLayout i18n namespace used for page-agnostic tooltips.
+Recent: Library sidebar uses 320px expanded / 48px collapsed dimensions, LibraryFilterContent is a pure presentation component receiving all state as props, commit-on-blur year range pattern copied from existing LibraryFilters.
+Previous: hideHeader always true on SidebarContent (FilterSidebar provides chrome on desktop, SidebarLayout provides tabs on mobile), SearchSidebar retained with mode=page fallback for backward compat.
 
 ### Roadmap Evolution
 
@@ -70,6 +70,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 -- Completed 32-01-PLAN.md (Search Page Sidebar Refactor)
-Stopped at: Completed 32-01-PLAN.md (Phase 32 complete)
+Last activity: 2026-03-01 -- Completed 33-01-PLAN.md (Library Filter Sidebar Components)
+Stopped at: Completed 33-01-PLAN.md
 Resume file: None

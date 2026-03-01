@@ -10,19 +10,19 @@ Requirements for Library UI Overhaul milestone. Each maps to roadmap phases.
 ### Layout & Responsive Design
 
 - [ ] **LAYOUT-01**: Library page uses two-column layout with filter sidebar on left and content area on right
-- [ ] **LAYOUT-02**: Filter sidebar is collapsible on desktop with toggle button and smooth animation
+- [x] **LAYOUT-02**: Filter sidebar is collapsible on desktop with toggle button and smooth animation
 - [ ] **LAYOUT-03**: Library page uses tab-based interface on mobile (Results/Filters tabs) matching search page pattern
 - [ ] **LAYOUT-04**: Sidebar is sticky on desktop so filters remain visible while scrolling content
 
 ### Filter Sidebar
 
-- [ ] **FLTR-01**: User can filter library items by rating using star buttons in sidebar
-- [ ] **FLTR-02**: User can filter library items by date saved (week/month/year presets) in sidebar
-- [ ] **FLTR-03**: User can filter library items by publication year range in sidebar
-- [ ] **FLTR-04**: User can filter library items by collection using dropdown in sidebar
-- [ ] **FLTR-05**: User can search within library items using text search in sidebar
-- [ ] **FLTR-06**: Active filter count badge displays on sidebar header
-- [ ] **FLTR-07**: User can clear all active filters with a single button
+- [x] **FLTR-01**: User can filter library items by rating using star buttons in sidebar
+- [x] **FLTR-02**: User can filter library items by date saved (week/month/year presets) in sidebar
+- [x] **FLTR-03**: User can filter library items by publication year range in sidebar
+- [x] **FLTR-04**: User can filter library items by collection using dropdown in sidebar
+- [x] **FLTR-05**: User can search within library items using text search in sidebar
+- [x] **FLTR-06**: Active filter count badge displays on sidebar header
+- [x] **FLTR-07**: User can clear all active filters with a single button
 - [ ] **FLTR-08**: All filter state persists in URL via nuqs (bookmarkable, survives reload)
 
 ### Display & Navigation
@@ -81,16 +81,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | LAYOUT-01 | Phase 33 | Pending |
-| LAYOUT-02 | Phase 33 | Pending |
+| LAYOUT-02 | Phase 33 | Complete |
 | LAYOUT-03 | Phase 33 | Pending |
 | LAYOUT-04 | Phase 33 | Pending |
-| FLTR-01 | Phase 33 | Pending |
-| FLTR-02 | Phase 33 | Pending |
-| FLTR-03 | Phase 33 | Pending |
-| FLTR-04 | Phase 33 | Pending |
-| FLTR-05 | Phase 33 | Pending |
-| FLTR-06 | Phase 33 | Pending |
-| FLTR-07 | Phase 33 | Pending |
+| FLTR-01 | Phase 33 | Complete |
+| FLTR-02 | Phase 33 | Complete |
+| FLTR-03 | Phase 33 | Complete |
+| FLTR-04 | Phase 33 | Complete |
+| FLTR-05 | Phase 33 | Complete |
+| FLTR-06 | Phase 33 | Complete |
+| FLTR-07 | Phase 33 | Complete |
 | FLTR-08 | Phase 33 | Pending |
 | DISP-01 | Phase 34 | Pending |
 | DISP-02 | Phase 34 | Pending |
