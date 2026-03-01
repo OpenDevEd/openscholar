@@ -27,16 +27,16 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 - [x] **COL-01**: User can create a new collection with a name
 - [x] **COL-02**: User can rename an existing collection
 - [x] **COL-03**: User can delete a collection (cascade deletes junction table rows, does not delete library items)
-- [ ] **COL-04**: User can assign a library item to one or more collections
-- [ ] **COL-05**: User can remove an item from a collection without deleting it from the library
+- [x] **COL-04**: User can assign a library item to one or more collections
+- [x] **COL-05**: User can remove an item from a collection without deleting it from the library
 - [x] **COL-06**: Collections use a junction table (`libraryItemCollections`) for many-to-many, not array fields
-- [ ] **COL-07**: Each collection displays an item count badge
+- [x] **COL-07**: Each collection displays an item count badge
 
 ### Filtering & URL State
 
 - [x] **FILT-01**: User can filter library items by date saved (e.g., last week, last month, last year)
 - [x] **FILT-02**: User can filter library items by publication year range
-- [ ] **FILT-03**: User can filter library items by collection
+- [x] **FILT-03**: User can filter library items by collection
 - [x] **FILT-04**: All filter and sort state is persisted in the URL via `nuqs` (bookmarkable views)
 - [x] **FILT-05**: User can switch between view modes (list-detail / grid)
 
@@ -96,13 +96,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COL-01 | Phase 25 | Complete |
 | COL-02 | Phase 25 | Complete |
 | COL-03 | Phase 25 | Complete |
-| COL-04 | Phase 25 | Pending |
-| COL-05 | Phase 25 | Pending |
+| COL-04 | Phase 25 | Complete |
+| COL-05 | Phase 25 | Complete |
 | COL-06 | Phase 25 | Complete |
-| COL-07 | Phase 25 | Pending |
+| COL-07 | Phase 25 | Complete |
 | FILT-01 | Phase 24, 27 | Complete |
 | FILT-02 | Phase 24, 27 | Complete |
-| FILT-03 | Phase 25 | Pending |
+| FILT-03 | Phase 25 | Complete |
 | FILT-04 | Phase 24 | Complete |
 | FILT-05 | Phase 24, 27 | Complete |
 | EXP-01 | Phase 26 | Pending |

@@ -185,7 +185,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 22. Schema & Rating Bridge | 2/2 | Complete    | 2026-02-28 | - |
 | 23. Core Library Page | 2/2 | Complete    | 2026-02-28 | - |
 | 24. Advanced Filtering & URL State | 2/2 | Complete    | 2026-02-28 | - |
-| 25. Collections | 1/3 | In Progress|  | - |
+| 25. Collections | 2/3 | In Progress|  | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
 | 28. Bug Fixes & Verification | v2.1 | 0/? | Not started | - |
@@ -195,7 +195,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 **Goal:** Redesign all library page components (filters, item cards, grid view) to match the search results page's component patterns and visual quality. Extract shared components (FilterSection, view mode toggle, year range picker) to DRY up duplicate code between search and library pages.
 **Requirements**: FILT-01, FILT-02, FILT-05
 **Depends on:** Phase 24
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] TBD (run /gsd:plan-phase 27 to break down) (completed 2026-03-01)

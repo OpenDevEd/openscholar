@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-03-01T01:20:04.406Z"
+last_updated: "2026-03-01T05:22:15Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 25 (Collections)
-Plan: 1 of 3 complete
-Status: Plan 01 complete (TDD: schema + CRUD + cascade). Plans 02-03 remain.
-Last activity: 2026-03-01 -- Plan 01 completed (collection CRUD with TDD RED/GREEN)
+Plan: 2 of 3 complete
+Status: Plan 02 complete (TDD: assignment mutations + count queries + filtered browse/search). Plan 03 remains.
+Last activity: 2026-03-01 -- Plan 02 completed (collection assignment, counts, filtered queries)
 
-Progress: [######______________] 33% (Phase 25: 1/3 plans)
+Progress: [#############_______] 67% (Phase 25: 2/3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 49 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 1)
+- Total plans completed: 50 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 2)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -74,6 +74,9 @@ See PROJECT.md Key Decisions table for full log.
 - [25-01] Junction table (libraryItemCollections) for many-to-many, not array fields on libraryItems
 - [25-01] Alphabetical sort for listCollections via localeCompare (case-insensitive)
 - [25-01] Cascade-delete junction rows in both removeFromLibrary and removeFromLibraryByOpenalexId
+- [25-02] Non-existent/unowned collection filter returns empty results (not error) per RESEARCH Pitfall 5
+- [25-02] Collection filter uses Set-based pre-fetch + convex-helpers filter() for both browse and search
+- [25-02] getCollectionsWithCounts sorts alphabetically by name (case-insensitive)
 
 ### Roadmap Evolution
 
@@ -88,7 +91,7 @@ None.
 - 9 human verification items pending Stripe test mode validation (from v1.1)
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
 - convex-test issue #50 (getUserIdentity bug) blocks auth-gated end-to-end testing
-- Collection filter + text search combination: edge case where user has both active needs explicit decision in Phase 25 planning
+- Collection filter + text search combination: RESOLVED in 25-02 (Set-based pre-fetch + filter() pattern, same as rating filter)
 
 ### Quick Tasks Completed
 
@@ -98,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - 25-01 completed (collection schema + CRUD with TDD)
-Stopped at: Completed 25-01-PLAN.md
+Last activity: 2026-03-01 - 25-02 completed (collection assignment, counts, filtered queries)
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
