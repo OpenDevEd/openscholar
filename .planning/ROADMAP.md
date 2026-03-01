@@ -72,7 +72,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [x] **Phase 24: Advanced Filtering & URL State** - Date saved and publication year filters, nuqs URL persistence for all filter/sort state, view mode switching (completed 2026-02-28)
 - [x] **Phase 25: Collections** - Collection CRUD, junction table mutations, item-to-collection assignment, filter by collection, item count badges (completed 2026-03-01)
 - [ ] **Phase 26: Export & Polish** - CSV/JSON export, mobile responsiveness, i18n for 6 locales, toast feedback on destructive actions
-- [ ] **Phase 28: Bug Fixes & Verification** - Focus-mode rating removal bug, Phase 24 verification, REQUIREMENTS.md traceability corrections
+- [x] **Phase 28: Bug Fixes & Verification** - Focus-mode rating removal bug, Phase 24 verification, REQUIREMENTS.md traceability corrections (completed 2026-03-01)
 
 ## Phase Details
 
@@ -188,7 +188,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 25. Collections | 3/3 | Complete    | 2026-03-01 | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
-| 28. Bug Fixes & Verification | 1/2 | In Progress|  | - |
+| 28. Bug Fixes & Verification | 2/2 | Complete   | 2026-03-01 | - |
 
 ### Phase 27: Library UI Redesign
 
