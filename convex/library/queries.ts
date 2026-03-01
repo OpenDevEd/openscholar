@@ -9,7 +9,8 @@ export const browseLibrary = query({
     sortBy: v.union(
       v.literal("savedAt"),
       v.literal("rating"),
-      v.literal("publicationYear")
+      v.literal("publicationYear"),
+      v.literal("title")
     ),
     sortOrder: v.union(v.literal("asc"), v.literal("desc")),
     minRating: v.optional(v.number()),
@@ -49,6 +50,7 @@ export const browseLibrary = query({
       savedAt: "by_user_savedAt",
       rating: "by_user_rating",
       publicationYear: "by_user_year",
+      title: "by_user_title",
     } as const;
 
     const q = ctx.db
@@ -155,7 +157,8 @@ export const exportLibrary = query({
     sortBy: v.union(
       v.literal("savedAt"),
       v.literal("rating"),
-      v.literal("publicationYear")
+      v.literal("publicationYear"),
+      v.literal("title")
     ),
     sortOrder: v.union(v.literal("asc"), v.literal("desc")),
     minRating: v.optional(v.number()),
@@ -205,6 +208,7 @@ export const exportLibrary = query({
         savedAt: "by_user_savedAt",
         rating: "by_user_rating",
         publicationYear: "by_user_year",
+        title: "by_user_title",
       } as const;
       const q = ctx.db
         .query("libraryItems")

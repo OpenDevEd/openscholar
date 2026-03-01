@@ -15,7 +15,7 @@ import { subWeeks, subMonths, subYears } from "date-fns";
 
 // Const arrays (used by parseAsStringLiteral and exported for downstream use)
 
-export const librarySortValues = ["savedAt", "rating", "publicationYear"] as const;
+export const librarySortValues = ["savedAt", "rating", "publicationYear", "title"] as const;
 export const librarySortOrderValues = ["asc", "desc"] as const;
 export const librarySavedPresets = ["week", "month", "year"] as const;
 export const libraryViewModes = ["list", "grid"] as const;
@@ -49,6 +49,7 @@ export const librarySearchParams = {
   yt: parseAsInteger,
   view: parseAsStringLiteral(libraryViewModes).withDefault("list"),
   col: parseAsString, // Collection ID filter (null = all collections)
+  p: parseAsInteger.withDefault(1), // Page number for pagination
 };
 
 /**
