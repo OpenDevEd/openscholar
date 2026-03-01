@@ -88,7 +88,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 - [x] **Phase 31: Generalized Layout Infrastructure** - Build SidebarLayout and FilterSidebar as reusable primitives with i18n and animation support (completed 2026-03-01)
 - [x] **Phase 32: Search Page Sidebar Refactor** - Prove new layout components on the search page by replacing the monolithic SearchSidebar (completed 2026-03-01)
 - [x] **Phase 33: Library Page UI Overhaul** - Apply proven components to the library page with full filter sidebar and two-column layout (completed 2026-03-01)
-- [ ] **Phase 34: Display Polish and Validation** - Complete display features: sort controls, pagination counts, rating display, view toggle
+- [x] **Phase 34: Display Polish and Validation** - Complete display features: sort controls, pagination counts, rating display, view toggle (completed 2026-03-01)
 
 ## Phase Details
 
@@ -181,4 +181,4 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34
 | 31. Generalized Layout Infrastructure | 2/2 | Complete    | 2026-03-01 | - |
 | 32. Search Page Sidebar Refactor | 1/1 | Complete    | 2026-03-01 | - |
 | 33. Library Page UI Overhaul | 2/2 | Complete    | 2026-03-01 | - |
-| 34. Display Polish and Validation | 1/2 | In Progress|  | - |
+| 34. Display Polish and Validation | 2/2 | Complete   | 2026-03-01 | - |
