@@ -26,6 +26,9 @@ import { LibraryItemRow } from "./library-item-row";
 import { LibraryItemCard } from "./library-item-card";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 import { LibraryEmptyState } from "./library-empty-state";
+import { CollectionManager } from "./collection-manager";
+import { CollectionPicker } from "./collection-picker";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export function LibraryPageClient() {
   const t = useTranslations("libraryPage");
@@ -47,6 +50,19 @@ export function LibraryPageClient() {
   // UI-local state (not URL-persisted)
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
+  // Collection state
+  const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
+  const [collectionPickerItemId, setCollectionPickerItemId] = useState<string | null>(null);
+
+  // Fetch collections for filter dropdown
+  const { data: collectionsWithCounts } = useProtectedQuery(
+    api.library.collections.getCollectionsWithCounts,
+    {},
+  );
+
+  // Derive collection filter from URL param
+  const collectionId = params.col ?? undefined;
+
   // Derive query arguments from params
   const hasSearchText = debouncedSearch.trim().length > 0;
   // Memoize savedAfter so that new Date() is only called when the preset changes,
@@ -67,7 +83,7 @@ export function LibraryPageClient() {
   const searchResults = useProtectedPaginatedQuery(
     api.library.queries.searchLibrary,
     hasSearchText
-      ? { searchText: debouncedSearch, minRating, savedAfter, yearFrom, yearTo }
+      ? { searchText: debouncedSearch, minRating, savedAfter, yearFrom, yearTo, collectionId: collectionId as Id<"collections"> | undefined }
       : "skip",
     { initialNumItems: 20 },
   );
@@ -75,7 +91,7 @@ export function LibraryPageClient() {
   const browseResults = useProtectedPaginatedQuery(
     api.library.queries.browseLibrary,
     !hasSearchText
-      ? { sortBy: params.sort, sortOrder: params.order, minRating, savedAfter, yearFrom, yearTo }
+      ? { sortBy: params.sort, sortOrder: params.order, minRating, savedAfter, yearFrom, yearTo, collectionId: collectionId as Id<"collections"> | undefined }
       : "skip",
     { initialNumItems: 20 },
   );
@@ -131,6 +147,7 @@ export function LibraryPageClient() {
       saved: null,
       yf: null,
       yt: null,
+      col: null,
       sort: "savedAt",
       order: "desc",
     });
@@ -153,7 +170,8 @@ export function LibraryPageClient() {
     minRating !== undefined ||
     savedAfter !== undefined ||
     yearFrom !== undefined ||
-    yearTo !== undefined;
+    yearTo !== undefined ||
+    collectionId !== undefined;
   const isEmpty =
     activeResults.hasLoadedFirstPage && activeResults.results.length === 0;
   const isEmptyLibrary = isEmpty && !hasFiltersActive && totalCount === 0;
@@ -197,6 +215,10 @@ export function LibraryPageClient() {
         onYearToChange={(y) => setParams({ yt: y })}
         viewMode={params.view}
         onViewModeChange={(m) => setParams({ view: m })}
+        collectionId={params.col}
+        onCollectionChange={(id) => setParams({ col: id })}
+        collections={collectionsWithCounts}
+        onManageCollections={() => setCollectionManagerOpen(true)}
       />
 
       {/* Content area */}
@@ -227,6 +249,7 @@ export function LibraryPageClient() {
                     key={item._id}
                     item={item}
                     onRemove={handleRemove}
+                    onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
                   />
                 ))}
               </div>
@@ -238,6 +261,7 @@ export function LibraryPageClient() {
                   isExpanded={expandedItemId === item._id}
                   onToggleExpand={() => handleToggleExpand(item._id)}
                   onRemove={handleRemove}
+                  onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
                 />
               ))
             )}
@@ -264,6 +288,23 @@ export function LibraryPageClient() {
           </div>
         )}
       </div>
+
+      {/* Collection management dialog */}
+      <CollectionManager
+        open={collectionManagerOpen}
+        onOpenChange={setCollectionManagerOpen}
+      />
+
+      {/* Collection picker dialog */}
+      {collectionPickerItemId && (
+        <CollectionPicker
+          libraryItemId={collectionPickerItemId as Id<"libraryItems">}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setCollectionPickerItemId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

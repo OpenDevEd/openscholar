@@ -16,9 +16,10 @@ import type { Doc } from "@/convex/_generated/dataModel";
 interface LibraryItemCardProps {
   item: Doc<"libraryItems">;
   onRemove: (item: Doc<"libraryItems">) => void;
+  onAddToCollection: (item: Doc<"libraryItems">) => void;
 }
 
-export function LibraryItemCard({ item, onRemove }: LibraryItemCardProps) {
+export function LibraryItemCard({ item, onRemove, onAddToCollection }: LibraryItemCardProps) {
   const t = useTranslations("libraryPage");
 
   const doiUrl = item.doi
@@ -82,6 +83,9 @@ export function LibraryItemCard({ item, onRemove }: LibraryItemCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onAddToCollection(item)}>
+                {t("addToCollection")}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onRemove(item)}
                 className="text-destructive focus:text-destructive"

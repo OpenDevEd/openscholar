@@ -10,6 +10,7 @@ import {
   Hash,
   LayoutList,
   LayoutGrid,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -50,6 +52,10 @@ interface LibraryFiltersProps {
   onYearToChange: (year: number | null) => void;
   viewMode: LibraryViewMode;
   onViewModeChange: (mode: LibraryViewMode) => void;
+  collectionId: string | null;
+  onCollectionChange: (id: string | null) => void;
+  collections: Array<{ _id: string; name: string; itemCount: number }> | undefined;
+  onManageCollections: () => void;
 }
 
 export function LibraryFilters({
@@ -68,6 +74,10 @@ export function LibraryFilters({
   onYearToChange,
   viewMode,
   onViewModeChange,
+  collectionId,
+  onCollectionChange,
+  collections,
+  onManageCollections,
 }: LibraryFiltersProps) {
   const t = useTranslations("libraryPage");
 
@@ -129,7 +139,7 @@ export function LibraryFilters({
   return (
     <div className="flex flex-col gap-3">
       {/* Row 1: Filter sections */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
         {/* Rating filter */}
         <FilterSection
           title={t("ratingFilter")}
@@ -259,6 +269,42 @@ export function LibraryFilters({
               max={2100}
             />
           </div>
+        </FilterSection>
+
+        {/* Collection filter */}
+        <FilterSection
+          title={t("filterCollection")}
+          icon={FolderOpen}
+          isActive={collectionId !== null}
+          onClear={collectionId !== null ? () => onCollectionChange(null) : undefined}
+        >
+          <Select
+            value={collectionId ?? ""}
+            onValueChange={(v) => onCollectionChange(v || null)}
+          >
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue placeholder={t("allCollections")} />
+            </SelectTrigger>
+            <SelectContent>
+              {collections?.map((c) => (
+                <SelectItem key={c._id} value={c._id} className="text-xs">
+                  <span className="flex items-center gap-2">
+                    {c.name}
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                      {c.itemCount}
+                    </Badge>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
+            onClick={onManageCollections}
+            className="mt-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t("manageCollections")}
+          </button>
         </FilterSection>
       </div>
 

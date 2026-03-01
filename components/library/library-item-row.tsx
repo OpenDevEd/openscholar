@@ -19,6 +19,7 @@ interface LibraryItemRowProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onRemove: (item: Doc<"libraryItems">) => void;
+  onAddToCollection: (item: Doc<"libraryItems">) => void;
 }
 
 export function LibraryItemRow({
@@ -26,6 +27,7 @@ export function LibraryItemRow({
   isExpanded,
   onToggleExpand,
   onRemove,
+  onAddToCollection,
 }: LibraryItemRowProps) {
   const t = useTranslations("libraryPage");
 
@@ -139,6 +141,14 @@ export function LibraryItemRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddToCollection(item);
+              }}
+            >
+              {t("addToCollection")}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
