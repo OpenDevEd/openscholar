@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-03-01T00:09:40.595Z"
+last_updated: "2026-03-01T00:13:13Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 27 of 27 (Library UI Redesign) -- IN PROGRESS
-Plan: 1 of 2 complete
-Status: Plan 01 complete (shared FilterSection extraction + OA_STATUS_COLORS), Plan 02 next (library filter/card redesign)
-Last activity: 2026-03-01 -- Completed Plan 01 (shared FilterSection component + OA_STATUS_COLORS constant consolidation)
+Phase: 27 of 27 (Library UI Redesign) -- COMPLETE
+Plan: 2 of 2 complete
+Status: All plans complete. Phase 27 finished (pending visual verification checkpoint).
+Last activity: 2026-03-01 -- Completed Plan 02 (library filter/card/row redesign with shared components)
 
-Progress: [##########..........] 50% (Phase 27: 1/2 plans)
+Progress: [####################] 100% (Phase 27: 2/2 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 47 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 1)
+- Total plans completed: 48 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -45,6 +45,7 @@ Progress: [##########..........] 50% (Phase 27: 1/2 plans)
 | v2.0 | 8 | 17 | 2026-02-28 |
 | v2.1 | 6 | TBD | In progress |
 | Phase 27 P01 | 2min | 2 tasks | 3 files |
+| Phase 27 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ See PROJECT.md Key Decisions table for full log.
 - [24-01] null vs undefined convention: nuqs uses null to clear params, Convex uses undefined for optional args -- conversion at derivation point
 - [27-01] Exact 1:1 copy of FilterSection to shared module preserving all motion animations for zero visual regression
 - [27-01] X icon import kept in search-sidebar.tsx (used by collapsed sidebar clear-all buttons, not only FilterSection)
+- [27-02] Keep flat row layout for list view (not card-based), only upgrade hover states to sidebar-accent pattern
+- [27-02] Grid skeleton shows 6 items to match 3-column layout, list skeleton keeps 5 items
 
 ### Roadmap Evolution
 
@@ -92,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - Completed 27-01-PLAN.md (shared FilterSection extraction + OA_STATUS_COLORS consolidation)
-Stopped at: Phase 27 Plan 01 complete, Plan 02 next (library filter/card redesign)
+Last activity: 2026-03-01 - Completed 27-02-PLAN.md (library filter/card/row redesign with shared components)
+Stopped at: Phase 27 complete (all plans done, pending visual verification checkpoint)
 Resume file: None
