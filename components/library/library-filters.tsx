@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowDown,
   Calendar,
+  Hash,
   LayoutList,
   LayoutGrid,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { FilterSection } from "@/components/shared/filter-section";
 import { cn } from "@/lib/utils";
 import type {
   LibrarySortBy,
@@ -126,146 +128,142 @@ export function LibraryFilters({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Row 1: Star rating | Date saved presets | View mode toggle */}
-      <div className="flex items-center gap-4 flex-wrap">
-        {/* Rating star filter */}
-        <div className="flex items-center gap-1" role="group" aria-label={t("ratingFilter")}>
-          {[1, 2, 3, 4, 5].map((starValue) => {
-            const isActive = minRating !== undefined && starValue <= minRating;
-            const isSelected = minRating === starValue;
-            return (
-              <Tooltip key={starValue} delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => handleStarClick(starValue)}
-                    className={cn(
-                      "p-0.5 rounded transition-colors hover:scale-110",
-                      isSelected && "ring-1 ring-primary/30 rounded-sm",
-                    )}
-                    aria-label={
-                      isSelected
-                        ? t("clearRatingFilter")
-                        : `${starValue}+`
-                    }
-                  >
-                    <Star
+      {/* Row 1: Filter sections */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {/* Rating filter */}
+        <FilterSection
+          title={t("ratingFilter")}
+          icon={Star}
+          isActive={minRating !== undefined}
+          onClear={minRating !== undefined ? () => onMinRatingChange(undefined) : undefined}
+        >
+          <div className="flex items-center gap-1" role="group" aria-label={t("ratingFilter")}>
+            {[1, 2, 3, 4, 5].map((starValue) => {
+              const isActive = minRating !== undefined && starValue <= minRating;
+              const isSelected = minRating === starValue;
+              return (
+                <Tooltip key={starValue} delayDuration={300}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => handleStarClick(starValue)}
                       className={cn(
-                        "h-4 w-4 transition-colors",
-                        isActive
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-muted-foreground/40 hover:text-amber-300",
+                        "p-0.5 rounded transition-colors hover:scale-110",
+                        isSelected && "ring-1 ring-primary/30 rounded-sm",
                       )}
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {isSelected ? t("clearRatingFilter") : `${starValue}+`}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
+                      aria-label={
+                        isSelected
+                          ? t("clearRatingFilter")
+                          : `${starValue}+`
+                      }
+                    >
+                      <Star
+                        className={cn(
+                          "h-4 w-4 transition-colors",
+                          isActive
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground/40 hover:text-amber-300",
+                        )}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {isSelected ? t("clearRatingFilter") : `${starValue}+`}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </FilterSection>
 
         {/* Date saved presets */}
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground mx-1.5 shrink-0" />
-          {(["week", "month", "year"] as const).map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => onSavedPresetChange(savedPreset === preset ? null : preset)}
-              className={cn(
-                "text-xs px-2.5 py-1 rounded-md transition-colors",
-                savedPreset === preset
-                  ? "text-primary bg-background shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-              )}
-            >
-              {t(
-                preset === "week"
-                  ? "filterLastWeek"
-                  : preset === "month"
-                    ? "filterLastMonth"
-                    : "filterLastYear",
-              )}
-            </button>
-          ))}
-        </div>
+        <FilterSection
+          title={t("filterDateSaved")}
+          icon={Calendar}
+          isActive={savedPreset !== null}
+          onClear={savedPreset !== null ? () => onSavedPresetChange(null) : undefined}
+        >
+          <div className="flex items-center gap-1">
+            {(["week", "month", "year"] as const).map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => onSavedPresetChange(savedPreset === preset ? null : preset)}
+                className={cn(
+                  "text-xs px-2.5 py-1.5 rounded-md transition-colors",
+                  savedPreset === preset
+                    ? "text-primary bg-background shadow-sm font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+                )}
+              >
+                {t(
+                  preset === "week"
+                    ? "filterLastWeek"
+                    : preset === "month"
+                      ? "filterLastMonth"
+                      : "filterLastYear",
+                )}
+              </button>
+            ))}
+          </div>
+        </FilterSection>
 
-        {/* View mode toggle */}
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60 ml-auto">
-          <button
-            type="button"
-            onClick={() => onViewModeChange("list")}
-            className={cn(
-              "p-1.5 rounded-md transition-colors",
-              viewMode === "list"
-                ? "text-primary bg-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-            )}
-            title={t("viewList")}
-          >
-            <LayoutList className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange("grid")}
-            className={cn(
-              "p-1.5 rounded-md transition-colors",
-              viewMode === "grid"
-                ? "text-primary bg-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-            )}
-            title={t("viewGrid")}
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </button>
-        </div>
+        {/* Year range */}
+        <FilterSection
+          title={t("filterYearRange")}
+          icon={Hash}
+          isActive={yearFrom !== null || yearTo !== null}
+          onClear={
+            yearFrom !== null || yearTo !== null
+              ? () => {
+                  onYearFromChange(null);
+                  onYearToChange(null);
+                }
+              : undefined
+          }
+        >
+          <div className="flex items-center gap-1.5">
+            <Input
+              ref={yearFromRef}
+              type="number"
+              placeholder={t("filterYearFrom")}
+              value={localYearFrom}
+              onChange={(e) => setLocalYearFrom(e.target.value)}
+              onBlur={(e) => commitYearFrom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+              className="h-7 w-[72px] text-xs"
+              min={1900}
+              max={2100}
+            />
+            <span className="text-xs text-muted-foreground">-</span>
+            <Input
+              ref={yearToRef}
+              type="number"
+              placeholder={t("filterYearTo")}
+              value={localYearTo}
+              onChange={(e) => setLocalYearTo(e.target.value)}
+              onBlur={(e) => commitYearTo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
+              className="h-7 w-[72px] text-xs"
+              min={1900}
+              max={2100}
+            />
+          </div>
+        </FilterSection>
       </div>
 
-      {/* Row 2: Year range inputs | Sort controls */}
-      <div className="flex items-center gap-4 flex-wrap">
-        {/* Year range filter */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground shrink-0">{t("filterYearRange")}:</span>
-          <Input
-            ref={yearFromRef}
-            type="number"
-            placeholder={t("filterYearFrom")}
-            value={localYearFrom}
-            onChange={(e) => setLocalYearFrom(e.target.value)}
-            onBlur={(e) => commitYearFrom(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-            className="h-7 w-[72px] text-xs"
-            min={1900}
-            max={2100}
-          />
-          <span className="text-xs text-muted-foreground">-</span>
-          <Input
-            ref={yearToRef}
-            type="number"
-            placeholder={t("filterYearTo")}
-            value={localYearTo}
-            onChange={(e) => setLocalYearTo(e.target.value)}
-            onBlur={(e) => commitYearTo(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-            }}
-            className="h-7 w-[72px] text-xs"
-            min={1900}
-            max={2100}
-          />
-        </div>
-
+      {/* Row 2: Sort controls + View mode toggle */}
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Sort controls */}
         <div className="flex items-center gap-1.5 ml-auto">
           <Tooltip delayDuration={300}>
@@ -326,6 +324,36 @@ export function LibraryFilters({
               {sortOrder === "asc" ? t("sortAscending") : t("sortDescending")}
             </TooltipContent>
           </Tooltip>
+        </div>
+
+        {/* View mode toggle - aligned styling with search page pattern */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
+          <button
+            type="button"
+            onClick={() => onViewModeChange("list")}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              viewMode === "list"
+                ? "text-primary bg-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+            )}
+            title={t("viewList")}
+          >
+            <LayoutList className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange("grid")}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              viewMode === "grid"
+                ? "text-primary bg-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+            )}
+            title={t("viewGrid")}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
