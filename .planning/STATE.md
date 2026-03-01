@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 27 of 27 (Library UI Redesign) -- COMPLETE
-Plan: 2 of 2 complete
-Status: All plans complete. Phase 27 finished (visual verification checkpoint approved).
-Last activity: 2026-03-01 -- Plan 02 checkpoint approved (library UI redesign verified across modes)
+Phase: 25 (Collections)
+Plan: 1 of 3 complete
+Status: Plan 01 complete (TDD: schema + CRUD + cascade). Plans 02-03 remain.
+Last activity: 2026-03-01 -- Plan 01 completed (collection CRUD with TDD RED/GREEN)
 
-Progress: [####################] 100% (Phase 27: 2/2 plans)
+Progress: [######______________] 33% (Phase 25: 1/3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 48 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2)
+- Total plans completed: 49 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 1)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -71,6 +71,9 @@ See PROJECT.md Key Decisions table for full log.
 - [27-01] X icon import kept in search-sidebar.tsx (used by collapsed sidebar clear-all buttons, not only FilterSection)
 - [27-02] Keep flat row layout for list view (not card-based), only upgrade hover states to sidebar-accent pattern
 - [27-02] Grid skeleton shows 6 items to match 3-column layout, list skeleton keeps 5 items
+- [25-01] Junction table (libraryItemCollections) for many-to-many, not array fields on libraryItems
+- [25-01] Alphabetical sort for listCollections via localeCompare (case-insensitive)
+- [25-01] Cascade-delete junction rows in both removeFromLibrary and removeFromLibraryByOpenalexId
 
 ### Roadmap Evolution
 
@@ -95,6 +98,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - 27-02 checkpoint approved (library UI redesign visual verification passed)
-Stopped at: Phase 27 fully complete (all plans done, checkpoint approved)
+Last activity: 2026-03-01 - 25-01 completed (collection schema + CRUD with TDD)
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None

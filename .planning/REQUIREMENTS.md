@@ -24,12 +24,12 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 
 ### Collections
 
-- [ ] **COL-01**: User can create a new collection with a name
-- [ ] **COL-02**: User can rename an existing collection
-- [ ] **COL-03**: User can delete a collection (cascade deletes junction table rows, does not delete library items)
+- [x] **COL-01**: User can create a new collection with a name
+- [x] **COL-02**: User can rename an existing collection
+- [x] **COL-03**: User can delete a collection (cascade deletes junction table rows, does not delete library items)
 - [ ] **COL-04**: User can assign a library item to one or more collections
 - [ ] **COL-05**: User can remove an item from a collection without deleting it from the library
-- [ ] **COL-06**: Collections use a junction table (`libraryItemCollections`) for many-to-many, not array fields
+- [x] **COL-06**: Collections use a junction table (`libraryItemCollections`) for many-to-many, not array fields
 - [ ] **COL-07**: Each collection displays an item count badge
 
 ### Filtering & URL State
@@ -93,12 +93,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-10 | Phase 23 | Complete |
 | LIB-11 | Phase 23 | Complete |
 | LIB-12 | Phase 22 | Complete |
-| COL-01 | Phase 25 | Pending |
-| COL-02 | Phase 25 | Pending |
-| COL-03 | Phase 25 | Pending |
+| COL-01 | Phase 25 | Complete |
+| COL-02 | Phase 25 | Complete |
+| COL-03 | Phase 25 | Complete |
 | COL-04 | Phase 25 | Pending |
 | COL-05 | Phase 25 | Pending |
-| COL-06 | Phase 25 | Pending |
+| COL-06 | Phase 25 | Complete |
 | COL-07 | Phase 25 | Pending |
 | FILT-01 | Phase 24, 27 | Complete |
 | FILT-02 | Phase 24, 27 | Complete |

@@ -66,6 +66,7 @@ import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_stripeWebhookSecret from "../lib/stripeWebhookSecret.js";
 import type * as lib_userCreation from "../lib/userCreation.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as library_collections from "../library/collections.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as maintenance_internal from "../maintenance/internal.js";
@@ -158,6 +159,7 @@ declare const fullApi: ApiFromModules<{
   "lib/stripeWebhookSecret": typeof lib_stripeWebhookSecret;
   "lib/userCreation": typeof lib_userCreation;
   "lib/validators": typeof lib_validators;
+  "library/collections": typeof library_collections;
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
   "maintenance/internal": typeof maintenance_internal;
