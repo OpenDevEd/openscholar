@@ -48,6 +48,7 @@ export const librarySearchParams = {
   yf: parseAsInteger,
   yt: parseAsInteger,
   view: parseAsStringLiteral(libraryViewModes).withDefault("list"),
+  col: parseAsString, // Collection ID filter (null = all collections)
 };
 
 /**

@@ -423,3 +423,466 @@ describe("removeFromLibrary cascade", () => {
     expect(existingCollection!.name).toBe("My Collection");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Plan 02 Tests: Assignment mutations, count/membership queries,
+// and collection-filtered browse/search
+// ═══════════════════════════════════════════════════════════════
+
+describe("addToCollection", () => {
+  it("assigns a library item to a collection with correct junction row fields", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "Favorites");
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+      title: "Paper A",
+    });
+
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId: collection!._id,
+      libraryItemId: item!._id,
+    });
+
+    const junctionRows = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection_item", (q) =>
+          q.eq("collectionId", collection!._id).eq("libraryItemId", item!._id)
+        )
+        .collect();
+    });
+
+    expect(junctionRows).toHaveLength(1);
+    expect(junctionRows[0].userId).toBe(user!._id);
+    expect(junctionRows[0].collectionId).toBe(collection!._id);
+    expect(junctionRows[0].libraryItemId).toBe(item!._id);
+    expect(junctionRows[0].assignedAt).toBeGreaterThan(0);
+  });
+
+  it("is idempotent - assigning same item twice creates no duplicate", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "Reading List");
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId: collection!._id,
+      libraryItemId: item!._id,
+    });
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId: collection!._id,
+      libraryItemId: item!._id,
+    });
+
+    const junctionRows = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection", (q) =>
+          q.eq("collectionId", collection!._id)
+        )
+        .collect();
+    });
+
+    expect(junctionRows).toHaveLength(1);
+  });
+
+  it("rejects if collection belongs to another user (FORBIDDEN)", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+
+    const otherCollection = await seedCollection(t, user2!._id, "Other");
+    const item = await seedLibraryItem(t, user1!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    await expect(
+      asUser1.mutation(api.library.collections.addToCollection, {
+        collectionId: otherCollection!._id,
+        libraryItemId: item!._id,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects if library item belongs to another user (FORBIDDEN)", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user1!._id, "My Collection");
+    const otherItem = await seedLibraryItem(t, user2!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    await expect(
+      asUser1.mutation(api.library.collections.addToCollection, {
+        collectionId: collection!._id,
+        libraryItemId: otherItem!._id,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("assigns one item to multiple collections", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const col1 = await seedCollection(t, user!._id, "Collection A");
+    const col2 = await seedCollection(t, user!._id, "Collection B");
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId: col1!._id,
+      libraryItemId: item!._id,
+    });
+    await asUser.mutation(api.library.collections.addToCollection, {
+      collectionId: col2!._id,
+      libraryItemId: item!._id,
+    });
+
+    const junctionRows = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_item", (q) => q.eq("libraryItemId", item!._id))
+        .collect();
+    });
+
+    expect(junctionRows).toHaveLength(2);
+  });
+});
+
+describe("removeFromCollection", () => {
+  it("removes a junction row, library item still exists", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "To Remove");
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedJunctionRow(t, user!._id, collection!._id, item!._id);
+
+    await asUser.mutation(api.library.collections.removeFromCollection, {
+      collectionId: collection!._id,
+      libraryItemId: item!._id,
+    });
+
+    const junctionRows = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection_item", (q) =>
+          q.eq("collectionId", collection!._id).eq("libraryItemId", item!._id)
+        )
+        .collect();
+    });
+    expect(junctionRows).toHaveLength(0);
+
+    const stillExists = await t.run(async (ctx) => {
+      return await ctx.db.get(item!._id);
+    });
+    expect(stillExists).not.toBeNull();
+  });
+
+  it("rejects if collection belongs to another user (FORBIDDEN)", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+
+    const otherCollection = await seedCollection(t, user2!._id, "Other");
+    const item = await seedLibraryItem(t, user1!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    await expect(
+      asUser1.mutation(api.library.collections.removeFromCollection, {
+        collectionId: otherCollection!._id,
+        libraryItemId: item!._id,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("is a no-op if the item is not in the collection", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "Empty");
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    const result = await asUser.mutation(
+      api.library.collections.removeFromCollection,
+      {
+        collectionId: collection!._id,
+        libraryItemId: item!._id,
+      }
+    );
+    expect(result).toBeNull();
+  });
+});
+
+describe("getCollectionsWithCounts", () => {
+  it("returns all user collections with correct item counts", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const col1 = await seedCollection(t, user!._id, "Research");
+    const col2 = await seedCollection(t, user!._id, "Favorites");
+
+    const item1 = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    const item2 = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+
+    await seedJunctionRow(t, user!._id, col1!._id, item1!._id);
+    await seedJunctionRow(t, user!._id, col1!._id, item2!._id);
+    await seedJunctionRow(t, user!._id, col2!._id, item1!._id);
+
+    const result = await asUser.query(
+      api.library.collections.getCollectionsWithCounts,
+      {}
+    );
+
+    expect(result).toHaveLength(2);
+    const favorites = result.find((c: any) => c.name === "Favorites");
+    const research = result.find((c: any) => c.name === "Research");
+    expect(favorites!.itemCount).toBe(1);
+    expect(research!.itemCount).toBe(2);
+  });
+
+  it("collections with no items have count 0", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedCollection(t, user!._id, "Empty Collection");
+
+    const result = await asUser.query(
+      api.library.collections.getCollectionsWithCounts,
+      {}
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].itemCount).toBe(0);
+  });
+
+  it("only counts items in the user's own collections", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
+    const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+
+    const myCol = await seedCollection(t, user1!._id, "My Collection");
+    const otherCol = await seedCollection(t, user2!._id, "Other Collection");
+
+    const myItem = await seedLibraryItem(t, user1!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    const otherItem = await seedLibraryItem(t, user2!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+
+    await seedJunctionRow(t, user1!._id, myCol!._id, myItem!._id);
+    await seedJunctionRow(t, user2!._id, otherCol!._id, otherItem!._id);
+
+    const result = await asUser1.query(
+      api.library.collections.getCollectionsWithCounts,
+      {}
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe("My Collection");
+    expect(result[0].itemCount).toBe(1);
+  });
+});
+
+describe("getItemCollections", () => {
+  it("returns collection IDs for a given library item", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const col1 = await seedCollection(t, user!._id, "Collection A");
+    const col2 = await seedCollection(t, user!._id, "Collection B");
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    await seedJunctionRow(t, user!._id, col1!._id, item!._id);
+    await seedJunctionRow(t, user!._id, col2!._id, item!._id);
+
+    const result = await asUser.query(
+      api.library.collections.getItemCollections,
+      { libraryItemId: item!._id }
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result).toContain(col1!._id);
+    expect(result).toContain(col2!._id);
+  });
+
+  it("returns empty array if item is not in any collection", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const item = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    const result = await asUser.query(
+      api.library.collections.getItemCollections,
+      { libraryItemId: item!._id }
+    );
+
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe("browseLibrary with collectionId filter", () => {
+  it("when collectionId is provided, only items in that collection are returned", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "Filtered");
+    const itemIn = await seedLibraryItem(t, user!._id, {
+      title: "In Collection",
+      openalexId: "https://openalex.org/W1",
+      savedAt: 2000,
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Not In Collection",
+      openalexId: "https://openalex.org/W2",
+      savedAt: 1000,
+    });
+
+    await seedJunctionRow(t, user!._id, collection!._id, itemIn!._id);
+
+    const result = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      collectionId: collection!._id,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(1);
+    expect(result.page[0].title).toBe("In Collection");
+  });
+
+  it("when collectionId is undefined, all items are returned (existing behavior)", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper A",
+      openalexId: "https://openalex.org/WA",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper B",
+      openalexId: "https://openalex.org/WB",
+    });
+
+    const result = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(2);
+  });
+
+  it("when collectionId references an empty collection, returns empty results", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const emptyCol = await seedCollection(t, user!._id, "Empty");
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper A",
+      openalexId: "https://openalex.org/WA",
+    });
+
+    const result = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      collectionId: emptyCol!._id,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(0);
+  });
+});
+
+describe("searchLibrary with collectionId filter", () => {
+  it("when collectionId is provided, search results are filtered to collection members only", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collection = await seedCollection(t, user!._id, "ML Papers");
+    const itemIn = await seedLibraryItem(t, user!._id, {
+      title: "Machine Learning In Collection",
+      searchableText: "machine learning in collection paper",
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Machine Learning Outside",
+      searchableText: "machine learning outside collection paper",
+      openalexId: "https://openalex.org/W2",
+    });
+
+    await seedJunctionRow(t, user!._id, collection!._id, itemIn!._id);
+
+    const result = await asUser.query(api.library.queries.searchLibrary, {
+      searchText: "machine learning",
+      collectionId: collection!._id,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(1);
+    expect(result.page[0].title).toBe("Machine Learning In Collection");
+  });
+
+  it("when collectionId is undefined, all matching items are returned", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "ML Paper One",
+      searchableText: "machine learning paper one",
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "ML Paper Two",
+      searchableText: "machine learning paper two",
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const result = await asUser.query(api.library.queries.searchLibrary, {
+      searchText: "machine learning",
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page.length).toBeGreaterThanOrEqual(2);
+  });
+});
