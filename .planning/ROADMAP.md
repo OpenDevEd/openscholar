@@ -85,7 +85,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 
 **Milestone Goal:** Complete UI overhaul of the library page -- adopt the search page's two-column sidebar layout, extract reusable layout infrastructure (DRY), and align design language across search and library pages.
 
-- [ ] **Phase 31: Generalized Layout Infrastructure** - Build SidebarLayout and FilterSidebar as reusable primitives with i18n and animation support
+- [x] **Phase 31: Generalized Layout Infrastructure** - Build SidebarLayout and FilterSidebar as reusable primitives with i18n and animation support (completed 2026-03-01)
 - [ ] **Phase 32: Search Page Sidebar Refactor** - Prove new layout components on the search page by replacing the monolithic SearchSidebar
 - [ ] **Phase 33: Library Page UI Overhaul** - Apply proven components to the library page with full filter sidebar and two-column layout
 - [ ] **Phase 34: Display Polish and Validation** - Complete display features: sort controls, pagination counts, rating display, view toggle
@@ -176,7 +176,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34
 | 28. Bug Fixes & Verification | v2.1 | 2/2 | Complete | 2026-03-01 |
 | 29. Library Export | v2.1 | 1/1 | Complete | 2026-03-01 |
 | 30. Library Polish | v2.1 | 1/1 | Complete | 2026-03-01 |
-| 31. Generalized Layout Infrastructure | 1/2 | In Progress|  | - |
+| 31. Generalized Layout Infrastructure | 2/2 | Complete   | 2026-03-01 | - |
 | 32. Search Page Sidebar Refactor | v2.2 | 0/? | Not started | - |
 | 33. Library Page UI Overhaul | v2.2 | 0/? | Not started | - |
 | 34. Display Polish and Validation | v2.2 | 0/? | Not started | - |
