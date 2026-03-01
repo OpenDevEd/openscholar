@@ -530,7 +530,7 @@ interface SidebarContentProps {
   onClearAllFilters: () => void;
 }
 
-const SidebarContent = React.memo(function SidebarContent({
+export const SidebarContent = React.memo(function SidebarContent({
   hideHeader = false,
   isMobileSheet = false,
   activeFiltersCount,
