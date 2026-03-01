@@ -43,9 +43,9 @@ Requirements for v2.1 milestone. Each maps to roadmap phases.
 ### Export & Polish
 
 - [x] **EXP-01**: User can export library items as CSV or JSON (reuse existing export utilities)
-- [ ] **EXP-02**: Library page and collection dialogs are mobile responsive
-- [ ] **EXP-03**: All library and collection UI strings are translated for 6 locales via next-intl
-- [ ] **EXP-04**: Destructive actions (remove from library, delete collection, remove from collection) show toast with feedback
+- [x] **EXP-02**: Library page and collection dialogs are mobile responsive
+- [x] **EXP-03**: All library and collection UI strings are translated for 6 locales via next-intl
+- [x] **EXP-04**: Destructive actions (remove from library, delete collection, remove from collection) show toast with feedback
 
 ## v2.2+ Requirements
 
@@ -106,9 +106,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FILT-04 | Phase 24 | Complete |
 | FILT-05 | Phase 24, 27 | Complete |
 | EXP-01 | Phase 29 | Complete |
-| EXP-02 | Phase 30 | Pending |
-| EXP-03 | Phase 30 | Pending |
-| EXP-04 | Phase 30 | Pending |
+| EXP-02 | Phase 30 | Complete |
+| EXP-03 | Phase 30 | Complete |
+| EXP-04 | Phase 30 | Complete |
 
 **Coverage:**
 - v2.1 requirements: 28 total

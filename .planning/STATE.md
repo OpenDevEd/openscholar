@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-03-01T07:05:24.590Z"
+last_updated: "2026-03-01T07:38:00.000Z"
 progress:
   total_phases: 8
-  completed_phases: 7
-  total_plans: 14
-  completed_plans: 14
+  completed_phases: 8
+  total_plans: 15
+  completed_plans: 15
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 29 (Library Export)
+Phase: 30 (Library Polish)
 Plan: 1 of 1 complete
-Status: Phase 29 complete. Plan 01 executed (library CSV/JSON export with i18n).
-Last activity: 2026-03-01 -- Plan 01 completed (library export with filter-aware query and 6-locale i18n)
+Status: Phase 30 complete. Plan 01 executed (mobile responsive, i18n diacritics, async toast feedback).
+Last activity: 2026-03-01 -- Plan 01 completed (mobile responsive layout, French diacritics, toast feedback on destructive actions)
 
-Progress: [####################] 100% (Phase 29: 1/1 plans)
+Progress: [####################] 100% (Phase 30: 1/1 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 54 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 3, phase-28: 2, phase-29: 1)
+- Total plans completed: 55 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 3, phase-28: 2, phase-29: 1, phase-30: 1)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -50,6 +50,7 @@ Progress: [####################] 100% (Phase 29: 1/1 plans)
 | Phase 28 P01 | 1min | 2 tasks | 1 file |
 | Phase 28 P02 | 2min | 1 task | 1 file |
 | Phase 29 P01 | 2min | 2 tasks | 9 files |
+| Phase 30 P01 | 4min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ See PROJECT.md Key Decisions table for full log.
 - [29-01] Non-paginated .collect() for export query (1024 item limit acceptable per decision 23-01)
 - [29-01] Reuse existing downloadAsFile/jsonToCSV utilities -- no new npm dependencies for export
 - [29-01] Strip _id, userId, searchableText from export; convert timestamps to ISO strings for universal parseability
+- [30-01] Async toast pattern (.then/.catch) replaces fire-and-forget for all destructive library actions
+- [30-01] 44px mobile touch targets with sm: reset to preserve compact desktop layout
+- [30-01] French diacritics audit fixed 15+ keys beyond the 8 specified in the plan
 
 ### Roadmap Evolution
 
@@ -115,6 +119,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - 29-01 completed (library export with CSV/JSON, EXP-01 satisfied)
-Stopped at: Completed 29-01-PLAN.md (Phase 29 complete)
+Last activity: 2026-03-01 - 30-01 completed (mobile responsive, French diacritics, async toast feedback)
+Stopped at: Completed 30-01-PLAN.md (Phase 30 complete)
 Resume file: None

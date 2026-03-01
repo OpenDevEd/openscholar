@@ -74,7 +74,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [ ] ~~**Phase 26: Export & Polish**~~ - Superseded by gap closure Phases 29-30
 - [x] **Phase 28: Bug Fixes & Verification** - Focus-mode rating removal bug, Phase 24 verification, REQUIREMENTS.md traceability corrections (completed 2026-03-01)
 - [x] **Phase 29: Library Export** - CSV/JSON export for library items using existing export utilities (gap closure: EXP-01) (completed 2026-03-01)
-- [ ] **Phase 30: Library Polish** - Mobile responsive audit, i18n completeness, toast feedback on destructive actions (gap closure: EXP-02, EXP-03, EXP-04)
+- [x] **Phase 30: Library Polish** - Mobile responsive audit, i18n completeness, toast feedback on destructive actions (gap closure: EXP-02, EXP-03, EXP-04) (completed 2026-03-01)
 
 ## Phase Details
 
@@ -192,7 +192,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
 | 28. Bug Fixes & Verification | 2/2 | Complete    | 2026-03-01 | - |
 | 29. Library Export | 1/1 | Complete    | 2026-03-01 | - |
-| 30. Library Polish | v2.1 | 0/? | Not started | - |
+| 30. Library Polish | 1/1 | Complete   | 2026-03-01 | - |
 
 ### Phase 27: Library UI Redesign
 
