@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FILT-03 | Phase 25 | Complete |
 | FILT-04 | Phase 24 | Complete |
 | FILT-05 | Phase 24, 27 | Complete |
-| EXP-01 | Phase 26 | Pending |
-| EXP-02 | Phase 26 | Pending |
-| EXP-03 | Phase 26 | Pending |
-| EXP-04 | Phase 26 | Pending |
+| EXP-01 | Phase 29 | Pending |
+| EXP-02 | Phase 30 | Pending |
+| EXP-03 | Phase 30 | Pending |
+| EXP-04 | Phase 30 | Pending |
 
 **Coverage:**
 - v2.1 requirements: 28 total

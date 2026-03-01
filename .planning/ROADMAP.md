@@ -6,7 +6,7 @@
 - v1.1 Upgrade Flow -- Phases 4-6 (shipped 2026-02-27)
 - v1.2 E2E Billing Tests -- Phases 7-13 (shipped 2026-02-28)
 - v2.0 TDD & Test Coverage -- Phases 14-21 (shipped 2026-02-28)
-- v2.1 Library & Collections -- Phases 22-28 (in progress)
+- v2.1 Library & Collections -- Phases 22-30 (in progress)
 
 ## Phases
 
@@ -71,8 +71,10 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [x] **Phase 23: Core Library Page** - Dedicated /library route with auth gate, paginated item list, search, filter by rating, sort, remove, empty states (completed 2026-02-28)
 - [x] **Phase 24: Advanced Filtering & URL State** - Date saved and publication year filters, nuqs URL persistence for all filter/sort state, view mode switching (completed 2026-02-28)
 - [x] **Phase 25: Collections** - Collection CRUD, junction table mutations, item-to-collection assignment, filter by collection, item count badges (completed 2026-03-01)
-- [ ] **Phase 26: Export & Polish** - CSV/JSON export, mobile responsiveness, i18n for 6 locales, toast feedback on destructive actions
+- [ ] ~~**Phase 26: Export & Polish**~~ - Superseded by gap closure Phases 29-30
 - [x] **Phase 28: Bug Fixes & Verification** - Focus-mode rating removal bug, Phase 24 verification, REQUIREMENTS.md traceability corrections (completed 2026-03-01)
+- [ ] **Phase 29: Library Export** - CSV/JSON export for library items using existing export utilities (gap closure: EXP-01)
+- [ ] **Phase 30: Library Polish** - Mobile responsive audit, i18n completeness, toast feedback on destructive actions (gap closure: EXP-02, EXP-03, EXP-04)
 
 ## Phase Details
 
@@ -186,9 +188,11 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 23. Core Library Page | 2/2 | Complete    | 2026-02-28 | - |
 | 24. Advanced Filtering & URL State | 2/2 | Complete    | 2026-02-28 | - |
 | 25. Collections | 3/3 | Complete    | 2026-03-01 | - |
-| 26. Export & Polish | v2.1 | 0/? | Not started | - |
+| 26. Export & Polish | v2.1 | — | Superseded | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
 | 28. Bug Fixes & Verification | 2/2 | Complete    | 2026-03-01 | - |
+| 29. Library Export | v2.1 | 0/? | Not started | - |
+| 30. Library Polish | v2.1 | 0/? | Not started | - |
 
 ### Phase 27: Library UI Redesign
 
@@ -210,3 +214,32 @@ Plans:
 Plans:
 - [ ] 28-01: TBD
 - [ ] 28-02: TBD
+
+### Phase 29: Library Export
+**Goal:** Users can export their library items (or a filtered subset) as CSV or JSON
+**Depends on:** Phase 23
+**Requirements:** EXP-01
+**Gap Closure:** Closes EXP-01 from v2.1 audit (Phase 26 never executed)
+**Success Criteria** (what must be TRUE):
+  1. User can export their library items as CSV
+  2. User can export their library items as JSON
+  3. Export respects current filters (filtered subset export)
+  4. Export reuses existing export utilities where possible
+**Plans**: TBD
+
+Plans:
+- [ ] 29-01: TBD
+
+### Phase 30: Library Polish
+**Goal:** Library is production-ready with mobile support, full i18n coverage, and polished feedback on all destructive actions
+**Depends on:** Phase 23
+**Requirements:** EXP-02, EXP-03, EXP-04
+**Gap Closure:** Closes EXP-02, EXP-03, EXP-04 from v2.1 audit (Phase 26 never executed)
+**Success Criteria** (what must be TRUE):
+  1. Library page and collection dialogs render correctly on mobile viewports (no overflow, touch-friendly targets)
+  2. All library and collection UI strings appear correctly in all 6 supported locales
+  3. Removing an item from library, deleting a collection, and removing an item from a collection each show toast feedback (success and error)
+**Plans**: TBD
+
+Plans:
+- [ ] 30-01: TBD
