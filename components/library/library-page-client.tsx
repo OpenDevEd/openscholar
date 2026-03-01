@@ -232,7 +232,7 @@ export function LibraryPageClient() {
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
         <h1 className="text-2xl font-semibold tracking-tight">
           {t("title")}
         </h1>

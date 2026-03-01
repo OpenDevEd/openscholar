@@ -134,7 +134,7 @@ export function LibraryItemRow({
               size="icon-xs"
               onClick={handleMenuTriggerClick}
               onKeyDown={handleMenuTriggerKeyDown}
-              className="shrink-0 text-muted-foreground hover:text-foreground"
+              className="shrink-0 text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
             >
               <MoreHorizontal className="h-4 w-4" />
               <span className="sr-only">Actions</span>

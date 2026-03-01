@@ -139,7 +139,7 @@ export function LibraryFilters({
   return (
     <div className="flex flex-col gap-3">
       {/* Row 1: Filter sections */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         {/* Rating filter */}
         <FilterSection
           title={t("ratingFilter")}
