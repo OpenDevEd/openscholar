@@ -37,7 +37,7 @@ Requirements for Library UI Overhaul milestone. Each maps to roadmap phases.
 
 - [x] **DRY-01**: SidebarLayout component generalizes two-column desktop + mobile tabs pattern for reuse across pages
 - [x] **DRY-02**: FilterSidebar component provides generic sidebar chrome (title, collapse toggle, active count badge, clear button, content slot)
-- [ ] **DRY-03**: Search page refactored to use SidebarLayout + SearchFilterSidebar (replacing monolithic SearchSidebar)
+- [x] **DRY-03**: Search page refactored to use SidebarLayout + SearchFilterSidebar (replacing monolithic SearchSidebar)
 - [ ] **DRY-04**: Library page uses same SidebarLayout + LibraryFilterSidebar composition
 - [x] **DRY-05**: All new shared components have full i18n support across 6 locales
 - [x] **DRY-06**: FilterSection component reused by both search and library filter panels (no duplication)
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISP-05 | Phase 34 | Pending |
 | DRY-01 | Phase 31 | Complete |
 | DRY-02 | Phase 31 | Complete |
-| DRY-03 | Phase 32 | Pending |
+| DRY-03 | Phase 32 | Complete |
 | DRY-04 | Phase 33 | Pending |
 | DRY-05 | Phase 31 | Complete |
 | DRY-06 | Phase 31 | Complete |
