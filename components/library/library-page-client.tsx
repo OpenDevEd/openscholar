@@ -18,7 +18,18 @@ import {
   librarySearchParams,
   savedPresetToTimestamp,
 } from "@/lib/library/search-params";
-import { Download } from "lucide-react";
+import type {
+  LibrarySortBy,
+  LibrarySortOrder,
+  LibraryViewMode,
+} from "@/lib/library/search-params";
+import {
+  Download,
+  ArrowUp,
+  ArrowDown,
+  LayoutList,
+  LayoutGrid,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,9 +38,23 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { exportLibraryAsCSV, exportLibraryAsJSON } from "@/lib/library/export";
-import { LibrarySearchBar } from "./library-search-bar";
-import { LibraryFilters } from "./library-filters";
+import { SidebarLayout } from "@/components/shared/sidebar-layout";
+import { LibraryFilterSidebar } from "./library-filter-sidebar";
+import { PageWrapper } from "@/components/PageWrapper";
 import { LibraryItemRow } from "./library-item-row";
 import { LibraryItemCard } from "./library-item-card";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
@@ -83,6 +108,17 @@ export function LibraryPageClient() {
   const minRating = params.rating ?? undefined;
   const yearFrom = params.yf ?? undefined;
   const yearTo = params.yt ?? undefined;
+
+  // Count active filters for the sidebar badge
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (rawSearch.trim().length > 0) count++;
+    if (minRating !== undefined) count++;
+    if (params.saved !== null) count++;
+    if (params.yf !== null || params.yt !== null) count++;
+    if (params.col !== null) count++;
+    return count;
+  }, [rawSearch, minRating, params.saved, params.yf, params.yt, params.col]);
 
   // Stale-while-revalidate: hold the last non-empty result set
   const lastResultsRef = useRef<Doc<"libraryItems">[]>([]);
@@ -229,153 +265,252 @@ export function LibraryPageClient() {
   const isEmptyLibrary = isEmpty && !hasFiltersActive && totalCount === 0;
   const isNoResults = isEmpty && hasFiltersActive;
 
+  // Sort controls (moved from LibraryFilters Row 2)
+  const sortOptions: { value: LibrarySortBy; label: string }[] = [
+    { value: "savedAt", label: t("sortDateSaved") },
+    { value: "rating", label: t("sortRating") },
+    { value: "publicationYear", label: t("sortPublicationYear") },
+  ];
+
+  const toggleSortOrder = () => {
+    setParams({ order: params.order === "asc" ? "desc" : "asc" });
+  };
+
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
-        {totalCount !== undefined && (
-          <Badge variant="secondary" className="text-xs">
-            {t("paperCount", { count: totalCount })}
-          </Badge>
-        )}
-        {/* Export dropdown -- only visible when there are items to export */}
-        {exportItems && exportItems.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-auto">
-                <Download className="h-4 w-4 mr-2" />
-                {t("exportLibrary")}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExportCSV}>
-                {t("exportAsCSV")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportJSON}>
-                {t("exportAsJSON")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+    <SidebarLayout
+      sidebar={
+        <LibraryFilterSidebar
+          rawSearch={rawSearch}
+          onSearchChange={setRawSearch}
+          minRating={minRating}
+          onMinRatingChange={(r) => setParams({ rating: r === undefined ? null : r })}
+          savedPreset={params.saved}
+          onSavedPresetChange={(p) => setParams({ saved: p as typeof params.saved })}
+          yearFrom={params.yf}
+          yearTo={params.yt}
+          onYearFromChange={(y) => setParams({ yf: y })}
+          onYearToChange={(y) => setParams({ yt: y })}
+          collectionId={params.col}
+          onCollectionChange={(id) => setParams({ col: id })}
+          collections={collectionsWithCounts}
+          onManageCollections={() => setCollectionManagerOpen(true)}
+          activeFilterCount={activeFilterCount}
+          onClearAll={clearFilters}
+        />
+      }
+    >
+      <PageWrapper>
+        <div className="container mx-auto p-4 sm:p-6 max-w-4xl">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {t("title")}
+            </h1>
+            {totalCount !== undefined && (
+              <Badge variant="secondary" className="text-xs">
+                {t("paperCount", { count: totalCount })}
+              </Badge>
+            )}
 
-      {/* Search bar */}
-      <LibrarySearchBar
-        value={rawSearch}
-        onChange={setRawSearch}
-        className="mb-3"
-      />
+            {/* Sort controls */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Select
+                      value={params.sort}
+                      onValueChange={(v) => setParams({ sort: v as LibrarySortBy })}
+                      disabled={hasSearchText}
+                    >
+                      <SelectTrigger
+                        className={cn(
+                          "h-8 w-[160px] text-xs",
+                          hasSearchText && "opacity-50 cursor-not-allowed",
+                        )}
+                      >
+                        <span className="text-muted-foreground mr-1">{t("sortBy")}:</span>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sortOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </span>
+                </TooltipTrigger>
+                {hasSearchText && (
+                  <TooltipContent side="bottom" className="text-xs">
+                    {t("sortDisabledInSearch")}
+                  </TooltipContent>
+                )}
+              </Tooltip>
 
-      {/* Filters */}
-      <LibraryFilters
-        minRating={minRating}
-        onMinRatingChange={(r) => setParams({ rating: r === undefined ? null : r })}
-        sortBy={params.sort}
-        onSortByChange={(s) => setParams({ sort: s })}
-        sortOrder={params.order}
-        onSortOrderChange={(o) => setParams({ order: o })}
-        sortDisabled={hasSearchText}
-        savedPreset={params.saved}
-        onSavedPresetChange={(p) => setParams({ saved: p })}
-        yearFrom={params.yf}
-        yearTo={params.yt}
-        onYearFromChange={(y) => setParams({ yf: y })}
-        onYearToChange={(y) => setParams({ yt: y })}
-        viewMode={params.view}
-        onViewModeChange={(m) => setParams({ view: m })}
-        collectionId={params.col}
-        onCollectionChange={(id) => setParams({ col: id })}
-        collections={collectionsWithCounts}
-        onManageCollections={() => setCollectionManagerOpen(true)}
-      />
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={toggleSortOrder}
+                    disabled={hasSearchText}
+                    className={cn(
+                      "shrink-0",
+                      hasSearchText && "opacity-50 cursor-not-allowed",
+                    )}
+                    aria-label={params.order === "asc" ? t("sortAscending") : t("sortDescending")}
+                  >
+                    {params.order === "asc" ? (
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {params.order === "asc" ? t("sortAscending") : t("sortDescending")}
+                </TooltipContent>
+              </Tooltip>
+            </div>
 
-      {/* Content area */}
-      <div className="mt-4 rounded-lg border border-border/50 bg-background/80 overflow-hidden">
-        {/* Initial loading skeleton */}
-        {isFirstLoad && <LibraryItemSkeleton count={params.view === "grid" ? 6 : 5} viewMode={params.view} />}
+            {/* View mode toggle */}
+            <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
+              <button
+                type="button"
+                onClick={() => setParams({ view: "list" as LibraryViewMode })}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  params.view === "list"
+                    ? "text-primary bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+                )}
+                title={t("viewList")}
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setParams({ view: "grid" as LibraryViewMode })}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  params.view === "grid"
+                    ? "text-primary bg-background shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50",
+                )}
+                title={t("viewGrid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
 
-        {/* Empty library */}
-        {isEmptyLibrary && (
-          <LibraryEmptyState variant="empty-library" />
-        )}
-
-        {/* No search/filter results */}
-        {isNoResults && (
-          <LibraryEmptyState
-            variant="no-results"
-            onClearFilters={clearFilters}
-          />
-        )}
-
-        {/* Item list */}
-        {displayResults.length > 0 && (
-          <div className={isTransitioning ? "opacity-60 transition-opacity" : ""}>
-            {params.view === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
-                {displayResults.map((item) => (
-                  <LibraryItemCard
-                    key={item._id}
-                    item={item}
-                    onRemove={handleRemove}
-                    onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
-                  />
-                ))}
-              </div>
-            ) : (
-              displayResults.map((item) => (
-                <LibraryItemRow
-                  key={item._id}
-                  item={item}
-                  isExpanded={expandedItemId === item._id}
-                  onToggleExpand={() => handleToggleExpand(item._id)}
-                  onRemove={handleRemove}
-                  onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
-                />
-              ))
+            {/* Export dropdown -- only visible when there are items to export */}
+            {exportItems && exportItems.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    {t("exportLibrary")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    {t("exportAsCSV")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportJSON}>
+                    {t("exportAsJSON")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
-        )}
 
-        {/* Load more */}
-        {activeResults.status === "CanLoadMore" && (
-          <div className="flex justify-center py-4 border-t border-border/40">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => activeResults.loadMore(20)}
-            >
-              {t("loadMore")}
-            </Button>
+          {/* Content area */}
+          <div className="rounded-lg border border-border/50 bg-background/80 overflow-hidden">
+            {/* Initial loading skeleton */}
+            {isFirstLoad && <LibraryItemSkeleton count={params.view === "grid" ? 6 : 5} viewMode={params.view} />}
+
+            {/* Empty library */}
+            {isEmptyLibrary && (
+              <LibraryEmptyState variant="empty-library" />
+            )}
+
+            {/* No search/filter results */}
+            {isNoResults && (
+              <LibraryEmptyState
+                variant="no-results"
+                onClearFilters={clearFilters}
+              />
+            )}
+
+            {/* Item list */}
+            {displayResults.length > 0 && (
+              <div className={isTransitioning ? "opacity-60 transition-opacity" : ""}>
+                {params.view === "grid" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+                    {displayResults.map((item) => (
+                      <LibraryItemCard
+                        key={item._id}
+                        item={item}
+                        onRemove={handleRemove}
+                        onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  displayResults.map((item) => (
+                    <LibraryItemRow
+                      key={item._id}
+                      item={item}
+                      isExpanded={expandedItemId === item._id}
+                      onToggleExpand={() => handleToggleExpand(item._id)}
+                      onRemove={handleRemove}
+                      onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
+                    />
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Load more */}
+            {activeResults.status === "CanLoadMore" && (
+              <div className="flex justify-center py-4 border-t border-border/40">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => activeResults.loadMore(20)}
+                >
+                  {t("loadMore")}
+                </Button>
+              </div>
+            )}
+
+            {/* Loading more indicator */}
+            {activeResults.status === "LoadingMore" && (
+              <div className="py-3">
+                <LibraryItemSkeleton count={3} viewMode={params.view} />
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Loading more indicator */}
-        {activeResults.status === "LoadingMore" && (
-          <div className="py-3">
-            <LibraryItemSkeleton count={3} viewMode={params.view} />
-          </div>
-        )}
-      </div>
+          {/* Collection management dialog */}
+          <CollectionManager
+            open={collectionManagerOpen}
+            onOpenChange={setCollectionManagerOpen}
+          />
 
-      {/* Collection management dialog */}
-      <CollectionManager
-        open={collectionManagerOpen}
-        onOpenChange={setCollectionManagerOpen}
-      />
-
-      {/* Collection picker dialog */}
-      {collectionPickerItemId && (
-        <CollectionPicker
-          libraryItemId={collectionPickerItemId as Id<"libraryItems">}
-          open={true}
-          onOpenChange={(open) => {
-            if (!open) setCollectionPickerItemId(null);
-          }}
-        />
-      )}
-    </div>
+          {/* Collection picker dialog */}
+          {collectionPickerItemId && (
+            <CollectionPicker
+              libraryItemId={collectionPickerItemId as Id<"libraryItems">}
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) setCollectionPickerItemId(null);
+              }}
+            />
+          )}
+        </div>
+      </PageWrapper>
+    </SidebarLayout>
   );
 }
