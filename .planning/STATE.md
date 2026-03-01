@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-03-01T05:22:15Z"
+last_updated: "2026-03-01T05:38:30.095Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 ## Current Position
 
 Phase: 25 (Collections)
-Plan: 2 of 3 complete
-Status: Plan 02 complete (TDD: assignment mutations + count queries + filtered browse/search). Plan 03 remains.
-Last activity: 2026-03-01 -- Plan 02 completed (collection assignment, counts, filtered queries)
+Plan: 3 of 3 complete
+Status: Phase 25 complete. All 3 plans executed (schema, mutations/queries, UI/i18n). Ready for Phase 26 or 28.
+Last activity: 2026-03-01 -- Plan 03 completed (collection UI, filters, picker, manager, i18n)
 
-Progress: [#############_______] 67% (Phase 25: 2/3 plans)
+Progress: [####################] 100% (Phase 25: 3/3 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 50 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 2)
+- Total plans completed: 51 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 3)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -46,6 +46,7 @@ Progress: [#############_______] 67% (Phase 25: 2/3 plans)
 | v2.1 | 6 | TBD | In progress |
 | Phase 27 P01 | 2min | 2 tasks | 3 files |
 | Phase 27 P02 | 2min | 2 tasks | 5 files |
+| Phase 25 P03 | 8min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ See PROJECT.md Key Decisions table for full log.
 - [25-02] Non-existent/unowned collection filter returns empty results (not error) per RESEARCH Pitfall 5
 - [25-02] Collection filter uses Set-based pre-fetch + convex-helpers filter() for both browse and search
 - [25-02] getCollectionsWithCounts sorts alphabetically by name (case-insensitive)
+- [25-03] CollectionPicker as Dialog (not Popover) to avoid DropdownMenu-to-Popover positioning issues
+- [25-03] Collection filter extends LibraryFilters grid to 4 columns with new FilterSection
+- [25-03] Parent library-page-client manages all dialog open/close state (dialogs don't self-manage)
 
 ### Roadmap Evolution
 
@@ -101,6 +105,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - 25-02 completed (collection assignment, counts, filtered queries)
-Stopped at: Completed 25-02-PLAN.md
+Last activity: 2026-03-01 - 25-03 completed (collection UI, filters, picker, manager, i18n)
+Stopped at: Completed 25-03-PLAN.md (Phase 25 complete)
 Resume file: None

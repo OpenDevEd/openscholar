@@ -70,7 +70,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [x] **Phase 22: Schema & Rating Bridge** - Convex tables, indexes, trimPaperData utility, rating-to-save mutation, anonymous Zustand fallback (completed 2026-02-28)
 - [x] **Phase 23: Core Library Page** - Dedicated /library route with auth gate, paginated item list, search, filter by rating, sort, remove, empty states (completed 2026-02-28)
 - [x] **Phase 24: Advanced Filtering & URL State** - Date saved and publication year filters, nuqs URL persistence for all filter/sort state, view mode switching (completed 2026-02-28)
-- [ ] **Phase 25: Collections** - Collection CRUD, junction table mutations, item-to-collection assignment, filter by collection, item count badges
+- [x] **Phase 25: Collections** - Collection CRUD, junction table mutations, item-to-collection assignment, filter by collection, item count badges (completed 2026-03-01)
 - [ ] **Phase 26: Export & Polish** - CSV/JSON export, mobile responsiveness, i18n for 6 locales, toast feedback on destructive actions
 - [ ] **Phase 28: Bug Fixes & Verification** - Focus-mode rating removal bug, Phase 24 verification, REQUIREMENTS.md traceability corrections
 
@@ -185,7 +185,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 22. Schema & Rating Bridge | 2/2 | Complete    | 2026-02-28 | - |
 | 23. Core Library Page | 2/2 | Complete    | 2026-02-28 | - |
 | 24. Advanced Filtering & URL State | 2/2 | Complete    | 2026-02-28 | - |
-| 25. Collections | 2/3 | In Progress|  | - |
+| 25. Collections | 3/3 | Complete   | 2026-03-01 | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
 | 28. Bug Fixes & Verification | v2.1 | 0/? | Not started | - |
@@ -195,7 +195,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 **Goal:** Redesign all library page components (filters, item cards, grid view) to match the search results page's component patterns and visual quality. Extract shared components (FilterSection, view mode toggle, year range picker) to DRY up duplicate code between search and library pages.
 **Requirements**: FILT-01, FILT-02, FILT-05
 **Depends on:** Phase 24
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] TBD (run /gsd:plan-phase 27 to break down) (completed 2026-03-01)
