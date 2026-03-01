@@ -177,6 +177,6 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34
 | 29. Library Export | v2.1 | 1/1 | Complete | 2026-03-01 |
 | 30. Library Polish | v2.1 | 1/1 | Complete | 2026-03-01 |
 | 31. Generalized Layout Infrastructure | 2/2 | Complete    | 2026-03-01 | - |
-| 32. Search Page Sidebar Refactor | 1/1 | Complete   | 2026-03-01 | - |
+| 32. Search Page Sidebar Refactor | 1/1 | Complete    | 2026-03-01 | - |
 | 33. Library Page UI Overhaul | v2.2 | 0/? | Not started | - |
 | 34. Display Polish and Validation | v2.2 | 0/? | Not started | - |
