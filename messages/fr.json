@@ -1498,6 +1498,10 @@
     "removedFromCollection": "Retire de la collection",
     "collectionItemCount": "{count, plural, =0 {Aucun article} one {1 article} other {# articles}}",
     "saveButton": "Enregistrer",
-    "manageCollectionsTitle": "Gerer les collections"
+    "manageCollectionsTitle": "Gerer les collections",
+    "exportLibrary": "Exporter",
+    "exportAsCSV": "Telecharger en CSV",
+    "exportAsJSON": "Telecharger en JSON",
+    "exportSuccess": "Bibliotheque exportee avec succes"
   }
 }

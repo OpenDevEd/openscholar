@@ -1500,6 +1500,10 @@
     "removedFromCollection": "Removed from collection",
     "collectionItemCount": "{count, plural, =0 {No papers} one {1 paper} other {# papers}}",
     "saveButton": "Save",
-    "manageCollectionsTitle": "Manage Collections"
+    "manageCollectionsTitle": "Manage Collections",
+    "exportLibrary": "Export",
+    "exportAsCSV": "Download as CSV",
+    "exportAsJSON": "Download as JSON",
+    "exportSuccess": "Library exported successfully"
   }
 }

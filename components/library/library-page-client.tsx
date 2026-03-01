@@ -18,8 +18,16 @@ import {
   librarySearchParams,
   savedPresetToTimestamp,
 } from "@/lib/library/search-params";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { exportLibraryAsCSV, exportLibraryAsJSON } from "@/lib/library/export";
 import { LibrarySearchBar } from "./library-search-bar";
 import { LibraryFilters } from "./library-filters";
 import { LibraryItemRow } from "./library-item-row";
@@ -109,6 +117,31 @@ export function LibraryPageClient() {
     {},
   );
 
+  // Export data (non-paginated, all items matching current filters)
+  const { data: exportItems } = useProtectedQuery(
+    api.library.queries.exportLibrary,
+    hasSearchText
+      ? {
+          sortBy: params.sort,
+          sortOrder: params.order,
+          minRating,
+          savedAfter,
+          yearFrom,
+          yearTo,
+          collectionId: collectionId as Id<"collections"> | undefined,
+          searchText: debouncedSearch,
+        }
+      : {
+          sortBy: params.sort,
+          sortOrder: params.order,
+          minRating,
+          savedAfter,
+          yearFrom,
+          yearTo,
+          collectionId: collectionId as Id<"collections"> | undefined,
+        },
+  );
+
   // Removal mutation
   const removeItem = useMutation(api.library.mutations.removeFromLibrary);
   const { setRating } = useRatingsStore();
@@ -153,6 +186,21 @@ export function LibraryPageClient() {
     });
   }, [setParams]);
 
+  // Export handlers
+  const handleExportCSV = useCallback(() => {
+    if (exportItems && exportItems.length > 0) {
+      exportLibraryAsCSV(exportItems);
+      toast.success(t("exportSuccess"));
+    }
+  }, [exportItems, t]);
+
+  const handleExportJSON = useCallback(() => {
+    if (exportItems && exportItems.length > 0) {
+      exportLibraryAsJSON(exportItems);
+      toast.success(t("exportSuccess"));
+    }
+  }, [exportItems, t]);
+
   // Determine display results (stale-while-revalidate)
   const displayResults =
     activeResults.isInitialLoading && lastResultsRef.current.length > 0
@@ -188,6 +236,25 @@ export function LibraryPageClient() {
           <Badge variant="secondary" className="text-xs">
             {t("paperCount", { count: totalCount })}
           </Badge>
+        )}
+        {/* Export dropdown -- only visible when there are items to export */}
+        {exportItems && exportItems.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="ml-auto">
+                <Download className="h-4 w-4 mr-2" />
+                {t("exportLibrary")}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportCSV}>
+                {t("exportAsCSV")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON}>
+                {t("exportAsJSON")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 

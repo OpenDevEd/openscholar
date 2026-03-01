@@ -1498,6 +1498,10 @@
     "removedFromCollection": "संग्रह से हटाया गया",
     "collectionItemCount": "{count, plural, =0 {कोई पत्र नहीं} one {1 पत्र} other {# पत्र}}",
     "saveButton": "सहेजें",
-    "manageCollectionsTitle": "संग्रह प्रबंधित करें"
+    "manageCollectionsTitle": "संग्रह प्रबंधित करें",
+    "exportLibrary": "निर्यात",
+    "exportAsCSV": "CSV के रूप में डाउनलोड करें",
+    "exportAsJSON": "JSON के रूप में डाउनलोड करें",
+    "exportSuccess": "लाइब्रेरी सफलतापूर्वक निर्यात की गई"
   }
 }
