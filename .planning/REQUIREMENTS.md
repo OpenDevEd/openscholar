@@ -27,9 +27,9 @@ Requirements for Library UI Overhaul milestone. Each maps to roadmap phases.
 
 ### Display & Navigation
 
-- [ ] **DISP-01**: User can sort library items via dropdown (date saved, year, rating, title)
-- [ ] **DISP-02**: Sort options are disabled/hidden when text search is active (relevance ordering from search index)
-- [ ] **DISP-03**: Pagination displays result counts ("X-Y of Z papers") with prev/next navigation
+- [x] **DISP-01**: User can sort library items via dropdown (date saved, year, rating, title)
+- [x] **DISP-02**: Sort options are disabled/hidden when text search is active (relevance ordering from search index)
+- [x] **DISP-03**: Pagination displays result counts ("X-Y of Z papers") with prev/next navigation
 - [ ] **DISP-04**: Rating is visually displayed on each library item row and card
 - [ ] **DISP-05**: User can toggle between list and grid view modes
 
@@ -92,9 +92,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FLTR-06 | Phase 33 | Complete |
 | FLTR-07 | Phase 33 | Complete |
 | FLTR-08 | Phase 33 | Complete |
-| DISP-01 | Phase 34 | Pending |
-| DISP-02 | Phase 34 | Pending |
-| DISP-03 | Phase 34 | Pending |
+| DISP-01 | Phase 34 | Complete |
+| DISP-02 | Phase 34 | Complete |
+| DISP-03 | Phase 34 | Complete |
 | DISP-04 | Phase 34 | Pending |
 | DISP-05 | Phase 34 | Pending |
 | DRY-01 | Phase 31 | Complete |
