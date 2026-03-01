@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, and a comprehensive test suite covering billing, AI, search, export, and auth domains.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite, and a persistent library for organizing and managing rated papers with collections.
 
 ## Core Value
 
@@ -43,17 +43,16 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ CSV/JSON export, citation helper, and download output tests — v2.0
 - ✓ Auth state machine, user creation atomicity, and profile sync guard tests — v2.0
 - ✓ Plan config, tier enforcement, feature flag, and subscription selection tests — v2.0
+- ✓ Rating saves/upserts to Convex library with slim 10-field metadata — v2.1
+- ✓ Dedicated /library page with search, filter, sort, pagination, auth gate — v2.1
+- ✓ Collection CRUD with junction table many-to-many and cascade delete — v2.1
+- ✓ Advanced filtering (date saved, year range, collection) with URL state via nuqs — v2.1
+- ✓ CSV/JSON export with filter-aware subset export — v2.1
+- ✓ Mobile responsive library with 6-locale i18n and toast feedback — v2.1
 
 ### Active
 
-**Current Milestone: v2.1 Library & Collections**
-
-- [ ] Rating an item saves it to user's library (full JSON entry in Convex)
-- [ ] Dedicated /library page with full filtering (rating, collection, date saved, search, sort)
-- [ ] Collection CRUD — users can create, rename, delete collections
-- [ ] Items can belong to multiple collections
-- [ ] Users can remove items from their library
-- [ ] Auth-gated — library only available to signed-in users
+(No active milestone — run `/gsd:new-milestone` to start next)
 
 ### Out of Scope
 
@@ -65,15 +64,22 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - Automating Stripe Checkout card entry — Stripe actively blocks automated testing of hosted checkout
 - Visual regression / screenshot tests — separate concern, notoriously flaky
 - `convex-test` end-to-end auth-gated functions — blocked by convex-test issue #50
+- Nested/hierarchical collections — flat collections sufficient for now
+- Tags separate from collections — parallel system confuses users
+- Smart collections / saved searches — requires continuous query engine
+- PDF storage and annotation — users have Zotero for this
+- Citation formatting / BibTeX export — entire product category; Zotero handles this
+- Collaborative/shared libraries — requires permission models; v3+ at earliest
+- localStorage migration on first sign-in — nice-to-have, not blocking
 
 ## Context
 
-Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), and v2.0 (91 files, +14,768/-100).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), Playwright, Vitest.
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`.
+Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), v2.0 (91 files, +14,768/-100), and v2.1 (258 files, +37,922/-3,469).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Playwright, Vitest.
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`.
 Test suite: 60+ Vitest test files covering unit tests across 7 domains, Playwright billing E2E suite (6 spec files, 11 tests).
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
-TOCTOU credit deduction race documented — mitigation triggers on observed incident in prod.
+Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export.
 
 ## Constraints
 
@@ -107,17 +113,13 @@ TOCTOU credit deduction race documented — mitigation triggers on observed inci
 | toBeCloseTo for cost assertions | IEEE 754 floating-point precision | ✓ Good — no false failures |
 | Representative models per provider | Avoid brittle snapshot of all 40+ models | ✓ Good — maintainable |
 | Mock at module boundary (vi.mock) | Tests batch orchestration independent of AI SDK | ✓ Good — fast, isolated |
-
-## Current Milestone: v2.1 Library & Collections
-
-**Goal:** Persistent server-side library where rating items auto-saves them, with collections and full filtering on a dedicated page.
-
-**Target features:**
-- Auto-save rated items to Convex-backed library (full JSON)
-- Dedicated /library page with filtering by rating, collection, date saved, text search, and sort
-- Collection management (create, rename, delete, assign items to multiple)
-- Remove items from library
-- Auth-gated (signed-in users only)
+| Slim typed fields for libraryItems | Enforces 1-2 KB at schema level, not runtime | ✓ Good — clean normalized storage |
+| Dual-path query (search + browse) | Search index for relevance, regular indexes for custom sort | ✓ Good — optimal for both use cases |
+| Junction table for collections | Many-to-many without array field limitations | ✓ Good — cascade delete, count queries |
+| Fire-and-forget mutation for rating saves | Zustand optimistic, Convex failure logged but never blocks UI | ✓ Good — responsive UX |
+| nuqs for URL state persistence | Bookmarkable filtered views, framework-native | ✓ Good — zero client-side state management |
+| Shared FilterSection component | DRY between search and library pages | ✓ Good — consistent UX, single source of truth |
+| Async toast pattern for destructive actions | .then/.catch replaces fire-and-forget for user feedback | ✓ Good — clear success/error feedback |
 
 ---
-*Last updated: 2026-02-28 after v2.1 milestone started*
+*Last updated: 2026-03-01 after v2.1 milestone*

@@ -81,3 +81,27 @@
 
 ---
 
+
+## v2.1 Library & Collections (Shipped: 2026-03-01)
+
+**Phases completed:** 8 phases, 15 plans
+**Files changed:** 258 files, +37,922/-3,469 lines
+**Timeline:** 2 days (2026-02-28 → 2026-03-01)
+
+**Key accomplishments:**
+- Persistent server-side library with auto-save on rating: Convex upsert mutation, trimmed 10-field metadata, dual-path query strategy (search index for relevance, regular indexes for custom sort)
+- Dedicated /library page with search, filter by rating/date/year/collection, sort by 3 fields, server-side pagination, auth gate, and empty states
+- Collection CRUD with many-to-many junction table, cascade delete, item count badges, and collection-filtered browsing
+- Advanced filtering with URL state persistence via nuqs — bookmarkable/shareable filtered views with debounced search
+- CSV/JSON export supporting filter-aware subset export, reusing existing export utilities
+- Mobile responsive layout with 44px touch targets, 6-locale i18n with French diacritic audit, toast feedback on all destructive actions
+- Shared FilterSection component extracted from search page for DRY cross-page filtering
+
+**Audit:** 28/28 requirements, 8/8 phases, 28/28 integrations, 7/7 E2E flows — PASSED
+
+**Tech debt carried forward:**
+- 3 pre-existing TypeScript errors in test files (from earlier milestones)
+- Export in search mode returns relevance order, not user sort (by design)
+
+---
+

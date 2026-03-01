@@ -188,6 +188,56 @@
 
 ---
 
+## Milestone: v2.1 — Library & Collections
+
+**Shipped:** 2026-03-01
+**Phases:** 8 | **Plans:** 15 | **Commits:** ~181
+
+### What Was Built
+- Persistent server-side library with auto-save on rating (Convex upsert, trimmed 10-field metadata)
+- Dedicated /library page with search, filter by rating/date/year/collection, sort, pagination, auth gate
+- Collection CRUD with junction table many-to-many, cascade delete, item count badges
+- Advanced filtering with URL state persistence via nuqs (bookmarkable/shareable views)
+- Shared FilterSection component extracted for DRY cross-page filtering
+- CSV/JSON export with filter-aware subset export reusing existing utilities
+- Mobile responsive layout with 44px touch targets, 6-locale i18n, toast feedback on all destructive actions
+
+### What Worked
+- Phase 26 superseded cleanly: audit identified unexecuted phase, gap closure phases 29-30 delivered its requirements more efficiently
+- Dual-path query strategy (search index vs regular indexes) handled all filtering/sorting combinations correctly
+- Junction table pattern for collections enabled clean cascade deletes and count queries
+- Shared component extraction (Phase 27) eliminated duplicate FilterSection code between search and library pages
+- Fire-and-forget mutation pattern kept rating UX instant while Convex synced in background
+- nuqs URL state replaced all local useState for filters — zero additional state management needed
+- French diacritics audit (Phase 30) caught 15+ keys beyond the 8 planned
+
+### What Was Inefficient
+- Phase 26 planned but never executed — should have been removed from roadmap earlier instead of being superseded by gap closure phases
+- Some SUMMARY.md files lacked one_liner fields (same issue as v2.0)
+- STATE.md accumulated verbose per-plan execution metrics that should have been consolidated per-phase
+
+### Patterns Established
+- Async toast pattern (.then/.catch) for destructive mutations — replaces fire-and-forget for user feedback
+- Debounce bridge pattern: rawSearch (local useState) syncs to URL param via useEffect after 300ms debounce
+- null vs undefined convention: nuqs uses null to clear params, Convex uses undefined for optional args
+- CollectionPicker as Dialog (not Popover) to avoid DropdownMenu-to-Popover positioning issues
+- Set-based pre-fetch + convex-helpers filter() for collection filtering on both browse and search paths
+- 44px mobile touch targets with sm: reset to preserve compact desktop layout
+
+### Key Lessons
+1. Junction tables are the correct pattern for many-to-many in Convex — array fields on documents create cascade delete complexity
+2. Superseded phases should be removed from the roadmap immediately, not left as strikethrough entries
+3. Shared component extraction is best done early (after patterns stabilize) — Phase 27 was a clean refactor because the search page patterns were well-established
+4. nuqs URL state management eliminates entire categories of state sync bugs — prefer URL state over local state for filterable views
+5. Export queries should use non-paginated .collect() when item limits are known and acceptable (1024 cap)
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: ~3 sessions across 2 days
+- Notable: 15 plans in 2 days — largest feature milestone (258 files changed, +37K LOC)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -198,13 +248,16 @@
 | v1.1 | 25 | 3 | 6 | 2min | Dual-path convergence, i18n integration |
 | v1.2 | ~50 | 7 | 11 | 1.5min | Auto-advance pipeline, 3-source audit |
 | v2.0 | 63 | 8 | 17 | ~2min | TDD patterns, pure function extraction, vi.mock/resetModules |
+| v2.1 | ~181 | 8 | 15 | ~2min | Library feature build, shared components, nuqs URL state, junction tables |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Always re-fetch from Stripe API before syncing — event payloads and local DB can be stale (v1.0 + v1.1)
 2. ROADMAP.md/REQUIREMENTS.md checkboxes not updating during execution — recurring process gap (v1.0 + v1.1 + v1.2 + v2.0)
-3. Audit-first approach prevents regressions and catches orphaned code (v1.0 audit, v1.1 i18n key catch, v1.2 gap closures)
+3. Audit-first approach prevents regressions and catches orphaned code (v1.0 audit, v1.1 i18n key catch, v1.2 gap closures, v2.1 Phase 26 supersession)
 4. Discuss-phase before planning catches design decisions early — skipping it leads to reactive gap closure phases (v1.2)
 5. CI env preflight validation must be comprehensive — partial coverage causes confusing runtime failures (v1.2)
 6. Pure function extraction is the best mitigation for framework test tooling bugs — test the logic, not the framework (v2.0)
 7. Module-load-time env vars require vi.resetModules() + dynamic import — vi.stubEnv alone is insufficient (v2.0)
+8. Junction tables for many-to-many in Convex — array fields create cascade delete complexity (v2.1)
+9. URL state (nuqs) over local state for filterable views — eliminates sync bugs and enables bookmarkable views (v2.1)
