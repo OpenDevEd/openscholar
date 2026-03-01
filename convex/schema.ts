@@ -656,4 +656,29 @@ export default defineSchema({
       searchField: "searchableText",
       filterFields: ["userId", "rating"],
     }),
+
+  // ═══════════════════════════════════════════════════════════════
+  // COLLECTIONS - Named groups for organizing library items
+  // ═══════════════════════════════════════════════════════════════
+  collections: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many
+  // ═══════════════════════════════════════════════════════════════
+  libraryItemCollections: defineTable({
+    userId: v.id("users"),
+    collectionId: v.id("collections"),
+    libraryItemId: v.id("libraryItems"),
+    assignedAt: v.number(),
+  })
+    .index("by_collection", ["collectionId"])
+    .index("by_item", ["libraryItemId"])
+    .index("by_collection_item", ["collectionId", "libraryItemId"])
+    .index("by_user", ["userId"]),
 });
