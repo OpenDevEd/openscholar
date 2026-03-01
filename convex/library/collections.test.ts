@@ -178,7 +178,7 @@ describe("renameCollection", () => {
 
     const updated = await t.run(async (ctx) => {
       return await ctx.db.get(collection!._id);
-    });
+    }) as any;
 
     expect(updated!.name).toBe("New Name");
     expect(updated!.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt);
@@ -291,7 +291,7 @@ describe("deleteCollection", () => {
     // Library item should still exist
     const existingItem = await t.run(async (ctx) => {
       return await ctx.db.get(item!._id);
-    });
+    }) as any;
 
     expect(existingItem).not.toBeNull();
     expect(existingItem!.title).toBe("Default Title");
@@ -417,7 +417,7 @@ describe("removeFromLibrary cascade", () => {
     // Collection should still exist
     const existingCollection = await t.run(async (ctx) => {
       return await ctx.db.get(collection!._id);
-    });
+    }) as any;
 
     expect(existingCollection).not.toBeNull();
     expect(existingCollection!.name).toBe("My Collection");

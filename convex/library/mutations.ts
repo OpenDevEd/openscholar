@@ -69,6 +69,14 @@ export const removeFromLibraryByOpenalexId = mutation({
       .unique();
 
     if (item) {
+      // Cascade-delete junction rows (collection memberships)
+      const memberships = await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
+        .collect();
+      for (const m of memberships) {
+        await ctx.db.delete(m._id);
+      }
       await ctx.db.delete(item._id);
     }
     return null;
@@ -89,6 +97,15 @@ export const removeFromLibrary = mutation({
     }
     if (item.userId !== user._id) {
       throw createError("FORBIDDEN", "Not your library item");
+    }
+
+    // Cascade-delete junction rows (collection memberships)
+    const memberships = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_item", (q) => q.eq("libraryItemId", args.itemId))
+      .collect();
+    for (const m of memberships) {
+      await ctx.db.delete(m._id);
     }
 
     await ctx.db.delete(args.itemId);
