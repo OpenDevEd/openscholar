@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-02-28T23:43:54.120Z"
+last_updated: "2026-03-01T00:09:40.595Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 8
+  completed_plans: 7
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 24 of 26 (Advanced Filtering & URL State) -- IN PROGRESS
+Phase: 27 of 27 (Library UI Redesign) -- IN PROGRESS
 Plan: 1 of 2 complete
-Status: Plan 01 complete (URL state foundation + Convex query filters), Plan 02 next (filter UI controls)
-Last activity: 2026-02-28 -- Completed Plan 01 (URL state foundation with nuqs parsers, Convex query filters, useQueryStates migration)
+Status: Plan 01 complete (shared FilterSection extraction + OA_STATUS_COLORS), Plan 02 next (library filter/card redesign)
+Last activity: 2026-03-01 -- Completed Plan 01 (shared FilterSection component + OA_STATUS_COLORS constant consolidation)
 
-Progress: [##########..........] 50% (v2.1: 5/6 plans in Phases 22-24)
+Progress: [##########..........] 50% (Phase 27: 1/2 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 46 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5)
+- Total plans completed: 47 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 1)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -44,6 +44,7 @@ Progress: [##########..........] 50% (v2.1: 5/6 plans in Phases 22-24)
 | v1.2 | 7 | 11 | 2026-02-28 |
 | v2.0 | 8 | 17 | 2026-02-28 |
 | v2.1 | 6 | TBD | In progress |
+| Phase 27 P01 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ See PROJECT.md Key Decisions table for full log.
 - [23-02] Added removeFromLibraryByOpenalexId mutation for RatingSelector to delete by openalexId (doesn't know Convex _id)
 - [24-01] Debounce bridge pattern: rawSearch (local useState) syncs to URL param q via useEffect after 300ms debounce
 - [24-01] null vs undefined convention: nuqs uses null to clear params, Convex uses undefined for optional args -- conversion at derivation point
+- [27-01] Exact 1:1 copy of FilterSection to shared module preserving all motion animations for zero visual regression
+- [27-01] X icon import kept in search-sidebar.tsx (used by collapsed sidebar clear-all buttons, not only FilterSection)
 
 ### Roadmap Evolution
 
@@ -89,6 +92,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-02-28 - Completed 24-01-PLAN.md (URL state foundation with nuqs parsers, Convex query filters, useQueryStates migration)
-Stopped at: Phase 24 Plan 01 complete, Plan 02 next (filter UI controls)
+Last activity: 2026-03-01 - Completed 27-01-PLAN.md (shared FilterSection extraction + OA_STATUS_COLORS consolidation)
+Stopped at: Phase 27 Plan 01 complete, Plan 02 next (library filter/card redesign)
 Resume file: None
