@@ -1508,5 +1508,12 @@
     "deleteCollectionError": "删除收藏夹失败",
     "removeFromCollectionError": "从收藏夹移除失败",
     "addToCollectionError": "添加到收藏夹失败"
+  },
+  "sidebarLayout": {
+    "expandFilters": "展开筛选器 (Ctrl+Shift+F)",
+    "collapseFilters": "收起筛选器 (Ctrl+Shift+F)",
+    "clearAllFilters": "清除所有筛选器",
+    "clearAllCount": "全部清除 ({count})",
+    "activeFilters": "{count, plural, other {#个活跃筛选器}}"
   }
 }

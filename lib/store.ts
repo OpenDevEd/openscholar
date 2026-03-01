@@ -1148,6 +1148,45 @@ export const getFilterSidebarDimensions = (isCollapsed: boolean) => ({
   currentWidth: isCollapsed ? FILTER_SIDEBAR_WIDTH_COLLAPSED : FILTER_SIDEBAR_WIDTH_EXPANDED,
 });
 
+/**
+ * Factory for creating independent sidebar collapse stores.
+ * Each page gets its own store instance with separate localStorage persistence.
+ * Usage: const useMyStore = createSidebarStore('my-persist-key');
+ */
+export function createSidebarStore(persistKey: string) {
+  return create<FilterSidebarState>()(
+    persist(
+      (set) => ({
+        isCollapsed: false,
+        _hasHydrated: false,
+        setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
+        toggle: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
+        setHasHydrated: (state) => set({ _hasHydrated: state }),
+      }),
+      {
+        name: persistKey,
+        storage: createJSONStorage(() => localStorage),
+        partialize: (state) => ({ isCollapsed: state.isCollapsed }),
+        onRehydrateStorage: () => (state) => {
+          state?.setHasHydrated(true);
+        },
+      }
+    )
+  );
+}
+
+/**
+ * Factory for creating sidebar dimension calculators.
+ * Returns a function that computes current dimensions based on collapse state.
+ */
+export function createSidebarDimensions(expandedWidth: number, collapsedWidth: number) {
+  return (isCollapsed: boolean) => ({
+    expandedWidth,
+    collapsedWidth,
+    currentWidth: isCollapsed ? collapsedWidth : expandedWidth,
+  });
+}
+
 // Extraction citation panel store
 const EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED = 460;
 const EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED = 48;

@@ -1508,5 +1508,12 @@
     "deleteCollectionError": "Failed to delete collection",
     "removeFromCollectionError": "Failed to remove from collection",
     "addToCollectionError": "Failed to add to collection"
+  },
+  "sidebarLayout": {
+    "expandFilters": "Expand filters (Ctrl+Shift+F)",
+    "collapseFilters": "Collapse filters (Ctrl+Shift+F)",
+    "clearAllFilters": "Clear All Filters",
+    "clearAllCount": "Clear All ({count})",
+    "activeFilters": "{count, plural, one {# active filter} other {# active filters}}"
   }
 }

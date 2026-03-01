@@ -1508,5 +1508,12 @@
     "deleteCollectionError": "コレクションの削除に失敗しました",
     "removeFromCollectionError": "コレクションからの削除に失敗しました",
     "addToCollectionError": "コレクションへの追加に失敗しました"
+  },
+  "sidebarLayout": {
+    "expandFilters": "フィルターを展開 (Ctrl+Shift+F)",
+    "collapseFilters": "フィルターを折りたたむ (Ctrl+Shift+F)",
+    "clearAllFilters": "すべてのフィルターをクリア",
+    "clearAllCount": "すべてクリア ({count})",
+    "activeFilters": "{count, plural, other {#件のアクティブフィルター}}"
   }
 }

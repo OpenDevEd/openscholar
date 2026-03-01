@@ -1508,5 +1508,12 @@
     "deleteCollectionError": "संग्रह हटाने में विफल",
     "removeFromCollectionError": "संग्रह से हटाने में विफल",
     "addToCollectionError": "संग्रह में जोड़ने में विफल"
+  },
+  "sidebarLayout": {
+    "expandFilters": "फ़िल्टर दिखाएं (Ctrl+Shift+F)",
+    "collapseFilters": "फ़िल्टर छुपाएं (Ctrl+Shift+F)",
+    "clearAllFilters": "सभी फ़िल्टर साफ़ करें",
+    "clearAllCount": "सभी साफ़ करें ({count})",
+    "activeFilters": "{count, plural, one {# सक्रिय फ़िल्टर} other {# सक्रिय फ़िल्टर}}"
   }
 }

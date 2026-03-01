@@ -1508,5 +1508,12 @@
     "deleteCollectionError": "Échec de la suppression de la collection",
     "removeFromCollectionError": "Échec du retrait de la collection",
     "addToCollectionError": "Échec de l'ajout à la collection"
+  },
+  "sidebarLayout": {
+    "expandFilters": "Afficher les filtres (Ctrl+Shift+F)",
+    "collapseFilters": "Masquer les filtres (Ctrl+Shift+F)",
+    "clearAllFilters": "Effacer tous les filtres",
+    "clearAllCount": "Tout effacer ({count})",
+    "activeFilters": "{count, plural, one {# filtre actif} other {# filtres actifs}}"
   }
 }
