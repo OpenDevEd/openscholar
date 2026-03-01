@@ -239,7 +239,7 @@ Plans:
   1. Library page and collection dialogs render correctly on mobile viewports (no overflow, touch-friendly targets)
   2. All library and collection UI strings appear correctly in all 6 supported locales
   3. Removing an item from library, deleting a collection, and removing an item from a collection each show toast feedback (success and error)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 30-01: TBD
+- [ ] 30-01-PLAN.md -- Toast feedback + i18n completeness + mobile responsive CSS
