@@ -131,12 +131,12 @@ Plans:
   3. User can filter the library view by collection to see only items in that collection
   4. Each collection displays a badge showing its current item count
   5. Collection membership uses a junction table (libraryItemCollections) -- not array fields
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 25-01: TBD
-- [ ] 25-02: TBD
-- [ ] 25-03: TBD
+- [ ] 25-01-PLAN.md -- TDD: Schema tables (collections + junction), collection CRUD mutations, cascade delete
+- [ ] 25-02-PLAN.md -- TDD: Collection assignment mutations, count/membership queries, collection-filtered browse/search, URL param
+- [ ] 25-03-PLAN.md -- Collection UI: filter dropdown, management dialog, collection picker, i18n (6 locales), human verification
 
 ### Phase 26: Export & Polish
 **Goal**: Library is production-ready with export, mobile support, full i18n, and polished feedback on all destructive actions
