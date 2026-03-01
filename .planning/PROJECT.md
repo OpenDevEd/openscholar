@@ -52,7 +52,16 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start next)
+## Current Milestone: v2.2 Library UI Overhaul
+
+**Goal:** Complete UI overhaul of the library page — adopt the search page's two-column sidebar layout, reuse the filter sidebar (DRY), and align with existing design patterns across the app.
+
+**Target features:**
+- Two-column layout with collapsible filter sidebar (matching search page)
+- Reuse SearchSidebar / FilterSection components for library filters
+- Mobile responsive with tab-based filter view (matching search page)
+- Unified design language across search, library, and bookmarks pages
+- Command center toolbar pattern for library actions
 
 ### Out of Scope
 
@@ -122,4 +131,4 @@ Library: Convex-backed with dual-path query (search index + regular indexes), ju
 | Async toast pattern for destructive actions | .then/.catch replaces fire-and-forget for user feedback | ✓ Good — clear success/error feedback |
 
 ---
-*Last updated: 2026-03-01 after v2.1 milestone*
+*Last updated: 2026-03-01 after v2.2 milestone started*

@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.1
-milestone_name: Library & Collections
-status: complete
+milestone: v2.2
+milestone_name: Library UI Overhaul
+status: requirements
 last_updated: "2026-03-01"
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,15 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v2.2 Library UI Overhaul
 
 ## Current Position
 
-Phase: v2.1 complete
-Status: Milestone v2.1 Library & Collections shipped 2026-03-01
-Last activity: 2026-03-01 — Milestone archived, tagged v2.1
-
-Progress: [####################] 100% (v2.1: 8/8 phases, 15/15 plans)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-01 — Milestone v2.2 started
 
 ## Performance Metrics
 
@@ -60,18 +59,11 @@ None.
 
 ### Blockers/Concerns
 
-- 9 human verification items pending Stripe test mode validation (from v1.1)
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
 - convex-test issue #50 (getUserIdentity bug) blocks auth-gated end-to-end testing
 
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 1 | currently screening deducts points for each item, but translation does not, translation should be the same | 2026-02-28 | 3dcf772 | [1-currently-screening-deducts-points-for-e](./quick/1-currently-screening-deducts-points-for-e/) |
-
 ## Session Continuity
 
-Last activity: 2026-03-01 - v2.1 milestone archived and tagged
-Stopped at: Milestone complete
+Last activity: 2026-03-01 - v2.2 milestone started
+Stopped at: Defining requirements
 Resume file: None
