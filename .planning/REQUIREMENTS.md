@@ -80,35 +80,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LAYOUT-01 | — | Pending |
-| LAYOUT-02 | — | Pending |
-| LAYOUT-03 | — | Pending |
-| LAYOUT-04 | — | Pending |
-| FLTR-01 | — | Pending |
-| FLTR-02 | — | Pending |
-| FLTR-03 | — | Pending |
-| FLTR-04 | — | Pending |
-| FLTR-05 | — | Pending |
-| FLTR-06 | — | Pending |
-| FLTR-07 | — | Pending |
-| FLTR-08 | — | Pending |
-| DISP-01 | — | Pending |
-| DISP-02 | — | Pending |
-| DISP-03 | — | Pending |
-| DISP-04 | — | Pending |
-| DISP-05 | — | Pending |
-| DRY-01 | — | Pending |
-| DRY-02 | — | Pending |
-| DRY-03 | — | Pending |
-| DRY-04 | — | Pending |
-| DRY-05 | — | Pending |
-| DRY-06 | — | Pending |
+| LAYOUT-01 | Phase 33 | Pending |
+| LAYOUT-02 | Phase 33 | Pending |
+| LAYOUT-03 | Phase 33 | Pending |
+| LAYOUT-04 | Phase 33 | Pending |
+| FLTR-01 | Phase 33 | Pending |
+| FLTR-02 | Phase 33 | Pending |
+| FLTR-03 | Phase 33 | Pending |
+| FLTR-04 | Phase 33 | Pending |
+| FLTR-05 | Phase 33 | Pending |
+| FLTR-06 | Phase 33 | Pending |
+| FLTR-07 | Phase 33 | Pending |
+| FLTR-08 | Phase 33 | Pending |
+| DISP-01 | Phase 34 | Pending |
+| DISP-02 | Phase 34 | Pending |
+| DISP-03 | Phase 34 | Pending |
+| DISP-04 | Phase 34 | Pending |
+| DISP-05 | Phase 34 | Pending |
+| DRY-01 | Phase 31 | Pending |
+| DRY-02 | Phase 31 | Pending |
+| DRY-03 | Phase 32 | Pending |
+| DRY-04 | Phase 33 | Pending |
+| DRY-05 | Phase 31 | Pending |
+| DRY-06 | Phase 31 | Pending |
 
 **Coverage:**
 - v2.2 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-01*
-*Last updated: 2026-03-01 after initial definition*
+*Last updated: 2026-03-01 after roadmap creation*

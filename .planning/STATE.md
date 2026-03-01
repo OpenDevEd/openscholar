@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Library UI Overhaul
-status: requirements
+status: roadmap_complete
 last_updated: "2026-03-01"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-01)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Defining requirements for v2.2 Library UI Overhaul
+**Current focus:** Phase 31 -- Generalized Layout Infrastructure
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-01 — Milestone v2.2 started
+Phase: 31 of 34 (Generalized Layout Infrastructure)
+Plan: 0 of ? in current phase
+Status: Ready to plan
+Last activity: 2026-03-01 -- Roadmap created for v2.2 Library UI Overhaul
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -42,16 +44,19 @@ Last activity: 2026-03-01 — Milestone v2.2 started
 | v1.2 | 7 | 11 | 2026-02-28 |
 | v2.0 | 8 | 17 | 2026-02-28 |
 | v2.1 | 8 | 15 | 2026-03-01 |
+| v2.2 | 4 | ? | — |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
+Recent: SharedFilterSection component (DRY between search/library), nuqs for URL state, dual-path Convex queries.
 
 ### Roadmap Evolution
 
-(Clean slate — next milestone will define new phases)
+v2.2 roadmap: 4 phases (31-34) covering 23 requirements across LAYOUT, FLTR, DISP, DRY categories.
+Build order: infrastructure -> search refactor (prove pattern) -> library overhaul (primary goal) -> display polish.
 
 ### Pending Todos
 
@@ -60,10 +65,10 @@ None.
 ### Blockers/Concerns
 
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
-- convex-test issue #50 (getUserIdentity bug) blocks auth-gated end-to-end testing
+- Phase 33 needs filter availability matrix before implementation (which Convex query path supports which filter/sort combos)
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - v2.2 milestone started
-Stopped at: Defining requirements
+Last activity: 2026-03-01 -- v2.2 roadmap created
+Stopped at: Roadmap complete, ready to plan Phase 31
 Resume file: None
