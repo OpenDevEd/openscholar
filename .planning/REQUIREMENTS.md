@@ -9,10 +9,10 @@ Requirements for Library UI Overhaul milestone. Each maps to roadmap phases.
 
 ### Layout & Responsive Design
 
-- [ ] **LAYOUT-01**: Library page uses two-column layout with filter sidebar on left and content area on right
+- [x] **LAYOUT-01**: Library page uses two-column layout with filter sidebar on left and content area on right
 - [x] **LAYOUT-02**: Filter sidebar is collapsible on desktop with toggle button and smooth animation
-- [ ] **LAYOUT-03**: Library page uses tab-based interface on mobile (Results/Filters tabs) matching search page pattern
-- [ ] **LAYOUT-04**: Sidebar is sticky on desktop so filters remain visible while scrolling content
+- [x] **LAYOUT-03**: Library page uses tab-based interface on mobile (Results/Filters tabs) matching search page pattern
+- [x] **LAYOUT-04**: Sidebar is sticky on desktop so filters remain visible while scrolling content
 
 ### Filter Sidebar
 
@@ -23,7 +23,7 @@ Requirements for Library UI Overhaul milestone. Each maps to roadmap phases.
 - [x] **FLTR-05**: User can search within library items using text search in sidebar
 - [x] **FLTR-06**: Active filter count badge displays on sidebar header
 - [x] **FLTR-07**: User can clear all active filters with a single button
-- [ ] **FLTR-08**: All filter state persists in URL via nuqs (bookmarkable, survives reload)
+- [x] **FLTR-08**: All filter state persists in URL via nuqs (bookmarkable, survives reload)
 
 ### Display & Navigation
 
@@ -38,7 +38,7 @@ Requirements for Library UI Overhaul milestone. Each maps to roadmap phases.
 - [x] **DRY-01**: SidebarLayout component generalizes two-column desktop + mobile tabs pattern for reuse across pages
 - [x] **DRY-02**: FilterSidebar component provides generic sidebar chrome (title, collapse toggle, active count badge, clear button, content slot)
 - [x] **DRY-03**: Search page refactored to use SidebarLayout + SearchFilterSidebar (replacing monolithic SearchSidebar)
-- [ ] **DRY-04**: Library page uses same SidebarLayout + LibraryFilterSidebar composition
+- [x] **DRY-04**: Library page uses same SidebarLayout + LibraryFilterSidebar composition
 - [x] **DRY-05**: All new shared components have full i18n support across 6 locales
 - [x] **DRY-06**: FilterSection component reused by both search and library filter panels (no duplication)
 
@@ -80,10 +80,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LAYOUT-01 | Phase 33 | Pending |
+| LAYOUT-01 | Phase 33 | Complete |
 | LAYOUT-02 | Phase 33 | Complete |
-| LAYOUT-03 | Phase 33 | Pending |
-| LAYOUT-04 | Phase 33 | Pending |
+| LAYOUT-03 | Phase 33 | Complete |
+| LAYOUT-04 | Phase 33 | Complete |
 | FLTR-01 | Phase 33 | Complete |
 | FLTR-02 | Phase 33 | Complete |
 | FLTR-03 | Phase 33 | Complete |
@@ -91,7 +91,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FLTR-05 | Phase 33 | Complete |
 | FLTR-06 | Phase 33 | Complete |
 | FLTR-07 | Phase 33 | Complete |
-| FLTR-08 | Phase 33 | Pending |
+| FLTR-08 | Phase 33 | Complete |
 | DISP-01 | Phase 34 | Pending |
 | DISP-02 | Phase 34 | Pending |
 | DISP-03 | Phase 34 | Pending |
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DRY-01 | Phase 31 | Complete |
 | DRY-02 | Phase 31 | Complete |
 | DRY-03 | Phase 32 | Complete |
-| DRY-04 | Phase 33 | Pending |
+| DRY-04 | Phase 33 | Complete |
 | DRY-05 | Phase 31 | Complete |
 | DRY-06 | Phase 31 | Complete |
 
