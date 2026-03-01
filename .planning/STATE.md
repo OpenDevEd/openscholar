@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Library & Collections
 status: unknown
-last_updated: "2026-03-01T06:29:19.450Z"
+last_updated: "2026-03-01T07:00:45Z"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 ## Current Position
 
-Phase: 28 (Bug Fixes & Verification)
-Plan: 2 of 2 complete
-Status: Phase 28 complete. All 2 plans executed (01: bug fixes, 02: Phase 24 verification).
-Last activity: 2026-03-01 -- Plan 02 completed (Phase 24 formal verification, FILT-04 verified)
+Phase: 29 (Library Export)
+Plan: 1 of 1 complete
+Status: Phase 29 complete. Plan 01 executed (library CSV/JSON export with i18n).
+Last activity: 2026-03-01 -- Plan 01 completed (library export with filter-aware query and 6-locale i18n)
 
-Progress: [####################] 100% (Phase 28: 2/2 plans)
+Progress: [####################] 100% (Phase 29: 1/1 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 53 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 3, phase-28: 2)
+- Total plans completed: 54 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 5, phase-27: 2, phase-25: 3, phase-28: 2, phase-29: 1)
 - Total milestones shipped: 4
 
 **By Milestone:**
@@ -49,6 +49,7 @@ Progress: [####################] 100% (Phase 28: 2/2 plans)
 | Phase 25 P03 | 8min | 2 tasks | 12 files |
 | Phase 28 P01 | 1min | 2 tasks | 1 file |
 | Phase 28 P02 | 2min | 1 task | 1 file |
+| Phase 29 P01 | 2min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ See PROJECT.md Key Decisions table for full log.
 - [28-01] REQUIREMENTS.md traceability for Phase 27 verified correct (no changes needed)
 - [28-02] All 10 Phase 24 truths PASS -- implementation fully correct despite Phase 27 refactoring
 - [28-02] Phase 27 FilterSection refactoring did not break any Phase 24 must-haves
+- [29-01] Non-paginated .collect() for export query (1024 item limit acceptable per decision 23-01)
+- [29-01] Reuse existing downloadAsFile/jsonToCSV utilities -- no new npm dependencies for export
+- [29-01] Strip _id, userId, searchableText from export; convert timestamps to ISO strings for universal parseability
 
 ### Roadmap Evolution
 
@@ -111,6 +115,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 - 28-02 completed (Phase 24 formal verification, FILT-04 verified)
-Stopped at: Completed 28-02-PLAN.md (Phase 28 complete)
+Last activity: 2026-03-01 - 29-01 completed (library export with CSV/JSON, EXP-01 satisfied)
+Stopped at: Completed 29-01-PLAN.md (Phase 29 complete)
 Resume file: None
