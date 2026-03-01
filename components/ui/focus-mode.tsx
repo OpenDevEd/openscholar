@@ -388,6 +388,7 @@ export function FocusMode({
   const isMobile = useIsMobile();
   const { phase } = useAuthReadiness();
   const saveToLibraryMutation = useMutation(api.library.mutations.saveToLibrary);
+  const removeFromLibraryMutation = useMutation(api.library.mutations.removeFromLibraryByOpenalexId);
 
   const tLabels = useTranslations("labels");
   const tAccessibility = useTranslations("accessibility");
@@ -552,7 +553,7 @@ export function FocusMode({
         setRating(paperId, parseInt(rating));
       }
 
-      // 2. If signed-in AND rating is not removal, save to Convex
+      // 2. If signed-in: save to library on rate, remove from library on clear
       if (phase === "authenticated" && newRating !== null) {
         // Find the paper object from the papers array
         const paper = papers.find((p: any) => p.id === paperId);
@@ -565,9 +566,13 @@ export function FocusMode({
             console.error("[Library] Failed to save to library:", error);
           });
         }
+      } else if (phase === "authenticated" && newRating === null) {
+        removeFromLibraryMutation({ openalexId: paperId }).catch((error) => {
+          console.error("[Library] Failed to remove from library:", error);
+        });
       }
     },
-    [setRating, phase, papers, saveToLibraryMutation]
+    [setRating, phase, papers, saveToLibraryMutation, removeFromLibraryMutation]
   );
 
   const goToNext = () => {
