@@ -85,3 +85,132 @@ export const listCollections = query({
     return collections.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
+
+// ═══════════════════════════════════════════════════════════════
+// COLLECTION ASSIGNMENT (Plan 02)
+// ═══════════════════════════════════════════════════════════════
+
+export const addToCollection = mutation({
+  args: {
+    collectionId: v.id("collections"),
+    libraryItemId: v.id("libraryItems"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+
+    // Verify collection ownership
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection || collection.userId !== user._id) {
+      throw createError("FORBIDDEN", "Not your collection");
+    }
+
+    // Verify library item ownership
+    const item = await ctx.db.get(args.libraryItemId);
+    if (!item || item.userId !== user._id) {
+      throw createError("FORBIDDEN", "Not your library item");
+    }
+
+    // Check for existing assignment (idempotent)
+    const existing = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_collection_item", (q) =>
+        q
+          .eq("collectionId", args.collectionId)
+          .eq("libraryItemId", args.libraryItemId)
+      )
+      .unique();
+
+    if (existing) return null; // Already assigned, no-op
+
+    await ctx.db.insert("libraryItemCollections", {
+      userId: user._id,
+      collectionId: args.collectionId,
+      libraryItemId: args.libraryItemId,
+      assignedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const removeFromCollection = mutation({
+  args: {
+    collectionId: v.id("collections"),
+    libraryItemId: v.id("libraryItems"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+
+    // Verify collection ownership
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection || collection.userId !== user._id) {
+      throw createError("FORBIDDEN", "Not your collection");
+    }
+
+    // Find and delete junction row if it exists
+    const existing = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_collection_item", (q) =>
+        q
+          .eq("collectionId", args.collectionId)
+          .eq("libraryItemId", args.libraryItemId)
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+    return null;
+  },
+});
+
+// ═══════════════════════════════════════════════════════════════
+// COLLECTION QUERIES (Plan 02)
+// ═══════════════════════════════════════════════════════════════
+
+export const getCollectionsWithCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireAuth(ctx);
+
+    // Fetch all user collections
+    const collections = await ctx.db
+      .query("collections")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Count junction rows per collection
+    const result = await Promise.all(
+      collections.map(async (collection) => {
+        const memberships = await ctx.db
+          .query("libraryItemCollections")
+          .withIndex("by_collection", (q) =>
+            q.eq("collectionId", collection._id)
+          )
+          .collect();
+        return {
+          ...collection,
+          itemCount: memberships.length,
+        };
+      })
+    );
+
+    // Sort alphabetically by name (case-insensitive)
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
+export const getItemCollections = query({
+  args: { libraryItemId: v.id("libraryItems") },
+  handler: async (ctx, args) => {
+    await requireAuth(ctx);
+
+    const memberships = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_item", (q) => q.eq("libraryItemId", args.libraryItemId))
+      .collect();
+
+    return memberships.map((m) => m.collectionId);
+  },
+});

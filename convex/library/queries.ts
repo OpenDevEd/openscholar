@@ -16,10 +16,34 @@ export const browseLibrary = query({
     savedAfter: v.optional(v.number()),
     yearFrom: v.optional(v.number()),
     yearTo: v.optional(v.number()),
+    collectionId: v.optional(v.id("collections")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
+
+    // Pre-fetch collection member IDs if filtering by collection
+    let collectionItemIds: Set<string> | null = null;
+    if (args.collectionId) {
+      // Guard: verify collection exists and belongs to user
+      const collection = await ctx.db.get(args.collectionId);
+      if (!collection || collection.userId !== user._id) {
+        return { page: [], isDone: true, continueCursor: "" as any };
+      }
+      const memberships = await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection", (q) =>
+          q.eq("collectionId", args.collectionId!)
+        )
+        .collect();
+      collectionItemIds = new Set(
+        memberships.map((m) => m.libraryItemId as string)
+      );
+      // Empty collection = no results possible
+      if (collectionItemIds.size === 0) {
+        return { page: [], isDone: true, continueCursor: "" as any };
+      }
+    }
 
     const indexMap = {
       savedAt: "by_user_savedAt",
@@ -36,10 +60,16 @@ export const browseLibrary = query({
       args.minRating !== undefined ||
       args.savedAfter !== undefined ||
       args.yearFrom !== undefined ||
-      args.yearTo !== undefined;
+      args.yearTo !== undefined ||
+      collectionItemIds !== null;
 
     if (needsFilter) {
       return await filter(q, (item) => {
+        if (
+          collectionItemIds &&
+          !collectionItemIds.has(item._id as string)
+        )
+          return false;
         if (args.minRating !== undefined && item.rating < args.minRating) return false;
         if (args.savedAfter !== undefined && item.savedAt < args.savedAfter) return false;
         if (args.yearFrom !== undefined && (item.publicationYear == null || item.publicationYear < args.yearFrom)) return false;
@@ -59,10 +89,34 @@ export const searchLibrary = query({
     savedAfter: v.optional(v.number()),
     yearFrom: v.optional(v.number()),
     yearTo: v.optional(v.number()),
+    collectionId: v.optional(v.id("collections")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
+
+    // Pre-fetch collection member IDs if filtering by collection
+    let collectionItemIds: Set<string> | null = null;
+    if (args.collectionId) {
+      // Guard: verify collection exists and belongs to user
+      const collection = await ctx.db.get(args.collectionId);
+      if (!collection || collection.userId !== user._id) {
+        return { page: [], isDone: true, continueCursor: "" as any };
+      }
+      const memberships = await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection", (q) =>
+          q.eq("collectionId", args.collectionId!)
+        )
+        .collect();
+      collectionItemIds = new Set(
+        memberships.map((m) => m.libraryItemId as string)
+      );
+      // Empty collection = no results possible
+      if (collectionItemIds.size === 0) {
+        return { page: [], isDone: true, continueCursor: "" as any };
+      }
+    }
 
     const q = ctx.db
       .query("libraryItems")
@@ -74,10 +128,16 @@ export const searchLibrary = query({
       args.minRating !== undefined ||
       args.savedAfter !== undefined ||
       args.yearFrom !== undefined ||
-      args.yearTo !== undefined;
+      args.yearTo !== undefined ||
+      collectionItemIds !== null;
 
     if (needsFilter) {
       return await filter(q, (item) => {
+        if (
+          collectionItemIds &&
+          !collectionItemIds.has(item._id as string)
+        )
+          return false;
         if (args.minRating !== undefined && item.rating < args.minRating) return false;
         if (args.savedAfter !== undefined && item.savedAt < args.savedAfter) return false;
         if (args.yearFrom !== undefined && (item.publicationYear == null || item.publicationYear < args.yearFrom)) return false;
