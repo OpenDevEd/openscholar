@@ -225,10 +225,10 @@ Plans:
   2. User can export their library items as JSON
   3. Export respects current filters (filtered subset export)
   4. Export reuses existing export utilities where possible
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 29-01: TBD
+- [ ] 29-01-PLAN.md -- Export query, export helpers, export dropdown UI, i18n (6 locales)
 
 ### Phase 30: Library Polish
 **Goal:** Library is production-ready with mobile support, full i18n coverage, and polished feedback on all destructive actions
