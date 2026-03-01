@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface LibraryItemSkeletonProps {
   count?: number;
+  viewMode?: "list" | "grid";
 }
 
 function SkeletonBar({ className }: { className?: string }) {
@@ -48,7 +49,43 @@ function SkeletonRow() {
   );
 }
 
-export function LibraryItemSkeleton({ count = 5 }: LibraryItemSkeletonProps) {
+function SkeletonCard() {
+  return (
+    <div className={cn(
+      "rounded-2xl border p-4 flex flex-col gap-2",
+      "bg-background/80 dark:bg-background/60",
+      "border-border/40"
+    )}>
+      {/* Stars placeholder */}
+      <div className="flex gap-px">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="h-3 w-3 rounded-sm bg-muted animate-pulse" />
+        ))}
+      </div>
+      {/* Title */}
+      <SkeletonBar className="w-full" />
+      <SkeletonBar className="w-3/4" />
+      {/* Authors */}
+      <SkeletonBar className="w-1/2" />
+      {/* Footer */}
+      <div className="flex gap-2 mt-auto">
+        <SkeletonBar className="w-12" />
+        <SkeletonBar className="w-20" />
+      </div>
+    </div>
+  );
+}
+
+export function LibraryItemSkeleton({ count = 5, viewMode = "list" }: LibraryItemSkeletonProps) {
+  if (viewMode === "grid") {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+        {Array.from({ length: count }).map((_, i) => (
+          <SkeletonCard key={i} />
+        ))}
+      </div>
+    );
+  }
   return (
     <div>
       {Array.from({ length: count }).map((_, i) => (

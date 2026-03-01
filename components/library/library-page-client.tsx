@@ -202,7 +202,7 @@ export function LibraryPageClient() {
       {/* Content area */}
       <div className="mt-4 rounded-lg border border-border/50 bg-background/80 overflow-hidden">
         {/* Initial loading skeleton */}
-        {isFirstLoad && <LibraryItemSkeleton count={5} />}
+        {isFirstLoad && <LibraryItemSkeleton count={params.view === "grid" ? 6 : 5} viewMode={params.view} />}
 
         {/* Empty library */}
         {isEmptyLibrary && (
@@ -260,7 +260,7 @@ export function LibraryPageClient() {
         {/* Loading more indicator */}
         {activeResults.status === "LoadingMore" && (
           <div className="py-3">
-            <LibraryItemSkeleton count={3} />
+            <LibraryItemSkeleton count={3} viewMode={params.view} />
           </div>
         )}
       </div>

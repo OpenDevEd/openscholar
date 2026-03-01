@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
+import { OA_STATUS_COLORS } from "@/lib/constants";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 interface LibraryItemRowProps {
@@ -19,13 +20,6 @@ interface LibraryItemRowProps {
   onToggleExpand: () => void;
   onRemove: (item: Doc<"libraryItems">) => void;
 }
-
-const OA_COLORS: Record<string, string> = {
-  gold: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  green: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  bronze: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  hybrid: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-};
 
 export function LibraryItemRow({
   item,
@@ -66,8 +60,8 @@ export function LibraryItemRow({
         onKeyDown={handleKeyDown}
         className={cn(
           "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors",
-          "hover:bg-muted/50",
-          isExpanded && "bg-muted/30",
+          "hover:bg-sidebar-accent/40 dark:hover:bg-sidebar-accent/20",
+          isExpanded && "bg-sidebar-accent/30 dark:bg-sidebar-accent/15",
         )}
       >
         {/* Rating stars (display-only, compact) */}
@@ -119,11 +113,11 @@ export function LibraryItemRow({
         )}
 
         {/* OA badge */}
-        {item.oaStatus && item.oaStatus !== "closed" && OA_COLORS[item.oaStatus] && (
+        {item.oaStatus && item.oaStatus !== "closed" && OA_STATUS_COLORS[item.oaStatus] && (
           <span
             className={cn(
               "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 hidden lg:inline-flex",
-              OA_COLORS[item.oaStatus],
+              OA_STATUS_COLORS[item.oaStatus],
             )}
           >
             {item.oaStatus}
@@ -177,11 +171,11 @@ export function LibraryItemRow({
                 {item.citedByCount !== undefined && item.citedByCount > 0 && (
                   <span>{t("citations", { count: item.citedByCount })}</span>
                 )}
-                {item.oaStatus && item.oaStatus !== "closed" && OA_COLORS[item.oaStatus] && (
+                {item.oaStatus && item.oaStatus !== "closed" && OA_STATUS_COLORS[item.oaStatus] && (
                   <span
                     className={cn(
                       "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
-                      OA_COLORS[item.oaStatus],
+                      OA_STATUS_COLORS[item.oaStatus],
                     )}
                   >
                     {item.oaStatus}

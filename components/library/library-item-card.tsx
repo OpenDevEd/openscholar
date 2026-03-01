@@ -10,19 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { OA_STATUS_COLORS } from "@/lib/constants";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 interface LibraryItemCardProps {
   item: Doc<"libraryItems">;
   onRemove: (item: Doc<"libraryItems">) => void;
 }
-
-const OA_COLORS: Record<string, string> = {
-  gold: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  green: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  bronze: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  hybrid: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-};
 
 export function LibraryItemCard({ item, onRemove }: LibraryItemCardProps) {
   const t = useTranslations("libraryPage");
@@ -34,7 +28,18 @@ export function LibraryItemCard({ item, onRemove }: LibraryItemCardProps) {
     : null;
 
   return (
-    <div className="rounded-lg border border-border/50 bg-background/80 p-4 flex flex-col gap-2 hover:bg-muted/30 transition-colors relative">
+    <div className={cn(
+      "relative group rounded-2xl border transition-all duration-200",
+      "bg-background/80 dark:bg-background/60",
+      "border-border/60 dark:border-border/40",
+      "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
+      "backdrop-blur-xl backdrop-saturate-150",
+      "hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30",
+      "hover:border-primary/20 dark:hover:border-primary/30",
+      "hover:shadow-xl hover:shadow-black/[0.05] dark:hover:shadow-black/[0.15]",
+      "hover:-translate-y-0.5",
+      "p-4 flex flex-col gap-2"
+    )}>
       {/* Header: Rating stars + actions */}
       <div className="flex items-center justify-between">
         {/* Rating stars */}
@@ -111,11 +116,11 @@ export function LibraryItemCard({ item, onRemove }: LibraryItemCardProps) {
             <span className="truncate max-w-[120px]">{item.journal}</span>
           </>
         )}
-        {item.oaStatus && item.oaStatus !== "closed" && OA_COLORS[item.oaStatus] && (
+        {item.oaStatus && item.oaStatus !== "closed" && OA_STATUS_COLORS[item.oaStatus] && (
           <span
             className={cn(
               "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
-              OA_COLORS[item.oaStatus],
+              OA_STATUS_COLORS[item.oaStatus],
             )}
           >
             {item.oaStatus}
