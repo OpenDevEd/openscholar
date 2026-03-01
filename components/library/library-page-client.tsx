@@ -29,6 +29,8 @@ import {
   ArrowDown,
   LayoutList,
   LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +78,7 @@ export function LibraryPageClient() {
   // Sync debounced search to URL
   useEffect(() => {
     if (debouncedSearch !== params.q) {
-      setParams({ q: debouncedSearch });
+      setParams({ q: debouncedSearch, p: 1 });
     }
   }, [debouncedSearch, params.q, setParams]);
 
@@ -223,6 +225,7 @@ export function LibraryPageClient() {
       col: null,
       sort: "savedAt",
       order: "desc",
+      p: 1,
     });
   }, [setParams]);
 
@@ -250,6 +253,31 @@ export function LibraryPageClient() {
   const isTransitioning =
     activeResults.isInitialLoading && lastResultsRef.current.length > 0;
 
+  // Pagination
+  const PAGE_SIZE = 20;
+  const currentPage = params.p;
+  const filteredTotal = exportItems?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
+
+  // Clamp current page to valid range (handles filter changes reducing total pages)
+  const effectivePage = Math.min(currentPage, totalPages);
+
+  // Slice display results for current page
+  const startIdx = (effectivePage - 1) * PAGE_SIZE;
+  const endIdx = effectivePage * PAGE_SIZE;
+  const pageResults = displayResults.slice(startIdx, endIdx);
+
+  // Range display values
+  const rangeStart = displayResults.length > 0 ? startIdx + 1 : 0;
+  const rangeEnd = Math.min(endIdx, displayResults.length);
+
+  // Ensure enough results are loaded for the requested page
+  useEffect(() => {
+    if (endIdx > activeResults.results.length && activeResults.status === "CanLoadMore") {
+      activeResults.loadMore(PAGE_SIZE);
+    }
+  }, [effectivePage, activeResults.results.length, activeResults.status]);
+
   // Determine what to show
   const isFirstLoad =
     activeResults.isInitialLoading && lastResultsRef.current.length === 0;
@@ -270,10 +298,11 @@ export function LibraryPageClient() {
     { value: "savedAt", label: t("sortDateSaved") },
     { value: "rating", label: t("sortRating") },
     { value: "publicationYear", label: t("sortPublicationYear") },
+    { value: "title", label: t("sortTitle") },
   ];
 
   const toggleSortOrder = () => {
-    setParams({ order: params.order === "asc" ? "desc" : "asc" });
+    setParams({ order: params.order === "asc" ? "desc" : "asc", p: 1 });
   };
 
   return (
@@ -283,15 +312,15 @@ export function LibraryPageClient() {
           rawSearch={rawSearch}
           onSearchChange={setRawSearch}
           minRating={minRating}
-          onMinRatingChange={(r) => setParams({ rating: r === undefined ? null : r })}
+          onMinRatingChange={(r) => setParams({ rating: r === undefined ? null : r, p: 1 })}
           savedPreset={params.saved}
-          onSavedPresetChange={(p) => setParams({ saved: p as typeof params.saved })}
+          onSavedPresetChange={(preset) => setParams({ saved: preset as typeof params.saved, p: 1 })}
           yearFrom={params.yf}
           yearTo={params.yt}
-          onYearFromChange={(y) => setParams({ yf: y })}
-          onYearToChange={(y) => setParams({ yt: y })}
+          onYearFromChange={(y) => setParams({ yf: y, p: 1 })}
+          onYearToChange={(y) => setParams({ yt: y, p: 1 })}
           collectionId={params.col}
-          onCollectionChange={(id) => setParams({ col: id })}
+          onCollectionChange={(id) => setParams({ col: id, p: 1 })}
           collections={collectionsWithCounts}
           onManageCollections={() => setCollectionManagerOpen(true)}
           activeFilterCount={activeFilterCount}
@@ -319,7 +348,7 @@ export function LibraryPageClient() {
                   <span>
                     <Select
                       value={params.sort}
-                      onValueChange={(v) => setParams({ sort: v as LibrarySortBy })}
+                      onValueChange={(v) => setParams({ sort: v as LibrarySortBy, p: 1 })}
                       disabled={hasSearchText}
                     >
                       <SelectTrigger
@@ -444,11 +473,11 @@ export function LibraryPageClient() {
             )}
 
             {/* Item list */}
-            {displayResults.length > 0 && (
+            {pageResults.length > 0 && (
               <div className={isTransitioning ? "opacity-60 transition-opacity" : ""}>
                 {params.view === "grid" ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
-                    {displayResults.map((item) => (
+                    {pageResults.map((item) => (
                       <LibraryItemCard
                         key={item._id}
                         item={item}
@@ -458,7 +487,7 @@ export function LibraryPageClient() {
                     ))}
                   </div>
                 ) : (
-                  displayResults.map((item) => (
+                  pageResults.map((item) => (
                     <LibraryItemRow
                       key={item._id}
                       item={item}
@@ -472,20 +501,41 @@ export function LibraryPageClient() {
               </div>
             )}
 
-            {/* Load more */}
-            {activeResults.status === "CanLoadMore" && (
-              <div className="flex justify-center py-4 border-t border-border/40">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => activeResults.loadMore(20)}
-                >
-                  {t("loadMore")}
-                </Button>
+            {/* Pagination bar */}
+            {filteredTotal > 0 && (
+              <div className="flex items-center justify-between py-3 px-4 border-t border-border/40">
+                <p className="text-sm text-muted-foreground">
+                  {t("showingRange", { start: rangeStart, end: rangeEnd, total: filteredTotal })}
+                </p>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setParams({ p: Math.max(1, effectivePage - 1) })}
+                      disabled={effectivePage <= 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      {t("previousPage")}
+                    </Button>
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {effectivePage} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setParams({ p: Math.min(totalPages, effectivePage + 1) })}
+                      disabled={effectivePage >= totalPages || (activeResults.status !== "CanLoadMore" && endIdx >= displayResults.length)}
+                    >
+                      {t("nextPage")}
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Loading more indicator */}
+            {/* Loading indicator when fetching more data for next page */}
             {activeResults.status === "LoadingMore" && (
               <div className="py-3">
                 <LibraryItemSkeleton count={3} viewMode={params.view} />
