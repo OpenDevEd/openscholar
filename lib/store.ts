@@ -1187,6 +1187,10 @@ export function createSidebarDimensions(expandedWidth: number, collapsedWidth: n
   });
 }
 
+// Library filter sidebar store (independent collapse state from search sidebar)
+export const useLibrarySidebarStore = createSidebarStore('openalex-library-sidebar');
+export const getLibrarySidebarDimensions = createSidebarDimensions(320, 48);
+
 // Extraction citation panel store
 const EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED = 460;
 const EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED = 48;
