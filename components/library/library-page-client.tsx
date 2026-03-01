@@ -155,10 +155,14 @@ export function LibraryPageClient() {
         cancelText: t("cancelButton"),
         variant: "destructive",
         onConfirm: () => {
-          removeItem({ itemId: item._id }).catch((err) => {
-            console.error("[Library] Failed to remove:", err);
-            toast.error("Failed to remove item");
-          });
+          removeItem({ itemId: item._id })
+            .then(() => {
+              toast.success(t("removedFromLibrary"));
+            })
+            .catch((err) => {
+              console.error("[Library] Failed to remove:", err);
+              toast.error(t("removeFromLibraryError"));
+            });
           setRating(item.openalexId, null);
         },
       });

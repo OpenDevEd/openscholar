@@ -1504,6 +1504,11 @@
     "exportLibrary": "Export",
     "exportAsCSV": "Download as CSV",
     "exportAsJSON": "Download as JSON",
-    "exportSuccess": "Library exported successfully"
+    "exportSuccess": "Library exported successfully",
+    "removedFromLibrary": "Removed from library",
+    "removeFromLibraryError": "Failed to remove item",
+    "deleteCollectionError": "Failed to delete collection",
+    "removeFromCollectionError": "Failed to remove from collection",
+    "addToCollectionError": "Failed to add to collection"
   }
 }

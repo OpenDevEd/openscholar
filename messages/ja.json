@@ -1502,6 +1502,11 @@
     "exportLibrary": "エクスポート",
     "exportAsCSV": "CSVでダウンロード",
     "exportAsJSON": "JSONでダウンロード",
-    "exportSuccess": "ライブラリのエクスポートが完了しました"
+    "exportSuccess": "ライブラリのエクスポートが完了しました",
+    "removedFromLibrary": "ライブラリから削除しました",
+    "removeFromLibraryError": "アイテムの削除に失敗しました",
+    "deleteCollectionError": "コレクションの削除に失敗しました",
+    "removeFromCollectionError": "コレクションからの削除に失敗しました",
+    "addToCollectionError": "コレクションへの追加に失敗しました"
   }
 }

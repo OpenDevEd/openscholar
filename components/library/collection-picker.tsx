@@ -52,15 +52,23 @@ export function CollectionPicker({
     isCurrentlyChecked: boolean,
   ) => {
     if (isCurrentlyChecked) {
-      removeFromCollection({ collectionId, libraryItemId }).catch((err) => {
-        console.error("[CollectionPicker] Failed to remove:", err);
-      });
-      toast.success(t("removedFromCollection"));
+      removeFromCollection({ collectionId, libraryItemId })
+        .then(() => {
+          toast.success(t("removedFromCollection"));
+        })
+        .catch((err) => {
+          console.error("[CollectionPicker] Failed to remove:", err);
+          toast.error(t("removeFromCollectionError"));
+        });
     } else {
-      addToCollection({ collectionId, libraryItemId }).catch((err) => {
-        console.error("[CollectionPicker] Failed to add:", err);
-      });
-      toast.success(t("addedToCollection"));
+      addToCollection({ collectionId, libraryItemId })
+        .then(() => {
+          toast.success(t("addedToCollection"));
+        })
+        .catch((err) => {
+          console.error("[CollectionPicker] Failed to add:", err);
+          toast.error(t("addToCollectionError"));
+        });
     }
   };
 

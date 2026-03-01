@@ -1502,6 +1502,11 @@
     "exportLibrary": "导出",
     "exportAsCSV": "下载为CSV",
     "exportAsJSON": "下载为JSON",
-    "exportSuccess": "图书馆导出成功"
+    "exportSuccess": "图书馆导出成功",
+    "removedFromLibrary": "已从图书馆移除",
+    "removeFromLibraryError": "移除项目失败",
+    "deleteCollectionError": "删除收藏夹失败",
+    "removeFromCollectionError": "从收藏夹移除失败",
+    "addToCollectionError": "添加到收藏夹失败"
   }
 }

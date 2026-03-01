@@ -101,10 +101,14 @@ export function CollectionManager({
       cancelText: t("cancelButton"),
       variant: "destructive",
       onConfirm: () => {
-        deleteCollection({ collectionId }).catch((err) => {
-          console.error("[CollectionManager] Failed to delete:", err);
-        });
-        toast.success(t("collectionDeleted"));
+        deleteCollection({ collectionId })
+          .then(() => {
+            toast.success(t("collectionDeleted"));
+          })
+          .catch((err) => {
+            console.error("[CollectionManager] Failed to delete:", err);
+            toast.error(t("deleteCollectionError"));
+          });
       },
     });
   };

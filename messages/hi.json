@@ -1502,6 +1502,11 @@
     "exportLibrary": "निर्यात",
     "exportAsCSV": "CSV के रूप में डाउनलोड करें",
     "exportAsJSON": "JSON के रूप में डाउनलोड करें",
-    "exportSuccess": "लाइब्रेरी सफलतापूर्वक निर्यात की गई"
+    "exportSuccess": "लाइब्रेरी सफलतापूर्वक निर्यात की गई",
+    "removedFromLibrary": "लाइब्रेरी से हटाया गया",
+    "removeFromLibraryError": "आइटम हटाने में विफल",
+    "deleteCollectionError": "संग्रह हटाने में विफल",
+    "removeFromCollectionError": "संग्रह से हटाने में विफल",
+    "addToCollectionError": "संग्रह में जोड़ने में विफल"
   }
 }
