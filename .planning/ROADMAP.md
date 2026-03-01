@@ -185,7 +185,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 22. Schema & Rating Bridge | 2/2 | Complete    | 2026-02-28 | - |
 | 23. Core Library Page | 2/2 | Complete    | 2026-02-28 | - |
 | 24. Advanced Filtering & URL State | 2/2 | Complete    | 2026-02-28 | - |
-| 25. Collections | 3/3 | Complete   | 2026-03-01 | - |
+| 25. Collections | 3/3 | Complete    | 2026-03-01 | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
 | 28. Bug Fixes & Verification | v2.1 | 0/? | Not started | - |
