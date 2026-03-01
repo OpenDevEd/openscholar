@@ -188,7 +188,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 25. Collections | 3/3 | Complete    | 2026-03-01 | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
-| 28. Bug Fixes & Verification | v2.1 | 0/? | Not started | - |
+| 28. Bug Fixes & Verification | 1/2 | In Progress|  | - |
 
 ### Phase 27: Library UI Redesign
 
