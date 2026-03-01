@@ -100,11 +100,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COL-05 | Phase 25 | Pending |
 | COL-06 | Phase 25 | Pending |
 | COL-07 | Phase 25 | Pending |
-| FILT-01 | Phase 24 | Complete |
-| FILT-02 | Phase 24 | Complete |
+| FILT-01 | Phase 24, 27 | Complete |
+| FILT-02 | Phase 24, 27 | Complete |
 | FILT-03 | Phase 25 | Pending |
 | FILT-04 | Phase 24 | Complete |
-| FILT-05 | Phase 24 | Complete |
+| FILT-05 | Phase 24, 27 | Complete |
 | EXP-01 | Phase 26 | Pending |
 | EXP-02 | Phase 26 | Pending |
 | EXP-03 | Phase 26 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after roadmap creation*
+*Last updated: 2026-03-01 after gap closure planning*

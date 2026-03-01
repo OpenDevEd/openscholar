@@ -6,7 +6,7 @@
 - v1.1 Upgrade Flow -- Phases 4-6 (shipped 2026-02-27)
 - v1.2 E2E Billing Tests -- Phases 7-13 (shipped 2026-02-28)
 - v2.0 TDD & Test Coverage -- Phases 14-21 (shipped 2026-02-28)
-- v2.1 Library & Collections -- Phases 22-27 (in progress)
+- v2.1 Library & Collections -- Phases 22-28 (in progress)
 
 ## Phases
 
@@ -72,6 +72,7 @@ Full details: `.planning/milestones/v2.0-ROADMAP.md`
 - [x] **Phase 24: Advanced Filtering & URL State** - Date saved and publication year filters, nuqs URL persistence for all filter/sort state, view mode switching (completed 2026-02-28)
 - [ ] **Phase 25: Collections** - Collection CRUD, junction table mutations, item-to-collection assignment, filter by collection, item count badges
 - [ ] **Phase 26: Export & Polish** - CSV/JSON export, mobile responsiveness, i18n for 6 locales, toast feedback on destructive actions
+- [ ] **Phase 28: Bug Fixes & Verification** - Focus-mode rating removal bug, Phase 24 verification, REQUIREMENTS.md traceability corrections
 
 ## Phase Details
 
@@ -187,6 +188,7 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 | 25. Collections | v2.1 | 0/? | Not started | - |
 | 26. Export & Polish | v2.1 | 0/? | Not started | - |
 | 27. Library UI Redesign | 2/2 | Complete    | 2026-03-01 | - |
+| 28. Bug Fixes & Verification | v2.1 | 0/? | Not started | - |
 
 ### Phase 27: Library UI Redesign
 
@@ -197,3 +199,14 @@ Phases execute in numeric order: 22 -> 23 -> 24 -> 25 -> 26
 
 Plans:
 - [x] TBD (run /gsd:plan-phase 27 to break down) (completed 2026-03-01)
+
+### Phase 28: Bug Fixes & Verification
+**Goal:** Fix focus-mode rating removal integration bug, add missing Phase 24 verification, and correct REQUIREMENTS.md traceability for Phase 27 contributions
+**Depends on:** Phase 27
+**Requirements**: LIB-01 (integration fix), FILT-04 (verification)
+**Gap Closure:** Closes integration, flow, and verification gaps from v2.1 audit
+**Plans**: TBD
+
+Plans:
+- [ ] 28-01: TBD
+- [ ] 28-02: TBD
