@@ -1,199 +1,262 @@
-# Pitfalls Research
+# Pitfalls: UI Overhaul with Sidebar Integration
 
-**Domain:** Adding library, collections, and saved-items features to an existing Next.js + Convex academic search app
-**Researched:** 2026-02-28
-**Confidence:** HIGH (verified against Convex official docs, codebase analysis, Convex community patterns)
+**Domain:** Refactoring a list page to adopt a sidebar layout from an existing page, filter state generalization, and component reuse across pages with different pagination and query strategies
 
----
+**Researched:** 2026-03-01
+
+**Confidence:** HIGH (verified against React/Next.js best practices, UI migration patterns, and state management research)
 
 ## Critical Pitfalls
 
-### Pitfall 1: Storing Full OpenAlex JSON Blobs Causes Document Bloat and Bandwidth Explosion
+### Pitfall 1: State Inconsistency Between URL (nuqs) and Context Providers
 
 **What goes wrong:**
-The v2.1 spec says "rating an item saves it to user's library (full JSON entry in Convex)." An OpenAlex `Work` object is a deeply nested JSON structure containing `authorships[]` (each with `author`, `institutions[]`, `countries[]`), `concepts[]`, `topics[]`, `primary_location` with nested `source`, `biblio`, `open_access`, `apc_list`, `grants[]`, `referenced_works[]` (often 30-100 IDs), `related_works[]` (10 IDs), `abstract_inverted_index` (can be 2-5 KB alone), and more. A single Work can be 5-30 KB of JSON. Storing the full object as-is in a Convex document means:
-
-1. **Document size risk:** Convex has a 1 MiB document limit with max 1024 fields and max nesting depth of 16. The `abstract_inverted_index` alone is a deeply nested object with hundreds of keys, and `authorships` arrays can have 50+ entries each containing nested objects. A paper with 200+ authors (common in physics/medicine) could approach field limits.
-2. **Bandwidth cost:** Every time the library page loads, ALL stored fields are transferred to the client. With Convex's reactive queries, every update to any library item re-sends the full document. At 20 KB per item and 500 items in a library, that is 10 MB per page load. Convex charges $0.20-0.22/GiB for database bandwidth beyond the included tier.
-3. **Array element limit:** Convex arrays are capped at 8192 elements. A paper's `referenced_works` can have hundreds of entries, and `abstract_inverted_index` values are arrays of positions. These won't hit the limit individually but accumulate risk if the schema stores everything.
+The library currently uses `nuqs` for URL-driven state (filters, pagination, sort). The search page uses `SearchProvider` context for state. When you try to reuse components like `FilterSection` or `SearchSidebar` on the library page, you create a source-of-truth conflict: changes in context don't sync to URL params, filters set via context appear to vanish on refresh, and URL bookmarks become stale when context state diverges.
 
 **Why it happens:**
-The requirement says "full JSON" which developers interpret as storing the entire OpenAlex API response verbatim. This feels safe because "we might need it later" and avoids deciding which fields matter upfront. The `PaperResult` type in `lib/types/search.types.ts` is literally `type PaperResult = Work` -- the entire SDK type with no field selection.
+Developers see working filter components in search and try to drop them into library without realizing the search page flows: User action → Context update → URL sync (if wired). The library needs: User action → URL update via nuqs (which is the source of truth). Different architectures trying to coexist on the same page leads to data duplication and silent failures.
 
 **How to avoid:**
-- Define a `LibraryItem` schema in Convex that stores only the fields needed for display and filtering: `openalexId`, `title`, `authors` (names only, not full authorship objects), `publicationYear`, `doi`, `abstract` (reconstructed text, not inverted index), `citationCount`, `isOpenAccess`, `primarySourceName`, `type`. This covers all display and filter needs.
-- Store the `openalexId` (e.g., `W2741809807`) as the canonical reference. If the user needs full details, fetch fresh from OpenAlex API on demand -- it is free, fast, and always current.
-- Drop `abstract_inverted_index`, `referenced_works`, `related_works`, `grants`, `apc_list`, `biblio`, `mesh`, `sustainable_development_goals`, `keywords`, and the full `authorships` nesting. These are never displayed in a library list view.
-- Target 1-2 KB per library item document instead of 15-30 KB.
+- **Decision**: Pick ONE source of truth for library page filters. Keep `nuqs` (URL-driven) since the project already uses it successfully for library filters.
+- **Component Design**: When reusing `FilterSection` or sidebar components, ensure they accept `onFilterChange(filterName, value)` callbacks, not context providers. Library: use nuqs to update URL on callback. Search: use SearchProvider.
+- **No Context on Library**: Do NOT wrap library page or its sidebar in `SearchProvider`. Create library-specific filter state (or keep using nuqs directly) instead.
+- **Type Safety**: Add JSDoc types to filter components indicating "takes callbacks, not context" to prevent misuse.
 
 **Warning signs:**
-- Library page load time exceeds 500ms for users with 100+ items
-- Convex dashboard shows database bandwidth spiking when library page is open
-- Schema validation errors on documents with deeply nested authorship arrays
-- `v.any()` used in schema for the library item data field (defers validation, hides bloat)
+- Filters persist across page reloads on search but reset on library (or vice versa)
+- URL params don't change when you adjust filters in sidebar
+- Components ignore `onFilterChange` props and directly mutate context
+- Tests pass locally but fail after `?filter=value` bookmark is opened
 
-**Phase to address:** Phase 1 (Schema design) -- define the normalized `libraryItems` schema before any mutation code is written. This is irreversible without a data migration if done wrong.
+**Phase to address:**
+**Phase 1 (Sidebar Layout)** — Establish state architecture before implementing sidebar. Create a test: navigate library with filters, set URL params manually, verify sidebar reflects them. Add tests for "filter state round-trip": filter → URL → reload → sidebar updated.
 
 ---
 
-### Pitfall 2: Many-to-Many Collection Membership Without a Junction Table
+### Pitfall 2: Over-Generalizing FilterSection Component Across Incompatible Query Architectures
 
 **What goes wrong:**
-Items can belong to multiple collections. There are two ways to model this, and choosing wrong creates cascading problems:
-
-**Bad approach A -- Array of collection IDs on the library item:**
-```typescript
-libraryItems: defineTable({
-  userId: v.id("users"),
-  collectionIds: v.array(v.id("collections")),  // BAD
-  // ...
-})
-```
-This fails because: (a) Convex arrays cannot be indexed -- you cannot query "all items in collection X" without scanning every library item for the user, (b) removing a collection requires scanning ALL items to remove the reference, (c) Convex arrays are limited to 8192 elements (not a real risk here but the pattern is wrong), (d) adding/removing collection membership mutates the library item document, triggering reactive re-renders of unrelated UI.
-
-**Bad approach B -- Array of item IDs on the collection:**
-```typescript
-collections: defineTable({
-  userId: v.id("users"),
-  name: v.string(),
-  itemIds: v.array(v.id("libraryItems")),  // BAD
-  // ...
-})
-```
-Same indexing problem in reverse -- cannot efficiently query "which collections contain item X?" Also, the collection document grows unboundedly as items are added.
+Library uses "dual-path" queries: search-optimized (full-text search index) vs. regular indexes (for custom sorts, cursor pagination). Search uses a different index/API. When you extract `FilterSection` into a shared component, you assume all filters work the same way. Reality: some filters only exist on search (e.g., "contains AI") because they use full-text index; library's cursor pagination breaks if you apply filters that require offset-based position. UI shows options that don't work, or queries fail silently.
 
 **Why it happens:**
-Arrays feel simpler than a junction table. Developers think "this is a NoSQL database, just embed it." The Convex docs explicitly recommend relationship tables for many-to-many but developers skip that page.
+Developers see "filter button" and assume all filters are equivalent. They generalize prematurely without mapping which filters exist on which query path. Each page has different backend constraints, but the component hides this.
 
 **How to avoid:**
-Use a dedicated junction table with dual indexes:
-```typescript
-collectionItems: defineTable({
-  collectionId: v.id("collections"),
-  libraryItemId: v.id("libraryItems"),
-  addedAt: v.number(),
-})
-  .index("by_collection", ["collectionId"])
-  .index("by_item", ["libraryItemId"])
-  .index("by_collection_item", ["collectionId", "libraryItemId"])
-```
-The composite index `by_collection_item` enables O(1) existence checks ("is this item in this collection?") via `.withIndex("by_collection_item", q => q.eq("collectionId", x).eq("libraryItemId", y)).unique()`.
+- **Document Filter Availability**: Create a matrix in code comments showing which filters work with which query paths:
+  ```typescript
+  // FILTER AVAILABILITY MATRIX
+  // Filter          | Search Page | Library (index) | Library (custom-sort)
+  // ===================================================================
+  // full-text       | ✓           | ✓               | ✗ (no index)
+  // year range      | ✓           | ✓               | ✓
+  // date saved      | N/A         | ✓               | ✓
+  // custom sort     | Limited     | N/A             | ✓
+  ```
+- **Component Contracts**: FilterSection should accept `availableFilters: FilterDef[]` prop, not hardcode filter options. Library and search pass different arrays.
+- **Query Path Validation**: In library filter handler, validate that the filter + current query path combination is legal. If not, either remove filter from UI or switch query path silently.
+- **Test Both Paths**: Run identical filter tests on both "search-enabled" and "browse" library queries. Catch mismatches.
 
 **Warning signs:**
-- Schema uses `v.array(v.id(...))` for collection membership
-- Queries use `.filter()` with `.includes()` to check collection membership instead of index lookups
-- Collection deletion requires loading all library items to remove references
+- Library sidebar shows filters that return empty results or cause 400 errors
+- Some filters work on search page but not library (or vice versa)
+- "Filter availability" logic scattered across components instead of centralized
+- New filter added to search but library still shows old behavior
 
-**Phase to address:** Phase 1 (Schema design) -- the junction table must exist from the start. Migrating from embedded arrays to a junction table after data exists requires a full data migration.
+**Phase to address:**
+**Phase 1 (Sidebar Layout)** — Map available filters for each query path before writing sidebar. Create test fixtures for both paths, verify FilterSection respects `availableFilters` prop.
 
 ---
 
-### Pitfall 3: Pagination with Client-Side Filters Produces Empty or Undersized Pages
+### Pitfall 3: Pagination Model Mismatch (Cursor vs. Offset)
 
 **What goes wrong:**
-The library page needs filtering by rating, collection, date saved, text search, and sort. If pagination is done at the Convex query level using `.paginate()` and then filters are applied in TypeScript (either server-side in the query function or client-side), pages will be undersized or empty. Example: user requests page of 20 items, Convex returns 20, TypeScript filter for "rating >= 4" keeps only 3. The user sees a page with 3 items and must click "load more" repeatedly.
-
-This is a documented Convex limitation: "filtering in code afterwards can result in a smaller page or even an empty page" and "can slow down load times and cost database bandwidth as it traverses the entire table across many pages."
+Library uses cursor-based pagination (because it scales with Convex and handles concurrent updates). Search uses offset-based pagination (simpler client-side). When you add sidebar to library and users switch filters, the cursor becomes invalid: "current page pointer doesn't exist in filtered results." OR you try to make pagination state generic and accidentally mix cursor/offset logic, causing skipped results, duplicates, or "page not found" errors on filter changes.
 
 **Why it happens:**
-Convex's `.paginate()` operates on the database cursor level. It returns N documents from the index, then your code filters them. The cursor has already advanced past the filtered-out documents. You cannot "back-fill" the page to reach the requested size without issuing another paginate call, which creates a different cursor chain.
-
-The existing codebase already does client-side pagination for search results (see `results-list.tsx` using `ITEMS_PER_PAGE` with in-memory slicing of `filteredResults`), which works because ALL search results are fetched from OpenAlex at once. But library items live in Convex and could number in the thousands -- loading all items and filtering client-side won't scale.
+Developers see "pagination component" and think it's page-number-independent. They don't realize cursor pagination requires resetting to cursor = null on filter change, while offset needs currentPage = 1. Different reset semantics, different URL param shapes (`cursor` vs. `page`).
 
 **How to avoid:**
-- **Use indexes for every filterable dimension.** Rating filter: index `by_user_rating` on `["userId", "rating"]`. Date filter: index `by_user_savedAt` on `["userId", "savedAt"]`. Collection filter: query the `collectionItems` junction table by collection, then batch-fetch the items.
-- **Use the `filter` helper from `convex-helpers`** for conditions that cannot be expressed as indexes (e.g., text search on title). This helper integrates with `.paginate()` and handles the undersized-page problem by continuing to scan until the requested page size is filled.
-- **For collection-filtered pagination:** Do NOT paginate `libraryItems` and then check collection membership. Instead, paginate `collectionItems` by collection index, then batch-fetch the library items for each page. This inverts the query direction and ensures full pages.
-- **For text search:** Use Convex's `.withSearchIndex()` which supports pagination natively. Define a search index on the `title` field (and optionally `abstract`).
+- **Reset on Filter Change**: When any filter changes, ALWAYS reset pagination state. For cursor: set cursor = null (starts fresh). For offset: set page = 1. Enforce this in filter handlers, not in components.
+  ```typescript
+  const handleFilterChange = (filterName, value) => {
+    setSearchParams({ [filterName]: value, cursor: null }); // Reset cursor
+  };
+  ```
+- **Document Model in Component**: Add comment to pagination component indicating which model it uses.
+- **No Mixing**: Never allow the same page to switch between cursor and offset models. Library stays cursor, search stays offset.
+- **Test Filter + Pagination Combos**: Create tests that apply filters, navigate pages, then change filters and verify pagination reset occurs.
 
 **Warning signs:**
-- Users report "Load More" button needed 5+ times to see results when filters are active
-- Library page shows 2-3 items when 50 match the filter
-- Query function uses `.paginate()` followed by `.filter()` or array `.filter()` on the result
+- Users apply filter, get results, navigate to page 2, change filter, then see "no results" or duplicates on page 2
+- Pagination component shows "page 3 of 2"
+- URL has both `cursor` and `page` params (mixing models)
+- Tests pass on first page but fail after filter + pagination combination
 
-**Phase to address:** Phase 2 (Library queries) -- design filter-aware pagination from the start. Retrofitting pagination strategy after the queries are written and the UI depends on the cursor format requires rewriting both backend and frontend.
+**Phase to address:**
+**Phase 1 (Sidebar Layout)** — Add integration test for "filter changes reset pagination." Verify cursor is cleared in URL when any filter updates.
 
 ---
 
-### Pitfall 4: Collection Deletion Without Cascade Leaves Orphaned Junction Records
+### Pitfall 4: Collection Management UI State Not Isolated From Filter State
 
 **What goes wrong:**
-User deletes a collection. The mutation deletes the `collections` document but forgets to delete the corresponding `collectionItems` junction records. Now `collectionItems` rows reference a non-existent collection ID. Symptoms:
-1. "Ghost" items appear when querying junction table by item (the item appears to belong to a deleted collection)
-2. Item count badges show wrong numbers
-3. Re-creating a collection with the same name doesn't recover the old memberships (different `_id`)
-4. Database accumulates unbounded orphan records over time
-
-Worse: if the deletion mutation tries to delete all junction records AND the collection in a single transaction, it can hit Convex's per-transaction limits. A user with 1000+ items in a collection would require deleting 1000+ `collectionItems` documents plus the collection itself -- Convex allows max 16,000 document writes per transaction but scanning 1000+ documents also burns the 32,000 document scan budget.
+You add a sidebar with filters, but the library also has collection CRUD (create, read, update, delete collections and associate items). When filter state lives in context or URL params, you have no isolated space for collection edit forms or dialogs. Closing a "Create Collection" dialog triggers a filter change (state cleanup), or moving a paper to a collection updates filters unexpectedly. Collection associations and filter state bleed into each other.
 
 **Why it happens:**
-Convex has no foreign key constraints or cascade delete built in. Developers coming from SQL assume the ORM handles it. In Convex, you must manually delete related documents. The mutation looks "done" after `ctx.db.delete(collectionId)` because the UI immediately stops showing the collection (reactive query updates).
+Developers treat all URL state as "filter state" and dump everything into nuqs. Or they put collection editing in a modal that shares the page's context. Collection changes shouldn't affect filters, but if they share state management, changes propagate.
 
 **How to avoid:**
-- Implement cascade delete in the collection deletion mutation. Query all `collectionItems` with `.withIndex("by_collection", q => q.eq("collectionId", id))`, then delete each one, then delete the collection.
-- For collections with fewer than ~500 items, do this in a single mutation (well within Convex's 16,000 write limit).
-- For potentially large collections, use the scheduled deletion pattern: (1) soft-delete the collection by setting a `deletedAt` field, (2) filter out soft-deleted collections from all queries, (3) schedule a background mutation that deletes junction records in batches of 500, (4) delete the collection document after all junction records are cleaned up.
-- Add a guard in junction-table queries: if `ctx.db.get(collectionId)` returns `null`, skip/delete the orphan record (self-healing).
+- **Separate State Trees**: Keep filters in `nuqs` (URL state). Keep collection UI state (dialog open/close, editing form, selected collection ID) in component local state or a separate context.
+  ```typescript
+  // Good separation:
+  const [filters] = useQueryState(...); // From nuqs (URL)
+  const [editingCollectionId, setEditingCollectionId] = useState(null); // Local state
+  ```
+- **No Filter Resets on Collection Changes**: When user creates/updates/deletes a collection, do NOT reset filters. The collection action is orthogonal.
+- **Test Independence**: Write tests that update filters AND update collections in the same test session. Verify both work without interference.
 
 **Warning signs:**
-- Collection delete mutation has no junction table cleanup code
-- `collectionItems` table row count only grows, never shrinks
-- UI shows "1 collection" badge on items after their only collection was deleted
+- Collection create dialog closes, filters unexpectedly reset
+- Adding item to collection also clears the search query
+- Collection edit form shows/hides filters based on state
 
-**Phase to address:** Phase 3 (Collection CRUD) -- cascade delete must be part of the delete mutation from the start, not added as a bug fix later.
+**Phase to address:**
+**Phase 1 (Sidebar Layout)** — Add test: user applies filter, opens collection dialog, creates collection, dialog closes, filters are still applied. Verify collection state doesn't bleed into filter state.
 
 ---
 
-### Pitfall 5: Auth Guard Inconsistency Between Library Reads and Writes
+### Pitfall 5: Mobile Responsive Design Pattern Inconsistency (Sidebar Collapse vs. Tabs)
 
 **What goes wrong:**
-The codebase has two auth patterns: `getCurrentUser()` (returns `null` for unauthenticated -- used in queries) and `requireAuth()` (throws `UNAUTHENTICATED` error -- used in mutations). If library queries use `getCurrentUser()` and return empty results for unauthenticated users (silent failure), but library mutations use `requireAuth()` and throw errors, the UX is inconsistent: an unauthenticated user can visit `/library`, see an empty page (no error), try to rate a paper, and get a hard error.
-
-More dangerously: if a library query forgets BOTH guards and uses `ctx.auth.getUserIdentity()` directly without checking ownership, a user could potentially read another user's library items by guessing document IDs (Convex IDs are not sequential but are guessable if leaked).
+Search page uses tab-based mobile filters (horizontal tabs at top, swappable panels). Library currently has no sidebar. When you port sidebar to library with a collapsible/hamburger menu (common desktop pattern), it looks different from search's tab pattern. Users see inconsistent filtering UX across the app. OR you try to reuse the search tab pattern on library and it breaks because the tab navigation state isn't wired to nuqs, causing filter state to reset on mobile navigation.
 
 **Why it happens:**
-The existing codebase uses both patterns (see `users/queries.ts` using `getCurrentUser` which returns null, vs the `requireAuth` pattern in mutations). Developers copy the query pattern for new library queries but don't consider the full flow. The "return null" pattern is correct for queries like "get my subscription" where a null result is meaningful, but wrong for `/library` where absence of auth should redirect, not show empty.
+Developers copy the desktop sidebar component to mobile without adapting for mobile patterns. Mobile sidebar as a slide-out drawer is standard, but it conflicts with the tab-based approach used elsewhere in the app. No single "responsive FilterSection" exists, so two different implementations emerge.
 
 **How to avoid:**
-- For ALL library queries AND mutations: use `requireAuth(ctx)` which throws on unauthenticated. The `/library` page should never silently show empty for a logged-out user.
-- Add `userId` ownership check on EVERY library/collection operation: `if (item.userId !== user._id) throw createError("FORBIDDEN", ...)`. Follow the `resolveOwnedJob` pattern from `convex/extraction/queries.ts` -- create a `resolveOwnedLibraryItem` helper.
-- On the Next.js side: protect the `/library` route with Clerk's middleware so unauthenticated users are redirected to sign-in before the page loads. This is defense-in-depth (Convex guards are the real protection).
-- Never expose a query like `getLibraryItem({ id })` without ownership validation -- the item must belong to the requesting user.
+- **Define Mobile First**: Decide: does library use tabs (like search) or collapsible sidebar (hamburger)?
+  - **Recommendation**: Use tabs on mobile (matching search page) to unify user experience. Update library mobile design to match search.
+  - **Implementation**: Create a `ResponsiveFilterSection` that renders tabs on mobile (`md` breakpoint below), sidebar on desktop. Share between search and library.
+- **Tab State in URL**: If using tabs, ensure selected tab is reflected in URL (`?filterTab=date-range`), so state survives reloads.
+- **Touch Targets**: Ensure all filter buttons on mobile are at least 44px × 44px. Test with actual touch, not mouse.
+- **Test Across Breakpoints**: Run your filter tests at both desktop and mobile viewport sizes. Verify same filters work in both.
 
 **Warning signs:**
-- Library query uses `getCurrentUser()` instead of `requireAuth()`
-- Library query takes an `itemId` argument without checking that the item's `userId` matches the caller
-- `/library` page shows empty state for unauthenticated users instead of redirect/login prompt
-- No test verifies that User A cannot read User B's library items
+- Search page shows horizontal tabs on mobile, library shows slide-out drawer
+- Clicking mobile filter tabs doesn't update URL, so closing and reopening app loses filter state
+- Filter buttons on mobile are small and hard to tap
+- Filters show on desktop but disappear on mobile
 
-**Phase to address:** Phase 1 (Schema + auth helpers) -- establish the `resolveOwnedLibraryItem` pattern before any query/mutation code is written. Phase 2 should include auth boundary tests.
+**Phase to address:**
+**Phase 2 (Mobile Responsive Filters)** — Create `ResponsiveFilterSection` component that unifies mobile filter UX with search page. Test on real mobile devices or realistic mobile viewports.
 
 ---
 
-### Pitfall 6: Stale Library Items When OpenAlex Source Data Changes
+### Pitfall 6: Hardcoded Strings in Shared Components Break i18n (6 Locales)
 
 **What goes wrong:**
-Library items store a snapshot of paper metadata at save time. OpenAlex updates its data continuously: citation counts change, retractions happen, new authors are added, DOIs are corrected, abstracts are updated. A paper saved in January 2026 with `citationCount: 45` may have `citationCount: 312` by December 2026. If the library displays the stale snapshot, users see outdated citation counts, miss retraction notices, and export incorrect metadata.
-
-The risk is higher for academic tools where citation accuracy matters. A systematic review that exports library data with stale citation counts undermines the research.
+You refactor `FilterSection` into a shared component and hardcode English strings like "Apply Filters", "Date Range", "Year". The library page is translated into 6 locales (via next-intl). When the shared component has hardcoded strings, translations are missing for those strings in the sidebar. Users see English filter labels on non-English library pages. OR new filters are added to the sidebar and developers forget to add translations, leading to English labels appearing randomly.
 
 **Why it happens:**
-Storing the full paper snapshot at save time is the simplest implementation. Developers think "the user saved this, so they want what they saved." But users actually want a living bookmark, not a dead snapshot. The distinction between "save the reference" and "save the data" is not made explicit in the requirements.
+Developers extract components without moving translatable strings to locale files. Hardcoded strings seem fine in a one-off component, but when generalized, they create translation debt. i18n string extraction tools don't catch strings in shared components if they're not wrapped in translation calls.
 
 **How to avoid:**
-- **Store minimal metadata + canonical ID.** The `openalexId` is the canonical reference. Store enough metadata for display (title, authors, year, DOI) but accept that citation counts, open access status, and other mutable fields will go stale.
-- **Display stale data with age indicator.** Show "Saved 3 months ago" next to library items. Users understand that citation counts may be outdated.
-- **Do NOT implement background refresh for v2.1.** This is a premature optimization that adds complexity (cron jobs, rate limiting against OpenAlex API, conflict resolution). OpenAlex's free API has rate limits (10 requests/second), and refreshing 1000 library items would take 100+ seconds.
-- **Provide a manual "refresh" button per item** that fetches current data from OpenAlex and updates the library item. This is simple, user-initiated, and respects API rate limits.
-- **For export:** Always fetch fresh data from OpenAlex at export time, not from the stored snapshot. This ensures exported data is current.
+- **All Strings in i18n Files**: Every filter label, button text, and placeholder in FilterSection must be in next-intl locale files. No hardcoded English strings.
+  ```typescript
+  // Good:
+  import { useTranslations } from 'next-intl';
+  const t = useTranslations('filters');
+  return <label>{t('dateRange')}</label>;
+
+  // Bad:
+  return <label>Date Range</label>;
+  ```
+- **Shared Filter Definitions**: Define all available filters in a centralized file with i18n keys:
+  ```typescript
+  export const FILTERS = {
+    dateRange: { label: 'filters.dateRange', type: 'date-range' },
+    yearRange: { label: 'filters.yearRange', type: 'number-range' },
+  };
+  ```
+- **Test All Locales**: Run your sidebar tests with different locale settings. Verify translations load correctly.
+- **Pseudo-Localization**: Use a test locale with extra characters (e.g., "Date Range" → "ÐàtéRange+") to catch untranslated strings.
 
 **Warning signs:**
-- Library items show citation counts from months ago with no staleness indicator
-- Users report "wrong" citation counts in library vs. search results for the same paper
-- Background cron implemented to refresh library items, hitting OpenAlex rate limits
-- No `savedAt` timestamp displayed alongside library item metadata
+- English text appears in sidebar on French/German/Chinese pages
+- New filters added, but no translation files updated
+- Sidebar component has mixed English and translated text
+- Locale switcher doesn't apply to sidebar
 
-**Phase to address:** Phase 2 (Library queries) -- display `savedAt` and accept staleness. Manual refresh is a Phase 4 enhancement, not a launch blocker.
+**Phase to address:**
+**Phase 1 (Sidebar Layout)** — Before writing any filter UI, extract all strings to i18n. Create test that renders sidebar in all 6 locales and verifies no English text appears.
+
+---
+
+### Pitfall 7: Filter Reset Logic Creates Silent Data Inconsistency
+
+**What goes wrong:**
+When you apply a filter on the library, users expect certain behaviors: filtering is applied, pagination resets to page 1 (or cursor = null), and the URL updates. If filter reset logic is incomplete, stale filters remain in URL after navigation, or old sorts persist even though filter changed. User clicks a filter, gets confused why results don't match, tries same filter again, then it works (cache behavior or race condition).
+
+**Why it happens:**
+Reset logic is scattered: filter handler resets pagination but forgets to reset sort. Or mutations to collection state trigger filter resets. Or filter state lives in two places (URL + context), and only one gets reset. Developers assume filters are independent and don't coordinate resets.
+
+**How to avoid:**
+- **Document Reset Semantics**: When filter X changes, what else resets? Create a decision table:
+  ```
+  | User Action       | URL Param Reset | Sort Reset | Pagination Reset |
+  | ================= | =============== | ========== | ================ |
+  | Filter change     | Update filter   | Keep sort  | Reset to page 1  |
+  | Sort change       | Keep filters    | Update     | Reset to page 1  |
+  | Collection change | Keep all        | Keep all   | NO reset         |
+  ```
+- **Centralized Reset Handler**: Create a single function that handles all resets, ensuring consistency:
+  ```typescript
+  const handleFilterChange = (filterName, value) => {
+    setSearchParams({
+      [filterName]: value,
+      cursor: null,  // Always reset pagination
+      // sort: keep it
+    });
+  };
+  ```
+- **Test Reset Chains**: Write integration tests that verify reset behavior. E.g., "apply filter A, apply filter B, verify pagination is page 1 both times."
+
+**Warning signs:**
+- URL shows old filters even after changing new filter
+- Sorting works, then filter is applied, and sort reverts unexpectedly
+- Tests pass in isolation but fail when run together (state pollution)
+- Users report "filter doesn't work if I also sort"
+
+**Phase to address:**
+**Phase 1 (Sidebar Layout)** — Before implementing sidebar, document reset semantics in a test file. All reset logic must go through a single handler.
+
+---
+
+### Pitfall 8: Mobile Filter Dialog Doesn't Persist State (Tabs Closed, Selections Lost)
+
+**What goes wrong:**
+On mobile, you implement a "Filter" button that opens a bottom sheet or modal dialog with filter options. User opens dialog, selects 3 filters, closes dialog, then opens dialog again — all 3 filters are gone. OR user applies filters, navigates away (back to home), returns to library, and sidebar is now empty. Mobile filter state isn't persisted correctly because filter changes inside the dialog don't update URL until dialog closes.
+
+**Why it happens:**
+Dialog state (whether it's open/closed) is often local to the dialog component. Filter changes inside the dialog are buffered in local state until "Apply" button is clicked. But URL state lives elsewhere. If the dialog resets on every open, local state is lost. If URL only updates on "Apply" click and user navigates before clicking it, changes are lost.
+
+**How to avoid:**
+- **Update URL Immediately**: Filter changes in dialog should update URL/nuqs immediately, not on "Apply". This way, any navigation preserves state.
+  ```typescript
+  const handleFilterChange = (filterName, value) => {
+    setSearchParams({ [filterName]: value }); // Update URL immediately
+  };
+  ```
+- **Dialog State in URL**: If the dialog is open/closed state is relevant, include it in URL (`?filterOpen=true`) so reopening browser/page brings user back to the open dialog.
+- **Test Dialog Lifecycle**: Write tests that open dialog, change filters, close, reopen, and verify filters persisted.
+
+**Warning signs:**
+- Mobile users apply filters, dialog closes, they reopen it and filters are cleared
+- Filter selections work on desktop but reset on mobile
+- Navigating away and back to library loses mobile filter state
+
+**Phase to address:**
+**Phase 2 (Mobile Responsive Filters)** — Test dialog state lifecycle on mobile. Ensure all filter changes update URL immediately, not on dialog close.
 
 ---
 
@@ -203,25 +266,28 @@ Shortcuts that seem reasonable but create long-term problems.
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `v.any()` for the library item data field | No need to define schema for OpenAlex data upfront | No type safety, no validation, document size unconstrained, impossible to add indexes later | Never -- define the schema even if it means omitting fields |
-| Storing `collectionIds: v.array(v.id("collections"))` on library items instead of junction table | One fewer table, simpler queries for "which collections is this item in?" | Cannot index arrays, "all items in collection X" requires full table scan, collection delete requires scanning all items | Never -- junction table is the correct pattern for many-to-many in Convex |
-| Loading all library items and filtering/paginating client-side | Works immediately, reuses existing `results-list.tsx` pagination pattern | Breaks at 200+ items (memory, bandwidth, render time), Convex bandwidth costs scale linearly | Acceptable for MVP if library is capped at ~100 items; must be replaced before removing cap |
-| Skipping ownership check on queries (relying on "users only see their own data in the UI") | Faster development | Any direct API call or URL manipulation exposes other users' data | Never -- always validate `item.userId === user._id` server-side |
-| Storing rating only in Zustand (existing `useRatingsStore`) and also in Convex library without sync | Existing rating system keeps working | Two sources of truth for ratings; Zustand ratings lost on device switch; Convex ratings may conflict with Zustand ratings | Acceptable as transitional state during migration, with explicit plan to deprecate Zustand ratings |
+| Hardcode filter options in sidebar | Fast to build | 6 locales missing translations; hard to add/remove filters later | Never — strings must be i18n from day 1 |
+| Copy FilterSection component from search to library | Reuse component; avoid duplication | Two incompatible versions diverge; bugs fixed in one don't apply to both | Only if you extract to shared component immediately after copy |
+| Use URL-driven state (nuqs) for all sidebar state | Bookmarkable filters; no context prop drilling | Collection edit dialogs become complex; unrelated UI state pollutes URL | Good practice; context should be minimal |
+| Assume all filter combinations work | Simpler logic; don't validate | Silent failures or bad queries when incompatible filters combine | Never — test all combos, document constraints |
+| Reset pagination on every filter change | Simple rule; fewer edge cases | Edge case: user sorts, then filters, and expects to stay on sort column | Good trade-off; resetting pagination is safer |
+| Keep mobile and desktop filter UI separate | Each can be optimized independently | Inconsistent UX; translations duplicated; bugs in one don't trigger in other | Never — create responsive component that works on both |
 
 ---
 
 ## Integration Gotchas
 
-Common mistakes when connecting library features to the existing system.
+Common mistakes when connecting components and pages with different architectures.
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Rating -> Library save trigger | Rating a paper in search results calls a Convex mutation that fails silently if the paper is already in the library, creating duplicate entries | Use upsert pattern: query `libraryItems` by `userId + openalexId` index first. If exists, update the rating. If not, insert. Use a composite index `by_user_openalex` on `["userId", "openalexId"]` for O(1) lookup. |
-| Zustand ratings -> Convex library migration | Copying all Zustand ratings to Convex on first library page visit, creating a massive batch mutation | Do not bulk-migrate. Let ratings sync naturally: when user rates a paper, save to both Zustand (for immediate UI) and Convex (for persistence). Existing Zustand ratings are ephemeral and were never promised to persist. |
-| Clerk auth + Convex library | Using `useUser()` from Clerk to check auth on the library page client-side, but not passing the auth token to Convex queries | Convex queries automatically receive the auth token from `ConvexProviderWithClerk`. Do not manually pass auth -- use `requireAuth(ctx)` in the Convex query function. The existing pattern in `convex/lib/auth.ts` handles this correctly. |
-| OpenAlex SDK types in Convex schema | Importing `Work` type from `@sickrin/openalex-sdk` in Convex schema, causing build errors because the SDK is a client-side dependency | Define a separate `LibraryItemData` type in the Convex schema using Convex validators (`v.string()`, `v.number()`, etc.). Do not import SDK types into Convex backend code. |
-| Search results page + library save | Adding a "Save to Library" button on search results that opens a modal, but the search page loses its scroll position when the modal triggers a re-render | Use `useMutation` with optimistic updates. The save operation should not cause the search results to re-fetch or the page to re-render. Convex mutations do not affect queries on different tables. |
+| FilterSection (from search) → library page | Wrapping in SearchProvider; assuming context syncs to URL | Accept `onFilterChange` callback; let parent (library) decide if it updates nuqs or context |
+| Sidebar collapsing | Storing collapse state in React.useState in sidebar; loses state on re-render | Store collapse state in URL or persistent localStorage, or lift to page level |
+| Collection CRUD ↔ Filter state | Treating collection mutations as triggering filter resets | Keep collection state completely separate; collection changes should not affect filters |
+| URL query params ↔ Mobile filter dialog | Dialog state is local; URL only updates on "Apply" | Update URL immediately on every filter change; dialog state follows URL |
+| Dual query paths (search index vs. regular) | Assuming all filters work on both paths | Document which filters are valid for each path; validate before querying |
+| Pagination (cursor) ↔ Filter changes | Not resetting cursor when filters change | Always set cursor = null in filter handler; ensure tests catch missing resets |
+| Translate filter labels | Hardcoding English in FilterSection; forgetting locale files | All labels from i18n files; test with all 6 locales; use pseudo-localization to catch strings |
 
 ---
 
@@ -231,11 +297,11 @@ Patterns that work at small scale but fail as usage grows.
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Loading all library items to count per-collection badges | UI is snappy with 20 items; freezes with 500+ | Use a dedicated query that counts `collectionItems` per collection using `.withIndex("by_collection").collect().length`. Consider Convex Aggregate component for O(1) counts if scale demands it. | 200+ library items |
-| Reactive query on entire library for the list page | Page re-renders on every library change (new rating, new item, metadata update) | Paginate with cursor-based queries so only the visible page re-renders. Use `usePaginatedQuery` from Convex React. | 100+ items in library, any concurrent modification |
-| N+1 query for collection names on library item cards | Each item card queries `collections` table for each of its collection memberships | Batch-fetch all collections for the user once (they're user-scoped and bounded), pass as context to item cards. Users won't have 100+ collections. | 50+ items displayed with 5+ collections each |
-| Full-text search on library items using `.filter()` with string matching | Works fine at 50 items; scans entire table at 1000+ items | Use Convex search index: `.withSearchIndex("search_title", q => q.search("title", searchTerm))`. Define the search index in the schema. | 200+ library items with active search |
-| Denormalized collection count on library items (stored `collectionCount` field) | Fast reads, but every collection add/remove must update the library item document, causing extra writes and potential OCC conflicts | Query junction table count on demand. The read cost is low with proper indexes. Denormalized counts create write amplification and consistency bugs. | When users frequently add/remove items from collections |
+| Querying without filter constraints on dual-path setup | First page is fast; second page is slow or times out | Always enforce filter constraints before querying; document max result set size | ~1000 items without filters; 10K+ with poor filters |
+| Unindexed junction table (libraryItemCollections) | Collection filtering works, then slows dramatically | Ensure composite index on (libraryItemId, collectionId); test with 1000+ items | 100+ items in many collections; grows quadratically |
+| Sidebar re-renders on every filter change | Smooth with 5 filters; laggy with 20+ | Memoize filter sections; use React.memo or useMemo | 15+ filter sections; mobile becomes unusable |
+| Loading all filter options upfront | Initial library page load is fast | Lazy-load filter options or paginate (e.g., year range computed on demand) | 1000+ unique values for any filter |
+| Context provider re-renders all children on state change | One filter changes, entire sidebar re-renders | Split contexts by concern; use useCallback to memoize handlers | 20+ filters; mobile performance drops 50%+ |
 
 ---
 
@@ -245,25 +311,26 @@ Domain-specific security issues beyond general web security.
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Library query accepts `userId` as an argument instead of deriving it from auth | Any authenticated user can read any other user's library by passing a different `userId` | Always derive `userId` from `requireAuth(ctx)._id` inside the Convex function. Never accept `userId` as an argument for user-scoped data. |
-| Collection sharing endpoint without rate limiting | Malicious user enumerates all collection IDs to discover other users' research interests | Not applicable for v2.1 (no sharing), but if added later, validate ownership on every collection access. Convex IDs are not sequential but are deterministic -- do not treat them as secrets. |
-| Library export includes sensitive fields (user internal IDs, Convex document IDs) | Exported JSON/CSV leaks internal identifiers | Strip `_id`, `_creationTime`, `userId`, and any Convex-internal fields from export output. Export only user-facing data. |
-| Deleting a library item does not check ownership | Any authenticated user can delete any library item if they know the document ID | Delete mutation must verify `item.userId === user._id` before deleting. Follow the `resolveOwnedJob` pattern. |
+| Trusting filter values from URL without validation | User crafts URL with malicious filter values; could cause DB DoS or data exposure | Validate all filter values against allowed options before querying; use enums/allowlists |
+| Exposing collection ownership via filter results | User queries `?collectionId=other-user-id` and sees private collections | Always filter library queries by current user ID; never rely on client-side filtering alone |
+| Allowing filter combinations that expose hidden fields | Complex filter + sort combo returns fields user shouldn't see | Test filter combinations with non-admin users; audit Convex queries to ensure auth checks |
+| Storing filter state in localStorage without encryption | Browser localStorage can be read by XSS or other tabs | Don't store sensitive filter state in localStorage; use URL (which is public-safe) for bookmarkable state |
 
 ---
 
 ## UX Pitfalls
 
-Common user experience mistakes in library/collections features.
+Common user experience mistakes in this domain.
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| No confirmation dialog on collection deletion | User accidentally deletes a collection and loses all membership associations; items are NOT deleted but collection organization is lost | Show confirmation: "Delete collection '[name]'? Items in this collection will not be deleted, but will be removed from this collection." |
-| Rating a paper from search results saves to library with no feedback | User doesn't know the paper was saved; visits library later and is confused by items they don't remember saving | Show toast: "Saved to Library" with optional "Undo" action. Make the save-on-rate behavior opt-in or clearly documented in onboarding. |
-| Library page shows all items with no default sort | New users see a random-looking list | Default sort by `savedAt` descending (most recent first). This matches user mental model of "I just saved this, I should see it at the top." |
-| Collection names not validated for uniqueness per user | User creates two collections named "Methods" and gets confused | Validate uniqueness of collection name per user in the create mutation. Return a clear error message. |
-| Removing an item from a collection shows the item disappearing from the list with no way to find it | User panics thinking they deleted the paper | Show toast: "Removed from '[collection name]'. Item is still in your library." with "Undo" action. |
-| Filter state not preserved in URL | User filters library, copies URL to share/bookmark, filter state is lost | Use `nuqs` URL state (already in the codebase) for library filter parameters. Follow the existing `SearchUrlParams` pattern. |
+| No visual feedback when filter is applied | Users unsure if filter "stuck"; apply same filter twice | Show applied filters as chips or badges; highlight active filters in sidebar |
+| Mobile filter dialog closes without "Apply" button feedback | User taps to filter, doesn't know if it worked | Keep dialog open until user explicitly closes; provide visual confirmation (toast or chip) |
+| Sidebar filters don't match available data | User selects filter, gets 0 results; no explanation | Show result counts per filter option; disable filters that would return 0 results |
+| Too many filters crowd the sidebar | Mobile sidebar is 90% filter UI; scrolling becomes tedious | Group related filters (e.g., date filters into "Date" group); use accordion/collapsible sections |
+| Filter reset destroys user's work | User applies 5 filters, changes sort, pagination resets unexpectedly | Only reset pagination and cursor on filter change; preserve sort and other state if possible |
+| Mobile filter dialog can't fit on small screens | iPhone SE users see filter dialog that's too tall | Use bottom sheet that scrolls internally; keep filter controls compact; avoid full-screen modals |
+| Responsive design breaks between breakpoints | Filters look good at 768px and 769px, but terrible at 767px | Test at odd viewport sizes (375px, 480px, 768px, 1024px); use CSS grid with auto-fit |
 
 ---
 
@@ -271,17 +338,16 @@ Common user experience mistakes in library/collections features.
 
 Things that appear complete but are missing critical pieces.
 
-- [ ] **Library save mutation:** Has upsert logic (check existing by `userId + openalexId` before insert) -- not just blind insert that creates duplicates
-- [ ] **Collection delete mutation:** Deletes ALL `collectionItems` junction records for the collection, not just the collection document
-- [ ] **Library item delete mutation:** Deletes ALL `collectionItems` junction records for the item, not just the library item document
-- [ ] **Ownership validation:** Every query and mutation for library/collection data validates `item.userId === currentUser._id`, not just that the user is authenticated
-- [ ] **Pagination with filters:** Filters are applied via indexes or `convex-helpers` filter (not post-pagination JavaScript `.filter()`), ensuring full pages
-- [ ] **Search index defined:** Schema includes a search index on `libraryItems` for title text search, not relying on client-side string matching
-- [ ] **Collection name uniqueness:** Create mutation checks for existing collection with same name for the same user
-- [ ] **Rating sync:** Rating a paper updates both the search-page UI state (Zustand) AND the Convex library item's rating field -- not one or the other
-- [ ] **Auth on /library route:** Next.js middleware or page-level guard redirects unauthenticated users to sign-in, not just showing empty state
-- [ ] **Empty states:** Library page has proper empty states for: no items, no items matching filter, no items in selected collection -- not a blank page
-- [ ] **Mobile responsive:** Library page and collection management work on mobile viewport -- the existing search results page uses responsive grid modes
+- [ ] **Filter Sidebar:** Filters appear in sidebar, but they're hardcoded in English. Verify all filter labels are in i18n locale files for all 6 locales.
+- [ ] **Filter Sidebar:** Sidebar filters work on search page, but library shows different available filters. Verify FilterSection accepts `availableFilters` prop and respects it.
+- [ ] **Mobile Responsive:** Sidebar collapses on mobile, but doesn't match search page's tab pattern. Verify mobile uses same filter UX (tabs) as search page for consistency.
+- [ ] **State Management:** Filters persist in URL and survive refresh. Verify by manually editing URL, refreshing, and checking sidebar reflects params.
+- [ ] **Pagination + Filters:** User applies filter, pagination resets. Verify cursor is set to null in URL when filter changes; test by applying filter on page 3.
+- [ ] **Collection CRUD:** Creating a collection works without resetting filters. Verify collection mutations don't trigger filter state resets.
+- [ ] **Cursor Pagination:** Cursor pagination works with filters applied. Verify cursor becomes invalid after filter change, query returns to first page, cursor is null in URL.
+- [ ] **Dual Query Paths:** Library filters work with both "search-enabled" and "custom sort" query paths. Verify by testing filters on both paths; document which filters work where.
+- [ ] **Dialog State:** Mobile filter dialog retains state after close/reopen. Verify by opening dialog, applying filters, closing, reopening; filters should still be visible.
+- [ ] **Integration Tests:** Filter + pagination, filter + sort, filter + collection CRUD all tested together. Verify no state interference when combining operations.
 
 ---
 
@@ -291,12 +357,12 @@ When pitfalls occur despite prevention, how to recover.
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Full OpenAlex JSON stored in library items (Pitfall 1) | HIGH | Write a migration mutation that reads each library item, extracts only needed fields into the new schema shape, writes the slimmed document back. Must be done in batches of 500 (Convex transaction limits). Cannot be done atomically. |
-| Arrays used instead of junction table (Pitfall 2) | HIGH | Create the `collectionItems` table. Write a migration that reads each library item's `collectionIds` array, creates junction records, then removes the array field. Two-phase: write junction records first, then remove array field. |
-| Pagination returns empty pages (Pitfall 3) | MEDIUM | Swap to `convex-helpers` filter or add appropriate indexes. Frontend pagination component must be updated to handle the new cursor-based API instead of page numbers. |
-| Orphaned junction records from missing cascade delete (Pitfall 4) | LOW | Write a cleanup mutation that scans `collectionItems`, checks if each `collectionId` exists, deletes orphans. Run once, then fix the delete mutation to cascade properly going forward. |
-| Auth guard missing on library queries (Pitfall 5) | LOW | Add `requireAuth` + ownership check to every library/collection query and mutation. No data migration needed, just code changes. But if data was already leaked, the damage is done. |
-| Stale library data with no staleness indicator (Pitfall 6) | LOW | Add `savedAt` display to library item cards. No migration needed if `savedAt` / `_creationTime` is already stored. |
+| Context state diverges from URL state on library page | HIGH | 1. Identify which component is source of truth (likely URL/nuqs). 2. Remove context from library page. 3. Retest all filter combos. 4. Update integration tests to verify single source of truth. |
+| Hardcoded English strings in sidebar discovered after release | HIGH | 1. Extract all strings to i18n files. 2. Create locale files for missing translations. 3. Deploy translations. 4. Add pseudo-localization test to catch future hardcoded strings. |
+| Pagination cursor becomes invalid after filter change | MEDIUM | 1. Update filter handler to set cursor = null. 2. Add integration test for "filter → pagination reset". 3. If users affected, document in changelog. |
+| Mobile filter UI inconsistent with search page tabs | MEDIUM | 1. Create ResponsiveFilterSection that unifies both. 2. Update library to use new component. 3. Update mobile tests to run against both pages. |
+| Junction table (collections) shows duplicates or slow queries | HIGH | 1. Audit unique constraints on junction table; add composite primary key if missing. 2. Check indexes on foreign key columns. 3. Run performance tests with 1000+ items. 4. If data corrupted, write migration to deduplicate. |
+| Filters disappear after mobile app restart | MEDIUM | 1. Verify filter changes update URL immediately (not on dialog close). 2. Add test that opens dialog, changes filters, closes app, relaunches. 3. Ensure URL persistence is working. |
 
 ---
 
@@ -306,32 +372,65 @@ How roadmap phases should address these pitfalls.
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Full JSON blob storage (Pitfall 1) | Phase 1 (Schema design) | Schema review: `libraryItems` table has explicit typed fields, no `v.any()`, document size under 2 KB per item |
-| Missing junction table (Pitfall 2) | Phase 1 (Schema design) | Schema has `collectionItems` table with `by_collection`, `by_item`, and `by_collection_item` indexes |
-| Pagination + filter mismatch (Pitfall 3) | Phase 2 (Library queries) | Load test: with 100+ items and rating filter active, every page returns the requested number of items (no undersized pages) |
-| Missing cascade delete (Pitfall 4) | Phase 3 (Collection CRUD) | Test: after deleting a collection, `collectionItems` query by that collection ID returns zero results |
-| Auth guard inconsistency (Pitfall 5) | Phase 1 (Auth helpers) | Test: unauthenticated call to every library query/mutation returns UNAUTHENTICATED error. Test: User A cannot read User B's library items. |
-| Stale data without indicator (Pitfall 6) | Phase 2 (Library UI) | UI review: every library item card shows `savedAt` date. Export function fetches fresh data from OpenAlex. |
-| Rating sync between Zustand and Convex | Phase 2 (Library mutations) | Test: rating a paper from search results updates both Zustand store AND creates/updates Convex library item |
-| Collection name uniqueness | Phase 3 (Collection CRUD) | Test: creating two collections with the same name for the same user returns an error on the second attempt |
-| Duplicate library items from missing upsert | Phase 2 (Library mutations) | Test: rating the same paper twice does not create two library items; the second call updates the existing item's rating |
-| `/library` route unprotected | Phase 2 (Library page) | Test: unauthenticated navigation to `/library` redirects to sign-in |
+| State inconsistency (nuqs vs. context) | Phase 1: Sidebar Layout | Test filter → URL param → reload → sidebar reflects param. Verify nuqs is source of truth. |
+| Over-generalized FilterSection | Phase 1: Sidebar Layout | Create filter availability matrix. Test both "search-enabled" and "custom-sort" library queries with all filters. |
+| Pagination cursor mismatch | Phase 1: Sidebar Layout | Test filter change resets cursor to null. Verify pagination state in URL updates correctly. |
+| Collection CRUD ↔ filter interference | Phase 1: Sidebar Layout | Test: apply filter, create collection, close dialog, verify filter still applied. |
+| Mobile responsive inconsistency | Phase 2: Mobile Responsive Filters | Compare mobile filter UI between search and library. Both should use same tab or drawer pattern. Test on real mobile viewports. |
+| i18n hardcoded strings | Phase 1: Sidebar Layout | Render sidebar in all 6 locales. Use pseudo-localization to detect untranslated strings. Verify locale files have entries for all filter labels. |
+| Filter reset logic scattered | Phase 1: Sidebar Layout | Document reset semantics in decision table. Implement centralized reset handler. Write integration tests for reset chains. |
+| Mobile filter dialog state lost | Phase 2: Mobile Responsive Filters | Test mobile dialog: apply filters, close dialog, navigate away, return, reopen dialog. All filters should persist. |
 
 ---
 
 ## Sources
 
-- [Convex Limits Documentation](https://docs.convex.dev/production/state/limits) -- 1 MiB document size, 1024 fields, 8192 array elements, 16 nesting depth, 32K document scan limit, 16K document write limit per transaction, database bandwidth pricing
-- [Convex Pagination Documentation](https://docs.convex.dev/database/pagination) -- reactive pagination, dynamic page sizes, cursor-based pagination behavior
-- [Convex Relationship Structures](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas) -- junction table pattern for many-to-many, dual indexing, composite index for existence checks
-- [Take Control of Pagination (Convex Stack)](https://stack.convex.dev/pagination) -- `getPage()` helper, memory bloat from loading many pages, reactive stitching
-- [Complex Filters in Convex (Convex Stack)](https://stack.convex.dev/complex-filters-in-convex) -- `filter` helper from `convex-helpers`, TypeScript filtering with pagination, performance characteristics
-- [How to apply filter before pagination (Convex Community)](https://discord-questions.convex.dev/m/1283043121730420808) -- empty/small page problem when filtering after pagination
-- [Cascade Delete Patterns (Convex Community)](https://discord-questions.convex.dev/m/1270300293984288779) -- manual cascade delete, scheduled deletion for large relations, soft delete pattern
-- [Convex Ents](https://stack.convex.dev/ents) -- cascading delete helpers, soft deletion behavior, scheduled deletion across mutations
-- [Convex Best Practices](https://docs.convex.dev/understanding/best-practices/) -- index-based filtering preferred over `.filter()`, denormalization guidance
-- Codebase analysis: `convex/schema.ts` (existing schema patterns), `convex/lib/auth.ts` (`getCurrentUser` vs `requireAuth` patterns), `convex/extraction/queries.ts` (`resolveOwnedJob` ownership pattern, paginated query implementation), `lib/store.ts` (Zustand `useRatingsStore` with `persist`), `lib/types/search.types.ts` (`PaperResult = Work` type alias, `SearchFilters` interface), `components/results-list.tsx` (client-side pagination pattern)
+### State Management & Context
+- [Avoiding State Inconsistencies: The Pitfall of Multiple React Context Providers - DEV Community](https://dev.to/rakshyak/avoiding-state-inconsistencies-the-pitfall-of-multiple-react-context-providers-4e29)
+- [React State Management in 2025: What You Actually Need - DeveloperWay](https://www.developerway.com/posts/react-state-management-2025)
+- [React patterns to avoid common pitfalls in local state management - LogRocket](https://blog.logrocket.com/react-patterns-common-pitfalls-local-state-management/)
+- [How to use React Context effectively - Kent C. Dodds](https://kentcdodds.com/blog/how-to-use-react-context-effectively)
+- [Blogged Answers: Why React Context is Not a "State Management" Tool - Mark's Dev Blog](https://blog.isquaredsoftware.com/2021/01/context-redux-differences/)
+
+### URL State Management & nuqs
+- [Type-safe search params state manager for React frameworks - nuqs GitHub](https://github.com/47ng/nuqs)
+- [Why You Should Use nuqs: Smarter URL State Management - Medium](https://medium.com/@ruverd/why-you-should-use-nuqs-smarter-url-state-management-for-react-next-js-26a8b51ca1ac)
+- [Managing search parameters in Next.js with nuqs - LogRocket](https://blog.logrocket.com/managing-search-parameters-next-js-nuqs/)
+
+### Component Reuse & Composition
+- [Most components should NOT be reused - Medium](https://medium.com/@tomaszmularczyk89/most-components-should-not-be-reused-d8187c6f0360)
+- [A Guide to Building Reusable React Components - Medium](https://medium.com/@rashmipatil24/reusable-react-components-7b025f232ca4)
+- [Building Reusable UI Components with React: Best Practices - Medium](https://medium.com/cstech/building-reusable-ui-components-with-react-best-practices-and-patterns-24b6fe921347)
+
+### Pagination & Filtering
+- [Complete guide to pagination UI design template - SetProduct](https://www.setproduct.com/blog/pagination-ui-design)
+- [Mobile: Filtering And Pagination Of Posts - Comprehensive Guide](https://tossthecoin.tcl.com/blog/mobile-filtering-and-pagination-of)
+- [Client Side vs Server Side Pagination - ThatSoftwareDude.com](https://www.thatsoftwaredude.com/content/10386/server-side-pagination-vs-client-side-pagination)
+- [Offset vs Cursor-Based Pagination: Choosing the Best Approach - Medium](https://medium.com/@eminasian/filtering-and-search-client-side-vs-server-side-a9084bbcbf74)
+- [Cursor-based pagination vs Offset-based pagination - DEV Community](https://dev.to/rahul_ramfort/understanding-offset-vs-cursor-based-pagination-1582)
+
+### Mobile Responsive Filter Design
+- [Filter UX Design Patterns & Best Practices - Pencil & Paper](https://www.pencilandpaper.io/articles/ux-pattern-analysis-enterprise-filtering)
+- [Mobile Filter UX Design Patterns & Best Practices - Pencil & Paper](https://www.pencilandpaper.io/articles/ux-pattern-analysis-mobile-filters)
+- [5 Major Mobile Filtering Pitfalls to Avoid and How to Fix Them - ContentSquare](https://contentsquare.com/blog/5-major-mobile-filtering-pitfalls-and-how-to-fix-them/)
+- [Designing Filters That Work: Best Practices and Guidelines - Smashing Magazine](https://www.smashingmagazine.com/2021/07/frustrating-design-patterns-broken-frozen-filters/)
+- [Responsive Design: Getting Advanced Filtering Right - Medium](https://medium.com/@mibosc/responsive-design-getting-advanced-filtering-right-bbd6c04f09e1)
+
+### Internationalization (i18n)
+- [Internationalization beyond code: A developer's guide - Phrase](https://phrase.com/blog/posts/internationalization-beyond-code-a-developers-guide-to-real-world-language-challenges/)
+- [Avoid String Concatenation: A Must for i18n-Friendly Code - Julia Diez Lopez](https://www.juliadiezlopez.com/blog/avoid-string-concatenation-a-must-for-i18n-friendly-code)
+
+### Database & Junction Tables
+- [Many-to-Many Database Relationships: Complete Implementation Guide - Beekeeper Studio](https://www.beekeeperstudio.io/blog/many-to-many-database-relationships-complete-guide)
+- [Challenges in Managing Many-to-Many Relationships in SQL - Hypermode](https://hypermode.com/blog/sql-many-to-many-relationship)
+- [Boost Query Performance with Database Indexing - AccelData](https://www.acceldata.io/blog/mastering-database-indexing-strategies-for-peak-performance)
+
+### UI Refactoring & Design
+- [18 Common UI Design Mistakes and How to Fix Them (2026) - MockFlow](https://mockflow.com/blog/ui-design-mistakes)
+- [Be Careful with Horizontal Filtering Toolbars – Baymard](https://baymard.com/blog/horizontal-filtering-sorting-design)
 
 ---
-*Pitfalls research for: v2.1 Library & Collections -- OpenAlex Count (Next.js + Convex)*
-*Researched: 2026-02-28*
+
+*Pitfalls research for: Library Page UI Overhaul with Sidebar Integration*
+
+*Researched: 2026-03-01*
