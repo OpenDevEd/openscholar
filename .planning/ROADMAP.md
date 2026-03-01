@@ -126,7 +126,9 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
   3. User can clear all active filters with a single button and all filter state persists in the URL via nuqs (bookmarkable, survives page reload)
   4. Library page switches to tab-based Results/Filters interface on mobile viewports, matching the search page pattern exactly
   5. Library page composes SidebarLayout + LibraryFilterSidebar using the same pattern as the search page (DRY composition, not copy-paste)
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 33-01-PLAN.md -- LibraryFilterSidebar + LibraryFilterContent + sidebar store (FLTR-01 through FLTR-07, LAYOUT-02)
+- [ ] 33-02-PLAN.md -- Rewrite LibraryPageClient with SidebarLayout integration (LAYOUT-01, LAYOUT-03, LAYOUT-04, FLTR-08, DRY-04)
 
 ### Phase 34: Display Polish and Validation
 **Goal**: Library display features are complete -- sorting, pagination counts, rating indicators, and view modes work correctly across all viewports
