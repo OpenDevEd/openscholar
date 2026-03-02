@@ -124,6 +124,19 @@ export const patchEncryptedKey = internalMutation({
 });
 
 /**
+ * Clear the plaintext apiKey field from a Zotero connection document.
+ * Used by migrateToEncryptedKeys to remove plaintext keys after encryption.
+ */
+export const clearPlaintextApiKey = internalMutation({
+  args: { connectionId: v.id("zoteroConnections") },
+  returns: v.null(),
+  handler: async (ctx, { connectionId }) => {
+    await ctx.db.patch(connectionId, { apiKey: undefined });
+    return null;
+  },
+});
+
+/**
  * Disconnect Zotero account.
  */
 export const disconnect = mutation({

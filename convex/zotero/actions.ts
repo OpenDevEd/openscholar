@@ -1133,7 +1133,22 @@ export const migrateToEncryptedKeys = internalAction({
         encryptedApiKey: encrypted,
         keyPrefix: prefix,
       });
+      // Clear plaintext key immediately after encrypting
+      await ctx.runMutation(internal.zotero.mutations.clearPlaintextApiKey, {
+        connectionId: conn._id,
+      });
       migrated++;
+    }
+
+    // Second pass: clear apiKey from ALL documents (including previously-migrated ones that may still have it)
+    let cleared = 0;
+    for (const conn of connections) {
+      if (conn.apiKey !== undefined) {
+        await ctx.runMutation(internal.zotero.mutations.clearPlaintextApiKey, {
+          connectionId: conn._id,
+        });
+        cleared++;
+      }
     }
 
     return { total: connections.length, migrated, skipped };
