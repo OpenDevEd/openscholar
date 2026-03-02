@@ -1360,13 +1360,14 @@ export const cleanupOldPdfs = internalMutation({
   returns: v.object({ cleaned: v.number() }),
   handler: async (ctx, args): Promise<{ cleaned: number }> => {
     const cutoffTime = Date.now() - args.maxAgeHours * 60 * 60 * 1000;
+    const CLEANUP_BATCH = 500;
 
     const oldPapers = await ctx.db
       .query("extractionPapers")
-      .withIndex("by_status_completedAt", (q) => 
+      .withIndex("by_status_completedAt", (q) =>
         q.eq("status", "completed").lt("completedAt", cutoffTime)
       )
-      .collect();
+      .take(CLEANUP_BATCH);
 
     for (const paper of oldPapers) {
       if (paper.storageId) {
@@ -1379,6 +1380,13 @@ export const cleanupOldPdfs = internalMutation({
           console.error(`Failed to delete PDF for paper ${paper._id}:`, error);
         }
       }
+    }
+
+    // If we fetched a full batch, there might be more to process
+    if (oldPapers.length >= CLEANUP_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.cleanupOldPdfs, {
+        maxAgeHours: args.maxAgeHours,
+      });
     }
 
     return { cleaned: oldPapers.length };
