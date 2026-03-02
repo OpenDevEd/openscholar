@@ -1,7 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { rateLimitTables } from "convex-helpers/server/rateLimit";
 
 export default defineSchema({
+  // Rate limiting (convex-helpers)
+  ...rateLimitTables,
+
   // ═══════════════════════════════════════════════════════════════
   // USERS - synced from Clerk, single source of truth in Convex
   // ═══════════════════════════════════════════════════════════════
@@ -169,6 +173,8 @@ export default defineSchema({
     userId: v.id("users"),
     zoteroUserId: v.string(),
     apiKey: v.string(),
+    encryptedApiKey: v.optional(v.string()),  // Phase 39: encrypted version of apiKey
+    keyPrefix: v.optional(v.string()),         // Phase 39: first chars for display (e.g. "zot_xxxx...")
     username: v.optional(v.string()),
     connectedAt: v.number(),
   })
