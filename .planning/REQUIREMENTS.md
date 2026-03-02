@@ -24,7 +24,7 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 
 ### Security
 
-- [ ] **SEC-01**: Zotero API key encrypted with AES-256-GCM (matching apiKeys pattern)
+- [x] **SEC-01**: Zotero API key encrypted with AES-256-GCM (matching apiKeys pattern)
 - [x] **SEC-02**: Stripe "dummy" key fallback replaced with lazy init that throws on missing key
 - [x] **SEC-03**: `NEXT_PUBLIC_APP_URL` validated -- throws if missing in non-dev environments
 - [x] **SEC-04**: Debug/test functions in production audited and isolated behind gate
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-04 | Phase 36 | Complete |
 | TYPE-05 | Phase 36 | Complete |
 | TYPE-06 | Phase 36 | Complete |
-| SEC-01 | Phase 39 | Pending |
+| SEC-01 | Phase 39 | Complete |
 | SEC-02 | Phase 35 | Complete |
 | SEC-03 | Phase 35 | Complete |
 | SEC-04 | Phase 35 | Complete |

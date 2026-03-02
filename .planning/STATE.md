@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
 status: unknown
-last_updated: "2026-03-02T08:17:03.789Z"
+last_updated: "2026-03-02T08:39:18Z"
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 8
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 38 -- Deletion Cascade & Storage Cleanup
+**Current focus:** Phase 39 -- Zotero Key Encryption
 
 ## Current Position
 
-Phase: 38 of 42 (Deletion Cascade & Storage Cleanup) -- 4 of 8 in v2.3
-Plan: 1 of 1 complete (38-01) -- Phase 38 DONE
-Status: Phase 38 complete, ready for Phase 39
-Last activity: 2026-03-02 -- Completed 38-01 (Deletion cascade and storage cleanup)
+Phase: 39 of 42 (Zotero Key Encryption) -- 5 of 8 in v2.3
+Plan: 1 of 2 complete (39-01) -- Plan 02 remaining
+Status: Phase 39 in progress, 39-01 done
+Last activity: 2026-03-02 -- Completed 39-01 (Extract crypto module, encrypt Zotero keys)
 
-Progress: [##########] 100% (1/1 plans in phase)
+Progress: [#####-----] 50% (1/2 plans in phase)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 67 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 4+)
+- Total plans completed: 68 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 5+)
 - Total milestones shipped: 6
 
 **By Milestone:**
@@ -58,6 +58,7 @@ Progress: [##########] 100% (1/1 plans in phase)
 | 36 | 02 | 6min | 2 | 7 |
 | 37 | 01 | 1min | 1 | 1 |
 | 38 | 01 | 2min | 2 | 1 |
+| 39 | 01 | 3min | 2 | 6 |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 37]: Placed rateLimitTables spread at top of defineSchema before all user-defined tables to avoid accidental override
 - [Phase 38]: No storageId patch after delete in cascade Step 4 since paper row is deleted immediately after
 - [Phase 38]: Job-scoped cleanupFailedPaperStorage avoids need for new global schema index
+- [Phase 39]: Sentinel value "ENCRYPTED_SEE_encryptedApiKey" in apiKey field for new connections during transition; resolveZoteroApiKey dual-read fallback pattern
 
 ### Roadmap Evolution
 
@@ -93,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 38-01-PLAN.md (deletion cascade and storage cleanup)
-Stopped at: Phase 38 fully done (all 1 plans complete)
+Last activity: 2026-03-02 - Completed 39-01-PLAN.md (extract crypto module, encrypt Zotero keys)
+Stopped at: Completed 39-01-PLAN.md
 Resume file: None
