@@ -16,6 +16,15 @@ export function FooterBanner() {
       >
         OpenDevEd
       </a>
+      <span className="lg:text-sm text-xs text-muted-foreground">{t("and")}</span>
+      <a
+        href="https://www.ekitabu.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-semibold text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors"
+      >
+        eKitabu
+      </a>
       <span className="lg:text-sm text-xs text-muted-foreground">{t("with")}</span>
       <a
         href="https://openalex.org"

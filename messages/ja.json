@@ -1367,6 +1367,7 @@
   },
   "footer": {
     "builtBy": "作成：",
+    "and": "と",
     "with": "使用：",
     "suffix": "",
     "privacyPolicy": "プライバシーポリシー",

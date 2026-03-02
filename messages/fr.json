@@ -1367,6 +1367,7 @@
   },
   "footer": {
     "builtBy": "Construit par",
+    "and": "et",
     "with": "avec",
     "suffix": "",
     "privacyPolicy": "Politique de confidentialité",

@@ -1367,6 +1367,7 @@
   },
   "footer": {
     "builtBy": "Built by",
+    "and": "and",
     "with": "with",
     "suffix": "",
     "privacyPolicy": "Privacy policy",
