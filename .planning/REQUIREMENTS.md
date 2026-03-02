@@ -46,8 +46,8 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 ### Rate Limiting
 
 - [x] **RATE-01**: `rateLimitTables` added to Convex schema
-- [ ] **RATE-02**: Rate limits enforced on extraction job creation
-- [ ] **RATE-03**: Rate limits enforced on other exposed endpoints (API key saves, checkout sessions)
+- [x] **RATE-02**: Rate limits enforced on extraction job creation
+- [x] **RATE-03**: Rate limits enforced on other exposed endpoints (API key saves, checkout sessions)
 
 ### Test Coverage
 
@@ -109,8 +109,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-02 | Phase 40 | Complete |
 | PERF-03 | Phase 40 | Complete |
 | RATE-01 | Phase 37 | Complete |
-| RATE-02 | Phase 41 | Pending |
-| RATE-03 | Phase 41 | Pending |
+| RATE-02 | Phase 41 | Complete |
+| RATE-03 | Phase 41 | Complete |
 | TEST-01 | Phase 42 | Pending |
 | TEST-02 | Phase 42 | Pending |
 | TEST-03 | Phase 42 | Pending |

@@ -104,7 +104,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 - [x] **Phase 38: Deletion Cascade & Storage Cleanup** - Fix orphaned child records and leaked storage on job deletion (completed 2026-03-02)
 - [x] **Phase 39: Zotero Key Encryption** - Encrypt the only plaintext user secret in the database (completed 2026-03-02)
 - [x] **Phase 40: Performance** - Resolve N+1 queries and bound unbounded .collect() calls (completed 2026-03-02)
-- [ ] **Phase 41: Rate Limiting Enforcement** - Activate rate limits on exposed endpoints
+- [x] **Phase 41: Rate Limiting Enforcement** - Activate rate limits on exposed endpoints (completed 2026-03-02)
 - [ ] **Phase 42: Test Coverage** - Test extraction cascade, Zustand migrations, and insight edge cases
 
 Full details: `.planning/milestones/v2.3-ROADMAP.md`
@@ -248,5 +248,5 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 38. Deletion Cascade & Storage Cleanup | 1/1 | Complete    | 2026-03-02 | - |
 | 39. Zotero Key Encryption | 2/2 | Complete    | 2026-03-02 | - |
 | 40. Performance | 2/2 | Complete    | 2026-03-02 | - |
-| 41. Rate Limiting Enforcement | v2.3 | 0/TBD | Not started | - |
+| 41. Rate Limiting Enforcement | 1/1 | Complete   | 2026-03-02 | - |
 | 42. Test Coverage | v2.3 | 0/TBD | Not started | - |
