@@ -187,7 +187,9 @@ Plans:
   1. Extraction job creation endpoint enforces a rate limit using `convex-helpers/server/rateLimit` -- exceeding the limit returns a clear error
   2. API key save and checkout session creation endpoints enforce rate limits -- exceeding the limit returns a clear error
   3. Rate limit configuration uses `defineRateLimits` from `convex-helpers` with appropriate token-bucket parameters per endpoint
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 41-01-PLAN.md — Replace rate limit stub with defineRateLimits enforcement on all 6 endpoints
 
 ### Phase 42: Test Coverage
 **Goal**: Previously untested subsystems have automated test coverage validating corrected behavior
