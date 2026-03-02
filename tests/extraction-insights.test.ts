@@ -5,6 +5,7 @@ import {
   buildDisagreementClusters,
   buildRunDiff,
 } from "../lib/extraction/insights";
+import type { InsightEntry, RunDiffRecord } from "../lib/extraction/insights";
 
 describe("aggregateQuestionInsights", () => {
   it("computes coverage, confidence, and citation status mix", () => {
@@ -238,5 +239,358 @@ describe("buildRunDiff", () => {
     expect(summary.removedAnswers).toBe(1);
     expect(summary.confidenceShifts).toBeGreaterThanOrEqual(1);
     expect(summary.newlyInsufficientEvidence).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Edge case tests (appended -- existing tests above are NOT modified)
+// ---------------------------------------------------------------------------
+
+describe("aggregateQuestionInsights edge cases", () => {
+  it("handles empty entries array gracefully", () => {
+    const aggregate = aggregateQuestionInsights([], "string");
+
+    expect(aggregate.total).toBe(0);
+    expect(aggregate.answered).toBe(0);
+    expect(aggregate.grounded).toBe(0);
+    expect(aggregate.avgConfidence).toBe(0);
+    expect(aggregate.avgEffectiveConfidence).toBe(0);
+    expect(aggregate.topAnswers).toEqual([]);
+    expect(aggregate.entityDistribution).toEqual([]);
+    expect(aggregate.confidenceBuckets).toEqual({
+      high: 0,
+      medium: 0,
+      low: 0,
+      unknown: 0,
+    });
+    expect(aggregate.citationStatusMix).toEqual({
+      grounded: 0,
+      best_effort: 0,
+      insufficient_evidence: 0,
+      extraction_error: 0,
+    });
+    expect(aggregate.reviewed).toEqual({
+      accepted: 0,
+      rejected: 0,
+      needsFollowup: 0,
+      unreviewed: 0,
+    });
+  });
+
+  it("handles all-null answers", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: null,
+        confidence: 0.9,
+        citationStatus: "grounded",
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: null,
+        confidence: 0.5,
+        citationStatus: "best_effort",
+      },
+      {
+        paperId: "p3",
+        title: "Paper 3",
+        openalexId: "oa:3",
+        questionKey: "q1",
+        answer: null,
+        confidence: 0.2,
+        citationStatus: "insufficient_evidence",
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.total).toBe(3);
+    expect(aggregate.answered).toBe(0);
+    expect(aggregate.topAnswers).toEqual([]);
+    // Confidence and citation status are still tracked for all entries
+    expect(aggregate.citationStatusMix.grounded).toBe(1);
+    expect(aggregate.citationStatusMix.best_effort).toBe(1);
+    expect(aggregate.citationStatusMix.insufficient_evidence).toBe(1);
+  });
+
+  it("handles all-undefined answers", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: undefined,
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: undefined,
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.total).toBe(2);
+    expect(aggregate.answered).toBe(0);
+  });
+
+  it("handles undefined confidence (missing field)", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: "yes",
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: "no",
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.avgConfidence).toBe(0);
+    expect(aggregate.confidenceBuckets.unknown).toBe(2);
+  });
+
+  it("handles undefined citationStatus", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.8,
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: "no",
+        confidence: 0.7,
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    // addCitationStatus returns early on falsy status
+    expect(aggregate.citationStatusMix.grounded).toBe(0);
+    expect(aggregate.citationStatusMix.best_effort).toBe(0);
+    expect(aggregate.citationStatusMix.insufficient_evidence).toBe(0);
+    expect(aggregate.citationStatusMix.extraction_error).toBe(0);
+    expect(aggregate.grounded).toBe(0);
+  });
+
+  it("handles empty string answers", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: "",
+        confidence: 0.8,
+        citationStatus: "grounded",
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    // normalizeAnswer("") returns null because normalizeText("") returns ""
+    expect(aggregate.answered).toBe(0);
+  });
+
+  it("handles mixed null and valid answers for array type", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "models",
+        answer: ["GPT-4"],
+        confidence: 0.9,
+        citationStatus: "grounded",
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "models",
+        answer: null,
+        confidence: 0.5,
+      },
+      {
+        paperId: "p3",
+        title: "Paper 3",
+        openalexId: "oa:3",
+        questionKey: "models",
+        answer: undefined,
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "array");
+
+    expect(aggregate.total).toBe(3);
+    expect(aggregate.answered).toBe(1);
+    const gpt4 = aggregate.entityDistribution.find((e) => e.entity === "gpt-4");
+    expect(gpt4?.count).toBe(1);
+  });
+});
+
+describe("buildDisagreementClusters edge cases", () => {
+  it("returns empty array for empty entries", () => {
+    const result = buildDisagreementClusters([], "string");
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty array when all answers are the same", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.9,
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.8,
+      },
+      {
+        paperId: "p3",
+        title: "Paper 3",
+        openalexId: "oa:3",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.7,
+      },
+    ];
+
+    const result = buildDisagreementClusters(entries, "string");
+    // groups.size <= 1, so returns []
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty array when all answers are null", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: null,
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: null,
+      },
+      {
+        paperId: "p3",
+        title: "Paper 3",
+        openalexId: "oa:3",
+        questionKey: "q1",
+        answer: null,
+      },
+    ];
+
+    const result = buildDisagreementClusters(entries, "string");
+    // normalized is null, all skipped, groups.size === 0
+    expect(result).toEqual([]);
+  });
+});
+
+describe("buildRunDiff edge cases", () => {
+  it("handles empty baseline and next", () => {
+    const { summary, changes } = buildRunDiff([], [], 0.2);
+
+    expect(summary.totalCompared).toBe(0);
+    expect(summary.newAnswers).toBe(0);
+    expect(summary.removedAnswers).toBe(0);
+    expect(summary.changedAnswers).toBe(0);
+    expect(summary.confidenceShifts).toBe(0);
+    expect(summary.newlyInsufficientEvidence).toBe(0);
+    expect(changes).toEqual([]);
+  });
+
+  it("handles all-removed (baseline only, empty next)", () => {
+    const baseline: RunDiffRecord[] = [
+      {
+        key: "oa:1::q1",
+        openalexId: "oa:1",
+        title: "Paper 1",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.9,
+        citationStatus: "grounded",
+      },
+      {
+        key: "oa:2::q1",
+        openalexId: "oa:2",
+        title: "Paper 2",
+        questionKey: "q1",
+        answer: "no",
+        confidence: 0.8,
+        citationStatus: "grounded",
+      },
+    ];
+
+    const { summary } = buildRunDiff(baseline, [], 0.2);
+
+    expect(summary.removedAnswers).toBe(2);
+    expect(summary.newAnswers).toBe(0);
+    expect(summary.totalCompared).toBe(2);
+  });
+
+  it("handles all-new (empty baseline, next only)", () => {
+    const next: RunDiffRecord[] = [
+      {
+        key: "oa:1::q1",
+        openalexId: "oa:1",
+        title: "Paper 1",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.85,
+        citationStatus: "grounded",
+      },
+      {
+        key: "oa:2::q1",
+        openalexId: "oa:2",
+        title: "Paper 2",
+        questionKey: "q1",
+        answer: "no",
+        confidence: 0.75,
+        citationStatus: "best_effort",
+      },
+    ];
+
+    const { summary } = buildRunDiff([], next, 0.2);
+
+    expect(summary.newAnswers).toBe(2);
+    expect(summary.removedAnswers).toBe(0);
+    expect(summary.totalCompared).toBe(2);
   });
 });
