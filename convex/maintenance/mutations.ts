@@ -70,11 +70,11 @@ export const expirePastDueSubscriptions = internalMutation({
     const now = Date.now();
     const GRACE_PERIOD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days per locked decision
 
-    // Find past_due subscriptions
+    // Find past_due subscriptions (capped to prevent transaction limit violations)
     const pastDueSubs = await ctx.db
       .query("subscriptions")
       .withIndex("by_status", (q) => q.eq("status", "past_due"))
-      .collect();
+      .take(200);
 
     let downgradeCount = 0;
 
@@ -124,10 +124,11 @@ export const monitorFailedStripeEvents = internalMutation({
     const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
     // Query using by_status_next_retry index (prefix query on status field)
+    // Capped to prevent transaction limit violations
     const failedEvents = await ctx.db
       .query("stripeEventLogs")
       .withIndex("by_status_next_retry", (q) => q.eq("status", "failed"))
-      .collect();
+      .take(200);
 
     // Filter in JS for updatedAt threshold (no composite index on status+updatedAt)
     const staleFailures = failedEvents.filter((e) => e.updatedAt < oneHourAgo);

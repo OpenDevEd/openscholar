@@ -200,7 +200,7 @@ export const listActiveSubscriptions = internalQuery({
     const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+      .take(1000);
     // Filter to only those with a stripeSubscriptionId (skip free/local-only records)
     return subs
       .filter((s) => !!s.stripeSubscriptionId)
@@ -353,22 +353,23 @@ export const listGrantEligibleSubscriptionPointers = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
+    const CAP = 1000;
     const [active, trialing, pastDue] = await Promise.all([
       ctx.db
         .query("subscriptions")
         .withIndex("by_status", (q) => q.eq("status", "active"))
         .order("desc")
-        .collect(),
+        .take(CAP),
       ctx.db
         .query("subscriptions")
         .withIndex("by_status", (q) => q.eq("status", "trialing"))
         .order("desc")
-        .collect(),
+        .take(CAP),
       ctx.db
         .query("subscriptions")
         .withIndex("by_status", (q) => q.eq("status", "past_due"))
         .order("desc")
-        .collect(),
+        .take(CAP),
     ]);
 
     const sorted = [...active, ...trialing, ...pastDue]
