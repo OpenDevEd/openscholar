@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
 status: active
-last_updated: "2026-03-02T06:57:30.671Z"
+last_updated: "2026-03-02T06:58:52.893Z"
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 3
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 35 of 42 (Quick Wins & Debug Cleanup) -- 1 of 8 in v2.3
-Plan: 1 of 3 complete (35-01)
-Status: Executing Phase 35
-Last activity: 2026-03-02 -- Completed 35-01 (debug cleanup)
+Plan: 3 of 3 complete (35-01, 35-02, 35-03) -- Phase 35 DONE
+Status: Phase 35 complete, ready for Phase 36
+Last activity: 2026-03-02 -- Completed 35-02 (Stripe env hardening & app URL validation)
 
-Progress: [###░░░░░░░] 3% (1/3 plans in phase, 1/TBD total)
+Progress: [##########] 100% (3/3 plans in phase)
 
 ## Performance Metrics
 
@@ -52,12 +52,16 @@ Progress: [###░░░░░░░] 3% (1/3 plans in phase, 1/TBD total)
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 35 | 01 | 2min | 2 | 4 |
+| 35 | 02 | 4min | 1 | 6 |
+| 35 | 03 | 3min | 2 | 11 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
+- [Phase 35]: Gate all debug/test handlers at function entry with requirePublicDebugEnabled() for consistent security enforcement
+- [Phase 35]: Lazy getStripe() singleton for Stripe client init; requireAppUrl() validates NEXT_PUBLIC_APP_URL at function entry with dev/CI fallback
 
 ### Roadmap Evolution
 
@@ -80,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 35-01-PLAN.md (debug cleanup)
-Stopped at: Completed 35-01-PLAN.md, ready for 35-02
+Last activity: 2026-03-02 - Completed 35-03-PLAN.md (dead code removal & debug gating)
+Stopped at: Phase 35 fully done (all 3 plans complete)
 Resume file: None
