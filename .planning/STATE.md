@@ -63,8 +63,14 @@ None.
 
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 2 | Add eKitabu to Built by footer | 2026-03-02 | abd98e1 | [2-add-ekitabu-to-built-by-footer](./quick/2-add-ekitabu-to-built-by-footer/) |
+
 ## Session Continuity
 
-Last activity: 2026-03-02 -- Archived v2.2 milestone
-Stopped at: Milestone v2.2 complete and archived
+Last activity: 2026-03-02 - Completed quick task 2: Add eKitabu to Built by footer
+Stopped at: Quick task 2 complete
 Resume file: None
