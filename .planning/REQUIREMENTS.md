@@ -15,12 +15,12 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 
 ### Type Safety
 
-- [ ] **TYPE-01**: `ctx: any` replaced with `MutationCtx` in extraction mutations
-- [ ] **TYPE-02**: `ctx: any` replaced with `QueryCtx` in extraction queries
-- [ ] **TYPE-03**: `ctx: any` replaced with proper context types in workpoolActions
+- [x] **TYPE-01**: `ctx: any` replaced with `MutationCtx` in extraction mutations
+- [x] **TYPE-02**: `ctx: any` replaced with `QueryCtx` in extraction queries
+- [x] **TYPE-03**: `ctx: any` replaced with proper context types in workpoolActions
 - [ ] **TYPE-04**: `internal as any` casts removed across all 7 files (9 locations)
 - [ ] **TYPE-05**: `components as any` casts removed
-- [ ] **TYPE-06**: `patchData: any` typed as `Partial<Doc<"extractionPapers">>`
+- [x] **TYPE-06**: `patchData: any` typed as `Partial<Doc<"extractionPapers">>`
 
 ### Security
 
@@ -90,12 +90,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-01 | Phase 35 | Complete |
 | BUG-02 | Phase 35 | Complete |
 | BUG-03 | Phase 35 | Complete |
-| TYPE-01 | Phase 36 | Pending |
-| TYPE-02 | Phase 36 | Pending |
-| TYPE-03 | Phase 36 | Pending |
+| TYPE-01 | Phase 36 | Complete |
+| TYPE-02 | Phase 36 | Complete |
+| TYPE-03 | Phase 36 | Complete |
 | TYPE-04 | Phase 36 | Pending |
 | TYPE-05 | Phase 36 | Pending |
-| TYPE-06 | Phase 36 | Pending |
+| TYPE-06 | Phase 36 | Complete |
 | SEC-01 | Phase 39 | Pending |
 | SEC-02 | Phase 35 | Complete |
 | SEC-03 | Phase 35 | Complete |
