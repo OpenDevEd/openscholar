@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
 status: unknown
-last_updated: "2026-03-02T08:39:18Z"
+last_updated: "2026-03-02T08:43:54Z"
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 8
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 39 -- Zotero Key Encryption
+**Current focus:** Phase 40 (next phase in v2.3)
 
 ## Current Position
 
-Phase: 39 of 42 (Zotero Key Encryption) -- 5 of 8 in v2.3
-Plan: 1 of 2 complete (39-01) -- Plan 02 remaining
-Status: Phase 39 in progress, 39-01 done
-Last activity: 2026-03-02 -- Completed 39-01 (Extract crypto module, encrypt Zotero keys)
+Phase: 39 of 42 (Zotero Key Encryption) -- 5 of 8 in v2.3 -- COMPLETE
+Plan: 2 of 2 complete (39-01, 39-02)
+Status: Phase 39 complete, ready for Phase 40
+Last activity: 2026-03-02 -- Completed 39-02 (Migration action, schema cleanup, sentinel removal)
 
-Progress: [#####-----] 50% (1/2 plans in phase)
+Progress: [##########] 100% (2/2 plans in phase)
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [#####-----] 50% (1/2 plans in phase)
 | 37 | 01 | 1min | 1 | 1 |
 | 38 | 01 | 2min | 2 | 1 |
 | 39 | 01 | 3min | 2 | 6 |
+| 39 | 02 | 2min | 1 | 4 |
 
 ## Accumulated Context
 
@@ -73,6 +74,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 38]: No storageId patch after delete in cascade Step 4 since paper row is deleted immediately after
 - [Phase 38]: Job-scoped cleanupFailedPaperStorage avoids need for new global schema index
 - [Phase 39]: Sentinel value "ENCRYPTED_SEE_encryptedApiKey" in apiKey field for new connections during transition; resolveZoteroApiKey dual-read fallback pattern
+- [Phase 39]: Removed sentinel apiKey write after schema evolution to optional; migration skips rows with no apiKey defensively
 
 ### Roadmap Evolution
 
@@ -95,6 +97,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 39-01-PLAN.md (extract crypto module, encrypt Zotero keys)
-Stopped at: Completed 39-01-PLAN.md
+Last activity: 2026-03-02 - Completed 39-02-PLAN.md (migration action, schema cleanup, sentinel removal)
+Stopped at: Completed 39-02-PLAN.md (Phase 39 complete)
 Resume file: None

@@ -102,7 +102,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 - [x] **Phase 36: Type Safety Sweep** - Replace all `any` casts with proper Convex-generated types (completed 2026-03-02)
 - [x] **Phase 37: Schema Additions** - Deploy rate limit table and Zotero encryption fields as optional (completed 2026-03-02)
 - [x] **Phase 38: Deletion Cascade & Storage Cleanup** - Fix orphaned child records and leaked storage on job deletion (completed 2026-03-02)
-- [ ] **Phase 39: Zotero Key Encryption** - Encrypt the only plaintext user secret in the database
+- [x] **Phase 39: Zotero Key Encryption** - Encrypt the only plaintext user secret in the database (completed 2026-03-02)
 - [ ] **Phase 40: Performance** - Resolve N+1 queries and bound unbounded .collect() calls
 - [ ] **Phase 41: Rate Limiting Enforcement** - Activate rate limits on exposed endpoints
 - [ ] **Phase 42: Test Coverage** - Test extraction cascade, Zustand migrations, and insight edge cases
@@ -244,7 +244,7 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 36. Type Safety Sweep | 2/2 | Complete    | 2026-03-02 | - |
 | 37. Schema Additions | 1/1 | Complete    | 2026-03-02 | - |
 | 38. Deletion Cascade & Storage Cleanup | 1/1 | Complete    | 2026-03-02 | - |
-| 39. Zotero Key Encryption | 1/2 | In Progress|  | - |
+| 39. Zotero Key Encryption | 2/2 | Complete   | 2026-03-02 | - |
 | 40. Performance | v2.3 | 0/TBD | Not started | - |
 | 41. Rate Limiting Enforcement | v2.3 | 0/TBD | Not started | - |
 | 42. Test Coverage | v2.3 | 0/TBD | Not started | - |
