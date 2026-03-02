@@ -16,8 +16,6 @@ import {
   type StripeEventLogStatus,
 } from "./lib/eventLogPolicy";
 
-const componentApi = components as any;
-
 type StripeMetadata = {
   userId?: string;
 };
@@ -448,7 +446,7 @@ export const syncSubscription = internalMutation({
 
     if (!userId && args.stripeCustomerId) {
       try {
-        const customer = await ctx.runQuery(componentApi.stripe.public.getCustomer, {
+        const customer = await ctx.runQuery(components.stripe.public.getCustomer, {
           stripeCustomerId: args.stripeCustomerId,
         });
         const componentUserId = customer?.metadata?.userId;

@@ -25,7 +25,6 @@ import {
   getCreditsPerUsd,
 } from "../lib/creditTopups";
 
-const componentApi = components as any;
 
 type GrantMutationOutcome =
   | "granted"
@@ -401,7 +400,7 @@ export const reconcileInvoiceCreditGrant = internalMutation({
         stripeSubscriptionId?: string;
         status: string;
         amountPaid: number;
-      }> = await ctx.runQuery(componentApi.stripe.public.listInvoices, {
+      }> = await ctx.runQuery(components.stripe.public.listInvoices, {
         stripeCustomerId: args.stripeCustomerId,
       });
       const invoice = invoices.find((row) => row.stripeInvoiceId === args.stripeInvoiceId);

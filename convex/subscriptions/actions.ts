@@ -34,8 +34,6 @@ import { requireSubscriptionsEnabled } from "../lib/featureFlags";
 import { createError, type ErrorCode } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 
-const componentApi = components as any;
-
 let _stripe: Stripe | null = null;
 function getStripe(): Stripe {
   if (!_stripe) {
@@ -363,7 +361,7 @@ export const createPortalSession = action({
 
     if (!stripeCustomerId) {
       const componentSubscriptions = await ctx.runQuery(
-        componentApi.stripe.public.listSubscriptionsByUserId,
+        components.stripe.public.listSubscriptionsByUserId,
         { userId: user._id },
       );
       stripeCustomerId = componentSubscriptions[0]?.stripeCustomerId;

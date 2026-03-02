@@ -5,7 +5,6 @@ import { creditBalanceValidator, creditTransactionValidator } from "../lib/valid
 import { components } from "../_generated/api";
 import { getCreditTopupCatalog, getCreditsPerUsd } from "../lib/creditTopups";
 
-const componentApi = components as any;
 
 export const TRACKED_GRANT_EVENT_TYPES = [
   "invoice.paid",
@@ -215,7 +214,7 @@ export const getLatestGrantStatus = query({
 
     try {
       const mirroredInvoices: Array<{ stripeInvoiceId: string }> = await ctx.runQuery(
-        componentApi.stripe.public.listInvoicesByUserId,
+        components.stripe.public.listInvoicesByUserId,
         {
           userId: user._id,
         },
