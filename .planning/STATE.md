@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
 status: active
-last_updated: "2026-03-02T12:00:00.000Z"
+last_updated: "2026-03-02T14:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Defining requirements for v2.3 Codebase Hardening
+**Current focus:** Phase 35 -- Quick Wins & Debug Cleanup
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-02 — Milestone v2.3 started
+Phase: 35 of 42 (Quick Wins & Debug Cleanup) -- 1 of 8 in v2.3
+Plan: Ready to plan
+Status: Ready to plan Phase 35
+Last activity: 2026-03-02 -- Roadmap created for v2.3 (8 phases, 27 requirements)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -43,6 +45,7 @@ Last activity: 2026-03-02 — Milestone v2.3 started
 | v2.0 | 8 | 17 | 2026-02-28 |
 | v2.1 | 8 | 15 | 2026-03-01 |
 | v2.2 | 4 | 7 | 2026-03-02 |
+| v2.3 | 8 | TBD | in progress |
 
 ## Accumulated Context
 
@@ -52,7 +55,7 @@ See PROJECT.md Key Decisions table for full log.
 
 ### Roadmap Evolution
 
-All 6 milestones shipped. 34 phases, 63 plans across v1.0-v2.2.
+6 milestones shipped. v2.3 roadmap created with 8 phases (35-42), 27 requirements.
 
 ### Pending Todos
 
@@ -61,6 +64,7 @@ None.
 ### Blockers/Concerns
 
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
+- extraction/mutations.ts (2000+ lines) is touched by phases 36, 38, and 40 -- strict ordering required
 
 ### Quick Tasks Completed
 
@@ -70,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Started milestone v2.3 Codebase Hardening
-Stopped at: Defining requirements
+Last activity: 2026-03-02 - Roadmap created for v2.3 Codebase Hardening
+Stopped at: Roadmap complete, ready to plan Phase 35
 Resume file: None
