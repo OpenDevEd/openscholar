@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Concerns Sweep
-status: defining_requirements
-last_updated: "2026-03-02T12:00:00.000Z"
+status: ready_to_plan
+last_updated: "2026-03-02T13:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.4 Concerns Sweep — defining requirements
+**Current focus:** v2.4 Concerns Sweep -- Phase 43 ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-02 — Milestone v2.4 started
+Phase: 43 of 46 (Schema Migration & Quick Wins)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-02 -- Roadmap created for v2.4
+
+Progress: [..........] 0%
 
 ## Performance Metrics
 
@@ -51,9 +53,15 @@ Last activity: 2026-03-02 — Milestone v2.4 started
 
 See PROJECT.md Key Decisions table for full log.
 
+Recent decisions affecting v2.4:
+- Rejected @convex-dev/migrations for apiKey migration -- hand-rolled batched mutation using existing self-scheduling pattern
+- Credit reconciliation policy for cancelled jobs: needs product decision before Phase 44
+- getJobDetails .collect() safe because ~200-paper job cap is enforced upstream
+
 ### Roadmap Evolution
 
 7 milestones shipped (v1.0 through v2.3). 42 phases, 77 plans total.
+v2.4 adds 4 phases (43-46) covering 15 requirements.
 
 ### Pending Todos
 
@@ -61,8 +69,8 @@ None.
 
 ### Blockers/Concerns
 
+- Credit reconciliation policy for cancelled jobs -- product decision needed before Phase 44 (BUG-01)
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
-- NEXT_PUBLIC_ feature flag naming is intentional (frontend/backend portability)
 
 ### Quick Tasks Completed
 
@@ -72,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Milestone v2.4 started
-Stopped at: Defining requirements
+Last activity: 2026-03-02 - Roadmap created for v2.4
+Stopped at: Roadmap complete, Phase 43 ready to plan
 Resume file: None

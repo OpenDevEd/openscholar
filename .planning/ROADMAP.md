@@ -9,6 +9,7 @@
 - v2.1 Library & Collections -- Phases 22-30 (shipped 2026-03-01)
 - v2.2 Library UI Overhaul -- Phases 31-34 (shipped 2026-03-02)
 - v2.3 Codebase Hardening -- Phases 35-42 (shipped 2026-03-02)
+- v2.4 Concerns Sweep -- Phases 43-46 (in progress)
 
 ## Phases
 
@@ -110,6 +111,17 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 </details>
 
+### v2.4 Concerns Sweep (In Progress)
+
+**Milestone Goal:** Fix all tech debt, known bugs, and security concerns identified in the codebase mapping.
+
+- [ ] **Phase 43: Schema Migration & Quick Wins** - Encrypt and remove deprecated apiKey field, delete test page, fix placeholder email, document debug policy
+- [ ] **Phase 44: Workflow & Deletion Integrity** - Cancel extraction actually stops processing, fix orphan diffs, surface diff truncation, extend GDPR user cleanup
+- [ ] **Phase 45: Type Safety Sweep** - Typed extraction validators, typed migration steps, typed review metadata, remove getJobDetails cap
+- [ ] **Phase 46: Cron Additions** - Automated cleanup of expired Zotero OAuth tokens
+
+Full details: `.planning/milestones/v2.4-ROADMAP.md`
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -156,3 +168,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 | 40. Performance | v2.3 | 2/2 | Complete | 2026-03-02 |
 | 41. Rate Limiting Enforcement | v2.3 | 1/1 | Complete | 2026-03-02 |
 | 42. Test Coverage | v2.3 | 2/2 | Complete | 2026-03-02 |
+| 43. Schema Migration & Quick Wins | v2.4 | 0/TBD | Not started | - |
+| 44. Workflow & Deletion Integrity | v2.4 | 0/TBD | Not started | - |
+| 45. Type Safety Sweep | v2.4 | 0/TBD | Not started | - |
+| 46. Cron Additions | v2.4 | 0/TBD | Not started | - |

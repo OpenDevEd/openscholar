@@ -81,27 +81,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| SEC-03 | — | Pending |
-| SEC-04 | — | Pending |
-| SEC-05 | — | Pending |
-| BUG-01 | — | Pending |
-| BUG-02 | — | Pending |
-| BUG-03 | — | Pending |
-| BUG-04 | — | Pending |
-| BUG-05 | — | Pending |
-| TYPE-01 | — | Pending |
-| TYPE-02 | — | Pending |
-| TYPE-03 | — | Pending |
-| TYPE-04 | — | Pending |
-| CRON-01 | — | Pending |
+| SEC-01 | Phase 43 | Pending |
+| SEC-02 | Phase 43 | Pending |
+| SEC-03 | Phase 44 | Pending |
+| SEC-04 | Phase 43 | Pending |
+| SEC-05 | Phase 43 | Pending |
+| BUG-01 | Phase 44 | Pending |
+| BUG-02 | Phase 45 | Pending |
+| BUG-03 | Phase 44 | Pending |
+| BUG-04 | Phase 44 | Pending |
+| BUG-05 | Phase 43 | Pending |
+| TYPE-01 | Phase 45 | Pending |
+| TYPE-02 | Phase 45 | Pending |
+| TYPE-03 | Phase 45 | Pending |
+| TYPE-04 | Phase 45 | Pending |
+| CRON-01 | Phase 46 | Pending |
 
 **Coverage:**
 - v2.4 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15/15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after initial definition*
+*Last updated: 2026-03-02 after roadmap creation*
