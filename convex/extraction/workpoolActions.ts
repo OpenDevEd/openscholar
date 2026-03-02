@@ -1,6 +1,6 @@
 "use node";
 
-import { internalAction } from "../_generated/server";
+import { internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { RAG } from "@convex-dev/rag";
@@ -454,7 +454,7 @@ function parseDenseScores(results: any[]): RankedEvidenceScore[] {
 }
 
 async function runDenseSearch(
-  ctx: any,
+  ctx: ActionCtx,
   namespace: string,
   paperId: string,
   question: string
@@ -720,7 +720,7 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
   return units;
 }
 
-async function resolvePdfBlob(ctx: any, args: {
+async function resolvePdfBlob(ctx: ActionCtx, args: {
   paperId: any;
   jobId: any;
   pdfUrl: string;

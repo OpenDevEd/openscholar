@@ -5,15 +5,16 @@
  */
 
 import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 
 /**
  * Get existing test user or create one
  */
-export async function getOrCreateTestUser(ctx: any): Promise<Doc<"users">> {
+export async function getOrCreateTestUser(ctx: MutationCtx): Promise<Doc<"users">> {
   // Look for existing test user
   const existingUser = await ctx.db
     .query("users")
-    .withIndex("by_email", (q: any) => q.eq("email", "test@example.com"))
+    .withIndex("by_email", (q) => q.eq("email", "test@example.com"))
     .first();
   
   if (existingUser) {
@@ -42,18 +43,18 @@ export async function getOrCreateTestUser(ctx: any): Promise<Doc<"users">> {
 /**
  * Cleanup test data (optional)
  */
-export async function cleanupTestData(ctx: any, jobId: Id<"extractionJobs">): Promise<void> {
+export async function cleanupTestData(ctx: MutationCtx, jobId: Id<"extractionJobs">): Promise<void> {
   // Get all papers for this job
   const papers = await ctx.db
     .query("extractionPapers")
-    .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .collect();
   
   // Delete results and papers
   for (const paper of papers) {
     const results = await ctx.db
       .query("extractionResults")
-      .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+      .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
       .collect();
     
     for (const result of results) {
@@ -66,7 +67,7 @@ export async function cleanupTestData(ctx: any, jobId: Id<"extractionJobs">): Pr
   // Delete questions
   const questions = await ctx.db
     .query("extractionQuestions")
-    .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .collect();
   
   for (const question of questions) {
