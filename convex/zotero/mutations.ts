@@ -74,16 +74,18 @@ export const getRequestToken = internalMutation({
 
 /**
  * Save Zotero connection after successful OAuth.
+ * Accepts encrypted API key + key prefix (plaintext key is never stored for new connections).
  */
 export const saveConnection = internalMutation({
   args: {
     userId: v.id("users"),
     zoteroUserId: v.string(),
-    apiKey: v.string(),
+    encryptedApiKey: v.string(),
+    keyPrefix: v.string(),
     username: v.optional(v.string()),
   },
   returns: v.id("zoteroConnections"),
-  handler: async (ctx, { userId, zoteroUserId, apiKey, username }) => {
+  handler: async (ctx, { userId, zoteroUserId, encryptedApiKey, keyPrefix, username }) => {
     // Delete any existing connection for this user
     const existing = await ctx.db
       .query("zoteroConnections")
@@ -97,10 +99,28 @@ export const saveConnection = internalMutation({
     return await ctx.db.insert("zoteroConnections", {
       userId,
       zoteroUserId,
-      apiKey,
+      apiKey: "ENCRYPTED_SEE_encryptedApiKey", // sentinel for required field during transition
+      encryptedApiKey,
+      keyPrefix,
       username,
       connectedAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Patch encrypted key on an existing connection (for migration in Plan 02).
+ */
+export const patchEncryptedKey = internalMutation({
+  args: {
+    connectionId: v.id("zoteroConnections"),
+    encryptedApiKey: v.string(),
+    keyPrefix: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { connectionId, encryptedApiKey, keyPrefix }) => {
+    await ctx.db.patch(connectionId, { encryptedApiKey, keyPrefix });
+    return null;
   },
 });
 

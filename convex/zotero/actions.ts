@@ -12,18 +12,36 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 import { createError } from "../lib/errors";
+import { encrypt, decrypt, getKeyPrefix } from "../lib/crypto";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
 const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
 const ZOTERO_AUTHORIZE_URL = "https://www.zotero.org/oauth/authorize";
 const ZOTERO_API_URL = "https://api.zotero.org";
 
-// Type for Zotero connection
+// Type for Zotero connection (dual-read: encryptedApiKey for new, apiKey for pre-migration)
 type ZoteroConnection = {
   zoteroUserId: string;
+  encryptedApiKey?: string;
   apiKey: string;
   username?: string;
 } | null;
+
+/**
+ * Resolve the plaintext Zotero API key from a connection.
+ * If encryptedApiKey is present, decrypt it. Otherwise fall back to plaintext apiKey.
+ */
+function resolveZoteroApiKey(connection: NonNullable<ZoteroConnection>): string {
+  if (connection.encryptedApiKey) {
+    const encryptionKey = process.env.ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
+    }
+    return decrypt(connection.encryptedApiKey, encryptionKey);
+  }
+  // Fallback for pre-migration plaintext keys
+  return connection.apiKey;
+}
 
 async function requireCurrentUserId(ctx: ActionCtx): Promise<Id<"users">> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -584,11 +602,20 @@ export const completeOAuth = action({
       return { success: false, error: "Invalid response from Zotero" };
     }
 
-    // Save connection
+    // Encrypt the access token before saving
+    const encryptionKey = process.env.ENCRYPTION_KEY;
+    if (!encryptionKey) {
+      throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
+    }
+    const encryptedApiKey = encrypt(accessToken, encryptionKey);
+    const keyPrefix = getKeyPrefix(accessToken);
+
+    // Save connection with encrypted key
     await ctx.runMutation(internal.zotero.mutations.saveConnection, {
       userId,
       zoteroUserId,
-      apiKey: accessToken,
+      encryptedApiKey,
+      keyPrefix,
       username: username || undefined,
     });
 
@@ -623,13 +650,15 @@ export const fetchCollections = action({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
+    const apiKey = resolveZoteroApiKey(connection);
+
     const prefix: string = groupId
       ? `/groups/${groupId}`
       : `/users/${connection.zoteroUserId}`;
 
     const tree = await fetchCollectionTreeFlat(
       prefix,
-      connection.apiKey
+      apiKey
     );
     const visibleCollections = normalizeVisibleCollections(tree.collections);
 
@@ -674,10 +703,12 @@ export const fetchGroups = action({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
+    const apiKey = resolveZoteroApiKey(connection);
+
     const response: Response = await fetch(
       buildZoteroUrl(`/users/${connection.zoteroUserId}/groups`).toString(),
       {
-        headers: buildZoteroHeaders(connection.apiKey),
+        headers: buildZoteroHeaders(apiKey),
       }
     );
 
@@ -747,6 +778,8 @@ export const fetchItems = action({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
+    const apiKey = resolveZoteroApiKey(connection);
+
     const prefix: string = groupId
       ? `/groups/${groupId}`
       : `/users/${connection.zoteroUserId}`;
@@ -759,8 +792,8 @@ export const fetchItems = action({
       start,
       limit,
       prefix,
-      apiKeyPresent: !!connection.apiKey,
-      apiKeyPrefix: connection.apiKey ? connection.apiKey.substring(0, 8) + "..." : "none",
+      apiKeyPresent: !!apiKey,
+      apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + "..." : "none",
     });
 
     const requestLimit = Math.min(limit, 50);
@@ -769,7 +802,7 @@ export const fetchItems = action({
     let nextCursor: number | undefined;
 
     if (collectionKey && includeDescendants) {
-      const selectedCollection = await fetchCollectionByKey(prefix, connection.apiKey, collectionKey);
+      const selectedCollection = await fetchCollectionByKey(prefix, apiKey, collectionKey);
       if (!selectedCollection) {
         console.warn("[fetchItems] Selected collection is missing/deleted; returning empty result:", {
           collectionKey,
@@ -779,7 +812,7 @@ export const fetchItems = action({
       const collectionPageSizes: number[] = [];
       const descendantCollectionKeys = await fetchDescendantCollectionKeys(
         prefix,
-        connection.apiKey,
+        apiKey,
         collectionKey,
         collectionPageSizes
       );
@@ -805,7 +838,7 @@ export const fetchItems = action({
 
       const mergedMap = new Map<string, ZoteroItemResponse>();
       for (const key of collectionKeys) {
-        const itemsForCollectionRaw = await fetchAllTopItemsForCollection(prefix, key, connection.apiKey);
+        const itemsForCollectionRaw = await fetchAllTopItemsForCollection(prefix, key, apiKey);
         const itemsForCollection = filterVisibleItems(itemsForCollectionRaw);
         console.log("[fetchItems] Collection batch stats:", {
           collectionKey: key,
@@ -844,7 +877,7 @@ export const fetchItems = action({
 
       console.log("[fetchItems] Fetching from URL:", url.toString());
       const response: Response = await fetch(url.toString(), {
-        headers: buildZoteroHeaders(connection.apiKey),
+        headers: buildZoteroHeaders(apiKey),
       });
 
       console.log("[fetchItems] Response status:", response.status);
@@ -885,7 +918,7 @@ export const fetchItems = action({
             includeTrashed: 0,
           });
           const childrenResponse = await fetch(childrenUrl.toString(), {
-            headers: buildZoteroHeaders(connection.apiKey),
+            headers: buildZoteroHeaders(apiKey),
           });
           if (childrenResponse.ok) {
             const children: ZoteroItemResponse[] = await childrenResponse.json();
@@ -959,6 +992,8 @@ export const getAttachments = internalAction({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
+    const apiKey = resolveZoteroApiKey(connection);
+
     const prefix = groupId
       ? `/groups/${groupId}`
       : `/users/${connection.zoteroUserId}`;
@@ -968,7 +1003,7 @@ export const getAttachments = internalAction({
         includeTrashed: 0,
       }).toString(),
       {
-        headers: buildZoteroHeaders(connection.apiKey),
+        headers: buildZoteroHeaders(apiKey),
       }
     );
 
@@ -1024,9 +1059,11 @@ export const downloadFile = internalAction({
       return { success: false, error: "Zotero not connected" };
     }
 
+    const apiKey = resolveZoteroApiKey(connection);
+
     try {
       const response = await fetch(downloadUrl, {
-        headers: buildZoteroHeaders(connection.apiKey),
+        headers: buildZoteroHeaders(apiKey),
       });
 
       if (!response.ok) {

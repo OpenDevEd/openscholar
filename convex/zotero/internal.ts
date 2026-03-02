@@ -6,6 +6,7 @@ import { v } from "convex/values";
 
 /**
  * Get Zotero connection for a user (internal use only).
+ * Returns both encryptedApiKey and apiKey for dual-read fallback.
  */
 export const getConnection = internalQuery({
   args: {
@@ -14,6 +15,7 @@ export const getConnection = internalQuery({
   returns: v.union(
     v.object({
       zoteroUserId: v.string(),
+      encryptedApiKey: v.optional(v.string()),
       apiKey: v.string(),
       username: v.optional(v.string()),
     }),
@@ -29,8 +31,25 @@ export const getConnection = internalQuery({
 
     return {
       zoteroUserId: connection.zoteroUserId,
+      encryptedApiKey: connection.encryptedApiKey,
       apiKey: connection.apiKey,
       username: connection.username,
     };
+  },
+});
+
+/**
+ * List all Zotero connections for migration (Plan 02).
+ */
+export const listAllConnections = internalQuery({
+  args: {},
+  returns: v.array(v.object({
+    _id: v.id("zoteroConnections"),
+    apiKey: v.string(),
+    encryptedApiKey: v.optional(v.string()),
+  })),
+  handler: async (ctx) => {
+    const all = await ctx.db.query("zoteroConnections").collect();
+    return all.map((c) => ({ _id: c._id, apiKey: c.apiKey, encryptedApiKey: c.encryptedApiKey }));
   },
 });
