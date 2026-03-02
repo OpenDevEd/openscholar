@@ -108,7 +108,6 @@ const BEST_EFFORT_MAX_CITATIONS = 2;
 const BEST_EFFORT_CONFIDENCE_CAP = 0.45;
 const ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7;
 const STRICT_NULL_CONFIDENCE_CAP = 0.3;
-const V32_CUTOVER_AT = Number(process.env.EXTRACTION_V3_2_CUTOVER_AT || "0");
 const ARRAY_ANSWER_MAX_ITEMS = 8;
 const ARRAY_GENERIC_PENALTY = 0.15;
 const ARRAY_GENERIC_THRESHOLD = 0.6;
@@ -174,16 +173,6 @@ function toTupleRange(charRange: number[] | [number, number]): [number, number] 
     return [0, 0];
   }
   return [start, end];
-}
-
-function isV32EnabledForJob(createdAt?: number) {
-  if (!Number.isFinite(V32_CUTOVER_AT) || V32_CUTOVER_AT <= 0) {
-    return true;
-  }
-  if (!Number.isFinite(createdAt)) {
-    return true;
-  }
-  return Number(createdAt) >= V32_CUTOVER_AT;
 }
 
 function getZodTypeForQuestion(type: string) {
@@ -812,14 +801,6 @@ export const downloadAndIndexPdfAction = internalAction({
           error: "Job not found",
         };
       }
-      if (!isV32EnabledForJob(job.createdAt)) {
-        return {
-          success: false,
-          error:
-            "This job predates EXTRACTION_V3_2_CUTOVER_AT. Create a new extraction job for V3.2.",
-        };
-      }
-
       if (!isPdfExtractionEnabled()) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
           await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
@@ -975,14 +956,6 @@ export const waitAndExtractAction = internalAction({
       if (!job) {
         return { success: false, error: "Job not found" };
       }
-      if (!isV32EnabledForJob(job.createdAt)) {
-        return {
-          success: false,
-          error:
-            "This job predates EXTRACTION_V3_2_CUTOVER_AT. Create a new extraction job for V3.2.",
-        };
-      }
-
       const unitsRaw = await ctx.runQuery(
         internal.extraction.queries.getEvidenceUnitsInternal,
         { paperId: args.paperId }

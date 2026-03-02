@@ -53,11 +53,7 @@ export {
   handleExtractionComplete,
   finalizeJobIfDone,
   markPaperIndexed,
-  backfillIsIndexed,
-  backfillProcessable,
   replacePaperEvidenceUnits,
-  resetExtractionMvpData,
-  purgeLegacyExtractionRowsBatch,
 } from "./mutations";
 
 // Queries (public)
