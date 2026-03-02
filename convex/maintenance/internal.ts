@@ -8,9 +8,19 @@ import { normalizeStripeSubscriptionStatus } from "../subscriptions/lib/stripeSt
 import { isSubscriptionScheduledToCancel } from "../subscriptions/lib/cancellation";
 import { getPlanFromPriceId } from "../lib/constants";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
-  apiVersion: "2026-01-28.clover",
-});
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error(
+        "STRIPE_SECRET_KEY is not set. Stripe operations are unavailable.",
+      );
+    }
+    _stripe = new Stripe(key, { apiVersion: "2026-01-28.clover" });
+  }
+  return _stripe;
+}
 
 /**
  * Corrective subscription sync cron.
@@ -38,7 +48,7 @@ export const checkSubscriptionStatus = internalAction({
     // Step 3: For each, re-fetch from Stripe and correct divergences
     for (const sub of activeSubs) {
       try {
-        const fresh: any = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+        const fresh: any = await getStripe().subscriptions.retrieve(sub.stripeSubscriptionId);
         const item = fresh.items.data[0];
 
         if (!item?.price?.id) {

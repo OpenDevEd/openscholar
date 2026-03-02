@@ -32,18 +32,24 @@ import {
 import { isEntitledStatus } from "../../lib/billing/entitlements";
 import { requireSubscriptionsEnabled } from "../lib/featureFlags";
 import { createError, type ErrorCode } from "../lib/errors";
+import { requireAppUrl } from "../lib/env";
 
 const internalApi = internal as any;
 const componentApi = components as any;
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
-  apiVersion: "2026-01-28.clover",
-});
-
-const DOMAIN =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_URL ||
-  "http://localhost:3000";
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error(
+        "STRIPE_SECRET_KEY is not set. Stripe operations are unavailable.",
+      );
+    }
+    _stripe = new Stripe(key, { apiVersion: "2026-01-28.clover" });
+  }
+  return _stripe;
+}
 
 export type SubscriptionDetailsErrorCode = Extract<
   ErrorCode,
@@ -107,7 +113,7 @@ async function getAttachedSchedule(
     return scheduleRef as Stripe.SubscriptionSchedule;
   }
 
-  return await stripe.subscriptionSchedules.retrieve(scheduleId);
+  return await getStripe().subscriptionSchedules.retrieve(scheduleId);
 }
 
 async function syncLocalSubscriptionFromStripe(
@@ -168,7 +174,7 @@ export const handleSubscriptionWebhook = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     // Re-fetch from Stripe API (source of truth) -- per locked decision
-    const fresh = await stripe.subscriptions.retrieve(args.stripeSubscriptionId);
+    const fresh = await getStripe().subscriptions.retrieve(args.stripeSubscriptionId);
 
     const freshItem = fresh.items.data[0];
 
@@ -258,13 +264,14 @@ export const createCheckoutSession = action({
       userId: user._id,
     };
 
+    const domain = requireAppUrl();
     const session = await stripeClient.createCheckoutSession(ctx, {
       priceId: args.priceId,
       customerId: customer.customerId,
       mode: "subscription",
       quantity: args.quantity ?? 1,
-      successUrl: `${DOMAIN}/settings/billing?success=true`,
-      cancelUrl: `${DOMAIN}/settings/billing?canceled=true`,
+      successUrl: `${domain}/settings/billing?success=true`,
+      cancelUrl: `${domain}/settings/billing?canceled=true`,
       metadata,
       subscriptionMetadata: metadata,
     });
@@ -304,7 +311,7 @@ export const getPlans = action({
     const prices = await Promise.all(
       priceIds.map(async (id) => {
         try {
-          const price = await stripe.prices.retrieve(id);
+          const price = await getStripe().prices.retrieve(id);
           const metadata = price.metadata as Record<string, string>;
           return {
             id: price.id,
@@ -375,9 +382,10 @@ export const createPortalSession = action({
       throw createError("BILLING_CUSTOMER_NOT_FOUND", "No subscription customer found");
     }
 
+    const domain = requireAppUrl();
     const portal = await stripeClient.createCustomerPortalSession(ctx, {
       customerId: stripeCustomerId,
-      returnUrl: `${DOMAIN}/settings/billing`,
+      returnUrl: `${domain}/settings/billing`,
     });
 
     return { url: portal.url };
@@ -449,7 +457,7 @@ export const getSubscriptionDetails = action({
     }
 
     try {
-      const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId, {
+      const stripeSub = await getStripe().subscriptions.retrieve(subscription.stripeSubscriptionId, {
         expand: ["default_payment_method", "schedule"],
       });
 
@@ -576,7 +584,7 @@ export const changePlan = action({
         throw createError("BILLING_NO_ACTIVE_SUBSCRIPTION", "No active Stripe subscription found");
       }
 
-      const stripeSubscription: any = await stripe.subscriptions.retrieve(
+      const stripeSubscription: any = await getStripe().subscriptions.retrieve(
         subscription.stripeSubscriptionId,
         {
           expand: ["schedule"],
@@ -634,10 +642,10 @@ export const changePlan = action({
             scheduleStatus: schedule.status,
           })
         ) {
-          await stripe.subscriptionSchedules.release(schedule.id);
+          await getStripe().subscriptionSchedules.release(schedule.id);
 
           // Verify schedule is detached (SUB-05)
-          const verifiedSub = await stripe.subscriptions.retrieve(stripeSubscription.id);
+          const verifiedSub = await getStripe().subscriptions.retrieve(stripeSubscription.id);
           if (verifiedSub.schedule !== null) {
             console.error("[ScheduleLeak] schedule still attached after release", {
               subscriptionId: stripeSubscription.id,
@@ -651,7 +659,7 @@ export const changePlan = action({
           }
         }
 
-        const metadataCleared = await stripe.subscriptions.update(stripeSubscription.id, {
+        const metadataCleared = await getStripe().subscriptions.update(stripeSubscription.id, {
           metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
         });
         await syncLocalSubscriptionFromStripe(ctx, metadataCleared);
@@ -673,10 +681,10 @@ export const changePlan = action({
             scheduleStatus: schedule.status,
           })
         ) {
-          await stripe.subscriptionSchedules.release(schedule.id);
+          await getStripe().subscriptionSchedules.release(schedule.id);
 
           // Verify schedule is detached (SUB-05)
-          const verifiedSub = await stripe.subscriptions.retrieve(stripeSubscription.id);
+          const verifiedSub = await getStripe().subscriptions.retrieve(stripeSubscription.id);
           if (verifiedSub.schedule !== null) {
             console.error("[ScheduleLeak] schedule still attached after release", {
               subscriptionId: stripeSubscription.id,
@@ -690,7 +698,7 @@ export const changePlan = action({
           }
         }
 
-        const updated = await stripe.subscriptions.update(stripeSubscription.id, {
+        const updated = await getStripe().subscriptions.update(stripeSubscription.id, {
           items: [
             {
               id: item.id,
@@ -764,7 +772,7 @@ export const changePlan = action({
       }
 
       if (!schedule || !isReleasableScheduleStatus(schedule.status)) {
-        schedule = await stripe.subscriptionSchedules.create({
+        schedule = await getStripe().subscriptionSchedules.create({
           from_subscription: stripeSubscription.id,
         });
       }
@@ -788,7 +796,7 @@ export const changePlan = action({
         fallbackEnd: fallbackCurrentPeriodEnd,
       });
 
-      await stripe.subscriptionSchedules.update(schedule.id, {
+      await getStripe().subscriptionSchedules.update(schedule.id, {
         end_behavior: "release",
         proration_behavior: "none",
         phases: buildDowngradeSchedulePhases({
@@ -801,7 +809,7 @@ export const changePlan = action({
         }),
       });
 
-      const metadataCleared = await stripe.subscriptions.update(stripeSubscription.id, {
+      const metadataCleared = await getStripe().subscriptions.update(stripeSubscription.id, {
         metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
       });
       await syncLocalSubscriptionFromStripe(ctx, metadataCleared);
@@ -892,7 +900,7 @@ export const getUpgradePreview = action({
       throw createError("BILLING_NO_ACTIVE_SUBSCRIPTION", "No active Stripe subscription found");
     }
 
-    const stripeSub = await stripe.subscriptions.retrieve(
+    const stripeSub = await getStripe().subscriptions.retrieve(
       subscription.stripeSubscriptionId,
     );
 
@@ -908,7 +916,7 @@ export const getUpgradePreview = action({
 
     const prorationDate = Math.floor(Date.now() / 1000);
 
-    const preview = await stripe.invoices.createPreview({
+    const preview = await getStripe().invoices.createPreview({
       customer: typeof stripeSub.customer === "string"
         ? stripeSub.customer
         : (stripeSub.customer as any).id,

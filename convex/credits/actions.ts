@@ -21,16 +21,23 @@ import {
   getCreditTopupBundle,
 } from "../lib/creditTopups";
 import { createError } from "../lib/errors";
+import { requireAppUrl } from "../lib/env";
 
 const internalApi = internal as any;
-const DOMAIN =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_URL ||
-  "http://localhost:3000";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "dummy", {
-  apiVersion: "2026-01-28.clover",
-});
+let _stripe: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error(
+        "STRIPE_SECRET_KEY is not set. Stripe operations are unavailable.",
+      );
+    }
+    _stripe = new Stripe(key, { apiVersion: "2026-01-28.clover" });
+  }
+  return _stripe;
+}
 
 export const createTopupCheckoutSession = action({
   args: {
@@ -84,11 +91,12 @@ export const createTopupCheckoutSession = action({
       creditsPerUsd: String(creditsPerUsd),
     };
 
-    const session = await stripe.checkout.sessions.create({
+    const domain = requireAppUrl();
+    const session = await getStripe().checkout.sessions.create({
       customer: customer.customerId,
       mode: "payment",
-      success_url: `${DOMAIN}/settings/billing?topup=success`,
-      cancel_url: `${DOMAIN}/settings/billing?topup=canceled`,
+      success_url: `${domain}/settings/billing?topup=success`,
+      cancel_url: `${domain}/settings/billing?topup=canceled`,
       customer_update: {
         address: "auto",
       },
@@ -230,7 +238,7 @@ export function selectSingletonEntitledSubscriptionId(
 async function resolveFallbackSubscriptionId(
   stripeCustomerId: string,
 ): Promise<string | undefined> {
-  const subscriptions = await stripe.subscriptions.list({
+  const subscriptions = await getStripe().subscriptions.list({
     customer: stripeCustomerId,
     status: "all",
     limit: 100,
@@ -243,7 +251,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
   const stripeEventId = args.stripeEventId ?? `invoice.process:${args.stripeInvoiceId}`;
   const stripeEventType = args.stripeEventType ?? "invoice.process";
 
-  const invoice = (await stripe.invoices.retrieve(args.stripeInvoiceId, {
+  const invoice = (await getStripe().invoices.retrieve(args.stripeInvoiceId, {
     expand: ["lines.data"],
   })) as unknown as StripeInvoiceReconcileLike;
 
@@ -357,7 +365,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
     invoiceBillingReason === "subscription_update" &&
     stripeSubscriptionId
   ) {
-    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const subscription = await getStripe().subscriptions.retrieve(stripeSubscriptionId);
     const meta = subscription.metadata ?? {};
     const upgradeFromPlan = meta.upgradeFromPlan;
     const upgradeToPlan = meta.upgradeToPlan;
@@ -484,7 +492,7 @@ async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: any, args: any) {
   for (const stripeCustomerId of customers) {
     const MAX_INVOICES_PER_CUSTOMER = 500;
     const allInvoiceData: StripeInvoiceReconcileLike[] = [];
-    for await (const invoice of stripe.invoices.list({
+    for await (const invoice of getStripe().invoices.list({
       customer: stripeCustomerId,
       created: { gte: cutoffUnixSeconds },
       limit: 100,

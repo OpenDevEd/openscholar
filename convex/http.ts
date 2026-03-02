@@ -4,14 +4,11 @@ import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
 import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
+import { requireAppUrl } from "./lib/env";
 import type Stripe from "stripe";
 
 const http = httpRouter();
 const internalApi = internal as any;
-const FRONTEND_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_URL ||
-  "http://localhost:3000";
 const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
   process.env.STRIPE_WEBHOOK_SECRET,
 );
@@ -126,6 +123,7 @@ http.route({
       return new Response("Missing OAuth parameters", { status: 400 });
     }
 
+    const frontendUrl = requireAppUrl();
     try {
       const result = await ctx.runAction(api.zotero.actions.completeOAuth, {
         oauthToken,
@@ -134,16 +132,16 @@ http.route({
 
       if (!result.success) {
         return Response.redirect(
-          `${FRONTEND_URL}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
+          `${frontendUrl}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
           302,
         );
       }
 
-      return Response.redirect(`${FRONTEND_URL}/?zotero_connected=true`, 302);
+      return Response.redirect(`${frontendUrl}/?zotero_connected=true`, 302);
     } catch (error) {
       console.error("Zotero OAuth callback error:", error);
       return Response.redirect(
-        `${FRONTEND_URL}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
+        `${frontendUrl}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
         302,
       );
     }
