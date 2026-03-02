@@ -31,9 +31,9 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 
 ### Data Integrity
 
-- [ ] **DATA-01**: Deletion cascade includes `extractionEvidenceUnits` cleanup
-- [ ] **DATA-02**: Recursive `runMutation` replaced with `scheduler.runAfter(0)` batched deletion
-- [ ] **DATA-03**: Orphaned PDF storage cleanup covers failed papers and deleted jobs
+- [x] **DATA-01**: Deletion cascade includes `extractionEvidenceUnits` cleanup
+- [x] **DATA-02**: Recursive `runMutation` replaced with `scheduler.runAfter(0)` batched deletion
+- [x] **DATA-03**: Orphaned PDF storage cleanup covers failed papers and deleted jobs
 - [x] **DATA-04**: V32_CUTOVER_AT version gating code deleted entirely
 - [x] **DATA-05**: One-time backfill mutations deleted (backfillIsIndexed and similar)
 
@@ -100,9 +100,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-02 | Phase 35 | Complete |
 | SEC-03 | Phase 35 | Complete |
 | SEC-04 | Phase 35 | Complete |
-| DATA-01 | Phase 38 | Pending |
-| DATA-02 | Phase 38 | Pending |
-| DATA-03 | Phase 38 | Pending |
+| DATA-01 | Phase 38 | Complete |
+| DATA-02 | Phase 38 | Complete |
+| DATA-03 | Phase 38 | Complete |
 | DATA-04 | Phase 35 | Complete |
 | DATA-05 | Phase 35 | Complete |
 | PERF-01 | Phase 40 | Pending |
