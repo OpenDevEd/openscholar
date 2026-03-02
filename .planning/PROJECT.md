@@ -59,7 +59,18 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(None — planning next milestone)
+#### Current Milestone: v2.3 Codebase Hardening
+
+**Goal:** Address all identified concerns — bugs, type safety, security, performance, fragile areas, and test coverage gaps.
+
+**Target features:**
+- Fix known bugs (debug logs in production, @ts-ignore suppression)
+- Type safety sweep (eliminate `any` typing in extraction and billing modules)
+- Security hardening (Zotero key encryption, env var validation, debug function isolation, Stripe key validation)
+- Performance fixes (N+1 queries, unbounded .collect(), full table scans)
+- Fragile area stabilization (delete cascade, store migrations, subscription dedup)
+- Missing features (rate limiting enforcement, orphaned PDF cleanup)
+- Test coverage (extraction cascade, Zustand migrations, extraction E2E)
 
 ### Out of Scope
 
@@ -140,4 +151,4 @@ Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (coll
 | Page reset on filter/sort/search changes | Prevents showing empty pages when filter reduces result set | ✓ Good — predictable navigation |
 
 ---
-*Last updated: 2026-03-02 after v2.2 milestone*
+*Last updated: 2026-03-02 after starting v2.3 milestone*

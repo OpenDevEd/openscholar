@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: Library UI Overhaul
-status: shipped
-last_updated: "2026-03-02T05:30:00.000Z"
+milestone: v2.3
+milestone_name: Codebase Hardening
+status: active
+last_updated: "2026-03-02T12:00:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,15 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v2.3 Codebase Hardening
 
 ## Current Position
 
-Phase: All complete through Phase 34
-Status: v2.2 milestone shipped
-Last activity: 2026-03-02 -- Milestone v2.2 archived
-
-Progress: [██████████] 100% (all milestones through v2.2)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-02 — Milestone v2.3 started
 
 ## Performance Metrics
 
@@ -71,6 +70,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed quick task 2: Add eKitabu to Built by footer
-Stopped at: Quick task 2 complete
+Last activity: 2026-03-02 - Started milestone v2.3 Codebase Hardening
+Stopped at: Defining requirements
 Resume file: None
