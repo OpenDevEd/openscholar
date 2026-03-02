@@ -105,3 +105,27 @@
 
 ---
 
+
+## v2.2 Library UI Overhaul (Shipped: 2026-03-02)
+
+**Phases completed:** 4 phases, 7 plans
+**Git range:** `fef4c0d..9e94b28` (34 commits)
+**Files changed:** 46 files, +7,216/-662 lines
+**Timeline:** 2 days (2026-03-01 → 2026-03-02)
+
+**Key accomplishments:**
+- Built SidebarLayout + FilterSidebar reusable primitives with Zustand store factory, Framer Motion animations, and full i18n support across 6 locales
+- Refactored search page to use new SidebarLayout + SearchFilterSidebar composition, proving the shared infrastructure under production conditions
+- Overhauled library page with full filter sidebar (rating, date saved, year range, collection, text search) and URL state persistence via nuqs
+- Added sort controls (date saved, year, rating, title), pagination bar with "X-Y of Z papers" counts, and list/grid view toggle
+- Achieved DRY architecture: both search and library pages share identical layout infrastructure (SidebarLayout, FilterSidebar, FilterSection) with zero duplication
+
+**Audit:** 23/23 requirements, 4/4 phases, 23/23 integrations, 5/5 E2E flows — PASSED
+
+**Tech debt carried forward:**
+- `app/test-sidebar/page.tsx` orphaned proof-of-concept page (safe to delete)
+- `components/library/library-filters.tsx` unused old grid layout (safe to delete)
+- 3 pre-existing TypeScript errors in test files (from earlier milestones)
+
+---
+

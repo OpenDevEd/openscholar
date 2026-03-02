@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v2.2
 milestone_name: Library UI Overhaul
-status: unknown
-last_updated: "2026-03-01T12:36:30.845Z"
+status: shipped
+last_updated: "2026-03-02T05:30:00.000Z"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -15,19 +15,18 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-01)
+See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 34 -- Display Polish and Validation
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 34 of 34 (Display Polish and Validation)
-Plan: 2 of 2 in current phase (34-01 complete, 34-02 complete)
-Status: Phase 34 complete -- v2.2 milestone complete
-Last activity: 2026-03-01 -- Completed 34-02 Pagination UI + Sort Title Integration + Feature Verification
+Phase: All complete through Phase 34
+Status: v2.2 milestone shipped
+Last activity: 2026-03-02 -- Milestone v2.2 archived
 
-Progress: [██████████] 100% (phase 34)
+Progress: [██████████] 100% (all milestones through v2.2)
 
 ## Performance Metrics
 
@@ -44,22 +43,17 @@ Progress: [██████████] 100% (phase 34)
 | v1.2 | 7 | 11 | 2026-02-28 |
 | v2.0 | 8 | 17 | 2026-02-28 |
 | v2.1 | 8 | 15 | 2026-03-01 |
-| v2.2 | 4 | 7 | 2026-03-01 |
+| v2.2 | 4 | 7 | 2026-03-02 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-Recent: Used exportItems.length as filteredTotal for pagination, PAGE_SIZE=20 matches initialNumItems, effectivePage clamping prevents invalid page states.
-Previous: Page param uses key 'p' with default 1 for compact URLs, by_user_title index placed before searchIndex for consistent ordering.
-Previous: PageWrapper moved inside LibraryPageClient as child of SidebarLayout (matching search page pattern), sort/view controls moved from LibraryFilters into content header row, activeFilterCount uses rawSearch for real-time badge updates.
-Previous: Library sidebar uses 320px expanded / 48px collapsed dimensions, LibraryFilterContent is a pure presentation component receiving all state as props, commit-on-blur year range pattern copied from existing LibraryFilters.
 
 ### Roadmap Evolution
 
-v2.2 roadmap: 4 phases (31-34) covering 23 requirements across LAYOUT, FLTR, DISP, DRY categories.
-Build order: infrastructure -> search refactor (prove pattern) -> library overhaul (primary goal) -> display polish.
+All 6 milestones shipped. 34 phases, 63 plans across v1.0-v2.2.
 
 ### Pending Todos
 
@@ -71,6 +65,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-01 -- Completed 34-02-PLAN.md (Pagination UI + Sort Title Integration + Feature Verification)
-Stopped at: Completed 34-02-PLAN.md -- Phase 34 complete, v2.2 milestone complete
+Last activity: 2026-03-02 -- Archived v2.2 milestone
+Stopped at: Milestone v2.2 complete and archived
 Resume file: None

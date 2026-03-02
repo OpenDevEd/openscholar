@@ -238,6 +238,53 @@
 
 ---
 
+## Milestone: v2.2 — Library UI Overhaul
+
+**Shipped:** 2026-03-02
+**Phases:** 4 | **Plans:** 7 | **Commits:** 34
+
+### What Was Built
+- SidebarLayout responsive component (desktop two-column + mobile tabs) with Zustand store factory
+- FilterSidebar generic chrome shell (collapse animation, badge, clear button, content slot via children)
+- Search page refactored to SidebarLayout + SearchFilterSidebar composition (proving the shared infrastructure)
+- Library page overhauled with full filter sidebar (rating, date saved, year range, collection, text search)
+- Sort controls (date saved, year, rating, title) with search-aware disabling
+- Pagination bar with "X-Y of Z papers" counts and prev/next navigation
+- List/grid view toggle and rating stars on library items
+
+### What Worked
+- Infrastructure-first strategy: Phase 31 built reusable primitives, Phase 32 proved them on the search page, Phase 33 applied them to the library page — zero rework needed
+- Factory pattern for Zustand stores: createSidebarStore + createSidebarDimensions enabled independent sidebar stores per page with distinct localStorage keys
+- Chrome shell + content slot pattern: FilterSidebar accepted arbitrary filter content via children, eliminating all sidebar duplication
+- Pagination data layer (Phase 34-01) cleanly separated from UI layer (Phase 34-02) — each was a focused, quick plan
+- exportItems.length as pagination total was a clean architectural decision — avoided a separate count query
+
+### What Was Inefficient
+- ROADMAP.md Phase Details section retained expanded plan checkboxes as `[ ]` even after plans were complete (should have been `[x]`)
+- Progress table for phases 31-34 had broken column alignment (missing v2.2 milestone column)
+- SUMMARY.md files had no one_liner fields — recurring issue from v2.0 and v2.1
+
+### Patterns Established
+- createSidebarStore factory: Zustand store factory with configurable localStorage persist key
+- FilterSidebar chrome shell: generic frame accepting Zustand store + dimension calculator + children
+- SidebarLayout responsive branching: useIsMobile hook drives desktop two-column vs mobile tabs rendering
+- Page-specific filter sidebar composition: PageFilterSidebar wraps FilterSidebar + PageFilterContent
+- Client-side page windowing with URL-driven page state via nuqs parseAsInteger
+
+### Key Lessons
+1. Shared component infrastructure should be built and proven on an existing page before applying to the target page — reduces risk of design mistakes in the reusable layer
+2. Zustand store factories with configurable persist keys enable true independence between page-specific stores
+3. Chrome shell + content slot is the right composition pattern for shared sidebar UI — avoids prop drilling and keeps page-specific logic encapsulated
+4. Pagination data layer (Convex index + query params) should be decoupled from pagination UI (bar, counts, controls) for clean separation of concerns
+5. exportItems.length is a valid pagination total source when non-paginated queries have known item limits
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: 1 session for full milestone
+- Notable: 7 plans in 4 phases — compact milestone, clean execution with no gap closure phases needed
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -249,6 +296,7 @@
 | v1.2 | ~50 | 7 | 11 | 1.5min | Auto-advance pipeline, 3-source audit |
 | v2.0 | 63 | 8 | 17 | ~2min | TDD patterns, pure function extraction, vi.mock/resetModules |
 | v2.1 | ~181 | 8 | 15 | ~2min | Library feature build, shared components, nuqs URL state, junction tables |
+| v2.2 | 34 | 4 | 7 | ~2min | DRY layout infrastructure, factory patterns, chrome shell composition |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -261,3 +309,5 @@
 7. Module-load-time env vars require vi.resetModules() + dynamic import — vi.stubEnv alone is insufficient (v2.0)
 8. Junction tables for many-to-many in Convex — array fields create cascade delete complexity (v2.1)
 9. URL state (nuqs) over local state for filterable views — eliminates sync bugs and enables bookmarkable views (v2.1)
+10. Infrastructure-first with prove-on-existing-page strategy reduces rework in shared component builds (v2.2)
+11. SUMMARY.md one_liner fields consistently missing — recurring process gap that affects milestone accomplishment extraction (v2.0 + v2.1 + v2.2)
