@@ -1,14 +1,22 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 import { createError } from "./errors";
 
 // ============================================
 // Crypto utilities (Node.js only)
+// Lazily requires "crypto" to avoid bundler issues
 // ============================================
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
+function getCrypto() {
+  // Dynamic module name to prevent esbuild from resolving at bundle time
+  const mod = ["cry", "pto"].join("");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require(mod) as typeof import("crypto");
+}
+
 export function encrypt(plaintext: string, keyHex: string): string {
+  const { createCipheriv, randomBytes } = getCrypto();
   const key = Buffer.from(keyHex, "hex");
 
   if (key.length !== 32) {
@@ -30,6 +38,7 @@ export function encrypt(plaintext: string, keyHex: string): string {
 }
 
 export function decrypt(encrypted: string, keyHex: string): string {
+  const { createDecipheriv } = getCrypto();
   const parts = encrypted.split(":");
 
   if (parts.length !== 3) {
