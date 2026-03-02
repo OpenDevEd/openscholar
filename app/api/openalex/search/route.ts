@@ -54,8 +54,6 @@ export async function GET(request: NextRequest) {
     // Use the same function as the main search action
     const params = createSearchParameters(query, filters);
 
-    console.log("[OpenAlex API] Search params:", JSON.stringify(params, null, 2));
-
     const response = await client.works(params);
 
     return NextResponse.json({

@@ -10,20 +10,11 @@ async function callOpenAlexSDK(
   query: string, 
   filters: SearchFilters
 ) {
-  console.log("query", query);
-  
   // Use the centralized utility function to create search parameters
   const searchParams = createSearchParameters(query, filters);
 
-  console.log('OpenAlex SDK call with params:', JSON.stringify(searchParams, null, 2));
-
   try {
     const response = await client.works(searchParams);
-    
-    console.log('OpenAlex SDK response:', {
-      meta: response.meta,
-    });
-    
     return response;
   } catch (error) {
     console.error('OpenAlex SDK Error:', error);
@@ -32,7 +23,6 @@ async function callOpenAlexSDK(
 }
 
 export async function getSearchResults(query: string, filters: SearchFilters, expandedQuery?: string, effectiveCitesItemId?: string, effectiveRelatedToItemId?: string) {
-  console.log("searchField", filters.searchField);
   const actualQuery = expandedQuery || query;
   
   // Create a copy of filters with the effective IDs (if provided)

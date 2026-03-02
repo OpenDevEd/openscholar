@@ -63,17 +63,11 @@ export default function BillingPage() {
       const elapsed = Date.now() - navStartTime;
       // If we've been loading for more than 5 seconds, something went wrong - reset
       if (elapsed > 5000) {
-        console.log("[BILLING] Resetting stuck loading state");
         setIsLoading(false);
         setNavStartTime(null);
       }
     }
   });
-
-  // Debug: track isLoading changes
-  useEffect(() => {
-    console.log("[BILLING] isLoading changed:", isLoading);
-  }, [isLoading]);
 
   // Handle return from Stripe Checkout -- CRED-03, CRED-05
   useEffect(() => {
@@ -205,10 +199,8 @@ export default function BillingPage() {
   ]);
 
   const handleManageSubscription = async () => {
-    console.log(`[BILLING] ${performance.now().toFixed(1)}ms handleManageSubscription called`, { isLoading, showUpgradeCta, isSettling: subscriptionState.isSettling });
     // Prevent multiple clicks during loading
     if (isLoading) {
-      console.log("[BILLING] Blocked - already loading");
       return;
     }
 
@@ -216,7 +208,6 @@ export default function BillingPage() {
     // always prefer portal management (including non-entitled states like unpaid).
     // When subscriptions disabled, do not route to pricing.
     if (showUpgradeCta && subscriptionsFeatureFlags.enabled) {
-      console.log("[BILLING] Navigating to pricing");
       router.push("/pricing");
       return;
     }
@@ -227,14 +218,10 @@ export default function BillingPage() {
 
     // Otherwise, open the portal
     try {
-      console.log(`[BILLING] ${performance.now().toFixed(1)}ms Before setIsLoading(true)`);
       setNavStartTime(Date.now());
       setIsLoading(true);
-      console.log(`[BILLING] ${performance.now().toFixed(1)}ms After setIsLoading(true), calling action`);
       const { url } = await createPortalSession({});
-      console.log("[BILLING] createPortalSession returned", { url });
       if (url) {
-        console.log("[BILLING] Navigating to", url);
         window.location.href = url;
       }
     } catch (error) {
@@ -330,19 +317,6 @@ export default function BillingPage() {
       currency: currency.toUpperCase(),
     });
   };
-
-  // Debug logging for state changes
-  const renderId = useRef(0);
-  renderId.current++;
-  console.log(`[BILLING] ${performance.now().toFixed(1)}ms Render #`, renderId.current, {
-    isLoading,
-    isSettling: subscriptionState.isSettling,
-    settlement: subscriptionState.settlement,
-    isDeferred: creditBalanceQuery.isDeferred,
-    creditBalance: creditBalance === undefined ? "undefined" : "defined",
-    effectivePlan,
-    hasBillingLink,
-  });
 
   return (
     <div className="flex flex-col h-full">
