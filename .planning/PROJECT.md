@@ -66,7 +66,24 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start next)
+**Current Milestone: v2.4 Concerns Sweep**
+
+**Goal:** Fix all tech debt, known bugs, and security concerns identified in the codebase mapping.
+
+**Target items:**
+- Remove deprecated `apiKey` field, migrate plaintext Zotero keys
+- Replace placeholder email in OpenAlex User-Agent
+- Fix `runDiff` orphan risk on baseline job deletion
+- Fix `cancelExtraction` to actually stop the running workflow
+- Replace `v.any()` in extraction query return types with typed validators
+- Extend `cleanupDeletedUsers` to delete extraction data
+- Add cron cleanup for expired Zotero OAuth tokens
+- Type `migrateSearchHistoryState` migration steps
+- Replace `any` casts in `attachReviewMetadata`
+- Fix `getJobDetails` 100-paper cap
+- Fix `extractionRunDiffs.changes` silent truncation at 1,000
+- Document debug endpoint production policy
+- Remove `/test-sidebar` test page
 
 ### Out of Scope
 
@@ -155,4 +172,4 @@ Security: AES-256-GCM encryption for API keys and Zotero keys via shared crypto 
 | vi.useFakeTimers() before scheduler mutations | Scheduler timing must be controlled before mutation triggers | ✓ Good — reliable test timing |
 
 ---
-*Last updated: 2026-03-02 after v2.3 milestone*
+*Last updated: 2026-03-02 after v2.4 milestone start*

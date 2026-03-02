@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Codebase Hardening
-status: shipped
-last_updated: "2026-03-02T11:15:00.000Z"
+milestone: v2.4
+milestone_name: Concerns Sweep
+status: defining_requirements
+last_updated: "2026-03-02T12:00:00.000Z"
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 14
-  completed_plans: 14
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,15 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.3 shipped — planning next milestone
+**Current focus:** v2.4 Concerns Sweep — defining requirements
 
 ## Current Position
 
-Phase: All complete (42 phases across 7 milestones)
-Status: v2.3 Codebase Hardening shipped 2026-03-02
-Last activity: 2026-03-02 — Milestone v2.3 archived
-
-Progress: [##########] 100% (all milestones through v2.3 complete)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-02 — Milestone v2.4 started
 
 ## Performance Metrics
 
@@ -63,6 +62,7 @@ None.
 ### Blockers/Concerns
 
 - 3 pre-existing TypeScript errors in test files (unrelated to milestone work)
+- NEXT_PUBLIC_ feature flag naming is intentional (frontend/backend portability)
 
 ### Quick Tasks Completed
 
@@ -72,6 +72,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Milestone v2.3 archived
-Stopped at: Milestone completion
+Last activity: 2026-03-02 - Milestone v2.4 started
+Stopped at: Defining requirements
 Resume file: None
