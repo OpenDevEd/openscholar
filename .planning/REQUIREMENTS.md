@@ -52,8 +52,8 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 ### Test Coverage
 
 - [x] **TEST-01**: Extraction cascade delete tested (including evidence units and storage)
-- [ ] **TEST-02**: Zustand store migration paths tested (5-version chain)
-- [ ] **TEST-03**: Extraction insight aggregation edge cases tested (null answers, missing fields)
+- [x] **TEST-02**: Zustand store migration paths tested (5-version chain)
+- [x] **TEST-03**: Extraction insight aggregation edge cases tested (null answers, missing fields)
 
 ## Future Requirements
 
@@ -112,8 +112,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RATE-02 | Phase 41 | Complete |
 | RATE-03 | Phase 41 | Complete |
 | TEST-01 | Phase 42 | Complete |
-| TEST-02 | Phase 42 | Pending |
-| TEST-03 | Phase 42 | Pending |
+| TEST-02 | Phase 42 | Complete |
+| TEST-03 | Phase 42 | Complete |
 
 **Coverage:**
 - v2.3 requirements: 27 total
