@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
 status: unknown
-last_updated: "2026-03-02T07:38:11.568Z"
+last_updated: "2026-03-02T07:51:30Z"
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 36 -- Type Safety Sweep
+**Current focus:** Phase 37 -- Schema Additions
 
 ## Current Position
 
-Phase: 36 of 42 (Type Safety Sweep) -- 2 of 8 in v2.3
-Plan: 2 of 2 complete (36-01, 36-02) -- Phase 36 DONE
-Status: Phase 36 complete, ready for Phase 37
-Last activity: 2026-03-02 -- Completed 36-02 (Remove as-any API casts)
+Phase: 37 of 42 (Schema Additions) -- 3 of 8 in v2.3
+Plan: 1 of 1 complete (37-01) -- Phase 37 DONE
+Status: Phase 37 complete, ready for Phase 38
+Last activity: 2026-03-02 -- Completed 37-01 (Add rateLimitTables and Zotero encryption fields)
 
-Progress: [##########] 100% (2/2 plans in phase)
+Progress: [##########] 100% (1/1 plans in phase)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 65 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 2+)
+- Total plans completed: 66 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 3+)
 - Total milestones shipped: 6
 
 **By Milestone:**
@@ -56,6 +56,7 @@ Progress: [##########] 100% (2/2 plans in phase)
 | 35 | 03 | 3min | 2 | 11 |
 | 36 | 01 | 3min | 2 | 4 |
 | 36 | 02 | 6min | 2 | 7 |
+| 37 | 01 | 1min | 1 | 1 |
 
 ## Accumulated Context
 
@@ -66,6 +67,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 35]: Lazy getStripe() singleton for Stripe client init; requireAppUrl() validates NEXT_PUBLIC_APP_URL at function entry with dev/CI fallback
 - [Phase 36]: Import ctx types from _generated/server for standalone helper functions; (q: any) casts unnecessary since TypeScript infers index builder types
 - [Phase 36]: Use GenericActionCtx<any> for helpers called from Stripe registerRoutes; add explicit return types to break circular ref chains from typed internal refs
+- [Phase 37]: Placed rateLimitTables spread at top of defineSchema before all user-defined tables to avoid accidental override
 
 ### Roadmap Evolution
 
@@ -88,6 +90,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 36-02-PLAN.md (remove as-any API casts)
-Stopped at: Phase 36 fully done (all 2 plans complete)
+Last activity: 2026-03-02 - Completed 37-01-PLAN.md (schema additions)
+Stopped at: Phase 37 fully done (all 1 plans complete)
 Resume file: None
