@@ -175,6 +175,112 @@ export const useRatingsStore = create<RatingsState>()(
   )
 )
 
+export function migrateSearchHistoryState(persistedState: any, version: number): any {
+  // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
+  if (version === 0) {
+    const currentYear = new Date().getFullYear();
+    const defaultYearRange = [MIN_YEAR, currentYear];
+
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+        // If the item has a custom year range (not the default), enable the toggle
+        if (item.yearRange && Array.isArray(item.yearRange)) {
+          const [fromYear, toYear] = item.yearRange;
+          const isCustomRange = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
+
+          return {
+            ...item,
+            isYearRangeEnabled: isCustomRange
+          };
+        }
+
+        // If no yearRange or it's the default, keep toggle disabled
+        return {
+          ...item,
+          isYearRangeEnabled: false
+        };
+      });
+    }
+  }
+
+  // Migration for version 1 -> 2: Add queryHistory field
+  if (version <= 1) {
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+        return {
+          ...item,
+          queryHistory: item.queryHistory || [{
+            query: item.query || '',
+            timestamp: item.createdAt || new Date().toISOString()
+          }]
+        };
+      });
+    }
+  }
+
+  // Migration for version 2 -> 3: Add questionHistory field
+  if (version <= 2) {
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+        return {
+          ...item,
+          questionHistory: item.questionHistory || []
+        };
+      });
+    }
+  }
+
+  // Migration for version 3 -> 4: Add screeningQuestions field
+  if (version <= 3) {
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+        return {
+          ...item,
+          screeningQuestions: item.screeningQuestions || []
+        };
+      });
+    }
+  }
+
+  // Migration for version 4 -> 5: Add screeningResponses field
+  if (version <= 4) {
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+        return {
+          ...item,
+          screeningResponses: item.screeningResponses || {}
+        };
+      });
+    }
+  }
+
+  // Migration for version 5 -> 6: Add language field
+  if (version <= 5) {
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+        return {
+          ...item,
+          language: item.language || undefined // Default to undefined for backward compatibility
+        };
+      });
+    }
+  }
+
+  // Migration for version 6 -> 7: Normalize screening question shape
+  if (version <= 6) {
+    if (persistedState.searchHistory) {
+      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => ({
+        ...item,
+        screeningQuestions: (item.screeningQuestions || []).map((question: any) => ({
+          question: typeof question?.question === "string" ? question.question : "",
+        })),
+      }));
+    }
+  }
+
+  return persistedState;
+}
+
 export const useSearchHistoryStore = create<SearchHistoryState>()(
   persist(
     (set, get) => ({
@@ -458,111 +564,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     {
       name: 'search-history-store',
       version: 7, // Increment when migrations are needed
-      migrate: (persistedState: any, version: number) => {
-        // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
-        if (version === 0) {
-          const currentYear = new Date().getFullYear();
-          const defaultYearRange = [MIN_YEAR, currentYear];
-          
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
-              // If the item has a custom year range (not the default), enable the toggle
-              if (item.yearRange && Array.isArray(item.yearRange)) {
-                const [fromYear, toYear] = item.yearRange;
-                const isCustomRange = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
-                
-                return {
-                  ...item,
-                  isYearRangeEnabled: isCustomRange
-                };
-              }
-              
-              // If no yearRange or it's the default, keep toggle disabled
-              return {
-                ...item,
-                isYearRangeEnabled: false
-              };
-            });
-          }
-        }
-        
-        // Migration for version 1 -> 2: Add queryHistory field
-        if (version <= 1) {
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
-              return {
-                ...item,
-                queryHistory: item.queryHistory || [{
-                  query: item.query || '',
-                  timestamp: item.createdAt || new Date().toISOString()
-                }]
-              };
-            });
-          }
-        }
-
-        // Migration for version 2 -> 3: Add questionHistory field
-        if (version <= 2) {
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
-              return {
-                ...item,
-                questionHistory: item.questionHistory || []
-              };
-            });
-          }
-        }
-
-        // Migration for version 3 -> 4: Add screeningQuestions field
-        if (version <= 3) {
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
-              return {
-                ...item,
-                screeningQuestions: item.screeningQuestions || []
-              };
-            });
-          }
-        }
-
-        // Migration for version 4 -> 5: Add screeningResponses field
-        if (version <= 4) {
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
-              return {
-                ...item,
-                screeningResponses: item.screeningResponses || {}
-              };
-            });
-          }
-        }
-
-        // Migration for version 5 -> 6: Add language field
-        if (version <= 5) {
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
-              return {
-                ...item,
-                language: item.language || undefined // Default to undefined for backward compatibility
-              };
-            });
-          }
-        }
-
-        // Migration for version 6 -> 7: Normalize screening question shape
-        if (version <= 6) {
-          if (persistedState.searchHistory) {
-            persistedState.searchHistory = persistedState.searchHistory.map((item: any) => ({
-              ...item,
-              screeningQuestions: (item.screeningQuestions || []).map((question: any) => ({
-                question: typeof question?.question === "string" ? question.question : "",
-              })),
-            }));
-          }
-        }
-
-        return persistedState;
-      },
+      migrate: migrateSearchHistoryState,
     }
   )
 )
