@@ -1,208 +1,208 @@
 # Project Research Summary
 
-**Project:** openalex-count — v2.3 Codebase Hardening
-**Domain:** Convex + Next.js backend hardening (type safety, security, performance, data integrity)
+**Project:** OpenAlex Count — v2.4 Concerns Sweep
+**Domain:** Codebase hardening — 13 targeted fixes across security, data integrity, and type safety in a Convex + Next.js academic extraction platform
 **Researched:** 2026-03-02
 **Confidence:** HIGH
 
 ## Executive Summary
 
-v2.3 is a pure internal quality milestone with no user-facing features. The codebase has a set of well-understood, actively harmful gaps: plaintext Zotero API keys in the database, a deletion cascade that orphans child records on every delete, a rate limiter that exists only as a configuration stub with zero enforcement, and 30+ `ctx: any` and `internal as any` casts that defeat the type system. Every one of these problems can be fixed using packages already installed (`convex@1.32.0`, `convex-helpers@0.1.112`) and built-in Node.js `crypto` — zero new dependencies are required. The gap is entirely in how existing capabilities are used.
+The v2.4 Concerns Sweep is a maintenance milestone, not a greenfield build. All 13 items are fixes to existing, deployed code. The research confirms that every fix can be implemented using APIs already available in installed packages — zero new runtime dependencies are required. The existing codebase already contains the patterns needed for each fix: batched self-scheduling cascade deletes, workflow/workpool component APIs, cursor-based pagination, and Convex validator primitives. The work is primarily about correctly wiring together systems that are already present but incompletely connected.
 
-The recommended approach is to proceed in strict dependency order: clean up debug cruft first (lowest risk, builds confidence), then do the type safety sweep (establishes the foundation), then address data integrity (cascade fix + encryption), then performance (N+1 resolution, pagination), and finally enforcement (rate limiting). This order is mandated by the pitfall research — the type sweep and cascade fix touch the same 2000-line file (`extraction/mutations.ts`); doing them in parallel or the wrong order risks introducing regressions while refactoring already-sensitive deletion logic.
+The recommended approach is to work in five phases ordered by risk and dependency. Security and compliance concerns come first because they carry the highest harm potential: plaintext API keys in the database and incomplete user data deletion are both live risks with regulatory exposure. Workflow and deletion integrity fixes come second, because the cascade delete pattern underpins several other fixes and must be correct before downstream work builds on it. The type safety sweep (replacing `v.any()` validators) comes third because it is the highest-effort item but lowest urgency — the queries work today, they are just unvalidated. Cron additions and environment polish come last because they are purely additive and low-risk.
 
-The critical risk is that well-intentioned fixes introduce regressions. The pitfall research is explicit: replacing `ctx: any` must be a pure type annotation change with no runtime logic changes, and removing the Stripe `"dummy"` key fallback must use lazy initialization (not module-scope throws) or it will break the entire billing module. Every phase must be verified with `npx convex dev` and the full test suite before the next phase begins. Schema changes must deploy all new fields as `v.optional()` first, following Convex's dual-write migration pattern.
+The single biggest risk in this milestone is not implementation complexity but deployment ordering. Three concerns require coordinated multi-step deploys where data must be migrated before schema changes are pushed. Skipping the verification step between deploys is the most likely failure mode. The pitfalls research is emphatic: the Zotero `apiKey` field cannot be removed from the schema until a query confirms zero documents still carry the field. Similarly, typed return validators must be deployed one query at a time with monitoring, because a single incorrect validator crashes all callers of that query in production.
 
 ## Key Findings
 
 ### Recommended Stack
 
-No new dependencies. Every hardening fix uses existing installed packages or Node.js built-ins. The significant finding is that `convex-helpers@0.1.112` already ships a complete token-bucket rate limiter (`convex-helpers/server/rateLimit`) that just needs a schema table added and enforcement calls inserted — the current `convex/lib/rateLimit.ts` is a dead stub. The generated types in `convex/_generated/server.d.ts` and `convex/_generated/api.d.ts` already export fully-typed `QueryCtx`, `MutationCtx`, `internal`, and `components` — the `as any` casts throughout the codebase are unnecessary.
+The stack is unchanged. Every API needed for the 13 fixes is already installed and verified against `node_modules` source. `@convex-dev/workflow@0.3.4` exposes `workflow.cancel(ctx, workflowId)` which accepts `RunMutationCtx` — meaning it can be called directly from the existing `cancelExtraction` mutation without converting to an action. `@convex-dev/workpool@0.3.1` exposes `pdfProcessingPool.cancel(ctx, workId)` for per-paper cancellation. Core Convex `v.*` validators, `.paginate()`, and `crons.interval()` are all already in use elsewhere in the codebase and do not need to be introduced.
 
-**Core technologies (already installed — no changes):**
-- `convex@1.32.0`: Backend runtime — activate its type system; stop casting generated types to `any`
-- `convex-helpers@0.1.112`: Rate limiting — replace the stub in `convex/lib/rateLimit.ts` with `defineRateLimits` from `convex-helpers/server/rateLimit`
-- `Node.js crypto` (built-in): AES-256-GCM — reuse the existing `encrypt`/`decrypt` pattern from `convex/apiKeys/actions.ts` for Zotero keys
+The one optional addition (`@convex-dev/migrations`) was evaluated and explicitly rejected. The `zoteroConnections` table is small (one row per user with Zotero connected), making the component's progress-tracking and resumability overkill. A hand-rolled batched mutation following the existing `deleteExtractionInternal` self-scheduling pattern achieves the same result without adding a permanent component dependency to `convex.config.ts`.
 
-**Note on FEATURES.md vs STACK.md discrepancy:** FEATURES.md recommends `@convex-dev/rate-limiter` (official Convex component requiring install). STACK.md recommends `convex-helpers/server/rateLimit` (already installed, no component registration). The STACK.md finding is authoritative — using convex-helpers avoids adding a new component dependency and the algorithm is equivalent. Adopt `convex-helpers` for rate limiting.
+**Core technologies (no changes from current):**
+- `convex@1.32.0`: All validator primitives, cron APIs, pagination APIs available — no upgrade needed
+- `@convex-dev/workflow@0.3.4`: `cancel()` API verified in installed source at `node_modules/@convex-dev/workflow/src/client/index.ts` line 216
+- `@convex-dev/workpool@0.3.1`: `cancel()` per workId, `cancelAll()` global — both verified in installed source
+- `convex-helpers@0.1.111`: Rate limiting unchanged; no v2.4 interaction
 
-### Expected Features (Hardening Items)
+### Expected Features
 
-This milestone has no user-facing features. Every item is an internal fix categorized by urgency.
+This milestone is entirely composed of fixes, not new features. The framing from the features research is "what does correctly fixed look like" for each of the 13 concerns.
 
-**Must fix (P1 — active security, data loss, or runtime risk):**
-- Zotero API key encryption — only plaintext user secret in the database
-- Deletion cascade: add evidence units — orphans `extractionEvidenceUnits` rows on every delete
-- Deletion cascade: add storage cleanup — leaks Convex storage costs on every delete
-- Orphaned PDF cleanup for failed papers — `download_failed`/`failed` papers with `storageId` never cleaned
-- Stripe `"dummy"` key removal — silent auth failures in misconfigured prod (use lazy init pattern)
-- Env var validation for `NEXT_PUBLIC_APP_URL` — risk of Stripe/Zotero OAuth redirect to localhost
-- Remove production `console.log` — active log pollution in `openalex.ts` and billing page
-- Fix `@ts-ignore` in `debug_papers.ts` — accessing non-existent field `p.pdfUsed` (renamed to `pdfContentUsed`)
+**Must fix — P1 (broken behavior, security risk, compliance gap):**
+- Cancel extraction actually stops workflow and workpool — currently only writes DB status, workflow continues burning credits
+- Migrate deprecated plaintext `apiKey` field to `encryptedApiKey` and remove fallback code — live security risk
+- Extend user data cleanup to cover extraction jobs and Zotero connections — GDPR compliance gap
+- Remove 100-paper cap in `getJobDetails` — broken UI for any extraction job with >100 papers
 
-**Should fix (P2 — prevents future incidents):**
-- Rate limiting enforcement — config-only stub is completely unenforced; all endpoints open to abuse
-- N+1 query fix in `loadJobDataForReporting` and `loadJobPapersAndResults` — 200+ sequential reads for 100-paper jobs; hits Convex transaction limits
-- Deletion cascade: fix recursion to scheduler pattern — current O(n^2) re-scanning with recursion risk
-- Debug/test function isolation — 14 debug/test files in production; gate behind `requirePublicDebugEnabled()`
-- Unbounded `.collect()` audit — backfill full table scan and active subscription scan are the priority
+**Should fix — P2 (silent data issues, quality improvements):**
+- Diff truncation notification (`isTruncated` / `totalChanges` fields) — silent data loss today
+- Typed return validators replacing `v.any()` in 7 extraction queries — runtime type enforcement
+- Orphan diff cleanup when baseline job is deleted — data hygiene, accumulating orphans
+- Cron cleanup for expired Zotero OAuth tokens — table bloat, abandoned sessions
+- Replace placeholder OpenAlex User-Agent email — rate limit risk
 
-**Defer (P3 — maintainability improvements):**
-- Type safety sweep: `ctx: any` to `MutationCtx`/`QueryCtx` (~15 occurrences)
-- Type safety: `internal as any` and `components as any` removal (~7 files)
-- Type safety: `patchData: any` to typed partial
-- Test coverage: extraction cascade delete
-- Test coverage: Zustand store migrations
+**Nice to fix — P3 (typing, documentation, hygiene):**
+- Type `migrateSearchHistoryState` migration steps
+- Type `attachReviewMetadata` `any` casts
+- Document debug endpoint production policy
+- Remove `/test-sidebar` test page
+
+**Anti-features to avoid:**
+- Removing `apiKey` field before completing data migration — will break schema push
+- Using `pdfProcessingPool.cancelAll()` instead of per-paper cancel — cancels all users' jobs
+- Replacing all `v.any()` validators in a single deploy — one wrong validator crashes all consumers
+- Hard-deleting all user data including financial records — loses billing audit trail
 
 ### Architecture Approach
 
-The hardening work is concentrated in a small number of hot files. The most-touched file is `convex/extraction/mutations.ts` (2000+ lines) which contains the cascade delete, N+1 queries, type casts, and unbounded `.collect()` calls simultaneously — this is why phase ordering is critical. The schema requires two targeted additions: `rateLimitTables` (spreads into schema from convex-helpers) and the `zoteroConnections` table modification (`apiKey` field split into `encryptedApiKey` + `keyPrefix`). Both schema changes must deploy with `v.optional()` first.
+The fixes integrate into an existing, well-structured Convex + Next.js architecture. The backend is organized into domain modules (`extraction/`, `zotero/`, `maintenance/`) with a clear separation between public API layer (queries/mutations), workflow orchestration, and workpool action execution. Every fix has an identified home: no new architectural patterns are introduced. Two new files will be created (`convex/extraction/validators.ts` for shared typed validators, `convex/zotero/migrations.ts` for the one-time apiKey migration), and one file will be deleted (`app/test-sidebar/page.tsx`). All other changes are modifications to existing files at specific known line numbers.
 
-**Major components and their hardening responsibilities:**
-1. `convex/extraction/mutations.ts` — Cascade delete rewrite, N+1 fix, type sweep, `patchData` typing (highest-risk file; must not be touched by two phases simultaneously)
-2. `convex/extraction/queries.ts` — N+1 fix for `loadJobPapersAndResults`, type sweep (QueryCtx)
-3. `convex/lib/rateLimit.ts` — Full replacement: config stub to `defineRateLimits` from convex-helpers
-4. `convex/schema.ts` — Add `rateLimitTables`, modify `zoteroConnections` (all new fields as `v.optional()` first)
-5. `convex/lib/crypto.ts` (new file) — Extract shared `encrypt`/`decrypt` from `apiKeys/actions.ts`
-6. `convex/zotero/actions.ts` — Encrypt on write, decrypt on read using shared crypto module
-7. `convex/http.ts`, `convex/crons.ts`, billing modules — Remove `internal as any` / `components as any` casts
-8. `app/actions/openalex.ts`, `app/settings/billing/page.tsx` — Remove production `console.log`
+**Major components and v2.4 touch points:**
+1. `convex/extraction/mutations.ts` — `cancelExtraction` (add workflow/workpool stop), `deleteExtractionInternal` (add Step 8b for baseline diffs), `runDiff` (add truncation metadata)
+2. `convex/extraction/queries.ts` — replace `v.any()` in 7 return validators, fix `attachReviewMetadata` types, remove `.take(100)` cap
+3. `convex/maintenance/mutations.ts` — extend `cleanupDeletedUsers` to cascade-delete extraction data and Zotero connections
+4. `convex/crons.ts` — add Zotero OAuth token cleanup cron
+5. `convex/schema.ts` — remove deprecated `apiKey` field (after migration), add `truncatedTotal` to `extractionRunDiffs`
+6. `convex/extraction/validators.ts` (NEW) — shared typed validator objects for extraction document shapes
 
-**Key architectural pattern — Convex action/mutation boundary for crypto:** AES-256-GCM requires Node.js `crypto`, which only runs in Convex actions (`"use node"`). Mutations and queries cannot encrypt/decrypt. The existing `apiKeys` pattern (encrypt in action, store encrypted value via mutation call, decrypt in action before use) must be extended to Zotero.
+**Key constraint on workpool cancellation:** The `pdfProcessingPool` is a shared singleton. `cancelAll()` would cancel pending work across all users' extraction jobs. The correct implementation queries the cancelled job's papers, reads each paper's `workId` via the existing `by_work` index, and calls `pdfProcessingPool.cancel(ctx, workId)` individually. This is bounded by paper count (~200 max) and correct for a multi-tenant system.
 
 ### Critical Pitfalls
 
-1. **Type sweep breaks runtime behavior** — When `(q: any)` is replaced with a typed callback, the compiler may flag a wrong index name. The temptation is to "fix" the name, but the runtime was already working with string-based resolution. Rule: if a type change requires modifying a query body, stop and verify runtime behavior first. Run `npx convex dev` to regenerate types BEFORE making any type changes. (Confidence: HIGH)
+1. **Schema field removal before data migration** — Convex rejects schema pushes if any document still has the field populated. The three-deploy sequence is mandatory: (1) run migration action to encrypt all plaintext keys and set `apiKey: undefined`, (2) verify zero remaining docs with `apiKey !== undefined`, (3) remove field from schema. Skipping the verification step is the most common failure mode.
 
-2. **Stripe dummy key removal breaks development and CI** — Removing `|| "dummy"` and throwing at module scope makes the entire billing module uncallable (including non-Stripe functions) whenever `STRIPE_SECRET_KEY` is unset. Use a lazy initialization function (`getStripe()`) that throws only when actually called, not at module load time. (Confidence: HIGH)
+2. **Cancel-then-still-deduct-credits** — `workflow.cancel()` prevents new steps from starting but in-progress `step.runAction()` calls finish. Workpool cancellation does not stop running work. Credits will be deducted for papers mid-processing at cancel time. Prevention: add a status-check guard inside the workpool action handler that re-reads job status and returns early (without calling `deductCredits`) if the job is "cancelled". The guard must be placed BEFORE the credit deduction call, not just at function entry.
 
-3. **Deletion cascade ordering errors cause permanent orphans** — Evidence units must be deleted before papers (they reference `paperId`). Papers deleted before their evidence units leaves orphaned rows with no way to find them. Required order: evidence units -> reviews -> results -> papers (with storage cleanup) -> questions -> job. Use `ctx.scheduler.runAfter(0, ...)` not recursive `ctx.runMutation(internal...)` — the recursive pattern re-scans from the beginning each time (O(n^2)). (Confidence: HIGH)
+3. **Typed validator runtime crash on historical data** — Convex return validators enforce at runtime. A validator using strict `v.object()` that does not match the actual shape of old database documents will crash the query for ALL users. Prevention: audit actual stored data shapes before writing validators, use `v.optional()` for any field that might be absent on older documents, and deploy one query at a time with 30-minute monitoring between deploys.
 
-4. **Zotero key migration corrupts existing connections** — Changing the `zoteroConnections` schema requires a multi-step migration. Do NOT rename `apiKey` to `encryptedApiKey` in one deployment. Add `encryptedApiKey: v.optional(v.string())` first, run a migration action that encrypts and writes the new field while keeping the old one, then make `encryptedApiKey` required and remove `apiKey` in a follow-up deployment. Migration action must be idempotent (skip rows where `encryptedApiKey` is already set). (Confidence: HIGH)
+4. **Hard-delete user data including billing audit trail** — The existing `cleanupDeletedUsers` intentionally preserves credits and subscriptions "for audit." Extending the cleanup to delete extraction data must not cascade into `creditTransactions`. Cascade-delete extraction content, delete Zotero connections, but preserve financial records with anonymized user references.
 
-5. **Schema changes for multiple fixes require coordinated deployment** — Multiple phases touch the schema: rate limiting adds `rateLimitTables`, Zotero encryption modifies `zoteroConnections`. All new fields must start as `v.optional()`. Group all schema additions into one deployment before any data migration code ships. (Confidence: HIGH)
+5. **User record deleted before cascade completes** — The cascade delete for extraction data is async (scheduler-based, 9 steps). If the user record is deleted before cascade scheduling completes, orphaned extraction data will never be cleaned (the `userId` index no longer matches). Prevention: schedule all cascade deletes first, delete Zotero connections, then delete the user record last within the same mutation.
 
 ## Implications for Roadmap
 
-Based on research, the pitfall guidance gives an explicit phase ordering. The roadmapper should adopt this order directly — it is driven by file-level conflicts and dependency chains, not preference.
+Based on combined research, five phases are suggested. The ordering follows the dependency chain identified in both FEATURES.md and PITFALLS.md and matches the architectural build order from ARCHITECTURE.md.
 
-### Phase 1: Quick Wins and Debug Cleanup
-**Rationale:** Lowest risk, zero schema changes, zero behavioral changes. Each fix is a one-to-five line deletion or rename. Starting here builds confidence and establishes a clean baseline before touching the high-risk files.
-**Delivers:** Production logs cleaned, ts-ignore fixed, debug function surface area reduced, billing module correctly fails on misconfiguration.
-**Addresses (P1 items):** Remove production `console.log`, fix `@ts-ignore` in `debug_papers.ts`, remove Stripe `"dummy"` key (lazy init), add env var validation for `NEXT_PUBLIC_APP_URL`.
-**Also addresses:** Debug/test function isolation (gate behind `requirePublicDebugEnabled()`), remove test exports from `convex/extraction/index.ts`.
-**Avoids:** Pitfall 5 (lazy Stripe init, not module-scope throw), Pitfall 13 (manual log removal, not blanket compiler config), Pitfall 10 (grep all references before removing any debug function).
-**Research flag:** Standard patterns — no research phase needed.
+### Phase 1: Safe Schema and Quick Wins
 
-### Phase 2: Type Safety Sweep
-**Rationale:** Must happen before the cascade fix and N+1 fix because those fixes touch the same files. Doing the type sweep first means the cascade rewrite happens in a codebase where `ctx` is already properly typed, making the rewrite safer and the diff cleaner.
-**Delivers:** Compile-time type safety in extraction module, billing module, crons, http webhooks. Removes all `ctx: any`, `internal as any`, `components as any`, and `patchData: any`.
-**Addresses (P3 items):** Full type safety sweep across 10+ files.
-**Avoids:** Pitfall 1 (run `npx convex dev` first, regenerate types, never change logic to satisfy type checker), Pitfall 2 (stale codegen causes spurious errors — regenerate before editing), Pitfall 17 (never combine type sweep with cascade logic changes in the same PR).
-**Key constraint:** Treat this as a pure annotation change. The test suite must pass with zero behavior changes. Run `npx convex dev` before starting.
-**Research flag:** Standard patterns — no research phase needed.
+**Rationale:** The `apiKey` migration must happen first because it blocks all other schema work — you cannot push any schema changes while the `apiKey` field is still populated. Quick wins (test page removal, OpenAlex email fix) ship alongside to reduce the concern count early. None of these touch extraction pipeline logic, so there is no risk of affecting active users' jobs.
 
-### Phase 3: Schema Additions (Coordinated)
-**Rationale:** Multiple later phases (rate limiting, Zotero encryption) require schema changes. Deploying all schema additions together in one phase, as `v.optional()` fields, avoids the Pitfall 19 coordination failure. This phase has no logic changes — just schema + codegen.
-**Delivers:** `rateLimits` table (from `rateLimitTables`), `zoteroConnections.encryptedApiKey: v.optional(v.string())`, `zoteroConnections.keyPrefix: v.optional(v.string())`.
-**Avoids:** Pitfall 19 (all fields `v.optional()` first; one coordinated deployment; test with `npx convex deploy --preview`).
-**Research flag:** Standard patterns — no research phase needed.
+**Delivers:** Plaintext API keys encrypted and removed from schema, dead test route deleted, OpenAlex polite-pool email corrected. Enables subsequent schema changes in later phases.
 
-### Phase 4: Data Integrity — Cascade Delete and Storage Cleanup
-**Rationale:** Highest-value data integrity fix. Every job deletion since launch has orphaned `extractionEvidenceUnits` rows and leaked Convex storage. Fixing this stops the accumulating technical debt. Depends on type sweep (Phase 2) being complete — the cascade code is in the same file and must be refactored with proper types.
-**Delivers:** Correct deletion cascade (evidence units -> reviews -> results -> papers + storage -> questions -> job), scheduler-based batching replacing O(n^2) recursion, orphaned PDF cleanup extended to failed/download_failed papers.
-**Addresses (P1 + P2 items):** Deletion cascade evidence units, deletion cascade storage cleanup, orphaned PDF cleanup, cascade recursion pattern fix.
-**Avoids:** Pitfall 3 (strict deletion order, phase tracking with cursor), Pitfall 17 (cascade done after type sweep ships), Pitfall 20 (storage deletes batched, not inline for large jobs).
-**Research flag:** Well-documented Convex scheduler pattern — no research phase needed, but write comprehensive test after implementing.
+**Addresses:** Migrate `apiKey` (security P1), remove test page (hygiene P3), fix placeholder email (rate limit P2)
 
-### Phase 5: Security Hardening — Zotero Encryption
-**Rationale:** Depends on Phase 3 (schema has `encryptedApiKey` field). The Zotero key is the only unencrypted user secret in the database. The migration must follow the dual-write pattern to avoid corrupting existing connections.
-**Delivers:** Zotero API keys encrypted at rest with AES-256-GCM (same as provider API keys), shared `convex/lib/crypto.ts` utility, idempotent migration from plaintext to encrypted.
-**Addresses (P1 items):** Zotero API key encryption.
-**Avoids:** Pitfall 4 (multi-step migration: add optional field first, migrate data, make required, remove old field; action must be idempotent; validate `ENCRYPTION_KEY` before starting), Pitfall 11 (add `keyVersion` field for future key rotation).
-**Research flag:** Well-documented pattern (reuse of existing `apiKeys/actions.ts`) — no research phase needed.
+**Avoids:** Pitfall 1 (schema field removal ordering — three deploys required; verify zero remaining plaintext keys before schema push)
 
-### Phase 6: Performance — N+1 Resolution and Bounded Queries
-**Rationale:** Depends on type sweep (Phase 2) being complete for safe refactoring. N+1 queries in `loadJobDataForReporting` and `loadJobPapersAndResults` will hit Convex transaction limits as job sizes grow. The `Promise.all` parallelization fix is the correct first step (safer than batch-by-jobId which requires schema changes).
-**Delivers:** Parallelized per-paper queries using `Promise.all` in both reporting functions, bounded `.collect()` calls for the top unbounded queries (backfill full table scan, active subscription scan).
-**Addresses (P2 items):** N+1 fix for both functions, top-3 unbounded `.collect()` audit.
-**Avoids:** Pitfall 7 (keep return type identical before and after; `Promise.all` is the safe intermediate step), Pitfall 8 (audit each `.collect()` individually — bounded per-user/per-job calls are fine), Pitfall 12 (do not add `.take()` to reactive UI queries — only safe for one-shot action queries).
-**Research flag:** Standard Convex patterns — no research phase needed.
+**Deployment sequence:** Three sequential deploys required for apiKey migration. All other Phase 1 items can land in the first deploy.
 
-### Phase 7: Rate Limiting Enforcement
-**Rationale:** Last because it is additive behavior (new enforcement logic) rather than a fix for existing broken behavior. Deploying separately from performance fixes avoids the OCC interaction (Pitfall 18). Depends on schema additions (Phase 3) for the `rateLimits` table.
-**Delivers:** Enforced token-bucket rate limits on `start-extraction`, `api-key-save`, `checkout-session`, and `ensure-user` endpoints using `convex-helpers/server/rateLimit`.
-**Addresses (P2 items):** Rate limiting enforcement.
-**Avoids:** Pitfall 9 (use convex-helpers implementation which handles OCC correctly for low-volume endpoints; do not roll a custom counter), Pitfall 18 (deploy separately from N+1 fixes).
-**Key decision:** Use `convex-helpers/server/rateLimit` (already installed) NOT `@convex-dev/rate-limiter` component (requires install + component registration). Same algorithm, zero new dependency.
-**Research flag:** Standard patterns — no research phase needed.
+### Phase 2: Workflow and Deletion Integrity
 
-### Phase 8: Test Coverage
-**Rationale:** Tests for the deletion cascade should be written against the corrected implementation (Phase 4), not the broken original. Zustand migration tests are independent and can be done in any order.
-**Delivers:** Test coverage for extraction cascade delete (verify all child entities deleted), Zustand store migration chain tests (5-version chain verified).
-**Addresses (P3 items):** Test coverage for two previously untested subsystems.
-**Research flag:** Standard Convex test patterns using `convex-test@0.0.41` — no research phase needed.
+**Rationale:** Workflow cancellation and cascade delete fixes are grouped together because they share the same architectural layer (mutation handlers, workpool interactions) and the cascade delete pattern must be correct before Phase 4 user cleanup extends it. The orphan diff fix extends the cascade delete and is a natural pairing. User data cleanup also lands here because it reuses `deleteExtractionInternal` directly.
+
+**Delivers:** Cancel extraction actually stops processing and protects credits. Deleted baseline jobs no longer leave orphaned diff rows. Deleted users' extraction data is scheduled for cascade deletion during the daily cron. Diff truncation is surfaced to the UI with `isTruncated` and `totalChanges` fields.
+
+**Addresses:** Cancel extraction (credit protection P1), orphan diff cleanup (data hygiene P2), user data cleanup (GDPR P1), diff truncation notification (silent data loss P2)
+
+**Avoids:** Pitfall 2 (credit leak after cancel — requires status guard before `deductCredits` in workpool action), Pitfall 4 (billing audit trail — do not delete `creditTransactions`), Pitfall 5 (user record must be deleted last in cleanup mutation), Pitfall 7 (diff truncation fix must add fields as `v.optional()` for backward compatibility)
+
+**Uses:** `workflow.cancel()` and `pdfProcessingPool.cancel()` per-paper (both already installed), `by_baseline` index (already exists in schema), `by_work` index (already exists in schema)
+
+### Phase 3: Type Safety Sweep
+
+**Rationale:** The type safety work is the highest-effort item (7 queries, shared validator extraction) but lowest urgency — the queries work today. It belongs after Phase 2 because the shared `validators.ts` file benefits from having Phase 2's query logic already correct. This phase requires careful incremental deployment.
+
+**Delivers:** 7 extraction queries with typed `returns:` validators replacing `v.any()`. New `convex/extraction/validators.ts` with shared validator objects. Typed `migrateSearchHistoryState` migration steps. Typed `attachReviewMetadata`. `getJobDetails` 100-paper cap removed (replace `.take(100)` with `.collect()` given the enforced ~200-paper job cap).
+
+**Addresses:** Typed return validators (DX + safety P2), type `attachReviewMetadata` (DX P3), type migration steps (future bug prevention P3), `getJobDetails` pagination fix (broken UI P1)
+
+**Avoids:** Pitfall 3 (validator runtime crash — deploy one query at a time with monitoring, use `v.optional()` for any field absent on older documents), Pitfall 6 (pagination shape change — match current return shape exactly before any cleanup)
+
+**Deployment constraint:** Each query's validator must be deployed independently with a monitoring window. Do not batch all 7 into one PR merge.
+
+### Phase 4: Cron Additions and Concurrent Deletion Guards
+
+**Rationale:** Cron additions are purely additive and do not affect existing jobs. They land after Phase 2's deletion patterns are stable, because the Zotero OAuth token cleanup cron must correctly handle already-deleted tokens (wrap individual deletes in try-catch per the concurrency pitfall).
+
+**Delivers:** Hourly Zotero OAuth token cleanup cron. Concurrency guard in `cleanupDeletedUsers` (check user still exists and is still in "deleted" state before processing each batch). New `cleanupExpiredOAuthTokens` internal mutation in `convex/zotero/mutations.ts`.
+
+**Addresses:** Cron OAuth token cleanup (table bloat P2), concurrent deletion safety (Pitfall 8)
+
+**Avoids:** Pitfall 8 (cron concurrent with manual delete — wrap `ctx.db.delete()` in try-catch for already-deleted tokens; check user state before cascade scheduling)
+
+### Phase 5: Environment and Polish
+
+**Rationale:** Feature flag naming and debug endpoint documentation require coordinated environment variable changes across dev, staging, and production Convex dashboards. This is low risk but must be the final phase to avoid disrupting active fixes in earlier phases.
+
+**Delivers:** Documented debug endpoint production policy with inline JSDoc and deployment checklist. `ENABLE_PUBLIC_DEBUG_FUNCTIONS` policy enforced and confirmed unset in production.
+
+**Addresses:** Debug endpoint documentation (operational P3)
+
+**Avoids:** Pitfall 5 (environment variable changes require coordinated dashboard updates — verify in all environments before closing concern)
 
 ### Phase Ordering Rationale
 
-- **Phase 1 before all others:** No risk. Establishes clean baseline. Debug cleanup requires knowing which functions are referenced elsewhere (Pitfall 10 — grep before removing).
-- **Phase 2 (type sweep) before Phases 4 and 6:** The cascade fix and N+1 fix both touch `extraction/mutations.ts`. Doing the type sweep first means those rewrites happen in a properly-typed file. Never combine type annotation changes with logic changes in the same PR.
-- **Phase 3 (schema) before Phases 5 and 7:** Rate limiting and Zotero encryption both need schema fields. One coordinated schema deployment avoids repeated deploy cycles and the risk of required-field schema push failures.
-- **Phase 4 (cascade) before Phase 8 (tests):** Tests should validate the corrected behavior, not the broken original.
-- **Phase 7 (rate limiting) last:** It is additive, not corrective. Any latency from Convex OCC on the rate limit table should not interact with the query performance changes from Phase 6.
+- **Schema migration first** because Convex rejects schema changes while deprecated field data exists; this gates all other schema work in the milestone
+- **Workflow + deletion second** because the cascade delete pattern is a shared foundation that Phase 4 (user cleanup cron) extends; it must be correct first
+- **Type safety third** because it is the highest-effort item, is independently deployable per query, and the typed validators benefit from having Phase 2's query logic already correct
+- **Cron additions fourth** because they are purely additive and depend on Phase 2's deletion patterns being verified stable
+- **Environment changes last** because they require cross-system coordination and should not interleave with active code changes
 
 ### Research Flags
 
-Phases with standard patterns (skip research-phase):
-- **All 8 phases:** Every fix uses verified Convex patterns from official documentation. No third-party integrations, no novel algorithms, no ambiguous API surfaces. The STACK, FEATURES, ARCHITECTURE, and PITFALLS research is at HIGH confidence throughout and directly cites the relevant generated type files and installed package versions. The roadmapper should NOT trigger `gsd:research-phase` for any phase — proceed directly to implementation planning.
+Phases needing careful deployment attention (not more research, but deliberate execution):
+
+- **Phase 1:** Three-deploy sequence for `apiKey` migration requires explicit verification between deploys. Do not automate away the verification query — manually confirm zero rows with `apiKey !== undefined` before pushing schema change.
+- **Phase 2:** Workpool per-paper cancellation requires reading each paper's `workId` from the DB in the mutation; performance is bounded by paper count (~200 max) but should be confirmed in testing.
+- **Phase 3:** Each query validator deployment needs a monitoring window in Convex logs before proceeding to the next query. Historical data shapes must be audited before writing validators.
+
+Phases with well-documented, low-risk patterns (no additional research needed):
+
+- **Phase 4:** Cron additions follow the exact existing `crons.interval()` pattern used 4 times in `convex/crons.ts`. No new concepts introduced.
+- **Phase 5:** Environment variable changes are operational, not code changes.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Verified against installed package versions and generated type declarations in `_generated/server.d.ts` and `_generated/api.d.ts`. Zero new dependencies. |
-| Features | HIGH | All hardening items verified against actual source files with line numbers. Priority tiers are based on active risk assessment, not speculation. |
-| Architecture | HIGH | Integration points catalogued per-file with exact line numbers. Verified encryption pattern against existing `convex/apiKeys/actions.ts`. Convex action/mutation runtime boundary constraint confirmed. |
-| Pitfalls | HIGH | 20 pitfalls documented with direct codebase evidence. All critical pitfalls have HIGH confidence sourced from official Convex documentation and verified against actual production file locations. |
+| Stack | HIGH | All APIs verified from installed `node_modules` source code, not just documentation. No new dependencies needed. |
+| Features | HIGH | All 13 concerns documented in existing `CONCERNS.md` with exact file locations and line numbers. Priority tiers based on active risk assessment. |
+| Architecture | HIGH | All integration points verified against actual codebase files. Exact file paths and line numbers cited throughout. No speculative patterns. |
+| Pitfalls | HIGH | Pitfalls verified against Convex official docs, component documentation, and direct codebase inspection. Recovery strategies documented for all critical pitfalls. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Rate limiter choice:** FEATURES.md and STACK.md disagree on whether to use `@convex-dev/rate-limiter` (component) or `convex-helpers/server/rateLimit` (already installed). The roadmap adopts convex-helpers to avoid a new dependency. If the team prefers the official component for future flexibility, Phase 7 can switch — the interface is nearly identical.
+- **Credit reconciliation policy for cancelled jobs:** The research identifies that credits will be deducted for in-progress papers at cancel time and suggests a post-cancel reconciliation option. The decision of whether to implement reconciliation vs. document it as expected behavior ("credits for in-progress work at cancel time are non-refundable") is a product decision not resolved by research. Needs a decision before Phase 2 implementation.
 
-- **`internal as any` root cause:** Some `as any` casts may be for component API functions (e.g., `@convex-dev/stripe`) that have incomplete type generation. After removing casts, `npx convex dev` may reveal genuine type gaps. If component types are incomplete, narrow casts (specific interface, not `any`) are acceptable. Assess after Phase 2.
+- **Diff cap size:** The current 1,000-entry cap is conservative and research notes it could be raised to 5,000-10,000 given Convex's 1MB document limit. The right value depends on typical diff sizes in production. Worth checking actual diff document sizes in the Convex dashboard before deciding on the new cap in Phase 2.
 
-- **Key versioning for encryption:** PITFALLS.md recommends adding `keyVersion` to both `apiKeys` and `zoteroConnections` for future key rotation. This is potentially deferred from Phase 5 scope but should be flagged as tech debt if not implemented. The risk is low for v2.3 since key rotation has not been needed, but it becomes harder to add retroactively.
-
-- **Cascade test coverage scope:** Phase 8 test coverage for the cascade delete requires creating a full job graph (job + questions + papers + results + reviews + evidence units + storage IDs) in `convex-test`. The test scaffolding may be time-consuming. If the cascade is well-reviewed in Phase 4 with manual verification, Phase 8 tests can be scoped to the most critical invariants (zero orphaned rows after deletion).
+- **`getJobDetails` collect vs paginate:** Research recommends `.collect()` over full pagination because extraction jobs are capped at ~200 papers. This assumption should be verified — if the 200-paper cap is enforced hard elsewhere in the pipeline, `.collect()` is safe. If the cap is not hard-enforced, full pagination is the safer choice.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Convex TypeScript Best Practices](https://docs.convex.dev/understanding/best-practices/typescript) — QueryCtx/MutationCtx typing patterns, `as any` elimination
-- [Convex Paginated Queries](https://docs.convex.dev/database/pagination) — `.paginate()` API, `PaginationResult` shape
-- [Convex Rate Limiting](https://stack.convex.dev/rate-limiting) — token bucket implementation, OCC pitfalls
-- [convex-helpers rateLimit source](https://github.com/get-convex/convex-helpers/blob/main/packages/convex-helpers/server/rateLimit.ts) — `defineRateLimits` API, `rateLimitTables` schema
-- [Convex Intro to Migrations](https://stack.convex.dev/intro-to-migrations) — dual-write migration pattern for schema changes
-- [Convex Queries That Scale](https://stack.convex.dev/queries-that-scale) — index optimization, `.collect()` limits (1024 docs, 32K scan)
-- [Convex Transaction Limits](https://docs.convex.dev/production/state/limits) — 16,000 writes/transaction, 1s execution limit
-- [Convex Query Functions](https://docs.convex.dev/functions/query-functions) — reactive query semantics and subscription model
-- [Convex Best Practices](https://docs.convex.dev/understanding/best-practices/) — Promise.all for parallel reads, scheduler for batch continuation
-- Generated type declarations verified: `convex/_generated/server.d.ts` (lines 107-143), `convex/_generated/api.d.ts` (lines 212-568)
-- Installed package versions verified: `convex@1.32.0`, `convex-helpers@0.1.112`
+- `node_modules/@convex-dev/workflow/src/client/index.ts` line 216 — `workflow.cancel()` API signature
+- `node_modules/@convex-dev/workpool/src/client/index.ts` line 249 — `pdfProcessingPool.cancelAll()` API
+- `node_modules/@convex-dev/workpool/dist/client/index.d.ts` lines 158-166 — `cancel()` and `cancelAll()` types
+- `node_modules/@convex-dev/workflow/src/types.ts` line 15 — `WorkflowId` type
+- [Convex When to Use Return Validators](https://stack.convex.dev/when-to-and-when-not-to-use-return-validators) — runtime enforcement, extra fields fail validation
+- [Convex Workflow Component](https://www.convex.dev/components/workflow) — `cancel()` does not stop in-progress actions
+- [Convex Workpool Component](https://www.convex.dev/components/workpool) — cancellation does not stop in-progress work
+- [Convex Cron Jobs Documentation](https://docs.convex.dev/scheduling/cron-jobs) — at-most-one cron instance semantics
+- [Convex Schemas Documentation](https://docs.convex.dev/database/schemas) — validation at deploy time
 
 ### Secondary (MEDIUM confidence)
-- [AES-256 Encryption Modes and Pitfalls](https://terrazone.io/aes-256-encryption-types/) — IV reuse risk, nonce exhaustion threshold
-- [Stateful Online Migrations](https://stack.convex.dev/migrating-data-with-mutations) — cursor-based batch processing pattern
-- [Convex Functional Relationship Helpers](https://stack.convex.dev/functional-relationships-helpers) — batched relationship fetching patterns
+- [Convex Intro to Migrations](https://stack.convex.dev/intro-to-migrations) — expand-contract pattern for field removal (cross-referenced with installed code)
+- [Convex Lightweight Zero-Downtime Migrations](https://stack.convex.dev/lightweight-zero-downtime-migrations) — migration ordering
+- [GDPR Right to Erasure](https://www.reform.app/blog/right-to-erasure-gdpr-compliance-steps) — audit trail preservation requirements
+- [GDPR Data Retention Best Practices](https://usercentrics.com/knowledge-hub/gdpr-data-retention/) — financial records exemption from deletion
 
-### Tertiary (codebase evidence)
-- `convex/apiKeys/actions.ts` — existing AES-256-GCM encrypt/decrypt pattern (direct model for Zotero encryption)
-- `convex/extraction/mutations.ts:968-1009` — current cascade delete implementation (confirmed missing evidence units, reviews, storage)
-- `convex/lib/rateLimit.ts` — confirmed config-only stub with zero enforcement
-- `convex/schema.ts:167-175` — confirmed `zoteroConnections` has plaintext `apiKey: v.string()`
-- `convex/extraction/index.ts:94-121` — confirmed debug/test function exports in production deployment
+### Tertiary (LOW confidence)
+- [Zero-downtime database migrations](https://drcodes.com/posts/zero-downtime-database-migrations-essential-patterns) — expand-contract pattern context
 
 ---
 *Research completed: 2026-03-02*

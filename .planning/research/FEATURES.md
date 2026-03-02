@@ -1,290 +1,237 @@
-# Feature Research: Academic Library UI Overhaul
+# Feature Research: v2.4 Concerns Sweep Fixes
 
-**Domain:** Academic paper management and library browsing interface
-**Researched:** 2026-03-01
-**Confidence:** HIGH
-
-## Executive Summary
-
-Academic search tools (Zotero, Mendeley, Semantic Scholar, Google Scholar, PubMed) converge on a consistent library interface pattern: left sidebar for navigation/filtering, center content area for paper list, right panel for metadata/details. Modern expectations include collapsible sidebars for mobile, fast search across saved papers, and organizational primitives (collections, tags, ratings). The gap between tools is not in table stakes, but in how *intelligently* filtering and search work (Zotero's advanced search + full-text PDF searching vs. Mendeley's simpler approach) and how quickly users can organize and find what they saved.
+**Domain:** Codebase health -- tech debt, bugs, and security fixes for an existing academic search/extraction platform
+**Researched:** 2026-03-02
+**Confidence:** HIGH (all 13 concerns documented in CONCERNS.md with exact file locations; fix patterns verified against Convex docs and official component APIs)
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These)
+This is not a greenfield feature list. All 13 items are fixes to existing code. The framing is: what does "correctly fixed" look like for each concern, and what complexity/dependencies does each carry.
 
-Features users assume exist. Missing these = product feels incomplete.
+### Table Stakes (Must Fix -- Broken or Risky Behavior)
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **Search within saved papers** | Standard in all academic tools; users add papers they forget | MEDIUM | Must support: title, author, partial text. CRITICAL: Zotero users cite advanced search as key differentiator vs. Mendeley. |
-| **Filter sidebar with collapsible state** | Zotero 7, Mendeley, Semantic Scholar all use left sidebar for global filters | MEDIUM | Must hide on mobile (tabs/drawer), stay visible on desktop. Show active filter count as badge. |
-| **Collections/Folders for organization** | Every tool provides this; users expect to group papers by project/topic | LOW | OpenAlex Count already has collections; reuse junction table. |
-| **Sort options (date saved, year, rating, title)** | Users need multiple sort orders; most frequent: newest first, highest rated | LOW | Already partially implemented; expose in UI clearly. |
-| **Pagination or infinite scroll** | Standard for list-heavy interfaces; avoids loading 1000+ items at once | LOW | Depends on UX choice; pagination is safer for predictability. |
-| **Two-column layout (sidebar + content)** | Standard pattern across search results and saved libraries | LOW | Already designed for search page; reuse TwoColumnLayout component. |
-| **Mobile responsive with tab-based filters** | Zotero, Mendeley, Google Scholar all provide mobile view; sidebar→tabs on mobile | MEDIUM | Use existing SearchSidebar component that already handles this. |
-| **Bulk actions on selected papers** | Export CSV/JSON, add to collection, remove from library (common task) | MEDIUM | Zotero allows multi-select; Mendeley allows starring. |
-| **Quick filtering (by collection, date range, saved status)** | Users want instant visual filtering without page reload | LOW | Already have nuqs for URL state; live filter from existing state. |
-| **Rating/starred visual indicator** | Visual feedback for rated papers (already saved to Convex per v2.1) | LOW | Already have rating data; expose in list view and detail pane. |
+Features users assume work correctly. These are currently broken, silently wrong, or security risks.
 
-### Differentiators (Competitive Advantage)
+| # | Fix | Why Table Stakes | Complexity | Existing Code Dependency |
+|---|-----|------------------|------------|--------------------------|
+| 1 | **Cancel extraction actually stops work** | Users click cancel, expect processing to stop. Currently it only writes `status: "cancelled"` to DB; workflow and workpool continue processing, burning credits. | MEDIUM | `cancelExtraction` at `convex/extraction/mutations.ts:229-256`. Requires `workflow.cancel(ctx, job.workflowId)`. In-progress `step.runAction()` calls will finish (Convex workflow semantics), but no new steps will start. Workpool items already dispatched will also need `pool.cancelAll()` or status-check guards in the worker. |
+| 2 | **getJobDetails pagination (remove 100-paper cap)** | Jobs with >100 papers show incomplete paper lists. Users see a truncated view with no indication data is missing. | MEDIUM | `convex/extraction/queries.ts:294` uses `.take(100)`. Replace with `.paginate()` using Convex cursor-based pagination. Client must adopt `usePaginatedQuery` hook. The `getJobResultsPaginated` query already exists as a pattern to follow. |
+| 3 | **Diff truncation notification (1,000-entry silent cap)** | Run diffs silently drop changes beyond 1,000 entries. Users see incomplete diffs with no warning. | LOW | `convex/extraction/mutations.ts:956` does `changes.slice(0, 1000)`. Store `totalChanges` count alongside truncated array. Return `isTruncated: true` flag to client. |
+| 4 | **Migrate deprecated `apiKey` field + remove fallback code** | Plaintext Zotero API keys in DB. A database leak exposes them. Dual-read fallback code adds maintenance burden. | MEDIUM | Schema at `convex/schema.ts:175`, fallback reads in `convex/zotero/actions.ts:42`, `convex/extraction/workpoolActions.ts:760`. Requires one-time migration action to encrypt all plaintext keys, then remove `apiKey` field from schema and all fallback paths. |
+| 5 | **User data cleanup on deletion (GDPR pattern)** | Deleted users' extraction jobs, papers, results, evidence units, and Zotero connections persist forever. Storage costs accumulate; encrypted keys linger. | MEDIUM | `convex/maintenance/mutations.ts:11-55` only deletes API keys. Must extend to schedule `deleteExtractionInternal` for each of the user's jobs (reusing existing cascade delete), plus delete `zoteroConnections`. The existing `cleanupDeletedUsers` already batches with `BATCH_SIZE=50` and self-schedules. |
+| 6 | **Orphan diff cleanup on baseline job deletion** | Deleting a baseline job leaves `extractionRunDiffs` rows with dangling `baselineJobId` references. Diff queries return null for the baseline. | LOW | `convex/extraction/mutations.ts:1086-1096` explicitly skips diffs where `baselineJobId == args.jobId`. Add a step to also delete those diffs, or add a guard in the diff query to handle missing baselines gracefully. |
+| 7 | **Replace placeholder email in User-Agent** | OpenAlex deprioritizes requests with undeliverable polite-pool emails. May cause rate limiting. | LOW | Single line in `convex/extraction/actions.ts:138`. Replace `admin@example.com` with a real operational email. |
+| 8 | **Remove `/test-sidebar` test page** | Test scaffold accessible in production. No auth check. Low risk (no sensitive data), but unprofessional. | LOW | Delete `app/test-sidebar/page.tsx`. |
 
-Features that set the product apart. Not required, but valuable.
+### Differentiators (Quality Improvements -- From Good to Excellent)
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **AI-powered search/tagging suggestions** | Mendeley 2025 offers AI to interpret queries; offers smart categorization | HIGH | Requires LLM integration; consider for v3. Out of scope for v2.2. |
-| **Full-text PDF search in saved papers** | Zotero's core strength over Mendeley; searchable extracted text from PDFs | HIGH | Would require PDF text extraction pipeline; not applicable since OpenAlex Count doesn't store PDFs. |
-| **Smart collections (automatic grouping)** | ResearchGate, R Discovery mention auto-grouping by tag combinations | MEDIUM | Example: auto-create "ToRead + AI_Ethics" collection. Deferred per PROJECT.md. |
-| **Shared reading lists with team permissions** | Paperpile, R Discovery, Mendeley Groups offer shared libraries with role-based access | HIGH | Deferred per PROJECT.md (collaborative libraries are v3+). |
-| **Citation format preview in sidebar** | Zotero allows customizing item pane to show APA/Chicago/MLA inline | MEDIUM | Would require citation formatter integration; lower priority than filtering. |
-| **Related papers discovery** | Semantic Scholar surfaces related papers in library context | MEDIUM | Requires embedding similarity / citation graph; future enhancement. |
-| **One-click bulk export** | Quick export whole collection or filtered subset as CSV/JSON/BibTeX | MEDIUM | Already have CSV/JSON export; expose in toolbar with collection scope. |
-| **Keyboard shortcuts for power users** | Zotero power users rely on keyboard navigation and shortcuts | LOW | Add later once core interaction is solid. Not critical for v2.2. |
-| **Contextual inline actions** | Hover to see "Add to collection", "Export", "Remove" on each row | LOW | Nice UX polish; defer until core filtering is optimized. |
+These make the codebase measurably more robust and maintainable. Not user-facing breakage, but engineering quality that prevents future bugs.
 
-### Anti-Features (Commonly Requested, Often Problematic)
+| # | Fix | Value Proposition | Complexity | Existing Code Dependency |
+|---|-----|-------------------|------------|--------------------------|
+| 9 | **Typed return validators replacing `v.any()`** | Runtime type enforcement on query responses. Currently, 7+ queries return `v.any()` for `job`, `questions`, `papers`, `summary`, `diagnostics` fields -- clients receive unvalidated data with inaccurate TypeScript types. | HIGH | 7 query functions in `convex/extraction/queries.ts` (lines 261-263, 328-329, 411-413, 533-536, 668-690, 779-785, 892-893). Must define typed Convex validators matching actual return shapes of `Doc<"extractionJobs">`, `Doc<"extractionQuestions">`, `Doc<"extractionPapers">`, etc. Extract shared validator objects for reuse. Per Convex best practices, use `returns:` when you need runtime enforcement of an exact contract -- which applies here since these are public API queries. |
+| 10 | **Type `migrateSearchHistoryState` migration steps** | Prevents silent state corruption from future migration bugs. Currently all 7 migration steps (versions 0-7) use `any` for state and iterators. | LOW | `lib/store.ts:178-282`. Define typed interfaces for each version's input/output shape. At minimum, validate with Zod on read. Pattern: `type V0State = { searchHistory: V0SearchHistoryItem[] }` where each version extends the previous. |
+| 11 | **Replace `any` casts in `attachReviewMetadata`** | Type errors in review field access are silently ignored. `Map<string, any>` and `review: any` when `Doc<"extractionResultReviews">` has a known schema. | LOW | `convex/extraction/queries.ts:104-129`. Replace `any` with `Doc<"extractionResultReviews">`. Straightforward substitution. |
+| 12 | **Cron cleanup for expired Zotero OAuth tokens** | Abandoned OAuth sessions leave expired rows accumulating. Currently only cleaned up on-read when a user completes the flow. | LOW | `convex/zotero/mutations.ts:42-72` has the 10-minute expiry logic. Add a new cron in `convex/crons.ts` that deletes `zoteroOAuthTokens` where `expiresAt < Date.now()`. Needs an index on `expiresAt` or scan with filter (table is small). |
+| 13 | **Document debug endpoint production policy** | `diagnoseJob` and `getFailedPapersDebug` gated by env var. Clear documentation prevents accidental enablement in production. | LOW | `convex/extraction/debug.ts`, `convex/lib/debug_gate.ts`. Add inline docs + verify `ENABLE_PUBLIC_DEBUG_FUNCTIONS` is not set in prod deployment. |
 
-Features that seem good but create problems.
+### Anti-Features (Approaches That Seem Good But Create Problems)
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|-----------------|-------------|
-| **Hierarchical nested collections** | "I want deep folder trees for organization" | Creates complex navigation, slow filtering, confuses export/sharing | Flat collections with smart filtering and tagging; users learn to use tags for sub-grouping |
-| **Tags as first-class org system (parallel to collections)** | "Tags are more flexible than folders" | Users create too many tags, tag inconsistently, can't effectively filter by tag combinations | Use tags + collections together: tags are labels, collections are groupings. Make tag filtering optional sidebar. |
-| **Real-time sync / live updates** | "See changes instantly from other team members" | Adds complexity, creates flaky UX (notifications pop while users click), requires server push | Defer to v3 (collaborative libraries). For now, simple page refresh is fine. |
-| **Full-text PDF search** | "I want to search words inside PDFs I saved" | OpenAlex Count doesn't store PDFs, so this is impossible. Users are confused by promise unfulfilled. | Instead: emphasize that OpenAlex metadata is fully searchable; point users to Zotero for PDF annotation workflows. |
-| **Nested filtering (AND/OR logic in filter sidebar)** | "I want papers from 2020+ AND tagged 'machine-learning' AND in my 'ToRead' collection" | Complex UI to express, most users just want simple AND; OR logic is rare and confusing | Keep simple: all selected filters apply as AND. Future: advanced search syntax if demand materializes. |
-| **Infinite scroll in library** | "Feels more modern than pagination" | Creates unpredictable scroll behavior, makes "jump to top" annoying, harder to count results, poor for mobile | Use pagination (or lazy-load with "Load more" button). Shows result count up front. |
-| **Auto-tagging on save** | "Automatically tag papers by field/topic on import" | Users distrust auto-tagging, it's often wrong, clutters the space. Requires ML, maintenance overhead | Instead: offer optional templates. Let users tag manually on save (takes 5 seconds). Simpler, more trustworthy. |
+| Approach | Why Tempting | Why Problematic | Better Alternative |
+|----------|--------------|-----------------|-------------------|
+| **Remove `apiKey` field before migrating data** | Faster cleanup -- just delete the column | Convex will not let you remove a field from the schema if data still exists. Existing rows with plaintext keys would cause schema push failure. Users with unmigrated keys lose Zotero access. | Expand-contract: migrate all plaintext keys first, verify zero unmigrated rows, then remove field. |
+| **Force-kill in-flight workpool items on cancel** | Immediate stop, no wasted credits | Convex workpool `cancel()` prevents new work from starting but cannot stop in-progress actions. Trying to force-terminate mid-action risks corrupted paper records (partial extraction results). | Cancel workflow + workpool, accept that currently-executing actions complete. Add status-check guard in worker so it skips writing results if job is cancelled. |
+| **Add typed validators to ALL queries at once** | Consistency, single PR | HIGH complexity: 7 queries with deeply nested return shapes. A single typo in a validator crashes the query at runtime. Regression risk is high in one large change. | Type validators incrementally per query, test each one with existing integration tests before moving to next. |
+| **Use offset-based pagination for getJobDetails** | Simpler mental model, page numbers in URL | Convex does not support offset pagination natively. Offset pagination is inconsistent when data changes (papers added/removed shift pages). | Use Convex's built-in `.paginate()` with cursor-based pagination. The `getJobResultsPaginated` query already demonstrates this pattern. |
+| **Store full diff without any cap** | No truncation = complete data | Very large diffs (10K+ changes) hit Convex document size limits (1MB). A single `extractionRunDiffs` document storing all changes can exceed the limit. | Keep a reasonable cap (e.g., 5,000), store `totalChanges` count, return `isTruncated` flag. For truly large diffs, consider paginated diff storage across multiple documents. |
+| **GDPR: delete ALL user data immediately** | Maximum compliance | Credits and subscriptions are needed for audit trails and financial reconciliation. Immediate deletion may violate accounting requirements. | Current pattern is correct: 30-day retention, keep credits/subscriptions for audit, delete PII and user-generated content. |
 
 ## Feature Dependencies
 
 ```
-Two-Column Layout (sidebar + content)
-    └──requires──> TwoColumnLayout component (ALREADY EXISTS)
-    └──requires──> FilterSection reuse (ALREADY EXISTS)
+[Migrate plaintext apiKey data]
+    └──then──> [Remove apiKey field from schema]
+                   └──then──> [Remove fallback code paths]
 
-Filter Sidebar (collapsible)
-    └──requires──> SearchSidebar component (ALREADY EXISTS)
-    └──requires──> Mobile responsive tabs (ALREADY EXISTS)
-    └──enhances──> Quick Filtering (instant live refresh)
+[Cancel extraction stops workflow]
+    └──requires──> [workflow.cancel() + workpool status guard]
 
-Search Within Library
-    └──requires──> Convex index on libraryItems (LIKELY EXISTS via dual-path query)
-    └──enhances──> Filter Sidebar (narrow results before filtering)
+[User data cleanup on deletion]
+    └──reuses──> [deleteExtractionInternal cascade delete]
+    └──reuses──> [cleanupDeletedUsers self-scheduling batch pattern]
 
-Collections Display
-    └──requires──> libraryItemCollections junction table (ALREADY EXISTS)
-    └──requires──> Collection CRUD (ALREADY EXISTS)
-    └──enhances──> Bulk Actions (export collection subset)
+[Typed return validators]
+    └──enables──> [Remove any casts in attachReviewMetadata]
+    (attachReviewMetadata types are subset of the broader query typing)
 
-Bulk Actions
-    └──requires──> Multi-select UI component (NEW)
-    └──requires──> Async toast pattern (ALREADY EXISTS)
-    └──enhances──> CSV/JSON export (export-with-scope)
+[getJobDetails pagination]
+    └──follows pattern──> [getJobResultsPaginated (already exists)]
 
-Rating Display
-    └──requires──> Rating data in libraryItems (ALREADY SAVED in v2.1)
-    └──enhances──> Sort options (sort by rating)
+[Diff truncation notification]
+    └──independent──> (no dependencies)
 
-Mobile Responsive View
-    └──requires──> SearchSidebar mobile tab mode (ALREADY EXISTS)
-    └──conflicts──> Infinite scroll (use pagination instead)
+[Cron OAuth cleanup]
+    └──independent──> (add entry to convex/crons.ts)
+
+[Test page removal]
+    └──independent──> (delete single file)
+
+[Placeholder email]
+    └──independent──> (single line change)
+
+[Debug endpoint docs]
+    └──independent──> (documentation only)
 ```
 
 ### Dependency Notes
 
-- **TwoColumnLayout + FilterSection + SearchSidebar are prerequisite**: These exist from search page; reuse saves implementation cost.
-- **Multi-select UI is new**: Required for bulk actions (export, add to collection). Consider checkbox column in table.
-- **Convex index assumptions**: Research assumes dual-path query already indexes libraryItems for fast search. Verify before implementation.
-- **Mobile tabs vs. desktop sidebar**: Already solved on search page; reuse the exact same pattern.
-- **Pagination vs. infinite scroll**: Incompatible choices. Pagination is safer (predictable UX, shows result count), but infinite scroll feels more modern. Recommend pagination for predictability + accessibility.
+- **Migrate apiKey requires encrypt-first:** Convex enforces that you cannot remove a field from the schema while any document still has data in that field. The migration action must run and complete before the schema can be updated.
+- **User cleanup reuses cascade delete:** The `deleteExtractionInternal` mutation already handles 9-step batched deletion of all extraction child tables. User cleanup just needs to find all jobs for a user and schedule cascade deletes for each.
+- **Typed validators enable attachReviewMetadata fix:** Once the query-level validators are typed, the `Map<string, any>` in `attachReviewMetadata` naturally resolves to `Map<string, Doc<"extractionResultReviews">>`.
+- **Cancel extraction requires workflow component API:** The `workflow.cancel(ctx, workflowId)` API exists in `@convex-dev/workflow`. It halts the workflow immediately. In-progress `step.runAction()` calls finish. A status-check guard in the workpool worker prevents writing results after cancellation.
 
-## MVP Definition
+## Fix Prioritization Matrix
 
-### Launch With (v2.2)
+| # | Fix | User Impact | Implementation Cost | Risk if Deferred | Priority |
+|---|-----|-------------|---------------------|------------------|----------|
+| 1 | Cancel extraction stops work | HIGH (credits burned) | MEDIUM | HIGH (ongoing credit waste) | P1 |
+| 4 | Migrate deprecated apiKey | HIGH (security) | MEDIUM | HIGH (plaintext key exposure) | P1 |
+| 5 | User data cleanup (GDPR) | HIGH (compliance) | MEDIUM | HIGH (regulatory risk) | P1 |
+| 2 | getJobDetails pagination | MEDIUM (broken UI) | MEDIUM | MEDIUM (>100 paper jobs broken) | P1 |
+| 6 | Orphan diff cleanup | LOW (data hygiene) | LOW | LOW (orphan rows accumulate) | P2 |
+| 3 | Diff truncation notification | MEDIUM (silent data loss) | LOW | MEDIUM (misleading diffs) | P2 |
+| 9 | Typed return validators | MEDIUM (DX + safety) | HIGH | LOW (works but unvalidated) | P2 |
+| 12 | Cron OAuth token cleanup | LOW (table bloat) | LOW | LOW (slow accumulation) | P2 |
+| 7 | Replace placeholder email | LOW (rate limit risk) | LOW | LOW (works until flagged) | P2 |
+| 10 | Type migration steps | LOW (future bug prevention) | LOW | LOW (works but fragile) | P3 |
+| 11 | Type attachReviewMetadata | LOW (DX) | LOW | LOW (works but untyped) | P3 |
+| 13 | Debug endpoint docs | LOW (operational) | LOW | LOW (already gated) | P3 |
+| 8 | Remove test page | LOW (hygiene) | LOW | LOW (no sensitive data) | P3 |
 
-Minimum viable product for library UI overhaul — what's needed to match search page design quality.
+**Priority key:**
+- P1: Must fix -- broken behavior, security risk, or compliance gap
+- P2: Should fix -- silent data issues, quality improvements, or accumulating debt
+- P3: Nice to fix -- typing improvements, documentation, cleanup
 
-- [x] **Two-column layout** — Reuse existing TwoColumnLayout component; non-negotiable for consistency
-- [x] **Collapsible filter sidebar (desktop)** — Reuse SearchSidebar; must work identically to search page
-- [x] **Mobile-responsive tabs for filters** — Reuse SearchSidebar mobile mode; no new code needed
-- [x] **Filter state persistence via nuqs** — Already used on search page; reuse exact same pattern
-- [x] **Search within saved papers** — Convex query optimization; must support title + author search
-- [x] **Collections filter** — Already exists (v2.1); expose in FilterSection
-- [x] **Sort options** — Expose: date saved (desc), year (desc), rating (desc), title (asc)
-- [x] **Pagination** — Show results per page with prev/next controls
-- [x] **Rating visual in list** — Show saved rating (0-5 stars or similar) on each row
+## Expected Behavior When Complete
 
-### Add After Validation (v2.3)
+### 1. Cancel Extraction Stops Work
+- Calling `cancelExtraction` sets DB status to `cancelled` AND calls `workflow.cancel(ctx, job.workflowId)`
+- The Convex workflow halts immediately; no new steps are scheduled
+- In-progress actions (currently extracting a paper) finish, but their results are guarded: the workpool worker checks `job.status === "cancelled"` before writing results
+- Credits are not deducted for work completed after cancellation
+- UI shows cancellation progress (workflow winding down) then final cancelled state
 
-Features to add once core library UI is stable and users are actively using it.
+### 2. getJobDetails Returns All Papers via Pagination
+- `.take(100)` replaced with `.paginate(paginationOpts)`
+- Client uses `usePaginatedQuery` hook for progressive loading
+- Pattern matches existing `getJobResultsPaginated` implementation
+- Progress calculation uses `job.totalPapers` (already stored) rather than counting fetched papers
 
-- [ ] **Bulk actions (multi-select)** — Checkbox column, "Export selected", "Add to collection", "Remove from library"
-- [ ] **Inline quick actions** — Hover state: "Add to collection" dropdown on each row
-- [ ] **Tag filter sidebar section** — Show user's tags as optional filter (current scope: collections + date + year only)
-- [ ] **Citation format display** — Inline preview of APA/Chicago/MLA format for each paper
+### 3. Diff Truncation With User Notification
+- `extractionRunDiffs` schema gains `totalChanges: v.number()` and `isTruncated: v.boolean()` fields
+- `changes.slice(0, 1000)` remains but `totalChanges` stores the pre-slice count
+- UI displays "Showing 1,000 of 3,247 changes" when truncated
+- Cap can be raised to 5,000 if Convex document size allows (1MB limit)
 
-### Future Consideration (v3+)
+### 4. Deprecated apiKey Fully Migrated and Removed
+- One-time migration action enumerates all `zoteroConnections` with non-null `apiKey`
+- Each plaintext key is encrypted via the existing `crypto.ts` AES-256-GCM module
+- `encryptedApiKey` and `keyPrefix` are set; `apiKey` is set to `undefined`
+- After migration completes with zero unmigrated rows: `apiKey` field removed from schema
+- All `resolveZoteroApiKey` fallback paths removed; only `encryptedApiKey` path remains
 
-Features to defer until library collaboration is ready or demand is clear.
+### 5. User Data Cleanup Covers Extraction + Zotero
+- `cleanupDeletedUsers` extended to:
+  - Find all `extractionJobs` for each deleted user
+  - Schedule `deleteExtractionInternal` for each job (reusing existing 9-step cascade)
+  - Delete all `zoteroConnections` for the user
+- 30-day retention period preserved (existing)
+- Credits and subscriptions preserved for audit (existing decision)
+- Self-scheduling batch pattern preserved for large datasets
 
-- [ ] **AI-powered search** — Smart query interpretation (when LLM features expand)
-- [ ] **Smart collections** — Auto-group by tag combinations (deferred: complex filtering UX)
-- [ ] **Shared reading lists** — Team access with permissions (deferred: requires user/permission model)
-- [ ] **Full-text PDF search** — Not applicable; OpenAlex Count doesn't store PDFs
-- [ ] **Related papers discovery** — Requires embedding similarity; future enhancement
-- [ ] **Keyboard shortcuts** — Power user feature; defer until core UX is polished
-- [ ] **Nested collections** — Anti-feature; don't implement
+### 6. Orphan Diffs Cleaned on Baseline Deletion
+- `deleteExtractionInternal` Step 8 expanded: also delete diffs where `baselineJobId == args.jobId`
+- Requires new index `by_baseline_job` on `extractionRunDiffs` table, or scan with filter (table is typically small per-user)
+- Alternatively: diff query returns graceful "baseline deleted" message instead of null reference
 
-## Feature Prioritization Matrix
+### 7. Real Email in User-Agent
+- `admin@example.com` replaced with actual operational email
+- Email stored as environment variable (not hardcoded) for easy rotation
 
-| Feature | User Value | Implementation Cost | Priority | Notes |
-|---------|------------|---------------------|----------|-------|
-| Two-column layout | HIGH | LOW | P1 | Reuse existing component |
-| Collapsible sidebar | HIGH | LOW | P1 | Reuse existing component |
-| Mobile tabs for filters | HIGH | LOW | P1 | Reuse existing component |
-| Search within library | HIGH | MEDIUM | P1 | Convex optimization required |
-| Collections filter | HIGH | LOW | P1 | Already exists (v2.1) |
-| Sort options (date, year, rating) | HIGH | LOW | P1 | Simple UI addition |
-| Pagination | MEDIUM | LOW | P1 | UX best practice |
-| Rating visual | MEDIUM | LOW | P1 | Data already saved |
-| Bulk actions | MEDIUM | MEDIUM | P2 | Multi-select UI new |
-| Tag filter section | MEDIUM | MEDIUM | P2 | Optional sidebar enhancement |
-| Inline quick actions | MEDIUM | LOW | P2 | Polish feature |
-| Citation format display | MEDIUM | MEDIUM | P2 | Requires formatter integration |
-| Smart collections | LOW | HIGH | P3 | Complex filtering logic |
-| AI-powered search | LOW | HIGH | P3 | Feature scope expansion |
-| Shared reading lists | LOW | HIGH | P3 | Requires permission model |
-| Related papers discovery | LOW | HIGH | P3 | Requires embedding similarity |
+### 8. Test Page Removed
+- `app/test-sidebar/page.tsx` deleted
+- No route exists at `/test-sidebar`
 
-## Competitor Feature Analysis
+### 9. Typed Return Validators
+- Each of the 7 extraction queries gets proper typed `returns:` validators
+- Shared validator objects extracted: `jobValidator`, `questionValidator`, `paperValidator`, etc.
+- `v.any()` eliminated from all public query return types
+- Runtime type enforcement catches server/client mismatches
+- TypeScript types on client side become accurate (no more `any`)
 
-| Feature | Zotero 7 | Mendeley 2025 | Semantic Scholar | Google Scholar | Our Approach (OpenAlex Count) |
-|---------|----------|---------------|------------------|-----------------|------|
-| **Sidebar filters** | Yes, collapsible + vertical tabs | Yes, left sidebar | Yes, collections + tags | No (Google Scholar library is minimal) | Match Zotero/Mendeley pattern |
-| **Search within library** | Advanced (full-text PDF + metadata) | Basic (title/author only) | Basic (metadata + collections) | Very basic | Metadata + title/author search (Mendeley-level) |
-| **Collections/Folders** | Yes, unlimited nesting | Yes, flat hierarchy | Yes, collections | Minimal | Flat collections (PROJECT.md scope) |
-| **Sorting options** | Yes (date, title, author, year) | Yes (date, title, author) | Limited | Very limited | Date, year, rating, title |
-| **Multi-select/bulk export** | Yes (select rows, export) | Limited | Limited | No | Plan for v2.3 |
-| **Mobile responsive** | Yes, tabs for filters | Yes | Yes | Yes | Reuse search page pattern |
-| **Rating/starred items** | Yes (color-coded priority flags + stars) | Yes (starred favorites) | Limited | No | Show rating saved in v2.1 |
-| **AI-powered search** | No | Yes (2025 feature) | Basic (related papers) | No | Deferred to v3+ |
-| **PDF annotation** | Yes (built-in reader) | Yes (built-in viewer) | No | No | N/A (no PDFs stored) |
-| **Shared libraries/groups** | Yes (groups with sync) | Yes (shared libraries + groups) | Limited | No | Deferred to v3+ (PROJECT.md) |
+### 10. Typed Migration Steps
+- `migrateSearchHistoryState` gets typed interfaces per version
+- `V0State`, `V1State`, ... `V7State` types defined
+- Each migration step: `(state: VNState) => VN1State`
+- Optional: Zod validation on read for extra safety
 
-## Recommendations for v2.2 Roadmap
+### 11. Typed attachReviewMetadata
+- `Map<string, any>` becomes `Map<string, Doc<"extractionResultReviews">>`
+- `review: any` becomes `review: Doc<"extractionResultReviews">`
+- No functional change, purely type safety
 
-### Phase 1: Layout & Component Reuse (LOW RISK, HIGH IMPACT)
+### 12. Cron Cleans Expired OAuth Tokens
+- New cron entry in `convex/crons.ts`: runs daily (or hourly)
+- Deletes `zoteroOAuthTokens` where `expiresAt < Date.now()`
+- Batch-limited to prevent transaction limit violations
+- Tokens expire after 10 minutes, so even daily cleanup keeps table small
 
-**What to do:** Transplant search page's two-column layout, FilterSection, and SearchSidebar directly to library page.
+### 13. Debug Endpoint Policy Documented
+- Inline JSDoc on `diagnoseJob` and `getFailedPapersDebug` states: "Staging only. ENABLE_PUBLIC_DEBUG_FUNCTIONS must not be set in production."
+- Deployment checklist or README section confirms production policy
 
-- No new components; pure DRY refactor
-- Ensures design consistency across search and library
-- Minimal implementation cost
-- **Blockers:** None identified
-- **Risk:** Very low (reusing tested components)
+## Recommended Phase Structure
 
-### Phase 2: Filter State & Quick Search (MEDIUM EFFORT, MEDIUM IMPACT)
+Based on dependencies and risk:
 
-**What to do:** Wire up nuqs-based filter state for library page using existing FilterSection.
+### Phase A: Security + Compliance (P1 items with data implications)
+1. Migrate deprecated apiKey (must complete before schema change)
+2. User data cleanup on deletion (GDPR)
+3. Cancel extraction stops work (credit protection)
 
-Filter priorities (MVP scope):
-1. **Collections** — Already exists (v2.1); expose as filter
-2. **Date Saved (date range)** — "Past week", "Past month", "Past year", "Any time"
-3. **Year Published (year range)** — Slider or dropdown for publication year
-4. **Search box** — Global search across library (title + author at minimum)
+### Phase B: Data Integrity Fixes (P1-P2 bug fixes)
+4. getJobDetails pagination
+5. Orphan diff cleanup
+6. Diff truncation notification
 
-Optional (v2.3):
-- **Tags** — Show user's tags as optional sidebar filter
-- **Rating** — Filter by minimum rating (if heavily used)
+### Phase C: Type Safety Sweep (P2-P3 typing improvements)
+7. Typed return validators (largest single item)
+8. Type attachReviewMetadata (subset of above)
+9. Type migration steps
 
-**Implementation pattern:**
-- Reuse FilterSection exactly as-is from search page
-- Pass `libraryItems` query result to FilterSection
-- Use existing nuqs integration for URL state
-- Convex: Verify dual-path query optimization for search-within-saved
-- **Risk:** Medium (new filter combinations; need Convex index validation)
+### Phase D: Cleanup (P2-P3 quick wins)
+10. Cron OAuth token cleanup
+11. Replace placeholder email
+12. Remove test page
+13. Document debug endpoint policy
 
-### Phase 3: Display Polish (LOW EFFORT, HIGH UX IMPACT)
-
-**What to do:** Add visual indicators for rating, sort options, and pagination controls.
-
-- Show rating (0-5 stars or label: "Rated 4", etc.) on each library item row
-- Expose sort dropdown: Date Saved (desc), Year (desc), Rating (desc), Title (asc)
-- Add pagination controls: "1-50 of 342 papers" with prev/next buttons
-- Mobile: Ensure sort dropdown works in tab-based filter view
-
-**Implementation pattern:**
-- Reuse existing rating data saved in v2.1
-- Add sort param to URL state (nuqs)
-- Render pagination controls in footer
-
-**Risk:** Low (visual feature; no backend changes)
-
-### Phase 4: Bulk Actions (MEDIUM EFFORT, FUTURE)
-
-**What to do:** Add multi-select checkboxes + toolbar for bulk operations.
-
-- Checkbox column on each row (only visible when user hovers or explicitly enables "select mode")
-- Bulk action toolbar: "Export selected as CSV", "Add selected to collection", "Remove from library"
-- Toggle "Select all" checkbox in header
-
-**Implementation pattern:**
-- Use client-side state (Zustand or React state) to track selected row IDs
-- Show toolbar only when selections exist
-- Async toast pattern for async operations (already used in v2.1)
-
-**Risk:** Medium (new interaction pattern; requires multi-select state management)
-
-## What Not to Build
-
-**Explicitly avoid these anti-features for v2.2:**
-
-1. **Nested/hierarchical collections** — Users will request "folder trees" after seeing the organize section. Resist. Flat collections + smart tagging is more powerful. (Already deferred in PROJECT.md)
-
-2. **Real-time multi-user sync** — Tempting if thinking about future team features. Don't. Page refresh is fine. Adds hidden complexity. (Deferred in PROJECT.md)
-
-3. **Full-text PDF search** — Users familiar with Zotero may expect this. Clarify: OpenAlex Count doesn't store PDFs; that's Zotero's domain. We search metadata + titles.
-
-4. **Complex filter logic (AND/OR/NOT)** — "I want papers from 2020+ AND (machine-learning OR AI) BUT NOT review-articles". Don't expose this UX in v2.2. All selected filters apply as AND. If demand emerges: advanced search syntax in future.
-
-5. **Infinite scroll** — Feels modern but causes accessibility issues (scroll fatigue, "jump to top" broken on mobile). Pagination is the right choice for a library (users want to know "how many results total").
+**Rationale:** Security and compliance fixes first because they carry the highest risk of harm. Data integrity fixes second because they affect user-visible behavior. Type safety sweep third because it is the highest-effort item but lowest risk. Quick cleanup last because each is independent and low-risk.
 
 ## Sources
 
-### Official Product Comparisons & Reviews
-- [Zotero vs Mendeley: Which reference manager to choose [2025] - Paperpile](https://paperpile.com/r/zotero-vs-mendeley/)
-- [Mendeley vs Zotero: Key Differences in 2025 - Qubic Research](https://qubicresearch.com/mendeley-vs-zotero/)
-- [Zotero vs Mendeley vs EndNote: Which reference manager is better? - The Effortless Academic](https://effortlessacademic.com/zotero-vs-mendeley-vs-endnote-which-reference-manager-is-better/)
-- [12 Best Citation Management Tools for Researchers in 2025 - Documind](https://www.documind.chat/blog/citation-management-tools)
-
-### Interface & Feature Analysis
-- [Zotero 7: Zotero, Redesigned - Zotero Blog](https://www.zotero.org/blog/zotero-7/)
-- [Mendeley Reference Manager Library Guides - University of Illinois at Urbana-Champaign](https://guides.library.illinois.edu/mendeley/organizing)
-- [Is Semantic Scholar the Best Free Research Tool in 2025? A Deep, Practical Review - Sider AI](https://sider.ai/blog/ai-tools/is-semantic-scholar-the-best-free-research-tool-in-2025-a-deep-practical-review)
-- [Semantic Scholar Release Notes](https://www.semanticscholar.org/product/release-notes)
-
-### Library UI/UX Patterns
-- [Filter UX Design Patterns & Best Practices - Pencil & Paper](https://www.pencilandpaper.io/articles/ux-pattern-analysis-enterprise-filtering)
-- [Navigation and browsing - Library Stack at Stanford University](https://guides.library.stanford.edu/librarystack/navigation_and_browsing)
-- [LibGuide Design: Best Practices and Guidelines - Washington State University](https://libguides.libraries.wsu.edu/bestpractices/layout)
-
-### Paper Management & Organization Best Practices
-- [Organizing Research Papers: Top Systems - Shy Editor](https://www.shyeditor.com/blog/post/organizing-research-papers)
-- [8 Best Research Paper Organizer Tools For Easy Management — Otio Blog](https://otio.ai/blog/research-paper-organizer)
-- [My favorite tools for managing, organizing, and reading research papers | Towards Data Science](https://towardsdatascience.com/my-favorite-tools-for-managing-organizing-and-reading-research-papers-56525083b827/)
-
-### Collaboration & Sharing Features
-- [Read Together With Co-Researchers and Lab Mates on R Discovery](https://researcher.life/blog/article/read-together-with-co-researchers/)
-- [New in Paperpile: Flexible, fast sharing for teams and collaborators - Paperpile](https://paperpile.com/blog/paperpile-sharing-features-updates/)
-- [Best Research Collaboration Tools in 2025 - Compared](https://blog.collabwriting.com/best-research-collaboration-tools-in-2025-zotero-paperpile-collabwriting-compared/)
-
-### Academic Library Trends
-- [Looking at the 2026 EDUCAUSE Top 10 through a library lens - ACRL](https://www.tandfonline.com/doi/full/10.1080/07317131.2025.2599621)
+- [Convex: When to and when not to use return validators](https://stack.convex.dev/when-to-and-when-not-to-use-return-validators) -- guidance on `v.any()` vs typed validators
+- [Convex: Intro to Migrations](https://stack.convex.dev/intro-to-migrations) -- expand-contract pattern for field removal
+- [Convex: Queries that scale](https://stack.convex.dev/queries-that-scale) -- replacing `.collect()` and `.take()` with pagination
+- [Convex: Paginated Queries](https://docs.convex.dev/database/pagination) -- `.paginate()` API and cursor-based pagination
+- [Convex Workflow component](https://www.convex.dev/components/workflow) -- `workflow.cancel()` API, in-progress actions finish
+- [Convex Workpool component](https://www.convex.dev/components/workpool) -- `pool.cancel()` / `pool.cancelAll()`, cannot stop in-progress work
+- [Convex: Argument and Return Value Validation](https://docs.convex.dev/functions/validation) -- typed validator best practices
+- [Convex: Best Practices](https://docs.convex.dev/understanding/best-practices/) -- general Convex patterns
+- [Zero-downtime database migrations](https://drcodes.com/posts/zero-downtime-database-migrations-essential-patterns) -- expand-contract pattern
+- [GDPR Database Compliance Guide 2025](https://sqlcheat.com/blog/database-compliance-gdpr-2025/) -- cascade deletion, retention periods
+- [Cascading Deletes in MongoDB](https://medium.com/@mail_99211/cascading-deletes-in-mongodb-5-proven-patterns-to-achieve-rdbms-style-integrity-c8c55ef7eea9) -- trigger-based cascade patterns for document DBs
 
 ---
-
-*Feature research completed: 2026-03-01*
-*Domain: Academic paper library browsing and organization*
-*Scope: V2.2 Library UI Overhaul milestone*
+*Feature research for: v2.4 Concerns Sweep*
+*Researched: 2026-03-02*

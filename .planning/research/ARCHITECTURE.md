@@ -1,710 +1,560 @@
-# Architecture Patterns: Library Page UI Overhaul
+# Architecture Research: v2.4 Concerns Sweep Integration
 
-**Project:** OpenAlex Count (v2.2 Library UI Overhaul)
-**Domain:** Academic search platform with library management
-**Researched:** 2026-03-01
-**Confidence:** HIGH
+**Domain:** Codebase maintenance -- 13 fixes integrating into existing Convex + Next.js extraction platform
+**Researched:** 2026-03-02
+**Confidence:** HIGH (all integration points verified against actual codebase)
 
-## Executive Summary
+## Existing Architecture Overview
 
-The library page currently uses a single-column layout (PageWrapper → LibraryPageClient → LibraryFilters → grid/list), while the search page uses a proven two-column pattern (TwoColumnLayout → SearchSidebar + ResultsList) with mobile tab-based fallback. The overhaul should **generalize the two-column layout and sidebar patterns** rather than duplicate them.
-
-**Key decision:** Extract SearchSidebar into a generalized `<FilterSidebar>` component with mode-specific render strategies, keeping domain-specific filter logic (SearchSidebar vs LibrarySidebar) in separate, reusable filter panel components. This maintains DRY while preserving modularity.
-
-**State management divergence:** Search uses SearchProvider context (for reactive filter changes), Library uses nuqs URL params directly (for bookmarkable states). The overhaul should preserve both patterns — they serve different purposes.
-
----
-
-## Current Architecture Analysis
-
-### Search Page Pattern (Desktop)
 ```
-app/results/[searchId]/page.tsx
-  ↓
-ResultsPageContent
-  ├─ TwoColumnLayout (flex layout: left sticky, right flex-1)
-  │  ├─ SearchSidebar (mode="panel")
-  │  │  ├─ SidebarContent (layout: flex flex-col, space-y-4)
-  │  │  │  ├─ DateFilterPanel (memoized)
-  │  │  │  ├─ RatingFilterPanel (memoized)
-  │  │  │  ├─ InstitutionLocationFilterPanel
-  │  │  │  ├─ SearchFieldPanel
-  │  │  │  └─ SortOptionsPanel
-  │  │  │  └─ ReviewFilterPanel
-  │  │  └─ FloatingControls (collapse/clear buttons with Framer Motion)
-  │  │
-  │  └─ PageWrapper
-  │     └─ ResultsList (PapersGrid → PaperCard[])
-  │
-  └─ shared: FilterSection component (consistent styling across all filters)
-```
-
-**Key characteristics:**
-- **Layout:** TwoColumnLayout with sticky left sidebar (h-screen, shrink-0) + right column flex-1
-- **Sidebar modes:** "panel" (collapsible with animation), "sheet" (mobile drawer), "page" (full-width)
-- **Filter rendering:** 10 memoized filter panels inside SidebarContent
-- **State:** SearchProvider context (reactive), nuqs URL params sync
-- **Mobile:** Tabs instead of two-column (Results tab ↔ Filters tab with slide animation)
-
-### Library Page Pattern (Current Single Column)
-```
-app/library/page.tsx
-  ↓
-PageWrapper
-  ↓
-LibraryPageClient
-  ├─ Header (title + export dropdown)
-  ├─ LibrarySearchBar (input for text search)
-  ├─ LibraryFilters (inline horizontal layout)
-  │  ├─ RatingFilterPanel (1-5 stars)
-  │  ├─ DateSavedFilterPanel (week/month/year presets)
-  │  ├─ YearRangeFilterPanel (from/to inputs)
-  │  ├─ CollectionFilterPanel (select dropdown)
-  │  └─ SortControls + ViewModeToggle
-  └─ ContentArea
-     ├─ LibraryItemCard[] OR LibraryItemRow[]
-     └─ LoadMore button + pagination
++---------------------------------------------------------------+
+|                     Next.js Frontend                           |
+|  +----------+  +-----------+  +----------+  +---------------+ |
+|  | Search   |  | Library   |  | Extract  |  | /test-sidebar | |
+|  | Page     |  | Page      |  | Pages    |  | (REMOVE)      | |
+|  +----+-----+  +-----+-----+  +----+-----+  +---------------+ |
+|       |               |             |                          |
+|  +----+-----+   +-----+-----+  +---+--------+                 |
+|  | Zustand  |   | nuqs URL  |  | Convex     |                 |
+|  | Stores   |   | State     |  | useQuery() |                 |
+|  +----------+   +-----------+  +-----+------+                 |
++---------------------------------------|-----------------------+
+                                        |
++---------------------------------------|-----------------------+
+|                  Convex Backend        |                       |
+|  +------------------------------------v--------------------+   |
+|  |              Public API Layer (queries/mutations)       |   |
+|  |  extraction/queries.ts  extraction/mutations.ts         |   |
+|  |  maintenance/mutations.ts  zotero/mutations.ts          |   |
+|  +--------+-------------+-------------+-------------------+   |
+|           |             |             |                        |
+|  +--------v---+ +-------v------+ +----v------------------+    |
+|  | Workflow   | | Workpool     | | Cron Jobs             |    |
+|  | Manager    | | (PDF proc)  | | (crons.ts)            |    |
+|  | (workflow) | | maxParallel:3| | - cleanup users       |    |
+|  +--------+---+ +------+------+ | - check subscriptions |    |
+|           |            |        | - monitor stripe       |    |
+|           v            v        | - reconcile invoices   |    |
+|  +-------------------------+    +------------------------+    |
+|  | workpoolActions.ts      |                                  |
+|  | downloadAndIndex -> extract                                |
+|  +-------------------------+                                  |
+|                                                               |
+|  +----------------------------------------------------------+ |
+|  |                   Schema (12 extraction tables)           | |
+|  | extractionJobs | extractionPapers | extractionResults     | |
+|  | extractionQuestions | extractionRunDiffs | ...             | |
+|  | zoteroConnections | zoteroOAuthTokens                     | |
+|  +----------------------------------------------------------+ |
++---------------------------------------------------------------+
 ```
 
-**Key characteristics:**
-- **Layout:** max-w-4xl centered container (single column)
-- **Filters:** Horizontal grid layout (1/2/3/4 columns responsive), all always visible
-- **State:** nuqs URL params (librarySearchParams)
-- **Mobile:** Responsive grid collapses, but filters stay inline (responsive not tab-based)
-- **No sidebar pattern:** Unlike search, no collapsible panel
+## Concern-to-Architecture Mapping
 
-### Shared Components (Already DRY)
-- **FilterSection:** Header + content wrapper with active state styling, used by both pages
-- **Input, Select, Button, Tooltip:** Shadcn components (no duplication)
+Each of the 13 concerns maps to a specific architectural layer. This is the integration analysis for each.
 
-### State Management Patterns
-| Page | Pattern | Driver | Scope |
-|------|---------|--------|-------|
-| Search | SearchProvider context + nuqs URL sync | Context (reactive) | search/* pages |
-| Library | nuqs URL params only | URL params (bookmarkable) | /library page |
-| Bookmarks | Would need similar to library | Would be URL params or Context | /bookmarks page (existing but simple) |
+### Component Responsibilities (Existing)
 
----
+| Component | Responsibility | Files Touched by v2.4 |
+|-----------|----------------|----------------------|
+| `convex/extraction/mutations.ts` | Job lifecycle, cascade delete, paper enqueuing | cancelExtraction, deleteExtractionInternal, runDiff |
+| `convex/extraction/queries.ts` | All extraction read paths, insight computation | v.any() validators, attachReviewMetadata, getJobDetails |
+| `convex/extraction/workflow.ts` | Orchestrates extraction pipeline via WorkflowManager | Cancellation target |
+| `convex/extraction/workpoolActions.ts` | PDF download, indexing, extraction actions | Zotero key fallback paths |
+| `convex/workpool.ts` | Workpool singleton (maxParallelism: 3) | Cancellation drain target |
+| `convex/workflow.ts` | WorkflowManager singleton | Cancel API |
+| `convex/schema.ts` | All table definitions | apiKey field removal |
+| `convex/crons.ts` | 4 scheduled jobs | Add OAuth token cleanup |
+| `convex/maintenance/mutations.ts` | User cleanup, past-due expiry, monitoring | Extend cleanupDeletedUsers |
+| `convex/zotero/mutations.ts` | OAuth flow, connection management | Token expiry concern |
+| `lib/store.ts` | Zustand stores with versioned migrations | Type the migration steps |
+| `app/test-sidebar/page.tsx` | Test page (DELETE) | Remove entirely |
+| `convex/extraction/actions.ts` | OpenAlex API fetching | User-Agent email |
 
-## Recommended Architecture
+## Integration Analysis: The 7 Key Questions
 
-### Layer 1: Generalized Layout Container
-Enhance `TwoColumnLayout` or create `<SidebarLayout>` to abstract the two-column + mobile tab pattern:
+### 1. Where Does Workflow Cancellation Fit in the Extraction Pipeline?
 
+**Current flow:**
+```
+User calls cancelExtraction (mutation)
+    |
+    v
+Sets job.status = "cancelled" in DB
+    |
+    v
+NOTHING ELSE -- workflow and workpool continue
+```
+
+**Required flow:**
+```
+User calls cancelExtraction (mutation)
+    |
+    +--> Sets job.status = "cancelled" in DB
+    |
+    +--> Reads job.workflowId
+    |
+    +--> Calls workflow.cancel(ctx, workflowId)
+    |         |
+    |         v
+    |    WorkflowManager cancels pending workflow steps
+    |    (already-enqueued workpool items are NOT affected)
+    |
+    +--> Calls pdfProcessingPool.cancel(ctx, workId) per paper
+              |
+              v
+         Workpool marks each pending work item as "canceled"
+         onComplete handlers fire with result.kind === "canceled"
+         (already-running actions complete naturally)
+```
+
+**Integration points:**
+- **Modified:** `convex/extraction/mutations.ts` -- `cancelExtraction` handler (lines 229-256)
+- **Imports needed:** `workflow` from `../workflow`, `pdfProcessingPool` from `../workpool`
+- **Key constraint:** `cancelExtraction` is a `mutation`, and both `workflow.cancel()` and `pdfProcessingPool.cancel()` accept `RunMutationCtx`, so this works without converting to an action.
+- **Already handled:** The `handleDownloadAndIndexComplete` and `handleExtractionComplete` callbacks already handle `result.kind === "canceled"` correctly -- they set paper status to "failed" with message "was canceled" and call `finalizeJobIfDone`. No changes needed there.
+- **Edge case:** `cancelAll` on the workpool is global. If multiple extraction jobs share the same `pdfProcessingPool`, cancelling one job's work cancels all pending work across all jobs. The workpool component does not support per-job filtering. The safest approach: iterate the job's papers, find their `workId` values, and call `pdfProcessingPool.cancel(ctx, workId)` individually. Papers have a `workId` field (schema line 345) and an index `by_work`.
+
+**Recommended implementation:**
 ```typescript
-// components/layout/sidebar-layout.tsx (NEW)
-interface SidebarLayoutProps {
-  sidebar: React.ReactNode;
-  sidebarWidth?: 'narrow' | 'default' | 'wide';
-  content: React.ReactNode;
-  mode?: 'desktop' | 'mobile'; // Auto-selected by isMobile hook
+// In cancelExtraction handler, after setting status:
+if (job.workflowId) {
+  await workflow.cancel(ctx, job.workflowId as any);
 }
 
-export function SidebarLayout({
-  sidebar,
-  sidebarWidth = 'default',
-  content,
-  mode,
-}: SidebarLayoutProps) {
-  // Desktop (≥768px): TwoColumnLayout pattern
-  // Mobile (<768px): Tabs pattern (Results/Filters with slide animation)
-  // Respects isMobile hook for automatic selection
-}
-```
+// Cancel individual workpool items for this job's papers
+const papers = await ctx.db
+  .query("extractionPapers")
+  .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+  .collect();
 
-**Why:** Eliminates duplication of two-column + tab logic. Both search and library pages use identical responsive behavior. TwoColumnLayout remains as a low-level layout primitive; SidebarLayout is the high-level pattern.
-
-### Layer 2: Sidebar Wrapper Component
-Create a generic `<FilterSidebar>` component that handles UI chrome (header, collapse, clear all):
-
-```typescript
-// components/layout/filter-sidebar.tsx (NEW)
-interface FilterSidebarProps {
-  title: string;
-  content: React.ReactNode;
-  activeFiltersCount: number;
-  onClearAll?: () => void;
-  isCollapsible?: boolean;
-  mode?: 'panel' | 'sheet' | 'full-width';
-  isMobile?: boolean;
-}
-
-export function FilterSidebar({
-  title,
-  content,
-  activeFiltersCount,
-  onClearAll,
-  isCollapsible = true,
-  mode = 'panel',
-  isMobile = false,
-}: FilterSidebarProps) {
-  // Reusable sidebar chrome: header, collapse toggle, clear button
-  // Content is render prop / children (filter panels supplied by caller)
-  // Handles panel collapse animation (Framer Motion) for desktop
-  // Handles Sheet rendering for mobile if mode='sheet'
-}
-```
-
-**Why:** SearchSidebar is 944 lines (930 of logic + 14 of layout). Extract layout/chrome into this, move domain-specific logic to filter panels. Reduces cognitive load.
-
-### Layer 3: Domain-Specific Filter Panels
-Keep existing memoized filter panels (DateFilterPanel, RatingFilterPanel, etc.) but compose them separately:
-
-**For Search:**
-```typescript
-// components/search/search-filter-sidebar.tsx (NEW)
-export function SearchFilterSidebar({ mode = 'panel' }: { mode?: 'panel' | 'sheet' }) {
-  const tf = useTranslations("searchFilters");
-  const { /* state from SearchProvider */ } = useCurrentSearchFormState();
-  const updateFilter = useUpdateSearchFilter();
-  const activeFiltersCount = countActiveFilters(/* ... */);
-
-  return (
-    <FilterSidebar
-      title={tf("searchFiltersTitle")}
-      activeFiltersCount={activeFiltersCount}
-      onClearAll={handleClearAllFilters}
-      mode={mode}
-      content={
-        <>
-          <DateFilterPanel />
-          <RatingFilterPanel />
-          <InstitutionLocationFilterPanel />
-          <SearchFieldPanel />
-          <SortOptionsPanel />
-          <ReviewFilterPanel />
-          {/* ... etc */}
-        </>
-      }
-    />
-  );
-}
-```
-
-**For Library:**
-```typescript
-// components/library/library-filter-sidebar.tsx (NEW)
-export function LibraryFilterSidebar({ mode = 'panel' }: { mode?: 'panel' | 'sheet' }) {
-  const t = useTranslations("libraryPage");
-  const [params, setParams] = useQueryStates(librarySearchParams);
-
-  const activeFiltersCount = countLibraryActiveFilters({
-    minRating: params.rating,
-    savedPreset: params.saved,
-    yearFrom: params.yf,
-    yearTo: params.yt,
-    collectionId: params.col,
-  });
-
-  return (
-    <FilterSidebar
-      title={t("filters")}
-      activeFiltersCount={activeFiltersCount}
-      onClearAll={() => setParams({ rating: null, saved: null, yf: null, yt: null, col: null })}
-      mode={mode}
-      content={
-        <>
-          <LibraryRatingFilterPanel />
-          <LibraryDateSavedFilterPanel />
-          <LibraryYearRangeFilterPanel />
-          <LibraryCollectionFilterPanel />
-          {/* Sort + View mode controls can go here too */}
-        </>
-      }
-    />
-  );
-}
-```
-
-**Why:** Each domain has different filters. Sidebar chrome is shared, filter logic is separate. This keeps the codebase maintainable.
-
-### Component Boundaries
-
-| Component | Responsibility | Location | Reused By | Status |
-|-----------|-----------------|----------|-----------|--------|
-| `TwoColumnLayout` | Low-level two-column flex layout | `components/layout/` | SidebarLayout, legacy code | Unchanged |
-| `SidebarLayout` | High-level responsive (desktop two-column + mobile tabs) | `components/layout/` | Search, Library, Bookmarks | **NEW** |
-| `FilterSidebar` | Sidebar chrome (header, collapse, clear button), content slot | `components/layout/` | Search, Library, Bookmarks | **NEW** |
-| `FilterSection` | Individual filter panel wrapper (active state, clear button) | `components/shared/` | All filter panels | Unchanged |
-| `SearchFilterSidebar` | Search-specific filters composition | `components/search/` | Search page only | **NEW** |
-| `LibraryFilterSidebar` | Library-specific filters composition | `components/library/` | Library page only | **NEW** |
-| `SearchSidebar` | Current 944-line sidebar (all-in-one) | `components/` | Search page | **Deprecated after refactor** |
-| `LibraryFilters` | Current inline filter grid | `components/library/` | Library page | **Replaced by LibraryFilterSidebar** |
-| `LibraryPageClient` | Main library page logic (state, queries) | `components/library/` | /library route | **Modified** |
-| `ResultsPageContent` | Main search results logic (state, queries) | `components/` | /results/[searchId] route | **Modified** |
-
----
-
-## Data Flow
-
-### Search Page (Desktop)
-```
-ResultsPageContent (routes params to SearchProvider)
-  ↓
-SearchProvider (state = context + nuqs URL sync)
-  ├─ SidebarLayout
-  │  ├─ SearchFilterSidebar (reads context, triggers updates)
-  │  │  ├─ DateFilterPanel (useCurrentSearchFormState, useUpdateSearchFilter)
-  │  │  └─ RatingFilterPanel
-  │  │
-  │  └─ ResultsList (reads context, renders results)
-```
-
-**Query response to filter change:**
-1. User clicks filter → useUpdateSearchFilter(new value)
-2. Hook updates context + syncs to nuqs URL
-3. Search query re-runs (context is dependency)
-4. Results re-render
-
-### Library Page (Desktop)
-```
-LibraryPageClient (manages state via nuqs URL params)
-  ↓
-SidebarLayout
-  ├─ LibraryFilterSidebar (reads URL params, calls setParams)
-  │  ├─ LibraryRatingFilterPanel (local rating state, onMinRatingChange callback)
-  │  └─ LibraryYearRangeFilterPanel (local year state, onYearFromChange callback)
-  │
-  └─ ContentArea (reads URL params via useMemo, triggers Convex queries)
-     ├─ searchLibrary query (if search text)
-     └─ browseLibrary query (if no search text)
-```
-
-**Query response to filter change:**
-1. User clicks filter → onMinRatingChange(value)
-2. LibraryFilterSidebar calls setParams({ rating: value })
-3. nuqs URL updates → page re-renders
-4. useMemo(librarySearchParams) changes → Convex query re-runs
-5. Results re-render
-
-**Key difference:** Library doesn't use SearchProvider (search-specific), relies on nuqs directly. This is intentional and correct — URL params are the source of truth for bookmarkability.
-
----
-
-## Mobile Pattern (Tab-Based)
-
-Both search and library should support:
-
-```
-Mobile Tab Interface (SidebarLayout on mobile):
-┌─────────────────────────────┐
-│ [Results] | [Filters]       │  ← TabsList (Results tab active)
-├─────────────────────────────┤
-│ Results Tab:                │
-│ ┌───────────────────────────┤
-│ │ PapersGrid / LibraryGrid  │
-│ │ (scrollable content)      │
-│ └───────────────────────────┤
-│                             │
-│ Filters Tab (not shown):    │
-│ ┌───────────────────────────┤
-│ │ Filter panels (vertical)  │
-│ │ with clear all button     │
-│ │ (scrollable sidebar)      │
-│ └───────────────────────────┤
-└─────────────────────────────┘
-```
-
-**Implementation in SidebarLayout:**
-```typescript
-export function SidebarLayout({
-  sidebar,
-  sidebarWidth = 'default',
-  content,
-}: SidebarLayoutProps) {
-  const isMobile = useIsMobile();
-
-  if (isMobile) {
-    const [activeTab, setActiveTab] = useState<'results' | 'filters'>('results');
-    const direction = activeTab === 'filters' ? 1 : -1;
-
-    return (
-      <div className="flex flex-col flex-1 w-full h-full">
-        <Tabs
-          value={activeTab}
-          onValueChange={(value) => setActiveTab(value as 'results' | 'filters')}
-          className="flex flex-col flex-1 h-full gap-0"
-        >
-          <TabsList className="w-full rounded-none border-b">
-            <TabsTrigger value="results" className="flex-1">
-              <FileText className="h-4 w-4 mr-2" />
-              Results
-            </TabsTrigger>
-            <TabsTrigger value="filters" className="flex-1">
-              <ListFilter className="h-4 w-4 mr-2" />
-              Filters
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="flex-1 relative overflow-hidden">
-            <AnimatePresence initial={false} mode="popLayout" custom={direction}>
-              {activeTab === 'results' ? (
-                <motion.div key="results" custom={direction} variants={slideVariants} /* ... */>
-                  {content}
-                </motion.div>
-              ) : (
-                <motion.div key="filters" custom={direction} variants={slideVariants} /* ... */>
-                  {sidebar}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </Tabs>
-      </div>
-    );
+for (const paper of papers) {
+  if (paper.workId) {
+    try {
+      await pdfProcessingPool.cancel(ctx, paper.workId as any);
+    } catch {
+      // Work item may already be completed or running
+    }
   }
-
-  // Desktop: TwoColumnLayout
-  return (
-    <TwoColumnLayout
-      leftColumn={sidebar}
-      rightColumn={content}
-    />
-  );
 }
 ```
 
----
+**Risk:** LOW. The onComplete handlers already handle the "canceled" result kind. The workflow cancel API is documented in @convex-dev/workflow types. The workpool cancel API is documented in @convex-dev/workpool types.
+
+### 2. How to Safely Remove the `apiKey` Schema Field Without Downtime
+
+**Current state in schema.ts line 175:**
+```typescript
+apiKey: v.optional(v.string()),  // Deprecated: use encryptedApiKey
+```
+
+**Convex expand-contract pattern (3 deploys):**
+
+**Deploy 1 -- Migration action (no schema change):**
+- Create `convex/zotero/migrations.ts` with an `internalAction` that:
+  1. Calls `internal.zotero.internal.listAllConnections` to get all rows
+  2. For each row where `apiKey` is set and `encryptedApiKey` is not:
+     - Encrypt `apiKey` using the shared `crypto.ts` module
+     - Patch the row: set `encryptedApiKey`, set `keyPrefix`, unset `apiKey` via `ctx.runMutation`
+  3. Uses batched processing with `ctx.scheduler.runAfter(0, ...)` for continuation
+- Run this migration (via Convex dashboard or a one-time cron)
+- Verify: query for any rows where `apiKey` is defined -- should be zero
+
+**Deploy 2 -- Remove all fallback code paths (field still in schema):**
+- `convex/zotero/actions.ts` (line 42): Remove the `else if (connection.apiKey)` fallback
+- `convex/extraction/workpoolActions.ts` (line 759-760): Remove the `else if (zoteroConnection)` plaintext fallback
+- `convex/zotero/internal.ts`: Remove any dual-read logic
+- All code now only reads `encryptedApiKey`
+
+**Deploy 3 -- Remove field from schema:**
+- Remove `apiKey: v.optional(v.string())` from schema.ts line 175
+- Convex will accept this because no documents have the field set (from Deploy 1)
+
+**Integration points:**
+- **New file:** `convex/zotero/migrations.ts`
+- **Modified:** `convex/schema.ts`, `convex/zotero/actions.ts`, `convex/extraction/workpoolActions.ts`
+- **Dependency:** Deploy 1 must complete before Deploy 2 code goes out
+
+**Risk:** LOW if done in order. The field is already `v.optional()`, so Convex will accept removal once data is migrated.
+
+### 3. Where to Add Typed Validators -- Inline vs Shared Validator Objects
+
+**Current problem:** 7 locations in `convex/extraction/queries.ts` use `v.any()` in `returns` validators.
+
+**Recommended approach: Shared validator objects in a dedicated file.**
+
+**New file:** `convex/extraction/validators.ts`
+
+```typescript
+import { v } from "convex/values";
+
+// Reusable validators for extraction document shapes
+export const jobValidator = v.object({
+  _id: v.id("extractionJobs"),
+  _creationTime: v.number(),
+  userId: v.id("users"),
+  sourceType: v.union(/* ... */),
+  status: v.union(/* ... */),
+  name: v.string(),
+  // ... all fields from schema
+});
+
+export const questionValidator = v.object({
+  _id: v.id("extractionQuestions"),
+  _creationTime: v.number(),
+  jobId: v.id("extractionJobs"),
+  key: v.string(),
+  question: v.string(),
+  type: v.union(v.literal("string"), v.literal("boolean"),
+                v.literal("number"), v.literal("array")),
+  description: v.optional(v.string()),
+  order: v.number(),
+  createdAt: v.number(),
+});
+
+export const paperValidator = v.object({ /* ... */ });
+export const resultWithReviewValidator = v.object({ /* ... */ });
+// etc.
+```
+
+**Why shared over inline:**
+1. The same shapes (job, paper, question, result) appear in 7+ query return types
+2. Inline validators would duplicate 50+ lines of validator code per query
+3. Shared validators can be imported into tests for contract testing
+4. When schema changes, one file updates -- not 7 queries
+
+**Integration points:**
+- **New file:** `convex/extraction/validators.ts`
+- **Modified:** `convex/extraction/queries.ts` (7 locations: lines 261-263, 328-329, 411-413, 533-536, 668-690, 779-785, 892-893)
+- **Also fix:** `attachReviewMetadata` in queries.ts (lines 113-118) -- replace `Map<string, any>` with `Map<string, Doc<"extractionResultReviews">>` and `review: any` with `review: Doc<"extractionResultReviews"> | undefined`
+
+**Risk:** MEDIUM. The validators must exactly match the runtime return shapes. Mismatches will cause Convex runtime errors. Test each query after adding validators.
+
+### 4. How to Extend cleanupDeletedUsers Without Breaking Existing Audit Logic
+
+**Current cleanup flow (convex/maintenance/mutations.ts):**
+```
+cleanupDeletedUsers (internalMutation, daily cron)
+    |
+    +--> Find users with state="deleted" past 30-day retention
+    |
+    +--> For each: delete apiKeys
+    |
+    +--> Hard delete user record
+    |
+    +--> NOTE: credits and subscriptions intentionally kept for audit
+    |
+    +--> Self-schedule if batch was full
+```
+
+**Required extension:**
+```
+cleanupDeletedUsers (internalMutation, daily cron)
+    |
+    +--> Find users with state="deleted" past 30-day retention
+    |
+    +--> For each user:
+    |     |
+    |     +--> Delete apiKeys (existing)
+    |     |
+    |     +--> Find all extractionJobs by userId
+    |     |     |
+    |     |     +--> For each job: schedule deleteExtractionInternal
+    |     |           (reuses existing cascade delete -- already handles
+    |     |            all 8 child tables + storage cleanup)
+    |     |
+    |     +--> Delete zoteroConnections by userId
+    |     |
+    |     +--> Delete zoteroOAuthTokens by userId
+    |     |
+    |     +--> Hard delete user record
+    |
+    +--> Self-schedule if batch was full
+```
+
+**Key design decisions:**
+- **Reuse `deleteExtractionInternal`** rather than duplicating cascade logic. This is the 9-step batched delete that already handles all child tables.
+- **Schedule, do not inline.** Each extraction job deletion involves multiple self-scheduling rounds. Inlining would blow the mutation transaction limit.
+- **Do NOT delete credits/subscriptions.** The comment "keep for audit" is an intentional decision from v2.3. Preserve it.
+- **Batch awareness:** `cleanupDeletedUsers` already batches at 50 users. Each user may have multiple extraction jobs. With `scheduler.runAfter(0, ...)`, the cascade deletes will run asynchronously after the cleanup mutation completes. This is safe -- the user record deletion at the end of each user's cleanup doesn't block the cascade.
+
+**Integration points:**
+- **Modified:** `convex/maintenance/mutations.ts` -- `cleanupDeletedUsers` handler
+- **Import needed:** `internal` from `../_generated/api` (already imported)
+- **Reuses:** `internal.extraction.mutations.deleteExtractionInternal` (existing, tested)
+
+**Risk:** LOW. The cascade delete is battle-tested. The only new code is querying user's jobs/connections and scheduling their deletion. The existing audit preservation (credits, subscriptions) is untouched.
+
+### 5. Where to Add Cron Jobs in the Existing crons.ts
+
+**Current crons.ts has 4 jobs:**
+```typescript
+const crons = cronJobs();
+
+crons.interval("cleanup deleted users",          { hours: 24 }, ...);
+crons.interval("check subscription status",      { hours: 1 },  ...);
+crons.interval("monitor failed stripe events",   { hours: 1 },  ...);
+crons.interval("reconcile stripe paid invoices",  { hours: 1 },  ...);
+
+export default crons;
+```
+
+**Add 1 new cron -- Zotero OAuth token cleanup:**
+
+```typescript
+// Hourly cleanup of expired Zotero OAuth tokens (abandoned flows)
+crons.interval(
+  "cleanup expired zotero oauth tokens",
+  { hours: 1 },
+  internal.zotero.mutations.cleanupExpiredOAuthTokens
+);
+```
+
+**New mutation needed:** `convex/zotero/mutations.ts` -- add `cleanupExpiredOAuthTokens` as an `internalMutation`:
+```typescript
+export const cleanupExpiredOAuthTokens = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const expired = await ctx.db
+      .query("zoteroOAuthTokens")
+      .collect(); // Table is tiny -- tokens expire in 10 min
+
+    let count = 0;
+    for (const token of expired) {
+      if (token.expiresAt < now) {
+        await ctx.db.delete(token._id);
+        count++;
+      }
+    }
+    if (count > 0) {
+      console.log(`Cleaned up ${count} expired Zotero OAuth tokens`);
+    }
+    return null;
+  },
+});
+```
+
+**Integration points:**
+- **Modified:** `convex/crons.ts` (add 1 entry)
+- **Modified:** `convex/zotero/mutations.ts` (add 1 internalMutation)
+- **No index needed:** The `zoteroOAuthTokens` table is expected to be very small (only in-flight OAuth sessions). A `.collect()` + JS filter is sufficient. Adding a `by_expiresAt` index would be premature.
+
+**Risk:** LOW. Cron additions are additive and don't affect existing jobs.
+
+### 6. Impact of Removing /test-sidebar on Routing
+
+**Current state:**
+- `app/test-sidebar/page.tsx` is a 29-line "use client" component
+- Renders `<SidebarLayout>` with placeholder text
+- No auth check, no middleware exclusion
+- Not linked from any navigation or other component
+
+**Removal impact analysis:**
+
+| Aspect | Impact |
+|--------|--------|
+| Routing | None -- Next.js App Router auto-removes route when directory deleted |
+| Middleware | None -- no middleware.ts exists at project root; Clerk middleware is not configured to include/exclude this route |
+| Navigation | None -- no links to `/test-sidebar` found anywhere |
+| Tests | None -- no test references this route |
+| Imports | None -- the page imports from `@/components/shared/sidebar-layout` but nothing imports from the page |
+| SEO | None -- no sitemap or robots.txt references |
+
+**Action:** Delete `app/test-sidebar/page.tsx` and the `app/test-sidebar/` directory. No other changes needed.
+
+**Risk:** NONE. This is a dead route with zero references.
+
+### 7. How to Handle runDiff Orphan Cleanup Alongside Existing Cascade Delete
+
+**Current problem:**
+The `deleteExtractionInternal` cascade (Step 8, line 1086-1096) only deletes diffs where `jobId == args.jobId`. It explicitly skips diffs where `baselineJobId == args.jobId`. This leaves orphaned diff records pointing to a deleted baseline job.
+
+**Existing index:** `extractionRunDiffs` has `.index("by_baseline", ["baselineJobId"])` -- already defined in the schema (line 633). This index exists specifically for this use case but is unused.
+
+**Integration approach -- Extend Step 8 of cascade delete:**
+
+```
+Current Step 8: Delete diffs where jobId == args.jobId
+                (using by_job index)
+
+Extended Step 8: Delete diffs where jobId == args.jobId (existing)
+                 + Delete diffs where baselineJobId == args.jobId (new)
+                   (using by_baseline index)
+```
+
+**Implementation in `deleteExtractionInternal`:**
+
+After the existing Step 8 block (line 1086-1096), add a Step 8b:
+
+```typescript
+// Step 8b: Delete extractionRunDiffs where this job is the BASELINE
+const baselineDiffs = await ctx.db
+  .query("extractionRunDiffs")
+  .withIndex("by_baseline", (q) => q.eq("baselineJobId", args.jobId))
+  .take(BATCH_SIZE);
+if (baselineDiffs.length > 0) {
+  for (const d of baselineDiffs) await ctx.db.delete(d._id);
+  await ctx.scheduler.runAfter(
+    0, internal.extraction.mutations.deleteExtractionInternal,
+    { jobId: args.jobId }
+  );
+  return null;
+}
+```
+
+**Why this is safe:**
+- Follows the identical batched self-scheduling pattern as all other cascade steps
+- Uses the pre-existing `by_baseline` index -- no schema change needed
+- Existing tests in `convex/extraction/cascade-delete.test.ts` verify the cascade happy path; extend them with a baseline-diff test case
+- The cascade only proceeds to Step 9 (delete job) after both Step 8 and Step 8b find zero remaining diffs
+
+**Also fix: Silent truncation in `runDiff` generation (line 956):**
+```typescript
+// Current: silently truncates
+changes: changes.slice(0, 1000),
+
+// Fixed: store truncation metadata
+changes: changes.slice(0, 1000),
+truncatedTotal: changes.length > 1000 ? changes.length : undefined,
+```
+This requires adding `truncatedTotal: v.optional(v.number())` to the `extractionRunDiffs` schema. The expand-contract pattern here is trivial since we are only adding an optional field -- single deploy.
+
+**Integration points:**
+- **Modified:** `convex/extraction/mutations.ts` -- `deleteExtractionInternal` (add Step 8b)
+- **Modified:** `convex/extraction/mutations.ts` -- `runDiff` creation (line 956, add truncation metadata)
+- **Modified:** `convex/schema.ts` -- add `truncatedTotal: v.optional(v.number())` to `extractionRunDiffs`
+- **Modified:** `convex/extraction/cascade-delete.test.ts` -- add baseline-diff test case
+- **No new indexes needed:** `by_baseline` already exists
+
+**Risk:** LOW. The pattern is identical to the existing cascade steps. The index already exists.
+
+## Data Flow Changes Summary
+
+### New Data Flows
+
+| Flow | Trigger | Path |
+|------|---------|------|
+| Workflow cancellation | User clicks Cancel | `cancelExtraction` -> `workflow.cancel()` -> `pdfProcessingPool.cancel()` per paper |
+| Zotero key migration | One-time admin action | `migrateZoteroKeys` action -> encrypt each -> patch row -> unset plaintext |
+| OAuth token cleanup | Hourly cron | `cleanupExpiredOAuthTokens` -> delete expired rows |
+| User extraction cleanup | Daily cron (existing) | `cleanupDeletedUsers` -> schedule `deleteExtractionInternal` per job |
+
+### Modified Data Flows
+
+| Flow | Change |
+|------|--------|
+| Cascade delete | Add Step 8b: delete baseline diffs using `by_baseline` index |
+| RunDiff generation | Add `truncatedTotal` field when changes exceed 1000 |
+| Query return types | 7 queries get typed validators instead of `v.any()` |
+| attachReviewMetadata | `any` types replaced with `Doc<"extractionResultReviews">` |
+| getJobDetails | Remove `.take(100)` cap, use full collection |
+
+### Removed Data Flows
+
+| Flow | Reason |
+|------|--------|
+| `/test-sidebar` page render | Dead test route, no references |
+| Plaintext `apiKey` fallback reads | After migration, all reads go through `encryptedApiKey` |
+
+## Suggested Build Order (Dependency-Aware)
+
+The 13 concerns have few hard dependencies but several natural clusters. Ordering by dependency chains and risk:
+
+### Phase A: Zero-Risk Standalone Fixes (No Dependencies)
+
+These can be done in any order and do not affect other concerns.
+
+| Order | Concern | Why First |
+|-------|---------|-----------|
+| 1 | Replace placeholder email in User-Agent | One-line change, zero risk |
+| 2 | Remove `/test-sidebar` page | Delete one file, zero dependencies |
+| 3 | Document debug endpoint production policy | Documentation only |
+| 4 | Type `migrateSearchHistoryState` migration steps | Frontend-only, no backend impact |
+| 5 | Replace `any` casts in `attachReviewMetadata` | Contained to one function |
+
+### Phase B: Schema + Query Typing (Shared Foundation)
+
+| Order | Concern | Why Here |
+|-------|---------|----------|
+| 6 | Create `convex/extraction/validators.ts` + replace `v.any()` | Foundation for typed queries; needed before other query changes |
+| 7 | Fix `getJobDetails` 100-paper cap | Uses the new typed validators from step 6 |
+
+### Phase C: Pipeline Behavior Fixes (Extraction Domain)
+
+| Order | Concern | Why Here |
+|-------|---------|----------|
+| 8 | Fix `cancelExtraction` to actually stop workflow | Independent of typing work; critical bug fix |
+| 9 | Fix `runDiff` orphan + silent truncation | Extends cascade delete; requires schema addition for `truncatedTotal` |
+
+### Phase D: Cleanup + Migration (Data Operations)
+
+| Order | Concern | Why Last |
+|-------|---------|----------|
+| 10 | Add cron for expired Zotero OAuth tokens | Simple cron addition |
+| 11 | Extend `cleanupDeletedUsers` for extraction data | Depends on cascade delete being correct (after step 9) |
+| 12 | Run Zotero `apiKey` migration (Deploy 1) | Must complete before Deploy 2 |
+| 13 | Remove `apiKey` field + fallback code (Deploys 2+3) | Must follow step 12 |
+
+**Phase ordering rationale:**
+- Phase A items are isolated and low-risk -- ship early to reduce concern count
+- Phase B establishes typed validators that Phase C work benefits from (typed return values when modifying queries)
+- Phase C fixes extraction pipeline behavior, which Phase D cleanup operations rely on (cascade delete must be correct before user cleanup reuses it)
+- Phase D migration is last because it requires multiple sequential deploys and verification between each
 
 ## Anti-Patterns to Avoid
 
-### ❌ Duplicating TwoColumnLayout
-Current situation: TwoColumnLayout exists but only used by search.
-**Problem:** If library overhaul creates its own two-column layout, mobile behavior (Tabs) must be reimplemented.
-**Solution:** Create SidebarLayout that wraps TwoColumnLayout + adds mobile tab logic.
-
-### ❌ Creating a "UniversalSidebar" Component
-Taking SearchSidebar and trying to parameterize all its filter logic (date filters from search, rating filters from library, etc.).
-**Problem:** 944-line component becomes unmaintainable. Too many conditionals.
-**Solution:** Extract chrome (FilterSidebar), keep domain logic separate (SearchFilterSidebar, LibraryFilterSidebar).
-
-### ❌ Forcing Library Filters into Sidebar Panel on Desktop
-Library filters work as inline horizontal grid. Moving to sidebar loses this advantage.
-**Problem:** Sidebar is fixed-width, filters are right-aligned, responsive grid breaks.
-**Solution:** Redesign library filters to work as vertical sidebar panels (see Trade-off Analysis).
-
-### ❌ Mixing State Management Patterns
-SearchProvider is great for reactive real-time filter UX. URL params are great for bookmarkable state.
-**Problem:** Library doesn't need SearchProvider (no real-time sync needed), but forcing it creates unnecessary context overhead.
-**Solution:** Library stays with nuqs only. Search keeps SearchProvider + nuqs. Both legitimate patterns.
-
----
-
-## Trade-Off Analysis
-
-### Option A: Sidebar for Library (Desktop) — RECOMMENDED
-**Pros:**
-- Unified visual pattern across search and library
-- Mobile tab pattern works identically (SidebarLayout handles both)
-- Consistent product experience
-- Higher screen real estate for content (sidebar can collapse)
-
-**Cons:**
-- Library filters redesigned from horizontal grid → vertical sidebar panels
-- Loses responsive grid behavior (was adaptable to screen size)
-- Sidebar width constraint might feel cramped for library view
-
-**Build effort:** Medium (redesign filter grid, create LibraryFilterSidebar, update LibraryPageClient)
-
-**Recommendation:** ✅ DO THIS — consistency across product is worth the UX tradeoff. Library sidebar can still use horizontal filter toggles within panels (like rating stars in a row).
-
-### Option B: Keep Library Filters Inline, Only Sidebar for Mobile
-**Pros:**
-- Library desktop keeps current horizontal grid (good responsive behavior)
-- Mobile gets tab-based interface without redesigning desktop
-
-**Cons:**
-- Two different responsive patterns (search has sidebar desktop + tabs mobile, library has grid desktop + sidebar mobile)
-- SidebarLayout only used by search on desktop (low reuse)
-- More complexity in component composition logic
-- Inconsistent product experience
-
-**Build effort:** High (conditional logic in page components, partial generalization)
-
-**Recommendation:** ❌ DO NOT — architectural inconsistency creates maintenance burden.
-
-### Option C: Generalize SearchSidebar Only (Parameterized)
-**Pros:**
-- Minimal code deletion
-- One component to understand
-
-**Cons:**
-- 944-line component with complex conditional logic
-- Hard to test individual filter panels
-- Difficult to add new filters without understanding entire sidebar
-- Creates technical debt
-
-**Build effort:** Low initially, high long-term
-
-**Recommendation:** ❌ DO NOT — creates technical debt that compounds over time.
-
----
-
-## Suggested Build Order
-
-### Phase 1: Foundation (Weeks 1-2)
-Create generalized infrastructure without touching existing pages.
-
-1. **Create SidebarLayout Component**
-   - Location: `components/layout/sidebar-layout.tsx`
-   - Handles: desktop two-column + mobile tabs + responsive switching
-   - Depends on: TwoColumnLayout, Tabs, Framer Motion
-   - Tests: Mobile/desktop rendering, tab switching, animation
-
-2. **Create FilterSidebar Component**
-   - Location: `components/layout/filter-sidebar.tsx`
-   - Handles: header, collapse toggle, clear all button, motions
-   - Depends on: FilterSection (reuse), Framer Motion, Button
-   - Tests: Header rendering, collapse animation, clear button
-
-### Phase 2: Search Page Refactor (Weeks 2-3)
-Migrate search page to new architecture (safe because search is isolated).
-
-3. **Create SearchFilterSidebar**
-   - Location: `components/search/search-filter-sidebar.tsx`
-   - Composes: FilterSidebar + 10 filter panels (date, rating, etc.)
-   - Reuses: DateFilterPanel, RatingFilterPanel, etc. (already memoized)
-   - Tests: Filter composition, active count calculation, state integration
-
-4. **Update ResultsPageContent**
-   - Replace: `<TwoColumnLayout>` with `<SidebarLayout>`
-   - Replace: `<SearchSidebar mode="panel">` with `<SearchFilterSidebar>`
-   - Update mobile: Use SidebarLayout's built-in tab logic (remove manual Tabs code)
-   - Tests: Results page rendering, filters still work, mobile tabs work
-
-5. **Delete/Deprecate SearchSidebar**
-   - After search page migration, delete old SearchSidebar.tsx
-   - Verify no other imports exist
-   - Update imports in ResultsPageContent
-
-### Phase 3: Library Page Overhaul (Weeks 3-4)
-Implement library UI overhaul using new architecture.
-
-6. **Create Library Filter Panels**
-   - Reuse: FilterSection component (existing, reusable)
-   - Create memoized panels:
-     - LibraryRatingFilterPanel (star picker)
-     - LibraryDateSavedFilterPanel (preset buttons)
-     - LibraryYearRangeFilterPanel (from/to inputs)
-     - LibraryCollectionFilterPanel (select dropdown)
-   - Tests: Individual panel logic, state callbacks with nuqs
-
-7. **Create LibraryFilterSidebar**
-   - Location: `components/library/library-filter-sidebar.tsx`
-   - Composes: FilterSidebar + library filter panels
-   - State: Read from nuqs (librarySearchParams), call setParams callbacks
-   - Tests: Filter composition, library-specific logic, active count calculation
-
-8. **Redesign LibraryPageClient**
-   - Wrap with SidebarLayout (new mobile behavior)
-   - Replace: inline LibraryFilters with LibraryFilterSidebar
-   - Move: sort/view controls into LibraryFilterSidebar footer
-   - Tests: Full library page, responsive layout, filters work with Convex queries
-
-### Phase 4: Polish & Bookmarks (Weeks 4-5)
-Extend to other pages, finalize design.
-
-9. **Update Bookmarks Page** (if exists and needed)
-   - Apply SidebarLayout pattern
-   - Create BookmarkFilterSidebar if needed
-
-10. **Cross-Page E2E Testing**
-    - Navigation: search ↔ library ↔ bookmarks
-    - Mobile: Tab switching, filter state persistence
-    - Desktop: Sidebar collapse, responsive grid
-    - State isolation: Changes on one page don't affect others
-
----
-
-## State Management Decision
-
-**Recommendation: Keep current patterns, generalize layout only.**
-
-**Search page:** SearchProvider + nuqs (reactive)
-→ Use `useCurrentSearchFormState()` + `useUpdateSearchFilter()`
-→ Keep for real-time filter feedback (instant UI update as user clicks)
-
-**Library page:** nuqs only (bookmarkable)
-→ Use `useQueryStates(librarySearchParams)` + `setParams()`
-→ Keep for URL bookmarkability (no SearchProvider needed, adds no value)
-
-**Why not unified context?**
-- Library filters are persistence-driven (bookmarkable URLs), not reactivity-driven
-- Adding SearchProvider to library adds no value (queries already keyed by URL state)
-- Keeps library page simple and focused on its concern (URL-driven queries)
-- SearchProvider is specific to search domain (manages multiple filter states, complex interactions)
-
-**When context sharing might be needed:**
-- Bookmarks page: If it needs real-time filter updates AND bookmarkable state, add BookmarkProvider
-- Future shared filtering: If a new feature needs multi-page filter sync, create GenericFilterProvider
-
----
-
-## Responsive Behavior
-
-### Desktop (≥768px)
-```
-┌──────────────────────────────────────────────────────┐
-│ FilterSidebar (w-80, sticky top-0 h-screen)  │ Content (flex-1) │
-│ ┌────────────────────────────────────────────┤ ┌──────────────┤
-│ │ [≡] Filters  [3]  [✕]                      │ │ Header       │
-│ │ ┌──────────────────────────────────────────┤ │ SearchBar    │
-│ │ │ ┌ Rating Filter                          │ │ ┌──────────┐ │
-│ │ │ │ ★★★★★ (1-5 range selector)            │ │ │ Items    │ │
-│ │ │ └─[Clear]                                │ │ │ Grid/   │ │
-│ │ │                                          │ │ │ List    │ │
-│ │ │ ┌ Date Saved Filter                     │ │ │        │ │
-│ │ │ │ [Week] [Month] [Year]                 │ │ │        │ │
-│ │ │ └─[Clear]                                │ │ └────────┘ │
-│ │ │                                          │ │ [Load More] │
-│ │ │ ... more filters ...                     │ │             │
-│ │ └──────────────────────────────────────────┤ └─────────────┤
-│ └────────────────────────────────────────────┤ Footer       │
-└──────────────────────────────────────────────────────────┘
-```
-
-### Tablet (640px-767px)
-```
-Tabs: [Results] [Filters]
-├─ Results tab:
-│  ├─ Content (full width)
-│  └─ Items in grid/list
-│
-└─ Filters tab:
-   ├─ FilterSidebar (full width, scrollable)
-   ├─ Rating / Date / Year filters
-   └─ Clear all button
-```
-
-### Mobile (<640px)
-Same as tablet, but with:
-- Smaller font sizes
-- Touch-optimized spacing (larger tap targets)
-- Simplified filter layouts
-
----
-
-## Integration Points with Existing Code
-
-### 1. **SearchProvider Context (Search page)**
-No changes. SearchFilterSidebar reads from context (useCurrentSearchFormState).
-- Continues to drive reactive filter updates
-- URL params still sync for bookmarkability
-
-### 2. **nuqs URL Params (Library page)**
-No changes. LibraryFilterSidebar reads/writes via librarySearchParams + useQueryStates.
-- URL remains source of truth for library state
-- Convex queries keyed by URL params
-
-### 3. **Convex Queries**
-No changes. Results component still subscribes to query functions.
-- SearchProvider pages: Query results update when context changes
-- Library page: Query results update when URL params change
-
-### 4. **FilterSection Component**
-Already generalized. Reuse as-is in all filter panels (search and library).
-- No changes needed
-- Consistent styling across all pages
-
-### 5. **Existing CSS/Tailwind**
-- TwoColumnLayout uses flex + sticky positioning (unchanged)
-- SidebarLayout builds on TwoColumnLayout (compatible)
-- Responsive widths (w-80 sidebar, flex-1 content) preserved
-
-### 6. **i18n (next-intl)**
-- SearchSidebar uses `useTranslations("searchFilters")`
-- LibraryFilters uses `useTranslations("libraryPage")`
-- Keep namespace isolation: FilterSidebar doesn't manage i18n, caller does
-- Each domain (search, library) controls its own translation namespaces
-
----
-
-## Scalability Considerations
-
-| Concern | At 100 Users | At 10K Users | At 1M Users |
-|---------|--------------|--------------|-------------|
-| **Sidebar performance** | No issue (memoized panels) | No issue (React.memo optimization) | Monitor if filtering adds complexity |
-| **Filter responsiveness** | Instant (local state) | Instant (context updates are synchronous) | May need debouncing for real-time searches |
-| **Mobile tab switching** | Smooth (CSS transition) | Smooth (no state loss) | Consider virtualizing very large lists |
-| **URL state size** | ~50 bytes typical | ~100 bytes with many filters | May exceed URL length limits (implement param compression if needed) |
-| **Sidebar re-renders** | Minimal (memoized panels) | Minimal (FilterSection memoized) | Monitor with React DevTools Profiler |
-
-**Recommendation:** Current approach (React.memo + Zustand + nuqs) scales well to 10K+ users. Monitor for:
-- URL param length (nuqs can hit browser limits with many filters, ~2KB practical limit)
-- Filter panel re-render frequency (check React DevTools Profiler)
-- Convex query cost (with many simultaneous filters on library page)
-
----
-
-## Summary Table
-
-| Aspect | Decision | Rationale |
-|--------|----------|-----------|
-| **Layout generalization** | SidebarLayout (desktop two-column + mobile tabs) | DRY, consistent responsive behavior, code reuse |
-| **Sidebar chrome** | FilterSidebar component | Deduplicates SearchSidebar chrome (collapse, clear, header) |
-| **Filter logic** | Separate SearchFilterSidebar + LibraryFilterSidebar | Domain-specific logic stays isolated, easier to maintain |
-| **State management** | Keep SearchProvider (search) + nuqs (library) | Different purposes, both optimal for their domain |
-| **Mobile pattern** | Tabs (Results/Filters with slide animation) | Consistent with search page, proven UX pattern |
-| **Library desktop layout** | Sidebar (redesigned from inline grid) | Unified visual pattern, worth UX tradeoff |
-| **Build order** | Foundation → Search refactor → Library overhaul → Polish | Risk mitigation (prove pattern on search first) |
-| **Reusable primitives** | TwoColumnLayout, FilterSection, SidebarLayout, FilterSidebar | Build once, use by search + library + bookmarks |
-| **Memoization strategy** | React.memo on all filter panels | Prevent unnecessary re-renders when parent updates |
-
----
-
-## Implementation Checklist
-
-### Phase 1: Foundation
-- [ ] Create `components/layout/sidebar-layout.tsx`
-- [ ] Create `components/layout/filter-sidebar.tsx`
-- [ ] Write tests for responsive behavior (mobile/desktop)
-- [ ] Verify Framer Motion animations work
-- [ ] Document SidebarLayout props interface
-
-### Phase 2: Search Refactor
-- [ ] Create `components/search/search-filter-sidebar.tsx`
-- [ ] Update `ResultsPageContent` to use new components
-- [ ] Remove manual Tabs code from ResultsPageContent
-- [ ] Update mobile tab pattern tests
-- [ ] Verify search filters still work end-to-end
-- [ ] Delete old SearchSidebar.tsx
-
-### Phase 3: Library Overhaul
-- [ ] Create library filter panels (Rating, DateSaved, YearRange, Collection)
-- [ ] Create `components/library/library-filter-sidebar.tsx`
-- [ ] Update `LibraryPageClient` to use SidebarLayout
-- [ ] Update `LibraryPageClient` to use LibraryFilterSidebar
-- [ ] Move sort/view controls into sidebar footer
-- [ ] Test library filters with nuqs params
-- [ ] Test Convex queries respond to filter changes
-- [ ] Delete old LibraryFilters.tsx
-
-### Phase 4: Polish
-- [ ] Update Bookmarks page (if applicable)
-- [ ] Cross-page E2E tests
-- [ ] Mobile responsiveness tests
-- [ ] Accessibility tests (tab navigation, ARIA labels)
-- [ ] Performance profiling (Lighthouse, React DevTools)
-
----
+### Anti-Pattern 1: Using cancelAll() on the Shared Workpool
+
+**What people do:** Call `pdfProcessingPool.cancelAll(ctx)` to stop one job's papers
+**Why it's wrong:** The workpool is shared across all extraction jobs. `cancelAll` cancels pending work for ALL users' jobs.
+**Do this instead:** Query the cancelled job's papers, read each paper's `workId`, call `pdfProcessingPool.cancel(ctx, workId)` individually.
+
+### Anti-Pattern 2: Removing Schema Field Before Data Migration
+
+**What people do:** Remove `apiKey` from schema immediately because it's deprecated
+**Why it's wrong:** Convex rejects schema changes if existing documents still have the field populated
+**Do this instead:** Three-deploy expand-contract: migrate data -> remove code fallbacks -> remove schema field
+
+### Anti-Pattern 3: Inlining Cascade Delete in cleanupDeletedUsers
+
+**What people do:** Write per-table deletion loops inside the cleanup mutation handler
+**Why it's wrong:** Extraction jobs can have hundreds of papers with child records. Inlining will hit Convex's mutation transaction limits.
+**Do this instead:** Schedule `deleteExtractionInternal` per job -- it already handles batching, self-scheduling, and storage cleanup.
+
+### Anti-Pattern 4: Defining Validators Inline in Each Query
+
+**What people do:** Write the full validator object literal in each query's `returns` field
+**Why it's wrong:** 7 queries return overlapping shapes. Inline validators create 350+ lines of duplicated validator code that must stay in sync.
+**Do this instead:** Extract shared validator objects to `convex/extraction/validators.ts` and import them.
+
+## New vs Modified Components
+
+| Type | Component | Action |
+|------|-----------|--------|
+| NEW | `convex/extraction/validators.ts` | Shared typed validators for extraction documents |
+| NEW | `convex/zotero/migrations.ts` | One-time apiKey encryption migration |
+| MODIFIED | `convex/extraction/mutations.ts` | cancelExtraction, deleteExtractionInternal, runDiff |
+| MODIFIED | `convex/extraction/queries.ts` | v.any() replacement (7 locations), attachReviewMetadata typing, getJobDetails cap |
+| MODIFIED | `convex/schema.ts` | Remove apiKey field, add truncatedTotal to runDiffs |
+| MODIFIED | `convex/crons.ts` | Add OAuth token cleanup cron |
+| MODIFIED | `convex/maintenance/mutations.ts` | Extend cleanupDeletedUsers |
+| MODIFIED | `convex/zotero/mutations.ts` | Add cleanupExpiredOAuthTokens |
+| MODIFIED | `convex/extraction/actions.ts` | Replace placeholder email |
+| MODIFIED | `convex/extraction/workpoolActions.ts` | Remove apiKey fallback |
+| MODIFIED | `convex/zotero/actions.ts` | Remove apiKey fallback |
+| MODIFIED | `lib/store.ts` | Type migration function signatures |
+| DELETED | `app/test-sidebar/page.tsx` | Remove test page |
 
 ## Sources
 
-**Current codebase:**
-- `/components/layout/two-column-layout.tsx` — Layout primitive (32 lines)
-- `/components/search-sidebar.tsx` — 944-line sidebar with 10 filter panels
-- `/components/library/library-page-client.tsx` — 381-line page component
-- `/components/library/library-filters.tsx` — 407-line inline filter grid
-- `/components/shared/filter-section.tsx` — Reusable filter panel wrapper (89 lines)
-- `/components/results-page-content.tsx` — Search page composition (223 lines)
+- Convex schema migration approach: [Intro to Migrations](https://stack.convex.dev/intro-to-migrations) -- expand-contract pattern for field removal
+- Convex zero-downtime migrations: [Lightweight Migrations](https://stack.convex.dev/lightweight-zero-downtime-migrations)
+- `@convex-dev/workflow` WorkflowManager.cancel() -- verified in `node_modules/@convex-dev/workflow/dist/client/index.d.ts` line 109
+- `@convex-dev/workpool` Workpool.cancel() and cancelAll() -- verified in `node_modules/@convex-dev/workpool/dist/client/index.d.ts` lines 158-166
+- All integration points verified against actual codebase files (HIGH confidence)
 
-**State management:**
-- `/lib/store.ts` — Zustand stores (FilterSidebarStore, RatingsStore)
-- `/lib/search/provider.tsx` — SearchProvider context
-- `/lib/library/search-params.ts` — nuqs parsers for library URL state
-
-**Design patterns:**
-- Framer Motion animations (`/lib/ui/sidebar-motion.ts`)
-- next-intl translations (search: "searchFilters", library: "libraryPage")
-- Shadcn UI components (Button, Select, Input, Tooltip, Tabs)
-- React.memo pattern for filter panels
+---
+*Architecture research for: v2.4 Concerns Sweep*
+*Researched: 2026-03-02*
