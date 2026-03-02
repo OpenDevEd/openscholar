@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Concerns Sweep
-status: executing
-last_updated: "2026-03-02T21:49:17Z"
+status: unknown
+last_updated: "2026-03-02T21:57:09.223Z"
 progress:
-  total_phases: 4
+  total_phases: 1
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
