@@ -285,6 +285,60 @@
 
 ---
 
+## Milestone: v2.3 — Codebase Hardening
+
+**Shipped:** 2026-03-02
+**Phases:** 8 | **Plans:** 14 | **Commits:** 57
+
+### What Was Built
+- Removed all debug artifacts (console.log, @ts-ignore) and gated debug/test functions behind requirePublicDebugEnabled()
+- Replaced all ctx: any, internal as any, components as any casts with proper Convex-generated types (11 files)
+- Added rateLimitTables and Zotero encryption fields to Convex schema as optional fields
+- Built full cascade deletion for extraction jobs covering 8 child tables with scheduler-based batching and PDF storage cleanup
+- Encrypted Zotero API keys at rest with AES-256-GCM via shared crypto.ts module with idempotent migration
+- Parallelized N+1 extraction queries with Promise.all and bounded all unbounded .collect() calls
+- Enforced token-bucket rate limits on all 6 exposed endpoints via convex-helpers defineRateLimits
+- Integration tests for cascade delete, Zustand 5-version migration chain, and extraction insight edge cases
+
+### What Worked
+- Strict phase ordering (35 -> 42) respected file contention on extraction/mutations.ts (touched by phases 36, 38, 40)
+- Schema-first approach (Phase 37) enabled both encryption (Phase 39) and rate limiting (Phase 41) to proceed cleanly
+- Shared crypto module extraction (Phase 39) was a clean DRY win — both apiKeys and Zotero use identical encrypt/decrypt
+- Dual-read fallback for Zotero migration enabled zero-downtime transition from plaintext to encrypted keys
+- resolveZoteroApiKey pattern keeps migration transparent to all 5 action handlers and workpoolActions
+- Auth-first rate limit ordering pattern established consistent enforcement across all endpoints
+- 14 plans executed in ~36 minutes total — consistent ~2.5min/plan velocity
+
+### What Was Inefficient
+- SUMMARY.md one_liner fields still not populated (same issue from v2.0, v2.1, v2.2)
+- New `as any` cast introduced in rateLimit.ts:52 while removing `as any` casts everywhere else (ironic)
+- Live deployment verification for schema additions (Phase 37) remains manual — CI doesn't run `npx convex dev`
+
+### Patterns Established
+- requirePublicDebugEnabled() as first line in all debug/test handlers for consistent security gating
+- Lazy getStripe() singleton with throw-on-call-not-import for safe module-level Stripe initialization
+- requireAppUrl() with dev/CI fallback for environment variable validation at function entry
+- scheduler.runAfter(0, ...) for self-scheduling batch deletes (avoids recursive runMutation stack overflow)
+- resolveZoteroApiKey dual-read fallback for transparent encryption migration
+- defineRateLimits centralized config with consume internal mutation for action endpoints
+- vi.useFakeTimers() before scheduler-triggering mutations (not after) for reliable test timing
+- Extract-and-export pattern for testing Zustand persist migrate functions
+
+### Key Lessons
+1. Schema-first phases enable clean parallelism in later phases — always add optional fields before writing logic that depends on them
+2. Shared utility extraction (crypto.ts, env.ts, rateLimit.ts) during a hardening milestone is the ideal time — patterns are understood, not speculative
+3. `ctx.scheduler.runAfter(0, ...)` is the correct Convex pattern for large batch operations — recursive ctx.runMutation can stack overflow
+4. Dual-read fallback is the right migration pattern for encrypted field transitions — decrypt new field first, fall back to plaintext
+5. vi.useFakeTimers() timing is critical — must be enabled before the mutation that triggers ctx.scheduler, not after
+6. Token-bucket rate limiting with convex-helpers requires a consume internal mutation bridge for action endpoints that lack ctx.db
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: 1 session for full milestone
+- Notable: 14 plans in ~36 minutes — entire hardening milestone completed in a single session
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -297,6 +351,7 @@
 | v2.0 | 63 | 8 | 17 | ~2min | TDD patterns, pure function extraction, vi.mock/resetModules |
 | v2.1 | ~181 | 8 | 15 | ~2min | Library feature build, shared components, nuqs URL state, junction tables |
 | v2.2 | 34 | 4 | 7 | ~2min | DRY layout infrastructure, factory patterns, chrome shell composition |
+| v2.3 | 57 | 8 | 14 | ~2.5min | Hardening sweep, shared crypto, cascade deletion, rate limiting |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -310,4 +365,6 @@
 8. Junction tables for many-to-many in Convex — array fields create cascade delete complexity (v2.1)
 9. URL state (nuqs) over local state for filterable views — eliminates sync bugs and enables bookmarkable views (v2.1)
 10. Infrastructure-first with prove-on-existing-page strategy reduces rework in shared component builds (v2.2)
-11. SUMMARY.md one_liner fields consistently missing — recurring process gap that affects milestone accomplishment extraction (v2.0 + v2.1 + v2.2)
+11. SUMMARY.md one_liner fields consistently missing — recurring process gap that affects milestone accomplishment extraction (v2.0 + v2.1 + v2.2 + v2.3)
+12. Schema-first phases enable clean parallelism — always add optional fields before writing dependent logic (v2.3)
+13. Shared utility extraction during hardening milestones is ideal — patterns are understood, not speculative (v2.3)

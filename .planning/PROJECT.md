@@ -56,21 +56,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ Pagination with result counts and prev/next navigation — v2.2
 - ✓ List/grid view toggle and rating stars on library items — v2.2
 - ✓ DRY architecture: search and library pages share SidebarLayout, FilterSidebar, FilterSection — v2.2
+- ✓ Debug console.log and @ts-ignore artifacts removed from production code — v2.3
+- ✓ All `ctx: any`, `internal as any`, `components as any` replaced with proper Convex types — v2.3
+- ✓ Zotero API keys encrypted at rest with AES-256-GCM via shared crypto module — v2.3
+- ✓ Extraction cascade deletion covers all 8 child tables with scheduler-based batching — v2.3
+- ✓ N+1 extraction queries parallelized, unbounded .collect() calls bounded — v2.3
+- ✓ Token-bucket rate limits enforced on all 6 exposed endpoints — v2.3
+- ✓ Integration tests for cascade delete, Zustand migrations, and extraction insight edge cases — v2.3
 
 ### Active
 
-#### Current Milestone: v2.3 Codebase Hardening
-
-**Goal:** Address all identified concerns — bugs, type safety, security, performance, fragile areas, and test coverage gaps.
-
-**Target features:**
-- Fix known bugs (debug logs in production, @ts-ignore suppression)
-- Type safety sweep (eliminate `any` typing in extraction and billing modules)
-- Security hardening (Zotero key encryption, env var validation, debug function isolation, Stripe key validation)
-- Performance fixes (N+1 queries, unbounded .collect(), full table scans)
-- Fragile area stabilization (delete cascade, store migrations, subscription dedup)
-- Missing features (rate limiting enforcement, orphaned PDF cleanup)
-- Test coverage (extraction cascade, Zustand migrations, extraction E2E)
+(No active milestone — run `/gsd:new-milestone` to start next)
 
 ### Out of Scope
 
@@ -97,13 +93,14 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), v2.0 (91 files, +14,768/-100), v2.1 (258 files, +37,922/-3,469), and v2.2 (46 files, +7,216/-662).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest.
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`.
-Test suite: 60+ Vitest test files covering unit tests across 7 domains, Playwright billing E2E suite (6 spec files, 11 tests).
+Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), v2.0 (91 files, +14,768/-100), v2.1 (258 files, +37,922/-3,469), v2.2 (46 files, +7,216/-662), and v2.3 (77 files, +8,779/-769).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting).
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`.
+Test suite: 60+ Vitest test files covering unit tests across 7 domains + cascade delete and store migration integration tests, Playwright billing E2E suite (6 spec files, 11 tests). 700 tests passing.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export, two-column sidebar layout with collapsible filter panel.
 Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
+Security: AES-256-GCM encryption for API keys and Zotero keys via shared crypto module, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled().
 
 ## Constraints
 
@@ -149,6 +146,13 @@ Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (coll
 | SidebarLayout responsive branching on useIsMobile | Desktop two-column vs mobile tabs from single component | ✓ Good — consistent responsive behavior |
 | exportItems.length as pagination total | Non-paginated export query gives accurate filtered count | ✓ Good — always correct, no separate count query |
 | Page reset on filter/sort/search changes | Prevents showing empty pages when filter reduces result set | ✓ Good — predictable navigation |
+| requirePublicDebugEnabled() gate | Consistent entry-point security for all debug/test handlers | ✓ Good — no debug leaks to production |
+| Lazy getStripe() singleton | Throws only when called with missing key, not at module load | ✓ Good — no import-time crashes |
+| Shared crypto.ts module | AES-256-GCM encrypt/decrypt extracted from apiKeys for reuse | ✓ Good — DRY crypto, used by Zotero + API keys |
+| scheduler.runAfter(0) for cascade deletion | Avoids recursive ctx.runMutation stack overflow on large jobs | ✓ Good — reliable batch deletion |
+| resolveZoteroApiKey dual-read fallback | Checks encryptedApiKey first, falls back to plaintext for migration | ✓ Good — zero-downtime migration |
+| defineRateLimits token-bucket pattern | Centralized rate limit config with convex-helpers | ✓ Good — consistent enforcement |
+| vi.useFakeTimers() before scheduler mutations | Scheduler timing must be controlled before mutation triggers | ✓ Good — reliable test timing |
 
 ---
-*Last updated: 2026-03-02 after starting v2.3 milestone*
+*Last updated: 2026-03-02 after v2.3 milestone*

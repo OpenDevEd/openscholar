@@ -1,5 +1,29 @@
 # Milestones
 
+## v2.3 Codebase Hardening (Shipped: 2026-03-02)
+
+**Phases completed:** 8 phases, 14 plans
+**Git range:** `1235d44..d89edf8` (57 commits)
+**Files changed:** 77 files, +8,779/-769 lines
+
+**Key accomplishments:**
+- Removed all debug artifacts (console.log, @ts-ignore) and gated test functions behind requirePublicDebugEnabled()
+- Replaced all `ctx: any`, `internal as any`, and `components as any` casts with proper Convex-generated types across 11 files
+- Encrypted Zotero API keys at rest with AES-256-GCM via shared crypto module, with idempotent migration action
+- Built full cascade deletion for extraction jobs covering 8 child tables with scheduler-based batching and PDF storage cleanup
+- Parallelized N+1 extraction queries with Promise.all and bounded all unbounded .collect() calls with safety caps
+- Enforced token-bucket rate limits on all 6 exposed endpoints via convex-helpers defineRateLimits
+- Added integration tests for cascade delete, Zustand 5-version migration chain, and extraction insight edge cases
+
+**Audit:** 27/27 requirements, 8/8 phases, 28/28 integrations, 3/3 E2E flows — TECH_DEBT (minor)
+
+**Tech debt carried forward:**
+- New `as any` cast in convex/lib/rateLimit.ts:52 (Low — fixable with proper type cast)
+- 9 pre-existing Stripe SDK `as any` casts in http.ts and subscriptions/actions.ts (Info — out of scope)
+- Live deployment verification pending for schema additions (Info — structural checks pass)
+
+---
+
 ## v1.0 Stripe Integration Audit (Shipped: 2026-02-27)
 
 **Phases completed:** 3 phases, 7 plans
