@@ -143,7 +143,9 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
   1. `rateLimitTables` from `convex-helpers/server/rateLimit` is spread into the Convex schema and the `rateLimits` table exists after deployment
   2. `zoteroConnections` table has new `encryptedApiKey: v.optional(v.string())` and `keyPrefix: v.optional(v.string())` fields alongside the existing `apiKey` field
   3. `npx convex dev` succeeds and all existing functionality is unaffected (no logic changes in this phase)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 37-01-PLAN.md — Add rateLimitTables and Zotero encryption fields to schema
 
 ### Phase 38: Deletion Cascade & Storage Cleanup
 **Goal**: Deleting an extraction job correctly removes all child entities and associated storage with no orphaned records
@@ -240,7 +242,7 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 34. Display Polish and Validation | v2.2 | 2/2 | Complete | 2026-03-01 |
 | 35. Quick Wins & Debug Cleanup | 3/3 | Complete    | 2026-03-02 | - |
 | 36. Type Safety Sweep | 2/2 | Complete    | 2026-03-02 | - |
-| 37. Schema Additions | v2.3 | 0/TBD | Not started | - |
+| 37. Schema Additions | v2.3 | 0/1 | Not started | - |
 | 38. Deletion Cascade & Storage Cleanup | v2.3 | 0/TBD | Not started | - |
 | 39. Zotero Key Encryption | v2.3 | 0/TBD | Not started | - |
 | 40. Performance | v2.3 | 0/TBD | Not started | - |
