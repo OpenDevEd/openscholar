@@ -16,7 +16,7 @@ export const getConnection = internalQuery({
     v.object({
       zoteroUserId: v.string(),
       encryptedApiKey: v.optional(v.string()),
-      apiKey: v.string(),
+      apiKey: v.optional(v.string()),
       username: v.optional(v.string()),
     }),
     v.null()
@@ -45,7 +45,7 @@ export const listAllConnections = internalQuery({
   args: {},
   returns: v.array(v.object({
     _id: v.id("zoteroConnections"),
-    apiKey: v.string(),
+    apiKey: v.optional(v.string()),
     encryptedApiKey: v.optional(v.string()),
   })),
   handler: async (ctx) => {

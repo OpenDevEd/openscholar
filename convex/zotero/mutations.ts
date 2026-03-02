@@ -99,7 +99,6 @@ export const saveConnection = internalMutation({
     return await ctx.db.insert("zoteroConnections", {
       userId,
       zoteroUserId,
-      apiKey: "ENCRYPTED_SEE_encryptedApiKey", // sentinel for required field during transition
       encryptedApiKey,
       keyPrefix,
       username,
