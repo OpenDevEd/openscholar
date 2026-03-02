@@ -8,6 +8,13 @@ import { findIntersectingItems } from "../../lib/extraction/pdf-highlight";
 import { extractPdfJsTextPages } from "./pdfjs_extract";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
+/**
+ * Internal action to test PDF.js text extraction alignment against a specific paper.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalAction) -- not exposed to clients.
+ */
 export const debugPdfAlignment = internalAction({
   args: {
     paperId: v.id("extractionPapers"),

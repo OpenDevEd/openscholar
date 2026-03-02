@@ -3,6 +3,13 @@ import { v } from "convex/values";
 import { getProcessableFlags } from "./content";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
+/**
+ * Internal query to inspect raw content extracted from papers in a job.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const debugJobContent = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {

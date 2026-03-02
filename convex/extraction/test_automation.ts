@@ -11,6 +11,13 @@ import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
+/**
+ * Internal action to trigger an immediate PDF extraction test run.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalAction) -- not exposed to clients.
+ */
 export const runPdfTestNow = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; jobId: any; results: any }> => {

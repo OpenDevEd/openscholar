@@ -3,6 +3,13 @@ import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
+/**
+ * Public mutation to create a test extraction job for verifying fixes.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ */
 export const createTestJobForFix = mutation({
   args: {
     name: v.string(),

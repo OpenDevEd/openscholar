@@ -75,6 +75,13 @@ function buildArrayProfileSignature(entities: string[]) {
   return selected.join(" | ");
 }
 
+/**
+ * Internal query to inspect citation extraction results for papers in a job.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const debugJobCitations = internalQuery({
   args: {
     jobId: v.id("extractionJobs"),

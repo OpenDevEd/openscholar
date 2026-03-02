@@ -4,7 +4,13 @@ import { createError } from "../lib/errors";
 import { requireAuth } from "../lib/auth";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
-// Debug query to get detailed error information for failed papers
+/**
+ * Debug query to retrieve papers that failed during extraction with error details.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ */
 export const getFailedPapersDebug = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),

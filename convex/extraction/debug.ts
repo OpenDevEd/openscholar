@@ -4,7 +4,13 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
-// Diagnostic query to check extraction job status
+/**
+ * Diagnostic query to inspect extraction job status, paper counts, and processing state.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ */
 export const diagnoseJob = query({
   args: { jobId: v.id("extractionJobs") },
   returns: v.any(),

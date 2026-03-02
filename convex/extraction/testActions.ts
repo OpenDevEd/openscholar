@@ -5,6 +5,13 @@ import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
+/**
+ * Public mutation to create a test extraction job for debugging.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ */
 export const createTestJob = mutation({
   args: {},
   returns: v.any(),

@@ -2,6 +2,13 @@ import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
+/**
+ * Internal query to inspect extraction results for individual papers.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const debugPaperResults = internalQuery({
   args: {
     paperId: v.id("extractionPapers"),

@@ -3,7 +3,13 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
-// Get first user ID
+/**
+ * Internal query to get the first user ID for test job creation.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const getFirstUserId = internalQuery({
   args: {},
   handler: async (ctx): Promise<Id<"users"> | null> => {
@@ -13,7 +19,13 @@ export const getFirstUserId = internalQuery({
   },
 });
 
-// Create test job
+/**
+ * Internal mutation to create a test extraction job for automation.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalMutation) -- not exposed to clients.
+ */
 export const createTestJob = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }): Promise<Id<"extractionJobs">> => {
@@ -58,7 +70,13 @@ export const createTestJob = internalMutation({
   },
 });
 
-// Get job status
+/**
+ * Internal query to check test job processing status.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const getJobStatus = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
@@ -79,7 +97,13 @@ export const getJobStatus = internalQuery({
   },
 });
 
-// Get job results
+/**
+ * Internal query to retrieve results from a test extraction job.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const getJobResults = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {

@@ -5,8 +5,12 @@ import { workflow } from "../workflow";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
- * Creates and immediately starts a test extraction job
- * Bypasses authentication for testing purposes
+ * Internal mutation to create and immediately start a test extraction job.
+ * Bypasses authentication for testing purposes.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalMutation) -- not exposed to clients.
  */
 export const createAndRunTestJob = internalMutation({
   args: {
@@ -107,7 +111,11 @@ export const createAndRunTestJob = internalMutation({
 });
 
 /**
- * Check job status and results
+ * Internal mutation to check the status of a test extraction job.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalMutation) -- not exposed to clients.
  */
 export const getTestJobStatus = internalMutation({
   args: {

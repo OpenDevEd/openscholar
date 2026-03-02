@@ -2,7 +2,13 @@ import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
-// Internal query to check error messages on failed papers
+/**
+ * Internal query to retrieve paper error details for a given extraction job.
+ *
+ * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
+ * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
+ * Access: Internal only (internalQuery) -- not exposed to clients.
+ */
 export const getPaperErrorsInternal = internalQuery({
   args: {
     jobId: v.id("extractionJobs"),
