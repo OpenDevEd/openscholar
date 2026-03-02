@@ -1,70 +1,59 @@
 /**
  * Rate Limiting for Convex Functions
- * 
- * This module provides basic rate limiting patterns.
- * For production use, consider implementing a dedicated rateLimits table
- * to track request counts per user/action/time window.
+ *
+ * Uses convex-helpers token-bucket algorithm backed by the rateLimits table.
+ * Mutations call rateLimit(ctx, ...) directly; actions delegate to the
+ * `consume` internal mutation via ctx.runMutation.
  */
 
-type RateLimitConfig = {
-  maxRequests: number;
-  windowMs: number;
-  description: string;
-};
+import { defineRateLimits } from "convex-helpers/server/rateLimit";
+import { internalMutation } from "../_generated/server";
+import { v } from "convex/values";
 
-/**
- * Rate limit configurations
- * Adjust these based on your application's needs
- */
-export const RATE_LIMITS: Record<string, RateLimitConfig> = {
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+
+export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
+  "start-extraction": {
+    kind: "token bucket",
+    rate: 5,
+    period: HOUR,
+    capacity: 3,
+  },
   "api-key-save": {
-    maxRequests: 5,
-    windowMs: 60_000,
-    description: "API key encryption - prevent key enumeration attacks"
+    kind: "token bucket",
+    rate: 5,
+    period: MINUTE,
+    capacity: 5,
   },
   "checkout-session": {
-    maxRequests: 3,
-    windowMs: 60_000,
-    description: "Checkout session creation - prevent session spam"
+    kind: "token bucket",
+    rate: 3,
+    period: MINUTE,
+    capacity: 3,
   },
-  "ensure-user": {
-    maxRequests: 10,
-    windowMs: 60_000,
-    description: "User sync - prevent webhook storm issues"
-  },
-};
+});
 
 /**
- * Rate limiting implementation notes:
- * 
- * To fully implement rate limiting in Convex:
- * 
- * 1. Add a rateLimits table to schema.ts:
- *    rateLimits: defineTable({
- *      userId: v.string(),
- *      action: v.string(),
- *      timestamp: v.number(),
- *    })
- *      .index("by_user_action", ["userId", "action"])
- *      .index("by_timestamp", ["timestamp"]),
- * 
- * 2. Implement checkRateLimit in a mutation:
- *    - Query recent requests within window
- *    - Count requests
- *    - Throw if limit exceeded
- *    - Insert new request record
- * 
- * 3. Add cleanup cron to remove old entries:
- *    - Daily cleanup of records older than max window
- * 
- * For now, rate limiting is handled at the application layer
- * (e.g., client-side debouncing, server middleware)
+ * Internal mutation for action endpoints that lack ctx.db.
+ * Actions call this via ctx.runMutation(internal.lib.rateLimit.consume, ...).
+ * Throws ConvexError with { kind: "RateLimited", name, retryAt } on limit breach.
  */
-
-/**
- * Simple client-side rate limit checker (informational only)
- * This doesn't enforce limits, just provides configuration info
- */
-export function getRateLimitConfig(action: string): RateLimitConfig | null {
-  return RATE_LIMITS[action] ?? null;
-}
+export const consume = internalMutation({
+  args: {
+    name: v.string(),
+    key: v.string(),
+    count: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await rateLimit(ctx, {
+      name: args.name as any,
+      key: args.key,
+      count: args.count,
+      throws: true,
+    });
+    return null;
+  },
+});
