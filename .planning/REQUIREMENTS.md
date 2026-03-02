@@ -41,7 +41,7 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 
 - [x] **PERF-01**: N+1 in `loadJobDataForReporting` resolved with `Promise.all`
 - [x] **PERF-02**: N+1 in `loadJobPapersAndResults` resolved with `Promise.all`
-- [ ] **PERF-03**: Unbounded `.collect()` calls bounded with `.take(N)` or pagination
+- [x] **PERF-03**: Unbounded `.collect()` calls bounded with `.take(N)` or pagination
 
 ### Rate Limiting
 
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-05 | Phase 35 | Complete |
 | PERF-01 | Phase 40 | Complete |
 | PERF-02 | Phase 40 | Complete |
-| PERF-03 | Phase 40 | Pending |
+| PERF-03 | Phase 40 | Complete |
 | RATE-01 | Phase 37 | Complete |
 | RATE-02 | Phase 41 | Pending |
 | RATE-03 | Phase 41 | Pending |

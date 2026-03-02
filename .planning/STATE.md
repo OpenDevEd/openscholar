@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
-status: unknown
-last_updated: "2026-03-02T09:06:15Z"
+status: in-progress
+last_updated: "2026-03-02T09:10:31Z"
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 40 of 42 (Performance) -- 6 of 8 in v2.3 -- IN PROGRESS
-Plan: 1 of 2 complete (40-01)
-Status: 40-01 complete, ready for 40-02
-Last activity: 2026-03-02 -- Completed 40-01 (N+1 query parallelization)
+Phase: 40 of 42 (Performance) -- 6 of 8 in v2.3 -- COMPLETE
+Plan: 2 of 2 complete (40-01, 40-02)
+Status: Phase 40 complete, ready for next phase
+Last activity: 2026-03-02 -- Completed 40-02 (unbounded .collect() safety caps)
 
-Progress: [#####-----] 50% (1/2 plans in phase)
+Progress: [##########] 100% (2/2 plans in phase)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 68 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 5+)
+- Total plans completed: 69 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 6+)
 - Total milestones shipped: 6
 
 **By Milestone:**
@@ -61,6 +61,7 @@ Progress: [#####-----] 50% (1/2 plans in phase)
 | 39 | 01 | 3min | 2 | 6 |
 | 39 | 02 | 2min | 1 | 4 |
 | 40 | 01 | 1min | 2 | 2 |
+| 40 | 02 | 2min | 2 | 3 |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 39]: Sentinel value "ENCRYPTED_SEE_encryptedApiKey" in apiKey field for new connections during transition; resolveZoteroApiKey dual-read fallback pattern
 - [Phase 39]: Removed sentinel apiKey write after schema evolution to optional; migration skips rows with no apiKey defensively
 - [Phase 40]: Pure scheduling change for N+1 parallelization: only for-loop open/close lines modified, preserving all logic and return types
+- [Phase 40]: .take(N) safety caps with CLEANUP_BATCH constant for write-loop mutations; inline .take() for read-only cron queries; CAP constant for shared limits
 
 ### Roadmap Evolution
 
@@ -99,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 40-01-PLAN.md (N+1 query parallelization)
-Stopped at: Completed 40-01-PLAN.md
+Last activity: 2026-03-02 - Completed 40-02-PLAN.md (unbounded .collect() safety caps)
+Stopped at: Completed 40-02-PLAN.md
 Resume file: None
