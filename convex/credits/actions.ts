@@ -1,8 +1,9 @@
 "use node";
 
-import { action, internalAction } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import Stripe from "stripe";
 import {
   classifyMonthlyCreditInvoice,
@@ -22,8 +23,6 @@ import {
 } from "../lib/creditTopups";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
-
-const internalApi = internal as any;
 
 let _stripe: Stripe | null = null;
 function getStripe(): Stripe {
@@ -50,7 +49,7 @@ export const createTopupCheckoutSession = action({
     requireCreditsEnabled();
     requireCreditTopupsEnabled();
     const identity = await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!user?._id) {
       throw createError("CREDITS_USER_NOT_FOUND", "Unable to resolve current user");
@@ -76,7 +75,7 @@ export const createTopupCheckoutSession = action({
       name: identity.name,
     });
 
-    await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+    await ctx.runMutation(internal.subscriptions.internal.upsertBillingCustomerLink, {
       userId: user._id,
       stripeCustomerId: customer.customerId,
       linkedFrom: "credit_topup_checkout",
@@ -246,7 +245,7 @@ async function resolveFallbackSubscriptionId(
   return selectSingletonEntitledSubscriptionId(subscriptions.data);
 }
 
-async function processInvoiceForGrantLogic(ctx: any, args: any) {
+async function processInvoiceForGrantLogic(ctx: ActionCtx, args: any): Promise<{ outcome: string; message: string; usedFallbackSubscription: boolean }> {
   const retryCount = args.retryCount ?? 0;
   const stripeEventId = args.stripeEventId ?? `invoice.process:${args.stripeInvoiceId}`;
   const stripeEventType = args.stripeEventType ?? "invoice.process";
@@ -278,7 +277,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
       const retryDelayMs = getCreditGrantRetryDelayMs(retryCount);
       if (retryDelayMs !== null) {
         const retryAt = Date.now() + retryDelayMs;
-        await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventRetrying, {
+        await ctx.runMutation(internal.subscriptions.internal.markStripeEventRetrying, {
           stripeEventId,
           eventType: stripeEventType,
           stripeObjectId: args.stripeInvoiceId,
@@ -289,7 +288,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
         });
         await ctx.scheduler.runAfter(
           retryDelayMs,
-          internalApi.credits.actions.processInvoiceForGrant,
+          internal.credits.actions.processInvoiceForGrant,
           {
             ...args,
             retryCount: retryCount + 1,
@@ -305,7 +304,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
       };
     }
 
-    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventFailed, {
+    await ctx.runMutation(internal.subscriptions.internal.markStripeEventFailed, {
       stripeEventId,
       eventType: stripeEventType,
       stripeObjectId: args.stripeInvoiceId,
@@ -331,7 +330,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
     const retryDelayMs = getCreditGrantRetryDelayMs(retryCount);
     if (retryDelayMs !== null) {
       const retryAt = Date.now() + retryDelayMs;
-      await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventRetrying, {
+      await ctx.runMutation(internal.subscriptions.internal.markStripeEventRetrying, {
         stripeEventId,
         eventType: stripeEventType,
         stripeObjectId: args.stripeInvoiceId,
@@ -341,7 +340,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
       });
       await ctx.scheduler.runAfter(
         retryDelayMs,
-        internalApi.credits.actions.processInvoiceForGrant,
+        internal.credits.actions.processInvoiceForGrant,
         {
           ...args,
           retryCount: retryCount + 1,
@@ -374,7 +373,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
     if (upgradeFromPlan && upgradeToPlan && upgradeTimestamp) {
       // Resolve the user from the subscription via internal query
       const subRecord = await ctx.runQuery(
-        internalApi.subscriptions.internal.getSubscriptionByStripeId,
+        internal.subscriptions.internal.getSubscriptionByStripeId,
         { stripeSubscriptionId },
       );
 
@@ -385,11 +384,11 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
         const periodEndMs = ((subscription as any).current_period_end ?? 0) * 1000;
 
         const grantResult = await ctx.runMutation(
-          internalApi.credits.internal.grantUpgradeProRataCredits,
+          internal.credits.internal.grantUpgradeProRataCredits,
           {
             userId: subRecord.userId,
-            fromPlan: upgradeFromPlan,
-            toPlan: upgradeToPlan,
+            fromPlan: upgradeFromPlan as "free" | "go" | "pro" | "enterprise",
+            toPlan: upgradeToPlan as "free" | "go" | "pro" | "enterprise",
             currentPeriodStartMs: periodStartMs,
             currentPeriodEndMs: periodEndMs,
             stripeSubscriptionId,
@@ -418,7 +417,7 @@ async function processInvoiceForGrantLogic(ctx: any, args: any) {
   }
 
   const result: { outcome: string; message: string } = await ctx.runMutation(
-    internalApi.credits.internal.grantMonthlyCredits,
+    internal.credits.internal.grantMonthlyCredits,
     {
       stripeSubscriptionId: stripeSubscriptionId ?? undefined,
       stripeCustomerId: stripeCustomerId ?? undefined,
@@ -457,7 +456,7 @@ export const processInvoiceForGrant = internalAction({
   },
 });
 
-async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: any, args: any) {
+async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: ActionCtx, args: any) {
   const lookbackDays = args.lookbackDays ?? 7;
   const cutoffUnixSeconds = Math.floor(Date.now() / 1000) - lookbackDays * 24 * 60 * 60;
   const limitCustomers = Math.max(1, Math.min(args.limitCustomers ?? 200, 1000));
@@ -469,7 +468,7 @@ async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: any, args: any) {
     const subscriptions: Array<{
       stripeCustomerId: string;
     }> = await ctx.runQuery(
-      internalApi.subscriptions.internal.listGrantEligibleSubscriptionPointers,
+      internal.subscriptions.internal.listGrantEligibleSubscriptionPointers,
       { limit: limitCustomers },
     );
 
@@ -597,11 +596,11 @@ export const backfillBillingAndCredits = internalAction({
   }),
   handler: async (ctx, args) => {
     const pointers: Array<{
-      userId: string;
+      userId: Id<"users">;
       stripeCustomerId: string;
       status: string;
     }> = await ctx.runQuery(
-      internalApi.subscriptions.internal.listGrantEligibleSubscriptionPointers,
+      internal.subscriptions.internal.listGrantEligibleSubscriptionPointers,
       {
         limit: args.limitSubscriptions ?? 500,
       },
@@ -613,7 +612,7 @@ export const backfillBillingAndCredits = internalAction({
 
     for (const pointer of pointers) {
       customerIds.add(pointer.stripeCustomerId);
-      await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+      await ctx.runMutation(internal.subscriptions.internal.upsertBillingCustomerLink, {
         userId: pointer.userId,
         stripeCustomerId: pointer.stripeCustomerId,
         linkedFrom: "backfill",
@@ -621,7 +620,7 @@ export const backfillBillingAndCredits = internalAction({
       billingLinksUpserted += 1;
 
       const result: { created: boolean } = await ctx.runMutation(
-        internalApi.credits.internal.ensureCreditsForUser,
+        internal.credits.internal.ensureCreditsForUser,
         {
           userId: pointer.userId,
         },

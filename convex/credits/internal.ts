@@ -25,7 +25,6 @@ import {
   getCreditsPerUsd,
 } from "../lib/creditTopups";
 
-const internalApi = internal as any;
 const componentApi = components as any;
 
 type GrantMutationOutcome =
@@ -232,7 +231,7 @@ async function markEventRetrying(
   },
 ): Promise<void> {
   if (!args.stripeEventId) return;
-  await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventRetrying, {
+  await ctx.runMutation(internal.subscriptions.internal.markStripeEventRetrying, {
     stripeEventId: args.stripeEventId,
     eventType: args.eventType ?? "invoice.paid",
     stripeObjectId: args.stripeObjectId,
@@ -255,7 +254,7 @@ async function markEventFailed(
   },
 ): Promise<void> {
   if (!args.stripeEventId) return;
-  await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventFailed, {
+  await ctx.runMutation(internal.subscriptions.internal.markStripeEventFailed, {
     stripeEventId: args.stripeEventId,
     eventType: args.eventType ?? "invoice.paid",
     stripeObjectId: args.stripeObjectId,
@@ -276,7 +275,7 @@ async function markEventProcessed(
   },
 ): Promise<void> {
   if (!args.stripeEventId) return;
-  await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventProcessed, {
+  await ctx.runMutation(internal.subscriptions.internal.markStripeEventProcessed, {
     stripeEventId: args.stripeEventId,
     eventType: args.eventType ?? "invoice.paid",
     stripeObjectId: args.stripeObjectId,
@@ -297,7 +296,7 @@ async function markEventIgnored(
   },
 ): Promise<void> {
   if (!args.stripeEventId) return;
-  await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventIgnored, {
+  await ctx.runMutation(internal.subscriptions.internal.markStripeEventIgnored, {
     stripeEventId: args.stripeEventId,
     eventType: args.eventType ?? "invoice.paid",
     stripeObjectId: args.stripeObjectId,
@@ -337,7 +336,7 @@ export const enqueueInvoiceCreditReconciliation = internalMutation({
 
     const delayMs = args.invoiceStatus === "paid" ? 5_000 : 60_000;
 
-    await ctx.scheduler.runAfter(delayMs, internalApi.credits.internal.reconcileInvoiceCreditGrant, {
+    await ctx.scheduler.runAfter(delayMs, internal.credits.internal.reconcileInvoiceCreditGrant, {
       stripeInvoiceId: args.stripeInvoiceId,
       stripeSubscriptionId: args.stripeSubscriptionId,
       stripeCustomerId: args.stripeCustomerId,
@@ -415,7 +414,7 @@ export const reconcileInvoiceCreditGrant = internalMutation({
     }
 
     if (invoiceStatus === "paid") {
-      await ctx.runMutation(internalApi.credits.internal.grantMonthlyCredits, {
+      await ctx.runMutation(internal.credits.internal.grantMonthlyCredits, {
         stripeSubscriptionId,
         stripeCustomerId: args.stripeCustomerId,
         stripeInvoiceId: args.stripeInvoiceId,
@@ -431,7 +430,7 @@ export const reconcileInvoiceCreditGrant = internalMutation({
     }
 
     if (!shouldRetryCreditGrant(retryCount)) {
-      await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventIgnored, {
+      await ctx.runMutation(internal.subscriptions.internal.markStripeEventIgnored, {
         stripeEventId: args.stripeEventId ?? args.stripeInvoiceId,
         eventType: "invoice.reconcile",
         stripeObjectId: args.stripeInvoiceId,
@@ -456,7 +455,7 @@ export const reconcileInvoiceCreditGrant = internalMutation({
       retryAt,
     });
 
-    await ctx.scheduler.runAfter(retryDelayMs, internalApi.credits.internal.reconcileInvoiceCreditGrant, {
+    await ctx.scheduler.runAfter(retryDelayMs, internal.credits.internal.reconcileInvoiceCreditGrant, {
       ...args,
       retryCount: retryCount + 1,
     });
@@ -603,7 +602,7 @@ export const grantMonthlyCredits = internalMutation({
         retryAt,
       });
 
-      await ctx.scheduler.runAfter(retryDelayMs, internalApi.credits.internal.reconcileInvoiceCreditGrant, {
+      await ctx.scheduler.runAfter(retryDelayMs, internal.credits.internal.reconcileInvoiceCreditGrant, {
         stripeInvoiceId: args.stripeInvoiceId,
         stripeSubscriptionId: args.stripeSubscriptionId,
         stripeCustomerId: args.stripeCustomerId,
@@ -677,7 +676,7 @@ export const grantMonthlyCredits = internalMutation({
             retryAt,
           });
 
-          await ctx.scheduler.runAfter(retryDelayMs, internalApi.credits.internal.grantMonthlyCredits, {
+          await ctx.scheduler.runAfter(retryDelayMs, internal.credits.internal.grantMonthlyCredits, {
             ...args,
             retryCount: retryCount + 1,
           });

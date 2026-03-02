@@ -2,7 +2,6 @@ import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 
 const crons = cronJobs();
-const internalApi = internal as any;
 
 // Daily cleanup of soft-deleted users (after 30 days)
 crons.interval(
@@ -28,7 +27,8 @@ crons.interval(
 crons.interval(
   "reconcile stripe paid invoices",
   { hours: 1 },
-  internalApi.credits.actions.reconcileRecentPaidInvoicesFromStripe,
+  internal.credits.actions.reconcileRecentPaidInvoicesFromStripe,
+  {},
 );
 
 export default crons;

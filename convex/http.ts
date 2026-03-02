@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
+import type { GenericActionCtx } from "convex/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
@@ -8,7 +9,6 @@ import { requireAppUrl } from "./lib/env";
 import type Stripe from "stripe";
 
 const http = httpRouter();
-const internalApi = internal as any;
 const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
   process.env.STRIPE_WEBHOOK_SECRET,
 );
@@ -23,13 +23,13 @@ function getStripeApiVersion(event: Stripe.Event): string | undefined {
 }
 
 async function recordStripeEventFailure(
-  ctx: any,
+  ctx: GenericActionCtx<any>,
   event: Stripe.Event,
   error: unknown,
 ): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
   try {
-    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventFailed, {
+    await ctx.runMutation(internal.subscriptions.internal.markStripeEventFailed, {
       stripeEventId: event.id,
       eventType: event.type,
       stripeObjectId: getStripeObjectId(event),
@@ -43,13 +43,13 @@ async function recordStripeEventFailure(
 }
 
 async function runAuditedStripeHandler(
-  ctx: any,
+  ctx: GenericActionCtx<any>,
   event: Stripe.Event,
   handler: () => Promise<void>,
 ): Promise<void> {
   try {
     await handler();
-    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventProcessed, {
+    await ctx.runMutation(internal.subscriptions.internal.markStripeEventProcessed, {
       stripeEventId: event.id,
       eventType: event.type,
       stripeObjectId: getStripeObjectId(event),
@@ -63,7 +63,7 @@ async function runAuditedStripeHandler(
 }
 
 async function processInvoiceForGrantNonBlocking(
-  ctx: any,
+  ctx: GenericActionCtx<any>,
   event: Stripe.Event,
   invoice: any,
 ): Promise<void> {
@@ -76,13 +76,13 @@ async function processInvoiceForGrantNonBlocking(
   };
 
   try {
-    await ctx.runAction(internalApi.credits.actions.processInvoiceForGrant, args);
+    await ctx.runAction(internal.credits.actions.processInvoiceForGrant, args);
   } catch (error) {
     const retryDelayMs = 60_000;
     const retryAt = Date.now() + retryDelayMs;
     const message = error instanceof Error ? error.message : String(error);
 
-    await ctx.runMutation(internalApi.subscriptions.internal.markStripeEventRetrying, {
+    await ctx.runMutation(internal.subscriptions.internal.markStripeEventRetrying, {
       stripeEventId: event.id,
       eventType: event.type,
       stripeObjectId: getStripeObjectId(event),
@@ -94,7 +94,7 @@ async function processInvoiceForGrantNonBlocking(
 
     await ctx.scheduler.runAfter(
       retryDelayMs,
-      internalApi.credits.actions.processInvoiceForGrant,
+      internal.credits.actions.processInvoiceForGrant,
       {
         ...args,
         retryCount: 1,
@@ -180,7 +180,7 @@ registerRoutes(http, components.stripe, {
           if (stripeCustomerId) {
             try {
               await ctx.runAction(
-                internalApi.credits.actions.reconcileRecentPaidInvoicesFromStripe,
+                internal.credits.actions.reconcileRecentPaidInvoicesFromStripe,
                 {
                   stripeCustomerId,
                   trigger: "checkout.session.completed",
@@ -223,7 +223,7 @@ registerRoutes(http, components.stripe, {
             ? paymentIntent.latest_charge
             : paymentIntent.latest_charge?.id;
 
-        await ctx.runMutation(internalApi.credits.internal.grantPurchasedCreditsFromPaymentIntent, {
+        await ctx.runMutation(internal.credits.internal.grantPurchasedCreditsFromPaymentIntent, {
           stripePaymentIntentId: paymentIntent.id,
           stripeCustomerId,
           stripeChargeId,
@@ -261,7 +261,7 @@ registerRoutes(http, components.stripe, {
           return;
         }
 
-        await ctx.runMutation(internalApi.credits.internal.reversePurchasedCreditsFromRefund, {
+        await ctx.runMutation(internal.credits.internal.reversePurchasedCreditsFromRefund, {
           stripeChargeId: charge.id,
           stripePaymentIntentId,
           amountRefunded: charge.amount_refunded,
@@ -321,7 +321,7 @@ registerRoutes(http, components.stripe, {
           return;
         }
 
-        await ctx.runMutation(internalApi.subscriptions.internal.handlePaymentFailed, {
+        await ctx.runMutation(internal.subscriptions.internal.handlePaymentFailed, {
           stripeSubscriptionId: failedSubscriptionId,
         });
       });
@@ -332,7 +332,7 @@ registerRoutes(http, components.stripe, {
         // Re-fetch from Stripe API instead of trusting event payload (SUB-02)
         const eventSub = event.data.object as any;
         const eventItem = eventSub.items?.data?.[0];
-        await ctx.runAction(internalApi.subscriptions.actions.handleSubscriptionWebhook, {
+        await ctx.runAction(internal.subscriptions.actions.handleSubscriptionWebhook, {
           stripeSubscriptionId: eventSub.id,
           eventId: event.id,
           eventStatus: eventSub.status,
@@ -346,7 +346,7 @@ registerRoutes(http, components.stripe, {
         // Re-fetch from Stripe API instead of trusting event payload (SUB-02)
         const eventSub = event.data.object as any;
         const eventItem = eventSub.items?.data?.[0];
-        await ctx.runAction(internalApi.subscriptions.actions.handleSubscriptionWebhook, {
+        await ctx.runAction(internal.subscriptions.actions.handleSubscriptionWebhook, {
           stripeSubscriptionId: eventSub.id,
           eventId: event.id,
           eventStatus: eventSub.status,
@@ -358,7 +358,7 @@ registerRoutes(http, components.stripe, {
     "customer.subscription.deleted": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const subscription = event.data.object as any;
-        await ctx.runMutation(internalApi.subscriptions.internal.handleSubscriptionCanceled, {
+        await ctx.runMutation(internal.subscriptions.internal.handleSubscriptionCanceled, {
           stripeSubscriptionId: subscription.id,
         });
       });
@@ -366,7 +366,7 @@ registerRoutes(http, components.stripe, {
   },
 
   onEvent: async (ctx, event) => {
-    await ctx.runMutation(internalApi.subscriptions.internal.recordStripeEventReceived, {
+    await ctx.runMutation(internal.subscriptions.internal.recordStripeEventReceived, {
       stripeEventId: event.id,
       eventType: event.type,
       stripeObjectId: getStripeObjectId(event),

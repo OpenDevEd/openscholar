@@ -34,7 +34,6 @@ import { requireSubscriptionsEnabled } from "../lib/featureFlags";
 import { createError, type ErrorCode } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 
-const internalApi = internal as any;
 const componentApi = components as any;
 
 let _stripe: Stripe | null = null;
@@ -144,7 +143,7 @@ async function syncLocalSubscriptionFromStripe(
     nowUnixSeconds: nowSec,
   });
 
-  await ctx.runMutation(internalApi.subscriptions.internal.syncSubscription, {
+  await ctx.runMutation(internal.subscriptions.internal.syncSubscription, {
     stripeSubscriptionId: subscription.id,
     stripeCustomerId,
     status: normalizeStripeSubscriptionStatus(subscription.status),
@@ -218,7 +217,7 @@ export const createCheckoutSession = action({
   handler: async (ctx, args): Promise<{ url: string | null }> => {
     requireSubscriptionsEnabled();
     const identity = await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     assertPlanPriceConfig();
 
@@ -235,7 +234,7 @@ export const createCheckoutSession = action({
     }
 
     const existingSubscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByUser,
+      internal.subscriptions.internal.getSubscriptionByUser,
       {
         userId: user._id,
       },
@@ -254,7 +253,7 @@ export const createCheckoutSession = action({
       name: identity.name,
     });
 
-    await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+    await ctx.runMutation(internal.subscriptions.internal.upsertBillingCustomerLink, {
       userId: user._id,
       stripeCustomerId: customer.customerId,
       linkedFrom: "checkout_session",
@@ -343,17 +342,17 @@ export const createPortalSession = action({
   }),
   handler: async (ctx): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const billingCustomer = await ctx.runQuery(
-      internalApi.subscriptions.internal.getBillingCustomerByUser,
+      internal.subscriptions.internal.getBillingCustomerByUser,
       {
         userId: user._id,
       },
     );
 
     const subscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByUser,
+      internal.subscriptions.internal.getSubscriptionByUser,
       {
         userId: user._id,
       },
@@ -371,7 +370,7 @@ export const createPortalSession = action({
     }
 
     if (stripeCustomerId) {
-      await ctx.runMutation(internalApi.subscriptions.internal.upsertBillingCustomerLink, {
+      await ctx.runMutation(internal.subscriptions.internal.upsertBillingCustomerLink, {
         userId: user._id,
         stripeCustomerId,
         linkedFrom: "portal_session",
@@ -443,10 +442,10 @@ export const getSubscriptionDetails = action({
     errorCode?: SubscriptionDetailsErrorCode;
   }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const subscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByUser,
+      internal.subscriptions.internal.getSubscriptionByUser,
       {
         userId: user._id,
       },
@@ -558,7 +557,7 @@ export const changePlan = action({
     creditsGranted: number;
   }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
       throw createError("BILLING_INVALID_PRICE_ID", "Invalid target price ID");
@@ -574,7 +573,7 @@ export const changePlan = action({
 
     try {
       const subscription = await ctx.runQuery(
-        internalApi.subscriptions.internal.getSubscriptionByUser,
+        internal.subscriptions.internal.getSubscriptionByUser,
         {
           userId: user._id,
         },
@@ -727,7 +726,7 @@ export const changePlan = action({
 
         try {
           const grantResult = await ctx.runMutation(
-            internalApi.credits.internal.grantUpgradeProRataCredits,
+            internal.credits.internal.grantUpgradeProRataCredits,
             {
               userId: user._id,
               fromPlan: currentPlan,
@@ -880,10 +879,22 @@ export const getUpgradePreview = action({
       currency: v.string(),
     })),
   }),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    prorationAmountCents: number;
+    currency: string;
+    immediateChargeCents: number;
+    currentPlan: "free" | "go" | "pro" | "enterprise";
+    targetPlan: "free" | "go" | "pro" | "enterprise";
+    proRataCredits: number;
+    currentPlanCreditsPerMonth: number;
+    targetPlanCreditsPerMonth: number;
+    remainingDays: number;
+    prorationDate: number;
+    lineItems: Array<{ description: string; amountCents: number; currency: string }>;
+  }> => {
     requireSubscriptionsEnabled();
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internalApi.users.internal.getCurrentUser);
+    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
       throw createError("BILLING_INVALID_PRICE_ID", "Invalid target price ID");
@@ -892,7 +903,7 @@ export const getUpgradePreview = action({
     const targetPlan = getPlanFromPriceId(args.targetPriceId);
 
     const subscription = await ctx.runQuery(
-      internalApi.subscriptions.internal.getSubscriptionByUser,
+      internal.subscriptions.internal.getSubscriptionByUser,
       { userId: user._id },
     );
 
@@ -929,7 +940,7 @@ export const getUpgradePreview = action({
     });
 
     // Extract line items from Stripe preview for display
-    const lineItems = (preview.lines?.data ?? []).map((line) => ({
+    const lineItems = (preview.lines?.data ?? []).map((line: { description?: string | null; amount: number; currency: string }) => ({
       description: line.description ?? "Line item",
       amountCents: line.amount,
       currency: line.currency,
