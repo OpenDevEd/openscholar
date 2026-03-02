@@ -1,207 +1,185 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-27
+**Analysis Date:** 2026-03-02
 
 ## Tech Debt
 
-**Widespread `any` typing in Convex backend:**
-- Issue: Core Convex mutation/query context typed as `ctx: any` throughout `convex/extraction/mutations.ts`, `convex/extraction/queries.ts`, and `convex/extraction/workpoolActions.ts`. Query builder callbacks also typed as `(q: any)` — this bypasses the Convex type system entirely for database queries.
-- Files: `convex/extraction/mutations.ts` (lines 29, 41, 47-68), `convex/extraction/queries.ts` (lines 34, 52, 105-162), `convex/extraction/workpoolActions.ts` (lines 468, 734-736)
-- Impact: Autocompletion fails, schema mismatches can go undetected at compile time, index names may be wrong silently
-- Fix approach: Replace `ctx: any` with proper Convex `MutationCtx`/`QueryCtx` types; replace `(q: any)` with typed index callback parameters
+**Deprecated `apiKey` field on `zoteroConnections` still in production schema:**
+- Issue: `zoteroConnections.apiKey` is marked `// Deprecated: use encryptedApiKey` but remains in the schema. Pre-migration rows with plaintext keys may still exist. Code in `convex/zotero/actions.ts` (line 42), `convex/zotero/internal.ts`, and `convex/extraction/workpoolActions.ts` (line 760) has dual-read fallback paths, which must be maintained until a data migration is run to encrypt all plaintext keys.
+- Files: `convex/schema.ts` (line 175), `convex/zotero/actions.ts`, `convex/extraction/workpoolActions.ts`
+- Impact: Plaintext Zotero API keys may exist in the database for users who authenticated before Phase 39. A leak of the Convex database would expose those keys.
+- Fix approach: Run `convex/zotero/internal.ts:listAllConnections` to enumerate unmigrated rows, encrypt them in a one-time migration action, then remove the `apiKey` fallback field from the schema and all fallback code paths.
 
-**`internal as any` cast repeated across billing/subscription modules:**
-- Issue: `const internalApi = internal as any` used in `convex/http.ts`, `convex/crons.ts`, `convex/credits/internal.ts`, `convex/credits/actions.ts`, `convex/subscriptions/actions.ts`, `convex/subscriptions/internal.ts`, `convex/credits/queries.ts`. Same pattern for `components as any`.
-- Files: `convex/http.ts:12`, `convex/crons.ts:5`, `convex/credits/internal.ts:26-27`, `convex/subscriptions/actions.ts:35-36`
-- Impact: Calling a renamed internal function causes a runtime error rather than a compile-time error; no IDE support when navigating function calls
-- Fix approach: Use properly typed `internal` and `components` references; regenerate types if they're incomplete
+**`placeholder.email` User-Agent in OpenAlex API calls:**
+- Issue: The `fetchPapersFromHistory` internal action sends `User-Agent: OpenAlex-Count/1.0 (mailto:admin@example.com)` as the polite pool identifier. The email is a placeholder, not a real contact address. OpenAlex may deprioritize requests if the polite pool email is undeliverable.
+- Files: `convex/extraction/actions.ts` (line 138)
+- Impact: Potential rate limiting or request deprioritization by OpenAlex.
+- Fix approach: Replace with a real operational email address.
 
-**`patchData: any` used in paper completion mutation:**
-- Issue: `const patchData: any = {}` pattern at `convex/extraction/mutations.ts:1887` when patching completed paper records.
-- Files: `convex/extraction/mutations.ts:1887`
-- Impact: Allows writing arbitrary fields to the database document, bypassing schema validation
-- Fix approach: Type the patch object explicitly using `Partial<Doc<"extractionPapers">>`
+**Extraction `runDiff` orphan risk on baseline job deletion:**
+- Issue: `deleteExtractionInternal` only deletes `extractionRunDiffs` where `jobId == args.jobId` (Step 8). Diffs where `baselineJobId == args.jobId` are explicitly not deleted (see comment at line 1087). This means deleting a baseline job leaves dangling diff records referencing a non-existent job.
+- Files: `convex/extraction/mutations.ts` (lines 1086-1096)
+- Impact: Orphaned `extractionRunDiffs` rows in the database; diff queries against those rows will find `null` for the baseline job.
+- Fix approach: When deleting a job, also delete diffs where `baselineJobId == args.jobId`, or add a no_access guard in the diff query.
 
-**Version-gating by creation timestamp (`V32_CUTOVER_AT`):**
-- Issue: Extraction jobs created before an env-var timestamp are rejected with "Create a new extraction job for V3.2." This is a migration cut-off handled by a runtime check, not a schema version.
-- Files: `convex/extraction/workpoolActions.ts:111`, `convex/extraction/workpoolActions.ts:819-984`
-- Impact: Users with old jobs can't re-run extractions on them; the cutover env var must be configured correctly or everything silently passes (`isV32EnabledForJob` returns `true` when `V32_CUTOVER_AT === 0`)
-- Fix approach: Add a schema field `extractionVersion` to jobs, migrate old rows, remove time-based gating
+**Extraction `cancelExtraction` does not stop the running workflow:**
+- Issue: `cancelExtraction` sets `status: "cancelled"` in the DB but never calls `workflow.cancel()` on the associated `workflowId`. The Convex workflow and workpool continue to process papers. Paper records will update to `completed` after the job shows `cancelled`.
+- Files: `convex/extraction/mutations.ts` (lines 229-256)
+- Impact: Credits are still deducted for papers processed after cancel, and the job status shows `cancelled` while work continues. Users cannot truly stop an in-progress job.
+- Fix approach: Read `job.workflowId`, call `workflow.cancel(ctx, job.workflowId)`, and drain pending workpool items.
 
-**Backfill mutations that do full table scans:**
-- Issue: `backfillIsIndexed` in `convex/extraction/mutations.ts:1775` calls `ctx.db.query("extractionPapers").collect()` without any index, loading the entire table into memory to then filter in JS.
-- Files: `convex/extraction/mutations.ts:1770-1791`
-- Impact: Will fail or be slow as the papers table grows; Convex has hard limits on query read bandwidth
-- Fix approach: Add a database index on the missing field or rewrite backfill to use a scheduled job with cursor-based pagination
+**`v.any()` pervasive in Convex extraction query return types:**
+- Issue: Multiple public queries in `convex/extraction/queries.ts` use `v.any()` for fields like `job`, `questions`, `papers`, `summary`, and `diagnostics` in their `returns` validators. This removes Convex runtime type enforcement on returned data.
+- Files: `convex/extraction/queries.ts` (lines 261-263, 328-329, 411-413, 533-536, 668-690, 779-785, 892-893)
+- Impact: Type mismatches between the server and client are not caught at runtime. Clients receive unvalidated data. TypeScript types on the client side are inaccurate (`any`).
+- Fix approach: Define typed Convex validators matching the actual return shapes. Extract shared validator objects to reduce duplication.
 
-**Deletion cascade does not clean up `extractionEvidenceUnits`:**
-- Issue: `deleteExtractionInternal` in `convex/extraction/mutations.ts:968-1009` only deletes `extractionResults`, `extractionPapers`, and `extractionQuestions` — `extractionEvidenceUnits` are orphaned when a job is deleted.
-- Files: `convex/extraction/mutations.ts:968-1009`
-- Impact: Orphaned `extractionEvidenceUnits` rows accumulate in the database indefinitely
-- Fix approach: Add a deletion step for `extractionEvidenceUnits` (by paper, batched) before deleting papers
+**`cleanupDeletedUsers` does not delete extraction data for deleted users:**
+- Issue: `cleanupDeletedUsers` removes API keys but explicitly keeps credits and subscriptions for audit. Extraction jobs, papers, results, and Zotero connections for deleted users are never cleaned up.
+- Files: `convex/maintenance/mutations.ts` (lines 11-55)
+- Impact: `extractionJobs`, `extractionPapers`, `extractionResults`, `extractionEvidenceUnits`, and `zoteroConnections` persist indefinitely after user deletion. Storage costs accumulate; encrypted Zotero keys remain in the DB.
+- Fix approach: Extend `cleanupDeletedUsers` to schedule cascade deletion of extraction data (reusing `deleteExtractionInternal`) and `zoteroConnections` for each deleted user.
 
-**Stripe initialized with `"dummy"` fallback key:**
-- Issue: Both `convex/subscriptions/actions.ts:38` and `convex/credits/actions.ts:31` instantiate Stripe with `process.env.STRIPE_SECRET_KEY || "dummy"`. The `"dummy"` fallback silently passes Stripe initialization.
-- Files: `convex/subscriptions/actions.ts:38`, `convex/credits/actions.ts:31`
-- Impact: If `STRIPE_SECRET_KEY` is misconfigured or missing, all Stripe calls will fail at runtime rather than at startup. No alerting.
-- Fix approach: Remove the `"dummy"` fallback; validate the env var at module load time and throw early
+**Zotero OAuth token table has no cron cleanup:**
+- Issue: `zoteroOAuthTokens` records expire after 10 minutes (enforced by `getRequestToken`) but expired tokens are only cleaned up on-read when a user completes or abandons an OAuth flow mid-step. No cron sweeps the table.
+- Files: `convex/zotero/mutations.ts` (lines 42-72), `convex/crons.ts`
+- Impact: Abandoned OAuth sessions leave expired rows accumulating in the table indefinitely.
+- Fix approach: Add a cron job that deletes `zoteroOAuthTokens` where `expiresAt < Date.now()`.
 
-**Rate limiting defined but not enforced:**
-- Issue: `convex/lib/rateLimit.ts` documents rate limit configs (API key saves, checkout sessions, user sync) but explicitly states "rate limiting is handled at the application layer." The `getRateLimitConfig` function only returns configuration values — no enforcement occurs server-side.
-- Files: `convex/lib/rateLimit.ts`
-- Impact: Endpoints like API key save and checkout session creation have no server-side rate limiting; vulnerable to abuse
-- Fix approach: Implement a `rateLimits` table (as described in the file's own comments) and enforce limits in the relevant mutations/actions
+**`migrateSearchHistoryState` in `lib/store.ts` uses `any` throughout:**
+- Issue: `lib/store.ts` has 7 sequential store migration steps (versions 0-7), all typed as `any` for both the state and item iterators. The function is exported and tested, but the typing makes it impossible to catch shape errors at compile time.
+- Files: `lib/store.ts` (lines 178-282)
+- Impact: A future migration bug would silently corrupt persisted state for users without TypeScript catching it during development.
+- Fix approach: Define typed migration input/output shapes for each version. At minimum, validate with Zod on read.
+
+**`stale: any` type casts in `convex/extraction/queries.ts` `attachReviewMetadata`:**
+- Issue: `attachReviewMetadata` uses `Map<string, any>` (line 113) and `review: any` (line 118) even though it operates on `Doc<"extractionResultReviews">` which has a known schema.
+- Files: `convex/extraction/queries.ts` (lines 104-129)
+- Impact: Type errors in review field access are silently ignored.
+- Fix approach: Replace `any` with `Doc<"extractionResultReviews">`.
 
 ## Known Bugs
 
-**Billing page renders debug `console.log` on every render:**
-- Symptoms: `console.log("[BILLING] Render #", renderId.current, {...})` fires on every render cycle in the billing settings page, including state that could include plan details
-- Files: `app/settings/billing/page.tsx:282-290`
-- Trigger: Any state change on the billing page
-- Workaround: None; it fires silently in production
+**`getJobDetails` caps displayed papers at 100:**
+- Symptoms: The `getJobDetails` query uses `.take(100)` for processable papers (line 294). Jobs with more than 100 papers show an incomplete paper list in the job detail view.
+- Files: `convex/extraction/queries.ts` (line 294)
+- Trigger: Create an extraction job with more than 100 processable papers.
+- Workaround: Use `getJobResultsPaginated` or `getJobResults` for full lists, but those return all data at once.
 
-**OpenAlex server action logs all query parameters to stdout in production:**
-- Symptoms: `console.log("query", query)`, `console.log('OpenAlex SDK call with params:', ...)`, `console.log('OpenAlex SDK response:', ...)`, and `console.log("searchField", ...)` fire in the server action
-- Files: `app/actions/openalex.ts:13,18,23,35`
-- Trigger: Any search operation
-- Workaround: None; clutters server logs with full query parameters on every search
-
-**`debug_papers.ts` accesses a field with `@ts-ignore`:**
-- Symptoms: `// @ts-ignore` suppresses a type error on `p.pdfUsed` which likely does not exist in the current schema
-- Files: `convex/debug_papers.ts:20-21`
-- Trigger: Calling the `recent` internal query
-- Workaround: The field value will be `undefined`
+**`extractionRunDiffs.changes` silently truncates at 1,000 entries:**
+- Symptoms: When generating a run diff, changes are sliced to the first 1,000 rows before insertion (line 956). Jobs with more than 1,000 changed results will have incomplete diffs with no indication of truncation.
+- Files: `convex/extraction/mutations.ts` (line 956)
+- Trigger: Compare two large extraction jobs with many question/paper combinations.
+- Workaround: None. The stored diff is silently incomplete.
 
 ## Security Considerations
 
-**Zotero API key stored in plaintext in the database:**
-- Risk: The Zotero OAuth API key is stored as a plain string in the `zoteroConnections` table (schema: `apiKey: v.string()`). Unlike provider API keys in `apiKeys` table, no encryption is applied.
-- Files: `convex/zotero/mutations.ts:97-103`, `convex/schema.ts:167-175`
-- Current mitigation: The table is only accessible server-side via internal queries; Convex's per-user access patterns prevent cross-user reads in practice
-- Recommendations: Encrypt the Zotero API key using the same `ENCRYPTION_KEY`/AES approach used for provider API keys in `convex/apiKeys/actions.ts`
+**NEXT_PUBLIC feature flags used as server-side guards in Convex:**
+- Risk: Feature flags like `NEXT_PUBLIC_EXTRACTION_ENABLED`, `NEXT_PUBLIC_CREDITS_ENABLED`, `NEXT_PUBLIC_SUBSCRIPTIONS_ENABLED`, and `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` are read via `process.env` inside Convex functions to gate access. The `NEXT_PUBLIC_` prefix implies these are intended as client-visible variables, but they are used as security gates in server-side code.
+- Files: `convex/extraction/guard.ts`, `convex/lib/featureFlags.ts`, `convex/extraction/content.ts`
+- Current mitigation: Convex environment variables are set separately from Next.js; the naming convention does not automatically make them client-visible in Convex. The pattern works but is confusing.
+- Recommendations: Rename to non-`NEXT_PUBLIC_` names in Convex (e.g. `EXTRACTION_ENABLED`) to clarify server-only intent, or use a shared config file that documents dual usage. Ensure Convex deployment environment never exposes these as client variables.
 
-**Debug and test functions shipped to production backend:**
-- Risk: 14 debug/test files exist in `convex/extraction/` and are exported through `convex/extraction/index.ts`. They are guarded by `requirePublicDebugEnabled()` (checks `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var) but some internal functions (`test_runner.ts`, `test_automation.ts`, `test_helpers.ts`) bypass the debug gate entirely and are accessible as internal Convex functions.
-- Files: `convex/extraction/debug.ts`, `convex/extraction/debug_errors.ts`, `convex/extraction/debug_papers.ts`, `convex/extraction/debug_pdfjs_alignment.ts`, `convex/extraction/testActions.ts`, `convex/extraction/testWorkflow.ts`, `convex/extraction/test_automation.ts`, `convex/extraction/test_runner.ts`, `convex/extraction/create_test_job.ts`, `convex/extraction/index.ts:8,97,110-121`
-- Current mitigation: Public-facing debug functions require `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true`. Internal debug functions are not callable from clients.
-- Recommendations: Move test/debug code out of the production Convex deployment into a separate test deployment; or wrap all test functions in the debug gate; audit that no internal test function can be triggered by a user-facing surface
+**Debug endpoint gated only by environment variable:**
+- Risk: `convex/extraction/debug.ts:diagnoseJob` and `convex/extraction/debug_errors.ts:getFailedPapersDebug` are public queries gated by `ENABLE_PUBLIC_DEBUG_FUNCTIONS === "true"`. Any authenticated user can call them if the flag is enabled.
+- Files: `convex/extraction/debug.ts`, `convex/extraction/debug_errors.ts`, `convex/lib/debug_gate.ts`
+- Current mitigation: User ownership check (`job.userId !== user._id`) is in place.
+- Recommendations: Confirm `ENABLE_PUBLIC_DEBUG_FUNCTIONS` is not set in production. Document that these functions are intended for staging only.
 
-**`NEXT_PUBLIC_APP_URL` fallback chain could silently redirect to `localhost:3000` in production:**
-- Risk: Both `convex/http.ts:13-16` and `convex/subscriptions/actions.ts:42-45` use `process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL || "http://localhost:3000"`. Missing configuration leads to Stripe redirect and Zotero OAuth redirect going to localhost.
-- Files: `convex/http.ts:13-16`, `convex/subscriptions/actions.ts:42-45`
-- Current mitigation: Likely configured in production; failure would be visible
-- Recommendations: Validate these env vars at startup; throw explicitly if missing in non-development environments
+**`/app/test-sidebar/page.tsx` is a test scaffold accessible in production:**
+- Risk: A test/debugging page at route `/test-sidebar` is part of the production build and is publicly accessible (no auth check, not excluded by middleware).
+- Files: `app/test-sidebar/page.tsx`
+- Current mitigation: No sensitive data is exposed; it only renders placeholder content.
+- Recommendations: Remove or add to the blocked routes list. Test pages should not ship to production.
 
 ## Performance Bottlenecks
 
-**N+1 database queries in `loadJobDataForReporting`:**
-- Problem: For each paper in a job, two sequential queries are made (`extractionResults` and `extractionResultReviews`), then reviews are iterated in a loop. For a 100-paper job, this is 200+ sequential DB reads inside a single Convex transaction.
-- Files: `convex/extraction/mutations.ts:40-77`
-- Cause: Loop-per-paper pattern with two queries each, no batching
-- Improvement path: Fetch all results and all reviews for the job in two queries upfront (by jobId index if added, or by collecting all for each paper in parallel with `Promise.all`)
+**`loadJobPapersAndResults` issues N+1 queries for every paper in a job:**
+- Problem: `convex/extraction/queries.ts:loadJobPapersAndResults` (line 145) first collects all papers for a job, then for each paper issues two sequential queries (results + reviews). This is used by `getJobInsights`, `getJobResults`, and `getReviewQueue`, which means large jobs trigger O(N) Convex DB reads per query.
+- Files: `convex/extraction/queries.ts` (lines 145-168)
+- Cause: Convex does not support JOINs; the only alternative is Promise.all fan-out, which is already used (line 158). However, `attachReviewMetadata` then issues another `collect()` inside the fan-out, making it O(2N).
+- Improvement path: Consider pre-fetching all reviews for a job in a single indexed query (index by `jobId`) and joining in memory, eliminating the per-paper review query.
 
-**N+1 queries in `loadJobPapersAndResults` (queries.ts):**
-- Problem: Same pattern in `convex/extraction/queries.ts:145-170`: for each paper, results are fetched in a sequential `for` loop.
-- Files: `convex/extraction/queries.ts:145-170`
-- Cause: Sequential `for...of` loop with `await ctx.db.query(...)` inside
-- Improvement path: Restructure to fetch all papers' results in one pass; Convex's document model allows indexed queries by `paperId`
+**`getJobResults` loads all papers and all results without pagination:**
+- Problem: `getJobResults` (line 406) calls `.collect()` on both `extractionPapers` and `extractionResults` with no size guard. Large jobs (200 papers × N questions) return all data in one query response.
+- Files: `convex/extraction/queries.ts` (lines 406-462)
+- Cause: Used for CSV export, which legitimately needs all data. No size limit is enforced.
+- Improvement path: Add a server-side export mutation that streams/chunks data, or use `getJobResultsPaginated` for UI views and a dedicated export endpoint.
 
-**Sequential individual inserts in `replacePaperEvidenceUnits`:**
-- Problem: Deletes existing units one-by-one, then inserts new units one-by-one — for a paper with 200 evidence chunks, this is 400 sequential DB writes in a single Convex mutation.
-- Files: `convex/extraction/mutations.ts:1930-1953`
-- Cause: `for...of` loops with `await ctx.db.delete/insert` inside
-- Improvement path: Acceptable in Convex's mutation model (no network round-trips between DB operations in a transaction), but may hit Convex write limits for large PDF documents
-
-**Unbounded `.collect()` calls on large tables:**
-- Problem: 90+ `.collect()` calls across the Convex backend. The most risky is in `convex/extraction/mutations.ts:1775-1777` (full `extractionPapers` table scan) and `convex/maintenance/internal.ts:70` (full `subscriptions` scan for active status check).
-- Files: `convex/extraction/mutations.ts:1775`, `convex/maintenance/internal.ts:70`, `convex/extraction/queries.ts` (22+ occurrences)
-- Cause: Missing pagination; queries rely on Convex's built-in limits as the only bound
-- Improvement path: Apply `.take(N)` limits or use Convex's `paginate()` for large queries; add compound indexes where full scans are avoided by filtering
+**`convex/extraction/mutations.ts` is 2,026 lines:**
+- Problem: The file contains all mutation logic for extraction jobs, including cascade deletes (9-step batched re-scheduler), insight reporting, review management, and workflow helpers. It is the largest single file in the backend at 2,026 lines.
+- Files: `convex/extraction/mutations.ts`
+- Cause: Organic growth of extraction features into a single mutations file.
+- Improvement path: Split into domain-specific files: `mutations/jobs.ts`, `mutations/reviews.ts`, `mutations/cascade.ts`, `mutations/reporting.ts`.
 
 ## Fragile Areas
 
-**Extraction delete cascade is missing evidence units and may recurse infinitely:**
-- Files: `convex/extraction/mutations.ts:968-1009`
-- Why fragile: The cascade calls `ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, {...})` recursively to continue after each batch. If a paper has exactly `BATCH_SIZE` results (100), the recursive re-schedule returns before checking if it's actually finished. The loop checks for `results.length > 0` after a `take(100)`, but re-fetches ALL papers for each iteration — O(papers²) complexity for large jobs.
-- Safe modification: Replace recursion with a scheduled job using a cursor; verify evidence units are included in deletion steps
-- Test coverage: No unit test covers the deletion cascade
+**Cascade delete `deleteExtractionInternal` uses self-scheduling recursion:**
+- Files: `convex/extraction/mutations.ts` (lines 984-1103)
+- Why fragile: The 9-step cascade works by scheduling itself (`ctx.scheduler.runAfter(0, ...)`) after each batch. If any batch fails partway through (e.g. a Convex transaction limit), the job remains in a partially deleted state with no retry tracking or completion signal. The job record is deleted last (Step 9), so partial failures leave orphaned child records but no parent.
+- Safe modification: Always test changes against a job with 200+ papers. Add an explicit "deleting" status on the job record so the UI can show progress, and add a completion log.
+- Test coverage: `convex/extraction/cascade-delete.test.ts` exists and covers the happy path.
 
-**`useAIConfigStore` persists API keys in localStorage:**
-- Files: `lib/store.ts:780-844`
-- Why fragile: The Zustand store persists `apiKey` and `providerApiKeys` to `localStorage` under the key `'ai-config-storage'`. User-entered plaintext API keys (for BYOK mode) are stored in localStorage. The store has 5 schema versions with migration logic that must be maintained as fields change.
-- Safe modification: Verify migration is correct when adding/removing keys from the persisted state; test that old localStorage shapes migrate cleanly
-- Test coverage: No test covers the Zustand store migration paths
+**Stripe singleton pattern with module-level cache:**
+- Files: `convex/subscriptions/actions.ts` (lines 37-49), `convex/maintenance/internal.ts` (lines 11-23)
+- Why fragile: The Stripe client is cached in a module-level `_stripe` variable. In Convex's serverless model, cold starts re-initialise modules, but warm instances re-use the cached instance. This is generally fine but means the Stripe API version is set at construction time and cannot be changed without a full redeploy. The pattern is duplicated in two files.
+- Safe modification: Consolidate into `convex/stripe.ts` (which already exists) and import from there rather than creating local instances.
 
-**Stripe initialized at module load with `"dummy"` key — all billing code silently broken when env missing:**
-- Files: `convex/subscriptions/actions.ts`, `convex/credits/actions.ts`
-- Why fragile: If `STRIPE_SECRET_KEY` is not set, Stripe is instantiated with `"dummy"` and every Stripe API call will return an authentication error at runtime. No startup check.
-- Safe modification: Always validate `process.env.STRIPE_SECRET_KEY` before instantiating Stripe
-- Test coverage: Live billing tests validate real Stripe integration, but no unit test covers missing key behavior
-
-**`subscriptions` table can contain multiple rows per user:**
-- Files: `convex/schema.ts:71-103`, `convex/subscriptions/lib/selectCanonicalSubscription.ts`
-- Why fragile: The `subscriptions` table only has `by_user` index but no uniqueness constraint. `selectCanonicalSubscription` logic exists to pick the right one, but multiple active subscriptions per user can cause credit grant issues if `selectCanonicalSubscription` selects incorrectly.
-- Safe modification: Before changing subscription sync logic, verify `selectCanonicalSubscription` handles all edge cases
-- Test coverage: Partially covered in `tests/subscription-entitlements.test.ts`
+**Feature flag checks are scattered across 5+ files with no central registry:**
+- Files: `convex/extraction/guard.ts`, `convex/lib/featureFlags.ts`, `convex/extraction/content.ts`, `convex/credits/queries.ts` (line 133), `lib/extraction/feature-flags.ts`, `lib/subscriptions/feature-flags.ts`, `lib/credits/feature-flags.ts`
+- Why fragile: Feature flag values are read directly from `process.env` in 7+ separate files without a single source of truth. Adding a new flag, changing a default, or testing with different flag states requires modifying multiple files.
+- Safe modification: Add tests for each new flag. Centralise all feature flag reads into a single registry module per runtime (one for Convex, one for Next.js).
 
 ## Scaling Limits
 
-**Convex query complexity limits for large extraction jobs:**
-- Current capacity: Extraction queries load all papers + all results for a job in a single query handler. Convex limits each query to reading up to 16MB of data and 8192 documents.
-- Limit: A job with ~500 papers and ~5 questions each = ~2500 result documents. Each read in `loadJobPapersAndResults` loads papers + results sequentially, approaching these limits.
-- Scaling path: Paginate `getJobDashboard` and `getJobMatrix` queries; return partial data with a cursor
+**Extraction jobs are capped at 200 papers per source history entry:**
+- Current capacity: 200 papers per `fetchPapersFromHistory` call (set by `per-page=200`).
+- Limit: OpenAlex's maximum page size is 200 results per call. Pagination across multiple pages is not implemented.
+- Scaling path: Implement multi-page pagination in `fetchPapersFromHistory` with a configurable upper bound, or surface the 200-paper cap in the UI with a clear message.
 
-**Search history stored fully in Zustand/localStorage:**
-- Current capacity: All search results (papers, responses, screening data) are stored in `lib/store.ts` in a single Zustand store persisted to localStorage.
-- Limit: localStorage has a 5-10MB browser limit; heavy users with many saved searches and screening responses will hit this limit silently. No migration/pruning logic exists.
-- Scaling path: Move search history to Convex backend storage with pagination
+**`checkSubscriptionStatus` cron iterates all active subscriptions serially:**
+- Current capacity: Works well for hundreds of subscriptions.
+- Limit: `checkSubscriptionStatus` in `convex/maintenance/internal.ts` loops over all active subscriptions and makes one Stripe API call per subscription. With thousands of subscribers the hourly cron will exceed Convex action timeouts (10 minutes).
+- Scaling path: Paginate using a cursor-based approach or partition subscriptions by ID range.
 
 ## Dependencies at Risk
 
-**`@sickrin/openalex-sdk` — unknown third-party SDK:**
-- Risk: Used as the sole client for OpenAlex API calls (`lib/openalex.ts`, `lib/utils.ts:3`). Package is from an unknown publisher (`@sickrin`) and may not be actively maintained or security-audited.
-- Impact: Breaking changes or abandonment would require rewriting all OpenAlex API calls
-- Migration plan: Evaluate direct `fetch()` calls to OpenAlex REST API as a more stable alternative
+**`apiVersion: "2026-01-28.clover"` hardcoded Stripe API version:**
+- Risk: The Stripe API version is pinned to a specific dated release in two files. When Stripe deprecates this version, all billing operations will fail simultaneously.
+- Files: `convex/subscriptions/actions.ts` (line 46), `convex/maintenance/internal.ts` (line 20)
+- Impact: Billing operations (subscriptions, upgrades, refunds) break when the API version is sunset.
+- Migration plan: Centralise Stripe client construction in `convex/stripe.ts` and update the version in one place on each Stripe release cycle.
 
 ## Missing Critical Features
 
-**No server-side rate limiting for extraction job creation:**
-- Problem: `startExtraction` mutation at `convex/extraction/mutations.ts:100` checks only for Pro plan entitlement but has no rate limit on how many jobs a user can start per hour/day. A Pro user could trigger many concurrent large extractions.
-- Blocks: Controlling AI inference costs and Convex function compute costs per user
-- Recommendation: Add a job count check per user within a time window before allowing new job creation
+**No cleanup of RAG index on paper deletion:**
+- Problem: When `deleteExtractionInternal` deletes papers, it removes `extractionEvidenceUnits` rows and calls `ctx.storage.delete()` for PDFs, but does not clean up entries in the Convex RAG component (`components.rag`). The RAG vector index will retain embeddings for deleted papers.
+- Blocks: Correct similarity search for future extraction jobs (stale vectors may still match). Storage cost increases over time.
 
-**No cleanup of orphaned PDF files in Convex storage:**
-- Problem: `cleanupOldPdfFiles` in `convex/extraction/mutations.ts:1257` only cleans up PDFs for `completed` papers older than a threshold. Failed papers (`download_failed`, `failed`) are never cleaned. Deleted jobs' storage is also not cleaned.
-- Files: `convex/extraction/mutations.ts:1250-1281`
-- Blocks: Storage cost management over time
-- Recommendation: Extend cleanup to include failed papers and invoke cleanup in the delete cascade
+**No webhook to notify on extraction job completion:**
+- Problem: Users have no way to receive a notification when a long-running extraction job finishes. The UI relies on polling via Convex reactive queries.
+- Blocks: Background/offline usage pattern; integrations that need job completion events.
 
 ## Test Coverage Gaps
 
-**Extraction cascade delete untested:**
-- What's not tested: The `deleteExtractionInternal` recursive cascade and its handling of evidence units, reviews, and PDF storage cleanup
-- Files: `convex/extraction/mutations.ts:968-1009`
-- Risk: Regression in deletion logic goes unnoticed; orphaned records accumulate
+**Extraction workflow cancellation is untested:**
+- What's not tested: The fact that `cancelExtraction` sets DB status but does NOT stop the underlying Convex workflow or workpool. No test verifies whether in-flight workpool actions continue after cancellation.
+- Files: `convex/extraction/mutations.ts` (lines 229-256)
+- Risk: Credits continue to be charged and paper statuses continue to update after a user-initiated cancel.
 - Priority: High
 
-**Zustand store migration paths untested:**
-- What's not tested: The 5-version migration chain in `useAIConfigStore` and other persisted stores
-- Files: `lib/store.ts:814-841`
-- Risk: Upgrading store version silently drops or corrupts user preferences persisted in localStorage
+**RAG vector cleanup on job deletion is untested:**
+- What's not tested: No test verifies that deleting an extraction job removes or leaves its RAG index entries.
+- Files: `convex/extraction/mutations.ts` (lines 984-1103)
+- Risk: Silent RAG index leak for every deleted job.
 - Priority: Medium
 
-**Extraction insight aggregation edge cases:**
-- What's not tested: Behavior when all papers have `null` answers, when `citationStatus` is missing, or when `reviewState` is an unexpected value
-- Files: `lib/extraction/insights.ts`, `convex/extraction/queries.ts:570-640`
-- Risk: Aggregate stats (grounded rate, confidence) show misleading numbers with sparse or null data
+**`loadJobPapersAndResults` N+1 query behavior at scale is untested:**
+- What's not tested: No performance/load test for `getJobInsights` or `getJobResults` on jobs with 200 papers.
+- Files: `convex/extraction/queries.ts` (lines 145-168)
+- Risk: Query timeouts in production for large jobs.
 - Priority: Medium
-
-**No E2E test coverage for extraction feature:**
-- What's not tested: The end-to-end extraction workflow (job creation → PDF download → indexing → AI extraction → results display)
-- Files: `e2e/` directory only contains `auth.spec.ts`
-- Risk: Changes to the workflow, workpool actions, or UI can break the feature entirely
-- Priority: High
 
 ---
 
-*Concerns audit: 2026-02-27*
+*Concerns audit: 2026-03-02*
