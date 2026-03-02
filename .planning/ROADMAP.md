@@ -238,7 +238,7 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 32. Search Page Sidebar Refactor | v2.2 | 1/1 | Complete | 2026-03-01 |
 | 33. Library Page UI Overhaul | v2.2 | 2/2 | Complete | 2026-03-01 |
 | 34. Display Polish and Validation | v2.2 | 2/2 | Complete | 2026-03-01 |
-| 35. Quick Wins & Debug Cleanup | v2.3 | 0/TBD | Not started | - |
+| 35. Quick Wins & Debug Cleanup | 1/3 | In Progress|  | - |
 | 36. Type Safety Sweep | v2.3 | 0/TBD | Not started | - |
 | 37. Schema Additions | v2.3 | 0/TBD | Not started | - |
 | 38. Deletion Cascade & Storage Cleanup | v2.3 | 0/TBD | Not started | - |

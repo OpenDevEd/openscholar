@@ -9,9 +9,9 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 
 ### Bug Fixes
 
-- [ ] **BUG-01**: Debug console.log removed from billing settings page
-- [ ] **BUG-02**: Debug console.log removed from OpenAlex server action
-- [ ] **BUG-03**: @ts-ignore removed from debug_papers.ts with proper typing or field removal
+- [x] **BUG-01**: Debug console.log removed from billing settings page
+- [x] **BUG-02**: Debug console.log removed from OpenAlex server action
+- [x] **BUG-03**: @ts-ignore removed from debug_papers.ts with proper typing or field removal
 
 ### Type Safety
 
@@ -87,9 +87,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | Phase 35 | Pending |
-| BUG-02 | Phase 35 | Pending |
-| BUG-03 | Phase 35 | Pending |
+| BUG-01 | Phase 35 | Complete |
+| BUG-02 | Phase 35 | Complete |
+| BUG-03 | Phase 35 | Complete |
 | TYPE-01 | Phase 36 | Pending |
 | TYPE-02 | Phase 36 | Pending |
 | TYPE-03 | Phase 36 | Pending |
