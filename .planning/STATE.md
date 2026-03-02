@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
-status: unknown
-last_updated: "2026-03-02T09:54:45.519Z"
+status: complete
+last_updated: "2026-03-02T10:33:33Z"
 progress:
   total_phases: 8
-  completed_phases: 7
-  total_plans: 12
-  completed_plans: 12
+  completed_phases: 8
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 41 (next phase in v2.3)
+**Current focus:** Phase 42 complete -- v2.3 milestone complete
 
 ## Current Position
 
-Phase: 41 of 42 (Rate Limiting Enforcement) -- 7 of 8 in v2.3 -- COMPLETE
-Plan: 1 of 1 complete (41-01)
-Status: Phase 41 complete, ready for next phase
-Last activity: 2026-03-02 -- Completed 41-01 (rate limiting enforcement)
+Phase: 42 of 42 (Test Coverage) -- 8 of 8 in v2.3 -- COMPLETE
+Plan: 2 of 2 complete (42-01, 42-02)
+Status: Phase 42 complete, v2.3 milestone complete
+Last activity: 2026-03-02 -- Completed 42-02 (store migrations + insight edge cases)
 
-Progress: [##########] 100% (1/1 plans in phase)
+Progress: [##########] 100% (2/2 plans in phase)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 70 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 7+)
+- Total plans completed: 71 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 8+)
 - Total milestones shipped: 6
 
 **By Milestone:**
@@ -63,6 +63,8 @@ Progress: [##########] 100% (1/1 plans in phase)
 | 40 | 01 | 1min | 2 | 2 |
 | 40 | 02 | 2min | 2 | 3 |
 | 41 | 01 | 2min | 2 | 5 |
+| 42 | 01 | 2min | 1 | 1 |
+| 42 | 02 | 3min | 2 | 3 |
 
 ## Accumulated Context
 
@@ -81,6 +83,8 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 40]: Pure scheduling change for N+1 parallelization: only for-loop open/close lines modified, preserving all logic and return types
 - [Phase 40]: .take(N) safety caps with CLEANUP_BATCH constant for write-loop mutations; inline .take() for read-only cron queries; CAP constant for shared limits
 - [Phase 41]: Shared start-extraction rate limit across 3 extraction mutations; shared checkout-session limit across subscription and credit top-up; auth-first rate limit ordering pattern
+- [Phase 42]: vi.useFakeTimers() must be called BEFORE scheduler-triggering mutations; extractionPapers has no createdAt field
+- [Phase 42]: Pure extraction of inline Zustand persist migrate function as named export for testability (zero logic change)
 
 ### Roadmap Evolution
 
@@ -103,6 +107,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 41-01-PLAN.md (rate limiting enforcement)
-Stopped at: Completed 41-01-PLAN.md
+Last activity: 2026-03-02 - Completed 42-01-PLAN.md (cascade delete integration test)
+Stopped at: Completed 42-01-PLAN.md
 Resume file: None

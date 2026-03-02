@@ -51,7 +51,7 @@ Requirements for codebase hardening milestone. Each maps to roadmap phases.
 
 ### Test Coverage
 
-- [ ] **TEST-01**: Extraction cascade delete tested (including evidence units and storage)
+- [x] **TEST-01**: Extraction cascade delete tested (including evidence units and storage)
 - [ ] **TEST-02**: Zustand store migration paths tested (5-version chain)
 - [ ] **TEST-03**: Extraction insight aggregation edge cases tested (null answers, missing fields)
 
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RATE-01 | Phase 37 | Complete |
 | RATE-02 | Phase 41 | Complete |
 | RATE-03 | Phase 41 | Complete |
-| TEST-01 | Phase 42 | Pending |
+| TEST-01 | Phase 42 | Complete |
 | TEST-02 | Phase 42 | Pending |
 | TEST-03 | Phase 42 | Pending |
 
