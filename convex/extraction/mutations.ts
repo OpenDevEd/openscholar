@@ -14,6 +14,7 @@ import { getProcessableFlags, isPdfExtractionEnabled } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
 import { requireExtractionEnabled, requireProPlan } from "./guard";
+import { rateLimit } from "../lib/rateLimit";
 import {
   aggregateQuestionInsights,
   buildDisagreementClusters,
@@ -168,6 +169,11 @@ export const startExtraction = mutation({
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
     await requireProPlan(ctx, user._id, "Data extraction");
+    await rateLimit(ctx, {
+      name: "start-extraction",
+      key: user._id,
+      throws: true,
+    });
 
     const userId = user._id;
 
@@ -256,6 +262,11 @@ export const duplicateExtraction = mutation({
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
     await requireProPlan(ctx, user._id, "Data extraction");
+    await rateLimit(ctx, {
+      name: "start-extraction",
+      key: user._id,
+      throws: true,
+    });
 
     const oldJob = await ctx.db.get(args.jobId);
     if (!oldJob || oldJob.userId !== user._id) {
@@ -416,6 +427,11 @@ export const startExtractionFromTemplate = mutation({
     requireExtractionEnabled();
     const user = await requireAuth(ctx);
     await requireProPlan(ctx, user._id, "Data extraction");
+    await rateLimit(ctx, {
+      name: "start-extraction",
+      key: user._id,
+      throws: true,
+    });
     const template = await ctx.db.get(args.templateId);
     if (!template || template.userId !== user._id) {
       throw createError("NOT_FOUND", "Template not found");

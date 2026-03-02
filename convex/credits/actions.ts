@@ -49,6 +49,13 @@ export const createTopupCheckoutSession = action({
     requireCreditsEnabled();
     requireCreditTopupsEnabled();
     const identity = await requireActionAuth(ctx);
+
+    // Rate limit check
+    await ctx.runMutation(internal.lib.rateLimit.consume, {
+      name: "checkout-session",
+      key: identity.subject,
+    });
+
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!user?._id) {

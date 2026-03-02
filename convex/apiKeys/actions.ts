@@ -45,6 +45,16 @@ export const encryptAndSave = action({
     keyPrefix: v.string(),
   }),
   handler: async (ctx, args) => {
+    // Rate limit check (before any processing)
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw createError("UNAUTHENTICATED", "Authentication required");
+    }
+    await ctx.runMutation(internal.lib.rateLimit.consume, {
+      name: "api-key-save",
+      key: identity.subject,
+    });
+
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
       throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");

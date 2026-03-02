@@ -215,6 +215,13 @@ export const createCheckoutSession = action({
   handler: async (ctx, args): Promise<{ url: string | null }> => {
     requireSubscriptionsEnabled();
     const identity = await requireActionAuth(ctx);
+
+    // Rate limit check
+    await ctx.runMutation(internal.lib.rateLimit.consume, {
+      name: "checkout-session",
+      key: identity.subject,
+    });
+
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     assertPlanPriceConfig();
