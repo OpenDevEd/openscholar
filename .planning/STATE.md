@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Concerns Sweep
 status: executing
-last_updated: "2026-03-02T21:38:36.347Z"
+last_updated: "2026-03-02T21:49:17Z"
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 43 of 46 (Schema Migration & Quick Wins)
-Plan: 02 of 2 (Complete)
+Phase: 43 of 46 (Schema Migration & Quick Wins) -- COMPLETE
+Plan: 2 of 2 (All Complete)
 Status: Executing
-Last activity: 2026-03-02 -- Completed 43-02 (Housekeeping)
+Last activity: 2026-03-02 -- Completed 43-01 (Schema Migration)
 
-Progress: [#####.....] 50%
+Progress: [##########] 100% (Phase 43)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 77 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14)
+- Total plans completed: 79 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 2)
 - Total milestones shipped: 7
 
 **By Milestone:**
@@ -46,6 +46,7 @@ Progress: [#####.....] 50%
 | v2.1 | 8 | 15 | 2026-03-01 |
 | v2.2 | 4 | 7 | 2026-03-02 |
 | v2.3 | 8 | 14 | 2026-03-02 |
+| Phase 43 P01 | 3min | 3 tasks | 6 files |
 | Phase 43 P02 | 3min | 2 tasks | 15 files |
 
 ## Accumulated Context
@@ -59,6 +60,8 @@ Recent decisions affecting v2.4:
 - Credit reconciliation policy for cancelled jobs: needs product decision before Phase 44
 - getJobDetails .collect() safe because ~200-paper job cap is enforced upstream
 - Used nullish coalescing (??) for OPENALEX_CONTACT_EMAIL fallback to preserve backward compatibility (43-02)
+- Removed clearPlaintextApiKey mutation during schema cleanup -- patching non-schema field would cause runtime errors (43-01)
+- Simplified migrateToEncryptedKeys to skip-only post-migration logic (43-01)
 
 ### Roadmap Evolution
 
@@ -82,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 43-02 (Housekeeping)
-Stopped at: Completed 43-02-PLAN.md
+Last activity: 2026-03-02 - Completed 43-01 (Schema Migration)
+Stopped at: Completed 43-01-PLAN.md
 Resume file: None

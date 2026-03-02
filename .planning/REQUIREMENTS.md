@@ -9,8 +9,8 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 
 ### Security & Compliance
 
-- [ ] **SEC-01**: Migrate all plaintext Zotero `apiKey` values to `encryptedApiKey` via one-time batched action
-- [ ] **SEC-02**: Remove deprecated `apiKey` field from schema and all fallback code paths after migration verification
+- [x] **SEC-01**: Migrate all plaintext Zotero `apiKey` values to `encryptedApiKey` via one-time batched action
+- [x] **SEC-02**: Remove deprecated `apiKey` field from schema and all fallback code paths after migration verification
 - [ ] **SEC-03**: Extend `cleanupDeletedUsers` to cascade-delete extraction jobs, papers, results, evidence units, and Zotero connections for deleted users
 - [x] **SEC-04**: Document debug endpoint production policy with inline JSDoc and deployment checklist
 - [x] **SEC-05**: Remove orphaned `/test-sidebar` page from production build
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 43 | Pending |
-| SEC-02 | Phase 43 | Pending |
+| SEC-01 | Phase 43 | Complete |
+| SEC-02 | Phase 43 | Complete |
 | SEC-03 | Phase 44 | Pending |
 | SEC-04 | Phase 43 | Complete |
 | SEC-05 | Phase 43 | Complete |
