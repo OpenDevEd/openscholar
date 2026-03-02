@@ -9,10 +9,12 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 export const runPdfTestNow = internalAction({
   args: {},
   handler: async (ctx): Promise<{ success: boolean; jobId: any; results: any }> => {
+    requirePublicDebugEnabled();
     console.log("\n🚀 STARTING PDF EXTRACTION TEST\n");
     
     // 1. Get first user using internal query

@@ -6,6 +6,7 @@ import { internal } from "../_generated/api";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { findIntersectingItems } from "../../lib/extraction/pdf-highlight";
 import { extractPdfJsTextPages } from "./pdfjs_extract";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 export const debugPdfAlignment = internalAction({
   args: {
@@ -29,6 +30,7 @@ export const debugPdfAlignment = internalAction({
     textItemCount?: number;
     nonEmptyTextItemCount?: number;
   }> => {
+    requirePublicDebugEnabled();
     const paper = await ctx.runQuery(
       internal.extraction.queries.getPaperInternal,
       { paperId: args.paperId }

@@ -2,6 +2,7 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
  * Creates and immediately starts a test extraction job
@@ -15,6 +16,7 @@ export const createAndRunTestJob = internalMutation({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requirePublicDebugEnabled();
     // Get first user
     const user = await ctx.db
       .query("users")
@@ -113,6 +115,7 @@ export const getTestJobStatus = internalMutation({
   },
   returns: v.any(),
   handler: async (ctx, args) => {
+    requirePublicDebugEnabled();
     const job = await ctx.db.get(args.jobId);
     if (!job) {
       throw new Error("Job not found");

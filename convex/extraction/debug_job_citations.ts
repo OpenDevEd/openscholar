@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 const EFFECTIVE_CONFIDENCE_MULTIPLIER: Record<string, number> = {
   grounded: 1,
@@ -80,6 +81,7 @@ export const debugJobCitations = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    requirePublicDebugEnabled();
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))

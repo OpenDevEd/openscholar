@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 // Internal query to check error messages on failed papers
 export const getPaperErrorsInternal = internalQuery({
@@ -7,6 +8,7 @@ export const getPaperErrorsInternal = internalQuery({
     jobId: v.id("extractionJobs"),
   },
   handler: async (ctx, args) => {
+    requirePublicDebugEnabled();
     const failedPapers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job_status", (q) =>

@@ -1,11 +1,13 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 export const debugPaperResults = internalQuery({
   args: {
     paperId: v.id("extractionPapers"),
   },
   handler: async (ctx, { paperId }) => {
+    requirePublicDebugEnabled();
     const paper = await ctx.db.get(paperId);
     const results = await ctx.db
       .query("extractionResults")

@@ -1,11 +1,13 @@
 import { internalQuery, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 // Get first user ID
 export const getFirstUserId = internalQuery({
   args: {},
   handler: async (ctx): Promise<Id<"users"> | null> => {
+    requirePublicDebugEnabled();
     const user = await ctx.db.query("users").first();
     return user?._id || null;
   },
@@ -15,6 +17,7 @@ export const getFirstUserId = internalQuery({
 export const createTestJob = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }): Promise<Id<"extractionJobs">> => {
+    requirePublicDebugEnabled();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       name: `PDF Test ${Date.now()}`,
@@ -55,10 +58,11 @@ export const createTestJob = internalMutation({
   },
 });
 
-// Get job status  
+// Get job status
 export const getJobStatus = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
+    requirePublicDebugEnabled();
     const job = await ctx.db.get(jobId);
     const papers = await ctx.db
       .query("extractionPapers")
@@ -79,6 +83,7 @@ export const getJobStatus = internalQuery({
 export const getJobResults = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
+    requirePublicDebugEnabled();
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
