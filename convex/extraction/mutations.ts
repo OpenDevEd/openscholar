@@ -56,7 +56,7 @@ async function loadJobDataForReporting(
   const resultsByPaper = new Map<string, Doc<"extractionResults">[]>();
   const reviewsByResult = new Map<string, Doc<"extractionResultReviews">>();
 
-  for (const paper of papers) {
+  await Promise.all(papers.map(async (paper) => {
     const [results, reviews] = await Promise.all([
       ctx.db
         .query("extractionResults")
@@ -71,7 +71,7 @@ async function loadJobDataForReporting(
     for (const review of reviews) {
       reviewsByResult.set(review.resultId, review);
     }
-  }
+  }));
 
   return { questions, papers, resultsByPaper, reviewsByResult };
 }
