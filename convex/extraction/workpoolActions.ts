@@ -748,7 +748,7 @@ async function resolvePdfBlob(ctx: ActionCtx, args: {
         })
       : null;
 
-  // Decrypt the Zotero API key if encrypted, otherwise fall back to plaintext
+  // Decrypt the Zotero API key
   let zoteroApiKey: string | undefined;
   if (zoteroConnection?.encryptedApiKey) {
     const encryptionKey = process.env.ENCRYPTION_KEY;
@@ -756,8 +756,6 @@ async function resolvePdfBlob(ctx: ActionCtx, args: {
       throw new Error("ENCRYPTION_KEY not configured");
     }
     zoteroApiKey = decrypt(zoteroConnection.encryptedApiKey, encryptionKey);
-  } else if (zoteroConnection) {
-    zoteroApiKey = zoteroConnection.apiKey; // fallback for pre-migration
   }
 
   const downloaded: DownloadPdfResult = await downloadPdf(args.pdfUrl, {

@@ -57,6 +57,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_creditTopups from "../lib/creditTopups.js";
+import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_debug_gate from "../lib/debug_gate.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -151,6 +152,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/constants": typeof lib_constants;
   "lib/creditTopups": typeof lib_creditTopups;
+  "lib/crypto": typeof lib_crypto;
   "lib/debug_gate": typeof lib_debug_gate;
   "lib/env": typeof lib_env;
   "lib/errors": typeof lib_errors;

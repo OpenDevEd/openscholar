@@ -19,31 +19,26 @@ const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
 const ZOTERO_AUTHORIZE_URL = "https://www.zotero.org/oauth/authorize";
 const ZOTERO_API_URL = "https://api.zotero.org";
 
-// Type for Zotero connection (encryptedApiKey is primary; apiKey is optional fallback for pre-migration rows)
+// Type for Zotero connection
 type ZoteroConnection = {
   zoteroUserId: string;
   encryptedApiKey?: string;
-  apiKey?: string;
   username?: string;
 } | null;
 
 /**
  * Resolve the plaintext Zotero API key from a connection.
- * If encryptedApiKey is present, decrypt it. Otherwise fall back to plaintext apiKey.
+ * Decrypts the encryptedApiKey field using the ENCRYPTION_KEY environment variable.
  */
 function resolveZoteroApiKey(connection: NonNullable<ZoteroConnection>): string {
-  if (connection.encryptedApiKey) {
-    const encryptionKey = process.env.ENCRYPTION_KEY;
-    if (!encryptionKey) {
-      throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
-    }
-    return decrypt(connection.encryptedApiKey, encryptionKey);
+  if (!connection.encryptedApiKey) {
+    throw createError("ZOTERO_NOT_CONNECTED", "Zotero connection has no encrypted API key");
   }
-  // Fallback for pre-migration plaintext keys
-  if (connection.apiKey) {
-    return connection.apiKey;
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  if (!encryptionKey) {
+    throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
   }
-  throw createError("ZOTERO_NOT_CONNECTED", "Zotero connection has no API key");
+  return decrypt(connection.encryptedApiKey, encryptionKey);
 }
 
 async function requireCurrentUserId(ctx: ActionCtx): Promise<Id<"users">> {
@@ -1109,7 +1104,6 @@ export const migrateToEncryptedKeys = internalAction({
 
     const connections: Array<{
       _id: Id<"zoteroConnections">;
-      apiKey?: string;
       encryptedApiKey?: string;
     }> = await ctx.runQuery(internal.zotero.internal.listAllConnections);
     let migrated = 0;
@@ -1121,34 +1115,8 @@ export const migrateToEncryptedKeys = internalAction({
         continue;
       }
 
-      if (!conn.apiKey) {
-        skipped++;
-        continue;
-      }
-
-      const encrypted = encrypt(conn.apiKey, encryptionKey);
-      const prefix = getKeyPrefix(conn.apiKey);
-      await ctx.runMutation(internal.zotero.mutations.patchEncryptedKey, {
-        connectionId: conn._id,
-        encryptedApiKey: encrypted,
-        keyPrefix: prefix,
-      });
-      // Clear plaintext key immediately after encrypting
-      await ctx.runMutation(internal.zotero.mutations.clearPlaintextApiKey, {
-        connectionId: conn._id,
-      });
-      migrated++;
-    }
-
-    // Second pass: clear apiKey from ALL documents (including previously-migrated ones that may still have it)
-    let cleared = 0;
-    for (const conn of connections) {
-      if (conn.apiKey !== undefined) {
-        await ctx.runMutation(internal.zotero.mutations.clearPlaintextApiKey, {
-          connectionId: conn._id,
-        });
-        cleared++;
-      }
+      // Post-migration: rows without encryptedApiKey cannot be recovered
+      skipped++;
     }
 
     return { total: connections.length, migrated, skipped };

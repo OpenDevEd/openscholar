@@ -172,8 +172,7 @@ export default defineSchema({
   zoteroConnections: defineTable({
     userId: v.id("users"),
     zoteroUserId: v.string(),
-    apiKey: v.optional(v.string()),  // Deprecated: use encryptedApiKey. Optional after migration.
-    encryptedApiKey: v.optional(v.string()),  // Phase 39: encrypted version of apiKey
+    encryptedApiKey: v.optional(v.string()),  // Phase 39: encrypted API key (only storage form after migration)
     keyPrefix: v.optional(v.string()),         // Phase 39: first chars for display (e.g. "zot_xxxx...")
     username: v.optional(v.string()),
     connectedAt: v.number(),
