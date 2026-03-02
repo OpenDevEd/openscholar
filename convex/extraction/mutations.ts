@@ -956,56 +956,135 @@ export const deleteExtraction = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.userId !== user._id) throw createError("NOT_FOUND", "Job not found");
 
-    // Defer the cascade delete to an internal mutation so it doesn't hit transaction limits
-    await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, {
-      jobId: args.jobId
+    // Schedule the cascade delete as an independent mutation to avoid transaction limits
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, {
+      jobId: args.jobId,
     });
-    
+
     return null;
-  }
+  },
 });
 
 export const deleteExtractionInternal = internalMutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    // Delete in batches to avoid hitting transaction limits
+  handler: async (ctx, args): Promise<null> => {
     const BATCH_SIZE = 100;
-    
-    // 1. Delete Results
-    const papers = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).collect();
+
+    // Step 1: Delete extractionEvidenceUnits (children of extractionPapers)
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
     for (const paper of papers) {
-      const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(BATCH_SIZE);
-      if (results.length > 0) {
-        for (const res of results) await ctx.db.delete(res._id);
-        // Reschedule ourselves if we hit the batch limit to continue deleting
-        await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      const units = await ctx.db
+        .query("extractionEvidenceUnits")
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+        .take(BATCH_SIZE);
+      if (units.length > 0) {
+        for (const u of units) await ctx.db.delete(u._id);
+        await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
         return null;
       }
     }
 
-    // 2. Delete Papers
-    const remainingPapers = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).take(BATCH_SIZE);
-    if (remainingPapers.length > 0) {
-       for (const paper of remainingPapers) await ctx.db.delete(paper._id);
-       await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
-       return null;
+    // Step 2: Delete extractionResultReviews (children of extractionPapers)
+    for (const paper of papers) {
+      const reviews = await ctx.db
+        .query("extractionResultReviews")
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+        .take(BATCH_SIZE);
+      if (reviews.length > 0) {
+        for (const r of reviews) await ctx.db.delete(r._id);
+        await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+        return null;
+      }
     }
 
-    // 3. Delete Questions
-    const questions = await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", args.jobId)).take(BATCH_SIZE);
-    if (questions.length > 0) {
-      for (const q of questions) await ctx.db.delete(q._id);
-      await ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+    // Step 3: Delete extractionResults (children of extractionPapers)
+    for (const paper of papers) {
+      const results = await ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+        .take(BATCH_SIZE);
+      if (results.length > 0) {
+        for (const r of results) await ctx.db.delete(r._id);
+        await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+        return null;
+      }
+    }
+
+    // Step 4: Delete extractionPapers with inline storage cleanup
+    const remainingPapers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (remainingPapers.length > 0) {
+      for (const paper of remainingPapers) {
+        if (paper.storageId) {
+          try {
+            await ctx.storage.delete(paper.storageId);
+          } catch (e) {
+            console.error(`Failed to delete PDF storage for paper ${paper._id}:`, e);
+          }
+        }
+        await ctx.db.delete(paper._id);
+      }
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
-    
-    // 4. Delete the job itself now that everything is cleaned up
+
+    // Step 5: Delete extractionQuestions
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (questions.length > 0) {
+      for (const q of questions) await ctx.db.delete(q._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
+    // Step 6: Delete extractionSavedViews
+    const savedViews = await ctx.db
+      .query("extractionSavedViews")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (savedViews.length > 0) {
+      for (const sv of savedViews) await ctx.db.delete(sv._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
+    // Step 7: Delete extractionReportSnapshots
+    const snapshots = await ctx.db
+      .query("extractionReportSnapshots")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (snapshots.length > 0) {
+      for (const s of snapshots) await ctx.db.delete(s._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
+    // Step 8: Delete extractionRunDiffs where this job is the PRIMARY job
+    // NOTE: Only delete diffs where jobId == args.jobId, NOT where baselineJobId == args.jobId
+    const runDiffs = await ctx.db
+      .query("extractionRunDiffs")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (runDiffs.length > 0) {
+      for (const d of runDiffs) await ctx.db.delete(d._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
+    // Step 9: Delete the job itself
     const job = await ctx.db.get(args.jobId);
     if (job) await ctx.db.delete(args.jobId);
 
     return null;
-  }
+  },
 });
 
 // Internal mutations (called by workflow/actions)
