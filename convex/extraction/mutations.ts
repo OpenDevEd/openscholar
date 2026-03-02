@@ -4,7 +4,7 @@
  * Using Workflows and Workpools for durable execution
  */
 
-import { mutation, internalMutation } from "../_generated/server";
+import { mutation, internalMutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
@@ -26,7 +26,7 @@ import {
 import { createError } from "../lib/errors";
 
 async function assertJobOwnership(
-  ctx: any,
+  ctx: MutationCtx,
   userId: Id<"users">,
   jobId: Id<"extractionJobs">
 ) {
@@ -38,18 +38,18 @@ async function assertJobOwnership(
 }
 
 async function loadJobDataForReporting(
-  ctx: any,
+  ctx: MutationCtx,
   jobId: Id<"extractionJobs">
 ) {
   const [questions, papers] = await Promise.all([
     ctx.db
       .query("extractionQuestions")
-      .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .order("asc")
       .collect(),
     ctx.db
       .query("extractionPapers")
-      .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .collect(),
   ]);
 
@@ -60,11 +60,11 @@ async function loadJobDataForReporting(
     const [results, reviews] = await Promise.all([
       ctx.db
         .query("extractionResults")
-        .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .collect(),
       ctx.db
         .query("extractionResultReviews")
-        .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .collect(),
     ]);
     resultsByPaper.set(paper._id, results);
@@ -1825,7 +1825,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
     }
 
     // Mark paper as completed
-    const patchData: any = {
+    const patchData: Partial<Doc<"extractionPapers">> = {
       status: "completed",
       completedAt: Date.now(),
       creditsUsed: args.creditsUsed,

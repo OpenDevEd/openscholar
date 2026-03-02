@@ -3,7 +3,7 @@
  * Queries for retrieving extraction job data
  */
 
-import { query, internalQuery } from "../_generated/server";
+import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -31,7 +31,7 @@ type OwnedJobResolution =
   | { status: "no_access" };
 
 async function resolveOwnedJob(
-  ctx: any,
+  ctx: QueryCtx,
   jobId: Id<"extractionJobs">
 ): Promise<OwnedJobResolution> {
   const user = await getCurrentUser(ctx);
@@ -49,7 +49,7 @@ type OwnedPaperResolution =
   | { status: "no_access" };
 
 async function resolveOwnedPaper(
-  ctx: any,
+  ctx: QueryCtx,
   paperId: Id<"extractionPapers">
 ): Promise<OwnedPaperResolution> {
   const user = await getCurrentUser(ctx);
@@ -102,13 +102,13 @@ function toCitationStatus(value?: string): CitationStatus | undefined {
 }
 
 async function attachReviewMetadata(
-  ctx: any,
+  ctx: QueryCtx,
   paperId: Id<"extractionPapers">,
   results: Doc<"extractionResults">[]
 ) {
   const reviews = await ctx.db
     .query("extractionResultReviews")
-    .withIndex("by_paper", (q: any) => q.eq("paperId", paperId))
+    .withIndex("by_paper", (q) => q.eq("paperId", paperId))
     .collect();
   const reviewByResultId = new Map<string, any>(
     reviews.map((review: any) => [review.resultId, review] as [string, any])
@@ -142,23 +142,23 @@ function buildQuestionInfoByKey(questions: Doc<"extractionQuestions">[]) {
   );
 }
 
-async function loadJobPapersAndResults(ctx: any, jobId: Id<"extractionJobs">) {
+async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
   const questions = await ctx.db
     .query("extractionQuestions")
-    .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .order("asc")
     .collect();
 
   const papers = await ctx.db
     .query("extractionPapers")
-    .withIndex("by_job", (q: any) => q.eq("jobId", jobId))
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .collect();
 
   const resultsByPaper = new Map<string, any[]>();
   for (const paper of papers) {
     const results = await ctx.db
       .query("extractionResults")
-      .withIndex("by_paper", (q: any) => q.eq("paperId", paper._id))
+      .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
       .collect();
     resultsByPaper.set(
       paper._id,
