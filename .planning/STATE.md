@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Codebase Hardening
 status: in-progress
-last_updated: "2026-03-02T07:29:00Z"
+last_updated: "2026-03-02T07:32:15Z"
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 36 of 42 (Type Safety Sweep) -- 2 of 8 in v2.3
-Plan: 1 of 2 complete (36-01) -- Phase 36 in progress
-Status: Executing phase 36 plans
-Last activity: 2026-03-02 -- Completed 36-01 (Extraction module ctx typing)
+Plan: 2 of 2 complete (36-01, 36-02) -- Phase 36 DONE
+Status: Phase 36 complete, ready for Phase 37
+Last activity: 2026-03-02 -- Completed 36-02 (Remove as-any API casts)
 
-Progress: [#####-----] 50% (1/2 plans in phase)
+Progress: [##########] 100% (2/2 plans in phase)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 64 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 1+)
+- Total plans completed: 65 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 2+)
 - Total milestones shipped: 6
 
 **By Milestone:**
@@ -55,6 +55,7 @@ Progress: [#####-----] 50% (1/2 plans in phase)
 | 35 | 02 | 4min | 1 | 6 |
 | 35 | 03 | 3min | 2 | 11 |
 | 36 | 01 | 3min | 2 | 4 |
+| 36 | 02 | 6min | 2 | 7 |
 
 ## Accumulated Context
 
@@ -64,6 +65,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 35]: Gate all debug/test handlers at function entry with requirePublicDebugEnabled() for consistent security enforcement
 - [Phase 35]: Lazy getStripe() singleton for Stripe client init; requireAppUrl() validates NEXT_PUBLIC_APP_URL at function entry with dev/CI fallback
 - [Phase 36]: Import ctx types from _generated/server for standalone helper functions; (q: any) casts unnecessary since TypeScript infers index builder types
+- [Phase 36]: Use GenericActionCtx<any> for helpers called from Stripe registerRoutes; add explicit return types to break circular ref chains from typed internal refs
 
 ### Roadmap Evolution
 
@@ -86,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 36-01-PLAN.md (extraction module ctx typing)
-Stopped at: Completed 36-01-PLAN.md, ready for 36-02
+Last activity: 2026-03-02 - Completed 36-02-PLAN.md (remove as-any API casts)
+Stopped at: Phase 36 fully done (all 2 plans complete)
 Resume file: None

@@ -99,7 +99,7 @@ Full details: `.planning/milestones/v2.2-ROADMAP.md`
 **Milestone Goal:** Address all identified concerns -- bugs, type safety, security, performance, fragile areas, and test coverage gaps.
 
 - [x] **Phase 35: Quick Wins & Debug Cleanup** - Remove debug logs, fix ts-ignore, harden config, delete legacy code (completed 2026-03-02)
-- [ ] **Phase 36: Type Safety Sweep** - Replace all `any` casts with proper Convex-generated types
+- [x] **Phase 36: Type Safety Sweep** - Replace all `any` casts with proper Convex-generated types (completed 2026-03-02)
 - [ ] **Phase 37: Schema Additions** - Deploy rate limit table and Zotero encryption fields as optional
 - [ ] **Phase 38: Deletion Cascade & Storage Cleanup** - Fix orphaned child records and leaked storage on job deletion
 - [ ] **Phase 39: Zotero Key Encryption** - Encrypt the only plaintext user secret in the database
@@ -239,7 +239,7 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 33. Library Page UI Overhaul | v2.2 | 2/2 | Complete | 2026-03-01 |
 | 34. Display Polish and Validation | v2.2 | 2/2 | Complete | 2026-03-01 |
 | 35. Quick Wins & Debug Cleanup | 3/3 | Complete    | 2026-03-02 | - |
-| 36. Type Safety Sweep | 1/2 | In Progress|  | - |
+| 36. Type Safety Sweep | 2/2 | Complete   | 2026-03-02 | - |
 | 37. Schema Additions | v2.3 | 0/TBD | Not started | - |
 | 38. Deletion Cascade & Storage Cleanup | v2.3 | 0/TBD | Not started | - |
 | 39. Zotero Key Encryption | v2.3 | 0/TBD | Not started | - |
