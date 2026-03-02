@@ -168,7 +168,7 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 | 40. Performance | v2.3 | 2/2 | Complete | 2026-03-02 |
 | 41. Rate Limiting Enforcement | v2.3 | 1/1 | Complete | 2026-03-02 |
 | 42. Test Coverage | v2.3 | 2/2 | Complete | 2026-03-02 |
-| 43. Schema Migration & Quick Wins | v2.4 | 0/2 | Planned | - |
+| 43. Schema Migration & Quick Wins | 1/2 | In Progress|  | - |
 | 44. Workflow & Deletion Integrity | v2.4 | 0/TBD | Not started | - |
 | 45. Type Safety Sweep | v2.4 | 0/TBD | Not started | - |
 | 46. Cron Additions | v2.4 | 0/TBD | Not started | - |

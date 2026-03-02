@@ -12,8 +12,8 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 - [ ] **SEC-01**: Migrate all plaintext Zotero `apiKey` values to `encryptedApiKey` via one-time batched action
 - [ ] **SEC-02**: Remove deprecated `apiKey` field from schema and all fallback code paths after migration verification
 - [ ] **SEC-03**: Extend `cleanupDeletedUsers` to cascade-delete extraction jobs, papers, results, evidence units, and Zotero connections for deleted users
-- [ ] **SEC-04**: Document debug endpoint production policy with inline JSDoc and deployment checklist
-- [ ] **SEC-05**: Remove orphaned `/test-sidebar` page from production build
+- [x] **SEC-04**: Document debug endpoint production policy with inline JSDoc and deployment checklist
+- [x] **SEC-05**: Remove orphaned `/test-sidebar` page from production build
 
 ### Data Integrity & Bugs
 
@@ -21,7 +21,7 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 - [ ] **BUG-02**: Remove `.take(100)` cap in `getJobDetails` — replace with `.collect()` (bounded by ~200-paper job cap)
 - [ ] **BUG-03**: Fix `deleteExtractionInternal` to also delete `extractionRunDiffs` where `baselineJobId == args.jobId` (Step 8b)
 - [ ] **BUG-04**: Add `isTruncated` and `totalChanges` fields to `extractionRunDiffs` when changes exceed cap, surface in UI
-- [ ] **BUG-05**: Replace placeholder `admin@example.com` in OpenAlex User-Agent with real operational email
+- [x] **BUG-05**: Replace placeholder `admin@example.com` in OpenAlex User-Agent with real operational email
 
 ### Type Safety
 
@@ -84,13 +84,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-01 | Phase 43 | Pending |
 | SEC-02 | Phase 43 | Pending |
 | SEC-03 | Phase 44 | Pending |
-| SEC-04 | Phase 43 | Pending |
-| SEC-05 | Phase 43 | Pending |
+| SEC-04 | Phase 43 | Complete |
+| SEC-05 | Phase 43 | Complete |
 | BUG-01 | Phase 44 | Pending |
 | BUG-02 | Phase 45 | Pending |
 | BUG-03 | Phase 44 | Pending |
 | BUG-04 | Phase 44 | Pending |
-| BUG-05 | Phase 43 | Pending |
+| BUG-05 | Phase 43 | Complete |
 | TYPE-01 | Phase 45 | Pending |
 | TYPE-02 | Phase 45 | Pending |
 | TYPE-03 | Phase 45 | Pending |
