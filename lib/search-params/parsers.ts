@@ -111,12 +111,54 @@ export type ParsedSearchParams = {
   lang: string | null;
 };
 
+function parseIntegerParam(
+  searchParams: URLSearchParams,
+  key: string,
+  fallback: number | null
+): number | null {
+  const raw = searchParams.get(key);
+  if (raw === null) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+/**
+ * Parse URLSearchParams into ParsedSearchParams using module defaults.
+ * Unknown query params are ignored.
+ */
+export function parseSearchParamsFromUrl(searchParams: URLSearchParams): ParsedSearchParams {
+  return {
+    q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
+    field: searchParams.get('field') ?? DEFAULT_SEARCH_PARAMS.field,
+    sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
+    page: parseIntegerParam(searchParams, 'page', DEFAULT_SEARCH_PARAMS.page) ?? DEFAULT_SEARCH_PARAMS.page,
+    yf: parseIntegerParam(searchParams, 'yf', null),
+    yt: parseIntegerParam(searchParams, 'yt', null),
+    df: searchParams.get('df') ?? null,
+    dt: searchParams.get('dt') ?? null,
+    ft: searchParams.get('ft') ?? DEFAULT_SEARCH_PARAMS.ft,
+    rmin: parseIntegerParam(searchParams, 'rmin', DEFAULT_SEARCH_PARAMS.rmin) ?? DEFAULT_SEARCH_PARAMS.rmin,
+    rmax: parseIntegerParam(searchParams, 'rmax', DEFAULT_SEARCH_PARAMS.rmax) ?? DEFAULT_SEARCH_PARAMS.rmax,
+    rated: searchParams.get('rated') === 'true',
+    reg: searchParams.has('reg') ? decodeRegions(searchParams.get('reg') || '') : [],
+    focus: searchParams.has('focus') ? decodeRegions(searchParams.get('focus') || '') : [],
+    cites: searchParams.get('cites') ?? DEFAULT_SEARCH_PARAMS.cites,
+    citedBy: searchParams.get('citedBy') ?? DEFAULT_SEARCH_PARAMS.citedBy,
+    rel: searchParams.get('rel') ?? DEFAULT_SEARCH_PARAMS.rel,
+    review: searchParams.get('review') === 'true',
+    lang: searchParams.get('lang') ?? null,
+  };
+}
+
 /**
  * Create URL serializer for building shareable URLs
- * clearOnDefault: false ensures empty searches still produce valid query strings
+ * clearOnDefault: true keeps URLs canonical by omitting default params.
  */
 export const serializeSearchParams = createSerializer(searchParamsParsers, {
-  clearOnDefault: false
+  clearOnDefault: true,
 });
 
 /**

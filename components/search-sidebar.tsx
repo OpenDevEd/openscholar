@@ -210,8 +210,13 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
 
   const handleClearDateRange = React.useCallback(async () => {
     setTempDateRange(undefined);
-    await commitDateRange(undefined);
-  }, [commitDateRange]);
+    updateFilter({
+      dateRange: undefined,
+      filterType: DEFAULT_FILTERS.filterType,
+      yearRange: DEFAULT_FILTERS.yearRange(),
+      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
+    });
+  }, [updateFilter]);
 
   const handleClearYearRange = React.useCallback(async () => {
     const defaultRange = DEFAULT_FILTERS.yearRange();
@@ -709,6 +714,7 @@ export function SearchSidebar({
     updateFilter({
       currentSearchField: DEFAULT_FILTERS.field,
       sortBy: DEFAULT_FILTERS.sortBy,
+      filterType: DEFAULT_FILTERS.filterType,
       dateRange: DEFAULT_FILTERS.dateRange,
       yearRange: defaultYearRange,
       isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,

@@ -5,10 +5,9 @@
  * 
  * This component runs ONCE on mount and handles these scenarios:
  * 
- * 1. Unknown ID (any params, including none) → Create new entry with new ID, redirect
- * 2. Known ID + has URL params → If query differs, add to queryHistory; update filters
- * 3. Known ID + no URL params → Restore params from storage to URL
- * 4. Known ID + matching params → Ready (do nothing)
+ * 1. Missing ID or unknown ID (with or without params) → Create new entry with new ID, redirect
+ * 2. Known ID + explicit URL params → Sync store if params differ, then ready
+ * 3. Known ID + no URL params → Restore params from storage, redirect to canonical URL
  * 
  * IMPORTANT: Empty searches (no query, no filters) are VALID and should be stored.
  * 
@@ -16,63 +15,20 @@
  */
 
 import { useState, useEffect, type ReactNode } from 'react';
-import { useRouter, useSearchParams, useParams } from 'next/navigation';
+import { useRouter, useSearchParams, useParams, usePathname } from 'next/navigation';
 import { useSearchHistoryStore } from '../store';
 import { paramsToSearchResult, searchResultToParams, paramsMatchState } from '../search-params/converters';
-import { buildResultsUrl, DEFAULT_SEARCH_PARAMS } from '../search-params';
-import type { ParsedSearchParams } from '../search-params/parsers';
+import { buildResultsUrl, parseSearchParamsFromUrl } from '../search-params';
+import type { SearchResult } from '../types';
 
 interface SearchInitializerProps {
   children: ReactNode;
 }
 
-/**
- * Parse URL search params into our ParsedSearchParams format
- * Uses the nuqs parser defaults for missing values
- */
-function parseUrlParams(searchParams: URLSearchParams): ParsedSearchParams {
-  return {
-    q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
-    field: searchParams.get('field') ?? DEFAULT_SEARCH_PARAMS.field,
-    sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
-    page: searchParams.has('page') ? parseInt(searchParams.get('page')!, 10) : DEFAULT_SEARCH_PARAMS.page,
-    yf: searchParams.has('yf') ? parseInt(searchParams.get('yf')!, 10) : null,
-    yt: searchParams.has('yt') ? parseInt(searchParams.get('yt')!, 10) : null,
-    df: searchParams.get('df') ?? null,
-    dt: searchParams.get('dt') ?? null,
-    ft: searchParams.get('ft') ?? DEFAULT_SEARCH_PARAMS.ft,
-    rmin: searchParams.has('rmin') ? parseInt(searchParams.get('rmin')!, 10) : DEFAULT_SEARCH_PARAMS.rmin,
-    rmax: searchParams.has('rmax') ? parseInt(searchParams.get('rmax')!, 10) : DEFAULT_SEARCH_PARAMS.rmax,
-    rated: searchParams.get('rated') === 'true',
-    reg: searchParams.has('reg') ? decodeRegionsFromUrl(searchParams.get('reg')!) : [],
-    focus: searchParams.has('focus') ? decodeRegionsFromUrl(searchParams.get('focus')!) : [],
-    cites: searchParams.get('cites') ?? DEFAULT_SEARCH_PARAMS.cites,
-    citedBy: searchParams.get('citedBy') ?? DEFAULT_SEARCH_PARAMS.citedBy,
-    rel: searchParams.get('rel') ?? DEFAULT_SEARCH_PARAMS.rel,
-    review: searchParams.get('review') === 'true',
-    lang: searchParams.get('lang') ?? null,
-  };
-}
-
-/**
- * Simple region decoder - handles comma-separated values
- * The actual smart encoding/decoding is done by nuqs parser
- */
-function decodeRegionsFromUrl(value: string): string[] {
-  if (!value) return [];
-  // Import the decode function from regions module
-  try {
-    const { decodeRegions } = require('../search-params/regions');
-    return decodeRegions(value);
-  } catch {
-    // Fallback: simple comma split
-    return value.split(',').filter(Boolean);
-  }
-}
-
 export function SearchInitializer({ children }: SearchInitializerProps) {
   const router = useRouter();
   const routeParams = useParams<{ searchId: string }>();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchId = routeParams?.searchId ?? '';
   
@@ -87,12 +43,6 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
   
   // Handle initialization in useEffect (cannot call router during render)
   useEffect(() => {
-    // Skip if no searchId (shouldn't happen on /results/[searchId] routes)
-    if (!searchId) {
-      setStatus('ready');
-      return;
-    }
-
     // Skip if searchParams is null (during SSR)
     if (!searchParams) {
       return;
@@ -103,73 +53,65 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       return;
     }
     
-    const existingEntry = getSearchResult(searchId);
-    // Check if URL has any search-related params (q is always present with clearOnDefault: false)
-    const hasUrlParams = searchParams.has('q') || searchParams.has('field') || searchParams.toString() !== '';
-    
-    // CASE 1: Unknown ID → Create new entry with new ID, redirect
-    // This handles both shared links (with params) and direct URL access (no params)
-    if (!existingEntry) {
+    const parsedParams = parseSearchParamsFromUrl(searchParams);
+    const hasExplicitParams = searchParams.toString() !== '';
+    const existingEntry = searchId ? getSearchResult(searchId) : undefined;
+
+    // Branch A: missing ID OR unknown ID -> create a new entry and canonicalize URL
+    if (!searchId || !existingEntry) {
       setStatus('redirecting');
-      
-      // Parse URL params (or use defaults for empty search)
-      const parsedParams = hasUrlParams ? parseUrlParams(searchParams) : DEFAULT_SEARCH_PARAMS;
+
       const newEntry = paramsToSearchResult(parsedParams);
       const newId = addSearchResult(newEntry);
-      
-      // Build URL with params and redirect to new ID
-      const params = searchResultToParams({ ...newEntry, id: newId } as any);
-      router.replace(buildResultsUrl(newId, params));
+
+      const canonicalParams = searchResultToParams({ ...newEntry, id: newId } as SearchResult);
+      router.replace(buildResultsUrl(newId, canonicalParams));
       return;
     }
-    
-    // CASE 2: Known ID + has URL params → Add to queryHistory if query differs, update filters
-    if (existingEntry && hasUrlParams) {
-      const parsedParams = parseUrlParams(searchParams);
-      
-      // Check if params differ from stored state
-      if (!paramsMatchState(parsedParams, existingEntry)) {
-        // If query changed, add to query history within this entry
-        if (parsedParams.q !== existingEntry.query) {
-          addQueryToHistory(searchId, parsedParams.q);
-        }
-        
-        // Update filter fields (query is already handled by addQueryToHistory if changed)
-        // Note: We exclude 'count' because paramsToSearchResult always returns count: 0
-        // and we don't want to overwrite the actual count from the store
-        const updatedEntry = paramsToSearchResult(parsedParams);
-        const { query, count, ...filterUpdates } = updatedEntry;
-        updateSearchResult(searchId, filterUpdates);
-      }
-      
-      // Either way, we're ready
-      setStatus('ready');
-      return;
-    }
-    
-    // CASE 3: Known ID + no URL params → Restore params from storage to URL
-    if (existingEntry && !hasUrlParams) {
+
+    // Branch B: known ID with no explicit params -> restore stored state to URL
+    if (!hasExplicitParams) {
       setStatus('redirecting');
-      const params = searchResultToParams(existingEntry);
-      router.replace(buildResultsUrl(searchId, params));
+      const canonicalParams = searchResultToParams(existingEntry);
+      router.replace(buildResultsUrl(searchId, canonicalParams));
       return;
     }
-    
-    // CASE 4: Should not reach here, but mark as ready
-    setStatus('ready');
-  }, [searchId, status, getSearchResult, addSearchResult, updateSearchResult, addQueryToHistory, searchParams, router]);
-  
-  // After redirect completes, check if we can mark as ready
-  useEffect(() => {
-    if (status === 'redirecting' && searchParams) {
-      const existingEntry = getSearchResult(searchId);
-      // Check if URL has any search-related params (q is always present with clearOnDefault: false)
-      const hasUrlParams = searchParams.has('q') || searchParams.has('field') || searchParams.toString() !== '';
-      
-      // Redirect complete when: entry exists and has URL params
-      if (existingEntry && hasUrlParams) {
-        setStatus('ready');
+
+    // Branch C: known ID with explicit params -> sync store if needed, then ready
+    if (!paramsMatchState(parsedParams, existingEntry)) {
+      if (parsedParams.q !== existingEntry.query) {
+        addQueryToHistory(searchId, parsedParams.q);
       }
+
+      // Exclude query/count: query history writes query, count comes from live results.
+      const updatedEntry = paramsToSearchResult(parsedParams);
+      const { query, count, ...filterUpdates } = updatedEntry;
+      updateSearchResult(searchId, filterUpdates);
+    }
+
+    // Always canonicalize explicit param URLs to strip defaults/empties like reg= or focus=
+    const canonicalEntry = paramsToSearchResult(parsedParams);
+    const canonicalParams = searchResultToParams({ ...canonicalEntry, id: searchId } as SearchResult);
+    const canonicalUrl = buildResultsUrl(searchId, canonicalParams);
+    const currentUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    if (canonicalUrl !== currentUrl) {
+      setStatus('redirecting');
+      router.replace(canonicalUrl);
+      return;
+    }
+
+    setStatus('ready');
+  }, [searchId, status, getSearchResult, addSearchResult, updateSearchResult, addQueryToHistory, pathname, searchParams, router]);
+  
+  // After redirect, mark ready once the route has a valid searchId with an existing entry.
+  useEffect(() => {
+    if (status !== 'redirecting' || !searchId) {
+      return;
+    }
+
+    const existingEntry = getSearchResult(searchId);
+    if (existingEntry) {
+      setStatus('ready');
     }
   }, [status, searchId, searchParams, getSearchResult]);
   

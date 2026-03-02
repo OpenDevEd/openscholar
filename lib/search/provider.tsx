@@ -74,6 +74,16 @@ function cloneSearchParams(params: SearchParams): SearchParams {
   };
 }
 
+function sanitizeSelection(values: string[]): string[] {
+  return values
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
+function toQuerySelection(values: string[]): string[] | null {
+  return values.length > 0 ? values : null;
+}
+
 /**
  * SearchProvider - Wrap your results pages with this
  */
@@ -455,13 +465,15 @@ export function SearchProvider({ children }: SearchProviderProps) {
   }, [setUrlParams, syncToStore]);
   
   const setRegions = useCallback((regions: string[]) => {
-    setUrlParams({ reg: regions, page: 1 });
-    syncToStore({ selectedRegions: regions, page: 1 });
+    const cleanedRegions = sanitizeSelection(regions);
+    setUrlParams({ reg: toQuerySelection(cleanedRegions), page: 1 } as any);
+    syncToStore({ selectedRegions: cleanedRegions, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setCountryFocus = useCallback((countries: string[]) => {
-    setUrlParams({ focus: countries, page: 1 });
-    syncToStore({ selectedCountryFocus: countries, page: 1 });
+    const cleanedCountries = sanitizeSelection(countries);
+    setUrlParams({ focus: toQuerySelection(cleanedCountries), page: 1 } as any);
+    syncToStore({ selectedCountryFocus: cleanedCountries, page: 1 });
   }, [setUrlParams, syncToStore]);
   
   const setCites = useCallback((id: string) => {
@@ -491,40 +503,56 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Bulk update
   const updateParams = useCallback((updates: Partial<SearchParams>) => {
-    setUrlParams(updates as any);
+    const normalizedUpdates = { ...updates };
+    if (normalizedUpdates.reg) {
+      normalizedUpdates.reg = sanitizeSelection(normalizedUpdates.reg);
+    }
+    if (normalizedUpdates.focus) {
+      normalizedUpdates.focus = sanitizeSelection(normalizedUpdates.focus);
+    }
+
+    const urlUpdates: Record<string, unknown> = { ...normalizedUpdates };
+    if ('reg' in normalizedUpdates) {
+      urlUpdates.reg = toQuerySelection(normalizedUpdates.reg || []);
+    }
+    if ('focus' in normalizedUpdates) {
+      urlUpdates.focus = toQuerySelection(normalizedUpdates.focus || []);
+    }
+
+    setUrlParams(urlUpdates as any);
     // Convert URL param keys to store field names and sync
     const storeUpdates: Record<string, unknown> = {};
-    if ('field' in updates) storeUpdates.field = updates.field;
-    if ('sort' in updates) storeUpdates.sortBy = updates.sort;
-    if ('yf' in updates || 'yt' in updates) {
-      const yf = 'yf' in updates ? updates.yf : urlParams.yf;
-      const yt = 'yt' in updates ? updates.yt : urlParams.yt;
+    if ('field' in normalizedUpdates) storeUpdates.field = normalizedUpdates.field;
+    if ('sort' in normalizedUpdates) storeUpdates.sortBy = normalizedUpdates.sort;
+    if ('yf' in normalizedUpdates || 'yt' in normalizedUpdates) {
+      const yf = 'yf' in normalizedUpdates ? normalizedUpdates.yf : urlParams.yf;
+      const yt = 'yt' in normalizedUpdates ? normalizedUpdates.yt : urlParams.yt;
       storeUpdates.yearRange = yf !== null && yt !== null ? [yf, yt] : undefined;
       storeUpdates.isYearRangeEnabled = yf !== null || yt !== null;
     }
-    if ('df' in updates || 'dt' in updates) {
-      const df = 'df' in updates ? updates.df : urlParams.df;
-      const dt = 'dt' in updates ? updates.dt : urlParams.dt;
+    if ('df' in normalizedUpdates || 'dt' in normalizedUpdates) {
+      const df = 'df' in normalizedUpdates ? normalizedUpdates.df : urlParams.df;
+      const dt = 'dt' in normalizedUpdates ? normalizedUpdates.dt : urlParams.dt;
       storeUpdates.dateRange = df || dt ? {
         from: df ? new Date(df) : undefined,
         to: dt ? new Date(dt) : undefined,
       } : undefined;
     }
-    if ('ft' in updates) storeUpdates.filterType = updates.ft;
-    if ('rmin' in updates || 'rmax' in updates) {
-      const rmin = 'rmin' in updates ? updates.rmin : urlParams.rmin;
-      const rmax = 'rmax' in updates ? updates.rmax : urlParams.rmax;
+    if ('ft' in normalizedUpdates) storeUpdates.filterType = normalizedUpdates.ft;
+    if ('rmin' in normalizedUpdates || 'rmax' in normalizedUpdates) {
+      const rmin = 'rmin' in normalizedUpdates ? normalizedUpdates.rmin : urlParams.rmin;
+      const rmax = 'rmax' in normalizedUpdates ? normalizedUpdates.rmax : urlParams.rmax;
       storeUpdates.ratingRange = [rmin, rmax];
     }
-    if ('rated' in updates) storeUpdates.onlyRatedPapers = updates.rated;
-    if ('reg' in updates) storeUpdates.selectedRegions = updates.reg;
-    if ('focus' in updates) storeUpdates.selectedCountryFocus = updates.focus;
-    if ('cites' in updates) storeUpdates.citesItemId = updates.cites;
-    if ('citedBy' in updates) storeUpdates.citedByItemId = updates.citedBy;
-    if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
-    if ('review' in updates) storeUpdates.reviewFilter = updates.review;
-    if ('lang' in updates) storeUpdates.language = updates.lang || undefined;
-    if ('page' in updates) storeUpdates.page = updates.page;
+    if ('rated' in normalizedUpdates) storeUpdates.onlyRatedPapers = normalizedUpdates.rated;
+    if ('reg' in normalizedUpdates) storeUpdates.selectedRegions = normalizedUpdates.reg;
+    if ('focus' in normalizedUpdates) storeUpdates.selectedCountryFocus = normalizedUpdates.focus;
+    if ('cites' in normalizedUpdates) storeUpdates.citesItemId = normalizedUpdates.cites;
+    if ('citedBy' in normalizedUpdates) storeUpdates.citedByItemId = normalizedUpdates.citedBy;
+    if ('rel' in normalizedUpdates) storeUpdates.relatedToItemId = normalizedUpdates.rel;
+    if ('review' in normalizedUpdates) storeUpdates.reviewFilter = normalizedUpdates.review;
+    if ('lang' in normalizedUpdates) storeUpdates.language = normalizedUpdates.lang || undefined;
+    if ('page' in normalizedUpdates) storeUpdates.page = normalizedUpdates.page;
     
     if (Object.keys(storeUpdates).length > 0) {
       syncToStore(storeUpdates);
@@ -542,8 +570,8 @@ export function SearchProvider({ children }: SearchProviderProps) {
       rmin: 0,
       rmax: 5,
       rated: false,
-      reg: [],
-      focus: [],
+      reg: null,
+      focus: null,
       cites: '',
       citedBy: '',
       rel: '',
@@ -568,7 +596,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
     });
   }, [setUrlParams, syncToStore]);
   
-  // Get shareable URL - pass base URL to serializer to avoid double ?
+  // Get shareable URL without a searchId so shared links always start at /results.
   // Expands keyword bookmarks before generating the URL so shared links work for everyone
   const getShareableUrl = useCallback(() => {
     if (typeof window === 'undefined') return '';
@@ -577,14 +605,20 @@ export function SearchProvider({ children }: SearchProviderProps) {
     const { expandedQuery } = expandQuery(urlParams.q || '');
     
     // Create params with expanded query
-    const expandedParams = {
+    const expandedParams: Record<string, unknown> = {
       ...urlParams,
       q: expandedQuery
     };
+    if (!urlParams.reg || urlParams.reg.length === 0) {
+      delete expandedParams.reg;
+    }
+    if (!urlParams.focus || urlParams.focus.length === 0) {
+      delete expandedParams.focus;
+    }
     
-    const baseUrl = `${window.location.origin}/results/${searchId}`;
-    return serializeSearchParams(baseUrl, expandedParams);
-  }, [searchId, urlParams, expandQuery]);
+    const baseUrl = `${window.location.origin}/results`;
+    return serializeSearchParams(baseUrl, expandedParams as any);
+  }, [urlParams, expandQuery]);
   
   // Convert URL params to SearchFilters for external use
   const toSearchFilters = useCallback((): SearchFilters => ({

@@ -28,6 +28,7 @@ import { serializeSearchParams, type ParsedSearchParams } from './parsers';
 export {
   searchParamsParsers,
   serializeSearchParams,
+  parseSearchParamsFromUrl,
   DEFAULT_SEARCH_PARAMS,
   type ParsedSearchParams,
 } from './parsers';
@@ -59,5 +60,4 @@ export {
 export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchParams>): string {
   return serializeSearchParams(`/results/${searchId}`, params);
 }
-
 

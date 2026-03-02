@@ -234,7 +234,11 @@ function useUpdateSearchFilterFromUrl() {
       const range = updates.dateRange as DateRange | undefined;
       batchUpdates.df = range?.from ? format(range.from, 'yyyy-MM-dd') : null;
       batchUpdates.dt = range?.to ? format(range.to, 'yyyy-MM-dd') : null;
-      batchUpdates.ft = 'date';
+      // Only force date mode when at least one date is provided.
+      // When clearing date range, keep the active/default filter type from other updates.
+      if (range?.from || range?.to) {
+        batchUpdates.ft = 'date';
+      }
       shouldResetPage = true;
     }
     if ('ratingRange' in updates) {
