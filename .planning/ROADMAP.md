@@ -248,5 +248,5 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 38. Deletion Cascade & Storage Cleanup | 1/1 | Complete    | 2026-03-02 | - |
 | 39. Zotero Key Encryption | 2/2 | Complete    | 2026-03-02 | - |
 | 40. Performance | 2/2 | Complete    | 2026-03-02 | - |
-| 41. Rate Limiting Enforcement | 1/1 | Complete   | 2026-03-02 | - |
+| 41. Rate Limiting Enforcement | 1/1 | Complete    | 2026-03-02 | - |
 | 42. Test Coverage | v2.3 | 0/TBD | Not started | - |
