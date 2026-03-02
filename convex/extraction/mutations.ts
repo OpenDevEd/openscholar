@@ -1087,6 +1087,32 @@ export const deleteExtractionInternal = internalMutation({
   },
 });
 
+export const cleanupFailedPaperStorage = internalMutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ cleaned: v.number() }),
+  handler: async (ctx, args): Promise<{ cleaned: number }> => {
+    const papersWithStorage = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .filter((q) => q.neq(q.field("storageId"), undefined))
+      .collect();
+
+    let cleaned = 0;
+    for (const paper of papersWithStorage) {
+      if (!paper.storageId) continue;
+      try {
+        await ctx.storage.delete(paper.storageId);
+        await ctx.db.patch(paper._id, { storageId: undefined });
+        cleaned++;
+      } catch (e) {
+        console.error(`Failed to delete storage for paper ${paper._id}:`, e);
+      }
+    }
+
+    return { cleaned };
+  },
+});
+
 // Internal mutations (called by workflow/actions)
 
 export const createPaperRecords = internalMutation({
