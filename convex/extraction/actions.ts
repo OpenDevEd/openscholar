@@ -133,9 +133,11 @@ export const fetchPapersFromHistory = internalAction({
         `[fetchPapersFromHistory] Fetching: ${baseUrl}?${searchParams.toString()}`
       );
 
+      // BUG-05: Use OPENALEX_CONTACT_EMAIL env var for OpenAlex polite pool identification.
+      // Set this in the Convex dashboard to a real, monitored email address.
       const response = await fetch(`${baseUrl}?${searchParams.toString()}`, {
         headers: {
-          "User-Agent": "OpenAlex-Count/1.0 (mailto:admin@example.com)",
+          "User-Agent": `OpenAlex-Count/1.0 (mailto:${process.env.OPENALEX_CONTACT_EMAIL ?? "admin@example.com"})`,
           Accept: "application/json",
         },
       });
