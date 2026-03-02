@@ -242,7 +242,7 @@ Phases execute in numeric order: 35 -> 36 -> 37 -> 38 -> 39 -> 40 -> 41 -> 42
 | 34. Display Polish and Validation | v2.2 | 2/2 | Complete | 2026-03-01 |
 | 35. Quick Wins & Debug Cleanup | 3/3 | Complete    | 2026-03-02 | - |
 | 36. Type Safety Sweep | 2/2 | Complete    | 2026-03-02 | - |
-| 37. Schema Additions | 1/1 | Complete   | 2026-03-02 | - |
+| 37. Schema Additions | 1/1 | Complete    | 2026-03-02 | - |
 | 38. Deletion Cascade & Storage Cleanup | v2.3 | 0/TBD | Not started | - |
 | 39. Zotero Key Encryption | v2.3 | 0/TBD | Not started | - |
 | 40. Performance | v2.3 | 0/TBD | Not started | - |
