@@ -155,7 +155,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
     .collect();
 
   const resultsByPaper = new Map<string, any[]>();
-  for (const paper of papers) {
+  await Promise.all(papers.map(async (paper) => {
     const results = await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
@@ -164,7 +164,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
       paper._id,
       await attachReviewMetadata(ctx, paper._id, results)
     );
-  }
+  }));
 
   return { questions, papers, resultsByPaper };
 }
