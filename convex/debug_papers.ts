@@ -17,8 +17,7 @@ export const recent = internalQuery({
       // retryCount: p.retries,
       storageId: p.storageId,
       ragEntryId: p.ragEntryId,
-      // @ts-ignore
-      pdfUsed: p.pdfUsed
+      pdfContentUsed: p.pdfContentUsed
     }));
   },
 });
