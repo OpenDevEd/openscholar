@@ -136,6 +136,10 @@ Plans:
 **Goal**: Expired Zotero OAuth tokens are automatically cleaned up on a schedule
 **Depends on**: Phase 44
 **Requirements**: CRON-01
+**Plans:** 1 plan
+
+Plans:
+- [ ] 46-01-PLAN.md -- Add cleanupExpiredOAuthTokens cron job and deploy
 
 ## Progress
 
