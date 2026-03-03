@@ -36,9 +36,9 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Dependencies
 
-- [ ] **DEP-01**: Unused packages removed (ollama, ollama-ai-provider-v2, @ai-sdk/cohere, unpdf)
-- [ ] **DEP-02**: `pdfjs-dist` listed as explicit dependency in package.json
-- [ ] **DEP-03**: Radix UI packages audited; unused ones removed
+- [x] **DEP-01**: Unused packages removed (ollama, ollama-ai-provider-v2, @ai-sdk/cohere, unpdf)
+- [x] **DEP-02**: `pdfjs-dist` listed as explicit dependency in package.json
+- [x] **DEP-03**: Radix UI packages audited; unused ones removed
 
 ### Tests
 
@@ -54,7 +54,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Bug Fix
 
-- [ ] **BUG-01**: `OPENALEX_CONTACT_EMAIL` env var set in Convex dashboard (manual action)
+- [x] **BUG-01**: `OPENALEX_CONTACT_EMAIL` env var set in Convex dashboard (manual action)
 
 ## Future Requirements
 
@@ -89,16 +89,16 @@ None -- this milestone is a cleanup sweep.
 | PERF-03 | Phase 51 | Complete |
 | PERF-04 | Phase 51 | Complete |
 | PERF-05 | Phase 51 | Complete |
-| DEP-01 | Phase 52 | Pending |
-| DEP-02 | Phase 52 | Pending |
-| DEP-03 | Phase 52 | Pending |
+| DEP-01 | Phase 52 | Complete |
+| DEP-02 | Phase 52 | Complete |
+| DEP-03 | Phase 52 | Complete |
 | TEST-01 | Phase 47 | Complete |
 | TEST-02 | Phase 47 | Complete |
 | TEST-03 | Phase 47 | Complete |
 | TEST-04 | Phase 47 | Complete |
 | TEST-05 | Phase 47 | Complete |
 | ORG-01 | Phase 52 | Complete |
-| BUG-01 | Phase 52 | Pending |
+| BUG-01 | Phase 52 | Complete |
 
 **Coverage:**
 - v2.5 requirements: 25 total

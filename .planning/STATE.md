@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
 status: complete
-last_updated: "2026-03-03T10:20:22.383Z"
+last_updated: "2026-03-03T10:23:00Z"
 progress:
   total_phases: 6
   completed_phases: 6
@@ -32,8 +32,8 @@ Progress: [██████████] 100%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 94 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 10)
-- Total milestones shipped: 8
+- Total plans completed: 95 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 11)
+- Total milestones shipped: 9
 
 **By Milestone:**
 
@@ -47,7 +47,7 @@ Progress: [██████████] 100%
 | v2.2 | 4 | 7 | 2026-03-02 |
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
-| v2.5 | 6 | ? | -- |
+| v2.5 | 6 | 11 | 2026-03-03 |
 
 ## Accumulated Context
 
@@ -73,11 +73,13 @@ See PROJECT.md Key Decisions table for full log.
 - [51-02] Kept .take(100) on OAuth cleanup to bound memory per cron run
 - [51-02] Preserved by_status index alongside new by_status_updatedAt for backward compat with other queries
 - [Phase 52-02]: Renamed FocusModeSettingsState to FocusModeSettingsConfig to avoid name collision with lib/store.ts type
+- [52-01] Removed all 20 individual @radix-ui/react-* packages since unified radix-ui bundles them
+- [52-01] Added pdfjs-dist ^4.10.38 as explicit dependency (was transitive via react-pdf)
 
 ### Roadmap Evolution
 
-8 milestones shipped (v1.0 through v2.4). 46 phases, 84 plans total.
-v2.5 roadmap: 6 phases (47-52), 25 requirements across 8 categories.
+9 milestones shipped (v1.0 through v2.5). 52 phases, 95 plans total.
+v2.5 shipped: 6 phases (47-52), 11 plans, 25 requirements across 8 categories -- all complete.
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 52-02-PLAN.md (focus-mode.tsx decomposition into sub-components)
-Stopped at: Completed 52-02-PLAN.md (Phase 52 complete, v2.5 milestone complete)
+Last activity: 2026-03-03 - Completed 52-01-PLAN.md (dependency cleanup + OpenAlex env var)
+Stopped at: Completed 52-01-PLAN.md (all Phase 52 plans done, v2.5 milestone complete)
 Resume file: None
