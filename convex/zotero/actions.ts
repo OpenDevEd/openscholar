@@ -12,7 +12,7 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 import { createError } from "../lib/errors";
-import { encrypt, decrypt, getKeyPrefix } from "../lib/crypto";
+import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
 const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
@@ -22,23 +22,24 @@ const ZOTERO_API_URL = "https://api.zotero.org";
 // Type for Zotero connection
 type ZoteroConnection = {
   zoteroUserId: string;
-  encryptedApiKey?: string;
+  encryptedApiKey: string;
   username?: string;
 } | null;
 
 /**
  * Resolve the plaintext Zotero API key from a connection.
  * Decrypts the encryptedApiKey field using the ENCRYPTION_KEY environment variable.
+ * Logs a structured audit event via decryptApiKey.
  */
-function resolveZoteroApiKey(connection: NonNullable<ZoteroConnection>): string {
-  if (!connection.encryptedApiKey) {
-    throw createError("ZOTERO_NOT_CONNECTED", "Zotero connection has no encrypted API key");
-  }
+function resolveZoteroApiKey(connection: NonNullable<ZoteroConnection>, userId: string): string {
   const encryptionKey = process.env.ENCRYPTION_KEY;
   if (!encryptionKey) {
     throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
   }
-  return decrypt(connection.encryptedApiKey, encryptionKey);
+  return decryptApiKey(connection.encryptedApiKey, encryptionKey, {
+    userId,
+    purpose: "zotero-api-call",
+  });
 }
 
 async function requireCurrentUserId(ctx: ActionCtx): Promise<Id<"users">> {
@@ -648,7 +649,7 @@ export const fetchCollections = action({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
-    const apiKey = resolveZoteroApiKey(connection);
+    const apiKey = resolveZoteroApiKey(connection, userId);
 
     const prefix: string = groupId
       ? `/groups/${groupId}`
@@ -701,7 +702,7 @@ export const fetchGroups = action({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
-    const apiKey = resolveZoteroApiKey(connection);
+    const apiKey = resolveZoteroApiKey(connection, userId);
 
     const response: Response = await fetch(
       buildZoteroUrl(`/users/${connection.zoteroUserId}/groups`).toString(),
@@ -776,7 +777,7 @@ export const fetchItems = action({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
-    const apiKey = resolveZoteroApiKey(connection);
+    const apiKey = resolveZoteroApiKey(connection, userId);
 
     const prefix: string = groupId
       ? `/groups/${groupId}`
@@ -990,7 +991,7 @@ export const getAttachments = internalAction({
       throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     }
 
-    const apiKey = resolveZoteroApiKey(connection);
+    const apiKey = resolveZoteroApiKey(connection, userId);
 
     const prefix = groupId
       ? `/groups/${groupId}`
@@ -1057,7 +1058,7 @@ export const downloadFile = internalAction({
       return { success: false, error: "Zotero not connected" };
     }
 
-    const apiKey = resolveZoteroApiKey(connection);
+    const apiKey = resolveZoteroApiKey(connection, userId);
 
     try {
       const response = await fetch(downloadUrl, {

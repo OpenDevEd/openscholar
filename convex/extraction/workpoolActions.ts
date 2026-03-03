@@ -15,7 +15,7 @@ import {
 } from "../ai/helpers";
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
-import { decrypt } from "../lib/crypto";
+import { decryptApiKey } from "../lib/crypto";
 import { MIN_ABSTRACT_LENGTH, isPdfExtractionEnabled } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
 import { processFulltextDocumentWithGrobid } from "./grobid";
@@ -755,7 +755,10 @@ async function resolvePdfBlob(ctx: ActionCtx, args: {
     if (!encryptionKey) {
       throw new Error("ENCRYPTION_KEY not configured");
     }
-    zoteroApiKey = decrypt(zoteroConnection.encryptedApiKey, encryptionKey);
+    zoteroApiKey = decryptApiKey(zoteroConnection.encryptedApiKey, encryptionKey, {
+      userId: job?.userId ? String(job.userId) : "system",
+      purpose: "zotero-pdf-download",
+    });
   }
 
   const downloaded: DownloadPdfResult = await downloadPdf(args.pdfUrl, {

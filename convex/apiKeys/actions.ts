@@ -3,7 +3,7 @@ import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { encrypt, decrypt, getKeyPrefix } from "../lib/crypto";
+import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
 
 function validateApiKeyFormat(
   key: string,
@@ -117,6 +117,9 @@ export const getDecrypted = internalAction({
       return null;
     }
 
-    return decrypt(keyData.encryptedKey, encryptionKey);
+    return decryptApiKey(keyData.encryptedKey, encryptionKey, {
+      userId: user._id,
+      purpose: `api-key-decrypt:${args.provider}`,
+    });
   },
 });
