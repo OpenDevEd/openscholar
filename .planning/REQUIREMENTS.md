@@ -1,0 +1,110 @@
+# Requirements: OpenAlex Count
+
+**Defined:** 2026-03-03
+**Core Value:** Reliable, well-tested academic search and AI extraction
+
+## v2.5 Requirements
+
+Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
+
+### Type Safety
+
+- [ ] **TYPE-01**: Stripe webhook handlers use typed SDK event objects instead of `as any` casts
+- [ ] **TYPE-02**: Extraction job page uses properly typed Convex ID arguments instead of `as any`
+- [ ] **TYPE-03**: Paginated extraction results use typed validator instead of `paginationResultValidator(v.any())`
+- [ ] **TYPE-04**: `searchFilters` schema uses typed Convex validator matching the filter interface
+- [ ] **TYPE-05**: `encryptedApiKey` is required in schema (not optional) after completed migration
+- [ ] **TYPE-06**: `continueCursor: "" as any` replaced with proper empty pagination pattern in library queries
+
+### Billing Safety
+
+- [ ] **BILL-01**: `getPlanFromPriceId` substring fallback removed; unknown price IDs return `"free"` with warning log
+- [ ] **BILL-02**: Pending plan change state stored in Convex `subscriptions` table instead of Stripe metadata
+
+### Security
+
+- [ ] **SEC-01**: API key decryption centralized into single utility with structured audit logging
+- [ ] **SEC-02**: Debug/test functions excluded from production builds or isolated behind stronger gate
+
+### Performance
+
+- [ ] **PERF-01**: `loadJobPapersAndResults` batch-loads reviews in single query instead of N+1 per paper
+- [ ] **PERF-02**: Per-job `.collect()` calls bounded with `.take()` guards or pagination
+- [ ] **PERF-03**: `zoteroOAuthTokens` cleanup uses `by_expiry` index instead of full table scan
+- [ ] **PERF-04**: `checkSubscriptionStatus` cron uses composite `by_status_updatedAt` index
+- [ ] **PERF-05**: `crypto` module uses normal `import` with `"use node"` directive instead of obfuscation
+
+### Dependencies
+
+- [ ] **DEP-01**: Unused packages removed (ollama, ollama-ai-provider-v2, @ai-sdk/cohere, unpdf)
+- [ ] **DEP-02**: `pdfjs-dist` listed as explicit dependency in package.json
+- [ ] **DEP-03**: Radix UI packages audited; unused ones removed
+
+### Tests
+
+- [ ] **TEST-01**: Stripe webhook handler has dedicated unit tests for event routing and credit grant paths
+- [ ] **TEST-02**: Concurrent credit deduction race condition tested
+- [ ] **TEST-03**: `getPlanFromPriceId` substring fallback path tested (before removal in BILL-01)
+- [ ] **TEST-04**: Extraction cascade deletion partial-failure recovery tested
+- [ ] **TEST-05**: Debug gate bypass tested — all debug functions throw FORBIDDEN when env var unset
+
+### Code Organization
+
+- [ ] **ORG-01**: `focus-mode.tsx` decomposed into sub-components (PDF viewer, citation panel, rating controls, etc.)
+
+### Bug Fix
+
+- [ ] **BUG-01**: `OPENALEX_CONTACT_EMAIL` env var set in Convex dashboard (manual action)
+
+## Future Requirements
+
+None — this milestone is a cleanup sweep.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| New user-facing features | Pure tech debt milestone |
+| `convex-test` auth-gated function testing | Blocked by convex-test issue #50 |
+| OpenAlex pagination beyond 200 papers | Feature work, not tech debt |
+| Failed Stripe event auto-retry | New feature, not debt cleanup |
+| Mobile app or PWA | Separate initiative |
+
+## Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TYPE-01 | — | Pending |
+| TYPE-02 | — | Pending |
+| TYPE-03 | — | Pending |
+| TYPE-04 | — | Pending |
+| TYPE-05 | — | Pending |
+| TYPE-06 | — | Pending |
+| BILL-01 | — | Pending |
+| BILL-02 | — | Pending |
+| SEC-01 | — | Pending |
+| SEC-02 | — | Pending |
+| PERF-01 | — | Pending |
+| PERF-02 | — | Pending |
+| PERF-03 | — | Pending |
+| PERF-04 | — | Pending |
+| PERF-05 | — | Pending |
+| DEP-01 | — | Pending |
+| DEP-02 | — | Pending |
+| DEP-03 | — | Pending |
+| TEST-01 | — | Pending |
+| TEST-02 | — | Pending |
+| TEST-03 | — | Pending |
+| TEST-04 | — | Pending |
+| TEST-05 | — | Pending |
+| ORG-01 | — | Pending |
+| BUG-01 | — | Pending |
+
+**Coverage:**
+- v2.5 requirements: 25 total
+- Mapped to phases: 0
+- Unmapped: 25 ⚠️
+
+---
+*Requirements defined: 2026-03-03*
+*Last updated: 2026-03-03 after initial definition*
