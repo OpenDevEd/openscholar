@@ -17,7 +17,7 @@ import {
   type Usage,
 } from "../../lib/ai/core";
 import { SERVER_AI_CONFIG } from "./config";
-import { getProviderModel } from "../../lib/ai/client/providers";
+import { getProviderModel } from "../../lib/ai/server/providers";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType } from "convex/values";

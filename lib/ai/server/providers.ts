@@ -30,7 +30,7 @@ export async function getProviderModel(
     }
     case 'openrouter': {
       const { createOpenRouter } = await import('@openrouter/ai-sdk-provider')
-      
+
       // Build extraBody for provider routing if specified
       const extraBody: Record<string, unknown> = {}
       if (options?.openrouterProviderOrder) {
@@ -38,7 +38,7 @@ export async function getProviderModel(
           .split(',')
           .map(p => p.trim())
           .filter(p => p.length > 0)
-        
+
         if (providerOrder.length > 0) {
           extraBody.provider = {
             order: providerOrder,
@@ -46,12 +46,12 @@ export async function getProviderModel(
           }
         }
       }
-      
+
       const openRouterOptions = {
         ...baseOptions,
         ...(Object.keys(extraBody).length > 0 && { extraBody }),
       }
-      
+
       return createOpenRouter(openRouterOptions)(modelId)
     }
     case 'deepseek': {

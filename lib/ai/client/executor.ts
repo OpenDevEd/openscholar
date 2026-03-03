@@ -1,4 +1,4 @@
-import { getProviderModel } from './providers'
+import { getProviderModel } from '../server/providers'
 import {
   executeAIOperation,
   AIApiKeyRequiredError,
