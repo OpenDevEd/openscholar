@@ -117,7 +117,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 - [x] **Phase 43: Schema Migration & Quick Wins** - Encrypt and remove deprecated apiKey field, delete test page, fix placeholder email, document debug policy (completed 2026-03-02)
 - [x] **Phase 44: Workflow & Deletion Integrity** - Cancel extraction actually stops processing, fix orphan diffs, surface diff truncation, extend GDPR user cleanup (completed 2026-03-03)
-- [ ] **Phase 45: Type Safety Sweep** - Typed extraction validators, typed migration steps, typed review metadata, remove getJobDetails cap
+- [x] **Phase 45: Type Safety Sweep** - Typed extraction validators, typed migration steps, typed review metadata, remove getJobDetails cap (completed 2026-03-03)
 - [ ] **Phase 46: Cron Additions** - Automated cleanup of expired Zotero OAuth tokens
 
 Full details: `.planning/milestones/v2.4-ROADMAP.md`
@@ -126,7 +126,7 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 **Goal**: All extraction queries return typed validators instead of v.any(); all remaining any-casts in extraction and migration code replaced with proper types; getJobDetails returns all papers
 **Depends on**: Phase 44
 **Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04, BUG-02
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] 45-01-PLAN.md -- Create extraction validators, fix as-any casts, BUG-02, type migration
@@ -185,5 +185,5 @@ Plans:
 | 42. Test Coverage | v2.3 | 2/2 | Complete | 2026-03-02 |
 | 43. Schema Migration & Quick Wins | 2/2 | Complete    | 2026-03-02 | - |
 | 44. Workflow & Deletion Integrity | 2/2 | Complete    | 2026-03-03 | - |
-| 45. Type Safety Sweep | 1/2 | In Progress|  | - |
+| 45. Type Safety Sweep | 2/2 | Complete   | 2026-03-03 | - |
 | 46. Cron Additions | v2.4 | 0/TBD | Not started | - |

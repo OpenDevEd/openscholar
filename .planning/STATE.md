@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Concerns Sweep
-status: unknown
-last_updated: "2026-03-03T05:10:32.922Z"
+status: executing
+last_updated: "2026-03-03T05:48:15Z"
 progress:
   total_phases: 2
   completed_phases: 2
   total_plans: 4
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.4 Concerns Sweep -- Phase 44 executing
+**Current focus:** v2.4 Concerns Sweep -- Phase 45 complete
 
 ## Current Position
 
-Phase: 45 of 46 (Type Safety Sweep) -- IN PROGRESS
-Plan: 1 of 2 (45-01 Complete)
-Status: Executing
-Last activity: 2026-03-03 -- Completed 45-01 (Extraction Validators and Type Safety)
+Phase: 45 of 46 (Type Safety Sweep) -- COMPLETE
+Plan: 2 of 2 (45-02 Complete)
+Status: Phase Complete
+Last activity: 2026-03-03 -- Completed 45-02 (Extraction Query Return Validators)
 
-Progress: [#####-----] 50% (Phase 45)
+Progress: [##########] 100% (Phase 45)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 82 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 5)
+- Total plans completed: 83 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 6)
 - Total milestones shipped: 7
 
 **By Milestone:**
@@ -51,6 +51,7 @@ Progress: [#####-----] 50% (Phase 45)
 | Phase 44 P01 | 2min | 2 tasks | 2 files |
 | Phase 44 P02 | 3min | 2 tasks | 11 files |
 | Phase 45 P01 | 5min | 2 tasks | 4 files |
+| Phase 45 P02 | 3min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -59,6 +60,9 @@ Progress: [#####-----] 50% (Phase 45)
 See PROJECT.md Key Decisions table for full log.
 
 Recent decisions affecting v2.4:
+- Used statusResultValidator for all auth-gated extraction queries instead of manual v.union patterns (45-02)
+- Kept computed/aggregate validators inline in queries, not extracted to validators.ts (45-02)
+- getJobInsights job field uses computed subset {id, name} not full document validator (45-02)
 - Keep migrateSearchHistoryState external signature as any for Zustand persist compatibility (45-01)
 - Use ResultWithReview intersection type for Doc + review overlay rather than separate interface (45-01)
 - Truncation fields use v.optional() and conditional spread to only set when truncation occurs (44-02)
@@ -95,6 +99,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 45-01 (Extraction Validators and Type Safety)
-Stopped at: Completed 45-01-PLAN.md
+Last activity: 2026-03-03 - Completed 45-02 (Extraction Query Return Validators)
+Stopped at: Completed 45-02-PLAN.md
 Resume file: None

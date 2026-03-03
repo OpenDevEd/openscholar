@@ -26,7 +26,7 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 ### Type Safety
 
 - [x] **TYPE-01**: Create shared `convex/extraction/validators.ts` with typed validator objects for extraction document shapes
-- [ ] **TYPE-02**: Replace `v.any()` return validators in 7 extraction queries with typed validators from TYPE-01
+- [x] **TYPE-02**: Replace `v.any()` return validators in 7 extraction queries with typed validators from TYPE-01
 - [x] **TYPE-03**: Replace `Map<string, any>` and `review: any` in `attachReviewMetadata` with `Doc<"extractionResultReviews">`
 - [x] **TYPE-04**: Add typed migration input/output shapes for all 7 `migrateSearchHistoryState` version steps
 
@@ -92,7 +92,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-04 | Phase 44 | Complete |
 | BUG-05 | Phase 43 | Complete |
 | TYPE-01 | Phase 45 | Complete |
-| TYPE-02 | Phase 45 | Pending |
+| TYPE-02 | Phase 45 | Complete |
 | TYPE-03 | Phase 45 | Complete |
 | TYPE-04 | Phase 45 | Complete |
 | CRON-01 | Phase 46 | Pending |
