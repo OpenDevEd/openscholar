@@ -10,7 +10,7 @@
 - v2.2 Library UI Overhaul -- Phases 31-34 (shipped 2026-03-02)
 - v2.3 Codebase Hardening -- Phases 35-42 (shipped 2026-03-02)
 - v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
-- v2.5 Tech Debt Purge -- Phases 47-52 (in progress)
+- v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
 
 ## Phases
 
@@ -124,98 +124,20 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 
 </details>
 
-### v2.5 Tech Debt Purge (In Progress)
+<details>
+<summary>v2.5 Tech Debt Purge (Phases 47-53) -- SHIPPED 2026-03-03</summary>
 
-**Milestone Goal:** Eliminate all documented tech debt, security gaps, performance bottlenecks, test coverage gaps, dependency issues, and code organization debt.
+- [x] Phase 47: Test Safety Net (3/3 plans) -- completed 2026-03-03
+- [x] Phase 48: Billing Hardening (2/2 plans) -- completed 2026-03-03
+- [x] Phase 49: Extraction & Library Type Safety (2/2 plans) -- completed 2026-03-03
+- [x] Phase 50: Security & Schema (2/2 plans) -- completed 2026-03-03
+- [x] Phase 51: Performance (2/2 plans) -- completed 2026-03-03
+- [x] Phase 52: Cleanup & Organization (2/2 plans) -- completed 2026-03-03
+- [x] Phase 53: TypeScript Compile Fix (2/2 plans) -- completed 2026-03-03
 
-- [x] **Phase 47: Test Safety Net** - Write tests for untested code paths before modifying them (completed 2026-03-03)
-- [x] **Phase 48: Billing Hardening** - Type-safe Stripe handlers and billing safety improvements (completed 2026-03-03)
-- [x] **Phase 49: Extraction & Library Type Safety** - Eliminate remaining `as any` casts in extraction and library code (completed 2026-03-03)
-- [x] **Phase 50: Security & Schema** - Schema migration for encryptedApiKey and security improvements (completed 2026-03-03)
-- [x] **Phase 51: Performance** - Fix N+1 queries, bound unbounded calls, add missing indexes, fix imports (completed 2026-03-03)
-- [x] **Phase 52: Cleanup & Organization** - Remove unused dependencies, decompose monolith, set env var (completed 2026-03-03)
+Full details: `.planning/milestones/v2.5-ROADMAP.md`
 
-## Phase Details
-
-### Phase 47: Test Safety Net
-**Goal**: Critical code paths have test coverage before any refactoring begins
-**Depends on**: Nothing (first phase of v2.5)
-**Requirements**: TEST-01, TEST-02, TEST-03, TEST-04, TEST-05
-**Success Criteria** (what must be TRUE):
-  1. Stripe webhook event routing and credit grant paths have dedicated unit tests that pass
-  2. Concurrent credit deduction race conditions are tested and the expected behavior is documented
-  3. `getPlanFromPriceId` substring fallback path is tested (proving current behavior before removal)
-  4. Extraction cascade deletion partial-failure scenarios are tested with recovery verification
-  5. All debug functions throw FORBIDDEN when `PUBLIC_DEBUG_ENABLED` env var is unset
-**Plans**: 3 plans
-Plans:
-- [ ] 47-01-PLAN.md -- Stripe webhook handler tests + getPlanFromPriceId substring fallback tests
-- [ ] 47-02-PLAN.md -- Concurrent credit deduction + cascade deletion partial-failure tests
-- [ ] 47-03-PLAN.md -- Debug gate bypass tests and inventory verification
-
-### Phase 48: Billing Hardening
-**Goal**: Stripe billing code uses proper types and safe plan resolution with no `as any` casts
-**Depends on**: Phase 47 (TEST-03 validates fallback before BILL-01 removes it; TEST-01 covers webhook handlers before TYPE-01 refactors them)
-**Requirements**: TYPE-01, BILL-01, BILL-02
-**Success Criteria** (what must be TRUE):
-  1. Stripe webhook handlers reference typed SDK event objects (e.g., `Stripe.Invoice`, `Stripe.Subscription`) with zero `as any` casts
-  2. `getPlanFromPriceId` returns `"free"` with a warning log for unknown price IDs -- no substring matching
-  3. Pending plan change state (fromPlan, toPlan, upgradeTimestamp) is stored in the Convex `subscriptions` table, not Stripe metadata
-**Plans**: TBD
-
-### Phase 49: Extraction & Library Type Safety
-**Goal**: Extraction pages and library queries use proper Convex types with zero `as any` casts
-**Depends on**: Phase 47 (test safety net in place)
-**Requirements**: TYPE-02, TYPE-03, TYPE-04, TYPE-06
-**Success Criteria** (what must be TRUE):
-  1. Extraction job page passes properly typed `Id<"extractionJobs">` arguments instead of `as any` casts
-  2. Paginated extraction results use a typed validator (not `paginationResultValidator(v.any())`)
-  3. `searchFilters` schema field uses a typed Convex validator matching the actual filter interface shape
-  4. Library queries use proper empty pagination cursor pattern instead of `continueCursor: "" as any`
-**Plans**: 2 plans
-Plans:
-- [ ] 49-01-PLAN.md -- Typed extraction ID arguments + library cursor fix (TYPE-02, TYPE-06)
-- [ ] 49-02-PLAN.md -- Typed pagination validator + searchFilters validator (TYPE-03, TYPE-04)
-
-### Phase 50: Security & Schema
-**Goal**: Schema is fully migrated (no optional legacy fields) and security is centralized with audit trails
-**Depends on**: Phase 47 (TEST-05 validates debug gate before SEC-02 strengthens it)
-**Requirements**: TYPE-05, SEC-01, SEC-02
-**Success Criteria** (what must be TRUE):
-  1. `encryptedApiKey` field is required (not optional) in the Convex schema, and the deploy succeeds with no data loss
-  2. API key decryption goes through a single centralized utility that logs structured audit events (who decrypted, when, for what purpose)
-  3. Debug/test functions are excluded from production builds or gated behind a stronger mechanism than the current env var check
-**Plans**: 2 plans
-Plans:
-- [ ] 50-01-PLAN.md -- Centralized decryptApiKey with audit logging + make encryptedApiKey required (TYPE-05, SEC-01)
-- [ ] 50-02-PLAN.md -- Strengthen debug gate with audit logging (SEC-02)
-
-### Phase 51: Performance
-**Goal**: Known N+1 queries, unbounded collections, missing indexes, and import inefficiencies are resolved
-**Depends on**: Phase 47 (test safety net in place)
-**Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
-**Success Criteria** (what must be TRUE):
-  1. `loadJobPapersAndResults` loads reviews in a single batch query -- no per-paper database round trips
-  2. Per-job `.collect()` calls are bounded with `.take()` guards or use pagination to prevent unbounded memory usage
-  3. `zoteroOAuthTokens` cleanup cron uses a `by_expiry` index instead of scanning the full table
-  4. `checkSubscriptionStatus` cron queries subscriptions via a composite `by_status_updatedAt` index
-  5. `crypto` module uses a standard `import` with `"use node"` directive instead of dynamic `require()` obfuscation
-**Plans**: 2 plans
-Plans:
-- [ ] 51-01-PLAN.md -- Batch review loading (N+1 fix) + bound unbounded .collect() calls (PERF-01, PERF-02)
-- [ ] 51-02-PLAN.md -- Add missing indexes (by_expiry, by_status_updatedAt) + fix crypto import (PERF-03, PERF-04, PERF-05)
-
-### Phase 52: Cleanup & Organization
-**Goal**: Unused dependencies removed, focus-mode monolith decomposed, and environment properly configured
-**Depends on**: Phase 51 (all functional changes complete before cleanup)
-**Requirements**: DEP-01, DEP-02, DEP-03, ORG-01, BUG-01
-**Success Criteria** (what must be TRUE):
-  1. `ollama`, `ollama-ai-provider-v2`, `@ai-sdk/cohere`, and `unpdf` are removed from package.json and no imports reference them
-  2. `pdfjs-dist` is listed as an explicit dependency in package.json (not just a transitive dependency)
-  3. Radix UI packages are audited and any unused ones are removed from package.json
-  4. `focus-mode.tsx` is decomposed into discrete sub-components (PDF viewer, citation panel, rating controls, etc.) with the parent composing them
-  5. `OPENALEX_CONTACT_EMAIL` env var is set in the Convex dashboard and the OpenAlex User-Agent header includes it
-**Plans**: TBD
+</details>
 
 ## Progress
 
@@ -267,27 +189,10 @@ Plans:
 | 44. Workflow & Deletion Integrity | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 45. Type Safety Sweep | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 46. Cron Additions | v2.4 | 1/1 | Complete | 2026-03-03 |
-| 47. Test Safety Net | 3/3 | Complete    | 2026-03-03 | - |
-| 48. Billing Hardening | 2/2 | Complete    | 2026-03-03 | - |
-| 49. Extraction & Library Type Safety | 2/2 | Complete    | 2026-03-03 | - |
-| 50. Security & Schema | 2/2 | Complete    | 2026-03-03 | - |
-| 51. Performance | 2/2 | Complete    | 2026-03-03 | - |
-| 52. Cleanup & Organization | 2/2 | Complete    | 2026-03-03 | - |
-
-### Phase 53: TypeScript Compile Fix
-
-**Goal:** Fix all 32 TypeScript compile errors from Stripe SDK v20 type changes, optional refs, orphaned file, and test mock incompatibilities
-**Depends on:** Phase 52
-**Requirements**: TSFIX-01, TSFIX-02, TSFIX-03, TSFIX-04, TSFIX-05, TSFIX-06
-**Success Criteria** (what must be TRUE):
-  1. `npx tsc --noEmit` produces zero errors across all source and test files
-  2. Stripe subscription period fields are accessed via `SubscriptionItem` (not `Subscription`)
-  3. Invoice subscription is accessed via `invoice.parent.subscription_details.subscription`
-  4. `stripeWebhookHandlers.ts` refs parameter is required (not optional)
-  5. Orphaned `results-table.tsx` is deleted
-  6. All existing tests continue to pass
-**Plans**: 2 plans
-
-Plans:
-- [ ] 53-01-PLAN.md -- Delete orphaned file, fix refs optionality, fix Stripe v20 period/invoice types in production code (TSFIX-01, TSFIX-02, TSFIX-03, TSFIX-04)
-- [ ] 53-02-PLAN.md -- Fix Stripe v20 test mock types, Convex Id casts, and live-billing period access (TSFIX-05, TSFIX-06)
+| 47. Test Safety Net | v2.5 | 3/3 | Complete | 2026-03-03 |
+| 48. Billing Hardening | v2.5 | 2/2 | Complete | 2026-03-03 |
+| 49. Extraction & Library Type Safety | v2.5 | 2/2 | Complete | 2026-03-03 |
+| 50. Security & Schema | v2.5 | 2/2 | Complete | 2026-03-03 |
+| 51. Performance | v2.5 | 2/2 | Complete | 2026-03-03 |
+| 52. Cleanup & Organization | v2.5 | 2/2 | Complete | 2026-03-03 |
+| 53. TypeScript Compile Fix | v2.5 | 2/2 | Complete | 2026-03-03 |

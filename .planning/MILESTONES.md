@@ -1,5 +1,29 @@
 # Milestones
 
+## v2.5 Tech Debt Purge (Shipped: 2026-03-03)
+
+**Phases completed:** 7 phases, 15 plans
+**Git range:** `86f8e4b..ba8a552` (54 commits)
+**Files changed:** 80 files, +7,858/-1,458 lines
+
+**Key accomplishments:**
+- Built test safety net with Stripe webhook handler, concurrent credit deduction, and debug gate bypass tests (Phase 47)
+- Type-safe Stripe billing with zero `as any` casts and pending plan change state migrated from Stripe metadata to Convex (Phase 48)
+- Typed extraction/library queries with proper `Id<"extractionJobs">`, typed pagination validators, and `searchFiltersValidator` (Phase 49)
+- Centralized `decryptApiKey` with structured audit logging, made `encryptedApiKey` required in schema, strengthened debug gate (Phase 50)
+- Fixed N+1 review loading with batch query, bounded all unbounded `.collect()` calls, added `by_expiry` and `by_status_updatedAt` indexes (Phase 51)
+- Removed unused dependencies (ollama, unpdf, 20 individual Radix packages), decomposed focus-mode.tsx monolith (Phase 52)
+- Zero TypeScript compile errors across entire codebase — resolved all 19 Stripe v20 type errors in production and test files (Phase 53)
+
+**Audit:** 31/31 requirements, 7/7 phases, 28/28 integrations, 5/5 E2E flows — PASSED
+
+**Tech debt carried forward:**
+- `(error as any).decline_code` in actions.ts (Info — Stripe-specific property, intentional)
+- `Record<string, any>` local patch accumulator in internal.ts (Info — not a type-safety gap)
+- Stripe metadata dual-read for `upgradeFromPlan` (Info — backward-compatible migration path)
+
+---
+
 ## v2.4 Concerns Sweep (Shipped: 2026-03-03)
 
 **Phases completed:** 4 phases, 7 plans

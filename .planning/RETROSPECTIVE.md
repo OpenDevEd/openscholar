@@ -390,6 +390,60 @@
 
 ---
 
+## Milestone: v2.5 — Tech Debt Purge
+
+**Shipped:** 2026-03-03
+**Phases:** 7 | **Plans:** 15 | **Commits:** 54
+
+### What Was Built
+- Test safety net: Stripe webhook handler tests, concurrent credit deduction tests, cascade deletion partial-failure tests, debug gate bypass tests
+- Type-safe Stripe billing: zero `as any` casts in webhook handlers, typed SDK event objects, `getPlanFromPriceId` substring fallback removed
+- Pending plan change state migrated from Stripe metadata to Convex `subscriptions` table
+- Typed extraction/library queries: `Id<"extractionJobs">` props, typed pagination validators, `searchFiltersValidator`, proper cursor pattern
+- Centralized `decryptApiKey` with structured audit logging ([AUDIT:KEY_DECRYPT]), `encryptedApiKey` made required in schema
+- Strengthened debug gate with audit logging on every invocation ([AUDIT:DEBUG_ACCESS])
+- Batch review loading (N+1 fix), bounded all `.collect()` with `.take()` guards, `by_expiry` + `by_status_updatedAt` indexes
+- Removed unused dependencies (ollama, unpdf, 20 Radix packages), decomposed focus-mode.tsx into 3 sub-components
+- Zero TypeScript compile errors across entire codebase — resolved all 19 Stripe v20 type errors in production and test files
+
+### What Worked
+- Test-first strategy (Phase 47 before all modifications) prevented regressions throughout the entire milestone
+- Dependency ordering (47 tests -> 48 billing -> 49 types -> 50 security -> 51 perf -> 52 cleanup -> 53 TS fix) kept each phase cleanly isolated
+- Phase 53 (TypeScript Compile Fix) was an effective catch-all for TS errors introduced by Phase 48's stricter Stripe typing
+- Milestone audit passed on first attempt (31/31 requirements) — re-audit after Phase 53 confirmed zero remaining debt
+- Ref-injection pattern for webhook handler testing enabled full unit test coverage without convex-test
+- 15 plans executed in a single day — consistent velocity across all 7 phases
+- The comprehensive CONCERNS.md inventory (from v2.3) meant zero discovery overhead during planning
+
+### What Was Inefficient
+- Phase 53 was added reactively after Phase 48 introduced TypeScript compile errors — should have been anticipated during Phase 48 planning
+- v2.5 plans in ROADMAP.md Progress table had broken column alignment (missing Milestone column for phases 47-52)
+- SUMMARY.md one_liner fields still not populated (same recurring issue from v2.0 through v2.4)
+- Phase count discrepancy: ROADMAP listed "Phases 47-52" in milestones but actual range was 47-53 (Phase 53 added mid-milestone)
+
+### Patterns Established
+- Ref-injection pattern for testing Convex webhook handlers: extract pure functions, inject internal refs as parameter
+- Double cast (as unknown as X) for Stripe v20 union types in test mocks — Partial<UnionType> resolves to last member
+- Record<string, unknown> for Stripe event mock helpers — avoids union type issues with Partial
+- [AUDIT:KEY_DECRYPT] and [AUDIT:DEBUG_ACCESS] structured log prefixes for grep-friendly security audit trails
+- MAX_PAPERS_PER_JOB = 500 safety constant applied to all per-job queries and mutations
+- Required (not optional) refs parameter eliminates an entire class of undefined assignability errors
+
+### Key Lessons
+1. Test safety nets before refactoring are essential — Phase 47 caught issues that would have been invisible without coverage
+2. Stricter typing in one module can cascade TypeScript errors across the codebase — plan a TS fix phase alongside type-tightening work
+3. Centralized decrypt utilities with audit logging are a clean security pattern — single point of enforcement, complete audit trail
+4. Double cast (as unknown as X) is the correct pattern for Stripe v20 discriminated union types in tests
+5. Required parameters > optional parameters when all callers always provide the value — eliminates undefined assignability errors
+6. Comprehensive tech debt inventories (CONCERNS.md) make cleanup milestones predictable — zero discovery overhead during execution
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: 1 session for full milestone
+- Notable: 15 plans in 1 day — entire tech debt purge completed in a single session with zero gap closures
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -404,6 +458,7 @@
 | v2.2 | 34 | 4 | 7 | ~2min | DRY layout infrastructure, factory patterns, chrome shell composition |
 | v2.3 | 57 | 8 | 14 | ~2.5min | Hardening sweep, shared crypto, cascade deletion, rate limiting |
 | v2.4 | 30 | 4 | 7 | ~3min | Concerns sweep, typed validators, credit guards, cron cleanup |
+| v2.5 | 54 | 7 | 15 | ~2min | Tech debt purge, typed Stripe, zero TS errors, audit logging |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -417,9 +472,11 @@
 8. Junction tables for many-to-many in Convex — array fields create cascade delete complexity (v2.1)
 9. URL state (nuqs) over local state for filterable views — eliminates sync bugs and enables bookmarkable views (v2.1)
 10. Infrastructure-first with prove-on-existing-page strategy reduces rework in shared component builds (v2.2)
-11. SUMMARY.md one_liner fields consistently missing — recurring process gap that affects milestone accomplishment extraction (v2.0 + v2.1 + v2.2 + v2.3)
+11. SUMMARY.md one_liner fields consistently missing — recurring process gap that affects milestone accomplishment extraction (v2.0 + v2.1 + v2.2 + v2.3 + v2.5)
 12. Schema-first phases enable clean parallelism — always add optional fields before writing dependent logic (v2.3)
 13. Shared utility extraction during hardening milestones is ideal — patterns are understood, not speculative (v2.3)
-14. Concerns sweep milestones with complete inventory are high-value, low-risk — zero design overhead, predictable execution (v2.4)
+14. Concerns sweep milestones with complete inventory are high-value, low-risk — zero design overhead, predictable execution (v2.4 + v2.5)
 15. Credit-guard pattern (fresh DB read before deduction) is simpler than TOCTOU version fields and handles all cancellation races (v2.4)
 16. ROADMAP.md Phase Details sections must be complete for all phases — missing details break CLI tool detection (v2.4)
+17. Test safety nets before refactoring catch regressions that would be invisible without coverage (v2.5)
+18. Stricter typing in one module cascades TS errors — plan a fix phase alongside type-tightening work (v2.5)
