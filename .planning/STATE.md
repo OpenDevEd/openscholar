@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: in_progress
-last_updated: "2026-03-03T11:01:36.202Z"
+status: complete
+last_updated: "2026-03-03T11:06:39.834Z"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -18,22 +18,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 53 in progress (TypeScript compile fix)
+**Current focus:** v2.5 Tech Debt Purge -- COMPLETE (all 7 phases, 15 plans shipped)
 
 ## Current Position
 
 Phase: 53 of 53 (TypeScript Compile Fix) -- 7 of 7 in v2.5
-Plan: 1 of 2 in Phase 53 (COMPLETE)
-Status: Plan 53-01 complete, 53-02 remaining
-Last activity: 2026-03-03 -- Completed 53-01 (fix 24 TS compile errors in production files)
+Plan: 2 of 2 in Phase 53 (COMPLETE)
+Status: v2.5 milestone COMPLETE -- all phases and plans shipped
+Last activity: 2026-03-03 -- Completed 53-02 (fix 11 TS compile errors in test files)
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 96 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 12)
-- Total milestones shipped: 9
+- Total plans completed: 97 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 13)
+- Total milestones shipped: 10
 
 **By Milestone:**
 
@@ -47,7 +47,7 @@ Progress: [█████████░] 93%
 | v2.2 | 4 | 7 | 2026-03-02 |
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
-| v2.5 | 7 | 12/13 | in progress |
+| v2.5 | 7 | 13 | 2026-03-03 |
 
 ## Accumulated Context
 
@@ -77,12 +77,14 @@ See PROJECT.md Key Decisions table for full log.
 - [52-01] Added pdfjs-dist ^4.10.38 as explicit dependency (was transitive via react-pdf)
 - [53-01] Deleted orphaned results-table.tsx rather than fixing its 4 broken imports (untracked duplicate of table-view.tsx)
 - [53-01] Made refs required in stripeWebhookHandlers since all callers always provide refs via wrapper functions
+- [53-02] Used Record<string, unknown> instead of Partial<Stripe.Event> for makeStripeEvent helper -- union type makes Partial resolve to last member
+- [53-02] Used double cast (as unknown as X) throughout tests for Stripe v20 union and branded types
 
 ### Roadmap Evolution
 
-9 milestones shipped (v1.0 through v2.5). 53 phases, 96 plans total.
-v2.5 extended: 7 phases (47-53), 12 of 13 plans complete.
-- Phase 53 added: TypeScript Compile Fix -- Plan 01 complete (24 production TS errors fixed)
+10 milestones shipped (v1.0 through v2.5). 53 phases, 97 plans total.
+v2.5 COMPLETE: 7 phases (47-53), 13 of 13 plans shipped.
+- Phase 53 complete: TypeScript Compile Fix -- zero tsc errors across entire codebase
 
 ### Pending Todos
 
@@ -101,6 +103,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 53-01-PLAN.md (fix 24 TS compile errors in production files)
-Stopped at: Completed 53-01-PLAN.md (53-02 remaining for non-production TS errors)
+Last activity: 2026-03-03 - Completed 53-02-PLAN.md (fix 11 TS compile errors in test files)
+Stopped at: v2.5 milestone complete -- all phases shipped
 Resume file: None
