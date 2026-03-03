@@ -13,9 +13,9 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 - [ ] **TYPE-02**: Replace `(fresh.customer as any)?.id` in `convex/maintenance/internal.ts` with `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id` pattern
 - [ ] **TYPE-03**: Replace `name: args.name as any` in `convex/lib/rateLimit.ts` with `v.union(v.literal(...))` validator matching all `defineRateLimits` keys
 - [ ] **TYPE-04**: Replace `workflow.cancel(ctx, job.workflowId as any)` in `convex/extraction/mutations.ts` with properly typed workflow ID (verify `@convex-dev/workflow` exported type first)
-- [ ] **TYPE-05**: Delete unused `components/library/library-filters.tsx` dead code file
-- [ ] **TYPE-06**: Move `getProviderModel` from `lib/ai/client/providers` to `lib/ai/server/` or `lib/ai/core/` to fix module boundary violation
-- [ ] **TYPE-07**: Verify `convex/test.setup.ts` purpose and either wire into vitest config or delete if orphaned
+- [x] **TYPE-05**: Delete unused `components/library/library-filters.tsx` dead code file
+- [x] **TYPE-06**: Move `getProviderModel` from `lib/ai/client/providers` to `lib/ai/server/` or `lib/ai/core/` to fix module boundary violation
+- [x] **TYPE-07**: Verify `convex/test.setup.ts` purpose and either wire into vitest config or delete if orphaned
 - [ ] **TYPE-08**: Migrate upgrade metadata reading from Stripe subscription object to Convex subscription record in `convex/credits/actions.ts` (BILL-02 follow-up)
 
 ### Security
@@ -76,9 +76,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-02 | Phase 54 | Pending |
 | TYPE-03 | Phase 54 | Pending |
 | TYPE-04 | Phase 54 | Pending |
-| TYPE-05 | Phase 54 | Pending |
-| TYPE-06 | Phase 54 | Pending |
-| TYPE-07 | Phase 54 | Pending |
+| TYPE-05 | Phase 54 | Complete |
+| TYPE-06 | Phase 54 | Complete |
+| TYPE-07 | Phase 54 | Complete |
 | TYPE-08 | Phase 54 | Pending |
 | SEC-01 | Phase 55 | Pending |
 | SEC-02 | Phase 55 | Pending |

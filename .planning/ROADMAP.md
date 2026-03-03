@@ -162,11 +162,11 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
   3. Rate limiter `consume` mutation rejects invalid rate limit names at runtime and the test for invalid name rejection passes
   4. Workflow cancel path uses properly typed workflow ID -- `as any` removed from `convex/extraction/mutations.ts` and test for cancel path passes
   5. `getProviderModel` lives in `lib/ai/server/` or `lib/ai/core/`, dead code file `library-filters.tsx` is deleted, orphaned `convex/test.setup.ts` is resolved, and upgrade metadata reads from Convex instead of Stripe
-**Plans**: TBD
+**Plans**: 2 plans (wave 1 parallel)
 
 Plans:
-- [ ] 54-01: TBD
-- [ ] 54-02: TBD
+- [ ] 54-01: Type derivations, narrowings, and casts -- eliminate as-any in export/filtering, maintenance, rate limiter, workflow cancel, credits (TYPE-01..04, TYPE-08, TEST-03, TEST-04)
+- [ ] 54-02: Module cleanup -- move getProviderModel to server/, delete dead code and orphan (TYPE-05, TYPE-06, TYPE-07)
 
 ### Phase 55: Security and Audit
 **Goal**: Users are protected from XSS in extraction results; security-sensitive operations persist to a queryable audit table; missing env vars are detected at startup; debug function exposure is documented
@@ -288,7 +288,7 @@ Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58
 | 51. Performance | v2.5 | 2/2 | Complete | 2026-03-03 |
 | 52. Cleanup & Organization | v2.5 | 2/2 | Complete | 2026-03-03 |
 | 53. TypeScript Compile Fix | v2.5 | 2/2 | Complete | 2026-03-03 |
-| 54. Type Safety Sweep | v3.0 | 0/? | Not started | - |
+| 54. Type Safety Sweep | 1/2 | In Progress|  | - |
 | 55. Security and Audit | v3.0 | 0/? | Not started | - |
 | 56. Performance Fixes | v3.0 | 0/? | Not started | - |
 | 57. Incremental Aggregation | v3.0 | 0/? | Not started | - |
