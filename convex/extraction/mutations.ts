@@ -20,7 +20,9 @@ import {
   buildDisagreementClusters,
   buildRunDiff,
   formatAnswerForDisplay,
+  type DisagreementCluster,
   type InsightEntry,
+  type QuestionInsightAggregate,
   type RunDiffRecord,
 } from "../../lib/extraction/insights";
 
@@ -90,9 +92,9 @@ function toInsightEntry(
     questionKey,
     answer: review?.correctedAnswer ?? result?.answer ?? null,
     confidence: result?.confidence,
-    citationStatus: result?.citationStatus as any,
+    citationStatus: result?.citationStatus,
     pdfContentUsed: Boolean(result?.pdfContentUsed),
-    reviewState: (review?.state as any) || "unreviewed",
+    reviewState: review?.state || "unreviewed",
   };
 }
 
@@ -798,30 +800,37 @@ export const createExtractionReportSnapshot = mutation({
 
       return {
         question,
-        aggregate: aggregateQuestionInsights(entries, question.type as any),
-        disagreements: buildDisagreementClusters(entries, question.type as any),
+        aggregate: aggregateQuestionInsights(entries, question.type),
+        disagreements: buildDisagreementClusters(entries, question.type),
         entries,
       };
     });
 
-    const keyFindingsLines = insightByQuestion.map((row: any) => {
+    type InsightRow = {
+      question: Doc<"extractionQuestions">;
+      aggregate: QuestionInsightAggregate;
+      disagreements: DisagreementCluster[];
+      entries: InsightEntry[];
+    };
+
+    const keyFindingsLines = insightByQuestion.map((row: InsightRow) => {
       const top = row.aggregate.topAnswers[0];
       const topText = top ? `"${top.display}" (${top.count})` : "No dominant answer";
       return `- ${row.question.question}: ${topText}`;
     });
 
     const disagreementLines = insightByQuestion
-      .filter((row: any) => row.disagreements.length > 1)
-      .map((row: any) => {
+      .filter((row: InsightRow) => row.disagreements.length > 1)
+      .map((row: InsightRow) => {
         const topCluster = row.disagreements
           .slice(0, 2)
-          .map((cluster: any) => `${cluster.displayAnswer} (${cluster.count})`)
+          .map((cluster) => `${cluster.displayAnswer} (${cluster.count})`)
           .join(" vs ");
         return `- ${row.question.question}: ${topCluster}`;
       });
 
     const evidenceHighlights = insightByQuestion
-      .flatMap((row: any) => {
+      .flatMap((row: InsightRow) => {
         const groundedEntries = row.entries
           .filter(
             (entry: InsightEntry) =>
@@ -832,7 +841,7 @@ export const createExtractionReportSnapshot = mutation({
           (entry: InsightEntry) =>
             `- ${row.question.question}: ${formatAnswerForDisplay(
               entry.answer,
-              row.question.type as any
+              row.question.type
             )} (${entry.title})`
         );
       })
@@ -840,15 +849,15 @@ export const createExtractionReportSnapshot = mutation({
 
     const totalExpected = scopedPapers.length * Math.max(scopedQuestions.length, 1);
     const answeredTotal = insightByQuestion.reduce(
-      (sum: number, row: any) => sum + row.aggregate.answered,
+      (sum: number, row: InsightRow) => sum + row.aggregate.answered,
       0
     );
     const groundedTotal = insightByQuestion.reduce(
-      (sum: number, row: any) => sum + row.aggregate.grounded,
+      (sum: number, row: InsightRow) => sum + row.aggregate.grounded,
       0
     );
     const bestEffortTotal = insightByQuestion.reduce(
-      (sum: number, row: any) => sum + row.aggregate.citationStatusMix.best_effort,
+      (sum: number, row: InsightRow) => sum + row.aggregate.citationStatusMix.best_effort,
       0
     );
 
@@ -956,7 +965,7 @@ export const createExtractionRunDiff = mutation({
             questionKey: result.questionKey,
             answer: result.answer,
             confidence: result.confidence,
-            citationStatus: result.citationStatus as any,
+            citationStatus: result.citationStatus,
           });
         }
       }

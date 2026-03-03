@@ -20,10 +20,21 @@ import {
   buildArrayAnswerProfileClusters,
   buildDisagreementClusters,
   type CitationStatus,
+  type DisagreementCluster,
   type InsightEntry,
+  type QuestionType,
   type ReviewState,
 } from "../../lib/extraction/insights";
 import { createError } from "../lib/errors";
+
+/** Result document with optional review overlay fields from attachReviewMetadata. */
+type ResultWithReview = Doc<"extractionResults"> & {
+  reviewState?: ReviewState;
+  reviewNote?: string;
+  correctedAnswer?: Doc<"extractionResults">["answer"];
+  reviewedAt?: number;
+  reviewedBy?: Id<"users">;
+};
 
 type OwnedJobResolution =
   | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
@@ -110,12 +121,12 @@ async function attachReviewMetadata(
     .query("extractionResultReviews")
     .withIndex("by_paper", (q) => q.eq("paperId", paperId))
     .collect();
-  const reviewByResultId = new Map<string, any>(
-    reviews.map((review: any) => [review.resultId, review] as [string, any])
+  const reviewByResultId = new Map<string, Doc<"extractionResultReviews">>(
+    reviews.map((review) => [review.resultId, review])
   );
 
-  return results.map((result) => {
-    const review: any = reviewByResultId.get(result._id);
+  return results.map((result): ResultWithReview => {
+    const review = reviewByResultId.get(result._id);
     if (!review) return result;
     return {
       ...result,
@@ -154,7 +165,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .collect();
 
-  const resultsByPaper = new Map<string, any[]>();
+  const resultsByPaper = new Map<string, ResultWithReview[]>();
   await Promise.all(papers.map(async (paper) => {
     const results = await ctx.db
       .query("extractionResults")
@@ -291,7 +302,7 @@ export const getJobDetails = query({
         q.eq("jobId", args.jobId).eq("processable", true)
       )
       .order("asc")
-      .take(100);
+      .collect();
 
     const processablePapers = papers.filter((p) => p.processable !== false);
     const processed = processablePapers.filter((p) => p.status === "completed").length;
@@ -580,10 +591,10 @@ export const getJobInsights = query({
       }
 
       const paperResults = resultsByPaper.get(paper._id) || [];
-      const resultByQuestionKey = new Map(paperResults.map((result: any) => [result.questionKey, result]));
+      const resultByQuestionKey = new Map(paperResults.map((result) => [result.questionKey, result]));
 
       for (const question of questions) {
-        const result: any = resultByQuestionKey.get(question.key);
+        const result = resultByQuestionKey.get(question.key);
         const entry: InsightEntry = {
           paperId: paper._id,
           title: paper.title,
@@ -601,7 +612,7 @@ export const getJobInsights = query({
 
     const questionInsights = questions.map((question: Doc<"extractionQuestions">) => {
       const entries = questionEntries.get(question.key) || [];
-      const aggregate = aggregateQuestionInsights(entries, question.type as any);
+      const aggregate = aggregateQuestionInsights(entries, question.type);
       answeredTotal += aggregate.answered;
       groundedTotal += aggregate.grounded;
       bestEffortTotal += aggregate.citationStatusMix.best_effort;
@@ -712,7 +723,7 @@ export const getQuestionInsights = query({
     const entries: InsightEntry[] = [];
     for (const paper of papers.filter((item: Doc<"extractionPapers">) => item.processable !== false)) {
       const result = (resultsByPaper.get(paper._id) || []).find(
-        (row: any) => row.questionKey === args.questionKey
+        (row) => row.questionKey === args.questionKey
       );
       entries.push({
         paperId: paper._id,
@@ -727,7 +738,7 @@ export const getQuestionInsights = query({
       });
     }
 
-    const aggregate = aggregateQuestionInsights(entries, question.type as any);
+    const aggregate = aggregateQuestionInsights(entries, question.type);
     const rawAnswerDistribution = aggregate.topAnswers.map((answer) => ({
       ...answer,
       examples: entries
@@ -807,7 +818,7 @@ export const getQuestionDisagreements = query({
     const entries: InsightEntry[] = [];
     for (const paper of papers.filter((item: Doc<"extractionPapers">) => item.processable !== false)) {
       const result = (resultsByPaper.get(paper._id) || []).find(
-        (row: any) => row.questionKey === args.questionKey
+        (row) => row.questionKey === args.questionKey
       );
       entries.push({
         paperId: paper._id,
@@ -824,7 +835,7 @@ export const getQuestionDisagreements = query({
     let viewMode: "disagreement" | "answer_profiles" = "disagreement";
     let suppressedSingletonCount = 0;
     let totalClusterCount = 0;
-    let clusters: any[] = [];
+    let clusters: DisagreementCluster[] = [];
 
     if (question.type === "array") {
       viewMode = "answer_profiles";
@@ -836,7 +847,7 @@ export const getQuestionDisagreements = query({
       suppressedSingletonCount = profile.suppressedSingletonCount;
       totalClusterCount = profile.totalClusterCount;
     } else {
-      clusters = buildDisagreementClusters(entries, question.type as any, 20);
+      clusters = buildDisagreementClusters(entries, question.type, 20);
       totalClusterCount = clusters.length;
     }
 
@@ -906,18 +917,35 @@ export const getReviewQueue = query({
     const questionByKey = buildQuestionInfoByKey(questions);
     const allowedStates = new Set(args.states || []);
     const includeStateFilter = allowedStates.size > 0;
-    const items: any[] = [];
+    const items: Array<{
+      resultId: Id<"extractionResults">;
+      paperId: Id<"extractionPapers">;
+      paperTitle: string;
+      openalexId: string;
+      questionKey: string;
+      question: string;
+      questionType: QuestionType | undefined;
+      answer: Doc<"extractionResults">["answer"];
+      confidence: number | undefined;
+      reasoning: string | undefined;
+      citations: Doc<"extractionResults">["citations"];
+      citationStatus: Doc<"extractionResults">["citationStatus"];
+      reviewState: ReviewState;
+      reviewNote: string | undefined;
+      correctedAnswer: Doc<"extractionResults">["answer"] | undefined;
+      reviewedAt: number | undefined;
+    }> = [];
 
     for (const paper of papers.filter((row: Doc<"extractionPapers">) => row.processable !== false)) {
       const results = resultsByPaper.get(paper._id) || [];
       for (const result of results) {
-        const reviewState = toReviewState((result as any).reviewState) || "unreviewed";
+        const reviewState = toReviewState(result.reviewState) || "unreviewed";
         if (includeStateFilter && !allowedStates.has(reviewState)) {
           continue;
         }
         if (
           args.onlyInsufficientEvidence &&
-          (result as any).citationStatus !== "insufficient_evidence"
+          result.citationStatus !== "insufficient_evidence"
         ) {
           continue;
         }
@@ -930,15 +958,15 @@ export const getReviewQueue = query({
           questionKey: result.questionKey,
           question: question?.question || result.questionKey,
           questionType: question?.type,
-          answer: (result as any).correctedAnswer ?? result.answer,
+          answer: result.correctedAnswer ?? result.answer,
           confidence: result.confidence,
           reasoning: result.reasoning,
-          citations: (result as any).citations || [],
-          citationStatus: (result as any).citationStatus,
+          citations: result.citations,
+          citationStatus: result.citationStatus,
           reviewState,
-          reviewNote: (result as any).reviewNote,
-          correctedAnswer: (result as any).correctedAnswer,
-          reviewedAt: (result as any).reviewedAt,
+          reviewNote: result.reviewNote,
+          correctedAnswer: result.correctedAnswer,
+          reviewedAt: result.reviewedAt,
         });
       }
     }

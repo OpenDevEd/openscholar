@@ -51,6 +51,7 @@ import type * as extraction_test_helpers from "../extraction/test_helpers.js";
 import type * as extraction_test_runner from "../extraction/test_runner.js";
 import type * as extraction_types from "../extraction/types.js";
 import type * as extraction_uploads from "../extraction/uploads.js";
+import type * as extraction_validators from "../extraction/validators.js";
 import type * as extraction_workflow from "../extraction/workflow.js";
 import type * as extraction_workpoolActions from "../extraction/workpoolActions.js";
 import type * as http from "../http.js";
@@ -146,6 +147,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/test_runner": typeof extraction_test_runner;
   "extraction/types": typeof extraction_types;
   "extraction/uploads": typeof extraction_uploads;
+  "extraction/validators": typeof extraction_validators;
   "extraction/workflow": typeof extraction_workflow;
   "extraction/workpoolActions": typeof extraction_workpoolActions;
   http: typeof http;
