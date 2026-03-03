@@ -5,6 +5,7 @@ import { resolve } from "path";
 describe("requirePublicDebugEnabled", () => {
   afterEach(() => {
     vi.resetModules();
+    vi.restoreAllMocks();
     delete process.env.ENABLE_PUBLIC_DEBUG_FUNCTIONS;
   });
 
@@ -59,6 +60,40 @@ describe("requirePublicDebugEnabled", () => {
         "Debug functions are disabled",
       );
     }
+  });
+
+  it("logs audit event when debug functions are enabled", async () => {
+    process.env.ENABLE_PUBLIC_DEBUG_FUNCTIONS = "true";
+    const logSpy = vi.spyOn(console, "log");
+    const { requirePublicDebugEnabled } = await import(
+      "../convex/lib/debug_gate"
+    );
+    requirePublicDebugEnabled();
+    expect(logSpy).toHaveBeenCalledWith(
+      "[AUDIT:DEBUG_ACCESS]",
+      expect.any(String),
+    );
+    const jsonArg = logSpy.mock.calls.find(
+      (call) => call[0] === "[AUDIT:DEBUG_ACCESS]",
+    )?.[1];
+    const parsed = JSON.parse(jsonArg as string);
+    expect(parsed).toHaveProperty("gate", "ENABLE_PUBLIC_DEBUG_FUNCTIONS");
+    expect(parsed).toHaveProperty("timestamp");
+  });
+
+  it("does NOT log audit event when debug functions are disabled", async () => {
+    delete process.env.ENABLE_PUBLIC_DEBUG_FUNCTIONS;
+    const logSpy = vi.spyOn(console, "log");
+    const { requirePublicDebugEnabled } = await import(
+      "../convex/lib/debug_gate"
+    );
+    expect(() => requirePublicDebugEnabled()).toThrow(
+      "Debug functions are disabled",
+    );
+    const auditCalls = logSpy.mock.calls.filter(
+      (call) => call[0] === "[AUDIT:DEBUG_ACCESS]",
+    );
+    expect(auditCalls).toHaveLength(0);
   });
 });
 
