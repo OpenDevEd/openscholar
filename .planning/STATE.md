@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
 status: active
-last_updated: "2026-03-03T12:00:00.000Z"
+last_updated: "2026-03-03T14:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge — eliminate all documented tech debt from CONCERNS.md
+**Current focus:** v2.5 Tech Debt Purge -- Phase 47: Test Safety Net
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-03 — Milestone v2.5 started
+Phase: 47 of 52 (Test Safety Net) -- 1 of 6 in v2.5
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-03 -- Roadmap created for v2.5
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -45,6 +47,7 @@ Last activity: 2026-03-03 — Milestone v2.5 started
 | v2.2 | 4 | 7 | 2026-03-02 |
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
+| v2.5 | 6 | ? | -- |
 
 ## Accumulated Context
 
@@ -55,6 +58,7 @@ See PROJECT.md Key Decisions table for full log.
 ### Roadmap Evolution
 
 8 milestones shipped (v1.0 through v2.4). 46 phases, 84 plans total.
+v2.5 roadmap: 6 phases (47-52), 25 requirements across 8 categories.
 
 ### Pending Todos
 
@@ -62,7 +66,8 @@ None.
 
 ### Blockers/Concerns
 
-None active.
+- TEST-03 must complete before BILL-01 can execute (test the fallback before removing it)
+- TYPE-05 requires a two-deploy schema migration (make encryptedApiKey required)
 
 ### Quick Tasks Completed
 
@@ -72,6 +77,6 @@ None active.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Started v2.5 Tech Debt Purge milestone
-Stopped at: Defining requirements
+Last activity: 2026-03-03 - Created v2.5 roadmap (Phases 47-52)
+Stopped at: Roadmap created, ready to plan Phase 47
 Resume file: None

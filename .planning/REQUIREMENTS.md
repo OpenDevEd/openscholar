@@ -46,7 +46,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 - [ ] **TEST-02**: Concurrent credit deduction race condition tested
 - [ ] **TEST-03**: `getPlanFromPriceId` substring fallback path tested (before removal in BILL-01)
 - [ ] **TEST-04**: Extraction cascade deletion partial-failure recovery tested
-- [ ] **TEST-05**: Debug gate bypass tested — all debug functions throw FORBIDDEN when env var unset
+- [ ] **TEST-05**: Debug gate bypass tested -- all debug functions throw FORBIDDEN when env var unset
 
 ### Code Organization
 
@@ -58,7 +58,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ## Future Requirements
 
-None — this milestone is a cleanup sweep.
+None -- this milestone is a cleanup sweep.
 
 ## Out of Scope
 
@@ -74,37 +74,37 @@ None — this milestone is a cleanup sweep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | — | Pending |
-| TYPE-02 | — | Pending |
-| TYPE-03 | — | Pending |
-| TYPE-04 | — | Pending |
-| TYPE-05 | — | Pending |
-| TYPE-06 | — | Pending |
-| BILL-01 | — | Pending |
-| BILL-02 | — | Pending |
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| PERF-03 | — | Pending |
-| PERF-04 | — | Pending |
-| PERF-05 | — | Pending |
-| DEP-01 | — | Pending |
-| DEP-02 | — | Pending |
-| DEP-03 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
-| ORG-01 | — | Pending |
-| BUG-01 | — | Pending |
+| TYPE-01 | Phase 48 | Pending |
+| TYPE-02 | Phase 49 | Pending |
+| TYPE-03 | Phase 49 | Pending |
+| TYPE-04 | Phase 49 | Pending |
+| TYPE-05 | Phase 50 | Pending |
+| TYPE-06 | Phase 49 | Pending |
+| BILL-01 | Phase 48 | Pending |
+| BILL-02 | Phase 48 | Pending |
+| SEC-01 | Phase 50 | Pending |
+| SEC-02 | Phase 50 | Pending |
+| PERF-01 | Phase 51 | Pending |
+| PERF-02 | Phase 51 | Pending |
+| PERF-03 | Phase 51 | Pending |
+| PERF-04 | Phase 51 | Pending |
+| PERF-05 | Phase 51 | Pending |
+| DEP-01 | Phase 52 | Pending |
+| DEP-02 | Phase 52 | Pending |
+| DEP-03 | Phase 52 | Pending |
+| TEST-01 | Phase 47 | Pending |
+| TEST-02 | Phase 47 | Pending |
+| TEST-03 | Phase 47 | Pending |
+| TEST-04 | Phase 47 | Pending |
+| TEST-05 | Phase 47 | Pending |
+| ORG-01 | Phase 52 | Pending |
+| BUG-01 | Phase 52 | Pending |
 
 **Coverage:**
 - v2.5 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after initial definition*
+*Last updated: 2026-03-03 after roadmap creation*
