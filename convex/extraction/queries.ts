@@ -26,6 +26,22 @@ import {
   type ReviewState,
 } from "../../lib/extraction/insights";
 import { createError } from "../lib/errors";
+import {
+  extractionJobValidator,
+  extractionQuestionValidator,
+  extractionPaperValidator,
+  extractionResultWithReviewValidator,
+  extractionSavedViewValidator,
+  extractionReportSnapshotValidator,
+  extractionRunDiffValidator,
+  questionTypeValidator,
+  citationStatusValidator,
+  reviewStateValidator,
+  answerValidator,
+  jobStatusValidator,
+  paperStatusValidator,
+} from "./validators";
+import { statusResultValidator } from "../lib/query_states";
 
 /** Result document with optional review overlay fields from attachReviewMetadata. */
 type ResultWithReview = Doc<"extractionResults"> & {
@@ -266,22 +282,17 @@ export const getMyJobs = query({
 // Get job details with progress (public API)
 export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      job: v.any(),
-      questions: v.array(v.any()),
-      papers: v.array(v.any()),
-      progress: v.object({
-        total: v.number(),
-        processed: v.number(),
-        failed: v.number(),
-        percentage: v.number(),
-      }),
+  returns: statusResultValidator({
+    job: extractionJobValidator,
+    questions: v.array(extractionQuestionValidator),
+    papers: v.array(extractionPaperValidator),
+    progress: v.object({
+      total: v.number(),
+      processed: v.number(),
+      failed: v.number(),
+      percentage: v.number(),
     }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -333,15 +344,10 @@ export const getJobDetails = query({
 // Get paper extraction results (public API)
 export const getPaperResults = query({
   args: { paperId: v.id("extractionPapers") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      paper: v.any(),
-      results: v.array(v.any()),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+  returns: statusResultValidator({
+    paper: extractionPaperValidator,
+    results: v.array(extractionResultWithReviewValidator),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedPaper(ctx, args.paperId);
@@ -416,16 +422,17 @@ export const getPaperPdfUrl = query({
 // Get all results for a job (public API) - for export
 export const getJobResults = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      job: v.any(),
-      questions: v.array(v.any()),
-      papers: v.any(),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+  returns: statusResultValidator({
+    job: extractionJobValidator,
+    questions: v.array(extractionQuestionValidator),
+    papers: v.record(
+      v.string(),
+      v.object({
+        paper: extractionPaperValidator,
+        results: v.array(extractionResultWithReviewValidator),
+      })
+    ),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -538,17 +545,85 @@ export const getJobResultsPaginated = query({
 
 export const getJobInsights = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      job: v.any(),
-      summary: v.any(),
-      questions: v.array(v.any()),
-      diagnostics: v.any(),
+  returns: statusResultValidator({
+    job: v.object({
+      id: v.id("extractionJobs"),
+      name: v.string(),
     }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+    summary: v.object({
+      totalPapers: v.number(),
+      totalQuestions: v.number(),
+      answeredTotal: v.number(),
+      groundedTotal: v.number(),
+      answeredRate: v.number(),
+      groundedRate: v.number(),
+      bestEffortRate: v.number(),
+      averageConfidence: v.number(),
+      averageEffectiveConfidence: v.number(),
+      noContentCount: v.number(),
+      abstractOnlyCount: v.number(),
+    }),
+    questions: v.array(
+      v.object({
+        key: v.string(),
+        question: v.string(),
+        type: questionTypeValidator,
+        description: v.optional(v.string()),
+        total: v.number(),
+        answered: v.number(),
+        grounded: v.number(),
+        avgConfidence: v.number(),
+        avgEffectiveConfidence: v.number(),
+        confidenceBuckets: v.object({
+          high: v.number(),
+          medium: v.number(),
+          low: v.number(),
+          unknown: v.number(),
+        }),
+        citationStatusMix: v.object({
+          grounded: v.number(),
+          best_effort: v.number(),
+          insufficient_evidence: v.number(),
+          extraction_error: v.number(),
+        }),
+        topAnswers: v.array(
+          v.object({
+            normalized: v.string(),
+            display: v.string(),
+            count: v.number(),
+            avgConfidence: v.number(),
+            paperIds: v.array(v.string()),
+          })
+        ),
+        entityDistribution: v.array(
+          v.object({
+            entity: v.string(),
+            count: v.number(),
+            paperIds: v.array(v.string()),
+            avgConfidence: v.number(),
+            groundedRate: v.number(),
+            generic: v.boolean(),
+          })
+        ),
+        insightMode: v.string(),
+        reviewed: v.object({
+          accepted: v.number(),
+          rejected: v.number(),
+          needsFollowup: v.number(),
+          unreviewed: v.number(),
+        }),
+      })
+    ),
+    diagnostics: v.object({
+      noContentPapers: v.array(
+        v.object({
+          paperId: v.string(),
+          title: v.string(),
+          reason: v.string(),
+        })
+      ),
+    }),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -673,10 +748,14 @@ export const getQuestionInsights = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      question: v.any(),
+  returns: statusResultValidator(
+    {
+      question: v.object({
+        key: v.string(),
+        question: v.string(),
+        type: questionTypeValidator,
+        description: v.optional(v.string()),
+      }),
       total: v.number(),
       answered: v.number(),
       grounded: v.number(),
@@ -689,20 +768,66 @@ export const getQuestionInsights = query({
         low: v.number(),
         unknown: v.number(),
       }),
-      citationStatusMix: v.any(),
+      citationStatusMix: v.object({
+        grounded: v.number(),
+        best_effort: v.number(),
+        insufficient_evidence: v.number(),
+        extraction_error: v.number(),
+      }),
       reviewed: v.object({
         accepted: v.number(),
         rejected: v.number(),
         needsFollowup: v.number(),
         unreviewed: v.number(),
       }),
-      topAnswers: v.array(v.any()),
-      rawAnswerDistribution: v.array(v.any()),
-      entityDistribution: v.optional(v.array(v.any())),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") }),
-    v.object({ status: v.literal("not_found") })
+      topAnswers: v.array(
+        v.object({
+          normalized: v.string(),
+          display: v.string(),
+          count: v.number(),
+          avgConfidence: v.number(),
+          paperIds: v.array(v.string()),
+          examples: v.array(
+            v.object({
+              paperId: v.string(),
+              title: v.string(),
+              openalexId: v.string(),
+              answer: answerValidator,
+              confidence: v.optional(v.number()),
+            })
+          ),
+        })
+      ),
+      rawAnswerDistribution: v.array(
+        v.object({
+          normalized: v.string(),
+          display: v.string(),
+          count: v.number(),
+          avgConfidence: v.number(),
+          paperIds: v.array(v.string()),
+          examples: v.array(
+            v.object({
+              paperId: v.string(),
+              title: v.string(),
+              openalexId: v.string(),
+              answer: answerValidator,
+              confidence: v.optional(v.number()),
+            })
+          ),
+        })
+      ),
+      entityDistribution: v.array(
+        v.object({
+          entity: v.string(),
+          count: v.number(),
+          paperIds: v.array(v.string()),
+          avgConfidence: v.number(),
+          groundedRate: v.number(),
+          generic: v.boolean(),
+        })
+      ),
+    },
+    true // includeNotFound
   ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
@@ -784,20 +909,43 @@ export const getQuestionDisagreements = query({
     jobId: v.id("extractionJobs"),
     questionKey: v.string(),
   },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      question: v.any(),
+  returns: statusResultValidator(
+    {
+      question: v.object({
+        key: v.string(),
+        question: v.string(),
+        type: questionTypeValidator,
+      }),
       viewMode: v.union(v.literal("disagreement"), v.literal("answer_profiles")),
       hasDisagreement: v.boolean(),
       clusterCount: v.number(),
       totalClusterCount: v.number(),
       suppressedSingletonCount: v.number(),
-      clusters: v.array(v.any()),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") }),
-    v.object({ status: v.literal("not_found") })
+      clusters: v.array(
+        v.object({
+          normalizedAnswer: v.string(),
+          displayAnswer: v.string(),
+          count: v.number(),
+          avgConfidence: v.number(),
+          citationStatusMix: v.object({
+            grounded: v.number(),
+            best_effort: v.number(),
+            insufficient_evidence: v.number(),
+            extraction_error: v.number(),
+          }),
+          examples: v.array(
+            v.object({
+              paperId: v.string(),
+              title: v.string(),
+              openalexId: v.string(),
+              answer: answerValidator,
+              confidence: v.optional(v.number()),
+            })
+          ),
+        })
+      ),
+    },
+    true // includeNotFound
   ),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
