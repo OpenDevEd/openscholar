@@ -78,7 +78,19 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active milestone — ready for next milestone planning)
+## Current Milestone: v2.5 Tech Debt Purge
+
+**Goal:** Eliminate all documented tech debt, security gaps, performance bottlenecks, test coverage gaps, dependency issues, and code organization debt from CONCERNS.md.
+
+**Target areas:**
+- Type safety: Replace all `as any` casts in Stripe handlers, extraction pages, library queries, and pagination validators
+- Schema hygiene: Type `searchFilters`, make `encryptedApiKey` required, remove `getPlanFromPriceId` substring fallback, move Stripe metadata to Convex schema
+- Security: Centralize API key decryption with audit logging, exclude debug functions from production builds
+- Performance: Fix N+1 review queries, bound `.collect()` calls, add missing indexes, fix crypto module import
+- Dependencies: Remove unused packages, list unlisted pdfjs-dist, audit Radix UI usage
+- Tests: Add Stripe webhook unit tests, concurrent credit deduction tests, getPlanFromPriceId fallback tests, cascade partial-failure tests, debug gate bypass tests
+- Code organization: Decompose focus-mode.tsx monolith
+- Bug fix: Set OPENALEX_CONTACT_EMAIL env var (BUG-05)
 
 ### Out of Scope
 
@@ -177,4 +189,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, GDPR-compliant user ca
 | try-catch per delete in cron | Handles concurrent deletion race with getRequestToken | ✓ Good — resilient cleanup |
 
 ---
-*Last updated: 2026-03-03 after v2.4 milestone*
+*Last updated: 2026-03-03 after v2.5 milestone started*

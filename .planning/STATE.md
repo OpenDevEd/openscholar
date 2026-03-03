@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.4
-milestone_name: Concerns Sweep
-status: shipped
-last_updated: "2026-03-03T07:00:00.000Z"
+milestone: v2.5
+milestone_name: Tech Debt Purge
+status: active
+last_updated: "2026-03-03T12:00:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,16 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.4 shipped -- planning next milestone
+**Current focus:** v2.5 Tech Debt Purge — eliminate all documented tech debt from CONCERNS.md
 
 ## Current Position
 
-Phase: 46 of 46 (Cron Additions) -- SHIPPED
-Plan: All complete
-Status: v2.4 Milestone Shipped
-Last activity: 2026-03-03 -- Archived v2.4 milestone
-
-Progress: [##########] 100% (Milestone Complete)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-03 — Milestone v2.5 started
 
 ## Performance Metrics
 
@@ -74,6 +72,6 @@ None active.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Archived v2.4 milestone
-Stopped at: Milestone complete, ready for /gsd:new-milestone
+Last activity: 2026-03-03 - Started v2.5 Tech Debt Purge milestone
+Stopped at: Defining requirements
 Resume file: None
