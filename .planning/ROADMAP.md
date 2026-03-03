@@ -122,6 +122,16 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 Full details: `.planning/milestones/v2.4-ROADMAP.md`
 
+### Phase 45: Type Safety Sweep
+**Goal**: All extraction queries return typed validators instead of v.any(); all remaining any-casts in extraction and migration code replaced with proper types; getJobDetails returns all papers
+**Depends on**: Phase 44
+**Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04, BUG-02
+
+### Phase 46: Cron Additions
+**Goal**: Expired Zotero OAuth tokens are automatically cleaned up on a schedule
+**Depends on**: Phase 44
+**Requirements**: CRON-01
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
