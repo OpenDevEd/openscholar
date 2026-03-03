@@ -157,6 +157,43 @@ async function attachReviewMetadata(
   });
 }
 
+/**
+ * Load ALL reviews for a job in a single batch query (uses by_job index).
+ * Returns a Map keyed by resultId for O(1) lookup.
+ * This replaces per-paper review queries to eliminate N+1 patterns.
+ */
+async function loadReviewsByJob(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
+  const allReviews = await ctx.db
+    .query("extractionResultReviews")
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
+    .collect();
+  return new Map<string, Doc<"extractionResultReviews">>(
+    allReviews.map((review) => [review.resultId, review])
+  );
+}
+
+/**
+ * Apply pre-loaded review metadata to results synchronously (no database calls).
+ * Use with loadReviewsByJob for batch processing of multiple papers.
+ */
+function applyReviewMetadata(
+  results: Doc<"extractionResults">[],
+  reviewMap: Map<string, Doc<"extractionResultReviews">>
+): ResultWithReview[] {
+  return results.map((result): ResultWithReview => {
+    const review = reviewMap.get(result._id);
+    if (!review) return result;
+    return {
+      ...result,
+      reviewState: toReviewState(review.state),
+      reviewNote: review.note,
+      correctedAnswer: review.correctedAnswer,
+      reviewedAt: review.reviewedAt,
+      reviewedBy: review.reviewedBy,
+    };
+  });
+}
+
 function buildQuestionInfoByKey(questions: Doc<"extractionQuestions">[]) {
   return new Map(
     questions.map((question) => [
@@ -183,6 +220,9 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .collect();
 
+  // Load all reviews for the job in a single batch query (fixes N+1)
+  const reviewMap = await loadReviewsByJob(ctx, jobId);
+
   const resultsByPaper = new Map<string, ResultWithReview[]>();
   await Promise.all(papers.map(async (paper) => {
     const results = await ctx.db
@@ -191,7 +231,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
       .collect();
     resultsByPaper.set(
       paper._id,
-      await attachReviewMetadata(ctx, paper._id, results)
+      applyReviewMetadata(results, reviewMap)
     );
   }));
 
@@ -454,6 +494,9 @@ export const getJobResults = query({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .collect();
 
+    // Load all reviews for the job in a single batch query (fixes N+1)
+    const reviewMap = await loadReviewsByJob(ctx, args.jobId);
+
     // Get all results for all papers
     const allResults: Record<
       string,
@@ -465,7 +508,7 @@ export const getJobResults = query({
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .collect();
-      const resultsWithReviews = await attachReviewMetadata(ctx, paper._id, results);
+      const resultsWithReviews = applyReviewMetadata(results, reviewMap);
 
       allResults[paper._id] = {
         paper,
@@ -523,13 +566,16 @@ export const getJobResultsPaginated = query({
       .order("asc")
       .paginate(args.paginationOpts);
 
+    // Load all reviews for the job in a single batch query (fixes N+1)
+    const reviewMap = await loadReviewsByJob(ctx, args.jobId);
+
     const papersWithResults = await Promise.all(
       result.page.map(async (paper) => {
         const results = await ctx.db
           .query("extractionResults")
           .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
           .collect();
-        const resultsWithReviews = await attachReviewMetadata(ctx, paper._id, results);
+        const resultsWithReviews = applyReviewMetadata(results, reviewMap);
         return {
           ...paper,
           results: resultsWithReviews,
