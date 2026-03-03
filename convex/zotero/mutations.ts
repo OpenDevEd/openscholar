@@ -144,3 +144,36 @@ export const disconnect = mutation({
     return null;
   },
 });
+
+/**
+ * Cron: delete expired OAuth request tokens.
+ * Tokens have a 10-minute TTL set during storeRequestToken.
+ * This cleans up tokens from abandoned OAuth flows (user starts connect, never completes callback).
+ */
+export const cleanupExpiredOAuthTokens = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const allTokens = await ctx.db.query("zoteroOAuthTokens").collect();
+
+    let deletedCount = 0;
+    for (const token of allTokens) {
+      if (token.expiresAt < now) {
+        try {
+          await ctx.db.delete(token._id);
+          deletedCount++;
+        } catch {
+          // Token may have been deleted by getRequestToken or concurrent process.
+          // Safe to ignore -- Convex OCC retries handle this gracefully.
+        }
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.log(`[cleanupExpiredOAuthTokens] Deleted ${deletedCount} expired token(s)`);
+    }
+
+    return null;
+  },
+});

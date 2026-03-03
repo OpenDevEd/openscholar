@@ -31,4 +31,11 @@ crons.interval(
   {},
 );
 
+// Hourly cleanup of expired Zotero OAuth request tokens
+crons.interval(
+  "cleanup expired zotero oauth tokens",
+  { hours: 1 },
+  internal.zotero.mutations.cleanupExpiredOAuthTokens
+);
+
 export default crons;
