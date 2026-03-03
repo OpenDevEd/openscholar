@@ -40,7 +40,7 @@ function runAuditedStripeHandler(
 function processInvoiceForGrantNonBlocking(
   ctx: Parameters<typeof _processInvoiceForGrantNonBlocking>[0],
   event: Stripe.Event,
-  invoice: any,
+  invoice: Stripe.Invoice,
 ) {
   return _processInvoiceForGrantNonBlocking(ctx, event, invoice, invoiceGrantRefs);
 }
@@ -240,7 +240,7 @@ registerRoutes(http, components.stripe, {
      */
     "invoice.paid": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const invoice = event.data.object as any;
+        const invoice = event.data.object as Stripe.Invoice;
         await processInvoiceForGrantNonBlocking(ctx, event, invoice);
       });
     },
@@ -253,7 +253,7 @@ registerRoutes(http, components.stripe, {
 
     "invoice.payment_failed": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const invoice = event.data.object as any;
+        const invoice = event.data.object as Stripe.Invoice;
         const failedSubscriptionId =
           typeof invoice.subscription === "string"
             ? invoice.subscription
@@ -272,7 +272,7 @@ registerRoutes(http, components.stripe, {
     "customer.subscription.created": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         // Re-fetch from Stripe API instead of trusting event payload (SUB-02)
-        const eventSub = event.data.object as any;
+        const eventSub = event.data.object as Stripe.Subscription;
         const eventItem = eventSub.items?.data?.[0];
         await ctx.runAction(internal.subscriptions.actions.handleSubscriptionWebhook, {
           stripeSubscriptionId: eventSub.id,
@@ -286,7 +286,7 @@ registerRoutes(http, components.stripe, {
     "customer.subscription.updated": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         // Re-fetch from Stripe API instead of trusting event payload (SUB-02)
-        const eventSub = event.data.object as any;
+        const eventSub = event.data.object as Stripe.Subscription;
         const eventItem = eventSub.items?.data?.[0];
         await ctx.runAction(internal.subscriptions.actions.handleSubscriptionWebhook, {
           stripeSubscriptionId: eventSub.id,
@@ -299,7 +299,7 @@ registerRoutes(http, components.stripe, {
 
     "customer.subscription.deleted": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
-        const subscription = event.data.object as any;
+        const subscription = event.data.object as Stripe.Subscription;
         await ctx.runMutation(internal.subscriptions.internal.handleSubscriptionCanceled, {
           stripeSubscriptionId: subscription.id,
         });

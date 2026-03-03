@@ -77,7 +77,7 @@ export function mapSubscriptionDetailsErrorCode(
   return "BILLING_STRIPE_ERROR";
 }
 
-function getStripeCustomerId(subscription: any): string | null {
+function getStripeCustomerId(subscription: Stripe.Subscription): string | null {
   if (!subscription.customer) return null;
   if (typeof subscription.customer === "string") return subscription.customer;
   return subscription.customer.id ?? null;
@@ -95,7 +95,7 @@ function clearPendingPlanMetadata(
 }
 
 async function getAttachedSchedule(
-  subscription: any,
+  subscription: Stripe.Subscription,
 ): Promise<Stripe.SubscriptionSchedule | null> {
   const scheduleRef = subscription.schedule;
   const scheduleId = getScheduleId(scheduleRef);
@@ -115,7 +115,7 @@ async function getAttachedSchedule(
 
 async function syncLocalSubscriptionFromStripe(
   ctx: ActionCtx,
-  subscription: any,
+  subscription: Stripe.Subscription,
 ): Promise<void> {
   const item = subscription.items.data[0];
   const stripeCustomerId = getStripeCustomerId(subscription);
@@ -465,21 +465,19 @@ export const getSubscriptionDetails = action({
         expand: ["default_payment_method", "schedule"],
       });
 
-      const sub = stripeSub as any;
-
-      if (!sub.items?.data?.[0]?.price) {
+      if (!stripeSub.items?.data?.[0]?.price) {
         return { status: "error", errorCode: "BILLING_SUBSCRIPTION_PRICE_MISSING" };
       }
 
-      const price = sub.items.data[0].price;
-      const paymentMethod = sub.default_payment_method as Stripe.PaymentMethod | null;
-      const currentPeriodEnd = sub.current_period_end || sub.items.data[0].current_period_end;
+      const price = stripeSub.items.data[0].price;
+      const paymentMethod = stripeSub.default_payment_method as Stripe.PaymentMethod | null;
+      const currentPeriodEnd = stripeSub.current_period_end || stripeSub.items.data[0].current_period_end;
       const cancelAtPeriodEnd = isSubscriptionScheduledToCancel({
-        cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
-        cancelAt: sub.cancel_at ?? null,
+        cancelAtPeriodEnd: stripeSub.cancel_at_period_end ?? false,
+        cancelAt: stripeSub.cancel_at ?? null,
         currentPeriodEnd,
       });
-      const schedule = await getAttachedSchedule(sub);
+      const schedule = await getAttachedSchedule(stripeSub);
       const pendingChange = findPendingScheduleChange({
         schedule: schedule as unknown as ScheduleLike,
         currentPriceId: price.id,
@@ -488,9 +486,9 @@ export const getSubscriptionDetails = action({
         ? getPlanFromPriceId(pendingChange.targetPriceId)
         : undefined;
       const entitlementState: "entitled" | "payment_pending" | "not_entitled" =
-        sub.status === "incomplete"
+        stripeSub.status === "incomplete"
           ? "payment_pending"
-          : isEntitledStatus(sub.status)
+          : isEntitledStatus(stripeSub.status)
             ? "entitled"
             : "not_entitled";
       const entitlementMessage =
@@ -508,7 +506,7 @@ export const getSubscriptionDetails = action({
           interval: price.recurring?.interval || "month",
           currentPeriodEnd: currentPeriodEnd ? currentPeriodEnd * 1000 : Date.now(),
           currentPriceId: price.id,
-          status: sub.status,
+          status: stripeSub.status,
           entitlementState,
           entitlementMessage,
           cancelAtPeriodEnd,
@@ -588,7 +586,7 @@ export const changePlan = action({
         throw createError("BILLING_NO_ACTIVE_SUBSCRIPTION", "No active Stripe subscription found");
       }
 
-      const stripeSubscription: any = await getStripe().subscriptions.retrieve(
+      const stripeSubscription = await getStripe().subscriptions.retrieve(
         subscription.stripeSubscriptionId,
         {
           expand: ["schedule"],
@@ -935,7 +933,7 @@ export const getUpgradePreview = action({
     const preview = await getStripe().invoices.createPreview({
       customer: typeof stripeSub.customer === "string"
         ? stripeSub.customer
-        : (stripeSub.customer as any).id,
+        : stripeSub.customer.id,
       subscription: stripeSub.id,
       subscription_details: {
         items: [{ id: item.id, price: args.targetPriceId }],
@@ -953,9 +951,8 @@ export const getUpgradePreview = action({
 
     // Calculate pro-rata credit info
     const nowMs = Date.now();
-    const sub = stripeSub as any;
-    const periodStartMs = (sub.current_period_start ?? item.current_period_start ?? Math.floor(nowMs / 1000)) * 1000;
-    const periodEndMs = (sub.current_period_end ?? item.current_period_end ?? Math.floor(nowMs / 1000) + 30 * 24 * 60 * 60) * 1000;
+    const periodStartMs = (stripeSub.current_period_start ?? item.current_period_start ?? Math.floor(nowMs / 1000)) * 1000;
+    const periodEndMs = (stripeSub.current_period_end ?? item.current_period_end ?? Math.floor(nowMs / 1000) + 30 * 24 * 60 * 60) * 1000;
     const periodLength = periodEndMs - periodStartMs;
     const remaining = Math.max(0, periodEndMs - nowMs);
     const remainingRatio = periodLength > 0 ? remaining / periodLength : 0;

@@ -1,4 +1,4 @@
-import type { GenericActionCtx } from "convex/server";
+import type { FunctionReference, GenericActionCtx } from "convex/server";
 import type Stripe from "stripe";
 
 /**
@@ -23,7 +23,7 @@ export async function recordStripeEventFailure(
   ctx: GenericActionCtx<any>,
   event: Stripe.Event,
   error: unknown,
-  markStripeEventFailed: any,
+  markStripeEventFailed: FunctionReference<"mutation", "internal">,
 ): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
   try {
@@ -48,8 +48,8 @@ export async function runAuditedStripeHandler(
   event: Stripe.Event,
   handler: () => Promise<void>,
   refs?: {
-    markStripeEventProcessed: any;
-    markStripeEventFailed: any;
+    markStripeEventProcessed: FunctionReference<"mutation", "internal">;
+    markStripeEventFailed: FunctionReference<"mutation", "internal">;
   },
 ): Promise<void> {
   try {
@@ -78,10 +78,10 @@ export async function runAuditedStripeHandler(
 export async function processInvoiceForGrantNonBlocking(
   ctx: GenericActionCtx<any>,
   event: Stripe.Event,
-  invoice: any,
+  invoice: Stripe.Invoice,
   refs?: {
-    processInvoiceForGrant: any;
-    markStripeEventRetrying: any;
+    processInvoiceForGrant: FunctionReference<"action", "internal">;
+    markStripeEventRetrying: FunctionReference<"mutation", "internal">;
   },
 ): Promise<void> {
   const args = {
