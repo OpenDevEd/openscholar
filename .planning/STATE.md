@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
 status: in-progress
-last_updated: "2026-03-03T09:10:34Z"
+last_updated: "2026-03-03T09:12:52Z"
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 7
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 ## Current Position
 
 Phase: 50 of 52 (Security & Schema Hardening) -- 4 of 6 in v2.5
-Plan: 2 of 2 in Phase 50
-Status: 50-02 complete
-Last activity: 2026-03-03 -- Completed 50-02 (strengthen debug gate with audit logging)
+Plan: 2 of 2 in Phase 50 (COMPLETE)
+Status: Phase 50 complete
+Last activity: 2026-03-03 -- Completed 50-01 (required encryptedApiKey schema + centralized decryptApiKey audit)
 
-Progress: [██████░░░░] 67%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 89 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 5)
+- Total plans completed: 90 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 6)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -65,6 +65,8 @@ See PROJECT.md Key Decisions table for full log.
 - [49-01] Applied "as const" for validated: true literal to satisfy CitationLocation type constraint
 - [49-02] All searchFiltersValidator fields are v.optional() for backward compat with existing stored data
 - [49-02] Moved searchFiltersValidator before extractionJobValidator to fix declaration order dependency
+- [50-01] Used console.log JSON audit format matching existing AUDIT pattern ([AUDIT:KEY_DECRYPT]) for consistency
+- [50-01] Used String(job.userId) fallback to "system" for extraction workpool decrypt (internal action)
 - [50-02] Used structured console.log with [AUDIT:DEBUG_ACCESS] prefix for grep-friendly audit trail in Convex logs
 
 ### Roadmap Evolution
@@ -79,7 +81,7 @@ None.
 ### Blockers/Concerns
 
 - ~~TEST-03 must complete before BILL-01 can execute~~ (RESOLVED: BILL-01 completed in 48-01)
-- TYPE-05 requires a two-deploy schema migration (make encryptedApiKey required)
+- ~~TYPE-05 requires a two-deploy schema migration (make encryptedApiKey required)~~ (RESOLVED: completed in 50-01)
 
 ### Quick Tasks Completed
 
@@ -89,6 +91,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 50-02-PLAN.md (strengthen debug gate with audit logging)
-Stopped at: Completed 50-02-PLAN.md
+Last activity: 2026-03-03 - Completed 50-01-PLAN.md (required encryptedApiKey + centralized decryptApiKey audit)
+Stopped at: Completed 50-01-PLAN.md (Phase 50 complete)
 Resume file: None

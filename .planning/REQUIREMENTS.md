@@ -13,7 +13,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 - [x] **TYPE-02**: Extraction job page uses properly typed Convex ID arguments instead of `as any`
 - [x] **TYPE-03**: Paginated extraction results use typed validator instead of `paginationResultValidator(v.any())`
 - [x] **TYPE-04**: `searchFilters` schema uses typed Convex validator matching the filter interface
-- [ ] **TYPE-05**: `encryptedApiKey` is required in schema (not optional) after completed migration
+- [x] **TYPE-05**: `encryptedApiKey` is required in schema (not optional) after completed migration
 - [x] **TYPE-06**: `continueCursor: "" as any` replaced with proper empty pagination pattern in library queries
 
 ### Billing Safety
@@ -23,7 +23,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Security
 
-- [ ] **SEC-01**: API key decryption centralized into single utility with structured audit logging
+- [x] **SEC-01**: API key decryption centralized into single utility with structured audit logging
 - [x] **SEC-02**: Debug/test functions excluded from production builds or isolated behind stronger gate
 
 ### Performance
@@ -78,11 +78,11 @@ None -- this milestone is a cleanup sweep.
 | TYPE-02 | Phase 49 | Complete |
 | TYPE-03 | Phase 49 | Complete |
 | TYPE-04 | Phase 49 | Complete |
-| TYPE-05 | Phase 50 | Pending |
+| TYPE-05 | Phase 50 | Complete |
 | TYPE-06 | Phase 49 | Complete |
 | BILL-01 | Phase 48 | Complete |
 | BILL-02 | Phase 48 | Complete |
-| SEC-01 | Phase 50 | Pending |
+| SEC-01 | Phase 50 | Complete |
 | SEC-02 | Phase 50 | Complete |
 | PERF-01 | Phase 51 | Pending |
 | PERF-02 | Phase 51 | Pending |
