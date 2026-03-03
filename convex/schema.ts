@@ -110,7 +110,8 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_stripe_sub", ["stripeSubscriptionId"])
     .index("by_stripe_customer", ["stripeCustomerId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_updatedAt", ["status", "updatedAt"]),
 
   // Durable user -> Stripe customer identity mapping.
   billingCustomers: defineTable({

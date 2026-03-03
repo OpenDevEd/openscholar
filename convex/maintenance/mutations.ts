@@ -103,7 +103,7 @@ export const expirePastDueSubscriptions = internalMutation({
     // Find past_due subscriptions (capped to prevent transaction limit violations)
     const pastDueSubs = await ctx.db
       .query("subscriptions")
-      .withIndex("by_status", (q) => q.eq("status", "past_due"))
+      .withIndex("by_status_updatedAt", (q) => q.eq("status", "past_due"))
       .take(200);
 
     let downgradeCount = 0;

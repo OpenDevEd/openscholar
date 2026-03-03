@@ -199,7 +199,7 @@ export const listActiveSubscriptions = internalQuery({
   handler: async (ctx) => {
     const subs = await ctx.db
       .query("subscriptions")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .withIndex("by_status_updatedAt", (q) => q.eq("status", "active"))
       .take(1000);
     // Filter to only those with a stripeSubscriptionId (skip free/local-only records)
     return subs
