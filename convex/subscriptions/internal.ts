@@ -319,6 +319,9 @@ export const getSubscriptionByStripeId = internalQuery({
       userId: v.id("users"),
       plan: planValidator,
       status: subscriptionStatusValidator,
+      pendingFromPlan: v.optional(planValidator),
+      pendingToPlan: v.optional(planValidator),
+      pendingChangeTimestamp: v.optional(v.number()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -335,6 +338,9 @@ export const getSubscriptionByStripeId = internalQuery({
       userId: sub.userId,
       plan: sub.plan,
       status: sub.status,
+      pendingFromPlan: sub.pendingFromPlan,
+      pendingToPlan: sub.pendingToPlan,
+      pendingChangeTimestamp: sub.pendingChangeTimestamp,
     };
   },
 });

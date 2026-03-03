@@ -365,39 +365,49 @@ async function processInvoiceForGrantLogic(ctx: ActionCtx, args: any): Promise<{
   // --- Upgrade proration detection (UPGR-01) ---
   // When classifyMonthlyCreditInvoice returns "ignore_non_recurring" for a
   // subscription_update invoice, check if this is an upgrade proration invoice
-  // by reading upgrade metadata from the Stripe subscription.
+  // by reading upgrade metadata from the Stripe subscription (with Convex fallback).
   if (
     decision.decision === "ignore_non_recurring" &&
     invoiceBillingReason === "subscription_update" &&
     stripeSubscriptionId
   ) {
-    // TODO(BILL-02 follow-up): Read upgrade metadata from Convex subscription record
-    // instead of Stripe metadata once all existing Stripe metadata has been migrated.
+    // Query Convex subscription record first for dual-read
+    const subRecord = await ctx.runQuery(
+      internal.subscriptions.internal.getSubscriptionByStripeId,
+      { stripeSubscriptionId },
+    );
+
     const subscription = await getStripe().subscriptions.retrieve(stripeSubscriptionId);
     const meta = subscription.metadata ?? {};
-    const upgradeFromPlan = meta.upgradeFromPlan;
-    const upgradeToPlan = meta.upgradeToPlan;
-    const upgradeTimestamp = meta.upgradeTimestamp;
 
-    if (upgradeFromPlan && upgradeToPlan && upgradeTimestamp) {
-      // Resolve the user from the subscription via internal query
-      const subRecord = await ctx.runQuery(
-        internal.subscriptions.internal.getSubscriptionByStripeId,
-        { stripeSubscriptionId },
-      );
+    // Prefer Convex subscription record (BILL-02 migration), fall back to Stripe metadata
+    const upgradeFromPlan = subRecord?.pendingFromPlan ?? meta.upgradeFromPlan;
+    const upgradeToPlan = subRecord?.pendingToPlan ?? meta.upgradeToPlan;
+    const upgradeTimestamp = subRecord?.pendingChangeTimestamp
+      ? String(subRecord.pendingChangeTimestamp)
+      : meta.upgradeTimestamp;
 
+    // Runtime-validate plan names instead of unsafe type casts
+    const validPlans = ["free", "go", "pro", "enterprise"] as const;
+    type PlanName = typeof validPlans[number];
+    function isPlanName(s: string | undefined): s is PlanName {
+      return validPlans.includes(s as PlanName);
+    }
+
+    if (upgradeFromPlan && upgradeToPlan && upgradeTimestamp && isPlanName(upgradeFromPlan) && isPlanName(upgradeToPlan)) {
       if (subRecord?.userId) {
-        // Read period boundaries from the fresh Stripe subscription object
-        // (not local DB -- may be stale when webhook fires before syncSubscription)
-        const periodStartMs = ((subscription as any).current_period_start ?? 0) * 1000;
-        const periodEndMs = ((subscription as any).current_period_end ?? 0) * 1000;
+        // Read period boundaries from the first subscription item
+        // (current_period_start/end moved to SubscriptionItem in Stripe API 2026-01-28)
+        const item = subscription.items.data[0];
+        const periodStartMs = (item?.current_period_start ?? 0) * 1000;
+        const periodEndMs = (item?.current_period_end ?? 0) * 1000;
 
         const grantResult = await ctx.runMutation(
           internal.credits.internal.grantUpgradeProRataCredits,
           {
             userId: subRecord.userId,
-            fromPlan: upgradeFromPlan as "free" | "go" | "pro" | "enterprise",
-            toPlan: upgradeToPlan as "free" | "go" | "pro" | "enterprise",
+            fromPlan: upgradeFromPlan,
+            toPlan: upgradeToPlan,
             currentPeriodStartMs: periodStartMs,
             currentPeriodEndMs: periodEndMs,
             stripeSubscriptionId,

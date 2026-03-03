@@ -48,7 +48,7 @@ export const checkSubscriptionStatus = internalAction({
     // Step 3: For each, re-fetch from Stripe and correct divergences
     for (const sub of activeSubs) {
       try {
-        const fresh: any = await getStripe().subscriptions.retrieve(sub.stripeSubscriptionId);
+        const fresh = await getStripe().subscriptions.retrieve(sub.stripeSubscriptionId);
         const item = fresh.items.data[0];
 
         if (!item?.price?.id) {
@@ -61,7 +61,6 @@ export const checkSubscriptionStatus = internalAction({
 
         const nowSec = Math.floor(Date.now() / 1000);
         const currentPeriodEndSec =
-          fresh.current_period_end ??
           item.current_period_end ??
           nowSec + 30 * 24 * 60 * 60;
         const freshPeriodEnd = currentPeriodEndSec * 1000;
@@ -100,7 +99,7 @@ export const checkSubscriptionStatus = internalAction({
         const stripeCustomerId =
           typeof fresh.customer === "string"
             ? fresh.customer
-            : (fresh.customer as any)?.id;
+            : fresh.customer?.id;
 
         if (!stripeCustomerId) {
           console.warn(`[checkSubscriptionStatus] No customer ID for subscription ${sub.stripeSubscriptionId}, skipping correction`);
@@ -108,7 +107,7 @@ export const checkSubscriptionStatus = internalAction({
         }
 
         const currentPeriodStartSec =
-          fresh.current_period_start ?? item.current_period_start ?? nowSec;
+          item.current_period_start ?? nowSec;
 
         await ctx.runMutation(
           internal.subscriptions.internal.syncSubscription,
@@ -121,7 +120,7 @@ export const checkSubscriptionStatus = internalAction({
             cancelAtPeriodEnd: freshCancelAtPeriodEnd,
             priceId: item.price.id,
             quantity: item.quantity,
-            metadata: (fresh.metadata ?? {}) as Record<string, string>,
+            metadata: fresh.metadata ?? {},
           },
         );
 

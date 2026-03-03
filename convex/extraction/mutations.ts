@@ -9,6 +9,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { PaperData, ExtractionResult } from "./types";
 import type { Doc, Id } from "../_generated/dataModel";
+import type { WorkflowId } from "@convex-dev/workflow";
 import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags, isPdfExtractionEnabled } from "./content";
 import { workflow } from "../workflow";
@@ -260,7 +261,7 @@ export const cancelExtraction = mutation({
     // Cancel the workflow to prevent new steps from starting
     if (job.workflowId) {
       try {
-        await workflow.cancel(ctx, job.workflowId as any);
+        await workflow.cancel(ctx, job.workflowId as WorkflowId);
       } catch (e) {
         // Workflow may have already completed -- safe to ignore
         console.warn(`[cancelExtraction] Failed to cancel workflow: ${e}`);

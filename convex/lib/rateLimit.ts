@@ -42,14 +42,18 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
  */
 export const consume = internalMutation({
   args: {
-    name: v.string(),
+    name: v.union(
+      v.literal("start-extraction"),
+      v.literal("api-key-save"),
+      v.literal("checkout-session")
+    ),
     key: v.string(),
     count: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     await rateLimit(ctx, {
-      name: args.name as any,
+      name: args.name,
       key: args.key,
       count: args.count,
       throws: true,
