@@ -143,7 +143,7 @@ function chunkTextSimple(
 }
 
 /**
- * Extract text from PDF buffer using unpdf + pdfjs.
+ * Extract text from PDF buffer using pdfjs.
  */
 export async function extractTextByPages(
   pdfBuffer: ArrayBuffer
