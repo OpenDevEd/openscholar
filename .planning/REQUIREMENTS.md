@@ -46,7 +46,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 - [ ] **TEST-02**: Concurrent credit deduction race condition tested
 - [ ] **TEST-03**: `getPlanFromPriceId` substring fallback path tested (before removal in BILL-01)
 - [ ] **TEST-04**: Extraction cascade deletion partial-failure recovery tested
-- [ ] **TEST-05**: Debug gate bypass tested -- all debug functions throw FORBIDDEN when env var unset
+- [x] **TEST-05**: Debug gate bypass tested -- all debug functions throw FORBIDDEN when env var unset
 
 ### Code Organization
 
@@ -96,7 +96,7 @@ None -- this milestone is a cleanup sweep.
 | TEST-02 | Phase 47 | Pending |
 | TEST-03 | Phase 47 | Pending |
 | TEST-04 | Phase 47 | Pending |
-| TEST-05 | Phase 47 | Pending |
+| TEST-05 | Phase 47 | Complete |
 | ORG-01 | Phase 52 | Pending |
 | BUG-01 | Phase 52 | Pending |
 
