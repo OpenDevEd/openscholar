@@ -27,6 +27,7 @@ import {
 } from "../../lib/extraction/insights";
 
 import { createError } from "../lib/errors";
+import { searchFiltersValidator } from "./validators";
 
 async function assertJobOwnership(
   ctx: MutationCtx,
@@ -110,12 +111,12 @@ export const startExtraction = mutation({
       v.literal("mixed")
     ),
     sourceHistoryId: v.optional(v.string()),
-    searchFilters: v.optional(v.record(v.string(), v.any())),
+    searchFilters: v.optional(searchFiltersValidator),
     sourceHistoryEntries: v.optional(
       v.array(
         v.object({
           historyId: v.string(),
-          searchFilters: v.record(v.string(), v.any()),
+          searchFilters: searchFiltersValidator,
         })
       )
     ),
@@ -643,7 +644,7 @@ export const saveWorkflowTemplate = mutation({
       v.array(
         v.object({
           historyId: v.string(),
-          searchFilters: v.record(v.string(), v.any()),
+          searchFilters: searchFiltersValidator,
         })
       )
     ),
@@ -1523,12 +1524,12 @@ export const createJobDirect = internalMutation({
       v.literal("manual"),
       v.literal("mixed")
     ),
-    searchFilters: v.optional(v.record(v.string(), v.any())),
+    searchFilters: v.optional(searchFiltersValidator),
     sourceHistoryEntries: v.optional(
       v.array(
         v.object({
           historyId: v.string(),
-          searchFilters: v.record(v.string(), v.any()),
+          searchFilters: searchFiltersValidator,
         })
       )
     ),

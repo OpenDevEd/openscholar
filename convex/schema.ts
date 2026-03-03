@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
+import { searchFiltersValidator } from "./extraction/validators";
 
 export default defineSchema({
   // Rate limiting (convex-helpers)
@@ -213,7 +214,7 @@ export default defineSchema({
       v.array(
         v.object({
           historyId: v.string(),
-          searchFilters: v.record(v.string(), v.any()),
+          searchFilters: searchFiltersValidator,
         })
       )
     ),
@@ -252,7 +253,7 @@ export default defineSchema({
     ),
 
     // Search reproduction data (when sourceType === "history")
-    searchFilters: v.optional(v.record(v.string(), v.any())),
+    searchFilters: v.optional(searchFiltersValidator),
 
     // Job status
     status: v.union(
@@ -504,7 +505,7 @@ export default defineSchema({
       v.array(
         v.object({
           historyId: v.string(),
-          searchFilters: v.record(v.string(), v.any()),
+          searchFilters: searchFiltersValidator,
         })
       )
     ),

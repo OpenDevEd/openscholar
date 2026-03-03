@@ -16,7 +16,7 @@ export interface ExtractionQuestion {
 
 export interface ExtractionHistorySource {
   historyId: string;
-  searchFilters: Record<string, any>;
+  searchFilters: Record<string, unknown>;
 }
 
 export interface ExtractionZoteroItem {
@@ -143,7 +143,7 @@ export interface CreateExtractionJobInput {
   name: string;
   sourceType: ExtractionSourceType;
   sourceHistoryId?: string;
-  searchFilters?: Record<string, any>;
+  searchFilters?: Record<string, unknown>;
   sourceHistoryEntries?: ExtractionHistorySource[];
   sourceZoteroSelection?: ExtractionZoteroSelection;
   sourceManualItems?: ExtractionManualItem[];

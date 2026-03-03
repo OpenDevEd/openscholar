@@ -8,11 +8,12 @@
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import type { PaperData } from "./types";
+import { searchFiltersValidator } from "./validators";
 
 // Fetch papers from OpenAlex via HTTP API with abstract support
 export const fetchPapersFromHistory = internalAction({
   args: {
-    searchFilters: v.record(v.string(), v.any()),
+    searchFilters: searchFiltersValidator,
   },
   returns: v.array(v.object({
     openalexId: v.string(),

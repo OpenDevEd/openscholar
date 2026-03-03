@@ -40,6 +40,8 @@ import {
   answerValidator,
   jobStatusValidator,
   paperStatusValidator,
+  searchFiltersValidator,
+  paginatedPaperWithResultsValidator,
 } from "./validators";
 import { statusResultValidator } from "../lib/query_states";
 
@@ -196,7 +198,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
   return { questions, papers, resultsByPaper };
 }
 
-const paginatedAnyResultValidator = paginationResultValidator(v.any());
+const paginatedPaperResultValidator = paginationResultValidator(paginatedPaperWithResultsValidator);
 
 // Get user's extraction jobs (public API)
 export const getMyJobs = query({
@@ -221,7 +223,7 @@ export const getMyJobs = query({
       sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
       sourceHistoryId: v.optional(v.string()),
       sourceZoteroCollection: v.optional(v.string()),
-      sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: v.record(v.string(), v.any()) }))),
+      sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: searchFiltersValidator }))),
       sourceZoteroSelection: v.optional(v.object({
         libraryType: v.union(v.literal("user"), v.literal("group")),
         groupId: v.optional(v.string()),
@@ -233,7 +235,7 @@ export const getMyJobs = query({
       sourceManualItems: v.optional(v.array(v.object({
         id: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.optional(v.array(v.string())), year: v.optional(v.number()), doi: v.optional(v.string()), pdfUrl: v.optional(v.string()), storageId: v.optional(v.id("_storage"))
       }))),
-      searchFilters: v.optional(v.record(v.string(), v.any())),
+      searchFilters: v.optional(searchFiltersValidator),
       status: v.union(v.literal("pending"), v.literal("downloading_pdfs"), v.literal("indexing"), v.literal("extracting"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
       totalPapers: v.number(),
       processedPapers: v.number(),
@@ -488,11 +490,11 @@ export const getJobResultsPaginated = query({
   returns: v.union(
     v.object({
       status: v.literal("ok"),
-      ...paginatedAnyResultValidator.fields,
+      ...paginatedPaperResultValidator.fields,
     }),
     v.object({
       status: v.union(v.literal("unauthenticated"), v.literal("no_access")),
-      ...paginatedAnyResultValidator.fields,
+      ...paginatedPaperResultValidator.fields,
     })
   ),
   handler: async (ctx, args) => {
@@ -1218,7 +1220,7 @@ export const getWorkflowTemplates = query({
     name: v.string(),
     description: v.optional(v.string()),
     sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
-    sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: v.record(v.string(), v.any()) }))),
+    sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: searchFiltersValidator }))),
     sourceZoteroSelection: v.optional(v.object({
       libraryType: v.union(v.literal("user"), v.literal("group")),
       groupId: v.optional(v.string()),

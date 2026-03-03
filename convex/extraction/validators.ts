@@ -90,6 +90,34 @@ export const retrievalDiagnosticsValidator = v.object({
   strictNull: v.boolean(),
 });
 
+// ---- Typed search filters validator ----
+// Matches the actual shape of searchFilters stored in Convex.
+// All fields MUST be optional to remain compatible with existing stored data.
+export const searchFiltersValidator = v.object({
+  query: v.optional(v.string()),
+  field: v.optional(v.string()),
+  searchField: v.optional(v.string()),
+  sortBy: v.optional(v.string()),
+  yearRange: v.optional(v.array(v.number())),
+  dateRange: v.optional(v.object({
+    from: v.optional(v.string()),
+    to: v.optional(v.string()),
+  })),
+  selectedRegions: v.optional(v.array(v.string())),
+  selectedCountryFocus: v.optional(v.array(v.string())),
+  reviewFilter: v.optional(v.boolean()),
+  citesItemId: v.optional(v.string()),
+  citedByItemId: v.optional(v.string()),
+  relatedToItemId: v.optional(v.string()),
+  isYearRangeEnabled: v.optional(v.boolean()),
+  filterType: v.optional(v.string()),
+  ratingRange: v.optional(v.array(v.number())),
+  onlyRatedPapers: v.optional(v.boolean()),
+  language: v.optional(v.string()),
+  perPage: v.optional(v.number()),
+  limit: v.optional(v.number()),
+});
+
 // ---- Full document validators ----
 
 export const extractionJobValidator = v.object({
@@ -103,7 +131,7 @@ export const extractionJobValidator = v.object({
     v.array(
       v.object({
         historyId: v.string(),
-        searchFilters: v.record(v.string(), v.any()),
+        searchFilters: searchFiltersValidator,
       })
     )
   ),
@@ -140,7 +168,7 @@ export const extractionJobValidator = v.object({
       })
     )
   ),
-  searchFilters: v.optional(v.record(v.string(), v.any())),
+  searchFilters: v.optional(searchFiltersValidator),
   status: jobStatusValidator,
   totalPapers: v.number(),
   processedPapers: v.number(),
@@ -227,34 +255,6 @@ export const extractionResultReviewValidator = v.object({
   reviewedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
-});
-
-// ---- Typed search filters validator ----
-// Matches the actual shape of searchFilters stored in Convex.
-// All fields MUST be optional to remain compatible with existing stored data.
-export const searchFiltersValidator = v.object({
-  query: v.optional(v.string()),
-  field: v.optional(v.string()),
-  searchField: v.optional(v.string()),
-  sortBy: v.optional(v.string()),
-  yearRange: v.optional(v.array(v.number())),
-  dateRange: v.optional(v.object({
-    from: v.optional(v.string()),
-    to: v.optional(v.string()),
-  })),
-  selectedRegions: v.optional(v.array(v.string())),
-  selectedCountryFocus: v.optional(v.array(v.string())),
-  reviewFilter: v.optional(v.boolean()),
-  citesItemId: v.optional(v.string()),
-  citedByItemId: v.optional(v.string()),
-  relatedToItemId: v.optional(v.string()),
-  isYearRangeEnabled: v.optional(v.boolean()),
-  filterType: v.optional(v.string()),
-  ratingRange: v.optional(v.array(v.number())),
-  onlyRatedPapers: v.optional(v.boolean()),
-  language: v.optional(v.string()),
-  perPage: v.optional(v.number()),
-  limit: v.optional(v.number()),
 });
 
 export const extractionResultWithReviewValidator = v.object({
