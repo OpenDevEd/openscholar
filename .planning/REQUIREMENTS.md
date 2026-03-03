@@ -19,7 +19,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 ### Billing Safety
 
 - [x] **BILL-01**: `getPlanFromPriceId` substring fallback removed; unknown price IDs return `"free"` with warning log
-- [ ] **BILL-02**: Pending plan change state stored in Convex `subscriptions` table instead of Stripe metadata
+- [x] **BILL-02**: Pending plan change state stored in Convex `subscriptions` table instead of Stripe metadata
 
 ### Security
 
@@ -81,7 +81,7 @@ None -- this milestone is a cleanup sweep.
 | TYPE-05 | Phase 50 | Pending |
 | TYPE-06 | Phase 49 | Pending |
 | BILL-01 | Phase 48 | Complete |
-| BILL-02 | Phase 48 | Pending |
+| BILL-02 | Phase 48 | Complete |
 | SEC-01 | Phase 50 | Pending |
 | SEC-02 | Phase 50 | Pending |
 | PERF-01 | Phase 51 | Pending |

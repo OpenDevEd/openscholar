@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
 status: in-progress
-last_updated: "2026-03-03T08:02:11Z"
+last_updated: "2026-03-03T08:12:25Z"
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 48: Billing Hardening
+**Current focus:** v2.5 Tech Debt Purge -- Phase 48 complete, ready for Phase 49
 
 ## Current Position
 
 Phase: 48 of 52 (Billing Hardening) -- 2 of 6 in v2.5
-Plan: 1 of 2 in Phase 48
-Status: Plan 01 complete
-Last activity: 2026-03-03 -- Completed 48-01 (billing type safety)
+Plan: 2 of 2 in Phase 48 (COMPLETE)
+Status: Phase 48 complete
+Last activity: 2026-03-03 -- Completed 48-02 (pending plan change state migration)
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 85 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 1)
+- Total plans completed: 86 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 2)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -59,6 +59,8 @@ See PROJECT.md Key Decisions table for full log.
 - [47-03] Used fs.readFileSync inventory pattern for static analysis of debug-gated files
 - [48-01] Kept GenericActionCtx<any> in stripeWebhookHandlers.ts -- DataModel generic unavailable in utility files
 - [48-01] Left user: any and error: any casts out of scope for TYPE-01 (Stripe object casts only)
+- [48-02] Convex is source of truth for pending plan changes; Stripe metadata preserved for backward compat
+- [48-02] Upgrade metadata still written to Stripe for invoice webhook path (TODO for future migration)
 
 ### Roadmap Evolution
 
@@ -82,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 48-01-PLAN.md (billing type safety)
-Stopped at: Completed 48-01-PLAN.md
+Last activity: 2026-03-03 - Completed 48-02-PLAN.md (pending plan change state migration)
+Stopped at: Completed 48-02-PLAN.md (Phase 48 complete)
 Resume file: None
