@@ -1,138 +1,150 @@
 # Technology Stack
 
-**Analysis Date:** 2026-03-02
+**Analysis Date:** 2026-03-03
 
 ## Languages
 
 **Primary:**
-- TypeScript ~5.x - All application code (Next.js frontend, Convex backend, tests)
+- TypeScript 5.x - All application code (frontend, backend, Convex functions)
 
 **Secondary:**
-- JavaScript - `ecosystem.config.js` (PM2 process manager), `scripts/billing-preflight.mjs`
-- JSON - i18n message files in `messages/`
+- JavaScript (ES modules) - `ecosystem.config.js`, `scripts/billing-preflight.mjs`
+- CSS - `app/globals.css` (Tailwind v4 utility classes)
 
 ## Runtime
 
 **Environment:**
-- Node.js v20.x (detected: v20.20.0 on dev machine; no `.nvmrc` or `.node-version` file present)
+- Node.js 22.x (`@types/node: ^22`)
+- Edge Runtime - Convex functions marked `"use node"` opt into Node; others run in Convex edge runtime
 
 **Package Manager:**
-- npm (no explicit version pinned)
-- Lockfile: `package-lock.json` present
+- npm
+- Lockfile: `package-lock.json` (present)
 
 ## Frameworks
 
 **Core:**
-- Next.js ^16.1.6 - Full-stack React framework; App Router used; Turbopack in dev (`next dev --turbopack`)
-- React ^19.2.4 - UI layer; React Compiler enabled (`reactCompiler: true` in `next.config.ts`)
-- Convex ^1.31.7 - Serverless backend-as-a-service (realtime DB, serverless actions, file storage, cron jobs, HTTP router)
+- Next.js ^16.1.6 - Full-stack React framework, App Router (`app/` directory)
+- React 19.2.4 - UI rendering, concurrent features
+- Convex ^1.31.7 - Backend-as-a-service: database, functions, file storage, cron jobs, real-time subscriptions
+- next-intl ^4.8.2 - Internationalization (i18n), locale-aware routing via `i18n/request.ts`
 
-**UI / Styling:**
-- Tailwind CSS ^4 - Utility-first CSS
-- Radix UI (many `@radix-ui/*` packages ~v1-v2) - Headless accessible component primitives
-- shadcn/ui ^3.8.5 - Component library on top of Radix UI (config: `components.json`)
-- `lucide-react` ^0.487.0 - Icon library
-- `motion` ^12.23.12 - Animation library (Framer Motion successor)
-- `tw-animate-css` ^1.4.0 - Tailwind animation utilities
-- `class-variance-authority` ^0.7.1, `clsx` ^2.1.1, `tailwind-merge` ^3.4.1 - Class name utilities
-
-**i18n:**
-- `next-intl` ^4.8.2 - Internationalisation; configured at `i18n/request.ts`
-- Locales: `en-US`, `en-GB`, `zh`, `fr`, `hi`, `ja` (config: `i18n/config.ts`)
-
-**State Management:**
-- `zustand` ^5.0.5 - Client-side global state (`lib/store.ts`)
-- `swr` ^2.3.3 - Server state / data fetching
-- `nuqs` ^2.6.0 - URL search parameter state
-
-**AI SDK:**
-- Vercel AI SDK `ai` ^6.0.62 - Core AI streaming/text generation
-- Provider adapters: `@ai-sdk/anthropic`, `@ai-sdk/azure`, `@ai-sdk/cohere`, `@ai-sdk/deepseek`, `@ai-sdk/google`, `@ai-sdk/openai`, `@openrouter/ai-sdk-provider`
-- Local model support: `ollama` ^0.6.3, `ollama-ai-provider-v2` ^2.0.0 (in dependencies but not wired into server-side `providers.ts`)
-
-**Billing:**
-- `stripe` ^20.3.0 - Stripe Node SDK
-- `@convex-dev/stripe` ^0.1.3 - Convex Stripe component
-
-**Convex Add-on Components:**
-- `@convex-dev/rag` ^0.7.0 - RAG (Retrieval-Augmented Generation) for PDF indexing
-- `@convex-dev/workflow` ^0.3.4 - Durable workflows
-- `@convex-dev/workpool` ^0.3.1 - Parallel task execution
-- `convex-helpers` ^0.1.111 - Rate limiting, utilities
-
-**PDF Handling:**
-- `unpdf` ^1.4.0 - PDF text extraction
-- `react-pdf` ^10.1.0 - PDF viewing in browser
-- `cheerio` ^1.2.0 - HTML/XML parsing (used for GROBID TEI output)
-
-**Data Export:**
-- `xlsx` ^0.18.5 - Excel export
-- `jsonrepair` ^3.13.2 - Repair malformed AI JSON output
-- `date-fns` ^4.1.0 - Date formatting
+**UI Component Library:**
+- Radix UI (headless, ~15 packages) - Primitives: dialogs, dropdowns, selects, tooltips, etc.
+- shadcn/ui - Component scaffolding over Radix (`components.json`)
+- Tailwind CSS v4 - Utility-first CSS, configured via `postcss.config.mjs`
+- lucide-react ^0.487.0 - Icon library
+- motion ^12.23.12 - Animation (Framer Motion successor)
+- sonner ^2.0.7 - Toast notifications
+- vaul ^1.1.2 - Drawer component
+- cmdk ^1.1.1 - Command palette
+- react-day-picker ^9.13.2 - Date picker
+- next-themes ^0.4.6 - Dark/light theme toggling
 
 **Testing:**
-- Vitest ^3.2.4 - Unit and integration test runner (config: `vitest.config.ts`)
-- `@playwright/test` ^1.58.2 - E2E tests (config: `playwright.config.ts`)
-- `@testing-library/react` ^16.3.2 - React component testing
-- `convex-test` ^0.0.41 - Convex function in-memory testing
-- `jsdom` ^28.1.0 - DOM simulation for hook/component tests
+- Vitest ^3.2.4 - Unit/integration test runner (`vitest.config.ts`)
+- convex-test ^0.0.41 - Convex function testing (edge-runtime environment)
+- Playwright ^1.58.2 - End-to-end tests (`playwright.config.ts`, `e2e/`)
+- @testing-library/react ^16.3.2 - React component testing
+- jsdom ^28.1.0 - DOM simulation for hook/component tests
 
 **Build/Dev:**
-- Turbopack (via `next dev --turbopack`) - Dev server bundler
-- PM2 (`ecosystem.config.js`) - Local multi-process dev (`npm run dev:all` runs Next.js + Convex)
-- `knip` ^5.84.1 - Dead code detection (`knip.json`)
-- `babel-plugin-react-compiler` ^1.0.0 - React Compiler Babel transform
+- Turbopack - Dev bundler (`next dev --turbopack`)
+- PM2 - Process manager for `next dev` + `convex dev` in parallel (`ecosystem.config.js`)
+- React Compiler (babel-plugin-react-compiler ^1.0.0) - Enabled via `reactCompiler: true` in `next.config.ts`
 
 ## Key Dependencies
 
 **Critical:**
-- `convex` ^1.31.7 - All backend logic, realtime DB, file storage, and cron jobs live here
-- `@clerk/nextjs` ^6.38.2 - Authentication gateway; every protected route goes through Clerk middleware
-- `stripe` ^20.3.0 - Billing; subscriptions + credit top-up payments
-- `@sickrin/openalex-sdk` ^1.0.0 - Core data source: academic paper search (`lib/openalex.ts`)
-- `ai` ^6.0.62 - Powers all AI features (query enhancement, screening, extraction)
+- `convex ^1.31.7` - Primary backend: database, mutations, queries, actions, file storage, scheduling
+- `@clerk/nextjs ^6.38.2` - Authentication, user identity, JWT-based auth for Convex
+- `stripe ^20.3.0` - Billing SDK used in Convex actions
+- `ai ^6.0.62` - Vercel AI SDK core, `generateObject` for structured LLM calls
+- `@sickrin/openalex-sdk ^1.0.0` - OpenAlex academic paper search API client (`lib/openalex.ts`)
+- `zod ^4.3.6` - Schema validation for AI output and Convex action arguments
+- `zustand ^5.0.5` - Client-side state management (`lib/store/`)
+
+**Convex Components (self-hosted modules):**
+- `@convex-dev/stripe ^0.1.3` - Stripe subscription management component (`convex/stripe.ts`)
+- `@convex-dev/rag ^0.7.0` - RAG (Retrieval-Augmented Generation) component for PDF indexing/retrieval
+- `@convex-dev/workflow ^0.3.4` - Durable workflow orchestration for extraction jobs
+- `@convex-dev/workpool ^0.3.1` - Concurrent work queue for per-paper extraction
+
+**AI Provider SDKs:**
+- `@ai-sdk/openai ^3.0.23` - OpenAI models (GPT-4o, o3, o4-mini, etc.)
+- `@ai-sdk/anthropic ^3.0.31` - Anthropic Claude models
+- `@ai-sdk/google ^3.0.18` - Google Gemini models
+- `@ai-sdk/deepseek ^2.0.15` - DeepSeek models (default server AI provider)
+- `@ai-sdk/azure ^3.0.26` - Azure OpenAI
+- `@ai-sdk/cohere ^3.0.19` - Cohere models
+- `@openrouter/ai-sdk-provider ^6.0.0-alpha.1` - OpenRouter multi-model gateway
+- `ollama ^0.6.3` - Local Ollama models
+- `ollama-ai-provider-v2 ^2.0.0` - Ollama Vercel AI SDK provider
 
 **Infrastructure:**
-- `svix` ^1.86.0 - Webhook signature verification (used for Clerk webhooks)
-- `posthog-js` ^1.342.1 - Client-side analytics and error tracking
-- `zod` ^4.3.6 - Runtime schema validation across the app
-- `next-themes` ^0.4.6 - Light/dark theme management
+- `convex-helpers ^0.1.111` - Rate limiting tables, utilities
+- `posthog-js ^1.342.1` - Client-side product analytics
+- `svix ^1.86.0` - Clerk webhook signature verification
+- `nuqs ^2.6.0` - URL search param state management
+- `swr ^2.3.3` - Client-side data fetching
+- `date-fns ^4.1.0` - Date utility library
+- `jsonrepair ^3.13.2` - Repairs malformed JSON from AI responses
+- `cheerio ^1.2.0` - HTML parsing (GROBID XML response parsing)
+- `unpdf ^1.4.0` + `react-pdf ^10.1.0` - PDF rendering and text extraction
+- `xlsx ^0.18.5` - Export extraction results to Excel
 
 ## Configuration
 
 **Environment:**
-- `.env.local` file present (not committed; gitignored)
-- Key variable groups:
-  - Clerk: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
-  - Convex: `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `CONVEX_CLOUD_URL`
-  - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PRODUCT_ID`, `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID`
-  - AI: `AI_PROVIDER`, `AI_MODEL`, `OPENROUTER_PROVIDER_ORDER`, `OPENROUTER_ALLOW_FALLBACKS`
-  - Zotero: `ZOTERO_CLIENT_KEY`, `ZOTERO_CLIENT_SECRET`
-  - PostHog: `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `POSTHOG_KEY`, `POSTHOG_HOST`
-  - Encryption: `ENCRYPTION_KEY` (used to encrypt stored API keys and Zotero tokens)
-  - GROBID: `GROBID_URL` (default: `http://localhost:8070`), `GROBID_TIMEOUT_MS`
-  - Feature flags: `NEXT_PUBLIC_CREDITS_ENABLED`, `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED`, `NEXT_PUBLIC_SUBSCRIPTIONS_ENABLED`, `NEXT_PUBLIC_EXTRACTION_ENABLED`, `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED`
-  - App URL: `NEXT_PUBLIC_APP_URL` or `NEXT_PUBLIC_URL`
-  - Misc: `CREDITS_PER_USD`, `ENABLE_PUBLIC_DEBUG_FUNCTIONS`, `BILLING_LIVE_PUSH_CONVEX` (CI only)
+- Development: `.env.local` (not committed)
+- Convex env vars synced via `sync-env.sh` (uses `npx convex env set`)
+- Feature flags controlled via `NEXT_PUBLIC_*` env vars (all default ON unless explicitly `"false"`)
+
+**Key required env vars:**
+- `NEXT_PUBLIC_CONVEX_URL` - Convex deployment URL
+- `NEXT_PUBLIC_CONVEX_SITE_URL` - Convex HTTP actions base URL
+- `CLERK_JWT_ISSUER_DOMAIN` - Clerk JWT domain for Convex auth
+- `CLERK_WEBHOOK_SIGNING_SECRET` - Svix webhook verification
+- `STRIPE_SECRET_KEY` - Stripe API key
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
+- `STRIPE_CREDITS_PRODUCT_ID`, `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID` - Billing plan IDs
+- `ZOTERO_CLIENT_KEY`, `ZOTERO_CLIENT_SECRET` - Zotero OAuth 1.0a credentials
+- `ENCRYPTION_KEY` - AES key for encrypting API keys and Zotero tokens at rest
+- `AI_PROVIDER`, `AI_MODEL` - Default server-side AI provider (defaults: `deepseek`, `deepseek-chat`)
+- `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST` - Analytics
+- `GROBID_URL` - GROBID service URL for PDF text extraction (default: `http://localhost:8070`)
+- `OPENALEX_CONTACT_EMAIL` - OpenAlex API User-Agent contact email
+
+**Feature flags (NEXT_PUBLIC env vars):**
+- `NEXT_PUBLIC_CREDITS_ENABLED` - Enable credit system
+- `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` - Enable credit top-ups
+- `NEXT_PUBLIC_SUBSCRIPTIONS_ENABLED` - Enable subscription plans
+- `NEXT_PUBLIC_EXTRACTION_ENABLED` - Enable extraction feature
+- `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` - Enable PDF processing in extraction
+- `NEXT_PUBLIC_EXTRACTION_INSIGHTS` - Enable extraction insights
+- `NEXT_PUBLIC_EXTRACTION_REVIEW_QUEUE` - Enable review queue
+- `NEXT_PUBLIC_EXTRACTION_REPORT_BUILDER` - Enable report builder
 
 **Build:**
-- `next.config.ts` - Next.js config; PostHog proxy rewrites, next-intl plugin, React Compiler enabled
-- `tsconfig.json` - Strict TypeScript, `@/*` path alias maps to project root
-- `postcss.config.mjs` - PostCSS for Tailwind v4
+- `tsconfig.json` - TypeScript config targeting ES2017, strict mode, path alias `@/*` → `./`
 - `convex/tsconfig.json` - Separate TS config for Convex backend
+- `next.config.ts` - Next.js config with next-intl plugin, PostHog proxy rewrites
+- `postcss.config.mjs` - Tailwind v4 PostCSS config
+- `knip.json` - Dead code detection
 
 ## Platform Requirements
 
 **Development:**
-- Node.js v20+
-- Convex dev server running in parallel (`npm run dev:convex` or `npm run dev:all`)
-- Optional: local GROBID instance at port 8070 for PDF text extraction
+- Node.js 22+
+- npm
+- PM2 for concurrent dev: `npm run dev:all` starts Next.js + Convex dev server
+- Optional: GROBID service running at `localhost:8070` for PDF extraction
 
 **Production:**
-- Convex cloud (handles DB, file storage, serverless functions, cron jobs)
-- Next.js application deployable to Vercel or any Node.js host
-- GROBID service required for PDF extraction feature (can be Docker-based)
+- Convex cloud (managed backend)
+- Vercel or equivalent Next.js hosting
+- GROBID service accessible at `GROBID_URL` (Docker container: `http://grobid:8070`)
 
 ---
 
-*Stack analysis: 2026-03-02*
+*Stack analysis: 2026-03-03*

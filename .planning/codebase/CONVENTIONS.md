@@ -1,152 +1,129 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-02
+**Analysis Date:** 2026-03-03
 
 ## Naming Patterns
 
 **Files:**
-- TypeScript source files: `kebab-case.ts` / `kebab-case.tsx` (e.g., `filter-builder.ts`, `credit-billing.ts`)
-- Test files: `{feature-name}.test.ts` in `tests/` or co-located in `convex/` subdirectories
-- Config files: `{tool}.config.ts` (e.g., `vitest.config.ts`, `playwright.config.ts`)
-- Barrel/index files: typically named by feature, not `index.ts`
-- Next.js app directory: standard Next.js conventions (`page.tsx`, `layout.tsx`, `error.tsx`, `route.ts`)
+- React components: PascalCase — `PageContent.tsx`, `SearchInput.tsx`, `HomeHero.tsx`
+- Next.js pages/routes: lowercase — `page.tsx`, `layout.tsx`, `error.tsx`
+- Non-component TypeScript modules: kebab-case — `filter-builder.ts`, `credit-billing.ts`, `use-auth-query.ts`
+- Test files: match source file name with `.test.ts` suffix — `filter-builder.test.ts`, `ai-cost.test.ts`
+- Convex function files: lowercase descriptive — `mutations.ts`, `queries.ts`, `actions.ts`, `internal.ts`
 
 **Functions:**
-- camelCase for all functions: `buildFilterData`, `createUserWithDefaults`, `calculateCreditsToDeductFromUsage`
-- Verb-noun pattern for actions: `buildFilterData`, `createError`, `getSearchResults`, `seedLibraryItem`
-- Boolean checks prefixed with `is`/`has`: `isDateFilterActive`, `hasActiveFiltersFromResult`, `hasTokenUsage`
-- Event handlers prefixed with `handle`: `handleSignIn`, `handleDelete`
+- Event handlers: `handle` prefix — `handleSearchSubmit`, `handleQueryChange`
+- Boolean helpers: `is`/`has`/`can` prefix — `isRatingFilterActive`, `isCitesFilterActive`, `isFilterAtDefault`
+- Factory/builder functions: `create`/`build`/`make` prefix — `createDefaultFilters`, `buildFilterData`, `createError`, `buildEnhanceQueryPrompts`
+- React hooks: `use` prefix (camelCase) — `useUIStore`, `useAppToast`, `useCreateSearchFilters`
+- Async operations: verb + noun — `loadBillingLiveEnv`, `runConvexFunction`, `waitForCondition`
 
 **Variables:**
-- camelCase throughout: `searchHistory`, `creditTransactions`, `billingTestMinChargeCents`
-- Constants: SCREAMING_SNAKE_CASE in dedicated constant files: `FREE_SIGNUP_CREDIT_GRANT`, `AI_COST_MARKUP`, `DEFAULT_FILTERS`
-- Boolean variables: prefixed with `is`/`has`/`should`: `isYearRangeEnabled`, `hasMore`, `shouldPushConvexCode`
-- Numeric separators used for large numbers: `1_000_000`, `180_000`, `1_700_000_000`
+- camelCase throughout
+- Constants: SCREAMING_SNAKE_CASE for module-level constants — `FREE_SIGNUP_CREDIT_GRANT`, `PLAN_CONFIG`, `DEFAULT_CREDITS_PER_USD`, `BILLING_REQUIRED_WEBHOOK_EVENTS`
+- Boolean flags: descriptive without `is` prefix where clear from context — `shouldPushConvexCode`, `requirePaid`
 
-**Types / Interfaces:**
-- PascalCase: `FilterParams`, `BillingLiveEnv`, `BillingSnapshot`, `ErrorCode`
-- Interfaces for object shapes with methods or complex structure: `interface SearchHistoryState`
-- Type aliases for unions and simpler shapes: `type ErrorCode = "UNAUTHENTICATED" | "FORBIDDEN" | ...`
-- Suffix `State` for Zustand store interfaces: `SearchHistoryState`, `UIState`, `AIConfigState`
-- Suffix `Input` for function input objects: `EnhanceSearchQueryInput`, `GenerateScreeningQuestionsInput`
-- Suffix `Params` for parameter bags: `FilterParams`, `SearchFilters`
+**Types and Interfaces:**
+- PascalCase for all type/interface names — `BillingLiveEnv`, `BillingSnapshot`, `ErrorCode`, `Usage`
+- Type unions exported alongside validators — `PlanType`, `SubscriptionStatus`
+- Suffix `Validator` for Convex value validators — `planValidator`, `subscriptionStatusValidator`, `userValidator`
+- Suffix `Error` for custom error classes — `AIError`, `AIApiKeyRequiredError`, `AIProviderError`
+
+**Convex functions:**
+- Handlers always destructure args: `handler: async (ctx, args) => {` or `handler: async (ctx, { userId }) => {`
+- Internal functions in `internal.ts` files; public in `mutations.ts`, `queries.ts`, `actions.ts`
 
 ## Code Style
 
 **Formatting:**
-- No Prettier config present at project root; formatting enforced by editor convention
-- 2-space indentation throughout TypeScript/TSX files
-- Trailing commas in multi-line arrays and objects
-- Semicolons used consistently
+- No Prettier or ESLint config file detected (`.eslintrc*`, `.prettierrc*`, `biome.json` absent)
+- TypeScript strict mode enabled (`"strict": true` in `tsconfig.json`)
+- Trailing commas used in multi-line objects and function arguments (observed consistently)
+- Consistent 2-space indentation
 
 **Linting:**
-- No ESLint config at project root (only in `node_modules`)
-- TypeScript strict mode enabled: `"strict": true` in `tsconfig.json`
-- TypeScript target: `ES2017`
-- No `any` use encouraged, though `any` appears in test seed helpers to avoid strict Convex ID typing
+- No linting config found at root; `knip.json` present for unused exports/imports detection
+- `knip` used for dead code analysis — config at `knip.json`
 
 ## Import Organization
 
 **Order (observed pattern):**
-1. External libraries: `import React from "react"`, `import { describe } from "vitest"`
-2. Internal aliases with `@/`: `import { cn } from "@/lib/utils"`, `import type { FilterParams } from "@/lib/filters/filter-types"`
-3. Relative imports: `import schema from "../schema"`
+1. External framework imports — `"react"`, `"next/navigation"`, `"vitest"`, `"convex/values"`
+2. Internal path-aliased imports using `@/` — `"@/lib/store"`, `"@/components/ui/button"`, `"@/lib/utils"`
+3. Relative imports — `"../lib/filters/filter-builder"`, `"./types"`, `"../convex/lib/constants"`
 
 **Path Aliases:**
-- `@/*` maps to project root (e.g., `@/lib/store`, `@/components/ui/button`, `@/lib/types`)
-- Configured in `tsconfig.json` and `vitest.config.ts`
-
-**Type Imports:**
-- `import type { ... }` used when importing types only: `import type { AIProvider } from "../lib/types/ai.types"`
+- `@/` maps to project root (configured in `tsconfig.json` and `vitest.config.ts`)
+- Used in Next.js app and component code; test files use relative imports (`../lib/...`, `../convex/...`)
 
 ## Error Handling
 
 **Convex backend pattern:**
-- Structured `ConvexError` via `createError(code, message?)` from `convex/lib/errors.ts`
-- Typed error codes defined in `ErrorCode` union (`convex/lib/errors.ts`)
-- Categories: generic auth/data, AI, API key, billing, Zotero
-- Example: `throw createError("NOT_FOUND")` or `throw createError("FORBIDDEN", "You cannot delete another user's item")`
+- Typed error codes via `createError(code: ErrorCode, message?)` from `convex/lib/errors.ts`
+- Throws `ConvexError<ErrorData>` with a `code` string — `createError("UNAUTHENTICATED", "Authentication required")`
+- Error codes defined in union type `ErrorCode` covering auth, AI, billing, and integration errors
+- Callers check `error instanceof ConvexError` to discriminate structured vs. unexpected errors
 
-**Next.js server actions:**
-- `try/catch` with `throw new Error(...)` for unexpected failures
-- Error messages include context: `throw new Error(\`OpenAlex SDK error: \${error.message}\`)`
-- Pattern: `error instanceof Error ? error.message : 'Unknown error'`
+**Frontend/library pattern:**
+- Custom error class hierarchy rooted at `AIError` in `lib/ai/core/errors.ts`
+- Specific subclasses: `AIApiKeyRequiredError`, `AIInsufficientCreditsError`, `AIProviderError`, `AIValidationError`, etc.
+- `handleAIError(error, context)` re-throws typed errors, wraps unknown errors in `AIProviderError`
+- `try/finally` used for cleanup in UI handlers (note: `"use no memo"` pragma added to components with `try/finally`)
 
-**Client-side:**
-- Errors surfaced via `sonner` toast library (imported via `useAppToast` or similar wrappers)
-- Feature flags gated with early returns returning `null` rather than throwing
+**General:**
+- `error instanceof Error ? error.message : String(error)` pattern for safe error message extraction
+- Functions that can error return `never` or throw (no returning error objects from non-throwing functions)
 
 ## Logging
 
 **Framework:** `console.error` / `console.warn` (no structured logging library)
 
 **Patterns:**
-- `console.error('[functionName] Error description:', error)` for unexpected failures
-- `console.warn('[functionName] Warning description:', context)` for non-fatal issues
-- Convex actions use inline bracket prefixes: `console.warn("[fetchItems] ...")`
-- Live billing test support uses custom artifact logging via `appendBillingArtifactLog()` in `tests/live-billing/support.ts`
-- Do not log in pure utility/library functions; log at the call site (action/mutation level)
+- `console.error(...)` in catch blocks of UI event handlers
+- Convex backend errors propagate as `ConvexError` (no logging at throw site)
+- Live billing tests append to artifact logs via `appendBillingArtifactLog(message)` in `tests/live-billing/support.ts`
 
 ## Comments
 
 **When to Comment:**
-- JSDoc-style `/** ... */` for exported public functions describing purpose and parameters:
-  ```typescript
-  /**
-   * Build structured filter data from search parameters
-   * This is the single source of truth for filter display logic
-   */
-  export function buildFilterData(...)
-  ```
-- Section dividers with `// ============ Section Name ============` used inside large files
-- Inline comments explaining non-obvious logic: `// The spread ...userData should not add firstName/lastName/avatarUrl keys`
-- Test comments explain intent: `// Verify item is actually deleted`, `// Baseline job should NOT be deleted`
+- JSDoc-style `/** ... */` for exported public functions in `lib/` — e.g., `createSearchParameters`, `workToCoins`, `getEffectiveSearchId`
+- Inline comments explain non-obvious behavior or edge cases
+- Test files use inline comments to clarify setup intent — `// Enable fake timers BEFORE the mutation`
+- `// Source:` comments reference external docs — `// Source: https://testing-library.com/docs/...`
 
-**JSDoc/TSDoc:**
-- Used for exported utility functions
-- `@param` tags not always present; preference for descriptive parameter names
+**TSDoc:**
+- `@param` and `@returns` used selectively in lib functions (not universally applied)
 
 ## Function Design
 
-**Size:**
-- Pure utility functions kept small (10-40 lines)
-- Builder functions (e.g., `buildFilterData`) can be longer (100-200 lines) with clear section comments
-- Convex mutations/queries typically 20-60 lines
-
-**Parameters:**
-- Named parameter objects for 2+ related args: `calculateCreditsToDeductFromUsage({ usage, provider, modelId })`
-- Single plain arguments for simple utilities: `getFieldLabel(field, t)`
-- Optional config last: `buildFilterData(params, t?, formatDateTime?)`
-
-**Return Values:**
-- Functions return typed values (never untyped `any` in prod code)
-- Early returns for guard clauses rather than nested conditionals
-- Null returned for missing optional data (not `undefined`)
+**Size:** Functions kept focused; complex orchestration extracted to helpers
+**Parameters:** Object destructuring preferred for 3+ parameters — `{ provider, modelId, usage }`
+**Return Values:** Functions return typed values; `null` returned (not `undefined`) for "not found" cases in Convex queries — `return v.null()`
 
 ## Module Design
 
 **Exports:**
-- Named exports preferred throughout; default exports only for Next.js convention files (`page.tsx`, `layout.tsx`, etc.)
-- `export function`, `export const`, `export type` used directly — not aggregated at bottom
+- Named exports preferred; default export for React components (Next.js convention)
+- Convex functions exported as named mutations/queries/actions matching file organization
+- `convex/_generated/api` used for strongly-typed Convex API references in tests
 
 **Barrel Files:**
-- `lib/search-params/index.ts` exists as a barrel for search param utilities
-- Most modules export directly without barrels — prefer direct imports: `../lib/ai/core/creditBilling`
-- Avoid creating new barrel files unless the module has multiple exports that are always used together
+- `lib/ai/core/index.ts` acts as barrel for AI core exports
+- `lib/types/index.ts` re-exports type definitions
+- Convex `_generated/` is auto-generated; never hand-edit
 
-## Next.js Specific
+## React Patterns
 
-**Server/Client boundary:**
-- `"use server"` at top of server action files (e.g., `app/actions/openalex.ts`)
-- `"use client"` at top of interactive components (e.g., `app-sidebar.tsx`, store-using pages)
-- `"use no memo"` added alongside `"use client"` when the React Compiler's memoization must be suppressed (e.g., components with try/finally in handlers)
-- Server Components are the default for pages that don't need interactivity
+**Component Organization:**
+- `"use client"` directive at top of client components (Next.js App Router pattern)
+- `"use no memo"` added when `try/finally` blocks are present (React Compiler compatibility)
+- `dynamic(() => Promise.resolve(Component), { ssr: false })` for components requiring browser APIs
 
-**Zustand stores:**
-- Defined in `lib/store.ts` (main stores) and `lib/store/` (feature stores)
-- State interfaces are private (not exported) unless consumed externally
-- Store names follow `use{Feature}Store` convention
+**State Management:**
+- Zustand stores in `lib/store/` and `lib/store.ts` for client state
+- Convex reactive queries for server state
+- Local `React.useState` for ephemeral UI state
 
 ---
 
-*Convention analysis: 2026-03-02*
+*Convention analysis: 2026-03-03*
