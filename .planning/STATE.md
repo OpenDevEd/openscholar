@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: unknown
-last_updated: "2026-03-03T09:19:47.106Z"
+status: in-progress
+last_updated: "2026-03-03T09:46:08Z"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 11
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 50 in progress
+**Current focus:** v2.5 Tech Debt Purge -- Phase 51 in progress
 
 ## Current Position
 
-Phase: 50 of 52 (Security & Schema Hardening) -- 4 of 6 in v2.5
-Plan: 2 of 2 in Phase 50 (COMPLETE)
-Status: Phase 50 complete
-Last activity: 2026-03-03 -- Completed 50-01 (required encryptedApiKey schema + centralized decryptApiKey audit)
+Phase: 51 of 52 (Performance) -- 5 of 6 in v2.5
+Plan: 2 of 2 in Phase 51 (COMPLETE)
+Status: Phase 51 plan 02 complete
+Last activity: 2026-03-03 -- Completed 51-02 (cron index optimization + crypto import modernization)
 
-Progress: [███████░░░] 75%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 90 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 6)
+- Total plans completed: 91 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 7)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -68,6 +68,8 @@ See PROJECT.md Key Decisions table for full log.
 - [50-01] Used console.log JSON audit format matching existing AUDIT pattern ([AUDIT:KEY_DECRYPT]) for consistency
 - [50-01] Used String(job.userId) fallback to "system" for extraction workpool decrypt (internal action)
 - [50-02] Used structured console.log with [AUDIT:DEBUG_ACCESS] prefix for grep-friendly audit trail in Convex logs
+- [51-02] Kept .take(100) on OAuth cleanup to bound memory per cron run
+- [51-02] Preserved by_status index alongside new by_status_updatedAt for backward compat with other queries
 
 ### Roadmap Evolution
 
@@ -91,6 +93,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 50-01-PLAN.md (required encryptedApiKey + centralized decryptApiKey audit)
-Stopped at: Completed 50-01-PLAN.md (Phase 50 complete)
+Last activity: 2026-03-03 - Completed 51-02-PLAN.md (cron index optimization + crypto import modernization)
+Stopped at: Completed 51-02-PLAN.md
 Resume file: None

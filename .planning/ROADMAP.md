@@ -271,5 +271,5 @@ Plans:
 | 48. Billing Hardening | 2/2 | Complete    | 2026-03-03 | - |
 | 49. Extraction & Library Type Safety | 2/2 | Complete    | 2026-03-03 | - |
 | 50. Security & Schema | 2/2 | Complete    | 2026-03-03 | - |
-| 51. Performance | v2.5 | 0/? | Not started | - |
+| 51. Performance | 1/2 | In Progress|  | - |
 | 52. Cleanup & Organization | v2.5 | 0/? | Not started | - |
