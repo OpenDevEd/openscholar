@@ -175,17 +175,26 @@ export const useRatingsStore = create<RatingsState>()(
   )
 )
 
+/** Shape of persisted state flowing through search history migrations. */
+interface SearchHistoryPersistedState {
+  searchHistory?: Array<Record<string, unknown>>;
+}
+
+// Signature kept as `any` for Zustand persist `migrate` compatibility.
 export function migrateSearchHistoryState(persistedState: any, version: number): any {
+  const state = persistedState as SearchHistoryPersistedState;
+
   // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
   if (version === 0) {
     const currentYear = new Date().getFullYear();
     const defaultYearRange = [MIN_YEAR, currentYear];
 
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
         // If the item has a custom year range (not the default), enable the toggle
-        if (item.yearRange && Array.isArray(item.yearRange)) {
-          const [fromYear, toYear] = item.yearRange;
+        const yearRange = item.yearRange;
+        if (yearRange && Array.isArray(yearRange)) {
+          const [fromYear, toYear] = yearRange;
           const isCustomRange = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
 
           return {
@@ -205,8 +214,8 @@ export function migrateSearchHistoryState(persistedState: any, version: number):
 
   // Migration for version 1 -> 2: Add queryHistory field
   if (version <= 1) {
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
         return {
           ...item,
           queryHistory: item.queryHistory || [{
@@ -220,8 +229,8 @@ export function migrateSearchHistoryState(persistedState: any, version: number):
 
   // Migration for version 2 -> 3: Add questionHistory field
   if (version <= 2) {
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
         return {
           ...item,
           questionHistory: item.questionHistory || []
@@ -232,8 +241,8 @@ export function migrateSearchHistoryState(persistedState: any, version: number):
 
   // Migration for version 3 -> 4: Add screeningQuestions field
   if (version <= 3) {
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
         return {
           ...item,
           screeningQuestions: item.screeningQuestions || []
@@ -244,8 +253,8 @@ export function migrateSearchHistoryState(persistedState: any, version: number):
 
   // Migration for version 4 -> 5: Add screeningResponses field
   if (version <= 4) {
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
         return {
           ...item,
           screeningResponses: item.screeningResponses || {}
@@ -256,8 +265,8 @@ export function migrateSearchHistoryState(persistedState: any, version: number):
 
   // Migration for version 5 -> 6: Add language field
   if (version <= 5) {
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
         return {
           ...item,
           language: item.language || undefined // Default to undefined for backward compatibility
@@ -268,17 +277,19 @@ export function migrateSearchHistoryState(persistedState: any, version: number):
 
   // Migration for version 6 -> 7: Normalize screening question shape
   if (version <= 6) {
-    if (persistedState.searchHistory) {
-      persistedState.searchHistory = persistedState.searchHistory.map((item: any) => ({
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => ({
         ...item,
-        screeningQuestions: (item.screeningQuestions || []).map((question: any) => ({
-          question: typeof question?.question === "string" ? question.question : "",
-        })),
+        screeningQuestions: ((item.screeningQuestions || []) as Array<Record<string, unknown>>).map(
+          (question: Record<string, unknown>) => ({
+            question: typeof question?.question === "string" ? question.question : "",
+          })
+        ),
       }));
     }
   }
 
-  return persistedState;
+  return state;
 }
 
 export const useSearchHistoryStore = create<SearchHistoryState>()(
