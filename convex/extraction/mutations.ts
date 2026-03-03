@@ -968,12 +968,16 @@ export const createExtractionRunDiff = mutation({
       toDiffRecords(currentData.papers, currentData.resultsByPaper)
     );
 
+    const DIFF_CHANGES_CAP = 1000;
+    const isTruncated = changes.length > DIFF_CHANGES_CAP;
+
     const diffId = await ctx.db.insert("extractionRunDiffs", {
       jobId: args.jobId,
       baselineJobId: args.baselineJobId,
       userId: user._id,
       summary,
-      changes: changes.slice(0, 1000),
+      changes: changes.slice(0, DIFF_CHANGES_CAP),
+      ...(isTruncated ? { isTruncated: true, totalChanges: changes.length } : {}),
       generatedAt: Date.now(),
       createdAt: Date.now(),
     });
@@ -1104,13 +1108,25 @@ export const deleteExtractionInternal = internalMutation({
     }
 
     // Step 8: Delete extractionRunDiffs where this job is the PRIMARY job
-    // NOTE: Only delete diffs where jobId == args.jobId, NOT where baselineJobId == args.jobId
+    // NOTE: Step 8b below handles diffs where baselineJobId == args.jobId
     const runDiffs = await ctx.db
       .query("extractionRunDiffs")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(BATCH_SIZE);
     if (runDiffs.length > 0) {
       for (const d of runDiffs) await ctx.db.delete(d._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
+    // Step 8b: Delete extractionRunDiffs where this job is the BASELINE job
+    // (BUG-03 fix: prevents orphaned diffs when a baseline job is deleted)
+    const baselineDiffs = await ctx.db
+      .query("extractionRunDiffs")
+      .withIndex("by_baseline", (q) => q.eq("baselineJobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (baselineDiffs.length > 0) {
+      for (const d of baselineDiffs) await ctx.db.delete(d._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }

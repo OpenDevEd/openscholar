@@ -270,6 +270,59 @@ describe("deleteExtractionInternal cascade", () => {
     });
   });
 
+  it("deletes diffs where deleted job is the BASELINE (BUG-03 fix)", async () => {
+    const t = convexTest(schema);
+
+    const ids = await seedFullJobGraph(t);
+
+    // Insert a "reverse" diff: baselineJobId is the primary, jobId is the baseline
+    // This simulates a diff where the job we're about to delete is the BASELINE
+    const reverseDiffId = await t.run(async (ctx) => {
+      const now = Date.now();
+      return await ctx.db.insert("extractionRunDiffs", {
+        jobId: ids.baselineJobId,
+        baselineJobId: ids.jobId,
+        userId: ids.userId,
+        summary: {
+          newAnswers: 0,
+          changedAnswers: 0,
+          removedAnswers: 0,
+          confidenceShifts: 0,
+          newlyInsufficientEvidence: 0,
+          totalCompared: 1,
+        },
+        changes: [],
+        generatedAt: Date.now(),
+        createdAt: Date.now(),
+      });
+    });
+
+    vi.useFakeTimers();
+
+    // Delete the PRIMARY job (ids.jobId) -- which is the BASELINE in the reverse diff
+    await t.mutation(
+      internal.extraction.mutations.deleteExtractionInternal,
+      { jobId: ids.jobId }
+    );
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+    vi.useRealTimers();
+
+    await t.run(async (ctx) => {
+      // The original diff (jobId: ids.jobId) should be deleted (Step 8)
+      const originalDiff = await ctx.db.get(ids.runDiffId);
+      expect(originalDiff).toBeNull();
+
+      // The reverse diff (baselineJobId: ids.jobId) should ALSO be deleted (Step 8b)
+      const reverseDiff = await ctx.db.get(reverseDiffId);
+      expect(reverseDiff).toBeNull();
+
+      // The baseline job should still exist (we only deleted ids.jobId)
+      const baselineJob = await ctx.db.get(ids.baselineJobId);
+      expect(baselineJob).not.toBeNull();
+    });
+  });
+
   it("handles job with no child records gracefully", async () => {
     const t = convexTest(schema);
     const now = Date.now();

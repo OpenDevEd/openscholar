@@ -627,6 +627,8 @@ export default defineSchema({
     ),
     generatedAt: v.number(),
     createdAt: v.number(),
+    isTruncated: v.optional(v.boolean()),
+    totalChanges: v.optional(v.number()),
   })
     .index("by_job", ["jobId"])
     .index("by_baseline", ["baselineJobId"])
