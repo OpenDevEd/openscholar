@@ -9,14 +9,14 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 ### Type Safety
 
-- [ ] **TYPE-01**: Derive `ExtractionResultWithReview` type from `extractionResultWithReviewValidator` and thread through `lib/extraction/export.ts` and `lib/extraction/filtering.ts`, eliminating all `result as any` casts
-- [ ] **TYPE-02**: Replace `(fresh.customer as any)?.id` in `convex/maintenance/internal.ts` with `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id` pattern
-- [ ] **TYPE-03**: Replace `name: args.name as any` in `convex/lib/rateLimit.ts` with `v.union(v.literal(...))` validator matching all `defineRateLimits` keys
-- [ ] **TYPE-04**: Replace `workflow.cancel(ctx, job.workflowId as any)` in `convex/extraction/mutations.ts` with properly typed workflow ID (verify `@convex-dev/workflow` exported type first)
+- [x] **TYPE-01**: Derive `ExtractionResultWithReview` type from `extractionResultWithReviewValidator` and thread through `lib/extraction/export.ts` and `lib/extraction/filtering.ts`, eliminating all `result as any` casts
+- [x] **TYPE-02**: Replace `(fresh.customer as any)?.id` in `convex/maintenance/internal.ts` with `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id` pattern
+- [x] **TYPE-03**: Replace `name: args.name as any` in `convex/lib/rateLimit.ts` with `v.union(v.literal(...))` validator matching all `defineRateLimits` keys
+- [x] **TYPE-04**: Replace `workflow.cancel(ctx, job.workflowId as any)` in `convex/extraction/mutations.ts` with properly typed workflow ID (verify `@convex-dev/workflow` exported type first)
 - [x] **TYPE-05**: Delete unused `components/library/library-filters.tsx` dead code file
 - [x] **TYPE-06**: Move `getProviderModel` from `lib/ai/client/providers` to `lib/ai/server/` or `lib/ai/core/` to fix module boundary violation
 - [x] **TYPE-07**: Verify `convex/test.setup.ts` purpose and either wire into vitest config or delete if orphaned
-- [ ] **TYPE-08**: Migrate upgrade metadata reading from Stripe subscription object to Convex subscription record in `convex/credits/actions.ts` (BILL-02 follow-up)
+- [x] **TYPE-08**: Migrate upgrade metadata reading from Stripe subscription object to Convex subscription record in `convex/credits/actions.ts` (BILL-02 follow-up)
 
 ### Security
 
@@ -45,8 +45,8 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 - [ ] **TEST-01**: Add unit test for `highlightText` with HTML characters in both text and query parameters verifying XSS safety
 - [ ] **TEST-02**: Add test for GROBID URL discovery fallback chain when `GROBID_URL` env var is absent and Docker/localhost variants fail
-- [ ] **TEST-03**: Add test for rate limiter with invalid name string verifying rejection
-- [ ] **TEST-04**: Add test for workflow cancel path specifically (not just cascade delete)
+- [x] **TEST-03**: Add test for rate limiter with invalid name string verifying rejection
+- [x] **TEST-04**: Add test for workflow cancel path specifically (not just cascade delete)
 - [ ] **TEST-05**: Add round-trip ExcelJS export test (generate XLSX, parse back, assert headers and row values)
 - [ ] **TEST-06**: Add test for env var validation detecting missing critical env vars
 
@@ -72,14 +72,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | Phase 54 | Pending |
-| TYPE-02 | Phase 54 | Pending |
-| TYPE-03 | Phase 54 | Pending |
-| TYPE-04 | Phase 54 | Pending |
+| TYPE-01 | Phase 54 | Complete |
+| TYPE-02 | Phase 54 | Complete |
+| TYPE-03 | Phase 54 | Complete |
+| TYPE-04 | Phase 54 | Complete |
 | TYPE-05 | Phase 54 | Complete |
 | TYPE-06 | Phase 54 | Complete |
 | TYPE-07 | Phase 54 | Complete |
-| TYPE-08 | Phase 54 | Pending |
+| TYPE-08 | Phase 54 | Complete |
 | SEC-01 | Phase 55 | Pending |
 | SEC-02 | Phase 55 | Pending |
 | SEC-03 | Phase 55 | Pending |
@@ -96,8 +96,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORR-03 | Phase 58 | Pending |
 | TEST-01 | Phase 55 | Pending |
 | TEST-02 | Phase 58 | Pending |
-| TEST-03 | Phase 54 | Pending |
-| TEST-04 | Phase 54 | Pending |
+| TEST-03 | Phase 54 | Complete |
+| TEST-04 | Phase 54 | Complete |
 | TEST-05 | Phase 56 | Pending |
 | TEST-06 | Phase 55 | Pending |
 
