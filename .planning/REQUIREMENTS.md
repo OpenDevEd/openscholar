@@ -56,6 +56,15 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 - [x] **BUG-01**: `OPENALEX_CONTACT_EMAIL` env var set in Convex dashboard (manual action)
 
+### TypeScript Compile Fix (Phase 53)
+
+- [ ] **TSFIX-01**: Orphaned `results-table.tsx` deleted (imports 4 non-existent modules)
+- [ ] **TSFIX-02**: `stripeWebhookHandlers.ts` refs parameter is required (not optional), eliminating undefined assignability errors
+- [ ] **TSFIX-03**: Stripe v20 subscription period fields accessed via `SubscriptionItem` (not `Subscription`) in production code
+- [ ] **TSFIX-04**: Invoice subscription accessed via `invoice.parent.subscription_details.subscription` path in production code
+- [ ] **TSFIX-05**: Test mock helpers compatible with Stripe v20 discriminated union `Event` type and `Invoice` type
+- [ ] **TSFIX-06**: Test files use proper Convex `Id<>` branded type casts and `SubscriptionItem` period access
+
 ## Future Requirements
 
 None -- this milestone is a cleanup sweep.
@@ -99,12 +108,19 @@ None -- this milestone is a cleanup sweep.
 | TEST-05 | Phase 47 | Complete |
 | ORG-01 | Phase 52 | Complete |
 | BUG-01 | Phase 52 | Complete |
+| TSFIX-01 | Phase 53 | Planned |
+| TSFIX-02 | Phase 53 | Planned |
+| TSFIX-03 | Phase 53 | Planned |
+| TSFIX-04 | Phase 53 | Planned |
+| TSFIX-05 | Phase 53 | Planned |
+| TSFIX-06 | Phase 53 | Planned |
 
 **Coverage:**
-- v2.5 requirements: 25 total
-- Mapped to phases: 25
+- v2.5 requirements: 25 total (complete)
+- Phase 53 requirements: 6 total (planned)
+- Mapped to phases: 31
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after roadmap creation*
+*Last updated: 2026-03-03 after Phase 53 planning*

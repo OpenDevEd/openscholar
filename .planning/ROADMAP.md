@@ -273,3 +273,21 @@ Plans:
 | 50. Security & Schema | 2/2 | Complete    | 2026-03-03 | - |
 | 51. Performance | 2/2 | Complete    | 2026-03-03 | - |
 | 52. Cleanup & Organization | 2/2 | Complete    | 2026-03-03 | - |
+
+### Phase 53: TypeScript Compile Fix
+
+**Goal:** Fix all 32 TypeScript compile errors from Stripe SDK v20 type changes, optional refs, orphaned file, and test mock incompatibilities
+**Depends on:** Phase 52
+**Requirements**: TSFIX-01, TSFIX-02, TSFIX-03, TSFIX-04, TSFIX-05, TSFIX-06
+**Success Criteria** (what must be TRUE):
+  1. `npx tsc --noEmit` produces zero errors across all source and test files
+  2. Stripe subscription period fields are accessed via `SubscriptionItem` (not `Subscription`)
+  3. Invoice subscription is accessed via `invoice.parent.subscription_details.subscription`
+  4. `stripeWebhookHandlers.ts` refs parameter is required (not optional)
+  5. Orphaned `results-table.tsx` is deleted
+  6. All existing tests continue to pass
+**Plans**: 2 plans
+
+Plans:
+- [ ] 53-01-PLAN.md -- Delete orphaned file, fix refs optionality, fix Stripe v20 period/invoice types in production code (TSFIX-01, TSFIX-02, TSFIX-03, TSFIX-04)
+- [ ] 53-02-PLAN.md -- Fix Stripe v20 test mock types, Convex Id casts, and live-billing period access (TSFIX-05, TSFIX-06)
