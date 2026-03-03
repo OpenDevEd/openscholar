@@ -11,16 +11,16 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeStripeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {
+function makeStripeEvent(overrides: Record<string, unknown> = {}): Stripe.Event {
   return {
     id: "evt_test_123",
     type: "invoice.paid",
     api_version: "2024-12-18.acacia",
     data: {
-      object: { id: "obj_abc" } as unknown as Stripe.Event.Data.Object,
+      object: { id: "obj_abc" },
     },
     ...overrides,
-  } as Stripe.Event;
+  } as unknown as Stripe.Event;
 }
 
 function createMockCtx() {
@@ -52,7 +52,7 @@ describe("getStripeObjectId", () => {
   it("returns string id when event.data.object.id is a string", () => {
     const event = makeStripeEvent({
       data: {
-        object: { id: "sub_abc123" } as unknown as Stripe.Event.Data.Object,
+        object: { id: "sub_abc123" },
       },
     });
     expect(getStripeObjectId(event)).toBe("sub_abc123");
@@ -61,7 +61,7 @@ describe("getStripeObjectId", () => {
   it("returns undefined when event.data.object has no id", () => {
     const event = makeStripeEvent({
       data: {
-        object: {} as unknown as Stripe.Event.Data.Object,
+        object: {},
       },
     });
     expect(getStripeObjectId(event)).toBeUndefined();
@@ -70,7 +70,7 @@ describe("getStripeObjectId", () => {
   it("returns undefined when id is not a string", () => {
     const event = makeStripeEvent({
       data: {
-        object: { id: 42 } as unknown as Stripe.Event.Data.Object,
+        object: { id: 42 },
       },
     });
     expect(getStripeObjectId(event)).toBeUndefined();
@@ -108,7 +108,7 @@ describe("runAuditedStripeHandler", () => {
     const event = makeStripeEvent();
     const handler = vi.fn().mockResolvedValue(undefined);
 
-    await runAuditedStripeHandler(ctx as any, event, handler);
+    await runAuditedStripeHandler(ctx as any, event, handler, mutationRefs as any);
 
     expect(handler).toHaveBeenCalledTimes(1);
     expect(ctx.runMutation).toHaveBeenCalledTimes(1);
@@ -130,7 +130,7 @@ describe("runAuditedStripeHandler", () => {
     const handler = vi.fn().mockRejectedValue(error);
 
     await expect(
-      runAuditedStripeHandler(ctx as any, event, handler),
+      runAuditedStripeHandler(ctx as any, event, handler, mutationRefs as any),
     ).rejects.toThrow("handler boom");
 
     expect(ctx.runMutation).toHaveBeenCalledTimes(1);
@@ -154,15 +154,20 @@ describe("runAuditedStripeHandler", () => {
 describe("processInvoiceForGrantNonBlocking", () => {
   let ctx: ReturnType<typeof createMockCtx>;
 
+  const grantRefs = {
+    processInvoiceForGrant: Symbol("processInvoiceForGrant"),
+    markStripeEventRetrying: Symbol("markStripeEventRetrying"),
+  };
+
   beforeEach(() => {
     ctx = createMockCtx();
   });
 
   it("calls processInvoiceForGrant with correct args on success", async () => {
     const event = makeStripeEvent({ id: "evt_inv_1", type: "invoice.paid" });
-    const invoice = { id: "inv_001" };
+    const invoice = { id: "inv_001" } as unknown as Stripe.Invoice;
 
-    await processInvoiceForGrantNonBlocking(ctx as any, event, invoice);
+    await processInvoiceForGrantNonBlocking(ctx as any, event, invoice, grantRefs as any);
 
     expect(ctx.runAction).toHaveBeenCalledTimes(1);
     const [_ref, args] = ctx.runAction.mock.calls[0];
@@ -177,10 +182,10 @@ describe("processInvoiceForGrantNonBlocking", () => {
 
   it("schedules retry with 60s delay and retryCount=1 on failure", async () => {
     const event = makeStripeEvent({ id: "evt_inv_2", type: "invoice.paid" });
-    const invoice = { id: "inv_002" };
+    const invoice = { id: "inv_002" } as unknown as Stripe.Invoice;
     ctx.runAction.mockRejectedValueOnce(new Error("transient error"));
 
-    await processInvoiceForGrantNonBlocking(ctx as any, event, invoice);
+    await processInvoiceForGrantNonBlocking(ctx as any, event, invoice, grantRefs as any);
 
     expect(ctx.scheduler.runAfter).toHaveBeenCalledTimes(1);
     const [delay, _ref, args] = ctx.scheduler.runAfter.mock.calls[0];
@@ -196,10 +201,10 @@ describe("processInvoiceForGrantNonBlocking", () => {
 
   it("calls markStripeEventRetrying on failure", async () => {
     const event = makeStripeEvent({ id: "evt_inv_3", type: "invoice.paid" });
-    const invoice = { id: "inv_003" };
+    const invoice = { id: "inv_003" } as unknown as Stripe.Invoice;
     ctx.runAction.mockRejectedValueOnce(new Error("db timeout"));
 
-    await processInvoiceForGrantNonBlocking(ctx as any, event, invoice);
+    await processInvoiceForGrantNonBlocking(ctx as any, event, invoice, grantRefs as any);
 
     expect(ctx.runMutation).toHaveBeenCalledTimes(1);
     const [_ref, args] = ctx.runMutation.mock.calls[0];
