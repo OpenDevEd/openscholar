@@ -94,6 +94,9 @@ export const subscriptionValidator = v.object({
   pastDueSince: v.optional(v.number()),
   creditsPerMonth: v.optional(v.number()),
   seats: v.optional(v.number()),
+  pendingFromPlan: v.optional(planValidator),
+  pendingToPlan: v.optional(planValidator),
+  pendingChangeTimestamp: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });

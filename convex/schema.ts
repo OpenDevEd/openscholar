@@ -99,6 +99,10 @@ export default defineSchema({
     pastDueSince: v.optional(v.number()),
     creditsPerMonth: v.optional(v.number()),
     seats: v.optional(v.number()),
+    // Pending plan change state (BILL-02) -- source of truth in Convex, not Stripe metadata
+    pendingFromPlan: v.optional(v.union(v.literal("free"), v.literal("go"), v.literal("pro"), v.literal("enterprise"))),
+    pendingToPlan: v.optional(v.union(v.literal("free"), v.literal("go"), v.literal("pro"), v.literal("enterprise"))),
+    pendingChangeTimestamp: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
