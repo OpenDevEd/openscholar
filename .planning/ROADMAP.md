@@ -147,7 +147,11 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
   3. `getPlanFromPriceId` substring fallback path is tested (proving current behavior before removal)
   4. Extraction cascade deletion partial-failure scenarios are tested with recovery verification
   5. All debug functions throw FORBIDDEN when `PUBLIC_DEBUG_ENABLED` env var is unset
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 47-01-PLAN.md -- Stripe webhook handler tests + getPlanFromPriceId substring fallback tests
+- [ ] 47-02-PLAN.md -- Concurrent credit deduction + cascade deletion partial-failure tests
+- [ ] 47-03-PLAN.md -- Debug gate bypass tests and inventory verification
 
 ### Phase 48: Billing Hardening
 **Goal**: Stripe billing code uses proper types and safe plan resolution with no `as any` casts
@@ -254,7 +258,7 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 | 44. Workflow & Deletion Integrity | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 45. Type Safety Sweep | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 46. Cron Additions | v2.4 | 1/1 | Complete | 2026-03-03 |
-| 47. Test Safety Net | v2.5 | 0/? | Not started | - |
+| 47. Test Safety Net | v2.5 | 0/3 | Planned | - |
 | 48. Billing Hardening | v2.5 | 0/? | Not started | - |
 | 49. Extraction & Library Type Safety | v2.5 | 0/? | Not started | - |
 | 50. Security & Schema | v2.5 | 0/? | Not started | - |
