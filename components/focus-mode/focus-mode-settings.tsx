@@ -14,22 +14,22 @@ import { cn } from "@/lib/utils";
 import { PaperContent } from "./paper-content";
 import type { PaperContentProps } from "./paper-content";
 
-interface FocusModeSettingsState {
-  fontSize: string;
-  maxContentWidth: string;
-  lineHeight: string;
+interface FocusModeSettingsConfig {
+  fontSize: 'sm' | 'base' | 'lg' | 'xl';
+  maxContentWidth: 'narrow' | 'medium' | 'wide' | 'full';
+  lineHeight: 'tight' | 'normal' | 'relaxed';
   showMetadata: boolean;
   compactMode: boolean;
-  setFontSize: (size: string) => void;
-  setMaxContentWidth: (width: string) => void;
-  setLineHeight: (height: string) => void;
+  setFontSize: (size: 'sm' | 'base' | 'lg' | 'xl') => void;
+  setMaxContentWidth: (width: 'narrow' | 'medium' | 'wide' | 'full') => void;
+  setLineHeight: (height: 'tight' | 'normal' | 'relaxed') => void;
   setShowMetadata: (show: boolean) => void;
   setCompactMode: (compact: boolean) => void;
   resetSettings: () => void;
 }
 
 export interface FocusModeSettingsProps {
-  settings: FocusModeSettingsState;
+  settings: FocusModeSettingsConfig;
   theme: string | undefined;
   setTheme: (theme: string) => void;
   maxWidthClass: string;
