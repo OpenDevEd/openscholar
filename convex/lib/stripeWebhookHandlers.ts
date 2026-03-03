@@ -47,14 +47,14 @@ export async function runAuditedStripeHandler(
   ctx: GenericActionCtx<any>,
   event: Stripe.Event,
   handler: () => Promise<void>,
-  refs?: {
+  refs: {
     markStripeEventProcessed: FunctionReference<"mutation", "internal">;
     markStripeEventFailed: FunctionReference<"mutation", "internal">;
   },
 ): Promise<void> {
   try {
     await handler();
-    await ctx.runMutation(refs?.markStripeEventProcessed, {
+    await ctx.runMutation(refs.markStripeEventProcessed, {
       stripeEventId: event.id,
       eventType: event.type,
       stripeObjectId: getStripeObjectId(event),
@@ -66,7 +66,7 @@ export async function runAuditedStripeHandler(
       ctx,
       event,
       error,
-      refs?.markStripeEventFailed,
+      refs.markStripeEventFailed,
     );
     throw error;
   }
@@ -79,7 +79,7 @@ export async function processInvoiceForGrantNonBlocking(
   ctx: GenericActionCtx<any>,
   event: Stripe.Event,
   invoice: Stripe.Invoice,
-  refs?: {
+  refs: {
     processInvoiceForGrant: FunctionReference<"action", "internal">;
     markStripeEventRetrying: FunctionReference<"mutation", "internal">;
   },
@@ -93,13 +93,13 @@ export async function processInvoiceForGrantNonBlocking(
   };
 
   try {
-    await ctx.runAction(refs?.processInvoiceForGrant, args);
+    await ctx.runAction(refs.processInvoiceForGrant, args);
   } catch (error) {
     const retryDelayMs = 60_000;
     const retryAt = Date.now() + retryDelayMs;
     const message = error instanceof Error ? error.message : String(error);
 
-    await ctx.runMutation(refs?.markStripeEventRetrying, {
+    await ctx.runMutation(refs.markStripeEventRetrying, {
       stripeEventId: event.id,
       eventType: event.type,
       stripeObjectId: getStripeObjectId(event),
@@ -111,7 +111,7 @@ export async function processInvoiceForGrantNonBlocking(
 
     await ctx.scheduler.runAfter(
       retryDelayMs,
-      refs?.processInvoiceForGrant,
+      refs.processInvoiceForGrant,
       {
         ...args,
         retryCount: 1,
