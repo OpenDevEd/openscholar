@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: between_milestones
-last_updated: "2026-03-03T12:30:00.000Z"
+milestone: v3.0
+milestone_name: Zero-Any Overhaul
+status: defining_requirements
+last_updated: "2026-03-03T13:00:00.000Z"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,13 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** v3.0 Zero-Any Overhaul — defining requirements
 
 ## Current Position
 
-Phase: N/A — between milestones
-Status: v2.5 Tech Debt Purge shipped 2026-03-03
-Last activity: 2026-03-03 — Archived v2.5 milestone
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-03 — Milestone v3.0 started
 
 ## Performance Metrics
 
@@ -73,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Archived v2.5 milestone
-Stopped at: Between milestones — ready for /gsd:new-milestone
+Last activity: 2026-03-03 - Milestone v3.0 started
+Stopped at: Defining requirements for v3.0 Zero-Any Overhaul
 Resume file: None

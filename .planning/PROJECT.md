@@ -94,7 +94,27 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active requirements — planning next milestone)
+**Current Milestone: v3.0 Zero-Any Overhaul**
+
+**Goal:** Resolve every item in CONCERNS.md — zero `any` casts, all security/performance/fragility concerns addressed, full test coverage for gaps.
+
+**Target features:**
+- Eliminate every `as any` cast across the entire codebase (export, filtering, maintenance, rate limiter, workflow cancel)
+- Migrate upgrade metadata from Stripe to Convex
+- Persistent audit table replacing console.log audit events
+- XSS-safe highlight implementation (no dangerouslySetInnerHTML)
+- Real server-side pagination for library queries
+- Incremental extraction report aggregation
+- Dynamic XLSX import and xlsx package replacement
+- Startup env var validation
+- Debug function production exclusion strategy
+- Subscription cron batching with circuit-breaking
+- Remove dead code and orphaned files
+- Fix OpenAlex contact email fallback
+- Full test coverage for all identified gaps (subscription cron, credit concurrency, XSS, GROBID fallback)
+- Credit deduction TOCTOU mitigation
+- Rate limiter exhaustiveness enforcement
+- Module boundary cleanup (ai/client → ai/server)
 
 ### Out of Scope
 
@@ -202,4 +222,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, GDPR-compliant user ca
 | Double cast (as unknown as X) for Stripe v20 tests | Union type makes Partial resolve to last member | ✓ Good — clean test mocks |
 
 ---
-*Last updated: 2026-03-03 after v2.5 milestone complete*
+*Last updated: 2026-03-03 after v3.0 milestone started*
