@@ -1236,6 +1236,7 @@
     "showingRange": "Showing {start}-{end} of {total} papers",
     "filteredFrom": "(filtered from {total})",
     "noDiffGenerated": "No diff generated yet.",
+    "diffTruncated": "Showing {shown} of {total} changes. Some changes are not displayed due to size limits.",
     "workflowTemplatesPro": "Workflow templates are available on the Pro plan.",
     "changeAlertsPro": "Change alerts and run diffs are available on the Pro plan.",
     "noSavedViewsYet": "No saved views yet.",

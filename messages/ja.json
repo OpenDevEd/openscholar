@@ -1227,6 +1227,7 @@
     "confidenceShiftsCount": "信頼度の変化：{count}",
     "newlyInsufficientCount": "新規証拠不十分：{count}",
     "noDiffGenerated": "差分はまだ生成されていません。",
+    "diffTruncated": "{total}件中{shown}件の変更を表示しています。サイズ制限のため、一部の変更は表示されていません。",
     "workflowTemplatesPro": "ワークフローテンプレートはProプランで利用可能です。",
     "changeAlertsPro": "変更アラートと差分実行はProプランで利用可能です。",
     "noSavedViewsYet": "保存ビューはまだありません。",

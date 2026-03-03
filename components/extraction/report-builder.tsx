@@ -464,17 +464,27 @@ export function ReportBuilder({
               </Button>
             </div>
             {latestDiffData ? (
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">{t("newAnswersCount", { count: latestDiffData.summary.newAnswers })}</Badge>
-                <Badge variant="outline">{t("changedAnswersCount", { count: latestDiffData.summary.changedAnswers })}</Badge>
-                <Badge variant="outline">{t("removedAnswersCount", { count: latestDiffData.summary.removedAnswers })}</Badge>
-                <Badge variant="outline">
-                  {t("confidenceShiftsCount", { count: latestDiffData.summary.confidenceShifts })}
-                </Badge>
-                <Badge variant="outline">
-                  {t("newlyInsufficientCount", { count: latestDiffData.summary.newlyInsufficientEvidence })}
-                </Badge>
-              </div>
+              <>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">{t("newAnswersCount", { count: latestDiffData.summary.newAnswers })}</Badge>
+                  <Badge variant="outline">{t("changedAnswersCount", { count: latestDiffData.summary.changedAnswers })}</Badge>
+                  <Badge variant="outline">{t("removedAnswersCount", { count: latestDiffData.summary.removedAnswers })}</Badge>
+                  <Badge variant="outline">
+                    {t("confidenceShiftsCount", { count: latestDiffData.summary.confidenceShifts })}
+                  </Badge>
+                  <Badge variant="outline">
+                    {t("newlyInsufficientCount", { count: latestDiffData.summary.newlyInsufficientEvidence })}
+                  </Badge>
+                </div>
+                {latestDiffData?.isTruncated && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("diffTruncated", {
+                      shown: latestDiffData.changes.length,
+                      total: latestDiffData.totalChanges,
+                    })}
+                  </p>
+                )}
+              </>
             ) : (
               <div className="text-sm text-muted-foreground">{t("noDiffGenerated")}</div>
             )}

@@ -35,10 +35,40 @@ export const cleanupDeletedUsers = internalMutation({
           await ctx.db.delete(key._id);
         }
 
+        // Delete extraction jobs (cascade to papers, results, evidence units, etc.)
+        // Uses existing deleteExtractionInternal which handles all 9 child tables
+        const extractionJobs = await ctx.db
+          .query("extractionJobs")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .take(BATCH_SIZE);
+        for (const job of extractionJobs) {
+          await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, {
+            jobId: job._id,
+          });
+        }
+
+        // If we found a full batch of extraction jobs, there may be more.
+        // Don't delete the user yet -- re-schedule to handle remaining jobs.
+        if (extractionJobs.length === BATCH_SIZE) {
+          continue; // Skip user delete, process on next run
+        }
+
+        // Delete Zotero connections (personal data, no audit value)
+        const zoteroConns = await ctx.db
+          .query("zoteroConnections")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect();
+        for (const conn of zoteroConns) {
+          await ctx.db.delete(conn._id);
+        }
+
+        // NOTE: Deliberately preserving these tables for financial audit:
+        // - creditTransactions (financial records)
+        // - credits (balance records)
+        // - subscriptions (billing history)
+
         // Hard delete the user to prevent re-processing
         await ctx.db.delete(user._id);
-
-        // Note: We keep credits and subscriptions for audit purposes
 
         cleanedCount++;
       }

@@ -1227,6 +1227,7 @@
     "confidenceShiftsCount": "कॉन्फिडेंस परिवर्तन: {count}",
     "newlyInsufficientCount": "नए अपर्याप्त: {count}",
     "noDiffGenerated": "अभी तक कोई डिफ़ जनरेट नहीं हुआ।",
+    "diffTruncated": "{total} में से {shown} परिवर्तन दिखाए जा रहे हैं। आकार सीमा के कारण कुछ परिवर्तन प्रदर्शित नहीं हैं।",
     "workflowTemplatesPro": "वर्कफ़्लो टेम्पलेट्स Pro प्लान पर उपलब्ध हैं।",
     "changeAlertsPro": "परिवर्तन अलर्ट और रन डिफ़ Pro प्लान पर उपलब्ध हैं।",
     "noSavedViewsYet": "अभी तक कोई सहेजा गया व्यू नहीं।",

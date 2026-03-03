@@ -1227,6 +1227,7 @@
     "confidenceShiftsCount": "Changements de confiance : {count}",
     "newlyInsufficientCount": "Nouvellement insuffisant : {count}",
     "noDiffGenerated": "Pas encore de comparaison générée.",
+    "diffTruncated": "Affichage de {shown} sur {total} changements. Certains changements ne sont pas affich\u00e9s en raison de limites de taille.",
     "workflowTemplatesPro": "Les modèles de flux de travail sont disponibles sur le plan Pro.",
     "changeAlertsPro": "Les alertes de changement et les comparaisons d'exécution sont disponibles sur le plan Pro.",
     "noSavedViewsYet": "Pas encore de vues sauvegardées.",

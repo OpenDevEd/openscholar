@@ -1227,6 +1227,7 @@
     "confidenceShiftsCount": "置信度变化：{count}",
     "newlyInsufficientCount": "新证据不足：{count}",
     "noDiffGenerated": "尚未生成差异。",
+    "diffTruncated": "显示 {total} 个更改中的 {shown} 个。由于大小限制，部分更改未显示。",
     "workflowTemplatesPro": "工作流模板适用于 Pro 计划。",
     "changeAlertsPro": "变更提醒和运行差异适用于 Pro 计划。",
     "noSavedViewsYet": "暂无已保存的视图。",
