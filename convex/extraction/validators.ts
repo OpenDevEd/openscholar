@@ -229,6 +229,34 @@ export const extractionResultReviewValidator = v.object({
   updatedAt: v.number(),
 });
 
+// ---- Typed search filters validator ----
+// Matches the actual shape of searchFilters stored in Convex.
+// All fields MUST be optional to remain compatible with existing stored data.
+export const searchFiltersValidator = v.object({
+  query: v.optional(v.string()),
+  field: v.optional(v.string()),
+  searchField: v.optional(v.string()),
+  sortBy: v.optional(v.string()),
+  yearRange: v.optional(v.array(v.number())),
+  dateRange: v.optional(v.object({
+    from: v.optional(v.string()),
+    to: v.optional(v.string()),
+  })),
+  selectedRegions: v.optional(v.array(v.string())),
+  selectedCountryFocus: v.optional(v.array(v.string())),
+  reviewFilter: v.optional(v.boolean()),
+  citesItemId: v.optional(v.string()),
+  citedByItemId: v.optional(v.string()),
+  relatedToItemId: v.optional(v.string()),
+  isYearRangeEnabled: v.optional(v.boolean()),
+  filterType: v.optional(v.string()),
+  ratingRange: v.optional(v.array(v.number())),
+  onlyRatedPapers: v.optional(v.boolean()),
+  language: v.optional(v.string()),
+  perPage: v.optional(v.number()),
+  limit: v.optional(v.number()),
+});
+
 export const extractionResultWithReviewValidator = v.object({
   _id: v.id("extractionResults"),
   _creationTime: v.number(),
@@ -250,6 +278,13 @@ export const extractionResultWithReviewValidator = v.object({
   correctedAnswer: v.optional(answerValidator),
   reviewedAt: v.optional(v.number()),
   reviewedBy: v.optional(v.id("users")),
+});
+
+// ---- Typed pagination item validator for extraction results ----
+// Used by getJobResultsPaginated to replace paginationResultValidator(v.any())
+export const paginatedPaperWithResultsValidator = v.object({
+  ...extractionPaperValidator.fields,
+  results: v.array(extractionResultWithReviewValidator),
 });
 
 export const extractionSavedViewValidator = v.object({
