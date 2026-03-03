@@ -71,3 +71,21 @@ export function getKeyPrefix(apiKey: string): string {
   const prefix = apiKey.substring(0, 7);
   return `${prefix}...`;
 }
+
+/**
+ * Application-level wrapper around decrypt() for API key decryption.
+ * Logs a structured audit event for every decryption (who, when, why).
+ */
+export function decryptApiKey(
+  encrypted: string,
+  keyHex: string,
+  audit: { userId: string; purpose: string }
+): string {
+  const decrypted = decrypt(encrypted, keyHex);
+  console.log("[AUDIT:KEY_DECRYPT]", JSON.stringify({
+    userId: audit.userId,
+    purpose: audit.purpose,
+    timestamp: new Date().toISOString(),
+  }));
+  return decrypted;
+}
