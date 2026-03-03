@@ -42,10 +42,10 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Tests
 
-- [ ] **TEST-01**: Stripe webhook handler has dedicated unit tests for event routing and credit grant paths
-- [ ] **TEST-02**: Concurrent credit deduction race condition tested
-- [ ] **TEST-03**: `getPlanFromPriceId` substring fallback path tested (before removal in BILL-01)
-- [ ] **TEST-04**: Extraction cascade deletion partial-failure recovery tested
+- [x] **TEST-01**: Stripe webhook handler has dedicated unit tests for event routing and credit grant paths
+- [x] **TEST-02**: Concurrent credit deduction race condition tested
+- [x] **TEST-03**: `getPlanFromPriceId` substring fallback path tested (before removal in BILL-01)
+- [x] **TEST-04**: Extraction cascade deletion partial-failure recovery tested
 - [x] **TEST-05**: Debug gate bypass tested -- all debug functions throw FORBIDDEN when env var unset
 
 ### Code Organization
@@ -92,10 +92,10 @@ None -- this milestone is a cleanup sweep.
 | DEP-01 | Phase 52 | Pending |
 | DEP-02 | Phase 52 | Pending |
 | DEP-03 | Phase 52 | Pending |
-| TEST-01 | Phase 47 | Pending |
-| TEST-02 | Phase 47 | Pending |
-| TEST-03 | Phase 47 | Pending |
-| TEST-04 | Phase 47 | Pending |
+| TEST-01 | Phase 47 | Complete |
+| TEST-02 | Phase 47 | Complete |
+| TEST-03 | Phase 47 | Complete |
+| TEST-04 | Phase 47 | Complete |
 | TEST-05 | Phase 47 | Complete |
 | ORG-01 | Phase 52 | Pending |
 | BUG-01 | Phase 52 | Pending |
