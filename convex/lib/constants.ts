@@ -73,9 +73,7 @@ export function getPlanFromPriceId(priceId?: string): PlanType {
   if (priceId === PRO_PRICE_ID) return "pro";
   if (ENTERPRISE_PRICE_ID && priceId === ENTERPRISE_PRICE_ID) return "enterprise";
 
-  if (priceId.includes("enterprise")) return "enterprise";
-  if (priceId.includes("pro")) return "pro";
-
+  console.warn(`[getPlanFromPriceId] Unknown price ID: ${priceId} — defaulting to "free"`);
   return "free";
 }
 

@@ -96,15 +96,26 @@ describe("getPlanFromPriceId", () => {
   });
 
   it("returns free for unknown priceId", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(getPlanFromPriceId("price_unknown_xyz")).toBe("free");
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("price_unknown_xyz"),
+    );
+    warnSpy.mockRestore();
   });
 
-  it("falls back to enterprise for priceId containing 'enterprise'", () => {
-    expect(getPlanFromPriceId("price_enterprise_monthly")).toBe("enterprise");
+  it("returns free (not enterprise) for priceId containing 'enterprise' after BILL-01", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(getPlanFromPriceId("price_enterprise_monthly")).toBe("free");
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
-  it("falls back to pro for priceId containing 'pro'", () => {
-    expect(getPlanFromPriceId("price_pro_annual")).toBe("pro");
+  it("returns free (not pro) for priceId containing 'pro' after BILL-01", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(getPlanFromPriceId("price_pro_annual")).toBe("free");
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
   it("returns go for GO_PRICE_ID match", async () => {
@@ -138,8 +149,8 @@ describe("getPlanFromPriceId", () => {
   });
 });
 
-// TEST-03: Explicitly test substring fallback before BILL-01 removes it
-describe("getPlanFromPriceId substring fallback (TEST-03)", () => {
+// BILL-01: Substring fallback removed -- all non-exact-match IDs now return "free" with console.warn
+describe("getPlanFromPriceId after BILL-01 (no substring fallback)", () => {
   afterEach(() => {
     vi.resetModules();
     delete process.env.STRIPE_GO_PRICE_ID;
@@ -147,35 +158,53 @@ describe("getPlanFromPriceId substring fallback (TEST-03)", () => {
     delete process.env.STRIPE_ENTERPRISE_PRICE_ID;
   });
 
-  it('returns "enterprise" for "price_test_enterprise_monthly" when no exact ENTERPRISE_PRICE_ID match', () => {
-    // No env vars set, so no exact match is possible -- substring fallback kicks in
-    expect(getPlanFromPriceId("price_test_enterprise_monthly")).toBe("enterprise");
+  it('returns "free" for "price_test_enterprise_monthly" (substring fallback removed)', () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(getPlanFromPriceId("price_test_enterprise_monthly")).toBe("free");
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("price_test_enterprise_monthly"),
+    );
+    warnSpy.mockRestore();
   });
 
-  it('returns "pro" for "price_test_pro_annual" when no exact PRO_PRICE_ID match', () => {
-    // No env vars set, so no exact match is possible -- substring fallback kicks in
-    expect(getPlanFromPriceId("price_test_pro_annual")).toBe("pro");
+  it('returns "free" for "price_test_pro_annual" (substring fallback removed)', () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(getPlanFromPriceId("price_test_pro_annual")).toBe("free");
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("price_test_pro_annual"),
+    );
+    warnSpy.mockRestore();
   });
 
-  it('prefers enterprise over pro for "price_enterprise_pro_combo"', () => {
-    // The includes("enterprise") check runs before includes("pro")
-    expect(getPlanFromPriceId("price_enterprise_pro_combo")).toBe("enterprise");
+  it('returns "free" for "price_enterprise_pro_combo" (substring fallback removed)', () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(getPlanFromPriceId("price_enterprise_pro_combo")).toBe("free");
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("price_enterprise_pro_combo"),
+    );
+    warnSpy.mockRestore();
   });
 
-  it('no substring fallback triggered for "price_basic_monthly" (returns "free")', () => {
-    // Contains neither "enterprise" nor "pro" as substring
+  it('returns "free" for "price_basic_monthly" (no match)', () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(getPlanFromPriceId("price_basic_monthly")).toBe("free");
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("price_basic_monthly"),
+    );
+    warnSpy.mockRestore();
   });
 
-  it("exact match takes precedence over substring fallback", async () => {
-    // PRO_PRICE_ID is set to a value that also contains "enterprise" as substring
+  it("exact match takes precedence over fallback", async () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_enterprise_special";
     vi.resetModules();
     const { getPlanFromPriceId: freshGetPlan } = await import(
       "../convex/lib/constants"
     );
-    // Even though the ID contains "enterprise", the exact PRO_PRICE_ID match wins
+    // Exact PRO_PRICE_ID match wins -- no warning logged
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(freshGetPlan("price_enterprise_special")).toBe("pro");
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
     delete process.env.STRIPE_PRO_PRICE_ID;
   });
 });
