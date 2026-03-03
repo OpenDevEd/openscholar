@@ -129,11 +129,10 @@ async function syncLocalSubscriptionFromStripe(
 
   const nowSec = Math.floor(Date.now() / 1000);
   const currentPeriodEndSec =
-    subscription.current_period_end ??
     item.current_period_end ??
     nowSec + 30 * 24 * 60 * 60;
   const currentPeriodStartSec =
-    subscription.current_period_start ?? item.current_period_start ?? nowSec;
+    item.current_period_start ?? nowSec;
   const cancelAtPeriodEnd = isSubscriptionScheduledToCancel({
     cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
     cancelAt: subscription.cancel_at ?? null,
@@ -471,7 +470,7 @@ export const getSubscriptionDetails = action({
 
       const price = stripeSub.items.data[0].price;
       const paymentMethod = stripeSub.default_payment_method as Stripe.PaymentMethod | null;
-      const currentPeriodEnd = stripeSub.current_period_end || stripeSub.items.data[0].current_period_end;
+      const currentPeriodEnd = stripeSub.items.data[0].current_period_end;
       const cancelAtPeriodEnd = isSubscriptionScheduledToCancel({
         cancelAtPeriodEnd: stripeSub.cancel_at_period_end ?? false,
         cancelAt: stripeSub.cancel_at ?? null,
@@ -488,7 +487,8 @@ export const getSubscriptionDetails = action({
         hasPendingChange = true;
         pendingTargetPlan = subscription.pendingToPlan;
         // No pendingTargetPriceId available from Convex (not needed for display)
-        pendingEffectiveDate = stripeSub.current_period_end ? stripeSub.current_period_end * 1000 : undefined;
+        const periodEndFromItem = stripeSub.items.data[0]?.current_period_end;
+        pendingEffectiveDate = periodEndFromItem ? periodEndFromItem * 1000 : undefined;
       } else {
         // Backward compatibility: check Stripe schedule for pre-BILL-02 pending changes
         const schedule = await getAttachedSchedule(stripeSub);
@@ -756,8 +756,8 @@ export const changePlan = action({
 
         // Grant pro-rata credits for the upgrade
         let creditsGranted = 0;
-        const periodStartMs = (stripeSubscription.current_period_start ?? item.current_period_start ?? Math.floor(Date.now() / 1000)) * 1000;
-        const periodEndMs = (stripeSubscription.current_period_end ?? item.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60) * 1000;
+        const periodStartMs = (item.current_period_start ?? Math.floor(Date.now() / 1000)) * 1000;
+        const periodEndMs = (item.current_period_end ?? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60) * 1000;
 
         try {
           const grantResult = await ctx.runMutation(
@@ -812,7 +812,7 @@ export const changePlan = action({
       }
 
       const fallbackCurrentPeriodEnd =
-        stripeSubscription.current_period_end ?? item.current_period_end;
+        item.current_period_end;
       if (!fallbackCurrentPeriodEnd) {
         throw createError(
           "BILLING_PERIOD_END_UNAVAILABLE",
@@ -821,7 +821,6 @@ export const changePlan = action({
       }
 
       const fallbackCurrentPeriodStart =
-        stripeSubscription.current_period_start ??
         item.current_period_start ??
         Math.floor(Date.now() / 1000);
       const { startDate, endDate } = resolveCurrentPhaseBounds({
@@ -992,8 +991,8 @@ export const getUpgradePreview = action({
 
     // Calculate pro-rata credit info
     const nowMs = Date.now();
-    const periodStartMs = (stripeSub.current_period_start ?? item.current_period_start ?? Math.floor(nowMs / 1000)) * 1000;
-    const periodEndMs = (stripeSub.current_period_end ?? item.current_period_end ?? Math.floor(nowMs / 1000) + 30 * 24 * 60 * 60) * 1000;
+    const periodStartMs = (item.current_period_start ?? Math.floor(nowMs / 1000)) * 1000;
+    const periodEndMs = (item.current_period_end ?? Math.floor(nowMs / 1000) + 30 * 24 * 60 * 60) * 1000;
     const periodLength = periodEndMs - periodStartMs;
     const remaining = Math.max(0, periodEndMs - nowMs);
     const remainingRatio = periodLength > 0 ? remaining / periodLength : 0;

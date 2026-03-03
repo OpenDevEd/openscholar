@@ -254,10 +254,9 @@ registerRoutes(http, components.stripe, {
     "invoice.payment_failed": async (ctx, event) => {
       await runAuditedStripeHandler(ctx, event, async () => {
         const invoice = event.data.object as Stripe.Invoice;
+        const subRef = invoice.parent?.subscription_details?.subscription;
         const failedSubscriptionId =
-          typeof invoice.subscription === "string"
-            ? invoice.subscription
-            : invoice.subscription?.id;
+          typeof subRef === "string" ? subRef : subRef?.id;
 
         if (!failedSubscriptionId) {
           return;
