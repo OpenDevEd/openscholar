@@ -58,10 +58,10 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### TypeScript Compile Fix (Phase 53)
 
-- [ ] **TSFIX-01**: Orphaned `results-table.tsx` deleted (imports 4 non-existent modules)
-- [ ] **TSFIX-02**: `stripeWebhookHandlers.ts` refs parameter is required (not optional), eliminating undefined assignability errors
-- [ ] **TSFIX-03**: Stripe v20 subscription period fields accessed via `SubscriptionItem` (not `Subscription`) in production code
-- [ ] **TSFIX-04**: Invoice subscription accessed via `invoice.parent.subscription_details.subscription` path in production code
+- [x] **TSFIX-01**: Orphaned `results-table.tsx` deleted (imports 4 non-existent modules)
+- [x] **TSFIX-02**: `stripeWebhookHandlers.ts` refs parameter is required (not optional), eliminating undefined assignability errors
+- [x] **TSFIX-03**: Stripe v20 subscription period fields accessed via `SubscriptionItem` (not `Subscription`) in production code
+- [x] **TSFIX-04**: Invoice subscription accessed via `invoice.parent.subscription_details.subscription` path in production code
 - [ ] **TSFIX-05**: Test mock helpers compatible with Stripe v20 discriminated union `Event` type and `Invoice` type
 - [ ] **TSFIX-06**: Test files use proper Convex `Id<>` branded type casts and `SubscriptionItem` period access
 

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: unknown
-last_updated: "2026-03-03T10:26:56.441Z"
+status: in_progress
+last_updated: "2026-03-03T11:01:36.202Z"
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 15
+  completed_plans: 14
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 52 complete (milestone complete)
+**Current focus:** v2.5 Tech Debt Purge -- Phase 53 in progress (TypeScript compile fix)
 
 ## Current Position
 
-Phase: 52 of 52 (Cleanup & Organization) -- 6 of 6 in v2.5
-Plan: 2 of 2 in Phase 52 (COMPLETE)
-Status: Phase 52 complete
-Last activity: 2026-03-03 -- Completed 52-02 (focus-mode.tsx decomposition into sub-components)
+Phase: 53 of 53 (TypeScript Compile Fix) -- 7 of 7 in v2.5
+Plan: 1 of 2 in Phase 53 (COMPLETE)
+Status: Plan 53-01 complete, 53-02 remaining
+Last activity: 2026-03-03 -- Completed 53-01 (fix 24 TS compile errors in production files)
 
-Progress: [██████████] 100%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 95 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 11)
+- Total plans completed: 96 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 12)
 - Total milestones shipped: 9
 
 **By Milestone:**
@@ -47,7 +47,7 @@ Progress: [██████████] 100%
 | v2.2 | 4 | 7 | 2026-03-02 |
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
-| v2.5 | 6 | 11 | 2026-03-03 |
+| v2.5 | 7 | 12/13 | in progress |
 
 ## Accumulated Context
 
@@ -75,11 +75,14 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 52-02]: Renamed FocusModeSettingsState to FocusModeSettingsConfig to avoid name collision with lib/store.ts type
 - [52-01] Removed all 20 individual @radix-ui/react-* packages since unified radix-ui bundles them
 - [52-01] Added pdfjs-dist ^4.10.38 as explicit dependency (was transitive via react-pdf)
+- [53-01] Deleted orphaned results-table.tsx rather than fixing its 4 broken imports (untracked duplicate of table-view.tsx)
+- [53-01] Made refs required in stripeWebhookHandlers since all callers always provide refs via wrapper functions
 
 ### Roadmap Evolution
 
-9 milestones shipped (v1.0 through v2.5). 52 phases, 95 plans total.
-v2.5 shipped: 6 phases (47-52), 11 plans, 25 requirements across 8 categories -- all complete.
+9 milestones shipped (v1.0 through v2.5). 53 phases, 96 plans total.
+v2.5 extended: 7 phases (47-53), 12 of 13 plans complete.
+- Phase 53 added: TypeScript Compile Fix -- Plan 01 complete (24 production TS errors fixed)
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 52-01-PLAN.md (dependency cleanup + OpenAlex env var)
-Stopped at: Completed 52-01-PLAN.md (all Phase 52 plans done, v2.5 milestone complete)
+Last activity: 2026-03-03 - Completed 53-01-PLAN.md (fix 24 TS compile errors in production files)
+Stopped at: Completed 53-01-PLAN.md (53-02 remaining for non-production TS errors)
 Resume file: None
