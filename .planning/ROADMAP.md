@@ -200,7 +200,10 @@ Plans:
   3. `zoteroOAuthTokens` cleanup cron uses a `by_expiry` index instead of scanning the full table
   4. `checkSubscriptionStatus` cron queries subscriptions via a composite `by_status_updatedAt` index
   5. `crypto` module uses a standard `import` with `"use node"` directive instead of dynamic `require()` obfuscation
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 51-01-PLAN.md -- Batch review loading (N+1 fix) + bound unbounded .collect() calls (PERF-01, PERF-02)
+- [ ] 51-02-PLAN.md -- Add missing indexes (by_expiry, by_status_updatedAt) + fix crypto import (PERF-03, PERF-04, PERF-05)
 
 ### Phase 52: Cleanup & Organization
 **Goal**: Unused dependencies removed, focus-mode monolith decomposed, and environment properly configured
