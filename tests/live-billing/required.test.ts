@@ -170,9 +170,7 @@ describe.sequential("live billing required regressions", () => {
     expect(listGrantTransactions(initialSnapshot)).toHaveLength(1);
 
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-    const periodEndSec =
-      stripeSubscription.current_period_end ??
-      stripeSubscription.items.data[0]?.current_period_end;
+    const periodEndSec = stripeSubscription.items.data[0]?.current_period_end;
 
     if (!periodEndSec) {
       throw new Error(`Unable to resolve current_period_end for ${subscriptionId}`);
