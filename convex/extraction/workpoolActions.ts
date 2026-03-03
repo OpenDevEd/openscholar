@@ -891,7 +891,15 @@ export const downloadAndIndexPdfAction = internalAction({
         const embeddingCostDollars = estimateEmbeddingCostDollars(embeddingTokens);
         const embeddingCreditsToDeduct =
           convertServerCostDollarsToCredits(embeddingCostDollars);
-        if (embeddingCreditsToDeduct > 0) {
+
+        // Credit guard: skip embedding credit deduction if job was cancelled
+        const freshJobForCredits = await ctx.runQuery(
+          internal.extraction.queries.getJobInternal,
+          { jobId: args.jobId }
+        );
+        if (freshJobForCredits?.status === "cancelled") {
+          console.log(`[creditGuard] Skipping embedding credit deduction - job ${args.jobId} cancelled`);
+        } else if (embeddingCreditsToDeduct > 0) {
           await ctx.runMutation(internal.credits.internal.deductCredits, {
             userId: job.userId,
             amount: embeddingCreditsToDeduct,
@@ -979,6 +987,23 @@ export const waitAndExtractAction = internalAction({
         anchorConfidence: unit.anchorConfidence,
         source: unit.source,
       }));
+
+      // Credit guard: skip extraction credit deduction if job was cancelled
+      const freshJobForCredits = await ctx.runQuery(
+        internal.extraction.queries.getJobInternal,
+        { jobId: args.jobId }
+      );
+      if (freshJobForCredits?.status === "cancelled") {
+        console.log(`[creditGuard] Skipping extraction credit deduction - job ${args.jobId} cancelled`);
+        // Return results without billing -- extraction work was done but job is cancelled
+        // Still need to return a valid shape so onComplete can handle gracefully
+        return {
+          success: true,
+          results: [],
+          creditsUsed: 0,
+          pdfContentUsed: false,
+        };
+      }
 
       const extracted = await withUserCreditsBatch(
         ctx,
