@@ -560,6 +560,10 @@ export const handleSubscriptionCanceled = internalMutation({
       canceledAt: now,
       updatedAt: now,
       creditsPerMonth: 0,
+      // Clear pending plan change state (BILL-02)
+      pendingFromPlan: undefined,
+      pendingToPlan: undefined,
+      pendingChangeTimestamp: undefined,
       // DO NOT set stripeSubscriptionId to undefined -- preserve for audit trail
       // DO NOT insert a new free-plan record -- this was creating orphan records
     });
@@ -731,6 +735,42 @@ export const markStripeEventIgnored = internalMutation({
       classification: args.classification,
       status: "ignored",
       errorMessage: args.reason,
+    });
+    return null;
+  },
+});
+
+// ── Pending plan change mutations (BILL-02) ─────────────────────────
+
+export const setPendingPlanChange = internalMutation({
+  args: {
+    subscriptionId: v.id("subscriptions"),
+    fromPlan: planValidator,
+    toPlan: planValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.subscriptionId, {
+      pendingFromPlan: args.fromPlan,
+      pendingToPlan: args.toPlan,
+      pendingChangeTimestamp: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const clearPendingPlanChange = internalMutation({
+  args: {
+    subscriptionId: v.id("subscriptions"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.subscriptionId, {
+      pendingFromPlan: undefined,
+      pendingToPlan: undefined,
+      pendingChangeTimestamp: undefined,
+      updatedAt: Date.now(),
     });
     return null;
   },

@@ -477,14 +477,35 @@ export const getSubscriptionDetails = action({
         cancelAt: stripeSub.cancel_at ?? null,
         currentPeriodEnd,
       });
-      const schedule = await getAttachedSchedule(stripeSub);
-      const pendingChange = findPendingScheduleChange({
-        schedule: schedule as unknown as ScheduleLike,
-        currentPriceId: price.id,
-      });
-      const pendingTargetPlan = pendingChange.targetPriceId
-        ? getPlanFromPriceId(pendingChange.targetPriceId)
-        : undefined;
+      // Read pending change from Convex first (BILL-02), fall back to Stripe schedule
+      let hasPendingChange = false;
+      let pendingTargetPriceId: string | undefined;
+      let pendingTargetPlan: "free" | "go" | "pro" | "enterprise" | undefined;
+      let pendingEffectiveDate: number | undefined;
+
+      if (subscription.pendingToPlan && subscription.pendingFromPlan) {
+        // Source of truth: Convex subscription record
+        hasPendingChange = true;
+        pendingTargetPlan = subscription.pendingToPlan;
+        // No pendingTargetPriceId available from Convex (not needed for display)
+        pendingEffectiveDate = stripeSub.current_period_end ? stripeSub.current_period_end * 1000 : undefined;
+      } else {
+        // Backward compatibility: check Stripe schedule for pre-BILL-02 pending changes
+        const schedule = await getAttachedSchedule(stripeSub);
+        const pendingChange = findPendingScheduleChange({
+          schedule: schedule as unknown as ScheduleLike,
+          currentPriceId: price.id,
+        });
+        hasPendingChange = pendingChange.hasPendingChange;
+        pendingTargetPriceId = pendingChange.targetPriceId;
+        pendingTargetPlan = pendingChange.targetPriceId
+          ? getPlanFromPriceId(pendingChange.targetPriceId)
+          : undefined;
+        pendingEffectiveDate = typeof pendingChange.effectiveDate === "number"
+          ? pendingChange.effectiveDate * 1000
+          : undefined;
+      }
+
       const entitlementState: "entitled" | "payment_pending" | "not_entitled" =
         stripeSub.status === "incomplete"
           ? "payment_pending"
@@ -510,13 +531,10 @@ export const getSubscriptionDetails = action({
           entitlementState,
           entitlementMessage,
           cancelAtPeriodEnd,
-          hasPendingChange: pendingChange.hasPendingChange,
-          pendingTargetPriceId: pendingChange.targetPriceId,
+          hasPendingChange,
+          pendingTargetPriceId,
           pendingTargetPlan,
-          pendingEffectiveDate:
-            typeof pendingChange.effectiveDate === "number"
-              ? pendingChange.effectiveDate * 1000
-              : undefined,
+          pendingEffectiveDate,
           cardBrand: paymentMethod?.card?.brand,
           cardLast4: paymentMethod?.card?.last4,
         },
@@ -666,6 +684,13 @@ export const changePlan = action({
         });
         await syncLocalSubscriptionFromStripe(ctx, metadataCleared);
 
+        // Clear pending plan change in Convex (BILL-02)
+        if (subscription._id) {
+          await ctx.runMutation(internal.subscriptions.internal.clearPendingPlanChange, {
+            subscriptionId: subscription._id,
+          });
+        }
+
         return {
           success: true,
           mode: "updated",
@@ -721,6 +746,13 @@ export const changePlan = action({
         });
 
         await syncLocalSubscriptionFromStripe(ctx, updated);
+
+        // Clear any pending plan change since upgrade happened immediately (BILL-02)
+        if (subscription._id) {
+          await ctx.runMutation(internal.subscriptions.internal.clearPendingPlanChange, {
+            subscriptionId: subscription._id,
+          });
+        }
 
         // Grant pro-rata credits for the upgrade
         let creditsGranted = 0;
@@ -815,6 +847,15 @@ export const changePlan = action({
         metadata: clearPendingPlanMetadata(stripeSubscription.metadata || {}),
       });
       await syncLocalSubscriptionFromStripe(ctx, metadataCleared);
+
+      // Store pending downgrade in Convex (BILL-02)
+      if (subscription._id) {
+        await ctx.runMutation(internal.subscriptions.internal.setPendingPlanChange, {
+          subscriptionId: subscription._id,
+          fromPlan: currentPlan,
+          toPlan: targetPlan,
+        });
+      }
 
       return {
         success: true,

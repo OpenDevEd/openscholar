@@ -371,6 +371,8 @@ async function processInvoiceForGrantLogic(ctx: ActionCtx, args: any): Promise<{
     invoiceBillingReason === "subscription_update" &&
     stripeSubscriptionId
   ) {
+    // TODO(BILL-02 follow-up): Read upgrade metadata from Convex subscription record
+    // instead of Stripe metadata once all existing Stripe metadata has been migrated.
     const subscription = await getStripe().subscriptions.retrieve(stripeSubscriptionId);
     const meta = subscription.metadata ?? {};
     const upgradeFromPlan = meta.upgradeFromPlan;
