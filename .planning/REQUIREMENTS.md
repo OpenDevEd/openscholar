@@ -18,17 +18,17 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 ### Data Integrity & Bugs
 
 - [x] **BUG-01**: Fix `cancelExtraction` to call `workflow.cancel()` and per-paper `pdfProcessingPool.cancel()` with credit-guard in workpool action
-- [ ] **BUG-02**: Remove `.take(100)` cap in `getJobDetails` — replace with `.collect()` (bounded by ~200-paper job cap)
+- [x] **BUG-02**: Remove `.take(100)` cap in `getJobDetails` — replace with `.collect()` (bounded by ~200-paper job cap)
 - [x] **BUG-03**: Fix `deleteExtractionInternal` to also delete `extractionRunDiffs` where `baselineJobId == args.jobId` (Step 8b)
 - [x] **BUG-04**: Add `isTruncated` and `totalChanges` fields to `extractionRunDiffs` when changes exceed cap, surface in UI
 - [x] **BUG-05**: Replace placeholder `admin@example.com` in OpenAlex User-Agent with real operational email
 
 ### Type Safety
 
-- [ ] **TYPE-01**: Create shared `convex/extraction/validators.ts` with typed validator objects for extraction document shapes
+- [x] **TYPE-01**: Create shared `convex/extraction/validators.ts` with typed validator objects for extraction document shapes
 - [ ] **TYPE-02**: Replace `v.any()` return validators in 7 extraction queries with typed validators from TYPE-01
-- [ ] **TYPE-03**: Replace `Map<string, any>` and `review: any` in `attachReviewMetadata` with `Doc<"extractionResultReviews">`
-- [ ] **TYPE-04**: Add typed migration input/output shapes for all 7 `migrateSearchHistoryState` version steps
+- [x] **TYPE-03**: Replace `Map<string, any>` and `review: any` in `attachReviewMetadata` with `Doc<"extractionResultReviews">`
+- [x] **TYPE-04**: Add typed migration input/output shapes for all 7 `migrateSearchHistoryState` version steps
 
 ### Cron & Cleanup
 
@@ -87,14 +87,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-04 | Phase 43 | Complete |
 | SEC-05 | Phase 43 | Complete |
 | BUG-01 | Phase 44 | Complete |
-| BUG-02 | Phase 45 | Pending |
+| BUG-02 | Phase 45 | Complete |
 | BUG-03 | Phase 44 | Complete |
 | BUG-04 | Phase 44 | Complete |
 | BUG-05 | Phase 43 | Complete |
-| TYPE-01 | Phase 45 | Pending |
+| TYPE-01 | Phase 45 | Complete |
 | TYPE-02 | Phase 45 | Pending |
-| TYPE-03 | Phase 45 | Pending |
-| TYPE-04 | Phase 45 | Pending |
+| TYPE-03 | Phase 45 | Complete |
+| TYPE-04 | Phase 45 | Complete |
 | CRON-01 | Phase 46 | Pending |
 
 **Coverage:**
