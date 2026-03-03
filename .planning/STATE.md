@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: unknown
-last_updated: "2026-03-03T09:55:27.226Z"
+status: complete
+last_updated: "2026-03-03T10:20:22.383Z"
 progress:
   total_phases: 6
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
+  completed_phases: 6
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 51 in progress
+**Current focus:** v2.5 Tech Debt Purge -- Phase 52 complete (milestone complete)
 
 ## Current Position
 
-Phase: 51 of 52 (Performance) -- 5 of 6 in v2.5
-Plan: 2 of 2 in Phase 51 (COMPLETE)
-Status: Phase 51 complete
-Last activity: 2026-03-03 -- Completed 51-01 (batch review loading + .take() safety bounds)
+Phase: 52 of 52 (Cleanup & Organization) -- 6 of 6 in v2.5
+Plan: 2 of 2 in Phase 52 (COMPLETE)
+Status: Phase 52 complete
+Last activity: 2026-03-03 -- Completed 52-02 (focus-mode.tsx decomposition into sub-components)
 
-Progress: [█████████░] 91%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 92 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 8)
+- Total plans completed: 94 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 10)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -72,6 +72,7 @@ See PROJECT.md Key Decisions table for full log.
 - [51-01] Used MAX_PAPERS_PER_JOB = 500 safety bound on all per-job paper queries (queries + mutations)
 - [51-02] Kept .take(100) on OAuth cleanup to bound memory per cron run
 - [51-02] Preserved by_status index alongside new by_status_updatedAt for backward compat with other queries
+- [Phase 52-02]: Renamed FocusModeSettingsState to FocusModeSettingsConfig to avoid name collision with lib/store.ts type
 
 ### Roadmap Evolution
 
@@ -95,6 +96,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 51-01-PLAN.md (batch review loading + .take() safety bounds)
-Stopped at: Completed 51-01-PLAN.md (Phase 51 complete)
+Last activity: 2026-03-03 - Completed 52-02-PLAN.md (focus-mode.tsx decomposition into sub-components)
+Stopped at: Completed 52-02-PLAN.md (Phase 52 complete, v2.5 milestone complete)
 Resume file: None

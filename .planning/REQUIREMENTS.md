@@ -50,7 +50,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Code Organization
 
-- [ ] **ORG-01**: `focus-mode.tsx` decomposed into sub-components (PDF viewer, citation panel, rating controls, etc.)
+- [x] **ORG-01**: `focus-mode.tsx` decomposed into sub-components (PDF viewer, citation panel, rating controls, etc.)
 
 ### Bug Fix
 
@@ -97,7 +97,7 @@ None -- this milestone is a cleanup sweep.
 | TEST-03 | Phase 47 | Complete |
 | TEST-04 | Phase 47 | Complete |
 | TEST-05 | Phase 47 | Complete |
-| ORG-01 | Phase 52 | Pending |
+| ORG-01 | Phase 52 | Complete |
 | BUG-01 | Phase 52 | Pending |
 
 **Coverage:**
