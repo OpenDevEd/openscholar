@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Concerns Sweep
-status: unknown
-last_updated: "2026-03-02T21:57:09.223Z"
+status: executing
+last_updated: "2026-03-03T05:00:39.000Z"
 progress:
   total_phases: 1
   completed_phases: 1
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.4 Concerns Sweep -- Phase 43 executing
+**Current focus:** v2.4 Concerns Sweep -- Phase 44 executing
 
 ## Current Position
 
-Phase: 43 of 46 (Schema Migration & Quick Wins) -- COMPLETE
-Plan: 2 of 2 (All Complete)
+Phase: 44 of 46 (Workflow Deletion Integrity) -- IN PROGRESS
+Plan: 1 of 2 (44-01 Complete)
 Status: Executing
-Last activity: 2026-03-02 -- Completed 43-01 (Schema Migration)
+Last activity: 2026-03-03 -- Completed 44-01 (Workflow Cancellation + Credit Guards)
 
-Progress: [##########] 100% (Phase 43)
+Progress: [#####-----] 50% (Phase 44)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 79 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 2)
+- Total plans completed: 80 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 3)
 - Total milestones shipped: 7
 
 **By Milestone:**
@@ -48,6 +48,7 @@ Progress: [##########] 100% (Phase 43)
 | v2.3 | 8 | 14 | 2026-03-02 |
 | Phase 43 P01 | 3min | 3 tasks | 6 files |
 | Phase 43 P02 | 3min | 2 tasks | 15 files |
+| Phase 44 P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -56,6 +57,8 @@ Progress: [##########] 100% (Phase 43)
 See PROJECT.md Key Decisions table for full log.
 
 Recent decisions affecting v2.4:
+- cancelAll() cancels ALL pending workpool items across all jobs; credit guards protect correctness for non-cancelled jobs (44-01)
+- waitAndExtractAction returns early with empty results when cancelled, avoiding withUserCreditsBatch entirely (44-01)
 - Rejected @convex-dev/migrations for apiKey migration -- hand-rolled batched mutation using existing self-scheduling pattern
 - Credit reconciliation policy for cancelled jobs: needs product decision before Phase 44
 - getJobDetails .collect() safe because ~200-paper job cap is enforced upstream
@@ -85,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-02 - Completed 43-01 (Schema Migration)
-Stopped at: Completed 43-01-PLAN.md
+Last activity: 2026-03-03 - Completed 44-01 (Workflow Cancellation + Credit Guards)
+Stopped at: Completed 44-01-PLAN.md
 Resume file: None

@@ -17,7 +17,7 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 
 ### Data Integrity & Bugs
 
-- [ ] **BUG-01**: Fix `cancelExtraction` to call `workflow.cancel()` and per-paper `pdfProcessingPool.cancel()` with credit-guard in workpool action
+- [x] **BUG-01**: Fix `cancelExtraction` to call `workflow.cancel()` and per-paper `pdfProcessingPool.cancel()` with credit-guard in workpool action
 - [ ] **BUG-02**: Remove `.take(100)` cap in `getJobDetails` — replace with `.collect()` (bounded by ~200-paper job cap)
 - [ ] **BUG-03**: Fix `deleteExtractionInternal` to also delete `extractionRunDiffs` where `baselineJobId == args.jobId` (Step 8b)
 - [ ] **BUG-04**: Add `isTruncated` and `totalChanges` fields to `extractionRunDiffs` when changes exceed cap, surface in UI
@@ -86,7 +86,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-03 | Phase 44 | Pending |
 | SEC-04 | Phase 43 | Complete |
 | SEC-05 | Phase 43 | Complete |
-| BUG-01 | Phase 44 | Pending |
+| BUG-01 | Phase 44 | Complete |
 | BUG-02 | Phase 45 | Pending |
 | BUG-03 | Phase 44 | Pending |
 | BUG-04 | Phase 44 | Pending |
