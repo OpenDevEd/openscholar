@@ -185,7 +185,10 @@ Plans:
   1. `encryptedApiKey` field is required (not optional) in the Convex schema, and the deploy succeeds with no data loss
   2. API key decryption goes through a single centralized utility that logs structured audit events (who decrypted, when, for what purpose)
   3. Debug/test functions are excluded from production builds or gated behind a stronger mechanism than the current env var check
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 50-01-PLAN.md -- Centralized decryptApiKey with audit logging + make encryptedApiKey required (TYPE-05, SEC-01)
+- [ ] 50-02-PLAN.md -- Strengthen debug gate with audit logging (SEC-02)
 
 ### Phase 51: Performance
 **Goal**: Known N+1 queries, unbounded collections, missing indexes, and import inefficiencies are resolved
