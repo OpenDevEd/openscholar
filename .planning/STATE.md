@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: unknown
-last_updated: "2026-03-03T08:18:31.882Z"
+status: in_progress
+last_updated: "2026-03-03T08:41:40Z"
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 5
-  completed_plans: 5
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 48 complete, ready for Phase 49
+**Current focus:** v2.5 Tech Debt Purge -- Phase 49 complete, ready for Phase 50
 
 ## Current Position
 
-Phase: 48 of 52 (Billing Hardening) -- 2 of 6 in v2.5
-Plan: 2 of 2 in Phase 48 (COMPLETE)
-Status: Phase 48 complete
-Last activity: 2026-03-03 -- Completed 48-02 (pending plan change state migration)
+Phase: 49 of 52 (Extraction & Library Type Safety) -- 3 of 6 in v2.5
+Plan: 2 of 2 in Phase 49 (COMPLETE)
+Status: Phase 49 complete
+Last activity: 2026-03-03 -- Completed 49-02 (typed searchFilters and pagination validators)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 58%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 86 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 2)
+- Total plans completed: 87 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 3)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -61,6 +61,8 @@ See PROJECT.md Key Decisions table for full log.
 - [48-01] Left user: any and error: any casts out of scope for TYPE-01 (Stripe object casts only)
 - [48-02] Convex is source of truth for pending plan changes; Stripe metadata preserved for backward compat
 - [48-02] Upgrade metadata still written to Stripe for invoice webhook path (TODO for future migration)
+- [49-01] Used Id<"extractionPapers"> cast for paperId in review-queue citation panel (string from query result)
+- [49-01] Applied "as const" for validated: true literal to satisfy CitationLocation type constraint
 
 ### Roadmap Evolution
 
@@ -84,6 +86,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 48-02-PLAN.md (pending plan change state migration)
-Stopped at: Completed 48-02-PLAN.md (Phase 48 complete)
+Last activity: 2026-03-03 - Completed 49-01-PLAN.md (extraction/library type safety)
+Stopped at: Completed 49-01-PLAN.md
 Resume file: None

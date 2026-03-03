@@ -130,7 +130,7 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 
 - [x] **Phase 47: Test Safety Net** - Write tests for untested code paths before modifying them (completed 2026-03-03)
 - [x] **Phase 48: Billing Hardening** - Type-safe Stripe handlers and billing safety improvements (completed 2026-03-03)
-- [ ] **Phase 49: Extraction & Library Type Safety** - Eliminate remaining `as any` casts in extraction and library code
+- [x] **Phase 49: Extraction & Library Type Safety** - Eliminate remaining `as any` casts in extraction and library code (completed 2026-03-03)
 - [ ] **Phase 50: Security & Schema** - Schema migration for encryptedApiKey and security improvements
 - [ ] **Phase 51: Performance** - Fix N+1 queries, bound unbounded calls, add missing indexes, fix imports
 - [ ] **Phase 52: Cleanup & Organization** - Remove unused dependencies, decompose monolith, set env var
@@ -172,7 +172,10 @@ Plans:
   2. Paginated extraction results use a typed validator (not `paginationResultValidator(v.any())`)
   3. `searchFilters` schema field uses a typed Convex validator matching the actual filter interface shape
   4. Library queries use proper empty pagination cursor pattern instead of `continueCursor: "" as any`
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 49-01-PLAN.md -- Typed extraction ID arguments + library cursor fix (TYPE-02, TYPE-06)
+- [ ] 49-02-PLAN.md -- Typed pagination validator + searchFilters validator (TYPE-03, TYPE-04)
 
 ### Phase 50: Security & Schema
 **Goal**: Schema is fully migrated (no optional legacy fields) and security is centralized with audit trails
@@ -260,7 +263,7 @@ Plans:
 | 46. Cron Additions | v2.4 | 1/1 | Complete | 2026-03-03 |
 | 47. Test Safety Net | 3/3 | Complete    | 2026-03-03 | - |
 | 48. Billing Hardening | 2/2 | Complete    | 2026-03-03 | - |
-| 49. Extraction & Library Type Safety | v2.5 | 0/? | Not started | - |
+| 49. Extraction & Library Type Safety | 2/2 | Complete   | 2026-03-03 | - |
 | 50. Security & Schema | v2.5 | 0/? | Not started | - |
 | 51. Performance | v2.5 | 0/? | Not started | - |
 | 52. Cleanup & Organization | v2.5 | 0/? | Not started | - |
