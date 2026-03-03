@@ -132,7 +132,7 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 - [x] **Phase 48: Billing Hardening** - Type-safe Stripe handlers and billing safety improvements (completed 2026-03-03)
 - [x] **Phase 49: Extraction & Library Type Safety** - Eliminate remaining `as any` casts in extraction and library code (completed 2026-03-03)
 - [x] **Phase 50: Security & Schema** - Schema migration for encryptedApiKey and security improvements (completed 2026-03-03)
-- [ ] **Phase 51: Performance** - Fix N+1 queries, bound unbounded calls, add missing indexes, fix imports
+- [x] **Phase 51: Performance** - Fix N+1 queries, bound unbounded calls, add missing indexes, fix imports (completed 2026-03-03)
 - [ ] **Phase 52: Cleanup & Organization** - Remove unused dependencies, decompose monolith, set env var
 
 ## Phase Details
@@ -271,5 +271,5 @@ Plans:
 | 48. Billing Hardening | 2/2 | Complete    | 2026-03-03 | - |
 | 49. Extraction & Library Type Safety | 2/2 | Complete    | 2026-03-03 | - |
 | 50. Security & Schema | 2/2 | Complete    | 2026-03-03 | - |
-| 51. Performance | 1/2 | In Progress|  | - |
+| 51. Performance | 2/2 | Complete   | 2026-03-03 | - |
 | 52. Cleanup & Organization | v2.5 | 0/? | Not started | - |

@@ -28,8 +28,8 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Performance
 
-- [ ] **PERF-01**: `loadJobPapersAndResults` batch-loads reviews in single query instead of N+1 per paper
-- [ ] **PERF-02**: Per-job `.collect()` calls bounded with `.take()` guards or pagination
+- [x] **PERF-01**: `loadJobPapersAndResults` batch-loads reviews in single query instead of N+1 per paper
+- [x] **PERF-02**: Per-job `.collect()` calls bounded with `.take()` guards or pagination
 - [x] **PERF-03**: `zoteroOAuthTokens` cleanup uses `by_expiry` index instead of full table scan
 - [x] **PERF-04**: `checkSubscriptionStatus` cron uses composite `by_status_updatedAt` index
 - [x] **PERF-05**: `crypto` module uses normal `import` with `"use node"` directive instead of obfuscation
@@ -84,8 +84,8 @@ None -- this milestone is a cleanup sweep.
 | BILL-02 | Phase 48 | Complete |
 | SEC-01 | Phase 50 | Complete |
 | SEC-02 | Phase 50 | Complete |
-| PERF-01 | Phase 51 | Pending |
-| PERF-02 | Phase 51 | Pending |
+| PERF-01 | Phase 51 | Complete |
+| PERF-02 | Phase 51 | Complete |
 | PERF-03 | Phase 51 | Complete |
 | PERF-04 | Phase 51 | Complete |
 | PERF-05 | Phase 51 | Complete |

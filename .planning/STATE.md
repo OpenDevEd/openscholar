@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
 status: in-progress
-last_updated: "2026-03-03T09:46:08Z"
+last_updated: "2026-03-03T09:50:12Z"
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -24,15 +24,15 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 
 Phase: 51 of 52 (Performance) -- 5 of 6 in v2.5
 Plan: 2 of 2 in Phase 51 (COMPLETE)
-Status: Phase 51 plan 02 complete
-Last activity: 2026-03-03 -- Completed 51-02 (cron index optimization + crypto import modernization)
+Status: Phase 51 complete
+Last activity: 2026-03-03 -- Completed 51-01 (batch review loading + .take() safety bounds)
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 91 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 7)
+- Total plans completed: 92 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 8)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -68,6 +68,8 @@ See PROJECT.md Key Decisions table for full log.
 - [50-01] Used console.log JSON audit format matching existing AUDIT pattern ([AUDIT:KEY_DECRYPT]) for consistency
 - [50-01] Used String(job.userId) fallback to "system" for extraction workpool decrypt (internal action)
 - [50-02] Used structured console.log with [AUDIT:DEBUG_ACCESS] prefix for grep-friendly audit trail in Convex logs
+- [51-01] Kept attachReviewMetadata for single-paper callers; batch loading only for multi-paper queries
+- [51-01] Used MAX_PAPERS_PER_JOB = 500 safety bound on all per-job paper queries (queries + mutations)
 - [51-02] Kept .take(100) on OAuth cleanup to bound memory per cron run
 - [51-02] Preserved by_status index alongside new by_status_updatedAt for backward compat with other queries
 
@@ -93,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 51-02-PLAN.md (cron index optimization + crypto import modernization)
-Stopped at: Completed 51-02-PLAN.md
+Last activity: 2026-03-03 - Completed 51-01-PLAN.md (batch review loading + .take() safety bounds)
+Stopped at: Completed 51-01-PLAN.md (Phase 51 complete)
 Resume file: None
