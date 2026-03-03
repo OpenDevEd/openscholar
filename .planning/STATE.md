@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: unknown
-last_updated: "2026-03-03T08:47:27.367Z"
+status: in-progress
+last_updated: "2026-03-03T09:10:34Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 7
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 49 complete, ready for Phase 50
+**Current focus:** v2.5 Tech Debt Purge -- Phase 50 in progress
 
 ## Current Position
 
-Phase: 49 of 52 (Extraction & Library Type Safety) -- 3 of 6 in v2.5
-Plan: 2 of 2 in Phase 49 (COMPLETE)
-Status: Phase 49 complete
-Last activity: 2026-03-03 -- Completed 49-02 (typed searchFilters and pagination validators)
+Phase: 50 of 52 (Security & Schema Hardening) -- 4 of 6 in v2.5
+Plan: 2 of 2 in Phase 50
+Status: 50-02 complete
+Last activity: 2026-03-03 -- Completed 50-02 (strengthen debug gate with audit logging)
 
-Progress: [██████░░░░] 58%
+Progress: [██████░░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 88 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 4)
+- Total plans completed: 89 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 5)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -65,6 +65,7 @@ See PROJECT.md Key Decisions table for full log.
 - [49-01] Applied "as const" for validated: true literal to satisfy CitationLocation type constraint
 - [49-02] All searchFiltersValidator fields are v.optional() for backward compat with existing stored data
 - [49-02] Moved searchFiltersValidator before extractionJobValidator to fix declaration order dependency
+- [50-02] Used structured console.log with [AUDIT:DEBUG_ACCESS] prefix for grep-friendly audit trail in Convex logs
 
 ### Roadmap Evolution
 
@@ -88,6 +89,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 49-02-PLAN.md (typed searchFilters and pagination validators)
-Stopped at: Completed 49-02-PLAN.md (Phase 49 complete)
+Last activity: 2026-03-03 - Completed 50-02-PLAN.md (strengthen debug gate with audit logging)
+Stopped at: Completed 50-02-PLAN.md
 Resume file: None

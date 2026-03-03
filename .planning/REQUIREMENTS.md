@@ -24,7 +24,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 ### Security
 
 - [ ] **SEC-01**: API key decryption centralized into single utility with structured audit logging
-- [ ] **SEC-02**: Debug/test functions excluded from production builds or isolated behind stronger gate
+- [x] **SEC-02**: Debug/test functions excluded from production builds or isolated behind stronger gate
 
 ### Performance
 
@@ -83,7 +83,7 @@ None -- this milestone is a cleanup sweep.
 | BILL-01 | Phase 48 | Complete |
 | BILL-02 | Phase 48 | Complete |
 | SEC-01 | Phase 50 | Pending |
-| SEC-02 | Phase 50 | Pending |
+| SEC-02 | Phase 50 | Complete |
 | PERF-01 | Phase 51 | Pending |
 | PERF-02 | Phase 51 | Pending |
 | PERF-03 | Phase 51 | Pending |
