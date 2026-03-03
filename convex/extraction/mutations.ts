@@ -29,6 +29,9 @@ import {
 import { createError } from "../lib/errors";
 import { searchFiltersValidator } from "./validators";
 
+/** Safety bound for per-job paper queries to prevent unbounded memory usage. */
+const MAX_PAPERS_PER_JOB = 500;
+
 async function assertJobOwnership(
   ctx: MutationCtx,
   userId: Id<"users">,
@@ -54,7 +57,7 @@ async function loadJobDataForReporting(
     ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .collect(),
+      .take(MAX_PAPERS_PER_JOB),
   ]);
 
   const resultsByPaper = new Map<string, Doc<"extractionResults">[]>();
@@ -1025,7 +1028,7 @@ export const deleteExtractionInternal = internalMutation({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
     for (const paper of papers) {
       const units = await ctx.db
         .query("extractionEvidenceUnits")
@@ -1157,7 +1160,7 @@ export const cleanupFailedPaperStorage = internalMutation({
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .filter((q) => q.neq(q.field("storageId"), undefined))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     let cleaned = 0;
     for (const paper of papersWithStorage) {
@@ -1386,7 +1389,7 @@ export const finalizeJob = internalMutation({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     const completedCount = papers.filter((p) => p.status === "completed").length;
     const failedCount = papers.filter(
@@ -1468,7 +1471,7 @@ export const finalizeJobIfDone = internalMutation({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     if (papers.length === 0) return null;
 

@@ -45,6 +45,9 @@ import {
 } from "./validators";
 import { statusResultValidator } from "../lib/query_states";
 
+/** Safety bound for per-job paper queries to prevent unbounded memory usage. */
+const MAX_PAPERS_PER_JOB = 500;
+
 /** Result document with optional review overlay fields from attachReviewMetadata. */
 type ResultWithReview = Doc<"extractionResults"> & {
   reviewState?: ReviewState;
@@ -218,7 +221,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
   const papers = await ctx.db
     .query("extractionPapers")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(MAX_PAPERS_PER_JOB);
 
   // Load all reviews for the job in a single batch query (fixes N+1)
   const reviewMap = await loadReviewsByJob(ctx, jobId);
@@ -355,7 +358,7 @@ export const getJobDetails = query({
         q.eq("jobId", args.jobId).eq("processable", true)
       )
       .order("asc")
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     const processablePapers = papers.filter((p) => p.processable !== false);
     const processed = processablePapers.filter((p) => p.status === "completed").length;
@@ -492,7 +495,7 @@ export const getJobResults = query({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     // Load all reviews for the job in a single batch query (fixes N+1)
     const reviewMap = await loadReviewsByJob(ctx, args.jobId);
@@ -1401,7 +1404,7 @@ export const getPapersByOpenAlexIds = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     // Filter by OpenAlex IDs
     return papers.filter((p) => args.openalexIds.includes(p.openalexId));
@@ -1436,7 +1439,7 @@ export const getJobProgressInternal = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
     const processablePapers = papers.filter((p) => p.processable !== false);
     const processed = processablePapers.filter((p) => p.status === "completed").length;
     const failed = processablePapers.filter(
@@ -1461,7 +1464,7 @@ export const getPapersDebug = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     const statusCounts: Record<string, number> = {};
     const contentCounts = {
@@ -1550,7 +1553,7 @@ export const subscribeToJobProgress = query({
     const allPapers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_PAPERS_PER_JOB);
 
     const statusCounts = {
       pending: 0,
