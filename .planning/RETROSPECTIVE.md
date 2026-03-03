@@ -339,6 +339,57 @@
 
 ---
 
+## Milestone: v2.4 — Concerns Sweep
+
+**Shipped:** 2026-03-03
+**Phases:** 4 | **Plans:** 7 | **Commits:** 30
+
+### What Was Built
+- Migrated plaintext Zotero API keys to encrypted storage and removed deprecated apiKey field from schema and all code paths
+- Fixed extraction cancellation with workflow.cancel(), workpool.cancelAll(), and credit-guard protection in action handlers
+- Fixed orphan diffs on baseline job deletion, added diff truncation metadata with i18n UI banner, extended GDPR cascade delete to extraction data
+- Created 18 shared extraction validators and replaced v.any() in all 11 query return validators with typed alternatives
+- Typed migrateSearchHistoryState and attachReviewMetadata with proper interfaces; removed getJobDetails 100-paper cap
+- Added hourly cron for expired Zotero OAuth token cleanup with concurrent-safe per-delete handling
+- Documented debug endpoint production policy with JSDoc @production annotations across 17 functions
+
+### What Worked
+- Codebase mapping (from v2.3) provided a complete concerns inventory — zero discovery overhead during v2.4 planning
+- Dependency ordering (43 schema -> 44 workflow -> 45 types -> 46 cron) kept each phase cleanly isolated
+- Two-deploy migration pattern (migrate data, then remove field) from v2.3 was reused seamlessly for apiKey removal
+- Credit-guard pattern is simple and correct — fresh DB read before deduction handles all cancellation race conditions
+- statusResultValidator adoption across all 11 queries eliminated repetitive v.union boilerplate
+- All 7 plans averaged ~3min each — entire milestone completed in ~21 minutes across 2 sessions
+- Milestone audit passed on first attempt (15/15 requirements) — no gap closure phases needed
+
+### What Was Inefficient
+- CLI milestone complete tool only detected 2 of 4 phases (phases 43-44 lacked detailed sections in ROADMAP.md) — required manual MILESTONES.md correction
+- Progress table in ROADMAP.md had broken column alignment for phases 43-46 (missing v2.4 milestone column)
+- Production deployment of Phase 46 cron blocked by pre-existing missing CLERK_JWT_ISSUER_DOMAIN env var — not introduced by this milestone but surfaced during it
+
+### Patterns Established
+- Credit-guard pattern: fresh DB read of job status immediately before credit deduction in workpool actions
+- Two-deploy migration completion: after v2.3 encrypted data, v2.4 cleaned up schema and fallback code
+- JSDoc @production STAGING ONLY annotation pattern for all debug/test gated functions
+- statusResultValidator helper for all auth-gated Convex query return validators
+- Concurrent-safe cron cleanup: try-catch per delete when multiple code paths can delete the same record
+- Conditional schema fields: v.optional() + spread for fields only relevant in specific cases (truncation metadata)
+- Deferred user hard-delete: skip hard-delete when child records exceed batch limit, continue on next cron run
+
+### Key Lessons
+1. Concerns sweep milestones are high-value and low-risk — fixing known issues with a complete inventory requires minimal design decisions
+2. Credit-guard pattern (fresh read before deduction) is simpler and more correct than version-field TOCTOU mitigation
+3. Two-deploy migration pattern works cleanly for field removal: data migration deploy + schema cleanup deploy
+4. statusResultValidator adoption should happen early in a codebase — retrofitting 11 queries is tedious but the DRY benefit is permanent
+5. Keep ROADMAP.md Phase Details sections complete for all phases — missing details cause downstream tool detection failures
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: 2 sessions across 2 days
+- Notable: 7 plans in ~21 minutes — smallest milestone by phase count (4), cleanest execution (0 gap closures, 0 deviations across 5 of 7 plans)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -352,6 +403,7 @@
 | v2.1 | ~181 | 8 | 15 | ~2min | Library feature build, shared components, nuqs URL state, junction tables |
 | v2.2 | 34 | 4 | 7 | ~2min | DRY layout infrastructure, factory patterns, chrome shell composition |
 | v2.3 | 57 | 8 | 14 | ~2.5min | Hardening sweep, shared crypto, cascade deletion, rate limiting |
+| v2.4 | 30 | 4 | 7 | ~3min | Concerns sweep, typed validators, credit guards, cron cleanup |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -368,3 +420,6 @@
 11. SUMMARY.md one_liner fields consistently missing — recurring process gap that affects milestone accomplishment extraction (v2.0 + v2.1 + v2.2 + v2.3)
 12. Schema-first phases enable clean parallelism — always add optional fields before writing dependent logic (v2.3)
 13. Shared utility extraction during hardening milestones is ideal — patterns are understood, not speculative (v2.3)
+14. Concerns sweep milestones with complete inventory are high-value, low-risk — zero design overhead, predictable execution (v2.4)
+15. Credit-guard pattern (fresh DB read before deduction) is simpler than TOCTOU version fields and handles all cancellation races (v2.4)
+16. ROADMAP.md Phase Details sections must be complete for all phases — missing details break CLI tool detection (v2.4)

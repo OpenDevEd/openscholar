@@ -9,7 +9,7 @@
 - v2.1 Library & Collections -- Phases 22-30 (shipped 2026-03-01)
 - v2.2 Library UI Overhaul -- Phases 31-34 (shipped 2026-03-02)
 - v2.3 Codebase Hardening -- Phases 35-42 (shipped 2026-03-02)
-- v2.4 Concerns Sweep -- Phases 43-46 (in progress)
+- v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
 
 ## Phases
 
@@ -111,35 +111,17 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 
 </details>
 
-### v2.4 Concerns Sweep (In Progress)
+<details>
+<summary>v2.4 Concerns Sweep (Phases 43-46) -- SHIPPED 2026-03-03</summary>
 
-**Milestone Goal:** Fix all tech debt, known bugs, and security concerns identified in the codebase mapping.
-
-- [x] **Phase 43: Schema Migration & Quick Wins** - Encrypt and remove deprecated apiKey field, delete test page, fix placeholder email, document debug policy (completed 2026-03-02)
-- [x] **Phase 44: Workflow & Deletion Integrity** - Cancel extraction actually stops processing, fix orphan diffs, surface diff truncation, extend GDPR user cleanup (completed 2026-03-03)
-- [x] **Phase 45: Type Safety Sweep** - Typed extraction validators, typed migration steps, typed review metadata, remove getJobDetails cap (completed 2026-03-03)
-- [x] **Phase 46: Cron Additions** - Automated cleanup of expired Zotero OAuth tokens (completed 2026-03-03)
+- [x] Phase 43: Schema Migration & Quick Wins (2/2 plans) -- completed 2026-03-02
+- [x] Phase 44: Workflow & Deletion Integrity (2/2 plans) -- completed 2026-03-03
+- [x] Phase 45: Type Safety Sweep (2/2 plans) -- completed 2026-03-03
+- [x] Phase 46: Cron Additions (1/1 plan) -- completed 2026-03-03
 
 Full details: `.planning/milestones/v2.4-ROADMAP.md`
 
-### Phase 45: Type Safety Sweep
-**Goal**: All extraction queries return typed validators instead of v.any(); all remaining any-casts in extraction and migration code replaced with proper types; getJobDetails returns all papers
-**Depends on**: Phase 44
-**Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04, BUG-02
-**Plans:** 2/2 plans complete
-
-Plans:
-- [ ] 45-01-PLAN.md -- Create extraction validators, fix as-any casts, BUG-02, type migration
-- [ ] 45-02-PLAN.md -- Replace v.any() return validators in all 11 extraction queries
-
-### Phase 46: Cron Additions
-**Goal**: Expired Zotero OAuth tokens are automatically cleaned up on a schedule
-**Depends on**: Phase 44
-**Requirements**: CRON-01
-**Plans:** 1/1 plans complete
-
-Plans:
-- [ ] 46-01-PLAN.md -- Add cleanupExpiredOAuthTokens cron job and deploy
+</details>
 
 ## Progress
 
@@ -187,7 +169,7 @@ Plans:
 | 40. Performance | v2.3 | 2/2 | Complete | 2026-03-02 |
 | 41. Rate Limiting Enforcement | v2.3 | 1/1 | Complete | 2026-03-02 |
 | 42. Test Coverage | v2.3 | 2/2 | Complete | 2026-03-02 |
-| 43. Schema Migration & Quick Wins | 2/2 | Complete    | 2026-03-02 | - |
-| 44. Workflow & Deletion Integrity | 2/2 | Complete    | 2026-03-03 | - |
-| 45. Type Safety Sweep | 2/2 | Complete    | 2026-03-03 | - |
-| 46. Cron Additions | 1/1 | Complete    | 2026-03-03 | - |
+| 43. Schema Migration & Quick Wins | v2.4 | 2/2 | Complete | 2026-03-02 |
+| 44. Workflow & Deletion Integrity | v2.4 | 2/2 | Complete | 2026-03-03 |
+| 45. Type Safety Sweep | v2.4 | 2/2 | Complete | 2026-03-03 |
+| 46. Cron Additions | v2.4 | 1/1 | Complete | 2026-03-03 |

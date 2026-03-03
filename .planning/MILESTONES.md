@@ -1,5 +1,29 @@
 # Milestones
 
+## v2.4 Concerns Sweep (Shipped: 2026-03-03)
+
+**Phases completed:** 4 phases, 7 plans
+**Git range:** `3343b5e..a1a0f25` (30 commits)
+**Files changed:** 64 files, +6,447/-318 lines
+
+**Key accomplishments:**
+- Migrated plaintext Zotero API keys to encrypted storage and removed deprecated apiKey field from schema and all code paths
+- Fixed extraction cancellation with workflow.cancel(), workpool.cancelAll(), and credit-guard protection in action handlers
+- Fixed orphan diffs on baseline job deletion, added diff truncation metadata with i18n UI banner, extended GDPR cascade delete to extraction data
+- Created 18 shared extraction validators and replaced v.any() in all 11 query return validators with typed alternatives
+- Typed migrateSearchHistoryState and attachReviewMetadata; removed getJobDetails 100-paper cap
+- Added hourly cron for expired Zotero OAuth token cleanup with concurrent-safe per-delete handling
+
+**Audit:** 15/15 requirements, 4/4 phases, 15/15 integrations, 6/6 E2E flows -- PASSED
+
+**Tech debt carried forward:**
+- searchFilters uses v.record(v.string(), v.any()) -- intentional schema design for arbitrary user filter state
+- paginatedAnyResultValidator uses v.any() -- explicitly scoped out as lower priority
+- workflowId as any cast in cancelExtraction -- Convex SDK limitation, pre-existing
+- OPENALEX_CONTACT_EMAIL env var must be set in Convex dashboard for BUG-05 to fully activate
+
+---
+
 ## v2.3 Codebase Hardening (Shipped: 2026-03-02)
 
 **Phases completed:** 8 phases, 14 plans

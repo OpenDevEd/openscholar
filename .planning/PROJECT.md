@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite, and a persistent library with collections, advanced filtering, and a polished two-column sidebar layout shared across search and library pages.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite, a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, and a hardened codebase with typed extraction validators, encrypted API keys, and automated cleanup crons.
 
 ## Core Value
 
@@ -63,27 +63,22 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ N+1 extraction queries parallelized, unbounded .collect() calls bounded — v2.3
 - ✓ Token-bucket rate limits enforced on all 6 exposed endpoints — v2.3
 - ✓ Integration tests for cascade delete, Zustand migrations, and extraction insight edge cases — v2.3
+- ✓ Plaintext Zotero apiKey migrated to encryptedApiKey and deprecated field removed from schema — v2.4
+- ✓ cancelExtraction stops workflow and workpool processing with credit-guard protection — v2.4
+- ✓ Orphan extractionRunDiffs cleaned up on baseline job deletion (Step 8b cascade) — v2.4
+- ✓ Diff truncation surfaced with isTruncated/totalChanges metadata and i18n UI banner — v2.4
+- ✓ GDPR cleanupDeletedUsers extended to cascade-delete extraction jobs and Zotero connections — v2.4
+- ✓ 18 shared extraction validators replacing v.any() in all 11 query return types — v2.4
+- ✓ Typed migrateSearchHistoryState and attachReviewMetadata with proper interfaces — v2.4
+- ✓ getJobDetails returns all papers (removed .take(100) cap) — v2.4
+- ✓ Debug endpoint production policy documented with JSDoc annotations across 17 functions — v2.4
+- ✓ Orphaned /test-sidebar page removed from production build — v2.4
+- ✓ OpenAlex User-Agent uses configurable OPENALEX_CONTACT_EMAIL env var — v2.4
+- ✓ Hourly cron cleanup of expired Zotero OAuth tokens — v2.4
 
 ### Active
 
-**Current Milestone: v2.4 Concerns Sweep**
-
-**Goal:** Fix all tech debt, known bugs, and security concerns identified in the codebase mapping.
-
-**Target items:**
-- Remove deprecated `apiKey` field, migrate plaintext Zotero keys
-- Replace placeholder email in OpenAlex User-Agent
-- Fix `runDiff` orphan risk on baseline job deletion
-- Fix `cancelExtraction` to actually stop the running workflow
-- Replace `v.any()` in extraction query return types with typed validators
-- Extend `cleanupDeletedUsers` to delete extraction data
-- Add cron cleanup for expired Zotero OAuth tokens
-- Type `migrateSearchHistoryState` migration steps
-- Replace `any` casts in `attachReviewMetadata`
-- Fix `getJobDetails` 100-paper cap
-- Fix `extractionRunDiffs.changes` silent truncation at 1,000
-- Document debug endpoint production policy
-- Remove `/test-sidebar` test page
+(No active milestone — ready for next milestone planning)
 
 ### Out of Scope
 
@@ -110,14 +105,16 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), v2.0 (91 files, +14,768/-100), v2.1 (258 files, +37,922/-3,469), v2.2 (46 files, +7,216/-662), and v2.3 (77 files, +8,779/-769).
+Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), v2.0 (91 files, +14,768/-100), v2.1 (258 files, +37,922/-3,469), v2.2 (46 files, +7,216/-662), v2.3 (77 files, +8,779/-769), and v2.4 (64 files, +6,447/-318).
 Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting).
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`.
-Test suite: 60+ Vitest test files covering unit tests across 7 domains + cascade delete and store migration integration tests, Playwright billing E2E suite (6 spec files, 11 tests). 700 tests passing.
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`.
+Test suite: 60+ Vitest test files covering unit tests across 7 domains + cascade delete and store migration integration tests, Playwright billing E2E suite (6 spec files, 11 tests). 701 tests passing.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export, two-column sidebar layout with collapsible filter panel.
 Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
-Security: AES-256-GCM encryption for API keys and Zotero keys via shared crypto module, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled().
+Security: AES-256-GCM encryption for API keys and Zotero keys via shared crypto module, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled() with JSDoc @production annotations.
+Extraction: 18 shared typed validators for all extraction document shapes, typed query return validators (zero v.any()), credit-guard pattern protecting against cancelled-job billing races.
+Maintenance: Hourly cron for expired OAuth token cleanup, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
 
 ## Constraints
 
@@ -167,9 +164,17 @@ Security: AES-256-GCM encryption for API keys and Zotero keys via shared crypto 
 | Lazy getStripe() singleton | Throws only when called with missing key, not at module load | ✓ Good — no import-time crashes |
 | Shared crypto.ts module | AES-256-GCM encrypt/decrypt extracted from apiKeys for reuse | ✓ Good — DRY crypto, used by Zotero + API keys |
 | scheduler.runAfter(0) for cascade deletion | Avoids recursive ctx.runMutation stack overflow on large jobs | ✓ Good — reliable batch deletion |
-| resolveZoteroApiKey dual-read fallback | Checks encryptedApiKey first, falls back to plaintext for migration | ✓ Good — zero-downtime migration |
+| resolveZoteroApiKey dual-read fallback | Checks encryptedApiKey first, falls back to plaintext for migration | ✓ Good — zero-downtime migration (now encrypted-only) |
 | defineRateLimits token-bucket pattern | Centralized rate limit config with convex-helpers | ✓ Good — consistent enforcement |
 | vi.useFakeTimers() before scheduler mutations | Scheduler timing must be controlled before mutation triggers | ✓ Good — reliable test timing |
+| Two-deploy migration for apiKey removal | Migrate data first, then deploy schema removal | ✓ Good — zero-downtime, no data loss |
+| Credit-guard pattern in workpool actions | Fresh DB read before deduction prevents cancelled-job billing | ✓ Good — 0-2 paper race window acceptable |
+| cancelAll() for workpool cancellation | Cancels ALL pending items; credit guards protect non-cancelled jobs | ✓ Good — simple, correct |
+| Deferred user hard-delete on batch overflow | Skip hard-delete when extraction jobs exceed batch limit | ✓ Good — ensures complete cascade |
+| statusResultValidator for typed query returns | Replaces manual v.union patterns across all auth-gated queries | ✓ Good — consistent, DRY |
+| Inline validators for computed shapes | Aggregated data uses inline v.object() not shared validators | ✓ Good — avoids false coupling |
+| .collect() for OAuth token cleanup | Table tiny (0-5 rows), no index needed | ✓ Good — simple, correct |
+| try-catch per delete in cron | Handles concurrent deletion race with getRequestToken | ✓ Good — resilient cleanup |
 
 ---
-*Last updated: 2026-03-02 after v2.4 milestone start*
+*Last updated: 2026-03-03 after v2.4 milestone*
