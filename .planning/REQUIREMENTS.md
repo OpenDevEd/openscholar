@@ -1,7 +1,7 @@
 # Requirements: OpenAlex Count v3.0
 
 **Defined:** 2026-03-03
-**Core Value:** Reliable, well-tested academic search and AI extraction — zero `any` casts, every concern resolved
+**Core Value:** Reliable, well-tested academic search and AI extraction -- zero `any` casts, every concern resolved
 
 ## v3.0 Requirements
 
@@ -38,7 +38,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 ### Correctness
 
 - [ ] **CORR-01**: Add concurrency invariant test for credit deduction verifying Convex OCC prevents negative balances; implement per-user workpool only if test reveals gap
-- [ ] **CORR-02**: Fix OpenAlex polite pool fallback — fail loudly or use validated env var instead of `admin@example.com` default
+- [ ] **CORR-02**: Fix OpenAlex polite pool fallback -- fail loudly or use validated env var instead of `admin@example.com` default
 - [ ] **CORR-03**: Add test for `checkSubscriptionStatus` cron correction path covering both expanded and non-expanded Stripe customer objects
 
 ### Test Coverage
@@ -52,7 +52,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 ## Future Requirements
 
-None — v3.0 resolves all documented concerns.
+None -- v3.0 resolves all documented concerns.
 
 ## Out of Scope
 
@@ -72,40 +72,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | — | Pending |
-| TYPE-02 | — | Pending |
-| TYPE-03 | — | Pending |
-| TYPE-04 | — | Pending |
-| TYPE-05 | — | Pending |
-| TYPE-06 | — | Pending |
-| TYPE-07 | — | Pending |
-| TYPE-08 | — | Pending |
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| SEC-03 | — | Pending |
-| SEC-04 | — | Pending |
-| SEC-05 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| PERF-03 | — | Pending |
-| PERF-04 | — | Pending |
-| PERF-05 | — | Pending |
-| PERF-06 | — | Pending |
-| CORR-01 | — | Pending |
-| CORR-02 | — | Pending |
-| CORR-03 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
-| TEST-06 | — | Pending |
+| TYPE-01 | Phase 54 | Pending |
+| TYPE-02 | Phase 54 | Pending |
+| TYPE-03 | Phase 54 | Pending |
+| TYPE-04 | Phase 54 | Pending |
+| TYPE-05 | Phase 54 | Pending |
+| TYPE-06 | Phase 54 | Pending |
+| TYPE-07 | Phase 54 | Pending |
+| TYPE-08 | Phase 54 | Pending |
+| SEC-01 | Phase 55 | Pending |
+| SEC-02 | Phase 55 | Pending |
+| SEC-03 | Phase 55 | Pending |
+| SEC-04 | Phase 55 | Pending |
+| SEC-05 | Phase 55 | Pending |
+| PERF-01 | Phase 56 | Pending |
+| PERF-02 | Phase 57 | Pending |
+| PERF-03 | Phase 56 | Pending |
+| PERF-04 | Phase 56 | Pending |
+| PERF-05 | Phase 56 | Pending |
+| PERF-06 | Phase 57 | Pending |
+| CORR-01 | Phase 58 | Pending |
+| CORR-02 | Phase 58 | Pending |
+| CORR-03 | Phase 58 | Pending |
+| TEST-01 | Phase 55 | Pending |
+| TEST-02 | Phase 58 | Pending |
+| TEST-03 | Phase 54 | Pending |
+| TEST-04 | Phase 54 | Pending |
+| TEST-05 | Phase 56 | Pending |
+| TEST-06 | Phase 55 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28
+- Mapped to phases: 28
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-03*
-*Last updated: 2026-03-03 after initial definition*
+*Last updated: 2026-03-03 after roadmap creation*

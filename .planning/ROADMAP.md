@@ -11,6 +11,7 @@
 - v2.3 Codebase Hardening -- Phases 35-42 (shipped 2026-03-02)
 - v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
 - v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
+- v3.0 Zero-Any Overhaul -- Phases 54-58 (in progress)
 
 ## Phases
 
@@ -88,7 +89,7 @@ Full details: `.planning/milestones/v2.1-ROADMAP.md`
 <summary>v2.2 Library UI Overhaul (Phases 31-34) -- SHIPPED 2026-03-02</summary>
 
 - [x] Phase 31: Generalized Layout Infrastructure (2/2 plans) -- completed 2026-03-01
-- [x] Phase 32: Search Page Sidebar Refactor (1/1 plan) -- completed 2026-03-01
+- [x] Phase 32: Search Page Sidebar Refactor (2/2 plans) -- completed 2026-03-01
 - [x] Phase 33: Library Page UI Overhaul (2/2 plans) -- completed 2026-03-01
 - [x] Phase 34: Display Polish and Validation (2/2 plans) -- completed 2026-03-01
 
@@ -139,7 +140,98 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
 
 </details>
 
+### v3.0 Zero-Any Overhaul (In Progress)
+
+**Milestone Goal:** Resolve every item in CONCERNS.md -- zero `any` casts, all security/performance/fragility concerns addressed, full test coverage for gaps.
+
+- [ ] **Phase 54: Type Safety Sweep** - Eliminate all remaining `as any` casts, fix module boundaries, clean dead code
+- [ ] **Phase 55: Security and Audit** - XSS-safe highlighting, persistent audit table, env var validation, debug exclusion strategy
+- [ ] **Phase 56: Performance Fixes** - Bounded library count, ExcelJS migration, subscription cron batching, migration helper cleanup
+- [ ] **Phase 57: Incremental Aggregation** - Extraction report aggregation decoupled from loading all results
+- [ ] **Phase 58: Correctness and Coverage** - Credit concurrency validation, OpenAlex email fix, subscription cron test, GROBID fallback test
+
+## Phase Details
+
+### Phase 54: Type Safety Sweep
+**Goal**: Every `as any` cast in the codebase is eliminated or replaced with a properly typed alternative; module boundaries reflect actual usage; dead code is removed
+**Depends on**: Nothing (first phase in v3.0)
+**Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04, TYPE-05, TYPE-06, TYPE-07, TYPE-08, TEST-03, TEST-04
+**Success Criteria** (what must be TRUE):
+  1. `ExtractionResultWithReview` type derived from validator is used in export and filtering functions -- no `result as any` casts remain in `lib/extraction/export.ts` or `lib/extraction/filtering.ts`
+  2. Stripe customer ID extraction in `convex/maintenance/internal.ts` uses `typeof` narrowing -- handles both string and expanded object without `as any`
+  3. Rate limiter `consume` mutation rejects invalid rate limit names at runtime and the test for invalid name rejection passes
+  4. Workflow cancel path uses properly typed workflow ID -- `as any` removed from `convex/extraction/mutations.ts` and test for cancel path passes
+  5. `getProviderModel` lives in `lib/ai/server/` or `lib/ai/core/`, dead code file `library-filters.tsx` is deleted, orphaned `convex/test.setup.ts` is resolved, and upgrade metadata reads from Convex instead of Stripe
+**Plans**: TBD
+
+Plans:
+- [ ] 54-01: TBD
+- [ ] 54-02: TBD
+
+### Phase 55: Security and Audit
+**Goal**: Users are protected from XSS in extraction results; security-sensitive operations persist to a queryable audit table; missing env vars are detected at startup; debug function exposure is documented
+**Depends on**: Phase 54 (type-safe codebase simplifies security changes)
+**Requirements**: SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, TEST-01, TEST-06
+**Success Criteria** (what must be TRUE):
+  1. All three `dangerouslySetInnerHTML` call sites in `table-view.tsx` are replaced with a React-native `HighlightedText` component, and the XSS safety test with HTML characters in both text and query passes
+  2. Security-sensitive operations (API key decrypt, debug gate access) write to a persistent `auditLogs` table in Convex that can be queried for investigation
+  3. A cron-based startup check validates that `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, and all required price IDs are present, and the test for missing env var detection passes
+  4. Debug function production exclusion strategy is documented with actionable deployment guidance
+  5. Stripe price ID empty-string fallbacks in `convex/lib/constants.ts` are replaced with fail-fast validation in handlers
+**Plans**: TBD
+
+Plans:
+- [ ] 55-01: TBD
+- [ ] 55-02: TBD
+
+### Phase 56: Performance Fixes
+**Goal**: Library count queries are bounded, XLSX export is dynamically loaded with a maintained library, subscription cron handles growth safely, and migration helpers are cleaned up
+**Depends on**: Phase 55 (schema deployed for audit table; security hardening complete)
+**Requirements**: PERF-01, PERF-03, PERF-04, PERF-05, TEST-05
+**Success Criteria** (what must be TRUE):
+  1. `getLibraryCount` in `convex/library/queries.ts` uses bounded `.take()` instead of unbounded `.collect()` -- no full table scan for count
+  2. XLSX export uses dynamic `import('exceljs')` instead of static `import * as XLSX from 'xlsx'`, and the round-trip ExcelJS test (generate, parse back, assert headers and rows) passes
+  3. Subscription status cron uses cursor-based self-scheduling with a 45s circuit-breaker -- will not exhaust Stripe rate limits at scale
+  4. `listAllConnections` migration helper in `convex/zotero/internal.ts` is removed or gated behind debug check
+**Plans**: TBD
+
+Plans:
+- [ ] 56-01: TBD
+- [ ] 56-02: TBD
+
+### Phase 57: Incremental Aggregation
+**Goal**: Extraction report generation is decoupled from loading all result records into memory, enabling future removal of the 500-paper cap
+**Depends on**: Phase 56 (performance baseline established; bounded queries in place)
+**Requirements**: PERF-02, PERF-06
+**Success Criteria** (what must be TRUE):
+  1. An `extractionJobStats` table stores per-question aggregation that is upserted incrementally as each paper completes in the workpool
+  2. Report queries read from pre-aggregated stats instead of loading all papers x results in a single mutation context
+  3. Existing completed jobs without pre-aggregated stats fall back to a lazy backfill that computes and persists stats on first access
+**Plans**: TBD
+
+Plans:
+- [ ] 57-01: TBD
+- [ ] 57-02: TBD
+
+### Phase 58: Correctness and Coverage
+**Goal**: Credit deduction concurrency is validated, OpenAlex contact email fails loudly on misconfiguration, and remaining test coverage gaps are closed
+**Depends on**: Phase 54 (type safety enables reliable test assertions)
+**Requirements**: CORR-01, CORR-02, CORR-03, TEST-02
+**Success Criteria** (what must be TRUE):
+  1. A concurrency invariant test for `deductCredits` confirms Convex OCC prevents negative balances -- per-user workpool is implemented only if the test reveals an actual gap
+  2. OpenAlex API requests fail loudly or use a validated env var when `OPENALEX_CONTACT_EMAIL` is absent -- no silent `admin@example.com` fallback
+  3. A test for `checkSubscriptionStatus` cron covers both expanded and non-expanded Stripe customer objects, verifying the correction path works for both shapes
+  4. A test for GROBID URL discovery fallback chain verifies behavior when `GROBID_URL` env var is absent and Docker/localhost variants fail
+**Plans**: TBD
+
+Plans:
+- [ ] 58-01: TBD
+- [ ] 58-02: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -196,3 +288,8 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
 | 51. Performance | v2.5 | 2/2 | Complete | 2026-03-03 |
 | 52. Cleanup & Organization | v2.5 | 2/2 | Complete | 2026-03-03 |
 | 53. TypeScript Compile Fix | v2.5 | 2/2 | Complete | 2026-03-03 |
+| 54. Type Safety Sweep | v3.0 | 0/? | Not started | - |
+| 55. Security and Audit | v3.0 | 0/? | Not started | - |
+| 56. Performance Fixes | v3.0 | 0/? | Not started | - |
+| 57. Incremental Aggregation | v3.0 | 0/? | Not started | - |
+| 58. Correctness and Coverage | v3.0 | 0/? | Not started | - |
