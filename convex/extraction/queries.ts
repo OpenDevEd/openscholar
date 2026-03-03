@@ -1045,15 +1045,50 @@ export const getReviewQueue = query({
     onlyInsufficientEvidence: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      counts: v.any(),
-      items: v.array(v.any()),
+  returns: statusResultValidator({
+    counts: v.object({
+      total: v.number(),
+      unreviewed: v.number(),
+      accepted: v.number(),
+      rejected: v.number(),
+      needsFollowup: v.number(),
+      insufficientEvidence: v.number(),
     }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+    items: v.array(
+      v.object({
+        resultId: v.id("extractionResults"),
+        paperId: v.id("extractionPapers"),
+        paperTitle: v.string(),
+        openalexId: v.string(),
+        questionKey: v.string(),
+        question: v.string(),
+        questionType: v.optional(questionTypeValidator),
+        answer: answerValidator,
+        confidence: v.optional(v.number()),
+        reasoning: v.optional(v.string()),
+        citations: v.array(
+          v.object({
+            evidenceId: v.string(),
+            page: v.number(),
+            charRange: v.array(v.number()),
+            quote: v.string(),
+            retrieval: v.object({
+              denseScore: v.optional(v.number()),
+              lexicalScore: v.optional(v.number()),
+              fusedScore: v.optional(v.number()),
+              rerankScore: v.optional(v.number()),
+            }),
+            validated: v.boolean(),
+          })
+        ),
+        citationStatus: citationStatusValidator,
+        reviewState: reviewStateValidator,
+        reviewNote: v.optional(v.string()),
+        correctedAnswer: v.optional(answerValidator),
+        reviewedAt: v.optional(v.number()),
+      })
+    ),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1155,14 +1190,9 @@ export const getReviewQueue = query({
 
 export const getSavedViews = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      views: v.array(v.any()),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+  returns: statusResultValidator({
+    views: v.array(extractionSavedViewValidator),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1224,14 +1254,9 @@ export const getWorkflowTemplates = query({
 
 export const getReportSnapshots = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      reports: v.array(v.any()),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+  returns: statusResultValidator({
+    reports: v.array(extractionReportSnapshotValidator),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1253,14 +1278,9 @@ export const getRunDiff = query({
     jobId: v.id("extractionJobs"),
     diffId: v.optional(v.id("extractionRunDiffs")),
   },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      diff: v.union(v.null(), v.any()),
-    }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+  returns: statusResultValidator({
+    diff: v.union(v.null(), extractionRunDiffValidator),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
@@ -1456,16 +1476,20 @@ export const getPapersDebug = internalQuery({
 // Subscribe to job progress (real-time updates)
 export const subscribeToJobProgress = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.union(
-    v.object({
-      status: v.literal("ok"),
-      job: v.any(),
-      statusCounts: v.any(),
-      recentPapers: v.array(v.any()),
+  returns: statusResultValidator({
+    job: extractionJobValidator,
+    statusCounts: v.object({
+      pending: v.number(),
+      downloading: v.number(),
+      download_failed: v.number(),
+      indexing: v.number(),
+      indexing_failed: v.number(),
+      extracting: v.number(),
+      completed: v.number(),
+      failed: v.number(),
     }),
-    v.object({ status: v.literal("unauthenticated") }),
-    v.object({ status: v.literal("no_access") })
-  ),
+    recentPapers: v.array(extractionPaperValidator),
+  }),
   handler: async (ctx, args) => {
     requireExtractionEnabled();
     const access = await resolveOwnedJob(ctx, args.jobId);
