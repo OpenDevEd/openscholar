@@ -138,6 +138,48 @@ describe("getPlanFromPriceId", () => {
   });
 });
 
+// TEST-03: Explicitly test substring fallback before BILL-01 removes it
+describe("getPlanFromPriceId substring fallback (TEST-03)", () => {
+  afterEach(() => {
+    vi.resetModules();
+    delete process.env.STRIPE_GO_PRICE_ID;
+    delete process.env.STRIPE_PRO_PRICE_ID;
+    delete process.env.STRIPE_ENTERPRISE_PRICE_ID;
+  });
+
+  it('returns "enterprise" for "price_test_enterprise_monthly" when no exact ENTERPRISE_PRICE_ID match', () => {
+    // No env vars set, so no exact match is possible -- substring fallback kicks in
+    expect(getPlanFromPriceId("price_test_enterprise_monthly")).toBe("enterprise");
+  });
+
+  it('returns "pro" for "price_test_pro_annual" when no exact PRO_PRICE_ID match', () => {
+    // No env vars set, so no exact match is possible -- substring fallback kicks in
+    expect(getPlanFromPriceId("price_test_pro_annual")).toBe("pro");
+  });
+
+  it('prefers enterprise over pro for "price_enterprise_pro_combo"', () => {
+    // The includes("enterprise") check runs before includes("pro")
+    expect(getPlanFromPriceId("price_enterprise_pro_combo")).toBe("enterprise");
+  });
+
+  it('no substring fallback triggered for "price_basic_monthly" (returns "free")', () => {
+    // Contains neither "enterprise" nor "pro" as substring
+    expect(getPlanFromPriceId("price_basic_monthly")).toBe("free");
+  });
+
+  it("exact match takes precedence over substring fallback", async () => {
+    // PRO_PRICE_ID is set to a value that also contains "enterprise" as substring
+    process.env.STRIPE_PRO_PRICE_ID = "price_enterprise_special";
+    vi.resetModules();
+    const { getPlanFromPriceId: freshGetPlan } = await import(
+      "../convex/lib/constants"
+    );
+    // Even though the ID contains "enterprise", the exact PRO_PRICE_ID match wins
+    expect(freshGetPlan("price_enterprise_special")).toBe("pro");
+    delete process.env.STRIPE_PRO_PRICE_ID;
+  });
+});
+
 describe("Feature flag guards", () => {
   afterEach(() => {
     vi.resetModules();

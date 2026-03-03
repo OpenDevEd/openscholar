@@ -1,11 +1,16 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import type { GenericActionCtx } from "convex/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
 import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
 import { requireAppUrl } from "./lib/env";
+import {
+  getStripeObjectId,
+  getStripeApiVersion,
+  runAuditedStripeHandler as _runAuditedStripeHandler,
+  processInvoiceForGrantNonBlocking as _processInvoiceForGrantNonBlocking,
+} from "./lib/stripeWebhookHandlers";
 import type Stripe from "stripe";
 
 const http = httpRouter();
@@ -13,94 +18,31 @@ const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
   process.env.STRIPE_WEBHOOK_SECRET,
 );
 
-function getStripeObjectId(event: Stripe.Event): string | undefined {
-  const object = event.data.object as { id?: unknown };
-  return typeof object.id === "string" ? object.id : undefined;
-}
+// Bind extracted helpers to the real Convex internal refs used by this module
+const auditRefs = {
+  markStripeEventProcessed: internal.subscriptions.internal.markStripeEventProcessed,
+  markStripeEventFailed: internal.subscriptions.internal.markStripeEventFailed,
+};
 
-function getStripeApiVersion(event: Stripe.Event): string | undefined {
-  return typeof event.api_version === "string" ? event.api_version : undefined;
-}
+const invoiceGrantRefs = {
+  processInvoiceForGrant: internal.credits.actions.processInvoiceForGrant,
+  markStripeEventRetrying: internal.subscriptions.internal.markStripeEventRetrying,
+};
 
-async function recordStripeEventFailure(
-  ctx: GenericActionCtx<any>,
-  event: Stripe.Event,
-  error: unknown,
-): Promise<void> {
-  const message = error instanceof Error ? error.message : String(error);
-  try {
-    await ctx.runMutation(internal.subscriptions.internal.markStripeEventFailed, {
-      stripeEventId: event.id,
-      eventType: event.type,
-      stripeObjectId: getStripeObjectId(event),
-      stripeApiVersion: getStripeApiVersion(event),
-      classification: "webhook_handler_failure",
-      errorMessage: message,
-    });
-  } catch (markError) {
-    console.error("Failed to mark Stripe event as failed", markError);
-  }
-}
-
-async function runAuditedStripeHandler(
-  ctx: GenericActionCtx<any>,
+function runAuditedStripeHandler(
+  ctx: Parameters<typeof _runAuditedStripeHandler>[0],
   event: Stripe.Event,
   handler: () => Promise<void>,
-): Promise<void> {
-  try {
-    await handler();
-    await ctx.runMutation(internal.subscriptions.internal.markStripeEventProcessed, {
-      stripeEventId: event.id,
-      eventType: event.type,
-      stripeObjectId: getStripeObjectId(event),
-      stripeApiVersion: getStripeApiVersion(event),
-      classification: "processed",
-    });
-  } catch (error) {
-    await recordStripeEventFailure(ctx, event, error);
-    throw error;
-  }
+) {
+  return _runAuditedStripeHandler(ctx, event, handler, auditRefs);
 }
 
-async function processInvoiceForGrantNonBlocking(
-  ctx: GenericActionCtx<any>,
+function processInvoiceForGrantNonBlocking(
+  ctx: Parameters<typeof _processInvoiceForGrantNonBlocking>[0],
   event: Stripe.Event,
   invoice: any,
-): Promise<void> {
-  const args = {
-    stripeInvoiceId: invoice.id,
-    stripeEventId: event.id,
-    stripeEventType: event.type,
-    trigger: `webhook:${event.type}`,
-    retryCount: 0,
-  };
-
-  try {
-    await ctx.runAction(internal.credits.actions.processInvoiceForGrant, args);
-  } catch (error) {
-    const retryDelayMs = 60_000;
-    const retryAt = Date.now() + retryDelayMs;
-    const message = error instanceof Error ? error.message : String(error);
-
-    await ctx.runMutation(internal.subscriptions.internal.markStripeEventRetrying, {
-      stripeEventId: event.id,
-      eventType: event.type,
-      stripeObjectId: getStripeObjectId(event),
-      stripeApiVersion: getStripeApiVersion(event),
-      classification: "retry_invoice_grant_process",
-      retryAt,
-      reason: `Failed to process invoice grant action: ${message}`,
-    });
-
-    await ctx.scheduler.runAfter(
-      retryDelayMs,
-      internal.credits.actions.processInvoiceForGrant,
-      {
-        ...args,
-        retryCount: 1,
-      },
-    );
-  }
+) {
+  return _processInvoiceForGrantNonBlocking(ctx, event, invoice, invoiceGrantRefs);
 }
 
 // Clerk webhook for user sync
