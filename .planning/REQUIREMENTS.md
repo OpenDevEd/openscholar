@@ -9,7 +9,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Type Safety
 
-- [ ] **TYPE-01**: Stripe webhook handlers use typed SDK event objects instead of `as any` casts
+- [x] **TYPE-01**: Stripe webhook handlers use typed SDK event objects instead of `as any` casts
 - [ ] **TYPE-02**: Extraction job page uses properly typed Convex ID arguments instead of `as any`
 - [ ] **TYPE-03**: Paginated extraction results use typed validator instead of `paginationResultValidator(v.any())`
 - [ ] **TYPE-04**: `searchFilters` schema uses typed Convex validator matching the filter interface
@@ -18,7 +18,7 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 ### Billing Safety
 
-- [ ] **BILL-01**: `getPlanFromPriceId` substring fallback removed; unknown price IDs return `"free"` with warning log
+- [x] **BILL-01**: `getPlanFromPriceId` substring fallback removed; unknown price IDs return `"free"` with warning log
 - [ ] **BILL-02**: Pending plan change state stored in Convex `subscriptions` table instead of Stripe metadata
 
 ### Security
@@ -74,13 +74,13 @@ None -- this milestone is a cleanup sweep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | Phase 48 | Pending |
+| TYPE-01 | Phase 48 | Complete |
 | TYPE-02 | Phase 49 | Pending |
 | TYPE-03 | Phase 49 | Pending |
 | TYPE-04 | Phase 49 | Pending |
 | TYPE-05 | Phase 50 | Pending |
 | TYPE-06 | Phase 49 | Pending |
-| BILL-01 | Phase 48 | Pending |
+| BILL-01 | Phase 48 | Complete |
 | BILL-02 | Phase 48 | Pending |
 | SEC-01 | Phase 50 | Pending |
 | SEC-02 | Phase 50 | Pending |

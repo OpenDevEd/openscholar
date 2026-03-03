@@ -259,7 +259,7 @@ Plans:
 | 45. Type Safety Sweep | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 46. Cron Additions | v2.4 | 1/1 | Complete | 2026-03-03 |
 | 47. Test Safety Net | 3/3 | Complete    | 2026-03-03 | - |
-| 48. Billing Hardening | v2.5 | 0/? | Not started | - |
+| 48. Billing Hardening | 1/2 | In Progress|  | - |
 | 49. Extraction & Library Type Safety | v2.5 | 0/? | Not started | - |
 | 50. Security & Schema | v2.5 | 0/? | Not started | - |
 | 51. Performance | v2.5 | 0/? | Not started | - |

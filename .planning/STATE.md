@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.5
 milestone_name: Tech Debt Purge
-status: unknown
-last_updated: "2026-03-03T07:29:32.217Z"
+status: in-progress
+last_updated: "2026-03-03T08:02:11Z"
 progress:
-  total_phases: 1
+  total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.5 Tech Debt Purge -- Phase 47: Test Safety Net
+**Current focus:** v2.5 Tech Debt Purge -- Phase 48: Billing Hardening
 
 ## Current Position
 
-Phase: 47 of 52 (Test Safety Net) -- 1 of 6 in v2.5
-Plan: 3 of 3 in Phase 47
-Status: Plan 03 complete
-Last activity: 2026-03-03 -- Completed 47-03 (debug gate tests)
+Phase: 48 of 52 (Billing Hardening) -- 2 of 6 in v2.5
+Plan: 1 of 2 in Phase 48
+Status: Plan 01 complete
+Last activity: 2026-03-03 -- Completed 48-01 (billing type safety)
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 84 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7)
+- Total plans completed: 85 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 1)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -57,6 +57,8 @@ See PROJECT.md Key Decisions table for full log.
 
 - [47-03] Used vi.resetModules() + dynamic import() for env var isolation in debug gate tests
 - [47-03] Used fs.readFileSync inventory pattern for static analysis of debug-gated files
+- [48-01] Kept GenericActionCtx<any> in stripeWebhookHandlers.ts -- DataModel generic unavailable in utility files
+- [48-01] Left user: any and error: any casts out of scope for TYPE-01 (Stripe object casts only)
 
 ### Roadmap Evolution
 
@@ -69,7 +71,7 @@ None.
 
 ### Blockers/Concerns
 
-- TEST-03 must complete before BILL-01 can execute (test the fallback before removing it)
+- ~~TEST-03 must complete before BILL-01 can execute~~ (RESOLVED: BILL-01 completed in 48-01)
 - TYPE-05 requires a two-deploy schema migration (make encryptedApiKey required)
 
 ### Quick Tasks Completed
@@ -80,6 +82,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 47-03-PLAN.md (debug gate tests)
-Stopped at: Completed 47-03-PLAN.md
+Last activity: 2026-03-03 - Completed 48-01-PLAN.md (billing type safety)
+Stopped at: Completed 48-01-PLAN.md
 Resume file: None
