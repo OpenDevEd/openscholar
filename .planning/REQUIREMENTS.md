@@ -32,7 +32,7 @@ Requirements for v2.4 Concerns Sweep. Each maps to roadmap phases.
 
 ### Cron & Cleanup
 
-- [ ] **CRON-01**: Add cron job to delete expired `zoteroOAuthTokens` where `expiresAt < Date.now()`
+- [x] **CRON-01**: Add cron job to delete expired `zoteroOAuthTokens` where `expiresAt < Date.now()`
 
 ## Future Requirements
 
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-02 | Phase 45 | Complete |
 | TYPE-03 | Phase 45 | Complete |
 | TYPE-04 | Phase 45 | Complete |
-| CRON-01 | Phase 46 | Pending |
+| CRON-01 | Phase 46 | Complete |
 
 **Coverage:**
 - v2.4 requirements: 15 total

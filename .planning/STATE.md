@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Concerns Sweep
-status: unknown
-last_updated: "2026-03-03T05:54:21.646Z"
+status: complete
+last_updated: "2026-03-03T06:21:15Z"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_phases: 4
+  completed_phases: 4
+  total_plans: 7
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-02)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v2.4 Concerns Sweep -- Phase 45 complete
+**Current focus:** v2.4 Concerns Sweep -- Phase 46 complete (milestone complete)
 
 ## Current Position
 
-Phase: 45 of 46 (Type Safety Sweep) -- COMPLETE
-Plan: 2 of 2 (45-02 Complete)
-Status: Phase Complete
-Last activity: 2026-03-03 -- Completed 45-02 (Extraction Query Return Validators)
+Phase: 46 of 46 (Cron Additions) -- COMPLETE
+Plan: 1 of 1 (46-01 Complete)
+Status: Milestone Complete
+Last activity: 2026-03-03 -- Completed 46-01 (Expired OAuth Token Cleanup Cron)
 
-Progress: [##########] 100% (Phase 45)
+Progress: [##########] 100% (Phase 46)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 83 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 6)
+- Total plans completed: 84 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7)
 - Total milestones shipped: 7
 
 **By Milestone:**
@@ -52,6 +52,7 @@ Progress: [##########] 100% (Phase 45)
 | Phase 44 P02 | 3min | 2 tasks | 11 files |
 | Phase 45 P01 | 5min | 2 tasks | 4 files |
 | Phase 45 P02 | 3min | 2 tasks | 1 files |
+| Phase 46 P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -60,6 +61,8 @@ Progress: [##########] 100% (Phase 45)
 See PROJECT.md Key Decisions table for full log.
 
 Recent decisions affecting v2.4:
+- Used .collect() for OAuth token cleanup since table is tiny (0-5 rows); no index needed (46-01)
+- try-catch per delete in cron handles concurrent deletion race with getRequestToken (46-01)
 - Used statusResultValidator for all auth-gated extraction queries instead of manual v.union patterns (45-02)
 - Kept computed/aggregate validators inline in queries, not extracted to validators.ts (45-02)
 - getJobInsights job field uses computed subset {id, name} not full document validator (45-02)
@@ -99,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 45-02 (Extraction Query Return Validators)
-Stopped at: Completed 45-02-PLAN.md
+Last activity: 2026-03-03 - Completed 46-01 (Expired OAuth Token Cleanup Cron)
+Stopped at: Completed 46-01-PLAN.md
 Resume file: None

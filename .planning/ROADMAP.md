@@ -118,7 +118,7 @@ Full details: `.planning/milestones/v2.3-ROADMAP.md`
 - [x] **Phase 43: Schema Migration & Quick Wins** - Encrypt and remove deprecated apiKey field, delete test page, fix placeholder email, document debug policy (completed 2026-03-02)
 - [x] **Phase 44: Workflow & Deletion Integrity** - Cancel extraction actually stops processing, fix orphan diffs, surface diff truncation, extend GDPR user cleanup (completed 2026-03-03)
 - [x] **Phase 45: Type Safety Sweep** - Typed extraction validators, typed migration steps, typed review metadata, remove getJobDetails cap (completed 2026-03-03)
-- [ ] **Phase 46: Cron Additions** - Automated cleanup of expired Zotero OAuth tokens
+- [x] **Phase 46: Cron Additions** - Automated cleanup of expired Zotero OAuth tokens (completed 2026-03-03)
 
 Full details: `.planning/milestones/v2.4-ROADMAP.md`
 
@@ -136,7 +136,7 @@ Plans:
 **Goal**: Expired Zotero OAuth tokens are automatically cleaned up on a schedule
 **Depends on**: Phase 44
 **Requirements**: CRON-01
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 - [ ] 46-01-PLAN.md -- Add cleanupExpiredOAuthTokens cron job and deploy
@@ -190,4 +190,4 @@ Plans:
 | 43. Schema Migration & Quick Wins | 2/2 | Complete    | 2026-03-02 | - |
 | 44. Workflow & Deletion Integrity | 2/2 | Complete    | 2026-03-03 | - |
 | 45. Type Safety Sweep | 2/2 | Complete    | 2026-03-03 | - |
-| 46. Cron Additions | v2.4 | 0/TBD | Not started | - |
+| 46. Cron Additions | 1/1 | Complete   | 2026-03-03 | - |
