@@ -1,209 +1,226 @@
 # Project Research Summary
 
-**Project:** OpenAlex Count — v2.4 Concerns Sweep
-**Domain:** Codebase hardening — 13 targeted fixes across security, data integrity, and type safety in a Convex + Next.js academic extraction platform
-**Researched:** 2026-03-02
+**Project:** OpenAlex Count — v3.0 Zero-Any Overhaul
+**Domain:** Codebase hardening — eliminating `as any` casts, XSS vectors, unbounded queries, and ephemeral audit logging from an existing Convex + Next.js academic extraction platform
+**Researched:** 2026-03-03
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The v2.4 Concerns Sweep is a maintenance milestone, not a greenfield build. All 13 items are fixes to existing, deployed code. The research confirms that every fix can be implemented using APIs already available in installed packages — zero new runtime dependencies are required. The existing codebase already contains the patterns needed for each fix: batched self-scheduling cascade deletes, workflow/workpool component APIs, cursor-based pagination, and Convex validator primitives. The work is primarily about correctly wiring together systems that are already present but incompletely connected.
+This is a codebase hardening milestone, not a greenfield feature build. The v3.0 overhaul resolves 12 documented concerns across four categories: type safety (`as any` casts), security (XSS, audit persistence, env validation), performance (unbounded queries, synchronous bundle weight), and correctness (rate limiter exhaustiveness, credit TOCTOU, typed workflow IDs). Every concern has a known fix pattern that uses existing dependencies — **no new npm packages are required beyond a single conditional install** (`exceljs` if the XLSX migration proceeds). The stack is already configured for every capability needed.
 
-The recommended approach is to work in five phases ordered by risk and dependency. Security and compliance concerns come first because they carry the highest harm potential: plaintext API keys in the database and incomplete user data deletion are both live risks with regulatory exposure. Workflow and deletion integrity fixes come second, because the cascade delete pattern underpins several other fixes and must be correct before downstream work builds on it. The type safety sweep (replacing `v.any()` validators) comes third because it is the highest-effort item but lowest urgency — the queries work today, they are just unvalidated. Cron additions and environment polish come last because they are purely additive and low-risk.
+The recommended approach is to resolve concerns in dependency order, moving from cheap isolated type fixes to medium-cost security changes to high-cost architectural changes. The lowest-risk items (Stripe cast fix, rate limiter typing, export/filtering type derivation) can ship independently and immediately. The highest-risk items (library pagination count fix, incremental aggregation) require careful testing against existing Convex behaviors and must not change cursor formats that are persisted in user URLs via nuqs.
 
-The single biggest risk in this milestone is not implementation complexity but deployment ordering. Three concerns require coordinated multi-step deploys where data must be migrated before schema changes are pushed. Skipping the verification step between deploys is the most likely failure mode. The pitfalls research is emphatic: the Zotero `apiKey` field cannot be removed from the schema until a query confirms zero documents still carry the field. Similarly, typed return validators must be deployed one query at a time with monitoring, because a single incorrect validator crashes all callers of that query in production.
+The most significant risk in this milestone is not implementation complexity but subtle behavioral breakage: removing `as any` casts can silently produce `undefined` where values were previously returned (Stripe customer union), changing pagination cursor formats can break bookmarked library URLs, and audit table writes added to hot paths can slow extraction mutations by introducing OCC contention. Every fix requires a test written before the change, covering both the happy path and the previously-hidden failure path that the `as any` was masking.
+
+---
 
 ## Key Findings
 
 ### Recommended Stack
 
-The stack is unchanged. Every API needed for the 13 fixes is already installed and verified against `node_modules` source. `@convex-dev/workflow@0.3.4` exposes `workflow.cancel(ctx, workflowId)` which accepts `RunMutationCtx` — meaning it can be called directly from the existing `cancelExtraction` mutation without converting to an action. `@convex-dev/workpool@0.3.1` exposes `pdfProcessingPool.cancel(ctx, workId)` for per-paper cancellation. Core Convex `v.*` validators, `.paginate()`, and `crons.interval()` are all already in use elsewhere in the codebase and do not need to be introduced.
+The existing stack (Next.js, Convex `^1.31.7`, `@convex-dev/workflow ^0.3.4`, Stripe SDK v20, Zod `^4.3.6`, `convex-test ^0.0.41`) already contains every capability needed to resolve all 12 concerns. The only conditional addition is `exceljs@4.4.0` to replace the unmaintained `xlsx@0.18.5` package. The XSS fix requires zero new dependencies (React-native text splitting instead of DOMPurify).
 
-The one optional addition (`@convex-dev/migrations`) was evaluated and explicitly rejected. The `zoteroConnections` table is small (one row per user with Zotero connected), making the component's progress-tracking and resumability overkill. A hand-rolled batched mutation following the existing `deleteExtractionInternal` self-scheduling pattern achieves the same result without adding a permanent component dependency to `convex.config.ts`.
+**Core technologies for v3.0 fixes:**
+- `exceljs@4.4.0` (conditional install): Actively maintained XLSX library; replaces `xlsx` which has known prototype pollution CVEs and is stagnant. Uses dynamic import to avoid the ~500KB static bundle weight.
+- `paginationOptsValidator` from `convex ^1.31.7` (already installed): Apply to `getLibraryCount` unbounded `.collect()` — the main browse/search pagination was already migrated in a prior phase; only the count query and sparse-page UI handling remain.
+- `vWorkflowId` from `@convex-dev/workflow ^0.3.4` (already installed): Replaces `workflowId as any` cast in extraction cancel path; requires verifying the component's exported type before changing schema.
+- Zod `^4.3.6` (already installed): Env var validation schema for Convex-side startup validation; use `.issues` not `.errors` for error access in v4 API.
+- `convex-test ^0.0.41` (already installed): Sequential concurrency invariant tests; true OCC simulation is not possible in the test mock — document this and test the invariant instead.
 
-**Core technologies (no changes from current):**
-- `convex@1.32.0`: All validator primitives, cron APIs, pagination APIs available — no upgrade needed
-- `@convex-dev/workflow@0.3.4`: `cancel()` API verified in installed source at `node_modules/@convex-dev/workflow/src/client/index.ts` line 216
-- `@convex-dev/workpool@0.3.1`: `cancel()` per workId, `cancelAll()` global — both verified in installed source
-- `convex-helpers@0.1.111`: Rate limiting unchanged; no v2.4 interaction
+### Expected Features (Fix Scope)
 
-### Expected Features
+**Must fix — active risk or broken at scale (P1):**
+- XSS-safe text highlighting — `dangerouslySetInnerHTML` with unsanitized paper titles and AI answers is an active XSS vector; replace with React-native `HighlightedText` component
+- Startup env var validation — silent misconfiguration on deployment; add cron-based validation calling existing `assertPlanPriceConfig()` plus a new encryption key check
+- Rate limiter exhaustiveness — `name as any` in `consume` mutation allows any string, bypassing rate limit enforcement; replace with runtime validation against `Object.keys(rateLimitConfig)`
+- Real library pagination (count fix) — `getLibraryCount` uses unbounded `.collect()`; the browse/search queries were already paginated in a prior phase
 
-This milestone is entirely composed of fixes, not new features. The framing from the features research is "what does correctly fixed look like" for each of the 13 concerns.
+**Should fix — accumulating debt or reliability risk (P2):**
+- Persistent audit table — `console.log` audit events are ephemeral and non-queryable; add `auditLogs` table with `writeAuditLog` internalMutation; audit only security-sensitive callers, not extraction hot paths
+- Dynamic XLSX import + exceljs migration — remove ~500KB from initial bundle and replace CVE-exposed `xlsx` with actively maintained `exceljs`
+- Subscription cron batching — 1,000 subscriptions processed per cron without circuit-breaking risks Stripe rate limit exhaustion; adopt self-scheduling batch pattern already used by `cleanupDeletedUsers`
+- Typed `as any` casts in export/filtering — derive `ExtractionResultWithReview` type from existing validator; zero runtime change, pure compile-time safety
+- Stripe customer type cast fix — direct pattern transplant from `convex/http.ts` to `maintenance/internal.ts`; requires test for expanded customer object path
 
-**Must fix — P1 (broken behavior, security risk, compliance gap):**
-- Cancel extraction actually stops workflow and workpool — currently only writes DB status, workflow continues burning credits
-- Migrate deprecated plaintext `apiKey` field to `encryptedApiKey` and remove fallback code — live security risk
-- Extend user data cleanup to cover extraction jobs and Zotero connections — GDPR compliance gap
-- Remove 100-paper cap in `getJobDetails` — broken UI for any extraction job with >100 papers
+**Defer or conditional (P3):**
+- Incremental extraction report aggregation — high complexity architectural change; add `extractionJobStats` table and incremental upsert in workpool; prerequisite for lifting the 500-paper cap but optional for v3.0 completion
+- Typed workflow cancel IDs — requires verifying `@convex-dev/workflow` exported type before changing schema; treat as a research item first
+- Credit TOCTOU mitigation — precautionary; Convex OCC already prevents negative balances; add concurrency invariant test, implement workpool serialization only if negative balance is observed in production
 
-**Should fix — P2 (silent data issues, quality improvements):**
-- Diff truncation notification (`isTruncated` / `totalChanges` fields) — silent data loss today
-- Typed return validators replacing `v.any()` in 7 extraction queries — runtime type enforcement
-- Orphan diff cleanup when baseline job is deleted — data hygiene, accumulating orphans
-- Cron cleanup for expired Zotero OAuth tokens — table bloat, abandoned sessions
-- Replace placeholder OpenAlex User-Agent email — rate limit risk
-
-**Nice to fix — P3 (typing, documentation, hygiene):**
-- Type `migrateSearchHistoryState` migration steps
-- Type `attachReviewMetadata` `any` casts
-- Document debug endpoint production policy
-- Remove `/test-sidebar` test page
-
-**Anti-features to avoid:**
-- Removing `apiKey` field before completing data migration — will break schema push
-- Using `pdfProcessingPool.cancelAll()` instead of per-paper cancel — cancels all users' jobs
-- Replacing all `v.any()` validators in a single deploy — one wrong validator crashes all consumers
-- Hard-deleting all user data including financial records — loses billing audit trail
+**Anti-features (avoid):**
+- DOMPurify for XSS highlighting — adds bundle weight and DOM requirement; React text splitting is strictly simpler and correct for this use case
+- `assertPlanPriceConfig()` at module scope — blocks ALL functions in the module if env var missing; always call inside handlers, never at module load time
+- Per-user workpool for all credit operations — introduces deadlock potential and serializes hot extraction paths unnecessarily
+- Offset-based pagination — Convex does not natively support it; cursor-based pagination is already implemented for browse/search
 
 ### Architecture Approach
 
-The fixes integrate into an existing, well-structured Convex + Next.js architecture. The backend is organized into domain modules (`extraction/`, `zotero/`, `maintenance/`) with a clear separation between public API layer (queries/mutations), workflow orchestration, and workpool action execution. Every fix has an identified home: no new architectural patterns are introduced. Two new files will be created (`convex/extraction/validators.ts` for shared typed validators, `convex/zotero/migrations.ts` for the one-time apiKey migration), and one file will be deleted (`app/test-sidebar/page.tsx`). All other changes are modifications to existing files at specific known line numbers.
+The v3.0 overhaul makes surgical modifications to five architectural domains without restructuring the existing Next.js + Convex layering. New schema components are limited to: an `auditLogs` table, a `logAuditEvent` internalMutation, and optionally an `extractionJobStats` table (for incremental aggregation). All other changes are in-place replacements within existing files. The client-facing library UI requires one targeted change: auto-calling `loadMore()` when a sparse page is returned from the collection-filtered query, which is a known behavior of the `convex-helpers` `filter()` + `.paginate()` pattern.
 
-**Major components and v2.4 touch points:**
-1. `convex/extraction/mutations.ts` — `cancelExtraction` (add workflow/workpool stop), `deleteExtractionInternal` (add Step 8b for baseline diffs), `runDiff` (add truncation metadata)
-2. `convex/extraction/queries.ts` — replace `v.any()` in 7 return validators, fix `attachReviewMetadata` types, remove `.take(100)` cap
-3. `convex/maintenance/mutations.ts` — extend `cleanupDeletedUsers` to cascade-delete extraction data and Zotero connections
-4. `convex/crons.ts` — add Zotero OAuth token cleanup cron
-5. `convex/schema.ts` — remove deprecated `apiKey` field (after migration), add `truncatedTotal` to `extractionRunDiffs`
-6. `convex/extraction/validators.ts` (NEW) — shared typed validator objects for extraction document shapes
-
-**Key constraint on workpool cancellation:** The `pdfProcessingPool` is a shared singleton. `cancelAll()` would cancel pending work across all users' extraction jobs. The correct implementation queries the cancelled job's papers, reads each paper's `workId` via the existing `by_work` index, and calls `pdfProcessingPool.cancel(ctx, workId)` individually. This is bounded by paper count (~200 max) and correct for a multi-tenant system.
+**Major components modified:**
+1. `convex/lib/crypto.ts` + `convex/lib/debug_gate.ts` — add optional `auditWriter` callback for persistent audit logging; keep `console.log` as fallback for hot-path callers
+2. `convex/library/queries.ts` — fix `getLibraryCount` unbounded `.collect()` to `.take(10_000)` bound; sparse-page UI side effect handled client-side
+3. `convex/extraction/workpoolActions.ts` + `mutations.ts` — add incremental stats upsert on paper completion (if Domain 3 is in scope)
+4. `lib/extraction/export.ts` + `export-dialog.tsx` — swap static `xlsx` import for dynamic `exceljs` import inside handler
+5. `convex/schema.ts` — add `auditLogs` table; optionally add `extractionJobStats` table
+6. `components/extraction/results-views/table-view.tsx` — replace all three `dangerouslySetInnerHTML` call sites with `<HighlightedText>` React component
 
 ### Critical Pitfalls
 
-1. **Schema field removal before data migration** — Convex rejects schema pushes if any document still has the field populated. The three-deploy sequence is mandatory: (1) run migration action to encrypt all plaintext keys and set `apiKey: undefined`, (2) verify zero remaining docs with `apiKey !== undefined`, (3) remove field from schema. Skipping the verification step is the most common failure mode.
+1. **`as any` removal silently produces `undefined` for Stripe customer union** — `fresh.customer` is a string by default (not an expanded object); any narrowing that throws for the string case will crash the maintenance cron for ALL subscriptions. Fix: `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id`. Write a test for BOTH branches before deploying.
 
-2. **Cancel-then-still-deduct-credits** — `workflow.cancel()` prevents new steps from starting but in-progress `step.runAction()` calls finish. Workpool cancellation does not stop running work. Credits will be deducted for papers mid-processing at cancel time. Prevention: add a status-check guard inside the workpool action handler that re-reads job status and returns early (without calling `deductCredits`) if the job is "cancelled". The guard must be placed BEFORE the credit deduction call, not just at function entry.
+2. **Library cursor format invalidation breaks bookmarked URLs** — the main browse/search queries already use `.paginate()`; only `getLibraryCount` still uses `.collect()`. DO NOT change the cursor format of existing paginated queries. Changing from `convex-helpers filter()` cursors to index-based cursors invalidates user-bookmarked URLs and requires a cursor migration handler (catch parse error, reset to page 1 via nuqs).
 
-3. **Typed validator runtime crash on historical data** — Convex return validators enforce at runtime. A validator using strict `v.object()` that does not match the actual shape of old database documents will crash the query for ALL users. Prevention: audit actual stored data shapes before writing validators, use `v.optional()` for any field that might be absent on older documents, and deploy one query at a time with 30-minute monitoring between deploys.
+3. **ExcelJS API differences produce silently corrupt XLSX files** — ExcelJS uses a builder pattern incompatible with `xlsx`'s array-of-arrays API. A successful compile does not mean a valid Excel file. Write a round-trip test (generate, parse back, assert header and row counts) before shipping. Start with dynamic import of `xlsx` first; migrate to `exceljs` API in a second step.
 
-4. **Hard-delete user data including billing audit trail** — The existing `cleanupDeletedUsers` intentionally preserves credits and subscriptions "for audit." Extending the cleanup to delete extraction data must not cascade into `creditTransactions`. Cascade-delete extraction content, delete Zotero connections, but preserve financial records with anonymized user references.
+4. **Audit table writes in extraction hot paths cause OCC contention** — if `decryptApiKey` is called inside extraction loops and each call inserts an audit record, a 500-paper job creates 500 DB writes in one mutation context. Keep `console.log` for hot-path callers; persist to DB only for user-facing security-sensitive operations (API key save, debug gate access).
 
-5. **User record deleted before cascade completes** — The cascade delete for extraction data is async (scheduler-based, 9 steps). If the user record is deleted before cascade scheduling completes, orphaned extraction data will never be cleaned (the `userId` index no longer matches). Prevention: schedule all cascade deletes first, delete Zotero connections, then delete the user record last within the same mutation.
+5. **Env var validation at module scope blocks non-billing functions** — calling `assertPlanPriceConfig()` at the top level of `convex/lib/constants.ts` will block ALL functions that import that module when Stripe env vars are missing (including subscription status queries). Always call validation inside the specific handler that uses the env var, never at module load time.
+
+---
 
 ## Implications for Roadmap
 
-Based on combined research, five phases are suggested. The ordering follows the dependency chain identified in both FEATURES.md and PITFALLS.md and matches the architectural build order from ARCHITECTURE.md.
+Based on dependencies, risk level, and test requirements, the recommended phase structure is:
 
-### Phase 1: Safe Schema and Quick Wins
+### Phase 1: Type Safety Sweep
 
-**Rationale:** The `apiKey` migration must happen first because it blocks all other schema work — you cannot push any schema changes while the `apiKey` field is still populated. Quick wins (test page removal, OpenAlex email fix) ship alongside to reduce the concern count early. None of these touch extraction pipeline logic, so there is no risk of affecting active users' jobs.
+**Rationale:** These are the cheapest changes with the highest compile-time safety payoff and zero runtime risk if approached with test-first discipline. They are independent of each other and of all other phases — ideal to ship first to build confidence.
 
-**Delivers:** Plaintext API keys encrypted and removed from schema, dead test route deleted, OpenAlex polite-pool email corrected. Enables subsequent schema changes in later phases.
+**Delivers:** Elimination of `as any` casts from non-architectural paths; TypeScript catches field renames and schema changes from this point forward.
 
-**Addresses:** Migrate `apiKey` (security P1), remove test page (hygiene P3), fix placeholder email (rate limit P2)
+**Addresses:**
+- Typed `as any` casts in `lib/extraction/export.ts` and `filtering.ts` (derive `ExtractionResultWithReview` from existing `extractionResultWithReviewValidator`)
+- Stripe customer type cast fix in `convex/maintenance/internal.ts` (pattern transplant from `convex/http.ts`)
+- Rate limiter exhaustiveness in `consume` mutation (runtime validation against `Object.keys(rateLimitConfig)`)
+- Typed workflow cancel IDs (research `@convex-dev/workflow` type first, then schema fix or intermediate guard)
 
-**Avoids:** Pitfall 1 (schema field removal ordering — three deploys required; verify zero remaining plaintext keys before schema push)
+**Avoids:** Write tests for both union branches of the Stripe customer fix before deploying. Research `@convex-dev/workflow` exported types before touching schema — do not cast to `Id<"_scheduled_functions">` without verification.
 
-**Deployment sequence:** Three sequential deploys required for apiKey migration. All other Phase 1 items can land in the first deploy.
+**Research flag:** Standard type guard narrowing patterns — skip research-phase. Workflow ID type requires one focused lookup of `@convex-dev/workflow` type definitions before writing any code.
 
-### Phase 2: Workflow and Deletion Integrity
+---
 
-**Rationale:** Workflow cancellation and cascade delete fixes are grouped together because they share the same architectural layer (mutation handlers, workpool interactions) and the cascade delete pattern must be correct before Phase 4 user cleanup extends it. The orphan diff fix extends the cascade delete and is a natural pairing. User data cleanup also lands here because it reuses `deleteExtractionInternal` directly.
+### Phase 2: Security and Audit
 
-**Delivers:** Cancel extraction actually stops processing and protects credits. Deleted baseline jobs no longer leave orphaned diff rows. Deleted users' extraction data is scheduled for cascade deletion during the daily cron. Diff truncation is surfaced to the UI with `isTruncated` and `totalChanges` fields.
+**Rationale:** These require new infrastructure (audit table schema change) or cross-cutting call site updates (XSS fix touches three render sites, env validation requires a new cron). Grouped together because they share a schema deploy and have a related security scope.
 
-**Addresses:** Cancel extraction (credit protection P1), orphan diff cleanup (data hygiene P2), user data cleanup (GDPR P1), diff truncation notification (silent data loss P2)
+**Delivers:** XSS-safe highlighting, startup misconfiguration detection, queryable audit history for security-sensitive operations.
 
-**Avoids:** Pitfall 2 (credit leak after cancel — requires status guard before `deductCredits` in workpool action), Pitfall 4 (billing audit trail — do not delete `creditTransactions`), Pitfall 5 (user record must be deleted last in cleanup mutation), Pitfall 7 (diff truncation fix must add fields as `v.optional()` for backward compatibility)
+**Addresses:**
+- XSS-safe `HighlightedText` React component (replace all three `dangerouslySetInnerHTML` sites in `table-view.tsx`)
+- Startup env var validation (cron calls `assertPlanPriceConfig()` plus encryption key check — never at module scope)
+- Persistent audit table (`auditLogs` schema, `writeAuditLog` internalMutation, optional writer pattern in `crypto.ts` via callback, not signature change)
 
-**Uses:** `workflow.cancel()` and `pdfProcessingPool.cancel()` per-paper (both already installed), `by_baseline` index (already exists in schema), `by_work` index (already exists in schema)
+**Avoids:** XSS test must verify HTML characters in both `text` and `query` parameters; highlighting must remain case-insensitive with regex-escaped query. Env validation must call inside handlers. Audit writes must NOT enter extraction loops — define audit scope (user-facing security operations only) before writing code.
 
-### Phase 3: Type Safety Sweep
+**Research flag:** Standard well-documented patterns — skip research-phase for XSS React component and audit table. Env validation placement has a Convex-specific pitfall (module-scope blocking) that is documented in PITFALLS.md — consult before implementation.
 
-**Rationale:** The type safety work is the highest-effort item (7 queries, shared validator extraction) but lowest urgency — the queries work today. It belongs after Phase 2 because the shared `validators.ts` file benefits from having Phase 2's query logic already correct. This phase requires careful incremental deployment.
+---
 
-**Delivers:** 7 extraction queries with typed `returns:` validators replacing `v.any()`. New `convex/extraction/validators.ts` with shared validator objects. Typed `migrateSearchHistoryState` migration steps. Typed `attachReviewMetadata`. `getJobDetails` 100-paper cap removed (replace `.take(100)` with `.collect()` given the enforced ~200-paper job cap).
+### Phase 3: Performance Fixes
 
-**Addresses:** Typed return validators (DX + safety P2), type `attachReviewMetadata` (DX P3), type migration steps (future bug prevention P3), `getJobDetails` pagination fix (broken UI P1)
+**Rationale:** The remaining `.collect()` in `getLibraryCount` is a correctness-at-scale issue. Subscription cron batching and dynamic XLSX import are reliability and bundle improvements. Grouped together as infrastructure-touching changes that are each independent of one another.
 
-**Avoids:** Pitfall 3 (validator runtime crash — deploy one query at a time with monitoring, use `v.optional()` for any field absent on older documents), Pitfall 6 (pagination shape change — match current return shape exactly before any cleanup)
+**Delivers:** Bounded library item count query, XLSX bundle removed from initial page load (~500KB reduction), Stripe rate limit risk eliminated from subscription cron.
 
-**Deployment constraint:** Each query's validator must be deployed independently with a monitoring window. Do not batch all 7 into one PR merge.
+**Addresses:**
+- `getLibraryCount` unbounded `.collect()` fix (`.take(10_000)` bound)
+- Dynamic XLSX import + `exceljs` migration (remove `xlsx`, install `exceljs`, rewrite export API with dynamic import inside handler)
+- Subscription cron batching with circuit-breaker (cursor-based self-scheduling, 45s time budget, parallel Stripe calls within each batch)
 
-### Phase 4: Cron Additions and Concurrent Deletion Guards
+**Avoids:** ExcelJS migration requires a round-trip XLSX test before shipping. Ship the dynamic import of `xlsx` first as a separate step to confirm bundle size reduction before committing to full API rewrite. The subscription batch pattern has a direct codebase analog (`cleanupDeletedUsers`) — read that pattern first.
 
-**Rationale:** Cron additions are purely additive and do not affect existing jobs. They land after Phase 2's deletion patterns are stable, because the Zotero OAuth token cleanup cron must correctly handle already-deleted tokens (wrap individual deletes in try-catch per the concurrency pitfall).
+**Research flag:** ExcelJS API differences from `xlsx` are non-trivial — dedicate time to reading ExcelJS docs for workbook/worksheet/row construction before writing code. This phase benefits from a brief research-phase for the ExcelJS migration step.
 
-**Delivers:** Hourly Zotero OAuth token cleanup cron. Concurrency guard in `cleanupDeletedUsers` (check user still exists and is still in "deleted" state before processing each batch). New `cleanupExpiredOAuthTokens` internal mutation in `convex/zotero/mutations.ts`.
+---
 
-**Addresses:** Cron OAuth token cleanup (table bloat P2), concurrent deletion safety (Pitfall 8)
+### Phase 4: Incremental Extraction Aggregation (Conditional)
 
-**Avoids:** Pitfall 8 (cron concurrent with manual delete — wrap `ctx.db.delete()` in try-catch for already-deleted tokens; check user state before cascade scheduling)
+**Rationale:** The highest-complexity change in the overhaul. Requires a new table, a modified write path in workpool workers on every paper completion, and a modified read path in reporting. It is the prerequisite for lifting the 500-paper cap in a future milestone. Deferred to its own phase because it can be implemented independently and carries the highest regression risk to the extraction pipeline.
 
-### Phase 5: Environment and Polish
+**Delivers:** Extraction report generation decoupled from loading all result records; O(questions) instead of O(papers × questions) at report time; `MAX_PAPERS_PER_JOB` cap can be lifted in a subsequent milestone once the incremental path is validated end-to-end.
 
-**Rationale:** Feature flag naming and debug endpoint documentation require coordinated environment variable changes across dev, staging, and production Convex dashboards. This is low risk but must be the final phase to avoid disrupting active fixes in earlier phases.
+**Addresses:**
+- Incremental extraction report aggregation (`extractionJobStats` table, upsert in `workpoolActions.ts`, backfill fallback for existing jobs, cascade delete inclusion)
 
-**Delivers:** Documented debug endpoint production policy with inline JSDoc and deployment checklist. `ENABLE_PUBLIC_DEBUG_FUNCTIONS` policy enforced and confirmed unset in production.
+**Avoids:** Upsert must be atomic (Convex OCC handles this). Cascade delete must include `extractionJobStats` records. Existing jobs need a backfill path (first report request fans out, then persists stats). Do NOT remove the 500-paper cap until the incremental path is tested in production with real jobs.
 
-**Addresses:** Debug endpoint documentation (operational P3)
+**Research flag:** This phase warrants `/gsd:research-phase` during planning to validate the upsert pattern, confirm OCC handles concurrent paper completions correctly, and design the backfill strategy for existing completed jobs.
 
-**Avoids:** Pitfall 5 (environment variable changes require coordinated dashboard updates — verify in all environments before closing concern)
+---
+
+### Phase 5: Credit Concurrency Validation (Conditional)
+
+**Rationale:** The credit TOCTOU concern is documented but no negative-balance incident has been observed. Convex OCC already prevents negative balances. This phase adds the missing concurrency invariant test and closes the concern based on test evidence rather than assumption.
+
+**Delivers:** Confirmed OCC protection for credit deduction; per-user workpool mitigation implemented only if test reveals an actual gap (negative balance produced).
+
+**Addresses:**
+- Credit TOCTOU mitigation (concurrency invariant test first; workpool implementation only if negative balance is observed in test output)
+
+**Avoids:** Do NOT implement per-user workpool unless the test confirms OCC is insufficient — it introduces deadlock potential for nested workpool calls and serializes hot extraction paths. The test must assert no negative balance, not merely that two concurrent requests are processed.
+
+**Research flag:** Standard concurrency testing pattern in `convex-test` — skip research-phase. This phase can run in parallel with any other phase since it is test-only until a gap is confirmed.
+
+---
 
 ### Phase Ordering Rationale
 
-- **Schema migration first** because Convex rejects schema changes while deprecated field data exists; this gates all other schema work in the milestone
-- **Workflow + deletion second** because the cascade delete pattern is a shared foundation that Phase 4 (user cleanup cron) extends; it must be correct first
-- **Type safety third** because it is the highest-effort item, is independently deployable per query, and the typed validators benefit from having Phase 2's query logic already correct
-- **Cron additions fourth** because they are purely additive and depend on Phase 2's deletion patterns being verified stable
-- **Environment changes last** because they require cross-system coordination and should not interleave with active code changes
+- Phase 1 is first because type fixes are isolated, low-risk, and immediately verifiable — they build implementation confidence before touching infrastructure.
+- Phase 2 follows because the security fixes require a schema deploy (audit table) and cross-cutting call site changes that are easier to reason about after the type fixes are clean.
+- Phase 3 groups the remaining performance fixes that have external dependency changes (`exceljs`) and cron restructuring — isolated from core extraction path changes.
+- Phase 4 is last among code changes because it modifies the write path of every active extraction job — highest regression risk, requires the most careful testing.
+- Phase 5 is conditional and can run in parallel with any other phase since it is test-only until a gap is confirmed.
 
-### Research Flags
-
-Phases needing careful deployment attention (not more research, but deliberate execution):
-
-- **Phase 1:** Three-deploy sequence for `apiKey` migration requires explicit verification between deploys. Do not automate away the verification query — manually confirm zero rows with `apiKey !== undefined` before pushing schema change.
-- **Phase 2:** Workpool per-paper cancellation requires reading each paper's `workId` from the DB in the mutation; performance is bounded by paper count (~200 max) but should be confirmed in testing.
-- **Phase 3:** Each query validator deployment needs a monitoring window in Convex logs before proceeding to the next query. Historical data shapes must be audited before writing validators.
-
-Phases with well-documented, low-risk patterns (no additional research needed):
-
-- **Phase 4:** Cron additions follow the exact existing `crons.interval()` pattern used 4 times in `convex/crons.ts`. No new concepts introduced.
-- **Phase 5:** Environment variable changes are operational, not code changes.
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All APIs verified from installed `node_modules` source code, not just documentation. No new dependencies needed. |
-| Features | HIGH | All 13 concerns documented in existing `CONCERNS.md` with exact file locations and line numbers. Priority tiers based on active risk assessment. |
-| Architecture | HIGH | All integration points verified against actual codebase files. Exact file paths and line numbers cited throughout. No speculative patterns. |
-| Pitfalls | HIGH | Pitfalls verified against Convex official docs, component documentation, and direct codebase inspection. Recovery strategies documented for all critical pitfalls. |
+| Stack | HIGH | All fixes use already-installed dependencies. Only ExcelJS is a conditional new install. ESM compatibility verified for Next.js route handler context. ExcelJS ESM issue is a bundler artifact — not applicable to Next.js Node.js API routes. |
+| Features | HIGH | 12 concerns fully enumerated in CONCERNS.md with exact file/line citations. Fix scope is tightly bounded with no ambiguity about scope. BILL-02 explicitly out of scope. |
+| Architecture | HIGH | All integration points verified against actual codebase files. Critical discovery: browse/search library pagination was already migrated in a prior phase — only `getLibraryCount` still uses `.collect()`. |
+| Pitfalls | HIGH | Critical pitfalls derived from direct codebase inspection plus prior research (PITFALLS.md v2.3 and v2.4 are referenced — Pitfalls 5 and 6 from v2.3 remain directly applicable to env validation in v3.0). |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Credit reconciliation policy for cancelled jobs:** The research identifies that credits will be deducted for in-progress papers at cancel time and suggests a post-cancel reconciliation option. The decision of whether to implement reconciliation vs. document it as expected behavior ("credits for in-progress work at cancel time are non-refundable") is a product decision not resolved by research. Needs a decision before Phase 2 implementation.
+- **`@convex-dev/workflow` ID type for `workflow.cancel()`:** The exact TypeScript type returned by `workflow.start()` must be read from the component's type definitions before changing the `extractionJobs` schema or removing the cast. If the type is a plain `string`, the fix is simpler than a schema migration. Treat Phase 1's workflow ID item as a research-first task.
 
-- **Diff cap size:** The current 1,000-entry cap is conservative and research notes it could be raised to 5,000-10,000 given Convex's 1MB document limit. The right value depends on typical diff sizes in production. Worth checking actual diff document sizes in the Convex dashboard before deciding on the new cap in Phase 2.
+- **Sparse-page UI behavior for collection-filtered library:** The `convex-helpers` `filter()` + `.paginate()` pattern produces sparse pages when the filter is selective. The library UI must handle `page.length < numItems && !isDone` by calling `loadMore()` automatically. The current behavior should be observed in the running app before assuming code changes are needed.
 
-- **`getJobDetails` collect vs paginate:** Research recommends `.collect()` over full pagination because extraction jobs are capped at ~200 papers. This assumption should be verified — if the 200-paper cap is enforced hard elsewhere in the pipeline, `.collect()` is safe. If the cap is not hard-enforced, full pagination is the safer choice.
+- **ExcelJS API parity for extraction data shapes:** The `formatAnswerForExcel()` function returns `any` and the export handles booleans, nulls, arrays, and strings. ExcelJS `CellValue` types must be verified compatible with each answer shape before migration is complete. A round-trip test is mandatory.
+
+- **BILL-02 (upgrade metadata Stripe to Convex):** Listed in CONCERNS.md as tech debt but explicitly out of scope for v3.0. Do not add to any phase — verify migration completeness separately before implementing in a future milestone.
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `node_modules/@convex-dev/workflow/src/client/index.ts` line 216 — `workflow.cancel()` API signature
-- `node_modules/@convex-dev/workpool/src/client/index.ts` line 249 — `pdfProcessingPool.cancelAll()` API
-- `node_modules/@convex-dev/workpool/dist/client/index.d.ts` lines 158-166 — `cancel()` and `cancelAll()` types
-- `node_modules/@convex-dev/workflow/src/types.ts` line 15 — `WorkflowId` type
-- [Convex When to Use Return Validators](https://stack.convex.dev/when-to-and-when-not-to-use-return-validators) — runtime enforcement, extra fields fail validation
-- [Convex Workflow Component](https://www.convex.dev/components/workflow) — `cancel()` does not stop in-progress actions
-- [Convex Workpool Component](https://www.convex.dev/components/workpool) — cancellation does not stop in-progress work
-- [Convex Cron Jobs Documentation](https://docs.convex.dev/scheduling/cron-jobs) — at-most-one cron instance semantics
-- [Convex Schemas Documentation](https://docs.convex.dev/database/schemas) — validation at deploy time
+- Direct codebase inspection: `convex/lib/rateLimit.ts:52`, `convex/maintenance/internal.ts:103`, `convex/library/queries.ts:243-254`, `convex/extraction/mutations.ts:263`, `convex/lib/crypto.ts:81-86`, `components/extraction/results-views/table-view.tsx:162-165/378-388/450-451`, `lib/extraction/export.ts:2`, `lib/extraction/filtering.ts:48/51`
+- [Convex Pagination Docs](https://docs.convex.dev/database/pagination) — `paginationOptsValidator`, `.paginate()`, Cursor type
+- [Convex OCC Docs](https://docs.convex.dev/database/advanced/occ) — serializability guarantees, automatic retry
+- [Convex Transaction Limits](https://docs.convex.dev/production/state/limits) — 16,000 writes per transaction limit
+- [ExcelJS GitHub Releases](https://github.com/exceljs/exceljs/releases) — v4.4.0 (October 2024), CJS-only internals
+- [ExcelJS ESM Discussion #2853](https://github.com/exceljs/exceljs/discussions/2853) — CJS dynamic require issue in bundled ESM; not applicable to Next.js Node.js route handler context
+- [Stripe SDK issue #1556](https://github.com/stripe/stripe-node/issues/1556) — `typeof x === 'string'` is the official workaround for the customer union type; conditional generics explicitly declined by maintainers
+- [@convex-dev/workflow npm](https://www.npmjs.com/package/@convex-dev/workflow) — v0.3.4, `vWorkflowId` exported; v0.2.7 added `WorkflowId` type
+- [Zod v4 Changelog](https://zod.dev/v4/changelog) — `.issues` not `.errors`; `.parse()` and `.safeParse()` unchanged
 
 ### Secondary (MEDIUM confidence)
-- [Convex Intro to Migrations](https://stack.convex.dev/intro-to-migrations) — expand-contract pattern for field removal (cross-referenced with installed code)
-- [Convex Lightweight Zero-Downtime Migrations](https://stack.convex.dev/lightweight-zero-downtime-migrations) — migration ordering
-- [GDPR Right to Erasure](https://www.reform.app/blog/right-to-erasure-gdpr-compliance-steps) — audit trail preservation requirements
-- [GDPR Data Retention Best Practices](https://usercentrics.com/knowledge-hub/gdpr-data-retention/) — financial records exemption from deletion
+- [Convex Stack: Take Control of Pagination](https://stack.convex.dev/pagination) — `getPage` helper; `convex-helpers` sparse page behavior
+- Prior research: `.planning/research/FEATURES_v2.3_HARDENING.md`, `.planning/research/PITFALLS_v2.4_CONCERNS_SWEEP.md` — scheduler batching patterns and env validation pitfalls remain directly applicable
+- [@t3-oss/env-nextjs docs](https://env.t3.gg/docs/introduction) — evaluated and rejected; does not cover Convex runtime env vars
 
 ### Tertiary (LOW confidence)
-- [Zero-downtime database migrations](https://drcodes.com/posts/zero-downtime-database-migrations-essential-patterns) — expand-contract pattern context
+- `convex-helpers` GitHub issue #864 — sparse page behavior with `filter().paginate()`; workaround is UI-side `loadMore()` on short pages
 
 ---
-*Research completed: 2026-03-02*
+
+*Research completed: 2026-03-03*
 *Ready for roadmap: yes*

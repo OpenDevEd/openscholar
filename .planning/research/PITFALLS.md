@@ -1,501 +1,402 @@
-# Domain Pitfalls: Codebase Hardening Sweep
+# Pitfalls Research
 
-**Domain:** Hardening an existing Convex + Next.js production system
-**Milestone:** v2.3 Codebase Hardening
-**Researched:** 2026-03-02
+**Domain:** v3.0 Zero-Any Overhaul — adding zero-any enforcement, pagination, XSS fixes, audit tables, and env validation to an existing Convex + Next.js + Stripe app
+**Researched:** 2026-03-03
+**Confidence:** HIGH (directly verified against codebase; see file citations)
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause production breakage, data loss, or security regressions.
+---
+
+### Pitfall 1: `as any` Removal Silently Breaks Runtime Behavior When Types Are Wrong
+
+**What goes wrong:**
+Replacing `as any` with a typed pattern compiles cleanly but produces a different runtime value. The clearest example is `(fresh.customer as any)?.id` in `convex/maintenance/internal.ts:103`. The typed replacement uses `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id`. If the same pattern exists elsewhere in the codebase using a DIFFERENT field name or a different union shape, copying the pattern verbatim produces `undefined` silently — no compile error, no runtime throw, just a missing value that causes the downstream `syncSubscription` call to be skipped.
+
+**Why it happens:**
+Developers treat `as any` removals as mechanical find-replace work. They apply a pattern that worked for one union type to a different union type without verifying the actual runtime shape. Stripe's SDK uses `string | Stripe.Customer | Stripe.DeletedCustomer` for `customer`, but other fields use different union shapes. The typed pattern must be verified per-field, not copied wholesale.
+
+**How to avoid:**
+1. Before removing any `as any` cast, read the Stripe SDK type definition for that specific field (not the general "how to handle union types" pattern).
+2. Add a unit test that asserts the correct value is extracted from BOTH union branches (string form AND expanded object form) before removing the cast.
+3. Verify the existing test suite covers the expanded-customer path in `checkSubscriptionStatus` — it does not (CONCERNS.md confirms no test for expanded customer objects in that path).
+4. Write the test first, watch it fail with the old `as any`, ensure it passes with the typed replacement.
+
+**Warning signs:**
+- Subscription status corrections silently skip when Stripe returns an expanded customer object.
+- The `stripeCustomerId` local variable is `undefined` in logs but no error is thrown.
+- OCC conflicts do not appear (no writes happening) but subscription divergence persists.
+
+**Phase to address:** The type-safety sweep phase. Address `convex/maintenance/internal.ts` last in that phase, after tests are in place for the expanded-customer path.
 
 ---
 
-### Pitfall 1: Type Safety Sweep Breaks Runtime Behavior
+### Pitfall 2: `convex-helpers` `filter().paginate()` Breaks Existing nuqs Cursor State
 
-**What goes wrong:** Replacing `ctx: any` with `MutationCtx`/`QueryCtx` causes compile-time errors that developers "fix" by changing the code logic rather than just the types. The existing runtime behavior worked; the types were wrong, not the logic. Changing logic to satisfy the type checker introduces regressions in code paths that were passing all tests.
+**What goes wrong:**
+`convex/library/queries.ts` already uses `filter(q, ...).paginate(args.paginationOpts)` (lines 69–80 and 137–148). If a phase "migrates library queries to pagination" without realizing this is already done, it will attempt to add pagination a second time — or worse, replace the working `filter().paginate()` pattern with a new approach that invalidates existing URL cursor state stored via nuqs.
 
-**Why it happens:** When you add proper types to `(q: any) => q.eq("jobId", jobId)`, the compiler may reveal that an index name is wrong or a field name is misspelled. The temptation is to "fix" the index/field name to match the type, but the runtime was already working because Convex uses string-based index resolution. The misspelled name may actually be correct in the database, just not matching the TypeScript type.
+The real risk is subtler: the `convex-helpers` `filter()` helper performs post-fetch filtering, meaning it fetches potentially many more documents than the requested page size to find enough matching items. If pagination is "improved" by moving filters into the index query, the cursor values change format (Convex index-based cursors vs. filter-helper cursors are not interchangeable). Any user with a bookmarked URL or a browser history entry containing an old cursor will get a runtime error when the cursor cannot be decoded.
 
-**Consequences:**
-- Queries silently return empty results (wrong index name after "fixing")
-- Mutations write to wrong fields (renamed to satisfy types)
-- Tests pass locally because they mock the DB layer, but production breaks
+**Why it happens:**
+The CONCERNS.md entry says "Library queries use unbounded `.collect()`" but the current code already uses `.paginate()`. The concern is actually about the `convex-helpers` filter approach doing more work than necessary, not about a missing pagination implementation. A phase that reads the concern but not the code will implement pagination on top of existing pagination, breaking things.
 
-**Prevention:**
-- Run `npx convex dev` to regenerate types BEFORE making any type changes. Convex codegen creates the proper `MutationCtx`, `QueryCtx`, and typed index callbacks in `convex/_generated/server.d.ts`. Use these generated types, not hand-crafted ones.
-- Golden rule: if changing a type requires changing a query/mutation body, stop and verify the runtime behavior first. The type is documentation of what exists, not prescription for what should exist.
-- Run the full test suite after every file's type sweep, not just at the end.
+**How to avoid:**
+1. Read the actual query code before writing any migration plan. Confirm whether `.paginate()` is already present.
+2. If the goal is to push collection membership filter into the index (genuine improvement), do so in a new query that uses a different nuqs key for its cursor. Run both queries in parallel during rollout, then switch.
+3. Never change the cursor format of an existing paginated query without adding a migration: on next load, if the cursor fails to parse, reset to page 1 (catch the Convex error and clear the cursor from nuqs state).
+4. The `exportLibrary` query legitimately uses `.collect()` for export — this is intentional (exports all filtered items, no pagination). Do not add pagination there.
 
-**Detection:** Any diff that changes both a type annotation AND a query/index/field name in the same commit is suspect.
+**Warning signs:**
+- Browser console shows Convex error: "Invalid cursor" after deploying library query changes.
+- Library page loads blank with no items and no error toast (cursor silently fails).
+- Export still works but paginated view is broken (different code path — confirms cursor issue rather than filter issue).
 
-**Confidence:** HIGH -- based on [Convex TypeScript best practices](https://docs.convex.dev/understanding/best-practices/typescript) and [Convex server module types](https://docs.convex.dev/api/modules/server).
-
----
-
-### Pitfall 2: `internal as any` Removal Triggers Convex Codegen Mismatch
-
-**What goes wrong:** The codebase uses `const internalApi = internal as any` in 7+ files (`convex/http.ts`, `convex/crons.ts`, `convex/credits/internal.ts`, etc.). Removing the `as any` cast reveals that the generated `internal` API types do not include some functions that are actually registered. Developers then "fix" this by renaming functions, reorganizing exports, or changing the module structure -- which breaks all existing function references and scheduled jobs.
-
-**Why it happens:** Convex's type generation (`convex/_generated/api.d.ts`) requires `npx convex dev` to regenerate whenever functions are added/moved/renamed. If the generated types are stale, `internal.module.function` shows type errors even though the function exists at runtime. The `as any` cast was a workaround for stale codegen, not necessarily for missing functions.
-
-**Consequences:**
-- Scheduled jobs (crons, `ctx.scheduler.runAfter`) reference function paths that no longer exist after reorganization
-- Webhook handlers call internal functions by path; renaming breaks live webhook processing
-- The recursive delete cascade (`deleteExtractionInternal`) calls itself via `internal.extraction.mutations.deleteExtractionInternal` -- renaming this function without updating the self-reference creates infinite loops or silent failures
-
-**Prevention:**
-1. Run `npx convex dev` FIRST to regenerate types and see what the actual type errors are
-2. If `internal.module.function` already compiles after codegen, the `as any` removal is a one-line change -- do not restructure anything
-3. If functions are genuinely missing from codegen, check that they are properly exported from their module's `index.ts` before reorganizing
-4. Never rename internal functions that are referenced by `ctx.scheduler.runAfter` or `ctx.runMutation(internal....)` without grep-searching all call sites
-
-**Detection:** Any PR that removes `as any` and also moves/renames functions or changes `index.ts` exports needs extra scrutiny.
-
-**Confidence:** HIGH -- directly verified in the codebase: `convex/http.ts:10`, `convex/subscriptions/actions.ts:36`, `convex/crons.ts:5`.
+**Phase to address:** Any phase touching library queries. Must read the actual code first, then determine if there is genuine work to do beyond what's already implemented.
 
 ---
 
-### Pitfall 3: Deletion Cascade Fix Causes Data Loss Through Ordering Errors
+### Pitfall 3: ExcelJS Migration Breaks XLSX Export Silently for Complex Cell Types
 
-**What goes wrong:** The current `deleteExtractionInternal` cascade (lines 968-1009 of mutations.ts) deletes in order: results -> papers -> questions -> job. Adding `extractionEvidenceUnits` cleanup seems straightforward, but inserting it in the wrong position or with wrong batching causes:
-- Evidence units deleted but papers kept (partial cleanup on error)
-- Papers deleted before their evidence units (orphaning evidence permanently -- no `paperId` to query by)
-- Reviews (`extractionResultReviews`) skipped entirely (already missing from cascade)
+**What goes wrong:**
+`lib/extraction/export.ts` uses `xlsx` via top-level `import * as XLSX from 'xlsx'`. Migrating to `exceljs` changes the entire API surface: `XLSX.utils.book_new()` becomes `new ExcelJS.Workbook()`, `XLSX.utils.aoa_to_sheet()` becomes `worksheet.addRows()`, and cell formatting uses completely different structures. The migration will compile successfully if ExcelJS types are satisfied, but the exported file may have:
+- Missing headers (if `addRows` vs `addRow` is confused)
+- Wrong cell types (ExcelJS distinguishes `type: ExcelJS.ValueType.String` vs ExcelJS infer-from-value)
+- Corrupted `.xlsx` files that Excel opens with a repair dialog
+- Missing sheets (if `workbook.addWorksheet()` arguments are wrong)
 
-**Why it happens:** The cascade uses recursive self-invocation via `ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, { jobId })`. Each invocation re-queries from the top, checking results first, then papers, then questions. If you add evidence units after results but before papers, the cascade may re-enter and skip evidence units on the second pass because the control flow falls through to the paper deletion step.
+**Why it happens:**
+ExcelJS's API uses a builder pattern entirely unlike `xlsx`'s array-of-arrays approach. Developers port the logic one function at a time and each piece appears to work in isolation, but the overall workbook structure requires all pieces to be set up in the correct order (workbook → worksheet → columns → rows). Skipping the column definition step (ExcelJS requires explicit column headers) produces a file that opens but has no header row — validation tests pass because the data rows are present.
 
-**Consequences:**
-- Orphaned `extractionEvidenceUnits` rows accumulate (each paper can have hundreds of evidence chunks)
-- Orphaned `extractionResultReviews` rows accumulate (one per result per paper)
-- Storage IDs (`storageId` on papers) not cleaned up, leaving orphaned files in Convex storage
-- If deletion partially completes and fails, there is no way to resume -- the job may be deleted but child records remain
+**How to avoid:**
+1. Migration sequence: `xlsx` → dynamic import of `xlsx` first (zero behavior change, just deferred load). Ship this. Then, in a separate phase, evaluate whether ExcelJS is worth the full API migration.
+2. If migrating to ExcelJS, write an end-to-end test that: (a) generates an `.xlsx` file, (b) parses it back with a reader (use `xlsx` or ExcelJS itself), and (c) asserts exact headers, row count, and cell values. Do not rely on "no error thrown" as the success criterion.
+3. Test with the actual extraction data shapes: boolean answers (`'Yes'`/`'No'`), null/undefined answers (empty string), array answers (semicolon-joined), and number answers.
+4. The `formatAnswerForExcel()` function (line 39, `export.ts`) returns `any` — this must be typed for ExcelJS since ExcelJS cell values accept `ExcelJS.CellValue` not `any`. This is where type mismatches will surface.
 
-**Prevention:**
-- Delete in strict dependency order: evidence units -> reviews -> results -> papers (with storage cleanup) -> questions -> saved views -> report snapshots -> run diffs -> job
-- Each entity type should be a discrete step in the cascade with its own batch-and-reschedule logic
-- Add a `deletionStatus` field to `extractionJobs` that tracks which step the cascade is on, so it can resume after failures
-- Write a test that creates a full job graph (job + questions + papers + results + reviews + evidence units + storage) and verifies ALL child records are gone after deletion
+**Warning signs:**
+- The exported `.xlsx` file opens without error in the test environment but shows "we found a problem" in Excel 365.
+- Row count in exported file does not match the number of papers.
+- Boolean or null cells appear as `[object Object]` instead of 'Yes'/'No' or empty.
 
-**Detection:** After deletion, query each child table by `jobId`/`paperId` to verify zero rows remain.
-
-**Confidence:** HIGH -- directly verified by reading `convex/extraction/mutations.ts:968-1009` and `convex/schema.ts`.
-
----
-
-### Pitfall 4: Zotero API Key Encryption Migration Corrupts Existing Connections
-
-**What goes wrong:** Migrating Zotero API keys from plaintext (`apiKey: v.string()`) to encrypted format (matching the `apiKeys` table pattern with `encryptedKey`) requires reading existing plaintext keys, encrypting them, and writing back. If the encryption runs in a Convex mutation (which cannot use Node.js `crypto`), it fails silently. If it runs in an action, the action cannot directly write to the DB -- it must call a mutation, creating a two-step process where the plaintext key is read, encrypted, and then the encrypted version is written. A failure between read and write leaves the key in an inconsistent state.
-
-**Why it happens:** Convex separates mutations (DB access, no Node.js APIs) from actions (Node.js APIs like `crypto`, no direct DB access). Encryption requires `"use node"` actions. The existing `apiKeys/actions.ts` already has this pattern, but applying it to migration of existing data adds complexity: you must handle rows that are already encrypted (re-migration safety) and rows that are still plaintext (original format).
-
-**Consequences:**
-- Users lose Zotero connections if the migration corrupts their API key
-- If `ENCRYPTION_KEY` env var is missing during migration, all keys become unrecoverable
-- Schema change from `apiKey: v.string()` to `encryptedKey: v.string()` requires a multi-step migration (add optional `encryptedKey`, migrate data, remove `apiKey`) -- doing this in one step breaks the deployment
-
-**Prevention:**
-1. Follow the [Convex multi-step migration pattern](https://stack.convex.dev/intro-to-migrations): add `encryptedKey: v.optional(v.string())` first, then migrate, then make `encryptedKey` required, then remove `apiKey`
-2. During migration, keep both fields: code reads `encryptedKey` if present, falls back to `apiKey` (dual-read pattern)
-3. The migration action must be idempotent: skip rows where `encryptedKey` is already set
-4. Validate `ENCRYPTION_KEY` exists before starting migration; abort entirely if missing
-5. Test with a staging Convex deployment first, not production
-
-**Detection:** After migration, verify every `zoteroConnections` row has a non-null `encryptedKey` and the decrypted value matches the original `apiKey`.
-
-**Confidence:** HIGH -- verified encryption pattern in `convex/apiKeys/actions.ts` and Zotero schema in `convex/schema.ts:167-175`. Migration pattern from [Convex migration docs](https://stack.convex.dev/intro-to-migrations).
+**Phase to address:** The performance/bundle optimization phase that addresses the synchronous XLSX import. Start with dynamic import before committing to a library migration.
 
 ---
 
-### Pitfall 5: Stripe `"dummy"` Key Removal Breaks Development and CI
+### Pitfall 4: `dangerouslySetInnerHTML` Replacement Breaks Highlight Visual Correctness
 
-**What goes wrong:** Both `convex/subscriptions/actions.ts:39` and `convex/credits/actions.ts:31` use `process.env.STRIPE_SECRET_KEY || "dummy"`. Removing the `"dummy"` fallback and adding an early throw seems like a simple security fix, but it breaks:
-- Local development without Stripe configured
-- CI test runs that do not set `STRIPE_SECRET_KEY`
-- The Convex dev deployment startup (module-level code runs on deploy)
+**What goes wrong:**
+`highlightText()` in `components/extraction/results-views/table-view.tsx:293-297` injects `<mark>` HTML via `dangerouslySetInnerHTML`. The safe replacement is to split the text on the search query and return React elements — an array of `<span>` and `<mark>` elements. The failure mode is subtle: the current implementation handles multi-word queries with spaces and special regex characters via `escapedQuery`. A naive React split approach that uses `text.split(query)` (without regex and case-insensitive flag) will miss matches where case differs or where the query contains special characters. The visual result: highlights disappear in the new implementation even though the old one worked correctly.
 
-**Why it happens:** The Stripe SDK is instantiated at module scope, not inside individual function handlers. This means the `new Stripe(...)` call runs when Convex loads the module, which happens on every deployment and every function invocation in that module. If the validation throws at module scope, ALL functions in that file become uncallable -- including non-Stripe functions that share the module.
+A second failure: `highlightText` is called for both `paper.title` (line 162) and `result.answer` text (lines 378-388, 450-451). The current implementation accepts a `string` input and returns a `string`. The React replacement must return `React.ReactNode`, which changes the TypeScript signature. Any call site that expects a `string` return — such as a `title` attribute or a non-React context — will break.
 
-**Consequences:**
-- Entire billing module becomes uncallable if `STRIPE_SECRET_KEY` is missing, even for functions that do not use Stripe directly
-- Local `npx convex dev` fails on startup if env var is not set
-- CI pipelines that test non-billing features break because the billing module fails to load
+**Why it happens:**
+The developer creates a React-native highlight component for the JSX render context but does not audit all call sites. The `title` attribute at line 161 (`title={paper.title}`) does not need highlighting — it currently passes raw text, not the `highlightText()` result. But if the refactor changes `highlightText` to return `ReactNode`, attempts to use it for the `title` attribute will produce `[object Object]`.
 
-**Prevention:**
-- Do NOT throw at module scope. Instead, create a lazy Stripe initialization function:
-  ```typescript
-  let _stripe: Stripe | null = null;
-  function getStripe(): Stripe {
-    if (!_stripe) {
-      const key = process.env.STRIPE_SECRET_KEY;
-      if (!key) throw new Error("STRIPE_SECRET_KEY is required");
-      _stripe = new Stripe(key, { apiVersion: "2026-01-28.clover" });
-    }
-    return _stripe;
-  }
-  ```
-- This validates on first use (inside a function handler), not on module load
-- Non-Stripe functions in the same module continue to work
-- Development environments without Stripe still load the module; only Stripe-calling functions fail with a clear error
+**How to avoid:**
+1. Audit ALL call sites of `highlightText` before changing its signature. In `table-view.tsx`, find every `dangerouslySetInnerHTML={{ __html: highlightText(...) }}` call.
+2. Replace `highlightText` with a `HighlightedText` React component that accepts `text: string` and `query: string` and returns JSX. Use `String.prototype.split` with a regex constructed the same way as the current implementation (case-insensitive, escaped query).
+3. The component is only used inside `dangerouslySetInnerHTML` contexts — replace those entire `dangerouslySetInnerHTML` elements with `<HighlightedText text={...} query={...} />`.
+4. The XSS test must verify: (a) HTML characters in `text` are escaped (use `<script>` in a paper title), (b) HTML characters in `query` are escaped, (c) case-insensitive match works, (d) no match renders plain text without wrapping elements.
 
-**Detection:** After removing `"dummy"`, run `npx convex dev` in a clean environment without `STRIPE_SECRET_KEY` set. If the deployment fails, the fix is wrong.
+**Warning signs:**
+- Paper titles that contain HTML characters (`<`, `>`, `&`) render as escaped text instead of the actual character after the migration (double-escaping by React).
+- Search highlighting stops working for lowercase queries against uppercase titles.
+- TypeScript error: "Type 'ReactNode' is not assignable to type 'string'" at the `title` attribute.
 
-**Confidence:** HIGH -- directly verified at `convex/subscriptions/actions.ts:39` and `convex/credits/actions.ts:31`.
+**Phase to address:** The XSS fix phase. Write the test first (currently zero tests for this, confirmed by CONCERNS.md), then implement.
 
 ---
 
-### Pitfall 6: Env Var Validation Breaks Non-Production Environments
+### Pitfall 5: Audit Table Writes in Hot Paths Create Convex Write Bottlenecks
 
-**What goes wrong:** Adding startup validation for env vars (`NEXT_PUBLIC_APP_URL`, `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, `STRIPE_WEBHOOK_SECRET`) seems like a security win, but these vars have different requirements per environment. Validating ALL of them on startup means:
-- Local dev breaks (no Stripe keys)
-- Preview/staging breaks (different URL)
-- CI breaks (minimal env setup)
+**What goes wrong:**
+Adding persistent audit table writes to replace `console.log` audit events is straightforward for low-frequency paths (API key save, debug gate access). It is dangerous for any path that runs in a tight loop or hot query. In this codebase, the `decryptApiKey` function in `convex/lib/crypto.ts:81-86` currently logs on every call. If the audit table write is added to `decryptApiKey` itself, and `decryptApiKey` is called inside a mutation that processes 500 papers (extraction loop), the mutation will attempt 500 audit table inserts in a single Convex transaction. This hits Convex's 16,000 write limit but more importantly adds 500 DB writes to what should be a fast mutation, causing OCC contention on the `auditLogs` table.
 
-**Why it happens:** The codebase has three runtime contexts: Next.js server (server actions), Convex backend (mutations/queries/actions), and Convex HTTP endpoints (webhook handlers). Each context has different env vars available. A blanket validation at module scope does not account for which context is running.
+**Why it happens:**
+Audit logging feels like a cross-cutting concern that belongs in the utility function. Moving it to the call site feels like duplication. But the utility function has no context about how many times it will be called per transaction. The developer adds the DB write to `decryptApiKey` without checking all call sites.
 
-**Consequences:**
-- Development velocity drops to zero while developers set up env vars they do not need
-- CI pipelines fail on unrelated test suites
-- New team members cannot run the project without full production env setup
+**How to avoid:**
+1. Before moving audit logging to a Convex table write, grep all callers of `decryptApiKey` and count how many times each could be called per transaction.
+2. For hot-path callers (inside extraction loops), emit a single audit record per operation, not per API call: "Decrypted API key for job X (N papers processed)".
+3. For the `decryptApiKey` utility specifically: keep the `console.log` for hot paths and add the table write only for security-sensitive callers (API key save, explicit user access). Thread the choice via a parameter: `audit: { persist: boolean }`.
+4. Alternatively, batch audit writes with `ctx.scheduler.runAfter(0, ...)` to a separate mutation that collects and inserts the batch — this keeps the write out of the hot mutation's transaction.
+5. The audit table must have an index on `userId` and `timestamp` for any queries that will search it.
 
-**Prevention:**
-- Validate env vars lazily, at the point of use, not at module load time
-- Use environment-aware validation: only require `STRIPE_SECRET_KEY` inside Stripe-calling functions, not at module scope
-- For `NEXT_PUBLIC_APP_URL`, validate inside the specific functions that use it (Stripe redirect URLs, Zotero OAuth callbacks) with a clear error message, not a module-level crash
-- Create a validation helper that distinguishes "missing and required here" from "missing globally":
-  ```typescript
-  function requireEnv(name: string): string {
-    const value = process.env[name];
-    if (!value) throw new Error(`${name} is required for this operation`);
-    return value;
-  }
-  ```
+**Warning signs:**
+- Extraction mutations run slower after audit logging is added (OCC retries visible in Convex dashboard).
+- Extraction logs show "too many writes" errors from Convex.
+- The `auditLogs` table grows proportionally to extraction paper count, not to security-sensitive operations.
 
-**Detection:** Run the full test suite without ANY of the optional env vars set. Only tests that explicitly test billing/encryption should fail.
-
-**Confidence:** HIGH -- directly verified env var usage in `convex/http.ts:11-14`, `convex/subscriptions/actions.ts:39-46`.
+**Phase to address:** The security hardening phase that adds the persistent audit table. This phase must define which operations are audited (security-sensitive user actions) vs. which remain console-only (internal processing loops).
 
 ---
 
-## Moderate Pitfalls
+### Pitfall 6: Env Var Validation at Startup Blocks Convex Deployment
 
-Mistakes that cause bugs, performance issues, or wasted effort but are recoverable.
+**What goes wrong:**
+`convex/lib/constants.ts` exports `assertPlanPriceConfig()` which throws if `GO_PRICE_ID` or `PRO_PRICE_ID` is empty. If this function is called at module load time (e.g., added to the module's top-level code, or called from a cron that runs on startup), a Convex deployment to a new environment that does not yet have `STRIPE_GO_PRICE_ID` set will fail to start. The deployment succeeds but the module fails to load, making ALL functions in that module uncallable — including non-Stripe functions like subscription queries.
 
----
+A second failure: Convex processes validate env vars when the module loads for the first time after deployment. If the validation is in a `"use node"` module (required for Node.js APIs), it only runs for `"use node"` actions, not for regular mutations/queries. Placing env var validation in a `"use node"` module gives false confidence — the validation runs for action-based billing flows but not for mutation-based subscription reads.
 
-### Pitfall 7: N+1 Query Fix Changes Query Return Contract
+**Why it happens:**
+The `assertPlanPriceConfig()` function is already written and works correctly. The pitfall is WHERE it is called, not whether the function itself is correct. Developers see a ready-made validation function and call it at module scope or in an `init` function that runs on every module load, without checking the Convex module loading semantics.
 
-**What goes wrong:** The N+1 queries in `loadJobDataForReporting` (mutations.ts:40-77) and `loadJobPapersAndResults` (queries.ts:145-170) fetch results per-paper in a loop. The fix is to batch-fetch all results for the job in one query. But this changes the data shape: the per-paper loop naturally produces results grouped by paper, while a single bulk query produces a flat list that must be re-grouped. If the re-grouping logic has an off-by-one or uses the wrong key, downstream code receives data in the wrong shape.
+**How to avoid:**
+1. Call `assertPlanPriceConfig()` only inside function handlers (mutations/queries/actions), not at module scope.
+2. The correct pattern for startup validation in Convex is a cron or an HTTP endpoint called during deployment verification — not a module-level side effect.
+3. For the specific env vars in `constants.ts`: the Price IDs are already lazily read via `process.env.STRIPE_GO_PRICE_ID || ""`. This is correct. The assertion function should be called inside the first handler that uses those IDs (e.g., `createCheckoutSession`), not at module load.
+4. Startup env var validation in Convex should be implemented as an `httpAction` endpoint (e.g., `/health`) that can be called by a deployment script. This gives explicit feedback without blocking module load.
 
-**Why it happens:** The N+1 pattern creates a `Map<paperId, results[]>` as a side effect of the loop. The batch pattern creates a flat `results[]` that must be explicitly grouped with `.reduce()` or a Map construction. If results reference a `paperId` that is not in the papers list (orphaned data), the grouping may create entries for non-existent papers.
+**Warning signs:**
+- `npx convex deploy` succeeds but subsequent function calls fail with "module failed to load".
+- Stripe-unrelated functions (like subscription status queries) fail after adding env var validation to the Stripe constants module.
+- Convex dashboard shows the module in an error state immediately after deployment.
 
-**Prevention:**
-- Keep the return type of helper functions identical before and after the fix
-- Write a test that verifies the exact shape of `resultsByPaper` and `reviewsByResult` maps before refactoring, then verify it is unchanged after
-- Use `Promise.all` with per-paper queries as an intermediate step (parallelized N+1) before full batch rewrite -- this is safer and still much faster in Convex since DB reads within a transaction have no network round-trip overhead
-
-**Detection:** Compare the output of the old and new implementations with the same test data.
-
-**Confidence:** HIGH -- verified N+1 patterns at `convex/extraction/mutations.ts:40-77` and `convex/extraction/queries.ts:145-170`. Convex [best practices](https://docs.convex.dev/understanding/best-practices/) confirm Promise.all parallelization is the standard fix.
-
----
-
-### Pitfall 8: Unbounded `.collect()` Fix Breaks Pagination-Unaware Callers
-
-**What goes wrong:** Replacing `.collect()` with `.take(N)` or `.paginate()` changes the function contract. Code that previously received ALL results now receives a subset. If the caller does not handle pagination, it silently operates on partial data -- showing wrong counts, missing items from exports, or producing incorrect aggregate statistics.
-
-**Why it happens:** The codebase has 90+ `.collect()` calls. Most are safe (bounded by per-user indexes), but some are genuinely unbounded (the `backfillIsIndexed` full table scan, the `subscriptions` active status check). Fixing only the dangerous ones is correct, but a sweep that changes all `.collect()` calls breaks callers that expect complete results.
-
-**Consequences:**
-- Export functions produce partial CSV/JSON files
-- Dashboard statistics show incorrect totals
-- Insight aggregation (grounded rate, confidence) computed on subset of data
-- The `getJobResults` query returns partial results, confusing users
-
-**Prevention:**
-- Audit each `.collect()` individually: is it bounded by an index that limits results to a small set (e.g., per-user, per-job)? If yes, leave it alone.
-- Only fix `.collect()` calls that operate on entire tables or have no meaningful index filter
-- For `backfillIsIndexed`, convert to a cursor-based scheduled job that processes batches, not a single query
-- For dashboard/aggregate queries, add `.take(10000)` as a safety cap rather than removing `.collect()` entirely
-- Convex enforces a hard limit: `.collect()` throws if it attempts to collect more than 1024 documents. Any `.collect()` that could exceed this MUST be fixed.
-
-**Detection:** Any function that calls `.collect()` and also computes aggregates (counts, rates, sums) must be checked: does a `.take(N)` limit change the aggregate result?
-
-**Confidence:** HIGH -- verified in codebase and confirmed by [Convex scaling patterns](https://stack.convex.dev/queries-that-scale). Convex enforces a 32,000 document scan limit and 1024 document collect limit per transaction.
+**Phase to address:** The env var validation phase. Read PITFALLS.md for v2.3 (Pitfall 5 and 6) first — this pitfall was already documented there. The v3.0 fix must not re-introduce the module-scope call anti-pattern.
 
 ---
 
-### Pitfall 9: Rate Limiting Implementation Causes OCC Conflicts Under Load
+### Pitfall 7: Stripe Type Narrowing Becomes Overly Strict, Crashing Webhook Handlers
 
-**What goes wrong:** Implementing rate limiting in Convex using a `rateLimits` table with a counter-per-user-per-action creates a hot document. Every request from the same user for the same action reads and writes the same row. Under burst traffic, this triggers Convex's Optimistic Concurrency Control (OCC) retries, which paradoxically slow down the very users you are trying to protect.
+**What goes wrong:**
+Stripe webhook handlers in `convex/http.ts` currently use typed SDK event objects (completed in v2.5, per PROJECT.md). The v3.0 concern is `convex/maintenance/internal.ts:103` — the `(fresh.customer as any)?.id` pattern. Replacing this with a strict type narrowing pattern is correct, BUT if the narrowing uses a type assertion instead of a type guard (`fresh.customer as Stripe.Customer` instead of `typeof fresh.customer !== 'string'`), it will throw a TypeScript error at compile time OR silently produce `undefined` at runtime if Stripe returns the string form.
 
-**Why it happens:** Convex uses OCC for all mutations. Two concurrent requests that both read-then-write the same rate limit row will conflict: one succeeds, the other retries. With high concurrency, retries cascade and latency spikes.
+A more dangerous scenario: if a developer adds `if (!fresh.customer || typeof fresh.customer === 'string') throw new ConvexError(...)` as part of "making the type narrowing explicit," any subscription that returns a non-expanded customer from Stripe (which is the DEFAULT — Stripe does not expand by default) will throw a ConvexError. This crashes the maintenance cron for ALL subscriptions, not just the ambiguous ones.
 
-**Prevention:**
-- Use the official [`@convex-dev/ratelimiter`](https://www.convex.dev/components/rate-limiter) component instead of rolling your own. It handles [sharding with "power of two choices"](https://stack.convex.dev/rate-limiting) to distribute contention across multiple documents.
-- If rolling your own, use a fixed-window approach with per-user keys (low contention since users rarely burst simultaneously)
-- For the specific endpoints listed in `convex/lib/rateLimit.ts` (api-key-save: 5/min, checkout-session: 3/min), the volume is low enough that a simple table-based approach works. Do not over-engineer sharding for 5 requests per minute.
-- Set rate limits conservatively at first (2x-3x expected traffic). Tighten after observing actual usage patterns.
-- Beware the multiple-rate-limit pitfall: if checking multiple limits in one mutation, either check all before consuming any (using `check` ahead of `limit`), or roll back the entire transaction if any limit fails.
+**Why it happens:**
+Stripe's API returns `customer: string` by default (the customer ID) and only returns `customer: Stripe.Customer` when explicitly using the `expand: ['customer']` option. The codebase does not use `expand: ['customer']` in this path. Developers see the union type and add defensive code that throws for the string case, not realizing the string case is the COMMON case.
 
-**Detection:** Monitor OCC retry rates in Convex dashboard after deploying rate limiting. If retries spike, the rate limit documents are too hot.
+**How to avoid:**
+1. The correct replacement for `(fresh.customer as any)?.id` is already documented in CONCERNS.md: `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id`.
+2. Never throw or error when `fresh.customer` is a string — that is correct behavior. The string IS the customer ID.
+3. Add a test with `fresh.customer` as a plain string and verify the handler extracts the ID correctly. Add a second test with an expanded customer object.
+4. Do NOT add `expand: ['customer']` to the Stripe API call just to simplify the type narrowing — this adds a network round-trip and changes the Stripe billing credits for expanded resources.
 
-**Confidence:** HIGH -- based on [Convex rate limiting article](https://stack.convex.dev/rate-limiting) and [rate limiter component](https://www.convex.dev/components/rate-limiter).
+**Warning signs:**
+- `checkSubscriptionStatus` cron logs show `[WARN] No customer ID for subscription` for ALL subscriptions immediately after the type narrowing change.
+- Subscription divergence corrections stop running (cron runs but makes no corrections).
+- Convex error logs show ConvexError from the maintenance cron.
 
----
-
-### Pitfall 10: Debug Code Removal Breaks Internal Tooling Still in Use
-
-**What goes wrong:** The 14 debug/test files in `convex/extraction/` are exported through `index.ts` and some are used by internal workflows. Removing them wholesale breaks:
-- `test_runner.ts` / `test_automation.ts` -- may be called by CI pipelines or monitoring crons
-- `debug.ts` / `debug_errors.ts` -- may be used by the Convex dashboard for manual investigation
-- `create_test_job.ts` -- may be used for staging environment seeding
-
-**Why it happens:** Debug functions in production backends are a gray area. They are security-concerning but operationally useful. The `requirePublicDebugEnabled()` gate means they are already disabled in production unless `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true` is set. Removing them entirely may be more disruptive than gating them properly.
-
-**Consequences:**
-- Internal workflows that reference `internal.extraction.test_runner.createAndRunTestJob` fail with "function not found"
-- Manual debugging capabilities lost for production incidents
-- Test automation pipelines break if they call these functions
-
-**Prevention:**
-1. Before removing any debug function, grep the entire codebase (including CI configs, cron definitions, and any external scripts) for references to that function name
-2. Check `convex/crons.ts` for any scheduled invocations of debug/test functions
-3. Separate into two categories:
-   - **Safe to remove:** Functions only callable via dashboard manual invocation (`diagnoseJob`, `debugPaperResults`)
-   - **Requires migration:** Functions called programmatically (`test_runner`, `test_automation`)
-4. For functions that must stay, ensure they are ALL gated behind `requirePublicDebugEnabled()` or marked as `internalMutation`/`internalQuery`
-5. Move test-only functions to a separate Convex module (e.g., `convex/testing/`) that can be conditionally excluded
-
-**Detection:** After removal, run `npx convex dev` and check for "function not found" errors in cron definitions or scheduled jobs.
-
-**Confidence:** HIGH -- directly verified debug exports in `convex/extraction/index.ts:94-121`.
+**Phase to address:** The type-safety sweep phase, specifically when addressing `convex/maintenance/internal.ts`. Must be paired with a test for both customer shapes before the change is deployed.
 
 ---
 
-### Pitfall 11: Security Hardening Changes ENCRYPTION_KEY Without Migration Plan
+### Pitfall 8: Rate Limiter `name as any` Removal Breaks Callers Using String Variables
 
-**What goes wrong:** If the `ENCRYPTION_KEY` environment variable needs to be rotated (compromised, employee departure, routine rotation), all existing encrypted API keys in the `apiKeys` table become undecryptable. The current AES-256-GCM implementation in `convex/apiKeys/actions.ts` uses a single key with no key version tracking.
+**What goes wrong:**
+`convex/lib/rateLimit.ts:52` uses `name: args.name as any` in the `consume` internal mutation. The `consume` mutation accepts `name: v.string()` and passes it to `rateLimit()` which expects one of the three literal union members. Removing `as any` requires the `name` argument to be typed as the literal union. But the `consume` mutation is called from actions via `ctx.runMutation(internal.lib.rateLimit.consume, { name: rateLimitName, ... })`. If those callers pass a string variable (not a literal), the TypeScript type of `args.name` in the mutation becomes too narrow for the `rateLimit()` function's expected type.
 
-**Why it happens:** The encrypted format (`iv:authTag:ciphertext`) does not include a key version identifier. There is no way to know which key was used to encrypt a given row. Rotating the key means new encryptions use the new key, but old data cannot be decrypted.
+The correct fix is a runtime check, not a type cast. Adding `z.enum([...rateLimitNames]).parse(args.name)` will throw a `ZodError` at runtime for invalid names — that is correct behavior. But if the enum is defined using the rate limit config keys and a new rate limit is added to the config without adding it to the enum, the enum and the config diverge silently. New rate limiters will throw at runtime.
 
-**Prevention:**
-- Add a `keyVersion: v.number()` field to the `apiKeys` table schema (as `v.optional()` first, defaulting to `1` for existing rows)
-- Store a mapping of key version -> key hex in env vars (e.g., `ENCRYPTION_KEY_V1`, `ENCRYPTION_KEY_V2`, `ENCRYPTION_KEY` for current)
-- The decrypt function should read `keyVersion` from the row and select the corresponding key
-- Implement a migration action that re-encrypts all rows from old key to new key, updating `keyVersion`
-- For the Zotero key migration (Pitfall 4), include `keyVersion` from the start
-- AES-256-GCM nonces must never be reused with the same key; since `randomBytes(12)` is used for IVs, the risk is minimal but increases after approximately 2^32 encryptions with the same key
+**Why it happens:**
+The `name` field must be `v.string()` in the Convex validator (because the literal union is not expressible as a Convex validator argument for an internal mutation called from actions). So the gap between the runtime string and the TypeScript literal union requires a manual bridging step that is easy to forget to maintain.
 
-**Detection:** Try decrypting a row after key rotation. If it fails with "Unsupported state or unable to authenticate data", the old key was used and no version tracking exists.
+**How to avoid:**
+1. Derive the valid names from the `defineRateLimits` config object itself using `keyof typeof rateLimitConfig` — never maintain a separate enum.
+2. The runtime check should use `Object.keys(rateLimitConfig).includes(args.name)` rather than a hardcoded enum. This stays in sync automatically when new rate limits are added.
+3. Use a type assertion after the runtime check: `name: args.name as keyof typeof rateLimitConfig` — this is a safe cast because the runtime check has already verified membership.
+4. Add a test that calls `consume` with an invalid name and asserts the ConvexError response contains `{ kind: "RateLimited" }` or an appropriate error — currently no such test exists.
 
-**Confidence:** MEDIUM -- based on [AES-256-GCM key rotation best practices](https://terrazone.io/aes-256-encryption-types/) and the existing implementation at `convex/apiKeys/actions.ts:15-63`.
+**Warning signs:**
+- A new rate limit added to `defineRateLimits` works when called directly from mutations but fails when called through the `consume` indirection from actions.
+- Rate limit enforcement silently fails for action-path rate-limited endpoints (no error, no throttle).
+- TypeScript reports errors in action callers after the `as any` is removed.
 
----
-
-### Pitfall 12: Performance Fixes Change Convex Reactive Query Semantics
-
-**What goes wrong:** Convex queries are reactive -- the client re-renders when any document read by the query changes. Refactoring a query to read fewer documents (performance win) changes WHICH documents trigger re-renders. Users may see stale data because the query no longer subscribes to updates on documents it used to read.
-
-**Why it happens:** A query like `loadJobPapersAndResults` that reads all papers and all results subscribes to changes in ALL those documents. If you add `.take(50)` for pagination, the query only subscribes to the first 50 papers. Changes to paper 51+ do not trigger a re-render, so the client shows stale progress for large jobs.
-
-**Consequences:**
-- Job progress stops updating in the UI after the first page of papers
-- Real-time extraction status becomes stale for large jobs
-- Users think the job is stuck when it is actually progressing
-
-**Prevention:**
-- Understand which queries are used with Convex's `useQuery` hook (reactive) vs. called from actions/mutations (one-shot)
-- For reactive queries (used in the UI), do not add `.take()` limits without also implementing proper pagination with a "load more" mechanism
-- For one-shot queries (used in mutations for data processing), `.take()` is safe
-- The `subscribeToJobProgress` query should remain unbounded (or use aggregate counts) to maintain real-time progress tracking
-- Isolate frequently-updated fields (like progress counters) into separate documents to reduce cache invalidation scope -- see [Convex data segmentation pattern](https://stack.convex.dev/queries-that-scale)
-
-**Detection:** After deploying query optimizations, verify that the extraction job dashboard still shows real-time progress updates for jobs with 50+ papers.
-
-**Confidence:** HIGH -- Convex reactive model confirmed at [Convex query docs](https://docs.convex.dev/functions/query-functions) and [scaling queries article](https://stack.convex.dev/queries-that-scale).
+**Phase to address:** The type-safety sweep phase. Fix after establishing the runtime validation pattern, not before.
 
 ---
 
-## Minor Pitfalls
+### Pitfall 9: `@convex-dev/workflow` ID Type Mismatch Fails at Runtime After Library Update
 
-Issues that cause friction or technical debt but are not dangerous.
+**What goes wrong:**
+`convex/extraction/mutations.ts:263` uses `workflow.cancel(ctx, job.workflowId as any)`. The `workflowId` field is stored in the `extractionJobs` table as a string. The `workflow.cancel()` function expects a specific ID type from the workflow component — likely `Id<"_scheduled_functions">` or a component-specific type. The `as any` works today because the runtime representation is compatible. If `@convex-dev/workflow` is updated and the ID type changes its runtime format (e.g., from a bare string to a namespaced string), the `as any` cast hides the incompatibility until `workflow.cancel()` fails at runtime with a cryptic error.
 
----
+The v3.0 fix must not make this worse. The naive "fix" is to cast to `Id<"_scheduled_functions">` — but that is ALSO wrong if the workflow component uses its own ID namespace. The correct fix requires reading the `@convex-dev/workflow` documentation for the exact expected type of the `workflowId` parameter.
 
-### Pitfall 13: Console.log Removal Using Next.js Compiler Config
+**Why it happens:**
+The workflow component is a Convex component with its own generated types. The `workflowId` stored in the `extractionJobs` schema was originally typed as `v.string()` because the correct type was unknown at implementation time. Changing the schema to `v.id("_scheduled_functions")` or a component ID type requires a schema migration AND verification that existing stored workflow IDs are compatible with the new type.
 
-**What goes wrong:** Using Next.js `compiler.removeConsole` in `next.config.js` to strip console.log in production is a blanket approach that also removes `console.warn` and `console.error` unless explicitly excluded. This hides real errors in production.
+**How to avoid:**
+1. Read the `@convex-dev/workflow` source or docs to determine the exact TypeScript type returned when a workflow is started. This is the type that should be stored and used for cancellation.
+2. Check whether changing the schema field type from `v.string()` to the correct ID type requires a data migration (existing stored string values must be compatible with the new type at runtime).
+3. If the workflow component docs say the ID is a `string` that matches `Id<"_scheduled_functions">` format, a type-only change (no data migration) is safe. If the format differs, the schema change requires a data migration.
+4. As an intermediate step: keep the schema as `v.string()` but add a type guard that validates the stored value against the expected format before passing to `workflow.cancel()`.
+5. Do NOT remove `as any` here without first understanding what type `workflow.cancel()` actually expects — check the `@convex-dev/workflow` package's TypeScript definitions.
 
-**Prevention:**
-- Remove specific `console.log` statements manually in `app/settings/billing/page.tsx:282-290` and `app/actions/openalex.ts:13-35`
-- Do NOT use `compiler.removeConsole: true` globally
-- If using the compiler option, configure it as `removeConsole: { exclude: ["error", "warn", "info"] }` to preserve error logging
-- For the Convex debug file (`convex/debug_papers.ts:20-21`), remove the `@ts-ignore` and the field access entirely rather than just the console.log
+**Warning signs:**
+- `workflow.cancel()` throws a runtime error mentioning "invalid ID" after removing `as any`.
+- Extraction jobs that are cancelled no longer stop their workflow steps.
+- TypeScript compiles cleanly but Convex runtime rejects the ID value.
 
-**Confidence:** HIGH -- verified debug locations in CONCERNS.md, Next.js compiler config from [Next.js docs](https://nextjs.org/docs/app/api-reference/config/next-config-js/logging).
-
----
-
-### Pitfall 14: `patchData: any` Fix Changes Field Inclusion Logic
-
-**What goes wrong:** Replacing `const patchData: any = {}` at `convex/extraction/mutations.ts:1887` with `Partial<Doc<"extractionPapers">>` changes which fields can be added to the patch object. If the existing code conditionally adds fields that are not in the `extractionPapers` schema (e.g., computed/temporary fields), the typed version will show compile errors. Developers may remove those fields, changing the mutation's behavior.
-
-**Prevention:**
-- Read the patch construction logic carefully before typing it
-- If non-schema fields are being written, that is a bug in the existing code (Convex would reject them at runtime anyway since schema enforcement is on). Fix the bug, do not work around it.
-- Use `Partial<Pick<Doc<"extractionPapers">, "field1" | "field2">>` to type only the fields that are actually patched, rather than the full document type
-
-**Confidence:** HIGH -- directly verified at `convex/extraction/mutations.ts:1887`.
+**Phase to address:** The type-safety sweep phase. Treat this as a research item first — read the `@convex-dev/workflow` type definitions before writing any code.
 
 ---
 
-### Pitfall 15: V32_CUTOVER_AT Removal Without Data Migration
+### Pitfall 10: Credit TOCTOU Mitigation via Per-User Workpool Deadlocks or Over-Serializes
 
-**What goes wrong:** Removing the `V32_CUTOVER_AT` timestamp-based version gating without adding a schema-level `extractionVersion` field leaves old extraction jobs in an ambiguous state. Code that checks `isV32EnabledForJob` currently returns `true` when `V32_CUTOVER_AT === 0` (default), meaning old jobs are treated as V3.2-compatible. Removing the check without migration means old jobs may be processed with V3.2 logic they were not designed for.
+**What goes wrong:**
+CONCERNS.md documents the credit TOCTOU mitigation as "per-user workpool with maxParallelism: 1" (Option A in `convex/credits/internal.ts:1275`). If this is implemented, ALL credit deductions for a user are serialized through a single-slot workpool. The deadlock scenario: an extraction job is running and uses a workpool action to deduct credits. The per-user credit workpool has `maxParallelism: 1`. If the extraction action ITSELF is running inside another workpool, and the credit deduction calls `ctx.runMutation` to a credit workpool action, the two workpools are now nested. Convex workpools are not designed for nested execution — the outer workpool action holds a slot while waiting for the inner workpool to process, but the inner workpool's single slot may be held by another pending request, creating a queue that grows without bound.
 
-**Prevention:**
-- Add `extractionVersion: v.optional(v.number())` to `extractionJobs` schema first
-- Write a migration that sets `extractionVersion: 32` for all jobs created after the cutover timestamp, and `extractionVersion: 31` for older jobs
-- Replace all `isV32EnabledForJob` checks with `job.extractionVersion >= 32`
-- Only then remove the `V32_CUTOVER_AT` env var dependency
+A subtler over-serialization: if multiple extraction papers are processed in parallel (up to 10 concurrent workpool actions, per `convex/workflow.ts`), and each paper deducts credits via the per-user credit workpool (`maxParallelism: 1`), the credit workpool becomes the bottleneck. Papers that finish quickly must wait for the credit workpool slot. For a 500-paper job, this serializes 500 credit deductions — increasing total job duration significantly.
 
-**Confidence:** MEDIUM -- verified at `convex/extraction/workpoolActions.ts:111` and `convex/extraction/workpoolActions.ts:819-984`.
+**Why it happens:**
+The TOCTOU problem is real but its actual consequences are benign (a user sees `INSUFFICIENT_CREDITS` when they expected success — no data corruption, no financial incorrectness). The mitigation introduces coordination overhead that is worse than the problem it solves. The documentation in `credits/internal.ts` explicitly says: "Implement additional mitigation ONLY on observed incident: a real double-deduction producing a negative balance."
 
----
+**How to avoid:**
+1. Do NOT implement the per-user workpool mitigation in v3.0 unless a negative balance incident has been observed in production. The existing Convex OCC protection is sufficient.
+2. If the concurrency test is added (currently missing, per CONCERNS.md), verify it tests for NEGATIVE BALANCE (the actual failure mode), not for "two concurrent requests both see sufficient balance" (which is the expected, benign behavior).
+3. If a mitigation IS needed, use Option B (version field on credits record) rather than Option A (per-user workpool). A version field adds a single field read/write per deduction with no workpool coordination overhead.
+4. The test for this pitfall should simulate: two concurrent `deductCredits` mutations on the same user with balance=10, each requesting 8 credits. Expected outcome: one succeeds (balance=2), one fails with INSUFFICIENT_CREDITS. Actual negative balance should never occur.
 
-### Pitfall 16: Multiple Subscription Rows Per User During Dedup Fix
+**Warning signs:**
+- Extraction job duration increases by more than 20% after adding per-user credit workpool.
+- Convex function logs show "workpool queue depth > 10" for the credit workpool.
+- Papers complete extraction but sit waiting for credit deduction confirmation before status updates.
 
-**What goes wrong:** The `subscriptions` table allows multiple rows per user (no uniqueness constraint). The `selectCanonicalSubscription` function picks the "right" one. If the hardening sweep adds a uniqueness enforcement (e.g., deleting duplicates), it may delete the wrong row -- the one with the active Stripe subscription ID.
-
-**Prevention:**
-- Before deduplicating, log ALL subscription rows for affected users with their `stripeSubscriptionId` and `status`
-- The canonical subscription is the one with `status: "active"` and a valid `stripeSubscriptionId`
-- Do NOT delete any row with a non-null `stripeSubscriptionId` unless it is confirmed canceled in Stripe
-- Consider adding an `isCanonical: v.boolean()` field rather than deleting rows, to preserve audit trail
-
-**Confidence:** MEDIUM -- verified at `convex/schema.ts:71-103` and `convex/subscriptions/lib/selectCanonicalSubscription.ts`.
+**Phase to address:** The concurrency test coverage phase. Add the test to verify existing OCC protection works. Only implement the workpool mitigation if the test reveals OCC is insufficient.
 
 ---
 
-## Integration Pitfalls
+## Technical Debt Patterns
 
-Cross-cutting concerns when multiple hardening fixes interact.
+Shortcuts that seem reasonable but create long-term problems.
 
----
-
-### Pitfall 17: Type Safety + Deletion Cascade = Double Breakage
-
-**What goes wrong:** The type safety sweep and deletion cascade fix touch the same file (`convex/extraction/mutations.ts`). If done in parallel or in the wrong order:
-- The type sweep adds proper `MutationCtx` types to `deleteExtractionInternal`, revealing that the recursive `ctx.runMutation(internal.extraction.mutations.deleteExtractionInternal, ...)` call may have type issues
-- The cascade fix adds new deletion steps (evidence units, reviews, storage)
-- Merging both changes requires resolving conflicts in a 2000+ line file where a mistake means data loss
-
-**Prevention:**
-- Do the type safety sweep FIRST, ship it, verify it works
-- THEN do the deletion cascade fix in a separate phase
-- Never refactor types and change deletion logic in the same PR
-
-**Confidence:** HIGH -- both concerns target the same file and function.
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| `as any` cast for Stripe customer union | Compiles immediately | Silently returns `undefined` if Stripe changes response shape | Never for production billing paths |
+| Calling `assertPlanPriceConfig()` at module scope | Single validation point | Blocks ALL functions in the module if env var is missing | Never — always call at use-site |
+| `filter().paginate()` for collection membership | Works correctly today | Fetches more documents than needed, worsens with library size | Acceptable until library exceeds ~5,000 items per user |
+| `console.log` for audit events in hot paths | Zero overhead | Not queryable, not tamper-evident, purged with Convex log rotation | Acceptable for debug-level logging; not for security audit events |
+| `name as any` in rate limit `consume` mutation | Avoids complex type dance | New rate limit names silently fail exhaustiveness check | Never — use runtime validation instead |
+| Top-level `import * as XLSX from 'xlsx'` | Simple import | 500KB added to initial bundle for ALL users | Never — dynamic import is straightforward here |
+| `result as any` to access `correctedAnswer` | Avoids type derivation work | Type errors in field access are invisible at compile time | Never — derive the type from the existing validator |
 
 ---
 
-### Pitfall 18: Rate Limiting + N+1 Fix = Changed Query Performance Profile
+## Integration Gotchas
 
-**What goes wrong:** Adding rate limiting to extraction job creation while simultaneously optimizing N+1 queries changes the performance profile unpredictably. The rate limiter adds a read+write per request. The N+1 fix reduces reads per request. If the rate limiter uses the same transaction as the query, the overall read count may be similar but with higher contention.
+Common mistakes when connecting to external services or internal systems.
 
-**Prevention:**
-- Rate limiting should be its own mutation step (check limit, then proceed to the actual operation) or use the `@convex-dev/ratelimiter` component which handles this correctly
-- Do not embed rate limit checks inside existing query handlers
-- Deploy rate limiting and query optimizations in separate phases
-
-**Confidence:** MEDIUM -- theoretical integration risk based on Convex OCC model.
-
----
-
-### Pitfall 19: Schema Changes for Multiple Fixes Require Coordinated Migration
-
-**What goes wrong:** Multiple hardening fixes require schema changes:
-- Zotero encryption: add `encryptedKey`, remove `apiKey`
-- Key versioning: add `keyVersion` to `apiKeys`
-- Extraction version: add `extractionVersion` to `extractionJobs`
-- Rate limiting: add `rateLimits` table
-- Deletion tracking: add `deletionStatus` to `extractionJobs`
-
-If deployed together without coordinated migration, the schema push may fail because existing data does not match the new required fields.
-
-**Prevention:**
-- All new fields must start as `v.optional()` -- Convex will reject a schema push with required fields that existing data does not have
-- Group schema additions into one deployment, then migrate data, then tighten types in a follow-up deployment
-- Test schema changes against the production Convex deployment using `npx convex deploy --preview` before pushing to production
-- Follow [Convex's dual-write migration pattern](https://stack.convex.dev/intro-to-migrations): deploy code that writes both formats while reading the old format, migrate data asynchronously, update code to read the new format, then clean up
-
-**Detection:** `npx convex deploy` will fail with a schema validation error if required fields are added without migration.
-
-**Confidence:** HIGH -- confirmed by [Convex schema migration docs](https://stack.convex.dev/intro-to-migrations) and [Convex schemas documentation](https://docs.convex.dev/database/schemas).
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Stripe SDK customer union | Assume `fresh.customer.id` always works | `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id` — always use type guard |
+| Convex `paginationOptsValidator` | Add pagination to a query that already uses it, changing cursor format | Read the actual query code; verify `.paginate()` is not already present before migrating |
+| `@convex-dev/workflow` `cancel()` | Pass stored string as `Id<"_scheduled_functions">` without verifying format | Read workflow component type definitions; verify stored IDs are runtime-compatible with expected type |
+| ExcelJS migration from `xlsx` | Port array-of-arrays API to builder pattern, miss column definitions | Write an end-to-end test that reads the output file back; assert headers and values explicitly |
+| Convex audit table writes | Add DB insert to utility function called inside extraction loops | Audit all call sites; add persistence only for security-sensitive callers, not hot-path processing |
+| `convex-helpers` `filter()` | Replace with index-based filter, invalidating cursor format | New cursor format is incompatible with old bookmarked URLs; add cursor migration or catch and reset |
+| nuqs URL state with Convex cursors | Store raw Convex cursor bytes in URL | nuqs handles serialization; the issue is cursor format changes between query implementations, not storage |
 
 ---
 
-### Pitfall 20: Orphaned PDF Cleanup During Cascade Fix Hits Convex Storage API Limits
+## Performance Traps
 
-**What goes wrong:** When fixing the deletion cascade to include storage cleanup (`ctx.storage.delete(storageId)`), processing a job with hundreds of papers that each have a PDF stored in Convex storage requires hundreds of sequential storage delete calls. This can hit Convex's function execution time limit (1 second for user code) or the 16,000 write limit per transaction.
+Patterns that work at small scale but fail as usage grows.
 
-**Why it happens:** Each `ctx.storage.delete()` is a write operation. Combined with document deletes for evidence units, reviews, results, and papers, a single cascade invocation for a large job may exceed transaction limits.
-
-**Prevention:**
-- Batch storage deletes: collect up to N storage IDs per cascade step, delete them, then reschedule
-- Count total writes per cascade step (document deletes + storage deletes) and keep well under the 16,000 limit
-- Consider a separate cleanup cron that processes orphaned storage IDs on a schedule, rather than inline in the cascade
-- The existing `cleanupOldPdfFiles` function already has some of this logic -- extend it rather than duplicating in the cascade
-
-**Detection:** Monitor Convex function execution duration after deploying cascade changes. If cascade mutations consistently approach the 1-second limit, batching is too aggressive.
-
-**Confidence:** MEDIUM -- based on [Convex transaction limits](https://docs.convex.dev/production/state/limits): 16,000 writes per transaction, 1-second execution limit.
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| `decryptApiKey` with audit table write in extraction loop | Extraction mutations slow 10x; OCC retries spike | Audit only security-sensitive callers; batch or defer writes for hot-path callers | Extractions with 50+ papers |
+| Per-user credit workpool with `maxParallelism: 1` | Extraction job duration grows linearly with paper count | Do not implement unless negative balance incident observed | 10+ concurrent paper extractions for same user |
+| `filter().paginate()` for collection membership with large libraries | Query reads all user items to find collection members | Pre-filter by `by_collection` index before applying `filter()` | Libraries with 5,000+ items |
+| Subscription cron fetching 1,000 records without circuit-breaker | Cron exceeds Convex action time limit; next cron fires while previous runs | Add cursor-based pagination and time-budget check inside cron | 1,000+ active subscriptions |
+| Synchronous XLSX bundle load | Initial page load includes 500KB XLSX library even for non-exporters | Dynamic `import('xlsx')` inside the export handler | First user load on slow connections |
 
 ---
 
-## Phase-Specific Warnings
+## Security Mistakes
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Debug code cleanup + console.log removal | Pitfall 10 (internal tooling), Pitfall 13 (blanket removal) | Grep all references before removal; manual removal over compiler config |
-| Type safety sweep | Pitfall 1 (runtime behavior change), Pitfall 2 (codegen mismatch), Pitfall 14 (patchData) | Regenerate types first; type-only changes per commit; full test run after each file |
-| Schema additions | Pitfall 19 (coordinated migration) | All new fields as v.optional(); group into one deployment; test with --preview |
-| Deletion cascade fix | Pitfall 3 (ordering errors), Pitfall 17 (conflicts with type sweep), Pitfall 20 (storage limits) | Fix cascade after type sweep ships; add deletion status tracking; write comprehensive test |
-| N+1 and performance fixes | Pitfall 7 (contract change), Pitfall 8 (pagination awareness), Pitfall 12 (reactive semantics) | Keep return types identical; use Promise.all as first step; preserve reactive subscriptions |
-| Security hardening | Pitfall 4 (Zotero migration), Pitfall 11 (key rotation), Pitfall 5 (Stripe dummy key) | Multi-step migration pattern; key versioning; lazy initialization |
-| Env var validation | Pitfall 5 (Stripe dummy key), Pitfall 6 (environment-aware) | Lazy validation at point of use; never validate at module scope |
-| Rate limiting | Pitfall 9 (OCC conflicts), Pitfall 18 (performance interaction) | Use @convex-dev/ratelimiter component; deploy separately from query optimizations |
+Domain-specific security issues beyond general web security.
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Audit table write added to `decryptApiKey` called in hot paths | Audit table grows proportionally to extraction size, not to security events — obscures real audit trail | Only persist audit events for user-facing key access operations; use `console.log` for internal use |
+| `dangerouslySetInnerHTML` with AI-generated answer text | XSS via paper title or AI answer containing `<script>` or event handlers | Replace with React component that splits on match; test with HTML characters in both text and query |
+| `assertPlanPriceConfig()` called at module scope | Module fails to load in environments without Stripe config, blocking all functions including non-billing ones | Call only at the point of use inside Stripe-dependent handlers |
+| Rate limit exhaustiveness bypass via `as any` | Invalid rate limit name silently fails to enforce limit | Runtime validation against `Object.keys(rateLimitConfig)`; throw for unrecognized names |
+| Workflow ID type mismatch hidden by `as any` | Workflow cancel silently fails if ID format changes after component update | Validate stored ID format against component expectations; write cancellation test |
 
 ---
 
-## Recommended Phase Ordering (Based on Pitfall Dependencies)
+## UX Pitfalls
 
-1. **Debug code cleanup + console.log removal** -- lowest risk, no schema changes, no behavioral changes. Builds confidence.
-2. **Type safety sweep** -- must happen before cascade/N+1 fixes to establish type foundation. No runtime behavior changes if done correctly.
-3. **Schema additions** (all `v.optional` fields) -- one coordinated push adding all new fields needed by later phases.
-4. **Deletion cascade fix** -- depends on typed codebase and new schema fields. High-value fix for data integrity.
-5. **N+1 and performance fixes** -- depends on typed codebase for safe refactoring.
-6. **Security hardening** (encryption migration, env var validation) -- depends on schema additions for key versioning.
-7. **Rate limiting** -- last because it is additive (new behavior, not fixing existing behavior) and depends on typed codebase.
+Common user experience mistakes in this domain.
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Highlight disappears after XSS fix | Search highlighting stops working; users think search is broken | Verify highlight works with case-insensitive, special-character queries before shipping the React replacement |
+| Cursor invalidation after pagination query change | Bookmarked library URLs show blank page with no error | Catch cursor decode errors in the library page; reset to page 1 with a toast explaining the URL was refreshed |
+| ExcelJS migration breaks existing `.xlsx` files | Users get "Excel found problems" dialog; blame the app | Test output files in actual Excel/LibreOffice before shipping; use round-trip read test |
+| Credit TOCTOU mitigation adds latency to paper processing | Extraction jobs feel slower; users cancel and retry | Never add synchronous serialization to the hot extraction path; measure before implementing |
+| Env var validation error blocks billing page load | Users cannot subscribe or purchase credits; silent failure | Validate env vars lazily inside handlers; never block page load with validation |
+
+---
+
+## "Looks Done But Isn't" Checklist
+
+Things that appear complete but are missing critical pieces.
+
+- [ ] **`as any` removal in `maintenance/internal.ts`:** Verify the fix works when `fresh.customer` is a plain string (the common case). Test with expanded customer object too. Both paths must extract a non-null customer ID.
+- [ ] **XSS fix in `highlightText`:** Verify HTML characters in paper titles (e.g., `<em>Study</em>`) render as escaped text, not as HTML. Verify the `<mark>` highlight is still applied correctly around the matched substring.
+- [ ] **ExcelJS migration (if pursued):** Open the exported file in Excel or LibreOffice. Assert row count, header presence, and cell values via round-trip read test. "No exception thrown" is not sufficient.
+- [ ] **Audit table implementation:** Verify `decryptApiKey` calls from extraction processing paths do NOT write to the audit table. Verify explicit API key access calls (user settings, Zotero connection) DO write to the audit table.
+- [ ] **Env var validation:** After adding validation calls, run `npx convex deploy` in an environment with only non-Stripe env vars set. Verify non-billing queries still work correctly.
+- [ ] **Rate limiter `name` fix:** After removing `as any`, add a new rate limit to the config and verify it is automatically valid in the `consume` mutation without any additional code changes.
+- [ ] **Workflow ID type fix:** After removing `workflow.cancel(ctx, job.workflowId as any)`, cancel an active extraction job and verify the workflow actually stops scheduling new steps. Check Convex logs for workflow step attempts after cancellation.
+- [ ] **Credit concurrency test:** The new test must simulate two concurrent deductions on the same user and assert NO negative balance results. Assert that exactly one deduction succeeds for each credit unit.
+- [ ] **Library query pagination (if any work done):** Bookmarked URL with old cursor should either work or gracefully reset to page 1 — never show a blank page or error.
+- [ ] **Dynamic XLSX import:** Measure the bundle size of `lib/extraction/export.ts` before and after. The 500KB XLSX chunk should NOT appear in the initial bundle analysis.
+
+---
+
+## Recovery Strategies
+
+When pitfalls occur despite prevention, how to recover.
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| `as any` removal breaks subscription correction (customer `undefined`) | MEDIUM | Rollback `maintenance/internal.ts` to previous version; add test; re-deploy typed fix |
+| Cursor format change breaks existing library URLs | LOW | Deploy query with cursor parse error handling (catch + reset to page 1); no data loss |
+| ExcelJS migration produces corrupt files | MEDIUM | Revert to `xlsx` or dynamic `xlsx` import; file users exported with corrupted format are already downloaded, no server-side recovery |
+| Audit table writes slow extraction mutations | MEDIUM | Remove `ctx.db.insert` from `decryptApiKey`; replace with `console.log`; schedule data backfill cron if audit records are needed |
+| `assertPlanPriceConfig()` at module scope blocks billing | HIGH | Immediate deploy moving call inside function handler; every billing action is failing until resolved |
+| Rate limit exhaustiveness gap allows unthrottled access | LOW | Add missing name to the runtime validation set; re-deploy; no data was corrupted |
+| Workflow cancel fails silently after `as any` removal | MEDIUM | Re-add temporary `as any` with comment explaining why; file issue against `@convex-dev/workflow` for clarification on expected ID type |
+| Credit TOCTOU workpool causes extraction slowdown | MEDIUM | Remove per-user workpool; revert to Convex OCC protection; no correctness issue results |
+
+---
+
+## Pitfall-to-Phase Mapping
+
+How roadmap phases should address these pitfalls.
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| `as any` breaks runtime (Stripe customer union) | Type-safety sweep — do `maintenance/internal.ts` last, with test first | Test both customer shapes (string and expanded object) pass before deploy |
+| Library cursor invalidation from pagination change | Library query phase — read actual code first | Confirm `.paginate()` already present; no cursor format change needed |
+| ExcelJS API difference breaks output | Bundle optimization phase — start with dynamic import, not library swap | Round-trip read test before shipping |
+| `dangerouslySetInnerHTML` React replacement breaks highlighting | XSS fix phase — write failing test first | XSS test + highlighting test both pass; visual regression check in browser |
+| Audit table writes in hot paths | Security/audit phase — define audit scope before writing code | Extraction mutation latency unchanged after audit table addition |
+| Env var validation blocks module load | Env validation phase — test without Stripe env vars | Non-billing functions work without `STRIPE_*` env vars set |
+| Stripe type narrowing crashes webhook for string customer | Type-safety sweep — specifically `maintenance/internal.ts` | Maintenance cron runs without errors in staging; corrections applied |
+| Rate limiter `as any` breaks exhaustiveness | Type-safety sweep — fix before adding new rate limits | New rate limit name valid in `consume` without code change |
+| Workflow ID type mismatch | Type-safety sweep — research `@convex-dev/workflow` types first | Cancellation test passes; workflow stops scheduling after cancel |
+| Credit TOCTOU workpool deadlock | Credit concurrency test phase — verify OCC sufficient before implementing workpool | Concurrency test shows no negative balance; no workpool needed |
 
 ---
 
 ## Sources
 
-- [Convex TypeScript Best Practices](https://docs.convex.dev/understanding/best-practices/typescript) -- HIGH confidence
-- [Convex Server Module Types (MutationCtx, QueryCtx)](https://docs.convex.dev/api/modules/server) -- HIGH confidence
-- [Convex GenericMutationCtx Interface](https://docs.convex.dev/api/interfaces/server.GenericMutationCtx) -- HIGH confidence
-- [Convex Transaction Limits](https://docs.convex.dev/production/state/limits) -- HIGH confidence (32,000 doc scan, 16 MiB read/write, 4,096 index reads, 1s execution)
-- [Convex Queries That Scale](https://stack.convex.dev/queries-that-scale) -- HIGH confidence
-- [Convex Rate Limiting Patterns](https://stack.convex.dev/rate-limiting) -- HIGH confidence
-- [Convex Rate Limiter Component](https://www.convex.dev/components/rate-limiter) -- HIGH confidence
-- [Convex Intro to Migrations](https://stack.convex.dev/intro-to-migrations) -- HIGH confidence
-- [Convex Lightweight Zero-Downtime Migrations](https://stack.convex.dev/lightweight-zero-downtime-migrations) -- HIGH confidence
-- [Convex Schemas Documentation](https://docs.convex.dev/database/schemas) -- HIGH confidence
-- [Convex Query Functions](https://docs.convex.dev/functions/query-functions) -- HIGH confidence
-- [Convex Best Practices: Other Recommendations](https://docs.convex.dev/understanding/best-practices/other-recommendations) -- HIGH confidence
-- [AES-256 Encryption Modes and Pitfalls](https://terrazone.io/aes-256-encryption-types/) -- MEDIUM confidence
-- [Mistakes Engineers Make in Large Established Codebases](https://www.seangoedecke.com/large-established-codebases/) -- MEDIUM confidence
-- [Next.js Console Removal](https://nextjs.org/docs/app/api-reference/config/next-config-js/logging) -- HIGH confidence
+- Codebase inspection: `convex/maintenance/internal.ts:100-103`, `convex/library/queries.ts:69-83`, `lib/extraction/export.ts:1-2`, `components/extraction/results-views/table-view.tsx:293-297`, `convex/lib/rateLimit.ts:52`, `convex/lib/crypto.ts:81-86`, `convex/lib/constants.ts:55-58`, `convex/extraction/mutations.ts:263`, `convex/credits/internal.ts:1238-1280` — HIGH confidence
+- `.planning/codebase/CONCERNS.md` — audit of known issues — HIGH confidence
+- Prior research: `.planning/research/PITFALLS.md` (v2.3 hardening), `.planning/research/PITFALLS_v2.4_CONCERNS_SWEEP.md` — HIGH confidence (Pitfall 5 and 6 from v2.3 remain directly relevant to env var validation in v3.0)
+- [Convex Transaction Limits](https://docs.convex.dev/production/state/limits) — 16,000 writes per transaction — HIGH confidence
+- [Convex When to Use Return Validators](https://stack.convex.dev/when-to-and-when-not-to-use-return-validators) — runtime enforcement behavior — HIGH confidence
+- [Convex Workflow Component](https://www.convex.dev/components/workflow) — cancel semantics — HIGH confidence
+- [Convex Workpool Component](https://www.convex.dev/components/workpool) — cancellation does not stop in-progress work — HIGH confidence
+
+---
+*Pitfalls research for: v3.0 Zero-Any Overhaul — OpenAlex Count*
+*Researched: 2026-03-03*

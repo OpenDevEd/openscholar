@@ -1,501 +1,533 @@
-# Stack Research: v2.1 Library & Collections
+# Technology Stack: v3.0 Zero-Any Overhaul
 
-**Domain:** Persistent user library with collections, full-text search, and filtering for an academic search app
-**Researched:** 2026-02-28
+**Project:** OpenAlex Count
+**Researched:** 2026-03-03
 **Confidence:** HIGH
+**Scope:** NEW capabilities only. Existing stack (Next.js, Convex, Stripe SDK v20.3.0, @convex-dev/stripe, next-intl, nuqs, Zustand, Framer Motion, Playwright, Vitest, convex-helpers, AES-256-GCM, 744 tests) is validated — NOT re-researched.
+
+---
 
 ## Context
 
-This research covers ONLY what is needed for v2.1. The existing stack is validated and not re-researched:
-- Next.js 16.1.6, Convex 1.32.0, Clerk auth, next-intl, Stripe billing, Playwright, Vitest, Zustand 5.0.5, nuqs 2.8.8
+v3.0 resolves every item in CONCERNS.md. The concerns map to exactly six new stack capabilities:
 
-The v2.1 features are:
-1. Rating an item auto-saves it to a Convex-backed library (full JSON entry)
-2. Dedicated `/library` page with filtering (rating, collection, date saved, text search, sort)
-3. Collection CRUD (create, rename, delete) with many-to-many item assignment
-4. Remove items from library
-5. Auth-gated (signed-in users only)
+| Concern | Capability Needed | Decision |
+|---------|-------------------|---------|
+| `xlsx` large/unmaintained/sync | Excel export library replacement | Replace with ExcelJS 4.4.0 (dynamic import) |
+| `dangerouslySetInnerHTML` XSS | HTML sanitization | DOMPurify 3.3.1 (client-only) OR text-split (no new dep) |
+| Library `collect()` at scale | Real server-side pagination | Convex `paginationOptsValidator` (already installed, misapplied) |
+| `as any` in Stripe/workflow | Typed narrowing patterns | Type guard patterns + `vWorkflowId` (already installed) |
+| No startup env validation | Env var validation at startup | Zod v4 (already installed) |
+| Concurrency test gap | Test concurrent mutations | `convex-test` sequential simulation (already installed) |
+
+**Result: zero new npm packages required.** Every capability is achievable with the existing dependency tree.
 
 ---
 
 ## Recommended Stack
 
-### No New Dependencies Required
+### No New Dependencies
 
-The existing stack covers every need for v2.1. This milestone requires **zero new npm packages**.
+| Capability | Package | Current Version | What Changes |
+|------------|---------|----------------|-------------|
+| Excel export | `exceljs` | NOT YET INSTALLED — see decision below | Install if XLSX replacement proceeds |
+| XSS prevention | `dompurify` | NOT YET INSTALLED — see decision below | Install only if DOMPurify approach chosen |
+| Server pagination | `convex` | `^1.31.7` (installed) | `paginationOptsValidator` already exported — apply it |
+| Workflow ID typing | `@convex-dev/workflow` | `^0.3.4` (installed) | `vWorkflowId` already exported — use it |
+| Env validation | `zod` | `^4.3.6` (installed) | Call `.parse(process.env)` at startup |
+| Concurrency testing | `convex-test` | `^0.0.41` (installed) | Sequential simulation pattern (see below) |
 
-| Capability Needed | Already Installed | Version | Status |
-|---|---|---|---|
-| Backend data storage | `convex` | 1.32.0 | Full-text search indexes, pagination, compound indexes all supported |
-| Relationship helpers | `convex-helpers` | 0.1.112 | Installed but unused -- `getManyVia`, `filter` ready to use |
-| URL state for filters | `nuqs` | 2.8.8 | Already wired with `NuqsAdapter` in root layout |
-| Client state (optimistic) | `zustand` | 5.0.5 | Already used for ratings store (`useRatingsStore`) |
-| Auth-gated queries | `convex` + `@clerk/nextjs` | -- | `useProtectedQuery`, `useProtectedPaginatedQuery` already built in `lib/auth/use-auth-query.ts` |
-| Date formatting | `date-fns` | 4.1.0 | Already installed |
-| Icons | `lucide-react` | 0.487.0 | Already installed |
-| UI components | Radix primitives + shadcn | -- | Full component library already in place |
-| Pagination UI | CommandCenter components | -- | Reusable `CommandCenterPagination`, `CommandCenterList`, `CommandCenterToolbar` already exist |
-| Toasts | `sonner` | 2.0.7 | Already installed, used throughout app |
-| Analytics | `posthog-js` | 1.342.1 | Already installed, used for rating events |
+### Decision Point: ExcelJS vs Text-Split for XSS
 
-### Core Technologies (Convex Patterns to Use)
-
-| Pattern | Purpose | Why Recommended |
-|---|---|---|
-| Convex `searchIndex` | Full-text search within saved library items (title, abstract, authors) | Native Convex feature, reactive, no external search engine needed. Supports `.paginate()` and `filterFields` for scoped search. |
-| Convex `.index()` compound indexes | Filtering by userId + rating, userId + savedAt for sort | Compound indexes enable efficient range queries; `_creationTime` auto-appended as tiebreaker. |
-| Convex `.paginate()` + `usePaginatedQuery` | Infinite scroll or load-more on `/library` page | Cursor-based, reactive, already used in extraction queries. `useProtectedPaginatedQuery` wrapper already built. |
-| Junction table pattern | Many-to-many: items belong to multiple collections | Standard Convex pattern for M:N. Separate `libraryItemCollections` table with indexes on both foreign keys. |
-| `convex-helpers/server/relationships` `getManyVia` | Traversing item-to-collections and collection-to-items | Eliminates boilerplate for junction table queries. Already installed at 0.1.112, not yet imported anywhere. |
-| `convex-helpers/server/filter` `filter` | Complex TypeScript filtering on paginated queries | Enables filtering by criteria not expressible in index range (e.g., combined OR conditions). Use with caution -- see limitations. |
-| `nuqs` parsers | URL-driven filter/sort state on `/library` page | Already in use for pagination (`parseAsInteger`). Extend with `parseAsString`, `parseAsStringLiteral` for filter params. |
+These are the only two items that could require new packages. Both have a zero-new-dependency alternative.
 
 ---
 
-## Convex Schema Design
+## ExcelJS: The xlsx Replacement
 
-### New Tables
+**Verdict: Install ExcelJS 4.4.0. The ESM concern is a non-issue for server-side Next.js route handlers.**
+
+### What ExcelJS Provides
+
+ExcelJS is the actively maintained Excel workbook library with full XLSX read/write, streaming, cell formatting, and formula support. Latest version: **4.4.0** (released October 2024). The `xlsx` package at `^0.18.5` has known prototype pollution vectors in certain parse paths and is stagnant.
+
+### ESM Compatibility Reality
+
+ExcelJS uses CommonJS internally (`require()` calls for `crypto`, `jszip`, etc.) which causes failures when bundled by esbuild/webpack in ESM output mode. However:
+
+- This project uses Next.js, which handles CommonJS dependencies via its own bundler (webpack/turbopack with `transpilePackages` support).
+- The failing scenario is "bundle ExcelJS for a browser in ESM format." That is not what this project does.
+- `lib/extraction/export.ts` runs **server-side** (called from Next.js API routes or server actions, not from client bundles).
+- Next.js Route Handlers (`app/api/**`) run in Node.js, where `require()` works fine. ExcelJS's CJS internals are transparent.
+- Confirmed working pattern: import ExcelJS in a Next.js API route or server action with a standard dynamic import — no special config needed.
+
+### Dynamic Import Pattern (Required)
+
+The CONCERNS.md flags `xlsx` as synchronously bundled with the page. The fix for both `xlsx` and `exceljs` is the same: **dynamic import inside the export handler**.
 
 ```typescript
-// In convex/schema.ts -- ADD these three tables
+// lib/extraction/export.ts — replace static import
+// BEFORE (problem): import * as XLSX from 'xlsx';  // ~500KB bundled always
+// AFTER (fix): dynamic import inside the function
 
-// Library items -- one per user per saved paper
-libraryItems: defineTable({
-  userId: v.id("users"),
-  openalexId: v.string(),              // OpenAlex work ID (dedup key)
-  rating: v.number(),                   // 0-5 star rating
-  title: v.string(),                    // Denormalized for display
-  searchableText: v.string(),           // title + abstract + authors concatenated for search
-  authors: v.optional(v.string()),      // Flattened author string for display
-  publicationYear: v.optional(v.number()),
-  doi: v.optional(v.string()),
-  abstract: v.optional(v.string()),     // For display
-  paperData: v.any(),                   // Full OpenAlex Work JSON blob
-  savedAt: v.number(),                  // Timestamp when first saved
-  updatedAt: v.number(),
-})
-  .index("by_user", ["userId"])
-  .index("by_user_openalexId", ["userId", "openalexId"])    // Dedup: one item per user per paper
-  .index("by_user_rating", ["userId", "rating"])             // Filter by rating
-  .index("by_user_savedAt", ["userId", "savedAt"])           // Sort by date saved
-  .index("by_user_year", ["userId", "publicationYear"])      // Sort by publication year
-  .searchIndex("search_library", {
-    searchField: "searchableText",                            // Full-text search on concatenated field
-    filterFields: ["userId", "rating"],                       // Scope search to user, optionally filter by rating
-  }),
-
-// Collections -- user-created groupings
-collections: defineTable({
-  userId: v.id("users"),
-  name: v.string(),
-  description: v.optional(v.string()),
-  color: v.optional(v.string()),       // Optional color tag for UI
-  itemCount: v.number(),               // Denormalized count for display
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_user", ["userId"])
-  .index("by_user_name", ["userId", "name"]),   // Uniqueness check + alphabetical listing
-
-// Junction table: items <-> collections (many-to-many)
-libraryItemCollections: defineTable({
-  libraryItemId: v.id("libraryItems"),
-  collectionId: v.id("collections"),
-  addedAt: v.number(),
-})
-  .index("by_item", ["libraryItemId"])                        // "What collections is this item in?"
-  .index("by_collection", ["collectionId"])                    // "What items are in this collection?"
-  .index("by_item_collection", ["libraryItemId", "collectionId"]),  // Dedup check via .unique()
+export async function exportToExcel(
+  data: ExtractionExportData
+): Promise<Uint8Array> {
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Results");
+  // ... build sheet ...
+  return workbook.xlsx.writeBuffer() as Promise<Uint8Array>;
+}
 ```
 
-### Index Budget
+This eliminates the `~500KB` bundle weight for users who never click Export.
 
-`libraryItems` uses 5 regular indexes + 1 search index = 6 total (limit: 32 per table).
-`collections` uses 2 regular indexes = 2 total.
-`libraryItemCollections` uses 3 regular indexes = 3 total.
+### Why Not Alternatives
 
-All well within Convex limits.
+| Alternative | Why Not |
+|-------------|---------|
+| Keep `xlsx` | Known security issues, no ESM, stagnant (last release 2023). Out-of-scope per CONCERNS.md recommendation. |
+| CSV-only export | Loses XLSX capability that users may rely on. Excel formatting (cell types, column widths) unavailable. |
+| `@e965/xlsx` (sheetjs-style fork) | Same prototype pollution surface. ESM issues identical. No advantage. |
+| `write-excel-file` | Write-only, no read. Simpler API but far less control over cell formatting. Acceptable if formatting requirements are minimal, but ExcelJS is the clear standard. |
 
-### Design Rationale
+### Installation
 
-**Why denormalize title/authors/year onto `libraryItems`?**
-Convex search indexes and regular indexes operate on fields within the same document. If the paper data were stored in a separate table, every query would require a join. Denormalizing the key searchable/filterable fields onto the library item document enables:
-- Search index on `searchableText` with `userId` as filter field
-- Compound indexes on `userId` + `rating`, `userId` + `savedAt`
-- No joins for the common list/filter/sort operations
+```bash
+npm install exceljs
+```
 
-**Why `paperData: v.any()` for the full JSON?**
-The OpenAlex `Work` type has 40+ optional fields (`abstract_inverted_index`, `authorships`, `apc_list`, `best_oa_location`, `biblio`, etc.). Defining each one in the Convex schema provides no value since this blob is only used for display/export, not querying. Using `v.any()` avoids schema churn as OpenAlex evolves. All queryable fields are denormalized as properly typed fields above it.
-
-**Why `searchableText` (concatenated) instead of indexing `title` alone?**
-Convex search indexes support exactly 1 `searchField`. A single concatenated field (`title + " " + abstract + " " + authors`) enables searching across all text with one index. Build this string at save time in the mutation, not at query time.
-
-**Why junction table instead of array-of-IDs?**
-- Arrays cannot be indexed in Convex -- no way to efficiently query "all items in collection X"
-- Junction table enables efficient bidirectional queries via separate indexes
-- Easy add/remove without read-modify-write races on the parent document
-- Metadata per association (e.g., `addedAt` timestamp)
-- `by_item_collection` compound index enables `.unique()` for dedup checks
-
-**Why `itemCount` on `collections` (denormalized)?**
-Counting items in a collection requires a full scan of `libraryItemCollections` filtered by `collectionId`. Denormalizing the count avoids this on every render. Increment/decrement atomically in the add/remove mutations.
+**Bundle impact:** ExcelJS is ~1.5MB uncompressed but loaded dynamically — zero impact on initial page load. Only fetched when the Export dialog opens and user clicks XLSX.
 
 ---
 
-## Key Convex Patterns
+## XSS Prevention: DOMPurify vs Text-Split
 
-### Pattern 1: Rating Triggers Library Save (Upsert)
+**Verdict: Use the text-split approach (React-native, no new dependency). Reserve DOMPurify for a fallback if complex HTML markup is needed later.**
+
+### The Problem
+
+`highlightText()` in `table-view.tsx` returns a raw HTML string injected via `dangerouslySetInnerHTML`. The paper title, AI answers, and reasoning are not sanitized before injection. An adversarial paper with `<script>` in the title, or AI-generated content with HTML characters, would execute in the user's browser.
+
+### Option A: Text-Split (Recommended — Zero New Deps)
+
+Split the text on the query match and return React elements. No HTML injection at all.
 
 ```typescript
-// convex/library/mutations.ts
-import { mutation } from "../_generated/server";
-import { v } from "convex/values";
-import { getCurrentUser } from "../lib/auth";
-
-export const saveToLibrary = mutation({
-  args: {
-    openalexId: v.string(),
-    rating: v.number(),
-    title: v.string(),
-    authors: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    doi: v.optional(v.string()),
-    abstract: v.optional(v.string()),
-    paperData: v.any(),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) throw new Error("Unauthenticated");
-
-    const searchableText = [args.title, args.abstract, args.authors]
-      .filter(Boolean)
-      .join(" ");
-
-    // Upsert: check if already in library
-    const existing = await ctx.db
-      .query("libraryItems")
-      .withIndex("by_user_openalexId", (q) =>
-        q.eq("userId", user._id).eq("openalexId", args.openalexId)
-      )
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        rating: args.rating,
-        paperData: args.paperData,
-        searchableText,
-        updatedAt: Date.now(),
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("libraryItems", {
-      userId: user._id,
-      openalexId: args.openalexId,
-      rating: args.rating,
-      title: args.title,
-      searchableText,
-      authors: args.authors,
-      publicationYear: args.publicationYear,
-      doi: args.doi,
-      abstract: args.abstract,
-      paperData: args.paperData,
-      savedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
-});
+// components/extraction/results-views/table-view.tsx
+function HighlightText({
+  text,
+  query,
+}: {
+  text: string;
+  query: string;
+}): React.ReactElement {
+  if (!query || !query.trim()) return <span>{text}</span>;
+  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(`(${escapedQuery})`, "gi");
+  const parts = text.split(regex);
+  return (
+    <span>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark
+            key={i}
+            className="bg-yellow-200/50 dark:bg-yellow-500/30 rounded px-0.5"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+}
 ```
 
-### Pattern 2: Search with User Scoping + Pagination
+Replace all `dangerouslySetInnerHTML={{ __html: highlightText(text, query) }}` call sites with `<HighlightText text={text} query={query} />`.
+
+**Advantages:** Zero new dependency. Fully XSS-safe by construction (React escapes all content). Testable with standard Vitest/React Testing Library. Simpler than maintaining a sanitization library.
+
+### Option B: DOMPurify (If Text-Split Is Inadequate)
+
+DOMPurify 3.3.1 (released December 2024) is the industry standard for client-side HTML sanitization. TypeScript types are bundled — no `@types/dompurify` needed.
 
 ```typescript
-// convex/library/queries.ts
-export const searchLibrary = query({
-  args: {
-    searchQuery: v.string(),
-    rating: v.optional(v.number()),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return { status: "unauthenticated" as const };
-
-    return await ctx.db
-      .query("libraryItems")
-      .withSearchIndex("search_library", (q) => {
-        let search = q.search("searchableText", args.searchQuery).eq("userId", user._id);
-        if (args.rating !== undefined) {
-          search = search.eq("rating", args.rating);
-        }
-        return search;
-      })
-      .paginate(args.paginationOpts);
-  },
-});
+import DOMPurify from "dompurify";
+// Only runs in browser; DOMPurify requires a DOM environment
+const clean = DOMPurify.sanitize(highlightText(text, query));
+// Then: dangerouslySetInnerHTML={{ __html: clean }}
 ```
 
-### Pattern 3: Index-Based Filtering + Sorting (No Search Query)
+**Disadvantage:** DOMPurify requires a browser DOM. It does not run in Node.js/Vitest jsdom without extra setup (`isomorphic-dompurify` or mocking). Adds `~25KB` gzipped to the client bundle. The text-split approach is simpler and more correct.
+
+**Use DOMPurify only if:** The highlight markup needs to render HTML from an external source (e.g., OpenAlex returns HTML-formatted abstracts). For the current use case (wrap matched substring in `<mark>`), text-split is strictly better.
+
+### Installation (only if DOMPurify path chosen)
+
+```bash
+npm install dompurify
+# Types are bundled — no @types/dompurify needed
+```
+
+---
+
+## Convex Pagination: Real Server-Side Pagination
+
+**Verdict: `paginationOptsValidator` is already imported in `convex/library/queries.ts`. The problem is `.collect()` is still called for filter paths. Replace with index-first querying + `.paginate()`.**
+
+### Current State
+
+`convex/library/queries.ts` imports `paginationOptsValidator` and calls `.paginate()` on the happy path (browse by index), but falls back to `.collect()` for collection-filtered and rating-filtered paths. As user libraries grow, the collect paths will hit Convex's memory/time limits.
+
+### Correct Pattern
 
 ```typescript
+import { paginationOptsValidator } from "convex/server";
+import type { Cursor } from "convex/server";
+
 export const listLibrary = query({
   args: {
-    sortBy: v.union(v.literal("savedAt"), v.literal("rating"), v.literal("year")),
+    paginationOpts: paginationOptsValidator,
+    collectionId: v.optional(v.id("collections")),
     rating: v.optional(v.number()),
-    paginationOpts: paginationOptsValidator,
+    sortBy: v.union(
+      v.literal("savedAt"),
+      v.literal("rating"),
+      v.literal("year"),
+      v.literal("title")
+    ),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) return { status: "unauthenticated" as const };
 
-    let q;
-    if (args.rating !== undefined) {
-      q = ctx.db.query("libraryItems")
-        .withIndex("by_user_rating", (idx) =>
-          idx.eq("userId", user._id).eq("rating", args.rating!)
-        );
-    } else if (args.sortBy === "savedAt") {
-      q = ctx.db.query("libraryItems")
-        .withIndex("by_user_savedAt", (idx) => idx.eq("userId", user._id));
-    } else if (args.sortBy === "year") {
-      q = ctx.db.query("libraryItems")
-        .withIndex("by_user_year", (idx) => idx.eq("userId", user._id));
-    } else {
-      q = ctx.db.query("libraryItems")
-        .withIndex("by_user", (idx) => idx.eq("userId", user._id));
-    }
+    // Use index-based query for all paths; filter post-paginate only for
+    // collection membership (requires junction table lookup)
+    let q = ctx.db
+      .query("libraryItems")
+      .withIndex("by_user_savedAt", (idx) => idx.eq("userId", user._id));
 
-    return await q.order("desc").paginate(args.paginationOpts);
+    return await q.paginate(args.paginationOpts);
   },
 });
 ```
 
-### Pattern 4: Two-Code-Path Strategy (Search vs Browse)
+**The collection filter problem:** Collection membership cannot be pushed into a single index query because the relationship lives in `libraryItemCollections`. The correct approach is:
+1. Query the junction table `by_collection` to get item IDs (bounded by collection size)
+2. Use `ctx.db.get()` for each item ID (parallel)
+3. Return paginated results manually using cursor arithmetic
 
-**Critical design decision:** Convex search queries always return results in **relevance order**. You cannot sort search results by date or rating. This means the `/library` page needs two distinct query paths:
+For v3.0 scope, the pragmatic fix is: **move collection filtering to use the junction table first** (bounded query) and return results without `.collect()` on the main `libraryItems` table.
 
-1. **Search mode** (user typed a query): Use `withSearchIndex` -- results ordered by relevance
-2. **Browse mode** (no search query): Use regular `withIndex` -- results ordered by the chosen sort field
+### Cursor Type for Empty/First Page
 
-The client switches between these based on whether `q` (search query) is non-empty. This is the standard Convex pattern for combining search with custom sort.
-
-### Pattern 5: Many-to-Many with getManyVia
+The correct first-page cursor is `null`, not `""` or `"" as any`:
 
 ```typescript
-import { getManyVia } from "convex-helpers/server/relationships";
+// Correct: null means "start from beginning"
+const { continueCursor, isDone, page } = await ctx.db
+  .query("libraryItems")
+  .paginate({ cursor: null, numItems: 20 });
 
-// Get all collections for a library item
-export const getItemCollections = query({
-  args: { itemId: v.id("libraryItems") },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return { status: "unauthenticated" as const };
-
-    // Verify ownership
-    const item = await ctx.db.get(args.itemId);
-    if (!item || item.userId !== user._id) return { status: "no_access" as const };
-
-    return await getManyVia(
-      ctx.db,
-      "libraryItemCollections",
-      "collectionId",
-      "by_item",
-      args.itemId
-    );
-  },
-});
-
-// Get all items in a collection (with ownership check)
-export const getCollectionItems = query({
-  args: { collectionId: v.id("collections") },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return { status: "unauthenticated" as const };
-
-    const collection = await ctx.db.get(args.collectionId);
-    if (!collection || collection.userId !== user._id) return { status: "no_access" as const };
-
-    const links = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
-      .collect();
-
-    return await Promise.all(
-      links.map((link) => ctx.db.get(link.libraryItemId))
-    ).then((items) => items.filter(Boolean));
-  },
-});
+// On client: usePaginatedQuery handles cursors automatically
+// If constructing manually, cursor: null = first page, cursor: continueCursor = next page
 ```
 
-### Pattern 6: Collection Filter on Library Page
+**Schema for cursor storage:** `v.union(v.string(), v.null())` — matches the `Cursor` type exported from `convex/server`.
 
-When filtering by collection, query the junction table first, then fetch the items:
+### usePaginatedQuery on Client
 
-```typescript
-export const listLibraryByCollection = query({
-  args: {
-    collectionId: v.id("collections"),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return { status: "unauthenticated" as const };
-
-    // Verify collection ownership
-    const collection = await ctx.db.get(args.collectionId);
-    if (!collection || collection.userId !== user._id) return { status: "no_access" as const };
-
-    // Get item IDs in this collection
-    const links = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
-      .collect();
-
-    // Fetch and return the items
-    const items = await Promise.all(
-      links.map((link) => ctx.db.get(link.libraryItemId))
-    );
-
-    return items.filter(Boolean);
-    // Note: For collections with 100+ items, consider paginating the links query
-    // and using getPage from convex-helpers for more control.
-  },
-});
-```
+No change needed on the client side — `usePaginatedQuery` and the existing `useProtectedPaginatedQuery` wrapper handle cursors automatically. The fix is purely in the query handler.
 
 ---
 
-## URL State Design for /library Page
+## Stripe SDK v20 Typed Narrowing
 
-Use `nuqs` parsers to keep all filter/sort state in the URL:
+**Verdict: No new library needed. Use the `typeof x === 'string'` type guard pattern already established in `convex/http.ts`.**
 
+### The Problem
+
+`convex/maintenance/internal.ts` line 103:
 ```typescript
-// lib/library/url-state.ts
-import { parseAsString, parseAsInteger, parseAsStringLiteral } from "nuqs";
-
-export const librarySearchParams = {
-  q: parseAsString.withDefault(""),
-  rating: parseAsInteger,                                                // null = all ratings
-  collection: parseAsString,                                             // collection ID or null
-  sort: parseAsStringLiteral(["savedAt", "rating", "year"] as const)
-    .withDefault("savedAt"),
-  page: parseAsInteger.withDefault(1),
-};
+: (fresh.customer as any)?.id;
 ```
 
-This enables bookmarkable, shareable library views:
-`/library?q=machine+learning&rating=4&sort=year`
+The Stripe `customer` field on a subscription is typed as `string | Stripe.Customer | Stripe.DeletedCustomer`. Stripe does not provide a typed narrowing API for expanded vs non-expanded responses — this is a confirmed known limitation per the Stripe SDK maintainers.
 
-The pattern is already established in the codebase -- `components/bookmarks-command-center/index.tsx` uses `parseAsInteger` with `useQueryState` for pagination, and `components/search-history-pagination.tsx` does the same.
+### The Fix
+
+```typescript
+// Pattern already used in convex/http.ts — apply here too
+const customerId: string | undefined =
+  typeof fresh.customer === "string"
+    ? fresh.customer
+    : fresh.customer?.id;
+```
+
+This is type-safe: TypeScript narrows `fresh.customer` to `string` in the true branch and to `Stripe.Customer | Stripe.DeletedCustomer` in the false branch, giving `.id` access without casting.
+
+**No new library needed.** The `typeof` guard is the official recommendation from the Stripe SDK team (they explicitly declined to implement conditional generic types for expanded responses).
+
+### Rate Limiter Name Exhaustiveness
+
+`convex/lib/rateLimit.ts` line 52:
+```typescript
+name: args.name as any,
+```
+
+Fix: Validate `args.name` against the union of known rate limit names before passing it to the rate limiter. The existing `RATE_LIMIT_NAMES` constant (or equivalent) gives the exhaustive set.
+
+```typescript
+// In the consume mutation args validator, restrict to known names:
+args: {
+  name: v.union(
+    v.literal("search"),
+    v.literal("export"),
+    // ... all rate limit names
+  ),
+  // ...
+}
+```
+
+This converts the `as any` cast into a compile-time-enforced union.
+
+### Workflow ID Typing
+
+`convex/extraction/mutations.ts` line 263:
+```typescript
+await workflow.cancel(ctx, job.workflowId as any);
+```
+
+`@convex-dev/workflow` v0.3.4 exports `vWorkflowId` for use in function argument validation. The `WorkflowId` type returned by `workflow.start()` is a branded string.
+
+**Fix:** Store `workflowId` using `vWorkflowId` in the schema, and retrieve it as the correct type:
+
+```typescript
+import { vWorkflowId } from "@convex-dev/workflow";
+
+// In schema.ts for extractionJobs table:
+workflowId: v.optional(vWorkflowId),
+
+// In mutations.ts — workflow.cancel() now accepts the correctly typed value:
+if (job.workflowId) {
+  await workflow.cancel(ctx, job.workflowId); // no cast needed
+}
+```
+
+**Important caveat:** Changing the schema field from `v.optional(v.string())` to `v.optional(vWorkflowId)` is a schema migration. If `vWorkflowId` is a branded type that validates differently from a bare string, existing stored values may need migration. Verify `vWorkflowId` accepts existing stored string values before deploying.
 
 ---
 
-## Integration Points
+## Env Var Validation at Startup
 
-### Rating -> Library Save Bridge
+**Verdict: Use Zod v4 (already installed at ^4.3.6) with a Convex startup action. No new package needed.**
 
-Currently, `useRatingsStore` (Zustand, persisted to localStorage in `paper-ratings-store`) handles ratings client-only. For v2.1:
+### Approach
 
-1. **Keep** `useRatingsStore` for optimistic UI (instant star display on search results)
-2. **Add** a Convex `useMutation` call in the `RatingSelector` component's `handleRatingChange` to save/update the library item server-side
-3. **Sync direction**: Rating change triggers Convex mutation. Library page reads from Convex (source of truth). Zustand ratings store becomes a write-through cache for the search results page.
-4. **On page load**: For signed-in users, consider hydrating `useRatingsStore` from Convex library items so search results show correct saved ratings. Alternatively, query Convex for ratings of displayed results.
+Create a Convex action that validates all required env vars and can be called:
+- From a startup cron (runs once on deployment)
+- From the first request that touches billing/encryption (as a lazy gate)
+- Manually via `npx convex run` during CI
 
-### Auth Gating
+```typescript
+// convex/lib/envValidation.ts
+import { z } from "zod";
 
-The existing `useProtectedQuery` and `useProtectedPaginatedQuery` hooks in `lib/auth/use-auth-query.ts` handle auth gating with the settlement state machine (`auth_loading` -> `query_loading` -> `ready`). Use these for all library queries.
+const envSchema = z.object({
+  STRIPE_SECRET_KEY: z.string().min(1),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  ENCRYPTION_KEY: z.string().length(64), // 32 bytes hex-encoded
+  STRIPE_GO_PRICE_ID: z.string().min(1),
+  STRIPE_PRO_PRICE_ID: z.string().min(1),
+  STRIPE_ENTERPRISE_PRICE_ID: z.string().min(1),
+  CLERK_JWT_ISSUER_DOMAIN: z.string().url(),
+  OPENALEX_CONTACT_EMAIL: z.string().email(),
+});
 
-The `/library` route should be added as a protected route. The sidebar already shows auth-dependent navigation.
+export function validateEnvVars(): void {
+  const result = envSchema.safeParse(process.env);
+  if (!result.success) {
+    const missing = result.error.issues.map((i) => i.path.join(".")).join(", ");
+    throw new Error(`Missing/invalid env vars: ${missing}`);
+  }
+}
+```
 
-### Existing UI Components to Reuse
+### Zod v4 API Notes
 
-| Component | Reuse For |
-|---|---|
-| `CommandCenterContainer` | Library page layout shell |
-| `CommandCenterToolbar` | Filter bar with search input, sort dropdown, view mode toggle |
-| `CommandCenterList` | Library items list with grid/list view modes |
-| `CommandCenterPagination` | Page controls (if using page-based rather than infinite scroll) |
-| `RatingSelector` | Inline rating display/edit on library items |
-| `CommandCenterHeader` | Library page header with item count |
+The project already uses Zod at `^4.3.6`. Zod v4 is a semver-major release with these relevant changes for env validation:
+
+- `z.object().parse()` and `.safeParse()` — unchanged, still available
+- Error shape: `result.error.issues` (not `.errors` as in v3) — use `.issues`
+- Custom error messages: use `{ error: "message" }` not `{ message: "message" }`
+- `z.string().email()` still works in v4 (the format validators moved to top-level in v4 but old methods are backward-compatible for now)
+
+The existing codebase uses Zod primarily for AI schema validation in `lib/ai/core/`. These patterns remain valid in v4.
+
+### Why Not @t3-oss/env-nextjs
+
+`@t3-oss/env-nextjs` v0.13.10 provides a structured wrapper for Next.js env validation with client/server separation and type-safe `process.env` access. However:
+
+- This project has two env namespaces: **Next.js** (client + server) and **Convex** (backend, separate process). `@t3-oss/env-nextjs` only handles `process.env` in the Next.js process — it cannot reach Convex runtime env vars.
+- The Convex env vars (`STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, etc.) live in the Convex deployment environment, not in `.env.local`.
+- Adding a new package to handle only the Next.js side while Convex remains unvalidated solves half the problem. A single Zod schema inside a Convex action validates the Convex-side env vars directly at the source.
+
+---
+
+## Concurrency Testing for Credit Deduction
+
+**Verdict: `convex-test` v0.0.41 does not natively simulate concurrent mutations. Use sequential simulation to verify OCC invariants. No new package needed.**
+
+### Current State
+
+`convex/credits/deduct-credits.test.ts` already has "sequential deductions (simulating concurrent access)" tests. These run two mutations back-to-back, not truly in parallel.
+
+### What convex-test Supports
+
+`convex-test` runs in a single-threaded JS environment (Vitest). The mock backend executes mutations serially. True parallel OCC conflict simulation is not supported by the mock backend — OCC conflicts only manifest in the real Convex runtime.
+
+### Correct Testing Strategy
+
+Do not try to simulate true concurrency in `convex-test`. Instead, verify the invariants that make concurrent safety hold:
+
+1. **Invariant test:** The `deductCredits` mutation re-reads the balance inside the mutation (not trusting a pre-read from the action). Test that calling `deductCredits` with a balance of 10 when the DB says 5 returns an error.
+
+2. **Sequential cascade test:** Run two `deductCredits` mutations on the same user back-to-back where the second would overdraw. Verify the second throws `INSUFFICIENT_CREDITS` and the balance is correct.
+
+3. **Documentation test:** Add a comment explaining that true OCC (two simultaneous calls both observing sufficient balance, one failing on retry) is guaranteed by Convex's serializable transaction model and cannot be reproduced in unit tests — only integration tests against real Convex.
+
+```typescript
+it("rejects deduction when balance is insufficient after prior deduction", async () => {
+  const t = convexTest(schema);
+  const { userId } = await seedUserWithCredits(t, 10, 0);
+
+  // First deduction succeeds
+  await t.mutation(internal.credits.internal.deductCredits, {
+    userId,
+    amount: 8,
+    description: "first",
+  });
+
+  // Second deduction would overdraw — must throw
+  await expect(
+    t.mutation(internal.credits.internal.deductCredits, {
+      userId,
+      amount: 5,
+      description: "second overdraw",
+    })
+  ).rejects.toThrow("INSUFFICIENT_CREDITS");
+});
+```
+
+This tests the invariant that matters: the mutation enforces the constraint regardless of what the calling action read previously.
+
+---
+
+## Supporting Patterns (No New Packages)
+
+### ExtractionResultWithReview Type (Eliminates export.ts and filtering.ts `as any`)
+
+```typescript
+// convex/extraction/validators.ts — derive shared type
+import { extractionResultWithReviewValidator } from "./validators";
+import type { Infer } from "convex/values";
+
+export type ExtractionResultWithReview = Infer<
+  typeof extractionResultWithReviewValidator
+>;
+```
+
+```typescript
+// lib/extraction/export.ts and lib/extraction/filtering.ts
+// Replace: (result as any).correctedAnswer
+// With:    result.correctedAnswer  (after threading ExtractionResultWithReview type)
+```
+
+This requires the export/filtering functions to accept `ExtractionResultWithReview[]` instead of the bare query return type. No new library — pure TypeScript.
 
 ---
 
 ## Alternatives Considered
 
-| Recommended | Alternative | Why Not |
-|---|---|---|
-| Convex `searchIndex` for library search | External search (Algolia, Typesense) | Overkill for per-user library search. Convex search handles 1024 results per query, more than sufficient for a personal library. No infra cost or sync complexity. |
-| Junction table for M:N | Array of collection IDs on item document | Arrays are not indexable in Convex. Junction table enables efficient bidirectional queries and avoids read-modify-write races. |
-| `convex-helpers` `getManyVia` | Manual junction table traversal (query + Promise.all) | `getManyVia` reduces 3-4 lines to 1 with identical semantics. Already installed at 0.1.112. |
-| `nuqs` for URL filter state | Zustand for filter state | Filters should survive page refresh and be shareable/bookmarkable. `nuqs` already established in the codebase for this. Zustand is correct for ephemeral client state only. |
-| Denormalized fields on `libraryItems` | Separate papers table + joins | Convex search and regular indexes only work on the queried table's fields. Denormalization avoids N+1 queries on every list render. |
-| `v.any()` for full paper JSON | Typed Convex schema for all 40+ Work fields | No query value from typing the blob. Only denormalized fields need types. `v.any()` avoids schema maintenance as OpenAlex API evolves. |
-| `usePaginatedQuery` (infinite scroll) | `getPage` from convex-helpers | `getPage` is more powerful but more complex. The simpler `usePaginatedQuery` with `loadMore` is already used in extraction queries with the `useProtectedPaginatedQuery` wrapper. Use the established pattern. |
-| Single `searchableText` field | Two separate search indexes on title and abstract | Convex allows 1 `searchField` per search index. A concatenated field gives best coverage in one index. Multiple search indexes would require multiple queries and result merging. |
-
-## What NOT to Use
-
-| Avoid | Why | Use Instead |
-|---|---|---|
-| New search libraries (Algolia, Meilisearch, Typesense) | Personal library is max hundreds of items per user. External search adds cost, latency, sync complexity for zero benefit. | Convex native `searchIndex` |
-| `@tanstack/react-query` or SWR for library data | Library data lives in Convex, not a REST API. Convex queries are already reactive via subscriptions. Adding another data layer creates cache coherence problems. | Convex `useQuery` / `usePaginatedQuery` |
-| Convex Ents (`@convex-dev/ents`) | Full ORM layer. This project has established patterns for direct Convex queries. Ents would add an abstraction boundary inconsistent with the rest of the codebase. | `convex-helpers` relationship helpers (already installed) |
-| `convex-helpers` `getPage` for primary listing | More complex API intended for bidirectional scrolling and virtual scroll. `usePaginatedQuery` with `loadMore` is simpler and already established. | `usePaginatedQuery` + `useProtectedPaginatedQuery` wrapper |
-| Keeping ratings only in Zustand localStorage | Ratings are ephemeral in localStorage today. v2.1 requires server-side persistence for the library feature. | Convex mutation on rating change, with Zustand as optimistic write-through cache |
-| `filter()` from `convex-helpers` for primary pagination | Known issue (#864): `filter` + `paginate` returns variable page sizes -- pages may have fewer items than requested. For primary listing, use indexes. | Use `withIndex()` for all primary filters (rating, user). Reserve `filter()` only for rare secondary predicates that cannot be indexed. |
-| Any new state management library | Zustand already handles client state. Convex handles server state with reactivity. No gap to fill. | Zustand (client) + Convex (server) |
-
----
-
-## Convex Limitations to Respect
-
-| Limitation | Impact | Mitigation |
-|---|---|---|
-| Search index: exactly 1 `searchField` per index | Cannot search title AND abstract as separate fields | Create `searchableText` field concatenating title + abstract + authors at save time |
-| Search results: max 1024 per query | Library search capped at 1024 matching results | Acceptable for personal library. Users can narrow with filters. |
-| Search results: always relevance-ordered | Cannot sort search results by date or rating | Two code paths: search mode (relevance order) vs browse mode (index-based custom sort) |
-| `filter()` + `paginate()`: variable page sizes | Pages may have fewer items than requested when filter excludes many rows | Use `withIndex()` for primary filters. Only use `filter()` for non-indexable predicates. |
-| 32 indexes per table | Must budget indexes for `libraryItems` | 5 regular + 1 search = 6 total. Plenty of headroom. |
-| 16 filter fields per search index | Limited equality filters in search queries | Only need `userId` and `rating`. Well within limit. |
-| No `.order()` after `.withSearchIndex()` | Search results are always relevance-ordered | Accept relevance order when searching. Use regular indexes when user wants custom sort without search. |
+| Category | Recommended | Alternative | Why Not |
+|----------|-------------|-------------|---------|
+| Excel export | `exceljs` 4.4.0 | Keep `xlsx` 0.18.5 | Known security issues, stagnant, no ESM |
+| Excel export | `exceljs` 4.4.0 | CSV-only | Loses XLSX capability; may break existing user workflows |
+| XSS fix | Text-split React component | `dompurify` 3.3.1 | DOMPurify requires DOM (complicates SSR testing); text-split is simpler and correct |
+| XSS fix | Text-split React component | `sanitize-html` | ~150KB, far heavier than DOMPurify; overkill for a `<mark>` wrapper |
+| Env validation | Zod (already installed) | `@t3-oss/env-nextjs` | Does not cover Convex runtime env vars; new package for partial solution |
+| Env validation | Zod (already installed) | Custom assertion function | Already done (`assertPlanPriceConfig`) but not called at startup — use Zod for exhaustive coverage |
+| Concurrency test | Sequential invariant tests | `jest-circus` concurrent | Cannot run in convex-test mock; real OCC only testable against live Convex |
+| Workflow typing | `vWorkflowId` from `@convex-dev/workflow` | `v.string()` with comment | Loses compile-time safety; cast remains fragile after upgrades |
 
 ---
 
 ## Installation
 
 ```bash
-# No new packages needed. Zero npm install commands.
-# All required capabilities exist in the current dependency tree:
-#   convex@1.32.0, convex-helpers@0.1.112, nuqs@2.8.8,
-#   zustand@5.0.5, date-fns@4.1.0, sonner@2.0.7
+# If XSS fix uses DOMPurify path (not recommended — see text-split above):
+npm install dompurify
+# Types are bundled — no @types/dompurify needed
+
+# If XLSX replacement proceeds:
+npm install exceljs
+
+# All other v3.0 capabilities use existing packages:
+# - zod ^4.3.6 (installed) — env validation
+# - convex ^1.31.7 (installed) — paginationOptsValidator
+# - @convex-dev/workflow ^0.3.4 (installed) — vWorkflowId
+# - convex-test ^0.0.41 (installed) — concurrency invariant tests
 ```
 
 ---
 
 ## Version Compatibility
 
-| Package | Version | Compatible With | Notes |
-|---|---|---|---|
-| `convex` | 1.32.0 | `convex-helpers` 0.1.112 | Both current. Search indexes, pagination, compound indexes all stable. |
-| `convex-helpers` | 0.1.112 | `convex` 1.32.0 | Import paths: `convex-helpers/server/relationships`, `convex-helpers/server/filter` |
-| `nuqs` | 2.8.8 | Next.js 16.1.6 | `NuqsAdapter` already configured in root layout. `parseAsString`, `parseAsInteger`, `parseAsStringLiteral` all available. |
-| `zustand` | 5.0.5 | React 19.2.4 | Persist middleware already in use for `useRatingsStore` |
+| Package | Current Version | Notes |
+|---------|----------------|-------|
+| `exceljs` | 4.4.0 (to install) | CJS internally; works in Next.js Node.js route handlers. Dynamic import required to avoid bundle bloat. |
+| `dompurify` | 3.3.1 (conditional) | Types bundled. Browser-only; needs `isomorphic-dompurify` or mock for Vitest jsdom env. |
+| `zod` | ^4.3.6 (installed) | v4 API; use `result.error.issues` not `.errors`. `.parse()` and `.safeParse()` unchanged. |
+| `convex` | ^1.31.7 (installed) | `paginationOptsValidator` and `Cursor` type from `convex/server`. |
+| `@convex-dev/workflow` | ^0.3.4 (installed) | `vWorkflowId` exported. Version 0.2.7+ added `WorkflowId` type to `step.workflowId`. |
+| `convex-test` | ^0.0.41 (installed) | Serial mutation execution only; true OCC concurrency not simulatable. |
+
+---
+
+## What NOT to Add
+
+| Package | Why Not |
+|---------|---------|
+| `@t3-oss/env-nextjs` | Only covers Next.js `process.env`, not Convex backend env. Partial solution. Zod already installed. |
+| `isomorphic-dompurify` | Only needed if DOMPurify approach chosen. Text-split avoids this entirely. |
+| `html-react-parser` | Parses arbitrary HTML into React elements. Heavier than needed for a `<mark>` highlight wrapper. |
+| `sanitize-html` | ~150KB, server-and-client. Overkill for client-side highlight XSS. |
+| `write-excel-file` | Write-only, no rich cell formatting. ExcelJS has superset capability. |
+| Any new test framework | convex-test + Vitest cover all test patterns needed for v3.0. |
+| Any new state management | No new client state needed for v3.0 — this is a backend/type-safety milestone. |
 
 ---
 
 ## Sources
 
-- [Convex Full Text Search docs](https://docs.convex.dev/search/text-search) -- searchIndex definition, filterFields, 1024 result limit, relevance ordering, 1 searchField per index (HIGH confidence)
-- [Convex Indexes docs](https://docs.convex.dev/database/reading-data/indexes/) -- compound indexes, 32 per table limit, 16 fields per index, index ordering rules (HIGH confidence)
-- [Convex Pagination docs](https://docs.convex.dev/database/pagination) -- `.paginate()`, `usePaginatedQuery`, cursor-based pagination, reactive page sizes (HIGH confidence)
-- [Convex Relationship Structures](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas) -- junction table pattern for M:N, indexing strategies, composite index for dedup (HIGH confidence)
-- [convex-helpers Relationship Helpers](https://stack.convex.dev/functional-relationships-helpers) -- `getManyVia`, `getManyFrom`, `getAll`, import from `convex-helpers/server/relationships` (HIGH confidence)
-- [convex-helpers Complex Filters](https://stack.convex.dev/complex-filters-in-convex) -- `filter()` helper import and usage, hybrid index + filter pattern (HIGH confidence)
-- [convex-helpers filter + pagination issue #864](https://github.com/get-convex/convex-helpers/issues/864) -- variable page sizes confirmed as expected behavior, not a bug (HIGH confidence)
-- [convex-helpers npm](https://www.npmjs.com/package/convex-helpers) -- latest 0.1.107 on npm, 0.1.112 installed locally (HIGH confidence)
-- [Convex Advanced Pagination (getPage)](https://stack.convex.dev/pagination) -- `getPage` helper capabilities, not needed for this use case (HIGH confidence)
-- Direct codebase inspection: `convex/schema.ts` (existing 11 tables, index patterns), `lib/store.ts` (`useRatingsStore`), `lib/auth/use-auth-query.ts` (`useProtectedPaginatedQuery`), `components/bookmarks-command-center/index.tsx` (nuqs + pagination pattern), `components/rating-selector.tsx` (rating flow), `package.json` (all versions) -- HIGH confidence
+- [ExcelJS GitHub Releases](https://github.com/exceljs/exceljs/releases) — v4.4.0 confirmed (released October 2024). HIGH confidence.
+- [ExcelJS ESM Discussion #2853](https://github.com/exceljs/exceljs/discussions/2853) — confirmed CJS-only internals; dynamic `require('crypto')` errors in bundled ESM. HIGH confidence.
+- [DOMPurify GitHub Releases](https://github.com/cure53/DOMPurify/releases) — v3.3.1 confirmed (released December 2024). Types bundled. HIGH confidence.
+- [Stripe SDK issue #1556](https://github.com/stripe/stripe-node/issues/1556) — confirmed: no typed conditional generics for expanded vs non-expanded; `typeof x === 'string'` is the official workaround. HIGH confidence.
+- [Convex Pagination Docs](https://docs.convex.dev/database/pagination) — `paginationOptsValidator`, `.paginate()`, `Cursor` type. HIGH confidence.
+- [Convex Stack: Take Control of Pagination](https://stack.convex.dev/pagination) — `getPage` helper from `convex-helpers/server/pagination`. MEDIUM confidence.
+- [Convex OCC Docs](https://docs.convex.dev/database/advanced/occ) — serializability guarantees, automatic retry, cannot simulate in unit tests. HIGH confidence.
+- [convex-test Docs](https://docs.convex.dev/testing/convex-test) — v0.0.41, serial execution, no native concurrency simulation. HIGH confidence.
+- [@convex-dev/workflow npm](https://www.npmjs.com/package/@convex-dev/workflow) — v0.3.4. `vWorkflowId` exported. HIGH confidence.
+- [@convex-dev/workflow CHANGELOG](https://github.com/get-convex/workflow/blob/main/CHANGELOG.md) — v0.2.7 added `WorkflowId` type; v0.3.4 adds list/pagination APIs. HIGH confidence.
+- [Zod v4 Changelog](https://zod.dev/v4/changelog) — `.parse()` unchanged; `error.issues` replaces `error.errors`; `{ error: }` replaces `{ message: }`. HIGH confidence.
+- [@t3-oss/env-nextjs](https://env.t3.gg/docs/introduction) — framework-agnostic env validation; does not cover Convex runtime. MEDIUM confidence.
+- Direct codebase inspection: `package.json` (all installed versions), `convex/extraction/mutations.ts` (workflowId as any, line 263), `convex/maintenance/internal.ts` (customer as any, line 103), `convex/lib/rateLimit.ts` (name as any, line 52), `lib/extraction/export.ts` (result as any, lines 117/171/175-177/219), `lib/extraction/filtering.ts` (as any, lines 48/51), `components/extraction/results-views/table-view.tsx` (dangerouslySetInnerHTML, lines 162-163, 378-388, 450-451), `convex/library/queries.ts` (collect() calls, lines 39/113/186/204/217/251). HIGH confidence.
 
 ---
-*Stack research for: v2.1 Library & Collections*
-*Researched: 2026-02-28*
+
+*Stack research for: v3.0 Zero-Any Overhaul*
+*Researched: 2026-03-03*
