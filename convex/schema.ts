@@ -193,7 +193,8 @@ export default defineSchema({
     expiresAt: v.number(),
   })
     .index("by_token", ["token"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_expiry", ["expiresAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION JOBS - Data extraction from papers (Elicit-style)

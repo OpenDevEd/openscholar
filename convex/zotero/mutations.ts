@@ -155,18 +155,20 @@ export const cleanupExpiredOAuthTokens = internalMutation({
   returns: v.null(),
   handler: async (ctx) => {
     const now = Date.now();
-    const allTokens = await ctx.db.query("zoteroOAuthTokens").collect();
+    // Use by_expiry index: only fetch tokens that have already expired
+    const expiredTokens = await ctx.db
+      .query("zoteroOAuthTokens")
+      .withIndex("by_expiry", (q) => q.lt("expiresAt", now))
+      .take(100);
 
     let deletedCount = 0;
-    for (const token of allTokens) {
-      if (token.expiresAt < now) {
-        try {
-          await ctx.db.delete(token._id);
-          deletedCount++;
-        } catch {
-          // Token may have been deleted by getRequestToken or concurrent process.
-          // Safe to ignore -- Convex OCC retries handle this gracefully.
-        }
+    for (const token of expiredTokens) {
+      try {
+        await ctx.db.delete(token._id);
+        deletedCount++;
+      } catch {
+        // Token may have been deleted by getRequestToken or concurrent process.
+        // Safe to ignore -- Convex OCC retries handle this gracefully.
       }
     }
 
