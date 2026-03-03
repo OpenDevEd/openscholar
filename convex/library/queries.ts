@@ -1,5 +1,5 @@
 import { query } from "../_generated/server";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, type Cursor } from "convex/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { filter } from "convex-helpers/server/filter";
@@ -29,7 +29,7 @@ export const browseLibrary = query({
       // Guard: verify collection exists and belongs to user
       const collection = await ctx.db.get(args.collectionId);
       if (!collection || collection.userId !== user._id) {
-        return { page: [], isDone: true, continueCursor: "" as any };
+        return { page: [], isDone: true, continueCursor: "" as Cursor };
       }
       const memberships = await ctx.db
         .query("libraryItemCollections")
@@ -42,7 +42,7 @@ export const browseLibrary = query({
       );
       // Empty collection = no results possible
       if (collectionItemIds.size === 0) {
-        return { page: [], isDone: true, continueCursor: "" as any };
+        return { page: [], isDone: true, continueCursor: "" as Cursor };
       }
     }
 
@@ -103,7 +103,7 @@ export const searchLibrary = query({
       // Guard: verify collection exists and belongs to user
       const collection = await ctx.db.get(args.collectionId);
       if (!collection || collection.userId !== user._id) {
-        return { page: [], isDone: true, continueCursor: "" as any };
+        return { page: [], isDone: true, continueCursor: "" as Cursor };
       }
       const memberships = await ctx.db
         .query("libraryItemCollections")
@@ -116,7 +116,7 @@ export const searchLibrary = query({
       );
       // Empty collection = no results possible
       if (collectionItemIds.size === 0) {
-        return { page: [], isDone: true, continueCursor: "" as any };
+        return { page: [], isDone: true, continueCursor: "" as Cursor };
       }
     }
 
