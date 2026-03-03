@@ -126,6 +126,11 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 **Goal**: All extraction queries return typed validators instead of v.any(); all remaining any-casts in extraction and migration code replaced with proper types; getJobDetails returns all papers
 **Depends on**: Phase 44
 **Requirements**: TYPE-01, TYPE-02, TYPE-03, TYPE-04, BUG-02
+**Plans:** 2 plans
+
+Plans:
+- [ ] 45-01-PLAN.md -- Create extraction validators, fix as-any casts, BUG-02, type migration
+- [ ] 45-02-PLAN.md -- Replace v.any() return validators in all 11 extraction queries
 
 ### Phase 46: Cron Additions
 **Goal**: Expired Zotero OAuth tokens are automatically cleaned up on a schedule
