@@ -128,7 +128,7 @@ Full details: `.planning/milestones/v2.4-ROADMAP.md`
 
 **Milestone Goal:** Eliminate all documented tech debt, security gaps, performance bottlenecks, test coverage gaps, dependency issues, and code organization debt.
 
-- [ ] **Phase 47: Test Safety Net** - Write tests for untested code paths before modifying them
+- [x] **Phase 47: Test Safety Net** - Write tests for untested code paths before modifying them (completed 2026-03-03)
 - [ ] **Phase 48: Billing Hardening** - Type-safe Stripe handlers and billing safety improvements
 - [ ] **Phase 49: Extraction & Library Type Safety** - Eliminate remaining `as any` casts in extraction and library code
 - [ ] **Phase 50: Security & Schema** - Schema migration for encryptedApiKey and security improvements
@@ -258,7 +258,7 @@ Plans:
 | 44. Workflow & Deletion Integrity | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 45. Type Safety Sweep | v2.4 | 2/2 | Complete | 2026-03-03 |
 | 46. Cron Additions | v2.4 | 1/1 | Complete | 2026-03-03 |
-| 47. Test Safety Net | 1/3 | In Progress|  | - |
+| 47. Test Safety Net | 3/3 | Complete   | 2026-03-03 | - |
 | 48. Billing Hardening | v2.5 | 0/? | Not started | - |
 | 49. Extraction & Library Type Safety | v2.5 | 0/? | Not started | - |
 | 50. Security & Schema | v2.5 | 0/? | Not started | - |
