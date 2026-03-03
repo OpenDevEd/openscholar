@@ -378,4 +378,219 @@ describe("deleteExtractionInternal cascade", () => {
       expect(user).not.toBeNull();
     });
   });
+
+  describe("partial-failure recovery (TEST-04)", () => {
+    it("resumes cascade after partial deletion (evidence units already removed)", async () => {
+      const t = convexTest(schema);
+      const ids = await seedFullJobGraph(t);
+
+      // Simulate partial failure: manually delete only evidence units
+      // (as if step 1 completed but the function was interrupted before step 2)
+      await t.run(async (ctx) => {
+        const units = await ctx.db
+          .query("extractionEvidenceUnits")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        for (const unit of units) {
+          await ctx.db.delete(unit._id);
+        }
+      });
+
+      // Verify evidence units are gone but everything else remains
+      await t.run(async (ctx) => {
+        const units = await ctx.db
+          .query("extractionEvidenceUnits")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(units).toHaveLength(0);
+
+        // Reviews should still exist
+        const reviews = await ctx.db
+          .query("extractionResultReviews")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(reviews.length).toBeGreaterThan(0);
+      });
+
+      // Now re-invoke deleteExtractionInternal -- it should skip step 1
+      // (no evidence units) and proceed through steps 2-9
+      vi.useFakeTimers();
+      await t.mutation(
+        internal.extraction.mutations.deleteExtractionInternal,
+        { jobId: ids.jobId }
+      );
+      await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+      vi.useRealTimers();
+
+      // Verify ALL child tables are empty for this job
+      await t.run(async (ctx) => {
+        const reviews = await ctx.db
+          .query("extractionResultReviews")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(reviews).toHaveLength(0);
+
+        const results = await ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(results).toHaveLength(0);
+
+        const papers = await ctx.db
+          .query("extractionPapers")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(papers).toHaveLength(0);
+
+        const questions = await ctx.db
+          .query("extractionQuestions")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(questions).toHaveLength(0);
+
+        const savedViews = await ctx.db
+          .query("extractionSavedViews")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(savedViews).toHaveLength(0);
+
+        const snapshots = await ctx.db
+          .query("extractionReportSnapshots")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(snapshots).toHaveLength(0);
+
+        const runDiffs = await ctx.db
+          .query("extractionRunDiffs")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(runDiffs).toHaveLength(0);
+
+        const job = await ctx.db.get(ids.jobId);
+        expect(job).toBeNull();
+
+        // Baseline job should survive
+        const baselineJob = await ctx.db.get(ids.baselineJobId);
+        expect(baselineJob).not.toBeNull();
+      });
+    });
+
+    it("complete deletion leaves no orphaned records in any child table", async () => {
+      const t = convexTest(schema);
+      const ids = await seedFullJobGraph(t);
+
+      vi.useFakeTimers();
+      await t.mutation(
+        internal.extraction.mutations.deleteExtractionInternal,
+        { jobId: ids.jobId }
+      );
+      await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+      vi.useRealTimers();
+
+      // Exhaustive check: query every child table by both jobId and paperId
+      await t.run(async (ctx) => {
+        // By paperId
+        const evidenceUnits = await ctx.db
+          .query("extractionEvidenceUnits")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(evidenceUnits).toHaveLength(0);
+
+        const reviews = await ctx.db
+          .query("extractionResultReviews")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(reviews).toHaveLength(0);
+
+        const results = await ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
+          .collect();
+        expect(results).toHaveLength(0);
+
+        // By jobId
+        const papers = await ctx.db
+          .query("extractionPapers")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(papers).toHaveLength(0);
+
+        const questions = await ctx.db
+          .query("extractionQuestions")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(questions).toHaveLength(0);
+
+        const savedViews = await ctx.db
+          .query("extractionSavedViews")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(savedViews).toHaveLength(0);
+
+        const snapshots = await ctx.db
+          .query("extractionReportSnapshots")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(snapshots).toHaveLength(0);
+
+        const runDiffs = await ctx.db
+          .query("extractionRunDiffs")
+          .withIndex("by_job", (q) => q.eq("jobId", ids.jobId))
+          .collect();
+        expect(runDiffs).toHaveLength(0);
+
+        // Job itself
+        const job = await ctx.db.get(ids.jobId);
+        expect(job).toBeNull();
+
+        // Baseline job survives
+        const baselineJob = await ctx.db.get(ids.baselineJobId);
+        expect(baselineJob).not.toBeNull();
+
+        // User survives
+        const user = await ctx.db.get(ids.userId);
+        expect(user).not.toBeNull();
+      });
+    });
+
+    it("re-invocation on already-deleted job is idempotent (no-op)", async () => {
+      const t = convexTest(schema);
+      const ids = await seedFullJobGraph(t);
+
+      // First: complete the full cascade deletion
+      vi.useFakeTimers();
+      await t.mutation(
+        internal.extraction.mutations.deleteExtractionInternal,
+        { jobId: ids.jobId }
+      );
+      await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+      vi.useRealTimers();
+
+      // Verify job is gone
+      await t.run(async (ctx) => {
+        const job = await ctx.db.get(ids.jobId);
+        expect(job).toBeNull();
+      });
+
+      // Second: re-invoke on the same (now deleted) jobId
+      // Should complete without errors -- ctx.db.get(jobId) returns null,
+      // all child queries return empty, step 9 is a no-op
+      vi.useFakeTimers();
+      await t.mutation(
+        internal.extraction.mutations.deleteExtractionInternal,
+        { jobId: ids.jobId }
+      );
+      await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+      vi.useRealTimers();
+
+      // Verify nothing crashed and baseline is still intact
+      await t.run(async (ctx) => {
+        const baselineJob = await ctx.db.get(ids.baselineJobId);
+        expect(baselineJob).not.toBeNull();
+
+        const user = await ctx.db.get(ids.userId);
+        expect(user).not.toBeNull();
+      });
+    });
+  });
 });
