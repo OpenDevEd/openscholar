@@ -2,6 +2,7 @@
 
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,7 @@ export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
   const isMobile = useIsMobile();
-  const jobId = params.jobId as any;
+  const jobId = params.jobId as Id<"extractionJobs">;
 
   const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
   const viewModeDeserialize = useCallback((v: string) => v as 'table' | 'cards' | 'split', []);
@@ -127,7 +128,7 @@ export default function JobDetailPage() {
 
   const jobDetailsQuery = useProtectedQuery(api.extraction.queries.getJobDetails, {
     jobId,
-  } as any);
+  });
   const jobDetails = jobDetailsQuery.data;
   const canReadJob = jobDetails?.status === "ok";
   const subscriptionQuery = useProtectedQuery(api.subscriptions.queries.getMy, {});
@@ -138,7 +139,7 @@ export default function JobDetailPage() {
     subscriptionSettlement === "query_loading";
   const jobProgressQuery = useProtectedQuery(
     api.extraction.queries.subscribeToJobProgress,
-    canReadJob ? ({ jobId } as any) : "skip",
+    canReadJob ? { jobId } : "skip",
   );
   const jobProgress = jobProgressQuery.data;
 
@@ -151,7 +152,7 @@ export default function JobDetailPage() {
     hasLoadedFirstPage,
   } = useProtectedPaginatedQuery(
     api.extraction.queries.getJobResultsPaginated,
-    canReadJob ? ({ jobId } as any) : "skip",
+    canReadJob ? { jobId } : "skip",
     { initialNumItems: 200 },
   );
 

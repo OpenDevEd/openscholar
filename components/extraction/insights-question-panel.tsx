@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -10,7 +11,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 
 interface InsightsQuestionPanelProps {
-  jobId: string;
+  jobId: Id<"extractionJobs">;
   questionKey?: string;
   onJumpToPaper?: (paperId: string) => void;
   enabled?: boolean;
@@ -39,11 +40,11 @@ export function InsightsQuestionPanel({
   const tc = useTranslations("common");
   const questionInsightsQuery = useProtectedQuery(
     api.extraction.queries.getQuestionInsights,
-    enabled && questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip",
+    enabled && questionKey ? { jobId, questionKey } : "skip",
   );
   const disagreementQuery = useProtectedQuery(
     api.extraction.queries.getQuestionDisagreements,
-    enabled && questionKey ? ({ jobId: jobId as any, questionKey } as any) : "skip",
+    enabled && questionKey ? { jobId, questionKey } : "skip",
   );
   const questionInsights = questionInsightsQuery.data;
   const disagreementData = disagreementQuery.data;

@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -8,7 +9,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 
 interface InsightsOverviewProps {
-  jobId: string;
+  jobId: Id<"extractionJobs">;
   selectedQuestionKey?: string;
   onSelectQuestion: (questionKey: string) => void;
   onRerun?: () => void;
@@ -30,7 +31,7 @@ export function InsightsOverview({
   const tc = useTranslations("common");
   const insightsQuery = useProtectedQuery(
     api.extraction.queries.getJobInsights,
-    enabled ? ({ jobId: jobId as any } as any) : "skip",
+    enabled ? { jobId } : "skip",
   );
   const insights = insightsQuery.data;
 

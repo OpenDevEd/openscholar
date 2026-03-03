@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,7 +47,7 @@ export function ReviewQueue({
   onOpenCitationPanel,
   enabled = true,
 }: {
-  jobId: string;
+  jobId: Id<"extractionJobs">;
   onOpenCitationPanel: (payload: CitationPanelPayload) => void;
   enabled?: boolean;
 }) {
@@ -65,12 +66,12 @@ export function ReviewQueue({
   const queueQuery = useProtectedQuery(
     api.extraction.queries.getReviewQueue,
     enabled
-      ? ({
-          jobId: jobId as any,
+      ? {
+          jobId,
           states: Array.from(selectedStates),
           onlyInsufficientEvidence,
           limit: 250,
-        } as any)
+        }
       : "skip",
   );
   const queue = queueQuery.data;
@@ -78,7 +79,7 @@ export function ReviewQueue({
     (localStore, args) => {
       if (!enabled) return;
       const currentQueue = localStore.getQuery(api.extraction.queries.getReviewQueue, {
-        jobId: jobId as any,
+        jobId,
         states: Array.from(selectedStates),
         onlyInsufficientEvidence,
         limit: 250,
@@ -99,7 +100,7 @@ export function ReviewQueue({
           };
           
           localStore.setQuery(api.extraction.queries.getReviewQueue, {
-            jobId: jobId as any,
+            jobId,
             states: Array.from(selectedStates),
             onlyInsufficientEvidence,
             limit: 250,
@@ -143,7 +144,7 @@ export function ReviewQueue({
           state,
           note: note.trim() || undefined,
           correctedAnswer: parseCorrectedAnswer(correctedAnswer, current.questionType),
-        } as any);
+        });
         setIndex((value) => Math.min(value + 1, Math.max(items.length - 1, 0)));
       } finally {
         setSaving(false);
@@ -197,7 +198,7 @@ export function ReviewQueue({
       page: citation.page,
       charRange: citation.charRange,
       text: citation.quote,
-      validated: true,
+      validated: true as const,
       retrieval: citation.retrieval || {},
       citationStatus: current.citationStatus,
     }));
@@ -343,7 +344,7 @@ export function ReviewQueue({
                   onClick={() => {
                     if (!current) return;
                     const payload = buildCitationPanelPayload({
-                      paperId: current.paperId as any,
+                      paperId: current.paperId as Id<"extractionPapers">,
                       paperTitle: current.paperTitle || null,
                       citations,
                       citationStatus: current.citationStatus,

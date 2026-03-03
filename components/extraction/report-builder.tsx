@@ -6,6 +6,7 @@ import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import { Loader2 } from "lucide-react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
 interface ReportBuilderProps {
-  jobId: string;
+  jobId: Id<"extractionJobs">;
   filters: FilterState;
   sortBy: string;
   viewMode: "table" | "cards" | "split";
@@ -84,15 +85,15 @@ export function ReportBuilder({
   const format = useFormatter();
   const router = useRouter();
   const savedViewsQuery = useProtectedQuery(api.extraction.queries.getSavedViews, {
-    jobId: jobId as any,
-  } as any);
+    jobId,
+  });
   const templatesQuery = useProtectedQuery(api.extraction.queries.getWorkflowTemplates, {});
   const reportsQuery = useProtectedQuery(api.extraction.queries.getReportSnapshots, {
-    jobId: jobId as any,
-  } as any);
+    jobId,
+  });
   const latestDiffQuery = useProtectedQuery(api.extraction.queries.getRunDiff, {
-    jobId: jobId as any,
-  } as any);
+    jobId,
+  });
   const completedJobsQuery = useProtectedQuery(api.extraction.queries.getMyJobs, {
     status: "completed",
   });
@@ -154,7 +155,7 @@ export function ReportBuilder({
     setBusyAction("save-view");
     try {
       await saveView({
-        jobId: jobId as any,
+        jobId,
         name: viewName.trim(),
         filters: {
           searchQuery: filters.searchQuery,
@@ -164,7 +165,7 @@ export function ReportBuilder({
         sortBy,
         viewMode,
         selectedQuestionKeys: questions.map((question) => question.key),
-      } as any);
+      });
       setViewName("");
     } finally {
       setBusyAction(null);
@@ -176,7 +177,7 @@ export function ReportBuilder({
     setBusyAction("save-template");
     try {
       await saveTemplate({
-        jobId: jobId as any,
+        jobId,
         name: templateName.trim(),
       });
       setTemplateName("");
@@ -189,12 +190,12 @@ export function ReportBuilder({
     setBusyAction("create-report");
     try {
       await createReport({
-        jobId: jobId as any,
+        jobId,
         name: reportName.trim() || undefined,
         scope: {
           selectedQuestionKeys: questions.map((question) => question.key),
         },
-      } as any);
+      });
       setReportName("");
     } finally {
       setBusyAction(null);
@@ -206,8 +207,8 @@ export function ReportBuilder({
     setBusyAction("create-diff");
     try {
       await createRunDiff({
-        jobId: jobId as any,
-        baselineJobId: selectedBaselineJobId as any,
+        jobId,
+        baselineJobId: selectedBaselineJobId as Id<"extractionJobs">,
       });
     } finally {
       setBusyAction(null);
@@ -480,7 +481,7 @@ export function ReportBuilder({
                   <p className="text-xs text-muted-foreground">
                     {t("diffTruncated", {
                       shown: latestDiffData.changes.length,
-                      total: latestDiffData.totalChanges,
+                      total: latestDiffData.totalChanges ?? 0,
                     })}
                   </p>
                 )}
