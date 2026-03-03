@@ -251,6 +251,26 @@ export const cancelExtraction = mutation({
       updatedAt: Date.now(),
     });
 
+    // Cancel the workflow to prevent new steps from starting
+    if (job.workflowId) {
+      try {
+        await workflow.cancel(ctx, job.workflowId as any);
+      } catch (e) {
+        // Workflow may have already completed -- safe to ignore
+        console.warn(`[cancelExtraction] Failed to cancel workflow: ${e}`);
+      }
+    }
+
+    // Cancel all pending workpool items.
+    // Note: cancelAll() cancels ALL pending items across all jobs, not just this job's.
+    // The credit-guard checks in workpool actions prevent incorrect billing for
+    // non-cancelled jobs whose items may be re-enqueued.
+    try {
+      await pdfProcessingPool.cancelAll(ctx);
+    } catch (e) {
+      console.warn(`[cancelExtraction] Failed to cancel workpool items: ${e}`);
+    }
+
     return { success: true };
   },
 });
