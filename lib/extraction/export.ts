@@ -114,7 +114,7 @@ export function exportToCSV(
     // Add answers
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
-      const answer = (result as any)?.correctedAnswer ?? result?.answer;
+      const answer = result?.correctedAnswer ?? result?.answer;
       row.push(formatAnswerForCSV(answer, q.type));
     });
 
@@ -168,13 +168,13 @@ export function exportToJSON(
       pdfUsed: paper.pdfContentUsed,
       results: paper.results.map(r => ({
         questionKey: r.questionKey,
-        answer: (r as any).correctedAnswer ?? r.answer,
+        answer: r.correctedAnswer ?? r.answer,
         confidence: r.confidence,
         ...(includeReasoning && { reasoning: r.reasoning }),
         ...(includeCitations && {
-          citations: (r as any).citations ?? [],
-          citationStatus: (r as any).citationStatus,
-          reviewState: (r as any).reviewState,
+          citations: r.citations ?? [],
+          citationStatus: r.citationStatus,
+          reviewState: r.reviewState,
         }),
       })),
     })),
@@ -216,7 +216,7 @@ export function exportToExcel(
 
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
-      const answer = (result as any)?.correctedAnswer ?? result?.answer;
+      const answer = result?.correctedAnswer ?? result?.answer;
       row[q.question] = formatAnswerForExcel(answer, q.type);
 
       if (includeConfidence) {

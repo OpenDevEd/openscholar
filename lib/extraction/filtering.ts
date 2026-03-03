@@ -1,4 +1,5 @@
 import type { Doc } from "@/convex/_generated/dataModel";
+import type { ExtractionResultWithReview } from "./types";
 import { getReviewState, isReviewed } from "./reviews";
 import { extractionFeatureFlags } from "./feature-flags";
 
@@ -17,7 +18,7 @@ export const defaultFilters: FilterState = {
 };
 
 export interface PaperWithResults extends Doc<"extractionPapers"> {
-  results: Array<Doc<"extractionResults">>;
+  results: Array<ExtractionResultWithReview>;
 }
 
 export interface Question {
@@ -45,13 +46,13 @@ export function preprocessPapers(papers: PaperWithResults[]): Map<string, Prepro
 
       const searchableText = [
         paper.title,
-        ...paper.results.map((r) => String((r as any).correctedAnswer ?? r.answer)),
+        ...paper.results.map((r) => String(r.correctedAnswer ?? r.answer)),
         ...paper.results.map(r => r.reasoning || ''),
         ...paper.results.flatMap((r) => {
-          const citations = (r as any).citations;
+          const { citations } = r;
           if (!Array.isArray(citations)) return [];
           return citations
-            .map((citation: any) =>
+            .map((citation) =>
               typeof citation?.quote === "string" ? citation.quote : ""
             )
             .filter(Boolean);
