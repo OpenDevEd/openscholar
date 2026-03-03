@@ -11,8 +11,8 @@ Requirements for v2.5 Tech Debt Purge. Each maps to roadmap phases.
 
 - [x] **TYPE-01**: Stripe webhook handlers use typed SDK event objects instead of `as any` casts
 - [x] **TYPE-02**: Extraction job page uses properly typed Convex ID arguments instead of `as any`
-- [ ] **TYPE-03**: Paginated extraction results use typed validator instead of `paginationResultValidator(v.any())`
-- [ ] **TYPE-04**: `searchFilters` schema uses typed Convex validator matching the filter interface
+- [x] **TYPE-03**: Paginated extraction results use typed validator instead of `paginationResultValidator(v.any())`
+- [x] **TYPE-04**: `searchFilters` schema uses typed Convex validator matching the filter interface
 - [ ] **TYPE-05**: `encryptedApiKey` is required in schema (not optional) after completed migration
 - [x] **TYPE-06**: `continueCursor: "" as any` replaced with proper empty pagination pattern in library queries
 
@@ -76,8 +76,8 @@ None -- this milestone is a cleanup sweep.
 |-------------|-------|--------|
 | TYPE-01 | Phase 48 | Complete |
 | TYPE-02 | Phase 49 | Complete |
-| TYPE-03 | Phase 49 | Pending |
-| TYPE-04 | Phase 49 | Pending |
+| TYPE-03 | Phase 49 | Complete |
+| TYPE-04 | Phase 49 | Complete |
 | TYPE-05 | Phase 50 | Pending |
 | TYPE-06 | Phase 49 | Complete |
 | BILL-01 | Phase 48 | Complete |

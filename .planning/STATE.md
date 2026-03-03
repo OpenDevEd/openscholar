@@ -32,7 +32,7 @@ Progress: [██████░░░░] 58%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 87 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 3)
+- Total plans completed: 88 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 4)
 - Total milestones shipped: 8
 
 **By Milestone:**
@@ -63,6 +63,8 @@ See PROJECT.md Key Decisions table for full log.
 - [48-02] Upgrade metadata still written to Stripe for invoice webhook path (TODO for future migration)
 - [49-01] Used Id<"extractionPapers"> cast for paperId in review-queue citation panel (string from query result)
 - [49-01] Applied "as const" for validated: true literal to satisfy CitationLocation type constraint
+- [49-02] All searchFiltersValidator fields are v.optional() for backward compat with existing stored data
+- [49-02] Moved searchFiltersValidator before extractionJobValidator to fix declaration order dependency
 
 ### Roadmap Evolution
 
@@ -86,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 49-01-PLAN.md (extraction/library type safety)
-Stopped at: Completed 49-01-PLAN.md
+Last activity: 2026-03-03 - Completed 49-02-PLAN.md (typed searchFilters and pagination validators)
+Stopped at: Completed 49-02-PLAN.md (Phase 49 complete)
 Resume file: None
