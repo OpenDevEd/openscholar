@@ -9,8 +9,16 @@ import { internal } from "../_generated/api";
 import { pdfProcessingPool } from "../workpool";
 import { getProcessableFlags } from "./content";
 import { buildDedupeKey } from "./dedupe";
+import type { PaperData } from "./types";
+import type { Id } from "../_generated/dataModel";
 
 import { createError } from "../lib/errors";
+
+type SourceType = "history" | "zotero" | "manual";
+type WorkflowPaper = PaperData & {
+  sourceType: SourceType;
+  sourceId: string;
+};
 
 export const runExtractionWorkflow = workflow.define({
   args: {
@@ -33,7 +41,7 @@ export const runExtractionWorkflow = workflow.define({
       { jobId }
     );
 
-    const questions = questionsRaw.map((q: any) => ({
+    const questions = questionsRaw.map((q: { key: string; question: string; type: "string" | "boolean" | "number" | "array"; description?: string }) => ({
       key: q.key,
       question: q.question,
       type: q.type,
@@ -49,7 +57,7 @@ export const runExtractionWorkflow = workflow.define({
       totalPapers: 0,
     });
 
-    const papers: Array<any> = [];
+    const papers: WorkflowPaper[] = [];
     const historyEntries = Array.isArray(job.sourceHistoryEntries)
       ? job.sourceHistoryEntries
       : job.searchFilters
@@ -61,9 +69,9 @@ export const runExtractionWorkflow = workflow.define({
         internal.extraction.actions.fetchPapersFromHistory,
         { searchFilters: entry.searchFilters }
       );
-      const enriched = result.map((paper: any) => ({
+      const enriched = (result as PaperData[]).map((paper) => ({
         ...paper,
-        sourceType: "history",
+        sourceType: "history" as const,
         sourceId: entry.historyId,
       }));
       papers.push(...enriched);
@@ -79,7 +87,7 @@ export const runExtractionWorkflow = workflow.define({
           zoteroUserId = undefined;
         }
       }
-      const zoteroItems = job.sourceZoteroSelection.items.map((item: any) => {
+      const zoteroItems = job.sourceZoteroSelection.items.map((item: { itemKey: string; title: string; doi?: string; year?: number; abstract?: string; authors: string[] }) => {
         const libraryType = job.sourceZoteroSelection?.libraryType;
         const groupId = job.sourceZoteroSelection?.groupId;
         const uri = libraryType === "group" && groupId
@@ -97,7 +105,7 @@ export const runExtractionWorkflow = workflow.define({
           authors: item.authors,
           pdfUrl: uri,
           isOpenAccess: false,
-          sourceType: "zotero",
+          sourceType: "zotero" as const,
           sourceId: item.itemKey,
         };
       });
@@ -105,7 +113,7 @@ export const runExtractionWorkflow = workflow.define({
     }
 
     if (job.sourceManualItems?.length) {
-      const manualItems = job.sourceManualItems.map((item: any) => ({
+      const manualItems = job.sourceManualItems.map((item: { id: string; title: string; doi?: string; year?: number; abstract?: string; authors?: string[]; pdfUrl?: string; storageId?: string }) => ({
         openalexId: `manual:${item.id}`,
         title: item.title,
         doi: item.doi,
@@ -115,7 +123,7 @@ export const runExtractionWorkflow = workflow.define({
         pdfUrl: item.pdfUrl,
         storageId: item.storageId,
         isOpenAccess: false,
-        sourceType: "manual",
+        sourceType: "manual" as const,
         sourceId: item.id,
       }));
       papers.push(...manualItems);
@@ -125,7 +133,7 @@ export const runExtractionWorkflow = workflow.define({
       throw createError("VALIDATION_ERROR", "No sources selected");
     }
 
-    const dedupedMap = new Map<string, any>();
+    const dedupedMap = new Map<string, WorkflowPaper>();
     for (const paper of papers) {
       const key = buildDedupeKey({
         openalexId: paper.openalexId,
@@ -144,7 +152,10 @@ export const runExtractionWorkflow = workflow.define({
     // Step 3: Create paper records
     await step.runMutation(internal.extraction.mutations.createPaperRecords, {
       jobId,
-      papers: dedupedPapers,
+      papers: dedupedPapers.map((p) => ({
+        ...p,
+        storageId: p.storageId as Id<"_storage"> | undefined,
+      })),
     });
 
     // Step 4: Get created paper IDs
@@ -152,7 +163,7 @@ export const runExtractionWorkflow = workflow.define({
       internal.extraction.queries.getPapersByOpenAlexIds,
       {
         jobId,
-        openalexIds: dedupedPapers.map((p: any) => p.openalexId),
+        openalexIds: dedupedPapers.map((p) => p.openalexId),
       }
     );
 
