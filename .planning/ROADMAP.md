@@ -159,7 +159,7 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 
 **Milestone Goal:** Eliminate every remaining `any` type from production and test code, achieving complete type safety across the entire codebase.
 
-- [x] **Phase 60: Convex Validators & Typed Records** - Replace all v.any() validators and Record<string, any> with typed alternatives (completed 2026-03-04)
+- [ ] **Phase 60: Convex Validators & Typed Records** - Replace all v.any() validators and Record<string, any> with typed alternatives (gap closure in progress)
 - [ ] **Phase 61: Convex Production Backend** - Type all extraction and billing backend functions
 - [ ] **Phase 62: Convex Debug & Test Backend** - Type all debug/test Convex files
 - [ ] **Phase 63: Client Libraries** - Type all client-side libraries (utils, store, auth, extraction, AI)
@@ -179,7 +179,11 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
   2. `grep -r "Record<string, any>" convex/` returns zero matches in internal.ts and chunking.ts
   3. All 9 former v.any() call sites use typed validators (v.string(), v.number(), v.union(), etc.)
   4. `tsc --noEmit` passes with no new errors introduced
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [x] 60-01-PLAN.md -- Replace v.any() validators (7 of 8 sites)
+- [x] 60-02-PLAN.md -- Replace Record<string, any> typed records
+- [ ] 60-03-PLAN.md -- Gap closure: serialize Clerk webhook data to eliminate last v.any()
 
 ### Phase 61: Convex Production Backend
 **Goal**: All extraction and billing Convex functions have proper types with zero any annotations
@@ -324,7 +328,7 @@ Phases execute in numeric order: 60 -> 61 -> 62 -> 63 -> 64 -> 65 -> 66 -> 67
 | 57. Incremental Aggregation | v3.0 | 2/2 | Complete | 2026-03-04 |
 | 58. Correctness and Coverage | v3.0 | 2/2 | Complete | 2026-03-04 |
 | 59. Tech Debt Cleanup | v3.0 | 1/1 | Complete | 2026-03-04 |
-| 60. Convex Validators & Typed Records | 2/2 | Complete   | 2026-03-04 | - |
+| 60. Convex Validators & Typed Records | v3.1 | 2/3 | Gap closure | - |
 | 61. Convex Production Backend | v3.1 | 0/? | Not started | - |
 | 62. Convex Debug & Test Backend | v3.1 | 0/? | Not started | - |
 | 63. Client Libraries | v3.1 | 0/? | Not started | - |
