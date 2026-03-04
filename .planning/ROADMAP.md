@@ -223,7 +223,11 @@ Plans:
   3. `grep -rn ": any\|as any" lib/ai/` returns zero matches (hook-factory, schemas, execute)
   4. All ~30 any instances across 10+ library files replaced with proper types
   5. All existing tests pass after type changes
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 63-01-PLAN.md -- Type utils.ts, store.ts, and use-auth-query.ts (LIB-01, LIB-02, LIB-03)
+- [ ] 63-02-PLAN.md -- Type extraction, search, and PDF libraries (LIB-04)
+- [ ] 63-03-PLAN.md -- Type AI libraries and trim-paper-data (LIB-05)
 
 ### Phase 64: Components
 **Goal**: All React component files have proper types with zero any annotations
@@ -359,7 +363,7 @@ Phases execute in order: 63 → 64 → 65 → 66 → 68 → 69 → 67
 | 60. Convex Validators & Typed Records | 3/3 | Complete   | 2026-03-04 | - |
 | 61. Convex Production Backend | 2/2 | Complete    | 2026-03-04 | - |
 | 62. Convex Debug & Test Backend | 1/1 | Complete    | 2026-03-04 | - |
-| 63. Client Libraries | v3.1 | 0/? | Not started | - |
+| 63. Client Libraries | v3.1 | 0/3 | Not started | - |
 | 64. Components | v3.1 | 0/? | Not started | - |
 | 65. Mock Factories | v3.1 | 0/? | Not started | - |
 | 66. Test Files | v3.1 | 0/? | Not started | - |
