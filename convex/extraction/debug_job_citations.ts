@@ -153,24 +153,10 @@ export const debugJobCitations = internalQuery({
 
       for (const result of paperResults) {
         totalAnswers++;
-        const citationStatus = (result as any).citationStatus as
-          | "grounded"
-          | "best_effort"
-          | "insufficient_evidence"
-          | "extraction_error"
-          | undefined;
+        const citationStatus = result.citationStatus;
         const questionType = questionTypeByKey.get(result.questionKey);
-        const citations = Array.isArray((result as any).citations)
-          ? ((result as any).citations as Array<any>)
-          : [];
-        const diagnostics = (result as any).retrievalDiagnostics as
-          | {
-              denseCandidates?: number;
-              lexicalCandidates?: number;
-              fusedCandidates?: number;
-              strictNull?: boolean;
-            }
-          | undefined;
+        const citations = result.citations;
+        const diagnostics = result.retrievalDiagnostics;
 
         if (result.answer === null) {
           nullAnswerCount++;
@@ -246,21 +232,11 @@ export const debugJobCitations = internalQuery({
       }
 
       const withCitations = paperResults.find((result) => {
-        const citations = (result as any).citations;
-        return Array.isArray(citations) && citations.length > 0;
+        return Array.isArray(result.citations) && result.citations.length > 0;
       });
 
-      const citations = Array.isArray((withCitations as any)?.citations)
-        ? (((withCitations as any).citations as Array<any>) ?? [])
-        : [];
-      const diagnostics = (withCitations as any)?.retrievalDiagnostics as
-        | {
-            denseCandidates?: number;
-            lexicalCandidates?: number;
-            fusedCandidates?: number;
-            strictNull?: boolean;
-          }
-        | undefined;
+      const citations = withCitations?.citations ?? [];
+      const diagnostics = withCitations?.retrievalDiagnostics;
       const validatedCitationCount = citations.filter((c) => c?.validated === true).length;
 
       sampledResults.push({
@@ -268,7 +244,7 @@ export const debugJobCitations = internalQuery({
         title: paper.title,
         ragEntryId: paper.ragEntryId,
         questionKey: withCitations?.questionKey,
-        citationStatus: (withCitations as any)?.citationStatus,
+        citationStatus: withCitations?.citationStatus,
         citationCount: citations.length || undefined,
         validatedCitationCount:
           validatedCitationCount > 0 ? validatedCitationCount : undefined,
