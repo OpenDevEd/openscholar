@@ -609,6 +609,29 @@ export default defineSchema({
     .index("by_job_generated", ["jobId", "generatedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION JOB STATS - Pre-aggregated per-question counters
+  // ═══════════════════════════════════════════════════════════════
+  extractionJobStats: defineTable({
+    jobId: v.id("extractionJobs"),
+    questionKey: v.string(),
+    totalPapers: v.number(),
+    totalAnswered: v.number(),
+    groundedCount: v.number(),
+    bestEffortCount: v.number(),
+    insufficientEvidenceCount: v.number(),
+    extractionErrorCount: v.number(),
+    confidenceSum: v.number(),
+    confidenceCount: v.number(),
+    highConfidenceCount: v.number(),
+    mediumConfidenceCount: v.number(),
+    lowConfidenceCount: v.number(),
+    unknownConfidenceCount: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_question", ["jobId", "questionKey"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // EXTRACTION RUN DIFFS - Rerun change summaries for alerts
   // ═══════════════════════════════════════════════════════════════
   extractionRunDiffs: defineTable({

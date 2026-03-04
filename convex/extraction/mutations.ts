@@ -1121,6 +1121,17 @@ export const deleteExtractionInternal = internalMutation({
       return null;
     }
 
+    // Step 7b: Delete extractionJobStats
+    const jobStats = await ctx.db
+      .query("extractionJobStats")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(BATCH_SIZE);
+    if (jobStats.length > 0) {
+      for (const s of jobStats) await ctx.db.delete(s._id);
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
+      return null;
+    }
+
     // Step 8: Delete extractionRunDiffs where this job is the PRIMARY job
     // NOTE: Step 8b below handles diffs where baselineJobId == args.jobId
     const runDiffs = await ctx.db
@@ -2020,6 +2031,62 @@ export const saveExtractionResultsAndComplete = internalMutation({
 
     const paper = await ctx.db.get(args.paperId);
     if (!paper) return;
+
+    // Upsert extractionJobStats for each question result
+    for (const result of args.results.filter(Boolean)) {
+      const existingStat = await ctx.db
+        .query("extractionJobStats")
+        .withIndex("by_job_question", (q) =>
+          q.eq("jobId", paper.jobId).eq("questionKey", result.questionKey))
+        .unique();
+
+      const isAnswered = result.answer !== null && result.answer !== undefined;
+      const conf = typeof result.confidence === "number" ? result.confidence : undefined;
+      const confBucket = conf === undefined ? "unknown"
+        : conf >= 0.8 ? "high"
+        : conf >= 0.5 ? "medium"
+        : "low";
+
+      const delta = {
+        totalPapers: 1,
+        totalAnswered: isAnswered ? 1 : 0,
+        groundedCount: result.citationStatus === "grounded" ? 1 : 0,
+        bestEffortCount: result.citationStatus === "best_effort" ? 1 : 0,
+        insufficientEvidenceCount: result.citationStatus === "insufficient_evidence" ? 1 : 0,
+        extractionErrorCount: result.citationStatus === "extraction_error" ? 1 : 0,
+        confidenceSum: conf ?? 0,
+        confidenceCount: conf !== undefined ? 1 : 0,
+        highConfidenceCount: confBucket === "high" ? 1 : 0,
+        mediumConfidenceCount: confBucket === "medium" ? 1 : 0,
+        lowConfidenceCount: confBucket === "low" ? 1 : 0,
+        unknownConfidenceCount: confBucket === "unknown" ? 1 : 0,
+      };
+
+      if (existingStat) {
+        await ctx.db.patch(existingStat._id, {
+          totalPapers: existingStat.totalPapers + delta.totalPapers,
+          totalAnswered: existingStat.totalAnswered + delta.totalAnswered,
+          groundedCount: existingStat.groundedCount + delta.groundedCount,
+          bestEffortCount: existingStat.bestEffortCount + delta.bestEffortCount,
+          insufficientEvidenceCount: existingStat.insufficientEvidenceCount + delta.insufficientEvidenceCount,
+          extractionErrorCount: existingStat.extractionErrorCount + delta.extractionErrorCount,
+          confidenceSum: existingStat.confidenceSum + delta.confidenceSum,
+          confidenceCount: existingStat.confidenceCount + delta.confidenceCount,
+          highConfidenceCount: existingStat.highConfidenceCount + delta.highConfidenceCount,
+          mediumConfidenceCount: existingStat.mediumConfidenceCount + delta.mediumConfidenceCount,
+          lowConfidenceCount: existingStat.lowConfidenceCount + delta.lowConfidenceCount,
+          unknownConfidenceCount: existingStat.unknownConfidenceCount + delta.unknownConfidenceCount,
+          updatedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("extractionJobStats", {
+          jobId: paper.jobId,
+          questionKey: result.questionKey,
+          ...delta,
+          updatedAt: Date.now(),
+        });
+      }
+    }
 
     await ctx.db.patch(args.paperId, patchData);
     await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
