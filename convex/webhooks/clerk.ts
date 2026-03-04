@@ -103,10 +103,11 @@ export const clerkWebhook = httpAction(async (ctx, req) => {
   }
 
   const { eventId, eventType, data } = result;
+  const parsedData: unknown = JSON.parse(data);
   const outcome = await processClerkWebhookEvent({
     eventId,
     eventType,
-    data,
+    data: parsedData,
     runMutation: (mutation, mutationArgs) =>
       ctx.runMutation(mutation as never, mutationArgs as never),
   });

@@ -83,7 +83,7 @@ describe("clerk webhook verification", () => {
     if (result.success) {
       expect(result.eventId).toBe(event.id);
       expect(result.eventType).toBe(event.type);
-      expect(result.data).toEqual(event.data);
+      expect(result.data).toEqual(JSON.stringify(event.data));
     }
   });
 
@@ -112,7 +112,7 @@ describe("clerk webhook verification", () => {
     if (result.success) {
       expect(result.eventId).toBe(svixId);
       expect(result.eventType).toBe("user.updated");
-      expect(result.data).toEqual(event.data);
+      expect(result.data).toEqual(JSON.stringify(event.data));
     }
   });
 

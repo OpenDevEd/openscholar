@@ -7,7 +7,7 @@ export type ClerkWebhookVerificationSuccess = {
   success: true;
   eventId: string;
   eventType: string;
-  data: unknown;
+  data: string; // JSON-serialized Clerk webhook data
 };
 
 export type ClerkWebhookVerificationFailure = {
@@ -89,7 +89,7 @@ export function verifyClerkWebhookPayload(args: {
       success: true,
       eventId,
       eventType,
-      data: data ?? {},
+      data: JSON.stringify(data ?? {}),
     };
   } catch (err) {
     if (
@@ -124,7 +124,7 @@ export const verifyClerkWebhook = internalAction({
       success: v.literal(true),
       eventId: v.string(),
       eventType: v.string(),
-      data: v.any(), // v.unknown() not available in Convex 1.32.0; Clerk webhook data is opaque JSON
+      data: v.string(), // JSON-serialized; v.unknown() not available in Convex 1.32.0
     }),
     v.object({
       success: v.literal(false),
