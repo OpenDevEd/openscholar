@@ -56,7 +56,7 @@ export const createTopupCheckoutSession = action({
       key: identity.subject,
     });
 
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!user?._id) {
       throw createError("CREDITS_USER_NOT_FOUND", "Unable to resolve current user");
@@ -252,7 +252,15 @@ async function resolveFallbackSubscriptionId(
   return selectSingletonEntitledSubscriptionId(subscriptions.data);
 }
 
-async function processInvoiceForGrantLogic(ctx: ActionCtx, args: any): Promise<{ outcome: string; message: string; usedFallbackSubscription: boolean }> {
+interface ProcessInvoiceForGrantArgs {
+  stripeInvoiceId: string;
+  stripeEventId?: string;
+  stripeEventType?: string;
+  trigger?: string;
+  retryCount?: number;
+}
+
+async function processInvoiceForGrantLogic(ctx: ActionCtx, args: ProcessInvoiceForGrantArgs): Promise<{ outcome: string; message: string; usedFallbackSubscription: boolean }> {
   const retryCount = args.retryCount ?? 0;
   const stripeEventId = args.stripeEventId ?? `invoice.process:${args.stripeInvoiceId}`;
   const stripeEventType = args.stripeEventType ?? "invoice.process";
@@ -475,7 +483,14 @@ export const processInvoiceForGrant = internalAction({
   },
 });
 
-async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: ActionCtx, args: any) {
+interface ReconcileRecentPaidInvoicesArgs {
+  stripeCustomerId?: string;
+  lookbackDays?: number;
+  limitCustomers?: number;
+  trigger?: string;
+}
+
+async function reconcileRecentPaidInvoicesFromStripeLogic(ctx: ActionCtx, args: ReconcileRecentPaidInvoicesArgs) {
   const lookbackDays = args.lookbackDays ?? 7;
   const cutoffUnixSeconds = Math.floor(Date.now() / 1000) - lookbackDays * 24 * 60 * 60;
   const limitCustomers = Math.max(1, Math.min(args.limitCustomers ?? 200, 1000));
