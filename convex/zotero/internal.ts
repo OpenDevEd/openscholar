@@ -35,18 +35,3 @@ export const getConnection = internalQuery({
     };
   },
 });
-
-/**
- * List all Zotero connections for migration verification.
- */
-export const listAllConnections = internalQuery({
-  args: {},
-  returns: v.array(v.object({
-    _id: v.id("zoteroConnections"),
-    encryptedApiKey: v.string(),
-  })),
-  handler: async (ctx) => {
-    const all = await ctx.db.query("zoteroConnections").collect();
-    return all.map((c) => ({ _id: c._id, encryptedApiKey: c.encryptedApiKey }));
-  },
-});

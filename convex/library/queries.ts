@@ -248,7 +248,7 @@ export const getLibraryCount = query({
     const items = await ctx.db
       .query("libraryItems")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(10_000);
     return items.length;
   },
 });
