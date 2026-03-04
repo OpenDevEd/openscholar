@@ -1,6 +1,6 @@
 import { internalMutation, internalQuery, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { PLAN_CONFIG, getPlanFromPriceId } from "../lib/constants";
+import { assertPlanPriceConfig, PLAN_CONFIG, getPlanFromPriceId } from "../lib/constants";
 import { Doc, Id } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
 import { components } from "../_generated/api";
@@ -432,6 +432,8 @@ export const syncSubscription = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertPlanPriceConfig();
+
     let subscription = await getSubscriptionByStripeOrMetadata(ctx, {
       stripeSubscriptionId: args.stripeSubscriptionId,
       stripeCustomerId: args.stripeCustomerId,

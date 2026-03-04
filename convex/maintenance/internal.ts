@@ -6,7 +6,7 @@ import { internal } from "../_generated/api";
 import Stripe from "stripe";
 import { normalizeStripeSubscriptionStatus } from "../subscriptions/lib/stripeStatus";
 import { isSubscriptionScheduledToCancel } from "../subscriptions/lib/cancellation";
-import { getPlanFromPriceId } from "../lib/constants";
+import { assertPlanPriceConfig, getPlanFromPriceId } from "../lib/constants";
 
 let _stripe: Stripe | null = null;
 function getStripe(): Stripe {
@@ -37,6 +37,8 @@ export const checkSubscriptionStatus = internalAction({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    assertPlanPriceConfig();
+
     // Step 1: Expire past-due subscriptions (DB-only, runs as mutation)
     await ctx.runMutation(internal.maintenance.mutations.expirePastDueSubscriptions);
 

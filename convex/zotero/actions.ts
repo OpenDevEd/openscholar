@@ -650,6 +650,11 @@ export const fetchCollections = action({
     }
 
     const apiKey = resolveZoteroApiKey(connection, userId);
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId,
+      metadata: { purpose: "zotero-api-key-decrypt" },
+    });
 
     const prefix: string = groupId
       ? `/groups/${groupId}`
@@ -703,6 +708,11 @@ export const fetchGroups = action({
     }
 
     const apiKey = resolveZoteroApiKey(connection, userId);
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId,
+      metadata: { purpose: "zotero-api-key-decrypt" },
+    });
 
     const response: Response = await fetch(
       buildZoteroUrl(`/users/${connection.zoteroUserId}/groups`).toString(),
@@ -778,6 +788,11 @@ export const fetchItems = action({
     }
 
     const apiKey = resolveZoteroApiKey(connection, userId);
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId,
+      metadata: { purpose: "zotero-api-key-decrypt" },
+    });
 
     const prefix: string = groupId
       ? `/groups/${groupId}`
@@ -992,6 +1007,11 @@ export const getAttachments = internalAction({
     }
 
     const apiKey = resolveZoteroApiKey(connection, userId);
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId,
+      metadata: { purpose: "zotero-api-key-decrypt" },
+    });
 
     const prefix = groupId
       ? `/groups/${groupId}`
@@ -1059,6 +1079,11 @@ export const downloadFile = internalAction({
     }
 
     const apiKey = resolveZoteroApiKey(connection, userId);
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId,
+      metadata: { purpose: "zotero-api-key-decrypt" },
+    });
 
     try {
       const response = await fetch(downloadUrl, {

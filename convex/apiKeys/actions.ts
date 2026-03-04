@@ -117,9 +117,17 @@ export const getDecrypted = internalAction({
       return null;
     }
 
-    return decryptApiKey(keyData.encryptedKey, encryptionKey, {
+    const decrypted = decryptApiKey(keyData.encryptedKey, encryptionKey, {
       userId: user._id,
       purpose: `api-key-decrypt:${args.provider}`,
     });
+
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId: user._id,
+      metadata: { purpose: `api-key-decrypt:${args.provider}` },
+    });
+
+    return decrypted;
   },
 });

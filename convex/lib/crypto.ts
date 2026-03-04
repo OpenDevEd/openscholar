@@ -78,10 +78,6 @@ export function decryptApiKey(
   audit: { userId: string; purpose: string }
 ): string {
   const decrypted = decrypt(encrypted, keyHex);
-  console.log("[AUDIT:KEY_DECRYPT]", JSON.stringify({
-    userId: audit.userId,
-    purpose: audit.purpose,
-    timestamp: new Date().toISOString(),
-  }));
+  console.log("[KEY_DECRYPT]", audit.purpose);
   return decrypted;
 }

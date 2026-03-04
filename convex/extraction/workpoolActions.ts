@@ -759,6 +759,11 @@ async function resolvePdfBlob(ctx: ActionCtx, args: {
       userId: job?.userId ? String(job.userId) : "system",
       purpose: "zotero-pdf-download",
     });
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "KEY_DECRYPT",
+      userId: job?.userId ? String(job.userId) : "system",
+      metadata: { purpose: "extraction-api-key-decrypt" },
+    });
   }
 
   const downloaded: DownloadPdfResult = await downloadPdf(args.pdfUrl, {

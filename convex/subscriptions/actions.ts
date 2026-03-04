@@ -578,6 +578,7 @@ export const changePlan = action({
     creditsGranted: number;
   }> => {
     await requireActionAuth(ctx);
+    assertPlanPriceConfig();
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
@@ -937,6 +938,7 @@ export const getUpgradePreview = action({
   }> => {
     requireSubscriptionsEnabled();
     await requireActionAuth(ctx);
+    assertPlanPriceConfig();
     const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
