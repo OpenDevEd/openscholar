@@ -20,7 +20,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 ### Security
 
-- [ ] **SEC-01**: Replace all three `dangerouslySetInnerHTML` call sites in `table-view.tsx` with XSS-safe React-native `HighlightedText` component using text splitting
+- [x] **SEC-01**: Replace all three `dangerouslySetInnerHTML` call sites in `table-view.tsx` with XSS-safe React-native `HighlightedText` component using text splitting
 - [ ] **SEC-02**: Create persistent `auditLogs` table in Convex schema with `writeAuditLog` internalMutation, replacing `console.log` audit events for security-sensitive operations
 - [ ] **SEC-03**: Add startup env var validation for `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `CLERK_JWT_ISSUER_DOMAIN` via cron-based check
 - [ ] **SEC-04**: Implement debug function production exclusion strategy (separate deployment config or staging-only Convex project documentation)
@@ -43,7 +43,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 ### Test Coverage
 
-- [ ] **TEST-01**: Add unit test for `highlightText` with HTML characters in both text and query parameters verifying XSS safety
+- [x] **TEST-01**: Add unit test for `highlightText` with HTML characters in both text and query parameters verifying XSS safety
 - [ ] **TEST-02**: Add test for GROBID URL discovery fallback chain when `GROBID_URL` env var is absent and Docker/localhost variants fail
 - [x] **TEST-03**: Add test for rate limiter with invalid name string verifying rejection
 - [x] **TEST-04**: Add test for workflow cancel path specifically (not just cascade delete)
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-06 | Phase 54 | Complete |
 | TYPE-07 | Phase 54 | Complete |
 | TYPE-08 | Phase 54 | Complete |
-| SEC-01 | Phase 55 | Pending |
+| SEC-01 | Phase 55 | Complete |
 | SEC-02 | Phase 55 | Pending |
 | SEC-03 | Phase 55 | Pending |
 | SEC-04 | Phase 55 | Pending |
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORR-01 | Phase 58 | Pending |
 | CORR-02 | Phase 58 | Pending |
 | CORR-03 | Phase 58 | Pending |
-| TEST-01 | Phase 55 | Pending |
+| TEST-01 | Phase 55 | Complete |
 | TEST-02 | Phase 58 | Pending |
 | TEST-03 | Phase 54 | Complete |
 | TEST-04 | Phase 54 | Complete |

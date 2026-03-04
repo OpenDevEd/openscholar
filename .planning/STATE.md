@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Zero-Any Overhaul
-status: unknown
-last_updated: "2026-03-03T22:50:27.077Z"
+status: in-progress
+last_updated: "2026-03-04T05:03:33Z"
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.0 Zero-Any Overhaul -- Phase 54: Type Safety Sweep
+**Current focus:** v3.0 Zero-Any Overhaul -- Phase 55: Security and Audit
 
 ## Current Position
 
-Phase: 54 (1 of 5) -- Type Safety Sweep
-Plan: 54-01 and 54-02 complete (2/2)
-Status: Phase 54 complete
-Last activity: 2026-03-03 -- 54-01 executed (type safety elimination of 15+ as-any casts)
+Phase: 55 (2 of 5) -- Security and Audit
+Plan: 55-01 complete (1/2)
+Status: Phase 55 in progress
+Last activity: 2026-03-04 -- 55-01 executed (XSS safety: HighlightedText replaces dangerouslySetInnerHTML)
 
-Progress: [##........] 20%
+Progress: [###.......] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 101 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 2)
+- Total plans completed: 102 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 3)
 - Total milestones shipped: 9
 
 **By Milestone:**
@@ -48,6 +48,7 @@ Progress: [##........] 20%
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
 | v2.5 | 7 | 15 | 2026-03-03 |
+| Phase 55 P01 | 2min | 2 tasks | 3 files |
 | Phase 54 P02 | 3min | 2 tasks | 5 files |
 | Phase 54 P01 | 10min | 2 tasks | 10 files |
 
@@ -57,6 +58,8 @@ Progress: [##........] 20%
 
 See PROJECT.md Key Decisions table for full log.
 
+- [55-01] Used string comparison instead of regex .test() for match detection to avoid stateful lastIndex issues
+- [55-01] Exported splitTextByQuery as separate pure function for unit testability without React rendering
 - [54-02] Moved getProviderModel to lib/ai/server/ to fix client/server module boundary violation
 - [54-02] Deleted library-filters.tsx (407 lines, zero imports) as dead code
 - [54-02] Deleted convex/test.setup.ts (orphaned, no test imports it, vitest uses tests/setup.ts)
@@ -85,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-03 - Completed 54-01-PLAN.md (type safety: 15+ as-any casts eliminated)
-Stopped at: Phase 54 complete (both 54-01 and 54-02 done)
+Last activity: 2026-03-04 - Completed 55-01-PLAN.md (XSS safety: HighlightedText replaces dangerouslySetInnerHTML)
+Stopped at: Phase 55 in progress (55-01 done, 55-02 remaining)
 Resume file: None
