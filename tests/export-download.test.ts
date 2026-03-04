@@ -34,7 +34,7 @@ vi.mock("../lib/keyword-validation", () => ({
 
 // Mock utils -- keep real functions but mock download-related ones
 vi.mock("../lib/utils", async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     downloadWithMetadata: mockDownloadWithMetadata,
@@ -54,6 +54,7 @@ vi.mock("date-fns", () => ({
 
 import { downloadAll, downloadItem } from "../lib/search-actions";
 import type { DownloadSearchState, ToastApi } from "../lib/search-actions";
+import type { SearchField } from "../lib/types/search.types";
 
 const mockToast: ToastApi = {
   io: { downloadFailed: vi.fn() },
@@ -61,7 +62,7 @@ const mockToast: ToastApi = {
 
 const mockSearchState: DownloadSearchState = {
   query: "test query",
-  field: "title_and_abstract" as any,
+  field: "title_and_abstract" satisfies SearchField,
   dateRange: undefined,
   yearRange: [2020, 2024],
   searchId: "search_1",
@@ -84,7 +85,7 @@ const mockResults = [
 
 beforeEach(() => {
   mockDownloadWithMetadata.mockClear();
-  (mockToast.io.downloadFailed as any).mockClear();
+  vi.mocked(mockToast.io.downloadFailed).mockClear();
 });
 
 describe("downloadAll", () => {

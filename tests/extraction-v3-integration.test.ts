@@ -7,8 +7,29 @@ import {
   validateSupportEvidenceIds,
 } from "../convex/extraction/workpoolActions";
 
+/**
+ * Local replica of the non-exported RetrievalCandidate from workpoolActions.
+ * Kept in sync manually; shape must match for validateSupportEvidenceIds / applyEvidencePolicy.
+ */
+type TestRetrievalCandidate = {
+  unit: {
+    evidenceId: string;
+    page: number;
+    charRange: [number, number];
+    text: string;
+    section?: string;
+    tokens: string[];
+    anchorConfidence: number;
+    source: string;
+  };
+  denseScore?: number;
+  lexicalScore?: number;
+  fusedScore?: number;
+  rerankScore?: number;
+};
+
 describe("V3.2 evidence policy", () => {
-  const evidencePool = [
+  const evidencePool: TestRetrievalCandidate[] = [
     {
       unit: {
         evidenceId: "ev_2_120_280_abc123",
@@ -44,7 +65,7 @@ describe("V3.2 evidence policy", () => {
   it("returns grounded when valid support IDs are present", () => {
     const validated = validateSupportEvidenceIds(
       ["ev_2_120_280_abc123"],
-      evidencePool as any
+      evidencePool
     );
     const policy = applyEvidencePolicy({
       extracted: {
@@ -53,8 +74,8 @@ describe("V3.2 evidence policy", () => {
         reasoning: "Directly supported by methods evidence.",
         supportEvidenceIds: ["ev_2_120_280_abc123"],
       },
-      validated: validated as any,
-      fallbackCandidates: evidencePool as any,
+      validated,
+      fallbackCandidates: evidencePool,
     });
 
     expect(policy.citationStatus).toBe("grounded");
@@ -64,7 +85,7 @@ describe("V3.2 evidence policy", () => {
   });
 
   it("returns best_effort with fallback citations when model omits valid IDs", () => {
-    const validated = validateSupportEvidenceIds(["unknown"], evidencePool as any);
+    const validated = validateSupportEvidenceIds(["unknown"], evidencePool);
     const policy = applyEvidencePolicy({
       extracted: {
         answer: "over 270 coded studies",
@@ -72,8 +93,8 @@ describe("V3.2 evidence policy", () => {
         reasoning: "Likely supported by nearby evidence.",
         supportEvidenceIds: [],
       },
-      validated: validated as any,
-      fallbackCandidates: evidencePool as any,
+      validated,
+      fallbackCandidates: evidencePool,
     });
 
     expect(policy.citationStatus).toBe("best_effort");
@@ -84,7 +105,7 @@ describe("V3.2 evidence policy", () => {
   });
 
   it("returns insufficient_evidence only when no support and no fallback candidates exist", () => {
-    const validated = validateSupportEvidenceIds(["unknown"], evidencePool as any);
+    const validated = validateSupportEvidenceIds(["unknown"], evidencePool);
     const policy = applyEvidencePolicy({
       extracted: {
         answer: "270",
@@ -92,7 +113,7 @@ describe("V3.2 evidence policy", () => {
         reasoning: "Unsupported answer.",
         supportEvidenceIds: ["unknown"],
       },
-      validated: validated as any,
+      validated,
       fallbackCandidates: [],
     });
 

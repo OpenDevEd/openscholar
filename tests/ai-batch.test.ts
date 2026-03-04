@@ -14,6 +14,7 @@ import {
 import type { BatchPaper } from "../lib/ai/core/batch-types";
 import type { Usage } from "../lib/ai/core/types";
 import type { LanguageModel } from "ai";
+import type { OperationConfig } from "../lib/ai/core/configs";
 
 const mockExecute = vi.mocked(executeAIOperation);
 
@@ -45,8 +46,9 @@ describe("processBatch", () => {
       title: paper.title,
       abstract: paper.abstract,
     }),
-    getOperationConfig: (_input: any) => ({}) as any,
-    formatResult: (output: any) => output,
+    getOperationConfig: (_input: { title: string; abstract: string }) =>
+      ({}) as unknown as OperationConfig<{ title: string; abstract: string }, { value: string }>,
+    formatResult: (output: { value: string }) => output,
     getItemId: (paper: BatchPaper) => paper.id,
   });
 
@@ -223,7 +225,7 @@ describe("processTranslationBatch", () => {
     });
 
     expect(mockExecute).toHaveBeenCalledOnce();
-    const callArgs = mockExecute.mock.calls[0][0] as any;
+    const callArgs = mockExecute.mock.calls[0][0] as Record<string, unknown>;
     expect(callArgs.input).not.toHaveProperty("targetLanguage");
   });
 });

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PaperWithResults, Question } from "../lib/extraction/filtering";
 
 const ORIGINAL_EXTRACTION_PDF_FLAG = process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
 
@@ -30,9 +31,9 @@ describe("extraction result filtering with PDF flag", () => {
     pdfContentUsed: false,
     isOpenAccess: false,
     status: "completed",
-  } as any;
+  } as unknown as PaperWithResults;
 
-  const questions: any[] = [];
+  const questions: Question[] = [];
 
   function buildFilters() {
     return {

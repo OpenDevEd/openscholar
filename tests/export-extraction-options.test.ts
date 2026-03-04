@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mockId } from "./factories";
+import type { PaperWithResults } from "../lib/extraction/filtering";
 
 // Capture what gets passed to Blob constructor
 let capturedBlobContent: string[] = [];
@@ -56,9 +58,9 @@ const mockQuestions = [
   },
 ];
 
-const mockPapers = [
+const mockPapers: PaperWithResults[] = [
   {
-    _id: "paper_1" as any,
+    _id: mockId("extractionPapers", "1"),
     _creationTime: 0,
     title: "Test Paper One",
     doi: "10.1234/test1",
@@ -83,7 +85,7 @@ const mockPapers = [
         reasoning: "Found in abstract",
       },
     ],
-  } as any,
+  } as unknown as PaperWithResults,
 ];
 
 describe("exportToCSV", () => {
@@ -154,7 +156,7 @@ describe("exportToCSV", () => {
           { questionKey: "q2", answer: 42, confidence: 0.8 },
         ],
       },
-    ] as any;
+    ] as unknown as PaperWithResults[];
     exportToCSV(papersWithCorrection, mockQuestions);
     const csv = capturedBlobContent[0];
     expect(csv).toContain("No");
@@ -228,7 +230,7 @@ describe("exportToJSON", () => {
           },
         ],
       },
-    ] as any;
+    ] as unknown as PaperWithResults[];
     exportToJSON(papersWithCorrection, mockQuestions);
     const json = JSON.parse(capturedBlobContent[0]);
     expect(json.papers[0].results[0].answer).toBe(false);

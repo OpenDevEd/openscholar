@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mockId } from "./factories";
 
 const ORIGINAL_EXTRACTION_PDF_FLAG = process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
 
@@ -17,7 +18,7 @@ afterEach(() => {
 
 describe("citation panel payload gating", () => {
   const baseParams = {
-    paperId: "paper_1" as any,
+    paperId: mockId("extractionPapers", "1"),
     paperTitle: "Sample Paper",
     citations: [
       {
