@@ -252,7 +252,9 @@ Plans:
   2. A mock factory exists for Stripe event objects (checkout.session.completed, invoice.paid, etc.)
   3. A mock factory exists for auth state objects (Clerk user, session)
   4. Each factory returns properly typed objects (no `as any` in factory implementation)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 65-01-PLAN.md -- Create typed mock factories for Convex context, Ids/documents, and Stripe events
 
 ### Phase 66: Test Files
 **Goal**: All test files use proper types with zero any annotations, leveraging mock factories
