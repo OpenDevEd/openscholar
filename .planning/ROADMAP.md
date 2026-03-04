@@ -324,7 +324,7 @@ Phases execute in numeric order: 60 -> 61 -> 62 -> 63 -> 64 -> 65 -> 66 -> 67
 | 57. Incremental Aggregation | v3.0 | 2/2 | Complete | 2026-03-04 |
 | 58. Correctness and Coverage | v3.0 | 2/2 | Complete | 2026-03-04 |
 | 59. Tech Debt Cleanup | v3.0 | 1/1 | Complete | 2026-03-04 |
-| 60. Convex Validators & Typed Records | v3.1 | 0/? | Not started | - |
+| 60. Convex Validators & Typed Records | 1/2 | In Progress|  | - |
 | 61. Convex Production Backend | v3.1 | 0/? | Not started | - |
 | 62. Convex Debug & Test Backend | v3.1 | 0/? | Not started | - |
 | 63. Client Libraries | v3.1 | 0/? | Not started | - |
