@@ -500,7 +500,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Bulk update
   const updateParams = useCallback((updates: Partial<SearchParams>) => {
-    setUrlParams(updates as any);
+    setUrlParams(updates as Partial<typeof urlParams>);
     // Convert URL param keys to store field names and sync
     const storeUpdates: Record<string, unknown> = {};
     if ('field' in updates) storeUpdates.field = updates.field;

@@ -21,6 +21,7 @@ import { useSearchHistoryStore } from '../store';
 import { paramsToSearchResult, searchResultToParams, paramsMatchState } from '../search-params/converters';
 import { buildResultsUrl, DEFAULT_SEARCH_PARAMS } from '../search-params';
 import type { ParsedSearchParams } from '../search-params/parsers';
+import type { SearchResult } from '../types';
 
 interface SearchInitializerProps {
   children: ReactNode;
@@ -118,7 +119,8 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       const newId = addSearchResult(newEntry);
       
       // Build URL with params and redirect to new ID
-      const params = searchResultToParams({ ...newEntry, id: newId } as any);
+      const entryWithId: Partial<SearchResult> = { ...newEntry, id: newId };
+      const params = searchResultToParams(entryWithId);
       router.replace(buildResultsUrl(newId, params));
       return;
     }

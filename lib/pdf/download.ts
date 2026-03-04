@@ -204,8 +204,20 @@ async function downloadZoteroPdf(
     const attachments = await response.json();
     
     // Find PDF attachment
-    const pdfAttachment = attachments.find(
-      (att: any) => att.data?.itemType === "attachment" && att.data?.contentType === "application/pdf"
+    interface ZoteroAttachment {
+      data?: {
+        itemType?: string;
+        contentType?: string;
+      };
+      links?: {
+        enclosure?: {
+          href?: string;
+        };
+      };
+    }
+
+    const pdfAttachment = (attachments as ZoteroAttachment[]).find(
+      (att: ZoteroAttachment) => att.data?.itemType === "attachment" && att.data?.contentType === "application/pdf"
     );
 
     if (!pdfAttachment) {
@@ -380,9 +392,9 @@ async function fetchPdfWithRetry(
       }
 
       return response;
-    } catch (e: any) {
-      lastError = e;
-      const isTimeout = e.name === "AbortError" || e.message?.includes("abort");
+    } catch (e: unknown) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      const isTimeout = e instanceof Error && (e.name === "AbortError" || e.message?.includes("abort"));
       
       if (isTimeout && attempt < maxRetries) {
         console.log(`[PDF Download] Timeout retry ${attempt + 1}/${maxRetries} for ${url.substring(0, 50)}...`);

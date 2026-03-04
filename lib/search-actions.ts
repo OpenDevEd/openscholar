@@ -4,7 +4,7 @@ import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore, useSearchHistoryStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
 import { validateAndExpandKeywordsSilently } from './keyword-validation';
-import type { SearchField, SearchFilters, ScreeningResponses } from './types';
+import type { SearchField, SearchFilters, ScreeningResponses, PaperResult } from './types';
 
 export type DownloadSearchState = {
   query: string;
@@ -108,7 +108,7 @@ export const createSearchMetadata = (
 };
 
 export const getEssentialInfo = (
-  item: any,
+  item: PaperResult,
   ratings: Record<string, number>,
   screeningResponses: ScreeningResponses,
   format: 'json' | 'csv'
@@ -138,7 +138,7 @@ export type ToastApi = {
 };
 
 export const downloadItem = async (
-  item: any,
+  item: PaperResult,
   format: 'json' | 'csv',
   toast: ToastApi,
   searchState?: DownloadSearchState,
@@ -157,7 +157,7 @@ export const downloadItem = async (
     // Expand keywords for export
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
-    const filename = generateFilename(item.title, '', format);
+    const filename = generateFilename(item.title || '', '', format);
     const itemWithRating = withScreeningResults(
       {
         ...item,
@@ -168,7 +168,7 @@ export const downloadItem = async (
       format
     );
     const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange);
-    await downloadWithMetadata(itemWithRating, filename, format, metadata);
+    await downloadWithMetadata(itemWithRating, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading item:', error);
     toast.io.downloadFailed(formatLabel);
@@ -176,7 +176,7 @@ export const downloadItem = async (
 };
 
 export const downloadEssentialItem = async (
-  item: any,
+  item: PaperResult,
   format: 'json' | 'csv',
   toast: ToastApi,
   searchState?: DownloadSearchState,
@@ -196,9 +196,9 @@ export const downloadEssentialItem = async (
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
-    const filename = generateFilename(item.title, 'essential', format);
+    const filename = generateFilename(item.title || '', 'essential', format);
     const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange);
-    await downloadWithMetadata(essentialInfo, filename, format, metadata);
+    await downloadWithMetadata(essentialInfo, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading essential item:', error);
     toast.io.downloadFailed(formatLabel);
@@ -210,7 +210,7 @@ export const downloadAll = async (
   toast: ToastApi,
   onlyEssential: boolean = false,
   searchState?: DownloadSearchState,
-  results?: any[],
+  results?: PaperResult[],
   labels?: DownloadToastLabels
 ) => {
   const formatLabel = labels?.results ?? 'results';
@@ -242,7 +242,7 @@ export const downloadAll = async (
         );
     
     const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange);
-    await downloadWithMetadata(dataToDownload, filename, format, metadata);
+    await downloadWithMetadata(dataToDownload, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading all results:', error);
     toast.io.downloadFailed(formatLabel);
