@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
 status: unknown
-last_updated: "2026-03-04T13:16:57.400Z"
+last_updated: "2026-03-04T13:40:54.863Z"
 progress:
   total_phases: 10
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  completed_phases: 5
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-04)
 
 ## Current Position
 
-Phase: 63 of 67 (Client Libraries)
-Plan: 3 of 3 (all complete)
-Status: Phase 63 complete
-Last activity: 2026-03-04 — Completed 63-02 (Extraction, Search, PDF Libraries Type Safety)
+Phase: 64 of 67 (Components)
+Plan: 2 of 2 (all complete)
+Status: Phase 64 complete
+Last activity: 2026-03-04 — Completed 64-02 (Extraction Components Type Safety)
 
 Progress: [████░░░░░░] 22%
 
@@ -53,6 +53,8 @@ Progress: [████░░░░░░] 22%
 | Phase 63 P01 | 6min | 2 tasks | 3 files |
 | Phase 63 P03 | 14min | 2 tasks | 5 files |
 | Phase 63 P02 | 15min | 2 tasks | 7 files |
+| Phase 64 P02 | 7min | 2 tasks | 7 files |
+| Phase 64 P01 | 8min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -86,6 +88,11 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 63-02]: Used ExtractionResultLike minimal interface for citation helpers instead of full model import
 - [Phase 63-02]: Bridge metadata type through unknown for cross-module downloadWithMetadata compatibility
 - [Phase 63-02]: Used Partial<typeof urlParams> for nuqs setUrlParams type cast instead of as any
+- [Phase 64]: Used Infer<typeof extractionSavedViewValidator> for onApplySavedView callback instead of ExtractionSavedView -- Convex return type has Id<> and number[] that differ from frontend interface
+- [Phase 64]: Cast charRange to [number, number] tuple in review-queue -- Convex returns number[] but CitationLocation requires tuple
+- [Phase 64]: Converted DateRange dates to ISO strings in job-creator sourceHistoryEntries -- react-day-picker DateRange uses Date objects but Convex mutation expects strings
+- [Phase 64]: Extended PaperResult with Omit<Work, 'sustainable_development_goals'> & {...} to properly type API fields missing from SDK (fwci, primary_topic, cited_by_percentile_year, referenced_works_count)
+- [Phase 64]: Widened shared component prop types (AuthorsLine, JournalLine, OpenAccessBadge, DOIBadge, ScreeningResponses) to accept optional fields from PaperResult
 
 ### Roadmap Evolution
 
@@ -110,6 +117,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 63-02 Extraction, Search, PDF Libraries Type Safety
-Stopped at: Completed 63-02-PLAN.md (Phase 63 all 3 plans complete)
+Last activity: 2026-03-04 - Completed 64-02 Extraction Components Type Safety
+Stopped at: Completed 64-02-PLAN.md
 Resume file: None
