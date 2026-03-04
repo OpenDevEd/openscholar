@@ -4,8 +4,9 @@ export type ReviewState =
   | "rejected"
   | "needs_followup";
 
-/** Minimal shape for extraction result fields used by review helpers. */
-interface ReviewResultLike {
+/** Minimal shape for extraction result fields used by review helpers.
+ *  Uses Record base so Doc<"extractionResults"> (which lacks reviewState) is assignable. */
+interface ReviewResultLike extends Record<string, unknown> {
   reviewState?: string;
 }
 

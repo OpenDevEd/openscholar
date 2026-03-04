@@ -149,7 +149,7 @@ export function Pricing() {
     }
 
     getSubscriptionDetails({})
-      .then((result: any) => {
+      .then((result) => {
         if (cancelled) return;
         if (result.status === "success" && result.data) {
           setSubscriptionDetails(result.data as SubscriptionDetails);

@@ -20,7 +20,7 @@ import { SERVER_AI_CONFIG } from "./config";
 import { getProviderModel } from "../../lib/ai/server/providers";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
-import { type PropertyValidators, type ObjectType } from "convex/values";
+import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
 import { AI_COST_MARKUP, getPlanTier } from "../lib/constants";
 import { resolveEffectivePlan } from "../../lib/billing/entitlements";
@@ -344,15 +344,13 @@ export async function withAuthAndCredits<T>(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createAIAction<
   Args extends PropertyValidators,
   Output,
   AIOutput,
 >(
   argsValidator: Args,
-  // Using 'any' for Convex validator due to complex internal type inference
-  returnsValidator: any,
+  returnsValidator: GenericValidator | PropertyValidators,
   description: string,
   configFactory: (
     args: ObjectType<Args>,

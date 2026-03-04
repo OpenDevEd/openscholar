@@ -27,13 +27,14 @@ import { PaperContent } from "@/components/focus-mode/paper-content";
 import type { PaperContentProps } from "@/components/focus-mode/paper-content";
 import { FocusModeHeader } from "@/components/focus-mode/focus-mode-header";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
+import type { PaperResult } from "@/lib/types";
 
 interface FocusModeProps {
   isOpen: boolean;
   onClose: () => void;
-  papers: any[];
-  onDownloadItem: (item: any, format: "json" | "csv") => void;
-  onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
+  papers: PaperResult[];
+  onDownloadItem: (item: PaperResult, format: "json" | "csv") => void;
+  onDownloadEssentialItem: (item: PaperResult, format: "json" | "csv") => void;
 }
 
 export function FocusMode({
@@ -223,7 +224,7 @@ export function FocusMode({
       // 2. If signed-in: save to library on rate, remove from library on clear
       if (phase === "authenticated" && newRating !== null) {
         // Find the paper object from the papers array
-        const paper = papers.find((p: any) => p.id === paperId);
+        const paper = papers.find((p) => p.id === paperId);
         if (paper) {
           const trimmed = trimPaperData(paper);
           saveToLibraryMutation({
@@ -386,7 +387,7 @@ export function FocusMode({
   };
 
   // Swipe handlers
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const { offset, velocity } = info;
 
     // More restrictive swipe detection

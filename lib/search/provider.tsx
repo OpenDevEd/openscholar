@@ -23,7 +23,7 @@ import { searchParamsParsers, serializeSearchParams, DEFAULT_SEARCH_PARAMS } fro
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { validateAndExpandKeywordsSilently } from '../keyword-validation';
-import type { SearchFilters, SearchField } from '../types';
+import type { SearchFilters, SearchField, PaperResult } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData } from './types';
 import {
   SEARCH_EVENT_SCHEMA_VERSION,
@@ -623,7 +623,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
     params: urlParams as SearchParams,
     
     // Results
-    results: data?.results?.results || [],
+    results: (data?.results?.results || []) as PaperResult[],
     totalCount: data?.results?.meta?.count || 0,
     apiUrl: data?.results?.meta?.url || '',
     originalQuery: data?.originalQuery || '',
