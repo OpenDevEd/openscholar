@@ -110,7 +110,19 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active milestone — all v3.0 requirements shipped)
+## Current Milestone: v3.1 Complete Type Safety
+
+**Goal:** Eliminate every remaining `any` type from production and test code, achieving complete type safety across the entire codebase.
+
+**Target features:**
+- Replace all `: any` type annotations with proper types in production code (~80 instances)
+- Replace all `as any` casts in production code (~17 instances) and test code (~68 instances)
+- Replace all `Record<string, any>` with typed records (~6 production instances)
+- Replace all `v.any()` Convex validators with typed alternatives (~9 instances)
+- Replace all `any[]` with typed arrays (~15 instances)
+- Replace all `<any>` generic parameters with proper types (~16 instances)
+- Create typed mock helpers/factories for test code to eliminate mock casting
+- Replace all `: any` type annotations in test code (~40 instances)
 
 ### Out of Scope
 
@@ -230,4 +242,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | ExcelJS dynamic import | ~500KB bundle savings, maintained library | ✓ Good — CJS/ESM interop guard handles both formats |
 
 ---
-*Last updated: 2026-03-04 after v3.0 milestone completed*
+*Last updated: 2026-03-04 after v3.1 milestone started*

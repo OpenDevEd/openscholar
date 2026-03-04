@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Zero-Any Overhaul
-status: completed
+milestone: v3.1
+milestone_name: Complete Type Safety
+status: active
 last_updated: "2026-03-04"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** v3.1 Complete Type Safety — defining requirements
 
 ## Current Position
 
-Milestone: v3.0 Zero-Any Overhaul — SHIPPED 2026-03-04
-All 6 phases complete, 11 plans executed, 28/28 requirements satisfied.
-
-Progress: [##########] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-04 — Milestone v3.1 started
 
 ## Performance Metrics
 
@@ -56,7 +56,7 @@ See PROJECT.md Key Decisions table for full log.
 
 ### Roadmap Evolution
 
-10 milestones shipped (v1.0 through v3.0). 59 phases, 120 plans total.
+10 milestones shipped (v1.0 through v3.0). 59 phases, 121 plans total.
 
 ### Pending Todos
 
@@ -75,6 +75,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed quick task 3 (Remove GROBID implementation)
-Stopped at: Quick task 3 complete
+Last activity: 2026-03-04 - Started milestone v3.1 Complete Type Safety
+Stopped at: Defining requirements
 Resume file: None
