@@ -4,8 +4,13 @@ export type ReviewState =
   | "rejected"
   | "needs_followup";
 
-export function getReviewState(result: any): ReviewState | undefined {
-  const state = (result as { reviewState?: string })?.reviewState;
+/** Minimal shape for extraction result fields used by review helpers. */
+interface ReviewResultLike {
+  reviewState?: string;
+}
+
+export function getReviewState(result: ReviewResultLike | null | undefined): ReviewState | undefined {
+  const state = result?.reviewState;
   if (
     state === "unreviewed" ||
     state === "accepted" ||
@@ -17,7 +22,7 @@ export function getReviewState(result: any): ReviewState | undefined {
   return undefined;
 }
 
-export function isReviewed(result: any): boolean {
+export function isReviewed(result: ReviewResultLike | null | undefined): boolean {
   const state = getReviewState(result);
   return state === "accepted" || state === "rejected" || state === "needs_followup";
 }

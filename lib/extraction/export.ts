@@ -18,7 +18,7 @@ function downloadFile(content: string | Blob, filename: string, mimeType: string
 /**
  * Formats answer for CSV export
  */
-export function formatAnswerForCSV(answer: any, type: string): string {
+export function formatAnswerForCSV(answer: string | number | boolean | string[] | null | undefined, type: string): string {
   if (answer === null || answer === undefined) return '';
 
   if (type === 'boolean') {
@@ -35,7 +35,7 @@ export function formatAnswerForCSV(answer: any, type: string): string {
 /**
  * Formats answer for Excel export
  */
-export function formatAnswerForExcel(answer: any, type: string): any {
+export function formatAnswerForExcel(answer: string | number | boolean | string[] | null | undefined, type: string): string | number {
   if (answer === null || answer === undefined) return '';
 
   if (type === 'boolean') {
@@ -199,7 +199,7 @@ export async function exportToExcel(
 
   // Dynamic import to keep ExcelJS (~500KB) out of the initial bundle
   const mod = await import('exceljs');
-  const ExcelJSModule = 'default' in mod ? (mod as any).default : mod;
+  const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
   const workbook = new ExcelJSModule.Workbook();
 
   // Sheet 1: Results
@@ -223,7 +223,7 @@ export async function exportToExcel(
 
   // Add data rows
   papers.forEach(paper => {
-    const row: any[] = [
+    const row: (string | number | undefined)[] = [
       paper.title,
       paper.doi || '',
       paper.publicationYear || '',

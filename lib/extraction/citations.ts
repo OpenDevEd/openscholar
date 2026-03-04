@@ -1,5 +1,11 @@
 import { extractionFeatureFlags } from "./feature-flags";
 
+/** Minimal shape for extraction result fields used by citation helpers. */
+interface ExtractionResultLike {
+  citations?: unknown[];
+  citationStatus?: string;
+}
+
 export type CitationEvidence = {
   evidenceId: string;
   page: number;
@@ -35,17 +41,18 @@ export type CitationLocation = {
   citationStatus?: CitationStatus;
 };
 
-function toCitationEvidence(candidate: any): CitationEvidence | null {
+function toCitationEvidence(candidate: unknown): CitationEvidence | null {
   if (!candidate || typeof candidate !== "object") return null;
 
+  const c = candidate as Record<string, unknown>;
   const evidenceId =
-    typeof candidate.evidenceId === "string" ? candidate.evidenceId.trim() : "";
-  const page = Number(candidate.page);
-  const charRange = Array.isArray(candidate.charRange) ? candidate.charRange : [];
+    typeof c.evidenceId === "string" ? c.evidenceId.trim() : "";
+  const page = Number(c.page);
+  const charRange = Array.isArray(c.charRange) ? c.charRange : [];
   const start = Number(charRange[0]);
   const end = Number(charRange[1]);
-  const quote = typeof candidate.quote === "string" ? candidate.quote.trim() : "";
-  const validated = candidate.validated === true;
+  const quote = typeof c.quote === "string" ? c.quote.trim() : "";
+  const validated = c.validated === true;
 
   if (
     !evidenceId ||
@@ -59,24 +66,25 @@ function toCitationEvidence(candidate: any): CitationEvidence | null {
     return null;
   }
 
+  const rawRetrieval = c.retrieval;
   const retrieval =
-    candidate.retrieval && typeof candidate.retrieval === "object"
+    rawRetrieval && typeof rawRetrieval === "object"
       ? {
           denseScore:
-            typeof candidate.retrieval.denseScore === "number"
-              ? candidate.retrieval.denseScore
+            typeof (rawRetrieval as Record<string, unknown>).denseScore === "number"
+              ? ((rawRetrieval as Record<string, unknown>).denseScore as number)
               : undefined,
           lexicalScore:
-            typeof candidate.retrieval.lexicalScore === "number"
-              ? candidate.retrieval.lexicalScore
+            typeof (rawRetrieval as Record<string, unknown>).lexicalScore === "number"
+              ? ((rawRetrieval as Record<string, unknown>).lexicalScore as number)
               : undefined,
           fusedScore:
-            typeof candidate.retrieval.fusedScore === "number"
-              ? candidate.retrieval.fusedScore
+            typeof (rawRetrieval as Record<string, unknown>).fusedScore === "number"
+              ? ((rawRetrieval as Record<string, unknown>).fusedScore as number)
               : undefined,
           rerankScore:
-            typeof candidate.retrieval.rerankScore === "number"
-              ? candidate.retrieval.rerankScore
+            typeof (rawRetrieval as Record<string, unknown>).rerankScore === "number"
+              ? ((rawRetrieval as Record<string, unknown>).rerankScore as number)
               : undefined,
         }
       : {};
@@ -91,17 +99,17 @@ function toCitationEvidence(candidate: any): CitationEvidence | null {
   };
 }
 
-export function getStructuredCitations(result: any): CitationEvidence[] {
+export function getStructuredCitations(result: ExtractionResultLike | null | undefined): CitationEvidence[] {
   if (!result) return [];
-  const raw = (result as { citations?: unknown }).citations;
+  const raw = result.citations;
   if (!Array.isArray(raw)) return [];
   return raw
     .map((candidate) => toCitationEvidence(candidate))
     .filter((citation): citation is CitationEvidence => citation !== null);
 }
 
-export function getCitationStatus(result: any): CitationStatus | undefined {
-  const status = (result as { citationStatus?: string })?.citationStatus;
+export function getCitationStatus(result: ExtractionResultLike | null | undefined): CitationStatus | undefined {
+  const status = result?.citationStatus;
   if (
     status === "grounded" ||
     status === "best_effort" ||
@@ -113,7 +121,7 @@ export function getCitationStatus(result: any): CitationStatus | undefined {
   return undefined;
 }
 
-export function getPrimaryCitation(result: any): CitationLocation | null {
+export function getPrimaryCitation(result: ExtractionResultLike | null | undefined): CitationLocation | null {
   if (!extractionFeatureFlags.pdf) return null;
   const citationStatus = getCitationStatus(result);
   const first = getStructuredCitations(result)[0];
@@ -130,7 +138,7 @@ export function getPrimaryCitation(result: any): CitationLocation | null {
   };
 }
 
-export function getAllCitationLocations(result: any): CitationLocation[] {
+export function getAllCitationLocations(result: ExtractionResultLike | null | undefined): CitationLocation[] {
   if (!extractionFeatureFlags.pdf) return [];
   const citationStatus = getCitationStatus(result);
   return getStructuredCitations(result).map((citation) => ({
