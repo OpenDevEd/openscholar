@@ -124,7 +124,7 @@ export const verifyClerkWebhook = internalAction({
       success: v.literal(true),
       eventId: v.string(),
       eventType: v.string(),
-      data: v.any(),
+      data: v.any(), // v.unknown() not available in Convex 1.32.0; Clerk webhook data is opaque JSON
     }),
     v.object({
       success: v.literal(false),

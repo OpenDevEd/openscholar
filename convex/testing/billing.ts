@@ -107,7 +107,73 @@ export const getBillingSnapshotForUser = internalQuery({
   args: {
     userId: v.id("users"),
   },
-  returns: v.any(),
+  returns: v.object({
+    user: v.union(
+      v.object({
+        _id: v.id("users"),
+        clerkId: v.string(),
+        email: v.string(),
+        state: v.string(),
+      }),
+      v.null()
+    ),
+    objectIds: v.object({
+      stripeCustomerIds: v.array(v.string()),
+      stripeSubscriptionIds: v.array(v.string()),
+      stripeInvoiceIds: v.array(v.string()),
+      stripePaymentIntentIds: v.array(v.string()),
+      stripeChargeIds: v.array(v.string()),
+    }),
+    credits: v.array(v.object({
+      _id: v.id("credits"),
+      freeBalance: v.number(),
+      paidBalance: v.number(),
+      lifetimeUsed: v.number(),
+      lastUpdatedAt: v.number(),
+    })),
+    subscriptions: v.array(v.object({
+      _id: v.id("subscriptions"),
+      plan: v.string(),
+      status: v.string(),
+      stripeSubscriptionId: v.optional(v.string()),
+      stripeCustomerId: v.optional(v.string()),
+      creditsPerMonth: v.optional(v.number()),
+      currentPeriodStart: v.optional(v.number()),
+      currentPeriodEnd: v.optional(v.number()),
+      updatedAt: v.number(),
+    })),
+    billingCustomers: v.array(v.object({
+      _id: v.id("billingCustomers"),
+      stripeCustomerId: v.string(),
+      linkedFrom: v.string(),
+      updatedAt: v.number(),
+    })),
+    creditTransactions: v.array(v.object({
+      _id: v.id("creditTransactions"),
+      type: v.string(),
+      creditType: v.string(),
+      amount: v.number(),
+      balanceAfter: v.number(),
+      description: v.optional(v.string()),
+      stripeInvoiceId: v.optional(v.string()),
+      stripePaymentIntentId: v.optional(v.string()),
+      stripeChargeId: v.optional(v.string()),
+      metadata: v.optional(v.record(v.string(), v.string())),
+      createdAt: v.number(),
+    })),
+    stripeEventLogs: v.array(v.object({
+      _id: v.id("stripeEventLogs"),
+      stripeEventId: v.string(),
+      eventType: v.string(),
+      stripeObjectId: v.optional(v.string()),
+      status: v.string(),
+      classification: v.optional(v.string()),
+      attemptCount: v.number(),
+      lastError: v.optional(v.string()),
+      nextRetryAt: v.optional(v.number()),
+      updatedAt: v.number(),
+    })),
+  }),
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
 
