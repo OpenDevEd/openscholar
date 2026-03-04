@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
 status: unknown
-last_updated: "2026-03-04T13:46:02.345Z"
+last_updated: "2026-03-04T21:19:50Z"
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 11
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 63 in progress
+**Current focus:** v3.1 Complete Type Safety — Phase 65 complete
 
 ## Current Position
 
-Phase: 64 of 67 (Components)
-Plan: 2 of 2 (all complete)
-Status: Phase 64 complete
-Last activity: 2026-03-04 — Completed 64-02 (Extraction Components Type Safety)
+Phase: 65 of 67 (Mock Factories)
+Plan: 1 of 1 (all complete)
+Status: Phase 65 complete
+Last activity: 2026-03-04 — Completed 65-01 (Mock Factories)
 
-Progress: [████░░░░░░] 22%
+Progress: [██████░░░░] 24%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 129 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 8, cleanup: 1, quick: 2)
+- Total plans completed: 130 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 9, cleanup: 1, quick: 2)
 - Total milestones shipped: 10
 
 **By Milestone:**
@@ -55,6 +55,7 @@ Progress: [████░░░░░░] 22%
 | Phase 63 P02 | 15min | 2 tasks | 7 files |
 | Phase 64 P02 | 7min | 2 tasks | 7 files |
 | Phase 64 P01 | 8min | 2 tasks | 9 files |
+| Phase 65 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 64]: Converted DateRange dates to ISO strings in job-creator sourceHistoryEntries -- react-day-picker DateRange uses Date objects but Convex mutation expects strings
 - [Phase 64]: Extended PaperResult with Omit<Work, 'sustainable_development_goals'> & {...} to properly type API fields missing from SDK (fwci, primary_topic, cited_by_percentile_year, referenced_works_count)
 - [Phase 64]: Widened shared component prop types (AuthorsLine, JournalLine, OpenAccessBadge, DOIBadge, ScreeningResponses) to accept optional fields from PaperResult
+- [Phase 65]: DeepPartial<T> with deep merge for context factory overrides -- enables selective nested mock customization
+- [Phase 65]: TableNames | SystemTableNames constraint on mockId generic -- satisfies Convex Id<T> type parameter requirement
+- [Phase 65]: Added createMockExtractionResult beyond plan spec -- commonly mocked in extraction tests alongside papers
 
 ### Roadmap Evolution
 
@@ -117,6 +121,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 64-01 Results List, Paper Card, Focus Mode, Country Selector Type Safety
-Stopped at: Completed 64-01-PLAN.md (Phase 64 all 2 plans complete)
+Last activity: 2026-03-04 - Completed 65-01 Mock Factories
+Stopped at: Completed 65-01-PLAN.md (Phase 65 all 1 plan complete)
 Resume file: None

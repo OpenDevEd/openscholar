@@ -31,7 +31,7 @@ Requirements for complete type safety. Each maps to roadmap phases.
 
 ### Test Infrastructure
 
-- [ ] **MOCK-01**: Typed mock factory functions created for Convex context, Stripe events, and auth state objects
+- [x] **MOCK-01**: Typed mock factory functions created for Convex context, Stripe events, and auth state objects
 
 ### Test Files
 
@@ -75,7 +75,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-01 | Phase 64 | Complete |
 | COMP-02 | Phase 64 | Complete |
 | COMP-03 | Phase 64 | Complete |
-| MOCK-01 | Phase 65 | Pending |
+| MOCK-01 | Phase 65 | Complete |
 | TEST-01 | Phase 66 | Pending |
 | TEST-02 | Phase 66 | Pending |
 | TEST-03 | Phase 66 | Pending |
