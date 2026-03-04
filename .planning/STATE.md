@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Zero-Any Overhaul
-status: unknown
-last_updated: "2026-03-04T07:11:25.664Z"
+status: complete
+last_updated: "2026-03-04T07:41:00Z"
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.0 Zero-Any Overhaul -- Phase 57: Incremental Aggregation
+**Current focus:** v3.0 Zero-Any Overhaul -- Phase 58: Correctness and Coverage
 
 ## Current Position
 
-Phase: 57 (4 of 5) -- Incremental Aggregation
-Plan: 57-02 complete (2/2) -- Phase 57 DONE
-Status: Phase 57 complete
-Last activity: 2026-03-04 -- 57-02 executed (fast-path stats reads, backfill mutation)
+Phase: 58 (5 of 5) -- Correctness and Coverage
+Plan: 58-02 complete (2/2) -- Phase 58 DONE
+Status: v3.0 milestone complete
+Last activity: 2026-03-04 -- 58-02 executed (subscription cron + GROBID fallback tests)
 
-Progress: [########..] 80%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 107 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 8)
+- Total plans completed: 108 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 10)
 - Total milestones shipped: 9
 
 **By Milestone:**
@@ -48,6 +48,7 @@ Progress: [########..] 80%
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
 | v2.5 | 7 | 15 | 2026-03-03 |
+| Phase 58 P02 | 2min | 2 tasks | 2 files |
 | Phase 57 P02 | 5min | 2 tasks | 2 files |
 | Phase 57 P01 | 4min | 1 task | 3 files |
 | Phase 56 P01 | 3min | 2 tasks | 4 files |
@@ -63,6 +64,9 @@ Progress: [########..] 80%
 
 See PROJECT.md Key Decisions table for full log.
 
+- [58-02] Tests pass without production code changes -- both features already correctly implemented
+- [58-02] GROBID test placed in tests/ (node env) to avoid edge-runtime/cheerio conflict
+- [58-02] No cheerio mock needed -- real cheerio used in node environment for TEI XML parsing
 - [57-01] Test placed in convex/extraction/ (not tests/) to match convex-test edge-runtime requirement
 - [57-01] Stats upsert placed after paper existence check, before paper patch, to ensure paper.jobId is available
 - [57-01] Confidence buckets: >=0.8 high, >=0.5 medium, <0.5 low, undefined unknown
@@ -107,6 +111,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 57-02-PLAN.md (fast-path stats reads, backfill mutation)
-Stopped at: Phase 57 complete (2/2 plans done)
+Last activity: 2026-03-04 - Completed 58-02-PLAN.md (subscription cron + GROBID fallback tests)
+Stopped at: v3.0 milestone complete (all 5 phases, 10 plans done)
 Resume file: None

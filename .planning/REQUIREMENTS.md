@@ -39,12 +39,12 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 - [ ] **CORR-01**: Add concurrency invariant test for credit deduction verifying Convex OCC prevents negative balances; implement per-user workpool only if test reveals gap
 - [ ] **CORR-02**: Fix OpenAlex polite pool fallback -- fail loudly or use validated env var instead of `admin@example.com` default
-- [ ] **CORR-03**: Add test for `checkSubscriptionStatus` cron correction path covering both expanded and non-expanded Stripe customer objects
+- [x] **CORR-03**: Add test for `checkSubscriptionStatus` cron correction path covering both expanded and non-expanded Stripe customer objects
 
 ### Test Coverage
 
 - [x] **TEST-01**: Add unit test for `highlightText` with HTML characters in both text and query parameters verifying XSS safety
-- [ ] **TEST-02**: Add test for GROBID URL discovery fallback chain when `GROBID_URL` env var is absent and Docker/localhost variants fail
+- [x] **TEST-02**: Add test for GROBID URL discovery fallback chain when `GROBID_URL` env var is absent and Docker/localhost variants fail
 - [x] **TEST-03**: Add test for rate limiter with invalid name string verifying rejection
 - [x] **TEST-04**: Add test for workflow cancel path specifically (not just cascade delete)
 - [x] **TEST-05**: Add round-trip ExcelJS export test (generate XLSX, parse back, assert headers and row values)
@@ -93,9 +93,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-06 | Phase 57 | Complete |
 | CORR-01 | Phase 58 | Pending |
 | CORR-02 | Phase 58 | Pending |
-| CORR-03 | Phase 58 | Pending |
+| CORR-03 | Phase 58 | Complete |
 | TEST-01 | Phase 55 | Complete |
-| TEST-02 | Phase 58 | Pending |
+| TEST-02 | Phase 58 | Complete |
 | TEST-03 | Phase 54 | Complete |
 | TEST-04 | Phase 54 | Complete |
 | TEST-05 | Phase 56 | Complete |
