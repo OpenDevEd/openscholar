@@ -2,6 +2,7 @@ import { downloadAsFile, jsonToCSV } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 
 interface LibraryExportItem {
+  [key: string]: string | number | boolean;
   title: string;
   authors: string;
   doi: string;

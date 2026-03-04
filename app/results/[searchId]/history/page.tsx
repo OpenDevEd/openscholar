@@ -10,6 +10,8 @@ import { restoreFromHistory } from '@/lib/search/actions';
 import { useAppToast } from '@/lib/toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { History } from 'lucide-react';
+import type { SearchField } from '@/lib/types/search.types';
+import type { DateRange } from 'react-day-picker';
 
 interface HistoryPageProps {
   params: Promise<{ searchId: string }>;
@@ -37,8 +39,8 @@ export default function HistoryPage({ params }: HistoryPageProps) {
 
   const handleSearchHistoryClick = async (
     query: string,
-    searchField: any,
-    dateRange?: any,
+    searchField: SearchField,
+    dateRange?: DateRange,
     sortBy?: string,
     yearRange?: [number, number],
     filterType?: "date" | "year",

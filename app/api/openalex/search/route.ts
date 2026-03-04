@@ -60,10 +60,10 @@ export async function GET(request: NextRequest) {
       results: response.results || [],
       meta: response.meta || {},
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[OpenAlex API] Error:", error);
     return NextResponse.json(
-      { error: error.message || "Search failed" },
+      { error: error instanceof Error ? error.message : "Search failed" },
       { status: 500 }
     );
   }

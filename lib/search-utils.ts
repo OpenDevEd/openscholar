@@ -23,7 +23,7 @@ export interface EnhancedSearchResult {
     expandedQuery: string;
     warnings: string[];
   };
-  results: any;
+  results: Awaited<ReturnType<typeof getSearchResults>>;
   paramsKey?: string;
 }
 
@@ -105,7 +105,7 @@ export async function getSearchResultsWithFilters(
       enhancedQuery: query,
       countryNames,
       validation,
-      results: { results: [], meta: { count: 0 } }
+      results: { results: [], meta: { count: 0, db_response_time_ms: 0, page: 1, per_page: 0, groups_count: null, next_cursor: "" } }
     };
   }
 

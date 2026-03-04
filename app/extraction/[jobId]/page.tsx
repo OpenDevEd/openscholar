@@ -49,6 +49,8 @@ import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import type { Infer } from "convex/values";
+import type { extractionSavedViewValidator } from "@/convex/extraction/validators";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useExtractionCitationPanelStore } from "@/lib/store";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -177,7 +179,7 @@ export default function JobDetailPage() {
 
   const questions: Question[] = useMemo(() => {
     if (jobDetails?.status !== "ok") return [];
-    return jobDetails.questions.map((q: any) => ({
+    return jobDetails.questions.map((q: { key: string; question: string; type: string; description?: string }) => ({
       key: q.key,
       question: q.question,
       type: q.type as 'boolean' | 'string' | 'array' | 'number',
@@ -320,11 +322,11 @@ export default function JobDetailPage() {
   };
 
   const handleApplySavedView = useCallback(
-    (view: any) => {
+    (view: Infer<typeof extractionSavedViewValidator>) => {
       setFilters({
         searchQuery: view?.filters?.searchQuery || "",
         confidenceRange: Array.isArray(view?.filters?.confidenceRange)
-          ? view.filters.confidenceRange
+          ? (view.filters.confidenceRange as [number, number])
           : [0, 100],
         statusFilters: new Set(view?.filters?.statusFilters || []),
         questionFilters: new Map(),
@@ -333,7 +335,7 @@ export default function JobDetailPage() {
         setResultsSortBy(view.sortBy as ResultsSortBy);
       }
       if (view?.viewMode && ["table", "cards", "split"].includes(view.viewMode)) {
-        setViewMode(view.viewMode);
+        setViewMode(view.viewMode as "table" | "cards" | "split");
       }
       setCurrentPage(1);
       setActiveTab("results");
