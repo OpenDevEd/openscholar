@@ -229,7 +229,7 @@ export function InsightsQuestionPanel({
             </div>
           ) : (
             <div className="space-y-3">
-              {entityDistribution.map((entity: any) => (
+              {entityDistribution.map((entity) => (
                 <div key={entity.entity} className="space-y-1">
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="truncate">
@@ -253,7 +253,7 @@ export function InsightsQuestionPanel({
           </div>
         ) : (
           <div className="space-y-3">
-            {rawAnswerDistribution.map((answer: any) => (
+            {rawAnswerDistribution.map((answer) => (
               <div key={answer.normalized} className="space-y-1">
                 <div className="flex items-center justify-between gap-2 text-sm">
                   <span className="truncate">{answer.display}</span>

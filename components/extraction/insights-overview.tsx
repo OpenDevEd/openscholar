@@ -98,7 +98,7 @@ export function InsightsOverview({
         </div>
         {diagnostics?.noContentPapers?.length > 0 ? (
           <div className="space-y-2">
-            {diagnostics.noContentPapers.slice(0, 3).map((paper: any) => (
+            {diagnostics.noContentPapers.slice(0, 3).map((paper) => (
               <div
                 key={paper.paperId}
                 className="rounded border border-border/40 bg-muted/20 px-3 py-2 text-xs"
@@ -116,7 +116,7 @@ export function InsightsOverview({
           {t("questionLevelInsights")}
         </div>
         <div className="divide-y divide-border/40">
-          {questions.map((question: any) => (
+          {questions.map((question) => (
             <button
               key={question.key}
               className={`w-full px-4 py-3 text-left hover:bg-muted/20 transition-colors ${

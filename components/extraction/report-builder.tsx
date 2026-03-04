@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { FilterState, Question } from "@/lib/extraction/filtering";
+import type { ExtractionReportSnapshot } from "@/lib/types";
+import type { Infer } from "convex/values";
+import type { extractionSavedViewValidator } from "@/convex/extraction/validators";
 import { Loader2 } from "lucide-react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 
@@ -20,7 +23,7 @@ interface ReportBuilderProps {
   sortBy: string;
   viewMode: "table" | "cards" | "split";
   questions: Question[];
-  onApplySavedView: (view: any) => void;
+  onApplySavedView: (view: Infer<typeof extractionSavedViewValidator>) => void;
   canUseTemplates: boolean;
   canUseRunDiff: boolean;
 }
@@ -38,7 +41,7 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 function reportToMarkdown(
-  report: any,
+  report: ExtractionReportSnapshot,
   t: {
     generatedAt: (p: { date: string }) => string;
     totalPapers: string;
@@ -61,7 +64,7 @@ function reportToMarkdown(
     "",
   ];
 
-  const sections = report.sections.flatMap((section: any) => [
+  const sections = report.sections.flatMap((section) => [
     `## ${section.title}`,
     "",
     section.body,
@@ -238,7 +241,7 @@ export function ReportBuilder({
             {savedViewsData.length === 0 ? (
               <div className="text-sm text-muted-foreground">{t("noSavedViewsYet")}</div>
             ) : (
-              savedViewsData.map((view: any) => (
+              savedViewsData.map((view) => (
                 <div
                   key={view._id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/40 bg-muted/20 px-3 py-2"
@@ -295,7 +298,7 @@ export function ReportBuilder({
                 {(templates || []).length === 0 ? (
                   <div className="text-sm text-muted-foreground">{t("noTemplatesYet")}</div>
                 ) : (
-                  (templates || []).map((template: any) => (
+                  (templates || []).map((template) => (
                     <div
                       key={template._id}
                       className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/40 bg-muted/20 px-3 py-2"
@@ -424,7 +427,7 @@ export function ReportBuilder({
               </Badge>
             </div>
             <div className="space-y-3">
-              {latestReport.sections.map((section: any) => (
+              {latestReport.sections.map((section) => (
                 <div key={section.id}>
                   <div className="text-sm font-medium">{section.title}</div>
                   <pre className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
@@ -450,7 +453,7 @@ export function ReportBuilder({
                 className="h-9 rounded-md border border-border bg-background px-3 text-sm"
               >
                 <option value="">{t("selectBaselineRun")}</option>
-                {baselineOptions.map((job: any) => (
+                {baselineOptions.map((job) => (
                   <option key={job._id} value={job._id}>
                     {job.name}
                   </option>
