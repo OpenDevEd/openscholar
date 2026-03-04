@@ -1,6 +1,7 @@
 "use node";
 
 import { internalAction, type ActionCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { RAG } from "@convex-dev/rag";
@@ -377,7 +378,11 @@ export function applyAbstractOnlyPolicy(params: {
   };
 }
 
-function parseDenseScores(results: any[]): RankedEvidenceScore[] {
+function parseDenseScores(results: Array<{
+  score?: number;
+  content?: Array<{ metadata?: { evidenceId?: string } }>;
+  metadata?: { evidenceId?: string };
+}>): RankedEvidenceScore[] {
   const byEvidence = new Map<string, number>();
 
   for (const result of results) {
@@ -676,8 +681,8 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
 }
 
 async function resolvePdfBlob(ctx: ActionCtx, args: {
-  paperId: any;
-  jobId: any;
+  paperId: Id<"extractionPapers">;
+  jobId: Id<"extractionJobs">;
   pdfUrl: string;
   storageId?: string;
   doi?: string;
@@ -737,7 +742,7 @@ async function resolvePdfBlob(ctx: ActionCtx, args: {
   const storedId = await ctx.storage.store(downloaded.pdfBlob);
   await ctx.runMutation(internal.extraction.mutations.setPaperStorage, {
     paperId: args.paperId,
-    storageId: storedId as any,
+    storageId: storedId,
   });
 
   return { pdfBlob: downloaded.pdfBlob, storageId: storedId };
@@ -939,7 +944,7 @@ export const waitAndExtractAction = internalAction({
         { paperId: args.paperId }
       );
 
-      const units: EvidenceUnitDoc[] = (unitsRaw || []).map((unit: any) => ({
+      const units: EvidenceUnitDoc[] = (unitsRaw || []).map((unit) => ({
         evidenceId: unit.evidenceId,
         page: unit.page,
         charRange: toTupleRange(unit.charRange),

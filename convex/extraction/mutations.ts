@@ -1947,7 +1947,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
     if (result.kind === "success") {
       const data = result.returnValue as {
         success: boolean;
-        results?: Array<any>;
+        results?: ExtractionResult[];
         creditsUsed?: number;
         pdfContentUsed?: boolean;
         error?: string;
