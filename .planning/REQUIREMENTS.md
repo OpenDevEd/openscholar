@@ -25,9 +25,9 @@ Requirements for complete type safety. Each maps to roadmap phases.
 
 ### Components
 
-- [ ] **COMP-01**: `results-list.tsx` fully typed — all ~10 `any` instances replaced
+- [x] **COMP-01**: `results-list.tsx` fully typed — all ~10 `any` instances replaced
 - [x] **COMP-02**: Extraction components typed (job-creator, report-builder, insights panels, history-selector, zotero-selector, review-queue)
-- [ ] **COMP-03**: Paper-card components, country-selector, and focus-mode typed
+- [x] **COMP-03**: Paper-card components, country-selector, and focus-mode typed
 
 ### Test Infrastructure
 
@@ -72,9 +72,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-03 | Phase 63 | Complete |
 | LIB-04 | Phase 63 | Complete |
 | LIB-05 | Phase 63 | Complete |
-| COMP-01 | Phase 64 | Pending |
+| COMP-01 | Phase 64 | Complete |
 | COMP-02 | Phase 64 | Complete |
-| COMP-03 | Phase 64 | Pending |
+| COMP-03 | Phase 64 | Complete |
 | MOCK-01 | Phase 65 | Pending |
 | TEST-01 | Phase 66 | Pending |
 | TEST-02 | Phase 66 | Pending |
