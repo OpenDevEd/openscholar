@@ -20,7 +20,7 @@ Requirements for complete type safety. Each maps to roadmap phases.
 - [x] **LIB-01**: `lib/utils.ts` fully typed — all ~10 `any` instances replaced
 - [x] **LIB-02**: `lib/store.ts` Zustand state fully typed — all ~8 `any` instances replaced
 - [x] **LIB-03**: `lib/auth/use-auth-query.ts` fully typed — all 6 `as any` casts replaced
-- [ ] **LIB-04**: Extraction + search libraries typed (export.ts, citations.ts, reviews.ts, search-actions.ts, provider.tsx, initializer.tsx)
+- [x] **LIB-04**: Extraction + search libraries typed (export.ts, citations.ts, reviews.ts, search-actions.ts, provider.tsx, initializer.tsx)
 - [x] **LIB-05**: AI libraries + filter-builder + trim-paper-data typed (hook-factory.ts, schemas.ts, execute.ts, filter-builder.ts, trim-paper-data.ts)
 
 ### Components
@@ -70,7 +70,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-01 | Phase 63 | Complete |
 | LIB-02 | Phase 63 | Complete |
 | LIB-03 | Phase 63 | Complete |
-| LIB-04 | Phase 63 | Pending |
+| LIB-04 | Phase 63 | Complete |
 | LIB-05 | Phase 63 | Complete |
 | COMP-01 | Phase 64 | Pending |
 | COMP-02 | Phase 64 | Pending |
