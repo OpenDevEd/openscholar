@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
 status: unknown
-last_updated: "2026-03-04T11:46:12.676Z"
+last_updated: "2026-03-04T12:56:22.000Z"
 progress:
   total_phases: 3
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 9
+  completed_plans: 7
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 62 complete
+**Current focus:** v3.1 Complete Type Safety — Phase 63 in progress
 
 ## Current Position
 
-Phase: 62 of 67 (Convex Debug/Test Backend)
-Plan: 1 of 1 (all complete)
-Status: Phase 62 complete
-Last activity: 2026-03-04 — Completed 62-01 (Debug/Test Backend Type Safety)
+Phase: 63 of 67 (Client Libraries)
+Plan: 1 of 3 (63-01 complete)
+Status: Phase 63 in progress
+Last activity: 2026-03-04 — Completed 63-01 (Client Libraries Core Typing)
 
-Progress: [███░░░░░░░] 16%
+Progress: [████░░░░░░] 19%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 127 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 6, cleanup: 1, quick: 2)
+- Total plans completed: 128 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 7, cleanup: 1, quick: 2)
 - Total milestones shipped: 10
 
 **By Milestone:**
@@ -50,6 +50,7 @@ Progress: [███░░░░░░░] 16%
 | v2.5 | 7 | 15 | 2026-03-03 |
 | v3.0 | 6 | 11 | 2026-03-04 |
 | Phase 62 P01 | 3min | 2 tasks | 4 files |
+| Phase 63 P01 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,10 @@ See PROJECT.md Key Decisions table for full log.
 - [62-01] Direct Doc<extractionResults> property access for citationStatus, citations, retrievalDiagnostics -- all fields exist in schema
 - [62-01] Destructure out storageId in testWorkflow paper mapping to avoid string vs Id<_storage> mismatch
 - [62-01] Id<TableNames> for generic dedupeById instead of Id<any> -- preserves genericity with type safety
+- [63-01] Recursive JsonValue type for dynamic JSON instead of any -- covers all JSON-serializable shapes
+- [63-01] as never instead of as any at Convex useQuery/usePaginatedQuery boundary -- satisfies generic constraints without widening
+- [63-01] unknown with internal typed casts for Zustand persist migrate -- correct since persisted shape varies by version
+- [63-01] String() and typeof narrowing for Record<string, unknown> values in import functions
 
 ### Roadmap Evolution
 
@@ -97,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 62-01 Debug/Test Backend Type Safety
-Stopped at: Completed 62-01-PLAN.md (Phase 62 all 1 plan complete)
+Last activity: 2026-03-04 - Completed 63-01 Client Libraries Core Typing
+Stopped at: Completed 63-01-PLAN.md
 Resume file: None

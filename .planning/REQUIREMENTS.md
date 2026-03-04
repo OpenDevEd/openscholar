@@ -17,9 +17,9 @@ Requirements for complete type safety. Each maps to roadmap phases.
 
 ### Client Libraries
 
-- [ ] **LIB-01**: `lib/utils.ts` fully typed — all ~10 `any` instances replaced
-- [ ] **LIB-02**: `lib/store.ts` Zustand state fully typed — all ~8 `any` instances replaced
-- [ ] **LIB-03**: `lib/auth/use-auth-query.ts` fully typed — all 6 `as any` casts replaced
+- [x] **LIB-01**: `lib/utils.ts` fully typed — all ~10 `any` instances replaced
+- [x] **LIB-02**: `lib/store.ts` Zustand state fully typed — all ~8 `any` instances replaced
+- [x] **LIB-03**: `lib/auth/use-auth-query.ts` fully typed — all 6 `as any` casts replaced
 - [ ] **LIB-04**: Extraction + search libraries typed (export.ts, citations.ts, reviews.ts, search-actions.ts, provider.tsx, initializer.tsx)
 - [ ] **LIB-05**: AI libraries + filter-builder + trim-paper-data typed (hook-factory.ts, schemas.ts, execute.ts, filter-builder.ts, trim-paper-data.ts)
 
@@ -67,9 +67,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-03 | Phase 61 | Complete |
 | CONV-04 | Phase 60 | Complete |
 | CONV-05 | Phase 62 | Complete |
-| LIB-01 | Phase 63 | Pending |
-| LIB-02 | Phase 63 | Pending |
-| LIB-03 | Phase 63 | Pending |
+| LIB-01 | Phase 63 | Complete |
+| LIB-02 | Phase 63 | Complete |
+| LIB-03 | Phase 63 | Complete |
 | LIB-04 | Phase 63 | Pending |
 | LIB-05 | Phase 63 | Pending |
 | COMP-01 | Phase 64 | Pending |
