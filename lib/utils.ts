@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
+import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
@@ -123,9 +124,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-type JsonObject = { [key: string]: any }
+type JsonValue = string | number | boolean | null | undefined | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue }
 
-function escapeCSVValue(value: any): string {
+function escapeCSVValue(value: JsonValue): string {
   if (value === null || value === undefined) return ''
   
   const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value)
@@ -203,16 +205,16 @@ export function generateFilename(title: string, suffix: string = '', extension: 
  * Helper function to handle download with metadata
  */
 export async function downloadWithMetadata(
-  data: any,
+  data: JsonValue,
   filename: string,
   format: 'json' | 'csv',
-  metadata?: any
+  metadata?: Record<string, JsonValue>
 ) {
   if (format === 'json') {
     const dataWithMetadata = metadata ? { ...metadata, res: data } : data;
     downloadAsFile(JSON.stringify(dataWithMetadata, null, 2), filename, 'json');
   } else {
-    const csv = await jsonToCSV(data);
+    const csv = await jsonToCSV(data as JsonObject | JsonObject[]);
     downloadAsFile(csv, filename, 'csv');
   }
 }
@@ -225,13 +227,21 @@ export function createSearchParameters(
   query: string,
   filters: SearchFilters
 ) {
-  const searchParams: any = {
+  interface OpenAlexSearchParams {
+    perPage: number;
+    AbstractArrayToString: boolean;
+    search?: string;
+    filter?: Record<string, unknown>;
+    sortBy?: SortByWork;
+  }
+
+  const searchParams: OpenAlexSearchParams = {
     perPage: 200,
     AbstractArrayToString: true
   };
 
   // Build filter object
-  const apiFilters: any = {};
+  const apiFilters: Record<string, unknown> = {};
 
   // Handle search based on field type
   if (query) {
@@ -333,7 +343,7 @@ export function createSearchParameters(
   if (filters.sortBy) {
     const [field, order] = filters.sortBy.split(':');
     searchParams.sortBy = {
-      field: field as any,
+      field: field as SortByWork['field'],
       order: order as 'asc' | 'desc'
     };
   } else {
@@ -488,7 +498,7 @@ export function workToCoins(work: Work): string {
 /**
  * Helper function to handle file upload and parsing
  */
-export function uploadFile(file: File): Promise<any[]> {
+export function uploadFile(file: File): Promise<Record<string, JsonValue>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -511,7 +521,7 @@ export function uploadFile(file: File): Promise<any[]> {
           const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
           const items = lines.slice(1).map(line => {
             const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-            const item: any = {};
+            const item: Record<string, JsonValue> = {};
             headers.forEach((header, index) => {
               const value = values[index] || '';
               // Try to parse numbers
