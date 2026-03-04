@@ -69,7 +69,7 @@ interface SearchHistoryState {
   removeSearchResult: (index: number) => void
   clearSearchHistory: () => void
   migrateSearchResult: (result: SearchResult) => string
-  importSearchHistory: (data: any[]) => number
+  importSearchHistory: (data: Record<string, unknown>[]) => number
 }
 
 interface UIState {
@@ -134,7 +134,7 @@ interface KeywordExpansionState {
     expandedQuery: string;
     warnings: Array<{ key: string; params?: Record<string, string> }>;
   }
-  importKeywords: (data: any[]) => number
+  importKeywords: (data: Record<string, unknown>[]) => number
 }
 
 interface AIConfigState {
@@ -180,8 +180,8 @@ interface SearchHistoryPersistedState {
   searchHistory?: Array<Record<string, unknown>>;
 }
 
-// Signature kept as `any` for Zustand persist `migrate` compatibility.
-export function migrateSearchHistoryState(persistedState: any, version: number): any {
+// `unknown` is correct for Zustand persist `migrate` — shape varies by version.
+export function migrateSearchHistoryState(persistedState: unknown, version: number): unknown {
   const state = persistedState as SearchHistoryPersistedState;
 
   // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
@@ -534,10 +534,10 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         
         data.forEach((item) => {
           // Map different possible field names to our expected format
-          const query = item.search_query || item.query || '';
-          const count = item.count || 0;
-          const field = item.field || 'title_and_abstract';
-          
+          const query = String(item.search_query || item.query || '');
+          const count = typeof item.count === 'number' ? item.count : 0;
+          const field = String(item.field || 'title_and_abstract');
+
           // Skip items without required fields (allow empty query but require count)
           if (query === undefined || query === null || typeof count !== 'number') {
             return;
@@ -741,16 +741,16 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
         
         data.forEach((item) => {
           // Support both old format (name, expansion) and new format (name, expansion, createdAt)
-          const name = item.name || item.shorthand || '';
-          const expansion = item.expansion || '';
-          const createdAt = item.createdAt || Date.now();
-          
+          const name = String(item.name || item.shorthand || '');
+          const expansion = String(item.expansion || '');
+          const createdAt = typeof item.createdAt === 'number' ? item.createdAt : Date.now();
+
           // Skip items without required fields
           if (!name || !expansion) {
             return;
           }
-          
-          validItems[name] = { expansion, createdAt };
+
+          validItems[name] = { expansion, createdAt: createdAt as number };
           importedCount++;
         });
         
@@ -766,10 +766,11 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
     {
       name: 'keyword-expansion-store',
       version: 1,
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState: unknown, version: number) => {
         // Migration from version 0 (old format) to version 1 (new format with timestamps)
-        if (version === 0 && persistedState.keywords) {
-          const oldKeywords = persistedState.keywords as Record<string, string | BookmarkData>;
+        const state = persistedState as { keywords?: Record<string, string | BookmarkData> };
+        if (version === 0 && state.keywords) {
+          const oldKeywords = state.keywords;
           const newKeywords: Record<string, BookmarkData> = {};
           
           Object.entries(oldKeywords).forEach(([key, value]) => {
@@ -782,9 +783,9 @@ export const useKeywordExpansionStore = create<KeywordExpansionState>()(
             }
           });
           
-          return { ...persistedState, keywords: newKeywords };
+          return { ...state, keywords: newKeywords };
         }
-        return persistedState;
+        return state;
       },
     }
   )
@@ -824,22 +825,23 @@ export const useAIConfigStore = create<AIConfigState>()(
     {
       name: 'ai-config-storage',
       version: 5,
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as { provider?: string; model?: string; apiKeyMode?: string; providerApiKeys?: Record<string, string>; dollarsUsed?: unknown; budget?: unknown };
         if (version === 0) {
           return {
-            ...persistedState,
-            model: persistedState.provider === 'openai' ? 'o4-mini-2025-04-16' : persistedState.provider === 'google' ? 'gemini-2.5-flash' : undefined,
+            ...state,
+            model: state.provider === 'openai' ? 'o4-mini-2025-04-16' : state.provider === 'google' ? 'gemini-2.5-flash' : undefined,
           };
         }
         if (version === 1 || version === 2) {
           return {
-            ...persistedState,
+            ...state,
             apiKeyMode: 'smart',
           };
         }
         if (version === 3) {
           // Remove budget tracking fields
-          const { dollarsUsed, budget, ...rest } = persistedState;
+          const { dollarsUsed, budget, ...rest } = state;
           return {
             ...rest,
             apiKeyMode: 'smart',
@@ -847,11 +849,11 @@ export const useAIConfigStore = create<AIConfigState>()(
         }
         if (version === 4) {
           return {
-            ...persistedState,
+            ...state,
             apiKeyMode: 'smart',
           };
         }
-        return persistedState;
+        return state;
       },
     }
   )

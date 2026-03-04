@@ -53,9 +53,12 @@ export function useProtectedQuery<Query extends FunctionReference<"query">>(
   const { phase, canRunProtectedQueries } = useAuthReadiness();
   const shouldRun = canRunProtectedQueries && args !== "skip";
 
+  // Cast to `never` to satisfy Convex's exact generic constraint.
+  // Our wrapper accepts the base FunctionReference type; the cast bridges
+  // the generic type gap without widening to `any`.
   const data = useQuery(
-    query as any,
-    shouldRun ? (args as any) : "skip",
+    query as never,
+    shouldRun ? (args as never) : "skip",
   ) as Query["_returnType"] | undefined;
   const settlement = getSettlementState({
     phase,
@@ -82,8 +85,8 @@ export function useOptionalAuthQuery<Query extends FunctionReference<"query">>(
   const shouldRun = phase === "authenticated" && args !== "skip";
 
   const data = useQuery(
-    query as any,
-    shouldRun ? (args as any) : "skip",
+    query as never,
+    shouldRun ? (args as never) : "skip",
   ) as Query["_returnType"] | undefined;
   const settlement = getSettlementState({
     phase,
@@ -120,8 +123,8 @@ export function useProtectedPaginatedQuery<Query extends PaginatedQueryReference
   const shouldRun = canRunProtectedQueries && args !== "skip";
 
   const paginated = usePaginatedQuery(
-    query as any,
-    shouldRun ? (args as any) : "skip",
+    query as never,
+    shouldRun ? (args as never) : "skip",
     options,
   ) as UsePaginatedQueryReturnType<Query>;
   const loadMoreNoop = useCallback((_numItems: number) => {
