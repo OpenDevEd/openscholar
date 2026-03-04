@@ -132,28 +132,3 @@ export function getAvgConfidence(paper: PaperWithResults): number {
   if (paper.results.length === 0) return 0;
   return paper.results.reduce((sum, r) => sum + (r.confidence || 0), 0) / paper.results.length;
 }
-
-/**
- * Highlights matching text with mark tags
- */
-export function highlightText(text: string, query: string): string {
-  if (!query || !query.trim()) return text;
-
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
-  return text.replace(regex, '<mark class="bg-yellow-200/50 dark:bg-yellow-500/30 rounded px-0.5">$1</mark>');
-}
-
-/**
- * Escapes special regex characters
- */
-export function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Gets result for a specific question from a paper
- */
-export function getResult(paper: PaperWithResults, questionKey: string): Doc<"extractionResults"> | undefined {
-  return paper.results.find(r => r.questionKey === questionKey);
-}
