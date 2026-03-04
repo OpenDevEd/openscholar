@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.0 Zero-Any Overhaul -- Phase 58: Correctness and Coverage
+**Current focus:** Tech Debt Cleanup -- Phase 59: Prop Type Fix and Dead Code Removal
 
 ## Current Position
 
-Phase: 58 (5 of 5) -- Correctness and Coverage
-Plan: 58-02 complete (2/2) -- Phase 58 DONE
-Status: v3.0 milestone complete
-Last activity: 2026-03-04 -- 58-02 executed (subscription cron + GROBID fallback tests)
+Phase: 59 (1 of 1) -- Tech Debt Cleanup
+Plan: 59-01 complete (1/1) -- Phase 59 DONE
+Status: Phase 59 complete
+Last activity: 2026-03-04 -- 59-01 executed (ResultCell prop type fix + dead code removal)
 
 Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 108 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 10)
+- Total plans completed: 109 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 10, cleanup: 1)
 - Total milestones shipped: 9
 
 **By Milestone:**
@@ -57,6 +57,7 @@ Progress: [##########] 100%
 | Phase 55 P02 | 5min | 2 tasks | 13 files |
 | Phase 55 P01 | 2min | 2 tasks | 3 files |
 | Phase 54 P02 | 3min | 2 tasks | 5 files |
+| Phase 59 P01 | 2min | 2 tasks | 2 files |
 | Phase 54 P01 | 10min | 2 tasks | 10 files |
 
 ## Accumulated Context
@@ -65,6 +66,7 @@ Progress: [##########] 100%
 
 See PROJECT.md Key Decisions table for full log.
 
+- [59-01] Keep Doc import in filtering.ts -- PaperWithResults extends Doc<extractionPapers>, not just getResult
 - [58-01] Pattern validation test for unexported closure: test replicates validation logic directly since fetchPapersFromHistory is not exported
 - [58-01] Three concurrency scenarios: partial success/failure, total failure, exact drain to zero
 - [58-02] Tests pass without production code changes -- both features already correctly implemented
@@ -114,6 +116,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 58-01-PLAN.md (concurrency OCC tests, OpenAlex email validation)
-Stopped at: v3.0 milestone complete (all 5 phases, 10 plans done)
+Last activity: 2026-03-04 - Completed 59-01-PLAN.md (ResultCell prop type fix + dead code removal)
+Stopped at: Phase 59 complete
 Resume file: None

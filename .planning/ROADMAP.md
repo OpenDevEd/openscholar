@@ -149,7 +149,7 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
 - [x] **Phase 56: Performance Fixes** - Bounded library count, ExcelJS migration, subscription cron batching, migration helper cleanup (completed 2026-03-04)
 - [x] **Phase 57: Incremental Aggregation** - Extraction report aggregation decoupled from loading all results (completed 2026-03-04)
 - [x] **Phase 58: Correctness and Coverage** - Credit concurrency validation, OpenAlex email fix, subscription cron test, GROBID fallback test (completed 2026-03-04)
-- [ ] **Phase 59: Tech Debt Cleanup** - Fix ResultCell prop type to ExtractionResultWithReview, delete dead highlightText function (gap closure from audit)
+- [x] **Phase 59: Tech Debt Cleanup** - Fix ResultCell prop type to ExtractionResultWithReview, delete dead highlightText function (gap closure from audit) (completed 2026-03-04)
 
 ## Phase Details
 
@@ -308,4 +308,4 @@ Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58 -> 59
 | 56. Performance Fixes | 2/2 | Complete    | 2026-03-04 | - |
 | 57. Incremental Aggregation | 2/2 | Complete    | 2026-03-04 | - |
 | 58. Correctness and Coverage | 2/2 | Complete    | 2026-03-04 | - |
-| 59. Tech Debt Cleanup | 0/1 | Pending    | - | - |
+| 59. Tech Debt Cleanup | 1/1 | Complete   | 2026-03-04 | - |
