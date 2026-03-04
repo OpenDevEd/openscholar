@@ -1,63 +1,75 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-03
+**Analysis Date:** 2026-03-04
 
 ## Test Framework
 
 **Runner:**
-- Vitest 3.x (configured in `vitest.config.ts`)
-- Separate live-billing config in `vitest.live.config.ts`
-- Playwright 1.x for E2E tests (configured in `playwright.config.ts`)
+- Vitest 3.x
+- Config: `vitest.config.ts` (main), `vitest.live.config.ts` (billing integration)
 
 **Assertion Library:**
-- Vitest built-in `expect` with jest-dom matchers via `@testing-library/jest-dom/vitest` (registered in `tests/setup.ts`)
+- Vitest built-in (`expect`) + `@testing-library/jest-dom` matchers via `tests/setup.ts`
+
+**Mocking:**
+- Vitest's `vi` module (`vi.mock`, `vi.fn`, `vi.spyOn`, `vi.mocked`, `vi.hoisted`, `vi.stubGlobal`)
+
+**E2E:**
+- Playwright (`@playwright/test`) with `@clerk/testing` for auth flows
+- Config: `playwright.config.ts`
+
+**Convex backend tests:**
+- `convex-test` library (runs Convex mutations/queries in-process with edge-runtime)
 
 **Run Commands:**
 ```bash
-npm test                                          # Run all unit tests (vitest run)
-npx vitest                                        # Watch mode
-npm run test:billing:live                         # Live billing integration tests
-npm run test:billing:extended                     # Extended billing regressions
-npm run test:e2e:auth                             # Auth E2E tests (Playwright)
-npm run test:billing:e2e                          # Billing E2E tests (Playwright)
-npm run test:ci                                   # CI: unit tests + build + e2e auth
+npm test                                      # Run all unit tests
+npm run test:billing:live                    # Live Stripe billing integration tests
+npm run test:billing:e2e                     # Playwright billing E2E
+npm run test:e2e:auth                        # Playwright auth E2E
+npm run test:ci                              # test + build + auth E2E
 ```
 
 ## Test File Organization
 
 **Location:**
-- Main unit/integration tests: `tests/` directory (flat, not co-located)
-- Convex-specific integration tests: co-located in `convex/` subdirectories (e.g., `convex/credits/deduct-credits.test.ts`, `convex/library/queries.test.ts`)
-- Live billing integration tests: `tests/live-billing/` subdirectory
-- E2E tests: `e2e/` directory with `e2e/billing/` subdirectory
+- Unit/integration tests: `tests/` directory at project root (flat, no mirroring)
+- Convex backend tests: co-located alongside source in `convex/` (e.g., `convex/credits/deduct-credits.test.ts`)
+- Live billing tests: `tests/live-billing/required.test.ts`, `tests/live-billing/extended.test.ts`
+- E2E tests: `e2e/` directory
 
 **Naming:**
-- Files: `<module-or-feature>.test.ts` matching the domain being tested
-- E2E files: `<feature>.spec.ts` (Playwright convention)
+- `[subject].test.ts` — mirrors the module name, not the file path
+- Examples: `filter-builder.test.ts`, `ai-batch.test.ts`, `subscription-cancellation-policy.test.ts`
+
+**Environment routing** (configured in `vitest.config.ts`):
+- `convex/**/*.test.ts` → `edge-runtime` (required by `convex-test`)
+- `tests/hooks/**/*.test.ts` → `jsdom`
+- `tests/components/**/*.test.tsx` → `jsdom`
+- All other tests → `node`
 
 **Structure:**
 ```
 tests/
-├── setup.ts                          # Global setup (jest-dom + cleanup)
-├── filter-builder.test.ts            # Lib utility unit tests
-├── ai-cost.test.ts                   # Pure function unit tests
-├── user-creation.test.ts             # Convex handler unit tests (mock DB)
-├── clerk-webhook-handler.test.ts     # Webhook logic unit tests
-├── stripe-webhook-handler.test.ts    # Stripe handler unit tests
-├── export-download.test.ts           # Module mock pattern tests
-├── ensure-user.test.ts               # Mutation handler extraction tests
+├── *.test.ts                    # Unit tests for lib/*, convex/*
+├── extraction/                  # Extraction-specific tests
+├── library/                     # Library-specific tests
 ├── live-billing/
-│   ├── support.ts                    # Live billing helpers and fixtures
-│   ├── required.test.ts              # Required live regression tests
-│   └── extended.test.ts             # Extended regression tests
+│   ├── required.test.ts         # Core billing integration (CI required)
+│   ├── extended.test.ts         # Extended billing scenarios
+│   └── support.ts               # Shared billing test utilities
+└── setup.ts                     # Global test setup
+
 convex/
-├── credits/deduct-credits.test.ts    # convex-test OCC/mutation tests
-├── library/queries.test.ts           # convex-test query tests
-├── library/collections.test.ts       # convex-test collection tests
-└── extraction/cascade-delete.test.ts
+├── credits/deduct-credits.test.ts
+├── extraction/cascade-delete.test.ts
+├── library/queries.test.ts
+├── library/collections.test.ts
+└── maintenance/check-subscription.test.ts
+
 e2e/
-├── auth.spec.ts                      # Playwright auth flows
-├── billing/                          # Playwright billing flows
+├── auth.spec.ts
+├── billing/
 └── global.setup.ts
 ```
 
@@ -66,226 +78,268 @@ e2e/
 **Suite Organization:**
 ```typescript
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { functionUnderTest } from "../lib/module";
 
-describe("functionUnderTest", () => {
-  describe("specific scenario group", () => {
-    it("does the expected thing when condition", () => {
+describe("functionName", () => {
+  describe("category/scenario", () => {
+    it("does something specific", () => {
       // Arrange
-      const input = { ... };
       // Act
-      const result = functionUnderTest(input);
       // Assert
-      expect(result).toBe(expectedValue);
     });
   });
 });
 ```
 
 **Patterns:**
-- `beforeEach`/`afterEach` used for timer mocking and mock cleanup
-- `beforeAll`/`afterAll` used in live billing tests for expensive setup/teardown
-- `describe.sequential` used in live billing tests to prevent parallel Stripe API conflicts
-- Nested `describe` blocks for grouping by input scenario
-- `it.each` for parameterized test cases (e.g., `ai-cost.test.ts` provider matrix)
+- `describe` nesting used for grouping: feature → scenario → behavior
+- Test names follow: `"[verb] [subject] [condition]"` pattern
+- `beforeEach` / `afterEach` for setup/teardown; always restore original state
+- Timer mocking: `vi.useFakeTimers()` + `vi.setSystemTime()` in `beforeEach`, `vi.useRealTimers()` in `afterEach`
+- Environment variable manipulation uses save/restore pattern:
+
+```typescript
+const ORIGINAL_FLAG = process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
+
+afterEach(() => {
+  if (ORIGINAL_FLAG === undefined) {
+    delete process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
+  } else {
+    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = ORIGINAL_FLAG;
+  }
+});
+```
 
 ## Mocking
 
-**Framework:** Vitest `vi.*` APIs
+**Framework:** `vi` (Vitest built-in)
 
-**Patterns:**
+**Module mocking — CRITICAL ORDER RULE:**
+`vi.mock()` calls must appear BEFORE the module import. Use `vi.hoisted()` when mock values need to be referenced post-import:
 
-**Module-level mocking (top of file):**
 ```typescript
-// 1. Use vi.hoisted for cross-module mock references
-const { mockFn } = vi.hoisted(() => ({
-  mockFn: vi.fn(),
+// Pattern 1: Simple mock (before import)
+vi.mock("../lib/ai/core/execute", () => ({
+  executeAIOperation: vi.fn(),
 }));
+import { executeAIOperation } from "../lib/ai/core/execute";
+const mockExecute = vi.mocked(executeAIOperation);
 
-// 2. vi.mock for module replacement
-vi.mock("../lib/store", () => ({
-  useRatingsStore: { getState: vi.fn(() => ({ ratings: {} })) },
+// Pattern 2: vi.hoisted for cross-reference
+const { mockDownloadWithMetadata } = vi.hoisted(() => ({
+  mockDownloadWithMetadata: vi.fn(),
 }));
-
-// 3. Partial mock preserving real exports
 vi.mock("../lib/utils", async (importOriginal) => {
   const actual = (await importOriginal()) as any;
-  return { ...actual, downloadWithMetadata: mockFn };
+  return { ...actual, downloadWithMetadata: mockDownloadWithMetadata };
 });
 ```
 
-**Inline mock factories (preferred for Convex tests):**
+**Global mocking:**
+```typescript
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+// ... afterEach: vi.unstubAllGlobals()
+```
+
+**Zustand store mocking:**
+```typescript
+vi.mock("../lib/store", () => ({
+  useKeywordExpansionStore: {
+    getState: () => ({ expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }),
+  },
+}));
+```
+
+**Convex context mocking (for non-convex-test unit tests):**
 ```typescript
 function createMockCtx() {
   return {
-    db: {
-      insert: vi.fn(async (table: string, doc: any) => `mock_${table}_id`),
-      query: vi.fn().mockReturnValue({
-        withIndex: vi.fn().mockReturnValue({
-          unique: vi.fn().mockResolvedValue(existingDoc),
-        }),
-      }),
-    },
-    auth: { getUserIdentity: vi.fn().mockResolvedValue(identity) },
+    runMutation: vi.fn().mockResolvedValue(undefined),
+    scheduler: { runAfter: vi.fn().mockResolvedValue(undefined) },
   };
 }
-```
 
-**Timer mocking:**
-```typescript
-beforeEach(() => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
-});
-afterEach(() => {
-  vi.useRealTimers();
-});
-```
-
-**Module reset for env-var-dependent tests:**
-```typescript
-async function loadModuleUnderTest() {
-  vi.resetModules();
-  return import("../lib/extraction/citations");
-}
-// Set process.env before each import
-process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "true";
-const { fn } = await loadModuleUnderTest();
-```
-
-**What to Mock:**
-- External services (Stripe, Convex DB, Clerk auth)
-- Environment-dependent modules (env var reading)
-- Store dependencies in action handler tests
-- Analytics/posthog calls
-- Convex `_generated/server` when testing mutation handler logic directly
-
-**What NOT to Mock:**
-- Pure utility functions being tested (filter-builder, cost calculations)
-- Convex function logic when using `convex-test` (use real schema + test runtime instead)
-- Business logic in the module under test
-
-## Fixtures and Factories
-
-**Test Data:**
-```typescript
-// Inline factory functions in test files
 function createMockMutationCtx() {
   const inserts: Array<{ table: string; doc: any }> = [];
   return {
-    ctx: { db: { insert: vi.fn(async (table, doc) => { inserts.push({table, doc}); return `mock_${table}_id`; }) } },
+    ctx: {
+      db: {
+        insert: vi.fn(async (table: string, doc: any) => {
+          inserts.push({ table, doc });
+          return `mock_${table}_id`;
+        }),
+      },
+    },
     inserts,
   };
 }
+```
 
+**What to Mock:**
+- External dependencies with side effects: `fetch`, Stripe API, Convex internal functions
+- Zustand stores when testing code that reads from them outside React context
+- Modules with env-var-gated behavior (use `vi.resetModules()` + dynamic `import()` instead)
+- `vi.fn()` on `db.insert`, `db.query`, etc. when NOT using `convex-test`
+
+**What NOT to Mock:**
+- Business logic under test
+- Pure utility functions
+- Zod schemas (test real parsing behavior)
+- `convex-test` provides a real in-memory Convex runtime — do not mock `ctx.db` in convex tests
+
+## Fixtures and Factories
+
+**Test Data (factory functions pattern):**
+```typescript
+// Standalone factory functions at module level
 function createPaper(id: string, title = `Paper ${id}`, abstract = `Abstract for ${id}`): BatchPaper {
   return { id, title, abstract };
 }
 
-// convex-test seed helpers
-async function seedUserWithCredits(t, freeBalance, paidBalance) {
+function createUsage(input = 100, output = 50): Usage {
+  return { promptTokens: input, completionTokens: output, inputTokens: input, outputTokens: output };
+}
+
+function makeSub(overrides: Partial<any> = {}): any {
+  return { _id: "sub_default", plan: "free", status: "active", ...overrides };
+}
+
+function makeStripeEvent(overrides: Record<string, unknown> = {}): Stripe.Event {
+  return { id: "evt_test_123", type: "invoice.paid", ...overrides } as unknown as Stripe.Event;
+}
+```
+
+**Convex seeding (using convex-test):**
+```typescript
+async function seedUserWithCredits(t: ReturnType<typeof convexTest>, freeBalance: number, paidBalance: number) {
   return await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", { ... });
-    const creditsId = await ctx.db.insert("credits", { userId, freeBalance, ... });
+    const userId = await ctx.db.insert("users", { clerkId: "clerk_credit_test", email: "credit@test.com", state: "active" as const, ... });
+    const creditsId = await ctx.db.insert("credits", { userId, freeBalance, paidBalance, ... });
     return { userId, creditsId };
   });
 }
 ```
 
 **Location:**
-- Fixtures are defined inline in test files or in `tests/live-billing/support.ts` for live tests
-- No shared fixtures directory — each test file is self-contained
-- `tests/setup.ts` for global test setup only (jest-dom + DOM cleanup)
+- Factory helpers defined locally in each test file (no shared fixtures directory)
+- `tests/live-billing/support.ts` is the exception — a large shared utility file for live billing tests
 
 ## Coverage
 
-**Requirements:** Not enforced — no coverage thresholds configured in `vitest.config.ts`
+**Requirements:** None enforced (no coverage thresholds configured in `vitest.config.ts`)
 
 **View Coverage:**
 ```bash
-npx vitest run --coverage
+npx vitest run --coverage    # Generate coverage report (requires @vitest/coverage-v8)
 ```
 
 ## Test Types
 
 **Unit Tests (`tests/*.test.ts`):**
-- Pure function testing: business logic, cost calculations, filter builders, policy functions
-- Handler extraction: Convex mutation handlers extracted and tested with mock contexts
-- Module mock tests: search actions, download handlers with vi.mock for dependencies
-- 71 test files covering pure logic, policies, webhook handlers, billing helpers, and more
+- Pure function logic: filters, billing calculations, AI cost math, search param serialization
+- Zod schema validation
+- Environment variable gating (via `vi.resetModules()` + dynamic import)
+- State machine behavior
+- Error boundary conditions
 
-**Convex Integration Tests (`convex/**/*.test.ts`):**
-- Use `convex-test` library with real schema (`import schema from "../schema"`)
-- Run in `edge-runtime` environment (configured via `environmentMatchGlobs` in `vitest.config.ts`)
-- Create real in-memory Convex DB: `const t = convexTest(schema)`
-- Call actual mutations/queries via `t.mutation(internal.credits.internal.deductCredits, args)`
-- Seed data via `t.run(async (ctx) => ctx.db.insert(...))`
-- 4 test files for critical Convex-side logic (credits, library, extraction cascade)
+**Convex Backend Tests (`convex/**/*.test.ts`):**
+- Use `convex-test` library with real in-process Convex runtime
+- Run in `edge-runtime` environment
+- Test mutations, queries, and internal functions directly via `internal.path.to.function`
+- Verify database state after operations with `t.run(async (ctx) => ctx.db.get(id))`
+- Test concurrency and OCC invariants using `Promise.allSettled`
 
-**Live Billing Integration Tests (`tests/live-billing/*.test.ts`):**
-- Require real Stripe test environment and Convex deployment
-- Use `describe.sequential` to prevent parallel Stripe API conflicts
-- `beforeAll`/`beforeEach`/`afterAll` for full lifecycle management (cleanup → test → verify → cleanup)
-- Uses Stripe Test Clocks to simulate time progression for subscription billing cycles
-- Long timeouts: `testTimeout: 300_000` (5 minutes)
-- Excluded from default `npm test` run; use `npm run test:billing:live`
-- Support utilities in `tests/live-billing/support.ts`: `runConvexFunction`, `waitForCondition`, `getBillingSnapshotForUser`, etc.
+**Live Integration Tests (`tests/live-billing/*.test.ts`):**
+- Excluded from default `npm test` run; require explicit `test:billing:live` command
+- Use real Stripe test mode + real Convex deployment
+- 300-second timeout configured
+- Shared support utilities in `tests/live-billing/support.ts`
 
 **E2E Tests (`e2e/*.spec.ts`):**
-- Playwright with `@clerk/testing/playwright` for authenticated flows
-- `clerk.signIn()` / `clerk.signOut()` for auth state management
-- Tests navigate via `page.goto()` and assert URLs with `expect(page).toHaveURL()`
-- Configured retries on CI (`retries: 2`), sequential workers (`workers: 1`)
+- Playwright with `@clerk/testing/playwright` for auth
+- Test against running Next.js dev/production server
+- Auth E2E: `e2e/auth.spec.ts` — sign-in/sign-out/redirect behavior
 
 ## Common Patterns
 
 **Async Testing:**
 ```typescript
-it("creates user on first login", async () => {
-  const result = await mutationHandler(ctx, {});
-  expect(result).toBe("new_user_id");
+it("throws INSUFFICIENT_CREDITS when balance is insufficient", async () => {
+  const t = convexTest(schema);
+  const { userId } = await seedUserWithCredits(t, 10, 5);
+
+  await expect(
+    t.mutation(internal.credits.internal.deductCredits, { userId, amount: 20 })
+  ).rejects.toThrow("INSUFFICIENT_CREDITS");
 });
 ```
 
-**Error Testing:**
+**Parameterized Tests (it.each):**
 ```typescript
-// ConvexError rejection
-await expect(
-  t.mutation(internal.credits.internal.deductCredits, { userId, amount: 20, description: "too much" })
-).rejects.toThrow("INSUFFICIENT_CREDITS");
+const providerCases = [
+  { provider: "openai" as AIProvider, modelId: "gpt-5-nano", inputPrice: 0.05, outputPrice: 0.4 },
+  { provider: "anthropic" as AIProvider, modelId: "claude-3-haiku", inputPrice: 0.25, outputPrice: 1.25 },
+];
 
-// Standard Error rejection
-await expect(
-  runAuditedStripeHandler(ctx, event, handler, mutationRefs)
-).rejects.toThrow("handler boom");
+it.each(providerCases)(
+  "returns correct cost for $provider / $modelId",
+  ({ provider, modelId, inputPrice, outputPrice }) => {
+    const cost = calculateCostInDollars(usage, provider, modelId);
+    expect(cost).toBeCloseTo(inputPrice + outputPrice, 6);
+  }
+);
 ```
 
-**toMatchObject for partial assertion:**
+**Feature Flag / Env-Gated Module Testing:**
 ```typescript
-expect(inserts[0].doc).toMatchObject({
-  clerkId: "clerk_123",
-  email: "test@example.com",
-  state: "active",
+async function loadCitationPanelModule() {
+  vi.resetModules();
+  return import("../lib/extraction/citation-panel");
+}
+
+it("returns null when PDF feature is disabled", async () => {
+  process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
+  const { buildCitationPanelPayload } = await loadCitationPanelModule();
+  expect(buildCitationPanelPayload(baseParams)).toBeNull();
 });
 ```
 
-**Symbol stubs for Convex function references:**
+**Concurrent/OCC Testing (Convex):**
 ```typescript
-// Symbols stand in for Convex internal function references
-const mutationRefs = {
-  markStripeEventProcessed: Symbol("markStripeEventProcessed"),
-  markStripeEventFailed: Symbol("markStripeEventFailed"),
-};
+it("OCC prevents negative balances under concurrent deductions", async () => {
+  const promises = Array.from({ length: 8 }, (_, i) =>
+    t.mutation(internal.credits.internal.deductCredits, { userId, amount: 30, description: `concurrent-${i}` })
+  );
+  const results = await Promise.allSettled(promises);
+  const successes = results.filter((r) => r.status === "fulfilled");
+  expect(successes.length).toBeLessThanOrEqual(3);
+  // Verify balance never goes negative
+  const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+  expect(credits!.freeBalance).toBeGreaterThanOrEqual(0);
+});
 ```
 
-**Inline describe sections for multi-function test files:**
+**XSS/Security Testing:**
 ```typescript
-// ---------------------------------------------------------------------------
-// getStripeObjectId
-// ---------------------------------------------------------------------------
-describe("getStripeObjectId", () => { ... });
+describe("XSS safety", () => {
+  it("treats script tags as literal text, not executable HTML", () => {
+    const result = splitTextByQuery('<script>alert("xss")</script>', "script");
+    const allText = result.map((s) => s.text).join("");
+    expect(allText).toBe('<script>alert("xss")</script>');
+  });
+});
+```
+
+**Spy/Call Verification:**
+```typescript
+expect(mockExecute).toHaveBeenCalledOnce();
+expect(mockExecute).toHaveBeenCalledWith(
+  expect.objectContaining({
+    input: { title: "Paper p1", abstract: "Abstract for p1", questions: [...] },
+  })
+);
 ```
 
 ---
 
-*Testing analysis: 2026-03-03*
+*Testing analysis: 2026-03-04*

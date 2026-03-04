@@ -1,178 +1,152 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-03
+**Analysis Date:** 2026-03-04
 
 ## APIs & External Services
 
-**Academic Research Data:**
-- OpenAlex - Free academic paper search API; no auth required
-  - SDK/Client: `@sickrin/openalex-sdk ^1.0.0`
-  - Client instantiation: `lib/openalex.ts`
-  - Polite pool: `OPENALEX_CONTACT_EMAIL` env var sent in requests
-
-**AI / LLM Providers (server-side, platform-paid):**
-- DeepSeek - Default server provider; model `deepseek-chat`
-  - SDK: `@ai-sdk/deepseek ^2.0.15`
-  - Auth: AI provider API key stored as Convex env var
-- OpenAI - Alternative server provider; also BYOK
-  - SDK: `@ai-sdk/openai ^3.0.23`
-- Anthropic (Claude) - Alternative server provider; also BYOK
-  - SDK: `@ai-sdk/anthropic ^3.0.31`
-- Google Gemini - Alternative server provider; also BYOK
-  - SDK: `@ai-sdk/google ^3.0.18`
-- Azure OpenAI - Alternative server provider
-  - SDK: `@ai-sdk/azure ^3.0.26`
-- OpenRouter - Aggregator for multiple LLM providers; also BYOK
-  - SDK: `@openrouter/ai-sdk-provider ^6.0.0-alpha.1`
-  - Config: `OPENROUTER_PROVIDER_ORDER`, `OPENROUTER_ALLOW_FALLBACKS` env vars
-
-**AI / LLM Providers (BYOK - user-supplied keys):**
-- Users can store encrypted API keys for: `openai`, `anthropic`, `google`, `openrouter`
-- Keys stored encrypted in `apiKeys` Convex table (`convex/schema.ts`)
-- Encryption: `ENCRYPTION_KEY` Convex env var; implementation in `convex/lib/crypto.ts`
-- Key prefix stored for display (first few chars, e.g. `sk-xxxx...`)
+**Academic Research:**
+- OpenAlex - Open academic paper database; primary data source for paper search, metadata, PDF URLs
+  - SDK/Client: `@sickrin/openalex-sdk`; singleton at `lib/openalex.ts`
+  - Direct HTTP calls also made in `convex/extraction/actions.ts` to `https://api.openalex.org/works`
+  - Auth: `OPENALEX_CONTACT_EMAIL` (polite pool header)
+  - No API key required; email in User-Agent recommended
 
 **Reference Management:**
-- Zotero - OAuth 1.0a integration for importing user's research library
-  - OAuth endpoints: `https://www.zotero.org/oauth/request`, `/oauth/access`, `/oauth/authorize`
-  - API: `https://api.zotero.org`
-  - Auth: `ZOTERO_CLIENT_KEY`, `ZOTERO_CLIENT_SECRET` Convex env vars
-  - OAuth callback: `POST /api/zotero/callback` handled in `convex/http.ts`
-  - Connection stored encrypted in `zoteroConnections` Convex table
-  - Temp OAuth tokens in `zoteroOAuthTokens` table (TTL-based cleanup via cron)
+- Zotero - OAuth 1.0a integration for importing user library/collections into extraction jobs
+  - OAuth endpoints: `https://www.zotero.org/oauth/request`, `.../oauth/access`, `.../oauth/authorize`
+  - API base: `https://api.zotero.org`
+  - Auth: `ZOTERO_CLIENT_KEY`, `ZOTERO_CLIENT_SECRET` (OAuth consumer credentials)
+  - User API keys stored encrypted in Convex (`zoteroConnections.encryptedApiKey`), decrypted via `ENCRYPTION_KEY`
+  - OAuth callback route: `convex/http.ts` → `/api/zotero/callback`
+  - Implementation: `convex/zotero/actions.ts`, `convex/zotero/mutations.ts`, `convex/zotero/queries.ts`
 
-**PDF Structure Extraction:**
-- GROBID - Self-hosted academic PDF parser (TEI XML output)
-  - URL: `GROBID_URL` env var (default: `http://localhost:8070`)
-  - Timeout: `GROBID_TIMEOUT_MS` env var (default: 45000ms)
+**AI / LLM Providers (BYOK + server-side):**
+All AI providers accessed via Vercel AI SDK (`ai` package). Provider selected at runtime via `AI_PROVIDER` env var (default: `deepseek`). Users can also supply their own keys (BYOK) stored encrypted in `apiKeys` table.
+
+- DeepSeek - Default server AI provider; `deepseek-chat` default model
+  - SDK: `@ai-sdk/deepseek`; instantiated in `lib/ai/server/providers.ts`
+- OpenAI - GPT models; BYOK or server key
+  - SDK: `@ai-sdk/openai`
+- Anthropic - Claude models; BYOK or server key
+  - SDK: `@ai-sdk/anthropic`
+- Google Gemini - Gemini models; BYOK or server key
+  - SDK: `@ai-sdk/google`
+- Azure OpenAI - Azure-hosted OpenAI models
+  - SDK: `@ai-sdk/azure`
+- OpenRouter - Multi-provider proxy with fallback routing
+  - SDK: `@openrouter/ai-sdk-provider`
+  - Config: `OPENROUTER_PROVIDER_ORDER`, `OPENROUTER_ALLOW_FALLBACKS`
+
+**PDF Processing:**
+- GROBID - Self-hosted service for PDF structure extraction (TEI XML output)
+  - Endpoint: `GROBID_URL` (default: `http://localhost:8070`; Docker: `http://grobid:8070`)
   - Implementation: `convex/extraction/grobid.ts`
-  - Used for extracting structured text blocks from research paper PDFs
+  - Used for: sentence-level extraction, section labels, coordinate mapping for evidence anchoring
 
 ## Data Storage
 
 **Databases:**
-- Convex Database - Primary database; all application data
-  - Connection: `NEXT_PUBLIC_CONVEX_URL` (frontend), `CONVEX_CLOUD_URL` (server-side)
-  - Client: Convex SDK (`convex` package); queries/mutations/actions defined in `convex/` directory
+- Convex (BaaS) - Primary data store; all application data
+  - Connection: `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_CLOUD_URL`; self-hosted: `CONVEX_SELF_HOSTED_URL`
+  - Client: `convex` npm package; React provider in `components/providers/convex-provider.tsx`
   - Schema: `convex/schema.ts`
-  - Tables: `users`, `credits`, `creditTransactions`, `subscriptions`, `billingCustomers`, `stripeEventLogs`, `apiKeys`, `zoteroConnections`, `zoteroOAuthTokens`, `extractionJobs`, `extractionQuestions`, `extractionPapers`, `extractionEvidenceUnits`, `extractionResults`, `extractionResultReviews`, `extractionSavedViews`, `extractionWorkflowTemplates`, `extractionReportSnapshots`, `extractionRunDiffs`, `libraryItems`, `collections`, `libraryItemCollections`
+  - Tables: `users`, `credits`, `creditTransactions`, `subscriptions`, `billingCustomers`, `stripeEventLogs`, `auditLogs`, `apiKeys`, `zoteroConnections`, `zoteroOAuthTokens`, `extractionJobs`, `extractionQuestions`, `extractionPapers`, `extractionEvidenceUnits`, `extractionResults`, `extractionResultReviews`, `extractionSavedViews`, `extractionWorkflowTemplates`, `extractionReportSnapshots`, `extractionJobStats`, `extractionRunDiffs`, `libraryItems`, `collections`, `libraryItemCollections`
 
 **File Storage:**
-- Convex File Storage - PDF files uploaded for extraction jobs stored in Convex's built-in `_storage`
-  - Referenced via `storageId: v.id("_storage")` in `extractionPapers` and `extractionJobs` tables
+- Convex File Storage - PDF binary storage; referenced via `_storage` IDs in `extractionPapers.storageId`
 
 **Caching:**
-- None (no Redis or external cache); Convex provides real-time reactive queries
+- SWR `swr` - Client-side data fetching cache for some frontend queries
+- Convex real-time subscriptions handle most server data freshness
 
-**Rate Limiting:**
-- `convex-helpers` `rateLimitTables` - In-database rate limiting (table names from `convex-helpers/server/rateLimit`); imported into schema in `convex/schema.ts`
+**RAG Index:**
+- `@convex-dev/rag` - Convex component providing vector + lexical search index for PDF content
+  - Registered in `convex/convex.config.ts` as `components.rag`
+  - Used by extraction workflow for evidence retrieval
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Clerk - Full authentication provider
-  - Next.js SDK: `@clerk/nextjs ^6.38.2`
-  - Backend SDK: `@clerk/backend ^2.32.1` (dev dependency for testing)
-  - Auth config: `convex/auth.config.ts` uses `CLERK_JWT_ISSUER_DOMAIN` for JWT verification
-  - Middleware: `proxy.ts` (Next.js middleware) uses `clerkMiddleware` from `@clerk/nextjs/server`
-  - User sync: Clerk → Convex via webhook at `POST /webhooks/clerk` (handler: `convex/webhooks/clerk.ts`)
-  - Webhook verification: `svix ^1.86.0`; secret: `CLERK_WEBHOOK_SIGNING_SECRET`
-  - UI localizations: `@clerk/localizations ^3.37.0`
-  - Themes: `@clerk/themes ^2.4.55`
-  - Public keys: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-  - Secret key: `CLERK_SECRET_KEY`
-  - Sign-in URL: `NEXT_PUBLIC_CLERK_SIGN_IN_URL` (default: `/sign-in`)
-  - Sign-up URL: `NEXT_PUBLIC_CLERK_SIGN_UP_URL` (default: `/sign-up`)
+- Clerk - Full auth provider (sign-up, sign-in, session management, user management)
+  - Frontend SDK: `@clerk/nextjs` ^6.38.2; `@clerk/themes`, `@clerk/localizations`
+  - Backend SDK: `@clerk/backend` ^2.32.1 (dev); `@clerk/testing` ^1.14.1 (E2E)
+  - Convex JWT verification: `convex/auth.config.ts` uses `CLERK_JWT_ISSUER_DOMAIN`
+  - User sync: Clerk webhooks → `convex/webhooks/clerk.ts` → upsert into Convex `users` table
+  - Webhook verification: `svix` library using `CLERK_WEBHOOK_SIGNING_SECRET`
+  - Convex identity: Users identified by `clerkId` string linked to Convex `users._id`
 
 ## Monitoring & Observability
 
-**Analytics & Product Monitoring:**
-- PostHog EU - User analytics, feature flags, error tracking, AI generation tracking
-  - Client SDK: `posthog-js ^1.342.1`
-  - Server-side: custom fetch-based implementation (`lib/posthog-server.ts`) to avoid Convex bundling issues
-  - Initialization: `instrumentation-client.ts` (Next.js client instrumentation)
-  - Proxy: Next.js rewrites in `next.config.ts` proxy `/data/*` → `https://eu.i.posthog.com/*` and `/data/static/*` → EU assets
-  - Key: `NEXT_PUBLIC_POSTHOG_KEY`
-  - Host: `NEXT_PUBLIC_POSTHOG_HOST` (EU region: `https://eu.i.posthog.com`)
-  - GDPR: Cookie-less mode enabled by default; opt-in required
-  - AI tracking: `$ai_generation` events captured for all LLM calls via `lib/posthog-server.ts` and `lib/posthog-ai.ts`
-
-**Error Tracking:**
-- PostHog Error Tracking - `capture_exceptions: true` in PostHog init (no separate Sentry)
+**Product Analytics:**
+- PostHog (EU region) - User behavior analytics + AI generation tracking + error tracking
+  - Client: `posthog-js` ^1.342.1; initialized in `instrumentation-client.ts`
+  - Server-side tracking (Convex actions): custom fetch-based client in `lib/posthog-server.ts`
+  - Next.js proxy rewrites in `next.config.ts` route `/data/*` → `https://eu.i.posthog.com`
+  - GDPR: cookieless mode with opt-in consent; config: `lib/consent-storage.ts`
+  - Env vars: `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `POSTHOG_KEY`, `POSTHOG_HOST`
+  - Features used: heatmaps, person profiles, unhandled exception capture, AI generation events (`$ai_generation`)
 
 **Logs:**
-- `console.log` / `console.error` throughout Convex functions; PM2 aggregates logs in development
+- Convex built-in logging (`console.log`/`console.error` within Convex functions)
+- PM2 process logs for development (`npm run dev:all`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Convex Cloud - Backend/database/file storage
-- Next.js frontend: hosting platform not hardcoded (Vercel assumed; no deployment config committed)
+- Next.js frontend: Vercel or any Node.js-compatible host
+- Convex backend: Convex cloud (managed) or self-hosted Convex instance
+
+**Dev Process Manager:**
+- PM2 - Runs Next.js + Convex dev servers concurrently; config: `ecosystem.config.js`
 
 **CI Pipeline:**
-- GitHub Actions (`.github/workflows/ci.yml`)
-  - `unit-and-build` job: runs `npm run test` + `npm run build` on every PR and push to `main`
-  - `e2e-auth` job: runs Playwright auth E2E tests (Chromium only) after unit tests pass
-  - `billing-live` job: runs live Stripe billing tests against real Convex deployment on every PR
-  - `billing-live-extended` job: extended billing regressions, runs only on push to `main`, non-blocking
-- GitHub Actions (`.github/workflows/billing-nightly.yml`) - Nightly billing regression run
-
-**Background Jobs (Convex Crons):**
-Defined in `convex/crons.ts`:
-- Every 24h: `cleanup deleted users` - purges soft-deleted users after 30 days
-- Every 1h: `check subscription status` - corrective Stripe sync + past-due expiry
-- Every 1h: `monitor failed stripe events` - flags stale failed Stripe webhook events
-- Every 1h: `reconcile stripe paid invoices` - reconciles recent paid Stripe invoices for credit grants
-- Every 1h: `cleanup expired zotero oauth tokens` - removes expired OAuth request tokens
+- `npm run test:ci` - Runs vitest unit tests + Next.js build + Playwright auth E2E
+- `npm run test:billing:live:ci` - Live Stripe billing integration tests (requires Stripe test account)
 
 ## Webhooks & Callbacks
 
-**Incoming:**
-- `POST /webhooks/clerk` - Clerk user lifecycle events (create, update, delete); verified via Svix; syncs users to Convex `users` table. Handler: `convex/webhooks/clerk.ts`
-- `POST /webhooks/stripe` - Stripe billing events; registered via `@convex-dev/stripe`'s `registerRoutes`; handles: `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.{created,updated,deleted}`. Handler: `convex/http.ts`
-- `GET /api/zotero/callback` - Zotero OAuth 1.0a callback after user authorization; completes OAuth flow and stores encrypted API key. Handler: `convex/http.ts`
+**Incoming (Convex HTTP routes - `convex/http.ts`):**
+
+- `POST /webhooks/clerk` - Clerk user lifecycle events (user.created, user.updated, user.deleted)
+  - Verified via Svix signature headers (`svix-id`, `svix-timestamp`, `svix-signature`)
+  - Handler: `convex/webhooks/clerk.ts`
+
+- `POST /webhooks/stripe` - Stripe subscription and payment events
+  - Registered via `@convex-dev/stripe` `registerRoutes()`
+  - Verified via `STRIPE_WEBHOOK_SECRET`
+  - Events handled: `checkout.session.completed`, `payment_intent.succeeded`, `charge.refunded`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+  - All handlers are idempotent with dedup gates on Stripe IDs
+
+- `GET /api/zotero/callback` - Zotero OAuth 1.0a callback (redirect from Zotero)
+  - Exchanges `oauth_token` + `oauth_verifier` for access token
+  - Redirects user back to frontend with `?zotero_connected=true` or `?zotero_error=...`
 
 **Outgoing:**
-- Stripe API calls from Convex actions (subscription creation, customer lookup, invoice reconciliation via `@convex-dev/stripe`)
-- Zotero API calls from `convex/zotero/actions.ts` (item fetching, collection listing)
-- OpenAlex API calls from `lib/openalex.ts` via `@sickrin/openalex-sdk`
-- PostHog HTTP API from `lib/posthog-server.ts` (AI generation tracking)
-- GROBID HTTP calls from `convex/extraction/grobid.ts` (PDF text extraction)
+- OpenAlex REST API: `https://api.openalex.org/works` (paper search + metadata)
+- GROBID: `{GROBID_URL}/api/processFulltextDocument` (PDF → TEI XML)
+- Zotero API: `https://api.zotero.org` (library/collection fetching)
+- AI provider endpoints via Vercel AI SDK (OpenAI, Anthropic, DeepSeek, Google, Azure, OpenRouter)
+- PostHog EU ingestion: `https://eu.i.posthog.com/i/v0/e/` (server-side AI events)
+- Stripe API: via `stripe` SDK + `@convex-dev/stripe` component
 
 ## Environment Configuration
 
-**Required env vars (frontend - `NEXT_PUBLIC_*`):**
+**Required env vars (minimum to run):**
 - `NEXT_PUBLIC_CONVEX_URL` - Convex deployment URL
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk public key
-- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL` - Auth routing
-- `NEXT_PUBLIC_POSTHOG_KEY` - PostHog analytics key
-- `NEXT_PUBLIC_POSTHOG_HOST` - PostHog EU host
-
-**Required env vars (Convex backend):**
-- `CLERK_JWT_ISSUER_DOMAIN` - Clerk domain for JWT verification
-- `CLERK_WEBHOOK_SIGNING_SECRET` - Svix webhook secret
-- `STRIPE_SECRET_KEY` - Stripe secret key
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
-- `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_ENTERPRISE_PRICE_ID` - Stripe price IDs per plan
-- `STRIPE_CREDITS_PRODUCT_ID` - Stripe product ID for credit top-ups
-- `CREDITS_PER_USD` - Credit grant rate
-- `ZOTERO_CLIENT_KEY`, `ZOTERO_CLIENT_SECRET` - Zotero OAuth app credentials
-- `ENCRYPTION_KEY` - AES encryption key for stored API keys and Zotero tokens
-- `AI_PROVIDER`, `AI_MODEL` - Server-side LLM provider and model selection
-
-**Optional env vars (Convex backend):**
-- `GROBID_URL`, `GROBID_TIMEOUT_MS` - GROBID service location
-- `OPENROUTER_PROVIDER_ORDER`, `OPENROUTER_ALLOW_FALLBACKS` - OpenRouter routing config
-- `OPENALEX_CONTACT_EMAIL` - Polite pool identifier for OpenAlex
-- `POSTHOG_KEY`, `POSTHOG_HOST` - Server-side PostHog for AI tracking
-- `ENABLE_PUBLIC_DEBUG_FUNCTIONS` - Enables debug endpoints (dev only)
-- `NEXT_PUBLIC_CONVEX_SITE_URL` - Public Convex site URL for OAuth callbacks
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk frontend key
+- `CLERK_JWT_ISSUER_DOMAIN` - Clerk JWT domain for Convex auth verification
+- `CLERK_WEBHOOK_SIGNING_SECRET` - Clerk webhook signature verification
+- `ENCRYPTION_KEY` - AES encryption key for BYOK API keys and Zotero tokens
+- `AI_PROVIDER` + `AI_MODEL` - Server-side AI model selection (or use defaults: `deepseek` / `deepseek-chat`)
+- `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` - Stripe integration
+- `ZOTERO_CLIENT_KEY` + `ZOTERO_CLIENT_SECRET` - Zotero OAuth consumer credentials
 
 **Secrets location:**
-- Local development: `.env.local` (not committed); synced to Convex via `./sync-env.sh`
-- CI: GitHub Actions secrets
-- Production: Convex environment variables (set via `npx convex env set`)
+- `.env.local` (local development; never committed)
+- Convex environment variables (synced via `./sync-env.sh`)
+- API keys stored in Convex `apiKeys` table (encrypted with `ENCRYPTION_KEY`)
+- Zotero API keys stored in `zoteroConnections.encryptedApiKey` (encrypted with `ENCRYPTION_KEY`)
 
 ---
 
-*Integration audit: 2026-03-03*
+*Integration audit: 2026-03-04*
