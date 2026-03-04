@@ -18,7 +18,11 @@ export const createAndRunTestJob = internalMutation({
     query: v.optional(v.string()),
     paperLimit: v.optional(v.number()),
   },
-  returns: v.any(),
+  returns: v.object({
+    jobId: v.id("extractionJobs"),
+    message: v.string(),
+    userId: v.id("users"),
+  }),
   handler: async (ctx, args) => {
     requirePublicDebugEnabled();
     // Get first user
@@ -121,7 +125,25 @@ export const getTestJobStatus = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
   },
-  returns: v.any(),
+  returns: v.object({
+    jobStatus: v.string(),
+    totalPapers: v.number(),
+    statusCounts: v.record(v.string(), v.number()),
+    pdfUsedCount: v.number(),
+    completedWithPdf: v.number(),
+    sampleResults: v.array(v.object({
+      paperId: v.id("extractionPapers"),
+      title: v.string(),
+      pdfUsed: v.boolean(),
+      status: v.string(),
+      results: v.array(v.object({
+        questionKey: v.string(),
+        answer: v.union(v.string(), v.boolean(), v.number(), v.array(v.string()), v.null()),
+        confidence: v.optional(v.number()),
+        pdfContentUsed: v.optional(v.boolean()),
+      })),
+    })),
+  }),
   handler: async (ctx, args) => {
     requirePublicDebugEnabled();
     const job = await ctx.db.get(args.jobId);

@@ -13,7 +13,24 @@ import { requirePublicDebugEnabled } from "../lib/debug_gate";
  */
 export const getFailedPapersDebug = query({
   args: { jobId: v.id("extractionJobs") },
-  returns: v.any(),
+  returns: v.object({
+    failedPapers: v.array(v.object({
+      id: v.id("extractionPapers"),
+      title: v.string(),
+      pdfUrl: v.string(),
+      errorMessage: v.string(),
+      status: v.string(),
+    })),
+    downloadFailedPapers: v.array(v.object({
+      id: v.id("extractionPapers"),
+      title: v.string(),
+      pdfUrl: v.string(),
+      errorMessage: v.string(),
+      status: v.string(),
+    })),
+    totalFailed: v.number(),
+    totalDownloadFailed: v.number(),
+  }),
   handler: async (ctx, args) => {
     requirePublicDebugEnabled();
 

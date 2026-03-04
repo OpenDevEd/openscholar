@@ -14,8 +14,10 @@ import { requirePublicDebugEnabled } from "../lib/debug_gate";
  */
 export const createTestJob = mutation({
   args: {},
-  returns: v.any(),
-  handler: async (ctx): Promise<{ jobId: string }> => {
+  returns: v.object({
+    jobId: v.string(),
+  }),
+  handler: async (ctx) => {
     requirePublicDebugEnabled();
 
     const user = await requireAuth(ctx);

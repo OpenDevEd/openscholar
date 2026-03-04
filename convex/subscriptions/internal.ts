@@ -596,18 +596,14 @@ export const handlePaymentFailed = internalMutation({
     if (!subscription) return null;
 
     const now = Date.now();
-    const patch: Record<string, any> = {
-      status: "past_due" satisfies SubscriptionStatus,
-      updatedAt: now,
-    };
 
     // Set pastDueSince only on the FIRST past_due transition
     // (not overwritten by subsequent payment failure events)
-    if (!subscription.pastDueSince) {
-      patch.pastDueSince = now;
-    }
-
-    await ctx.db.patch(subscription._id, patch);
+    await ctx.db.patch(subscription._id, {
+      status: "past_due" satisfies SubscriptionStatus,
+      updatedAt: now,
+      ...(!subscription.pastDueSince ? { pastDueSince: now } : {}),
+    });
 
     return null;
   },

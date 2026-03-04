@@ -14,7 +14,9 @@ export const createTestJobForFix = mutation({
   args: {
     name: v.string(),
   },
-  returns: v.any(),
+  returns: v.object({
+    jobId: v.id("extractionJobs"),
+  }),
   handler: async (ctx, args) => {
     requirePublicDebugEnabled();
 

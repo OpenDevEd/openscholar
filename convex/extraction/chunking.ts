@@ -262,7 +262,7 @@ ${chunk.text}`;
  */
 export function prepareChunksForRag(
   chunks: ChunkWithMetadata[]
-): Array<{ text: string; metadata: Record<string, any> }> {
+): Array<{ text: string; metadata: ChunkMetadata }> {
   return chunks.map((chunk) => ({
     text: chunk.text,
     metadata: {
