@@ -193,11 +193,11 @@ Plans:
   2. XLSX export uses dynamic `import('exceljs')` instead of static `import * as XLSX from 'xlsx'`, and the round-trip ExcelJS test (generate, parse back, assert headers and rows) passes
   3. Subscription status cron uses cursor-based self-scheduling with a 45s circuit-breaker -- will not exhaust Stripe rate limits at scale
   4. `listAllConnections` migration helper in `convex/zotero/internal.ts` is removed or gated behind debug check
-**Plans**: TBD
+**Plans**: 2 plans (wave 1 parallel)
 
 Plans:
-- [ ] 56-01: TBD
-- [ ] 56-02: TBD
+- [ ] 56-01: Backend performance fixes -- bounded getLibraryCount, subscription cron batching with circuit-breaker, migration helper cleanup (PERF-01, PERF-04, PERF-05)
+- [ ] 56-02: ExcelJS migration -- replace xlsx with dynamic import('exceljs'), round-trip export test (PERF-03, TEST-05)
 
 ### Phase 57: Incremental Aggregation
 **Goal**: Extraction report generation is decoupled from loading all result records into memory, enabling future removal of the 500-paper cap
