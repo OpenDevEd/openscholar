@@ -683,6 +683,13 @@ export const getJobInsights = query({
     }
     const { job } = access;
 
+    // Fast-path: load pre-aggregated stats (populated by incremental upsert on paper completion)
+    const jobStats = await ctx.db
+      .query("extractionJobStats")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+    const hasPreAggregatedStats = jobStats.length > 0;
+
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const processablePapers = papers.filter(
       (paper: Doc<"extractionPapers">) => paper.processable !== false
@@ -757,13 +764,36 @@ export const getJobInsights = query({
       };
     });
 
+    // Summary counters: use pre-aggregated stats when available, else fan-out values
+    let summaryAnswered: number;
+    let summaryGrounded: number;
+    let summaryBestEffort: number;
+    let summaryConfidenceSum: number;
+    let summaryConfidenceCount: number;
+
+    if (hasPreAggregatedStats && jobStats.length === questions.length) {
+      // Fast path: derive summary from pre-aggregated stats
+      summaryAnswered = jobStats.reduce((sum, s) => sum + s.totalAnswered, 0);
+      summaryGrounded = jobStats.reduce((sum, s) => sum + s.groundedCount, 0);
+      summaryBestEffort = jobStats.reduce((sum, s) => sum + s.bestEffortCount, 0);
+      summaryConfidenceSum = jobStats.reduce((sum, s) => sum + s.confidenceSum, 0);
+      summaryConfidenceCount = jobStats.reduce((sum, s) => sum + s.confidenceCount, 0);
+    } else {
+      // Fallback: compute from per-question aggregates (existing fan-out behavior)
+      summaryAnswered = answeredTotal;
+      summaryGrounded = groundedTotal;
+      summaryBestEffort = bestEffortTotal;
+      summaryConfidenceSum = confidenceSum;
+      summaryConfidenceCount = confidenceCount;
+    }
+
     const totalExpectedAnswers = processablePapers.length * Math.max(questions.length, 1);
     const answeredRate =
-      totalExpectedAnswers > 0 ? answeredTotal / totalExpectedAnswers : 0;
+      totalExpectedAnswers > 0 ? summaryAnswered / totalExpectedAnswers : 0;
     const groundedRate =
-      totalExpectedAnswers > 0 ? groundedTotal / totalExpectedAnswers : 0;
+      totalExpectedAnswers > 0 ? summaryGrounded / totalExpectedAnswers : 0;
     const bestEffortRate =
-      totalExpectedAnswers > 0 ? bestEffortTotal / totalExpectedAnswers : 0;
+      totalExpectedAnswers > 0 ? summaryBestEffort / totalExpectedAnswers : 0;
 
     return ok({
       job: {
@@ -773,12 +803,12 @@ export const getJobInsights = query({
       summary: {
         totalPapers: processablePapers.length,
         totalQuestions: questions.length,
-        answeredTotal,
-        groundedTotal,
+        answeredTotal: summaryAnswered,
+        groundedTotal: summaryGrounded,
         answeredRate,
         groundedRate,
         bestEffortRate,
-        averageConfidence: confidenceCount > 0 ? confidenceSum / confidenceCount : 0,
+        averageConfidence: summaryConfidenceCount > 0 ? summaryConfidenceSum / summaryConfidenceCount : 0,
         averageEffectiveConfidence:
           effectiveConfidenceCount > 0
             ? effectiveConfidenceSum / effectiveConfidenceCount
