@@ -174,7 +174,7 @@ Plans:
 **Requirements**: SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, TEST-01, TEST-06
 **Success Criteria** (what must be TRUE):
   1. All three `dangerouslySetInnerHTML` call sites in `table-view.tsx` are replaced with a React-native `HighlightedText` component, and the XSS safety test with HTML characters in both text and query passes
-  2. Security-sensitive operations (API key decrypt, debug gate access) write to a persistent `auditLogs` table in Convex that can be queried for investigation
+  2. Security-sensitive operations (API key decrypt) write to a persistent `auditLogs` table in Convex that can be queried for investigation (debug gate access remains as console.log -- acceptable since debug functions must never fire in production; see DEBUG-EXCLUSION-STRATEGY.md)
   3. A cron-based startup check validates that `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, and all required price IDs are present, and the test for missing env var detection passes
   4. Debug function production exclusion strategy is documented with actionable deployment guidance
   5. Stripe price ID empty-string fallbacks in `convex/lib/constants.ts` are replaced with fail-fast validation in handlers
