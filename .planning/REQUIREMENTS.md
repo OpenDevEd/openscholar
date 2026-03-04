@@ -21,10 +21,10 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 ### Security
 
 - [x] **SEC-01**: Replace all three `dangerouslySetInnerHTML` call sites in `table-view.tsx` with XSS-safe React-native `HighlightedText` component using text splitting
-- [ ] **SEC-02**: Create persistent `auditLogs` table in Convex schema with `writeAuditLog` internalMutation, replacing `console.log` audit events for security-sensitive operations
-- [ ] **SEC-03**: Add startup env var validation for `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `CLERK_JWT_ISSUER_DOMAIN` via cron-based check
-- [ ] **SEC-04**: Implement debug function production exclusion strategy (separate deployment config or staging-only Convex project documentation)
-- [ ] **SEC-05**: Replace empty-string fallbacks for Stripe price IDs in `convex/lib/constants.ts` with fail-fast validation in handlers
+- [x] **SEC-02**: Create persistent `auditLogs` table in Convex schema with `writeAuditLog` internalMutation, replacing `console.log` audit events for security-sensitive operations
+- [x] **SEC-03**: Add startup env var validation for `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, `STRIPE_GO_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `CLERK_JWT_ISSUER_DOMAIN` via cron-based check
+- [x] **SEC-04**: Implement debug function production exclusion strategy (separate deployment config or staging-only Convex project documentation)
+- [x] **SEC-05**: Replace empty-string fallbacks for Stripe price IDs in `convex/lib/constants.ts` with fail-fast validation in handlers
 
 ### Performance
 
@@ -48,7 +48,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 - [x] **TEST-03**: Add test for rate limiter with invalid name string verifying rejection
 - [x] **TEST-04**: Add test for workflow cancel path specifically (not just cascade delete)
 - [ ] **TEST-05**: Add round-trip ExcelJS export test (generate XLSX, parse back, assert headers and row values)
-- [ ] **TEST-06**: Add test for env var validation detecting missing critical env vars
+- [x] **TEST-06**: Add test for env var validation detecting missing critical env vars
 
 ## Future Requirements
 
@@ -81,10 +81,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-07 | Phase 54 | Complete |
 | TYPE-08 | Phase 54 | Complete |
 | SEC-01 | Phase 55 | Complete |
-| SEC-02 | Phase 55 | Pending |
-| SEC-03 | Phase 55 | Pending |
-| SEC-04 | Phase 55 | Pending |
-| SEC-05 | Phase 55 | Pending |
+| SEC-02 | Phase 55 | Complete |
+| SEC-03 | Phase 55 | Complete |
+| SEC-04 | Phase 55 | Complete |
+| SEC-05 | Phase 55 | Complete |
 | PERF-01 | Phase 56 | Pending |
 | PERF-02 | Phase 57 | Pending |
 | PERF-03 | Phase 56 | Pending |
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-03 | Phase 54 | Complete |
 | TEST-04 | Phase 54 | Complete |
 | TEST-05 | Phase 56 | Pending |
-| TEST-06 | Phase 55 | Pending |
+| TEST-06 | Phase 55 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 28 total
