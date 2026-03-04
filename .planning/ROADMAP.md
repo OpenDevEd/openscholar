@@ -147,7 +147,7 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
 - [x] **Phase 54: Type Safety Sweep** - Eliminate all remaining `as any` casts, fix module boundaries, clean dead code
 - [x] **Phase 55: Security and Audit** - XSS-safe highlighting, persistent audit table, env var validation, debug exclusion strategy (completed 2026-03-04)
 - [x] **Phase 56: Performance Fixes** - Bounded library count, ExcelJS migration, subscription cron batching, migration helper cleanup (completed 2026-03-04)
-- [ ] **Phase 57: Incremental Aggregation** - Extraction report aggregation decoupled from loading all results
+- [x] **Phase 57: Incremental Aggregation** - Extraction report aggregation decoupled from loading all results (completed 2026-03-04)
 - [ ] **Phase 58: Correctness and Coverage** - Credit concurrency validation, OpenAlex email fix, subscription cron test, GROBID fallback test
 
 ## Phase Details
@@ -291,5 +291,5 @@ Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58
 | 54. Type Safety Sweep | v3.0 | Complete    | 2026-03-03 | 2026-03-03 |
 | 55. Security and Audit | 2/2 | Complete    | 2026-03-04 | - |
 | 56. Performance Fixes | 2/2 | Complete    | 2026-03-04 | - |
-| 57. Incremental Aggregation | 1/2 | In Progress|  | - |
+| 57. Incremental Aggregation | 2/2 | Complete   | 2026-03-04 | - |
 | 58. Correctness and Coverage | v3.0 | 0/? | Not started | - |

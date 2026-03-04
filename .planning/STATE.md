@@ -8,7 +8,7 @@ progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-03-03)
 ## Current Position
 
 Phase: 57 (4 of 5) -- Incremental Aggregation
-Plan: 57-01 complete, 57-02 pending (1/2)
-Status: Phase 57 in progress
-Last activity: 2026-03-04 -- 57-01 executed (extractionJobStats table, incremental upsert, cascade delete)
+Plan: 57-02 complete (2/2) -- Phase 57 DONE
+Status: Phase 57 complete
+Last activity: 2026-03-04 -- 57-02 executed (fast-path stats reads, backfill mutation)
 
-Progress: [#######...] 70%
+Progress: [########..] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 106 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 7)
+- Total plans completed: 107 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 8)
 - Total milestones shipped: 9
 
 **By Milestone:**
@@ -48,6 +48,7 @@ Progress: [#######...] 70%
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
 | v2.5 | 7 | 15 | 2026-03-03 |
+| Phase 57 P02 | 5min | 2 tasks | 2 files |
 | Phase 57 P01 | 4min | 1 task | 3 files |
 | Phase 56 P01 | 3min | 2 tasks | 4 files |
 | Phase 56 P02 | 3min | 2 tasks | 5 files |
@@ -65,6 +66,9 @@ See PROJECT.md Key Decisions table for full log.
 - [57-01] Test placed in convex/extraction/ (not tests/) to match convex-test edge-runtime requirement
 - [57-01] Stats upsert placed after paper existence check, before paper patch, to ensure paper.jobId is available
 - [57-01] Confidence buckets: >=0.8 high, >=0.5 medium, <0.5 low, undefined unknown
+- [57-02] Stats fast path only for summary counters; per-question detail still requires fan-out
+- [57-02] Backfill from mutation context (createExtractionReportSnapshot), not query context (getJobInsights)
+- [57-02] Stats bypassed when report has paper-level or question-level scope filtering
 - [56-01] Circuit-breaker resets startedAt on each continuation for fresh 45s budget per batch
 - [56-01] Batching at action level (array slice) rather than modifying listActiveSubscriptions query
 - [56-01] expirePastDueSubscriptions only on first invocation (startIndex === 0)
@@ -103,6 +107,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 57-01-PLAN.md (extractionJobStats table, incremental upsert, cascade delete)
-Stopped at: Phase 57 plan 01 complete, plan 02 pending
+Last activity: 2026-03-04 - Completed 57-02-PLAN.md (fast-path stats reads, backfill mutation)
+Stopped at: Phase 57 complete (2/2 plans done)
 Resume file: None
