@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/popover";
 import { Info, Maximize2, Quote, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
+import type { ExtractionResultWithReview } from "@/lib/extraction/types";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 import {
@@ -297,7 +297,7 @@ const ResultCell = memo(function ResultCell({
   searchQuery,
   onCite,
 }: {
-  result?: Doc<"extractionResults">;
+  result?: ExtractionResultWithReview;
   type: string;
   searchQuery?: string;
   onCite?: () => void;
