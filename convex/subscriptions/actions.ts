@@ -221,7 +221,7 @@ export const createCheckoutSession = action({
       key: identity.subject,
     });
 
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     assertPlanPriceConfig();
 
@@ -346,7 +346,7 @@ export const createPortalSession = action({
   }),
   handler: async (ctx): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const billingCustomer = await ctx.runQuery(
       internal.subscriptions.internal.getBillingCustomerByUser,
@@ -446,7 +446,7 @@ export const getSubscriptionDetails = action({
     errorCode?: SubscriptionDetailsErrorCode;
   }> => {
     await requireActionAuth(ctx);
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const subscription = await ctx.runQuery(
       internal.subscriptions.internal.getSubscriptionByUser,
@@ -539,7 +539,7 @@ export const getSubscriptionDetails = action({
           cardLast4: paymentMethod?.card?.last4,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to fetch Stripe subscription:", error);
       return { status: "error", errorCode: mapSubscriptionDetailsErrorCode(error) };
     }
@@ -579,7 +579,7 @@ export const changePlan = action({
   }> => {
     await requireActionAuth(ctx);
     assertPlanPriceConfig();
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
       throw createError("BILLING_INVALID_PRICE_ID", "Invalid target price ID");
@@ -865,12 +865,12 @@ export const changePlan = action({
         effectiveDate: endDate * 1000,
         creditsGranted: 0,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof Stripe.errors.StripeCardError) {
         console.warn("[changePlan] Card declined during upgrade", {
           requestId: error.requestId,
           code: error.code,
-          declineCode: (error as any).decline_code,
+          declineCode: error.decline_code,
           targetPriceId: args.targetPriceId,
           userId: user._id,
         });
@@ -939,7 +939,7 @@ export const getUpgradePreview = action({
     requireSubscriptionsEnabled();
     await requireActionAuth(ctx);
     assertPlanPriceConfig();
-    const user: any = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     if (!isAllowedPriceId(args.targetPriceId)) {
       throw createError("BILLING_INVALID_PRICE_ID", "Invalid target price ID");
