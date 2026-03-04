@@ -62,30 +62,30 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CONV-01 | — | Pending |
-| CONV-02 | — | Pending |
-| CONV-03 | — | Pending |
-| CONV-04 | — | Pending |
-| CONV-05 | — | Pending |
-| LIB-01 | — | Pending |
-| LIB-02 | — | Pending |
-| LIB-03 | — | Pending |
-| LIB-04 | — | Pending |
-| LIB-05 | — | Pending |
-| COMP-01 | — | Pending |
-| COMP-02 | — | Pending |
-| COMP-03 | — | Pending |
-| MOCK-01 | — | Pending |
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| STRICT-01 | — | Pending |
+| CONV-01 | Phase 60 | Pending |
+| CONV-02 | Phase 61 | Pending |
+| CONV-03 | Phase 61 | Pending |
+| CONV-04 | Phase 60 | Pending |
+| CONV-05 | Phase 62 | Pending |
+| LIB-01 | Phase 63 | Pending |
+| LIB-02 | Phase 63 | Pending |
+| LIB-03 | Phase 63 | Pending |
+| LIB-04 | Phase 63 | Pending |
+| LIB-05 | Phase 63 | Pending |
+| COMP-01 | Phase 64 | Pending |
+| COMP-02 | Phase 64 | Pending |
+| COMP-03 | Phase 64 | Pending |
+| MOCK-01 | Phase 65 | Pending |
+| TEST-01 | Phase 66 | Pending |
+| TEST-02 | Phase 66 | Pending |
+| TEST-03 | Phase 66 | Pending |
+| STRICT-01 | Phase 67 | Pending |
 
 **Coverage:**
 - v3.1 requirements: 18 total
-- Mapped to phases: 0
-- Unmapped: 18
+- Mapped to phases: 18
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-04*
-*Last updated: 2026-03-04 after initial definition*
+*Last updated: 2026-03-04 after roadmap creation*

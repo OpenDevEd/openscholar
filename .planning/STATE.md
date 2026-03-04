@@ -5,7 +5,7 @@ milestone_name: Complete Type Safety
 status: active
 last_updated: "2026-03-04"
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -18,14 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — defining requirements
+**Current focus:** v3.1 Complete Type Safety — Phase 60 ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-04 — Milestone v3.1 started
+Phase: 60 of 67 (Convex Validators & Typed Records)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-04 — Roadmap created for v3.1
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -57,6 +59,7 @@ See PROJECT.md Key Decisions table for full log.
 ### Roadmap Evolution
 
 10 milestones shipped (v1.0 through v3.0). 59 phases, 121 plans total.
+v3.1 adds 8 phases (60-67) for complete type safety.
 
 ### Pending Todos
 
@@ -64,7 +67,8 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- convex/_generated/ contains any types but is auto-generated and excluded from scope
+- Some any types may be forced by third-party library APIs (will need `// eslint-disable` or wrapper types)
 
 ### Quick Tasks Completed
 
@@ -75,6 +79,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Started milestone v3.1 Complete Type Safety
-Stopped at: Defining requirements
+Last activity: 2026-03-04 - Roadmap created for v3.1 Complete Type Safety
+Stopped at: Roadmap created, ready to plan Phase 60
 Resume file: None

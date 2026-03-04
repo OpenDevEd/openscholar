@@ -12,6 +12,7 @@
 - v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
 - v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
 - v3.0 Zero-Any Overhaul -- Phases 54-59 (shipped 2026-03-04)
+- v3.1 Complete Type Safety -- Phases 60-67 (in progress)
 
 ## Phases
 
@@ -154,7 +155,113 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 
 </details>
 
+### v3.1 Complete Type Safety (In Progress)
+
+**Milestone Goal:** Eliminate every remaining `any` type from production and test code, achieving complete type safety across the entire codebase.
+
+- [ ] **Phase 60: Convex Validators & Typed Records** - Replace all v.any() validators and Record<string, any> with typed alternatives
+- [ ] **Phase 61: Convex Production Backend** - Type all extraction and billing backend functions
+- [ ] **Phase 62: Convex Debug & Test Backend** - Type all debug/test Convex files
+- [ ] **Phase 63: Client Libraries** - Type all client-side libraries (utils, store, auth, extraction, AI)
+- [ ] **Phase 64: Components** - Type all React components (results-list, extraction, paper-card)
+- [ ] **Phase 65: Mock Factories** - Create typed mock factory functions for test infrastructure
+- [ ] **Phase 66: Test Files** - Type all test files using mock factories
+- [ ] **Phase 67: Compiler Verification** - Confirm zero any types via tsc --noEmit
+
+## Phase Details
+
+### Phase 60: Convex Validators & Typed Records
+**Goal**: All Convex validator and record types use concrete types instead of any
+**Depends on**: Nothing (foundational types)
+**Requirements**: CONV-01, CONV-04
+**Success Criteria** (what must be TRUE):
+  1. `grep -r "v.any()" convex/` returns zero matches (excluding convex/_generated/)
+  2. `grep -r "Record<string, any>" convex/` returns zero matches in internal.ts and chunking.ts
+  3. All 9 former v.any() call sites use typed validators (v.string(), v.number(), v.union(), etc.)
+  4. `tsc --noEmit` passes with no new errors introduced
+**Plans**: TBD
+
+### Phase 61: Convex Production Backend
+**Goal**: All extraction and billing Convex functions have proper types with zero any annotations
+**Depends on**: Phase 60 (typed validators may be imported)
+**Requirements**: CONV-02, CONV-03
+**Success Criteria** (what must be TRUE):
+  1. `grep -rn ": any" convex/extraction/ convex/billing/` returns zero matches (excluding _generated/)
+  2. `grep -rn "as any" convex/extraction/ convex/billing/` returns zero matches
+  3. `grep -rn "any\[\]" convex/extraction/ convex/billing/` returns zero matches
+  4. `grep -rn "<any>" convex/billing/` returns zero matches
+  5. All existing tests pass after type changes (`npm test` green)
+**Plans**: TBD
+
+### Phase 62: Convex Debug & Test Backend
+**Goal**: All debug and test Convex files have proper types
+**Depends on**: Phase 60 (may use shared validators)
+**Requirements**: CONV-05
+**Success Criteria** (what must be TRUE):
+  1. `grep -rn ": any\|as any\|any\[\]" convex/test_automation.ts convex/debug*.ts convex/testWorkflow.ts convex/create_test_job.ts convex/test_runner.ts` returns zero matches
+  2. All debug/test functions compile without errors
+  3. No behavioral changes to any debug endpoint
+**Plans**: TBD
+
+### Phase 63: Client Libraries
+**Goal**: All client-side library files have proper types with zero any annotations
+**Depends on**: Phase 60 (libs may import Convex types)
+**Requirements**: LIB-01, LIB-02, LIB-03, LIB-04, LIB-05
+**Success Criteria** (what must be TRUE):
+  1. `grep -rn ": any\|as any\|any\[\]" lib/utils.ts lib/store.ts lib/auth/use-auth-query.ts` returns zero matches
+  2. `grep -rn ": any\|as any\|any\[\]" lib/extraction/ lib/search/` returns zero matches
+  3. `grep -rn ": any\|as any" lib/ai/` returns zero matches (hook-factory, schemas, execute)
+  4. All ~30 any instances across 10+ library files replaced with proper types
+  5. All existing tests pass after type changes
+**Plans**: TBD
+
+### Phase 64: Components
+**Goal**: All React component files have proper types with zero any annotations
+**Depends on**: Phase 63 (components import from libs)
+**Requirements**: COMP-01, COMP-02, COMP-03
+**Success Criteria** (what must be TRUE):
+  1. `grep -rn ": any\|as any\|any\[\]" components/results-list.tsx` returns zero matches
+  2. `grep -rn ": any\|as any\|any\[\]" components/extraction/` returns zero matches
+  3. `grep -rn ": any\|as any\|any\[\]" components/paper-card/ components/country-selector* components/focus-mode*` returns zero matches
+  4. All existing tests and `tsc --noEmit` pass after type changes
+**Plans**: TBD
+
+### Phase 65: Mock Factories
+**Goal**: Typed mock factory functions exist for all commonly mocked objects in tests
+**Depends on**: Phase 61, Phase 62 (factories need to know the real types)
+**Requirements**: MOCK-01
+**Success Criteria** (what must be TRUE):
+  1. A mock factory exists for Convex context objects (ctx with db, auth, scheduler)
+  2. A mock factory exists for Stripe event objects (checkout.session.completed, invoice.paid, etc.)
+  3. A mock factory exists for auth state objects (Clerk user, session)
+  4. Each factory returns properly typed objects (no `as any` in factory implementation)
+**Plans**: TBD
+
+### Phase 66: Test Files
+**Goal**: All test files use proper types with zero any annotations, leveraging mock factories
+**Depends on**: Phase 65 (tests use mock factories)
+**Requirements**: TEST-01, TEST-02, TEST-03
+**Success Criteria** (what must be TRUE):
+  1. `grep -rn ": any\|as any\|any\[\]" __tests__/ tests/` returns zero matches across all ~20 test files
+  2. `grep -rn ": any\|as any" e2e/` returns zero matches in billing E2E tests
+  3. Test files use mock factories instead of inline `as any` casts for mocked objects
+  4. All 750+ tests pass after type changes
+**Plans**: TBD
+
+### Phase 67: Compiler Verification
+**Goal**: TypeScript compiler confirms zero any types remain in user-authored code
+**Depends on**: Phase 60, 61, 62, 63, 64, 65, 66 (all type work complete)
+**Requirements**: STRICT-01
+**Success Criteria** (what must be TRUE):
+  1. `tsc --noEmit` passes with zero errors
+  2. `grep -rn "any" --include="*.ts" --include="*.tsx" . --exclude-dir=convex/_generated --exclude-dir=node_modules --exclude-dir=.next` finds zero `: any`, `as any`, `any[]`, `<any>`, `Record<string, any>`, or `v.any()` patterns in user-authored code
+  3. A documented verification script or grep command confirms the zero-any state is reproducible
+**Plans**: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 60 -> 61 -> 62 -> 63 -> 64 -> 65 -> 66 -> 67
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -217,3 +324,11 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 | 57. Incremental Aggregation | v3.0 | 2/2 | Complete | 2026-03-04 |
 | 58. Correctness and Coverage | v3.0 | 2/2 | Complete | 2026-03-04 |
 | 59. Tech Debt Cleanup | v3.0 | 1/1 | Complete | 2026-03-04 |
+| 60. Convex Validators & Typed Records | v3.1 | 0/? | Not started | - |
+| 61. Convex Production Backend | v3.1 | 0/? | Not started | - |
+| 62. Convex Debug & Test Backend | v3.1 | 0/? | Not started | - |
+| 63. Client Libraries | v3.1 | 0/? | Not started | - |
+| 64. Components | v3.1 | 0/? | Not started | - |
+| 65. Mock Factories | v3.1 | 0/? | Not started | - |
+| 66. Test Files | v3.1 | 0/? | Not started | - |
+| 67. Compiler Verification | v3.1 | 0/? | Not started | - |
