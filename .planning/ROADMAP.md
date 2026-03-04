@@ -178,11 +178,11 @@ Plans:
   3. A cron-based startup check validates that `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`, and all required price IDs are present, and the test for missing env var detection passes
   4. Debug function production exclusion strategy is documented with actionable deployment guidance
   5. Stripe price ID empty-string fallbacks in `convex/lib/constants.ts` are replaced with fail-fast validation in handlers
-**Plans**: TBD
+**Plans**: 2 plans (wave 1 parallel)
 
 Plans:
-- [ ] 55-01: TBD
-- [ ] 55-02: TBD
+- [ ] 55-01: XSS-safe highlighting -- replace dangerouslySetInnerHTML with HighlightedText component and XSS safety test (SEC-01, TEST-01)
+- [ ] 55-02: Backend security hardening -- audit table, env var validation cron, assertPlanPriceConfig expansion, debug exclusion docs (SEC-02, SEC-03, SEC-04, SEC-05, TEST-06)
 
 ### Phase 56: Performance Fixes
 **Goal**: Library count queries are bounded, XLSX export is dynamically loaded with a maintained library, subscription cron handles growth safely, and migration helpers are cleaned up
