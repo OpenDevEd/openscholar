@@ -34,27 +34,55 @@ function getStripe(): Stripe {
  * - Corrections logged to Convex function logs (no external notifications).
  */
 export const checkSubscriptionStatus = internalAction({
-  args: {},
+  args: {
+    startIndex: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+  },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
+    const CIRCUIT_BREAKER_MS = 45_000;
+    const BATCH_SIZE = 50;
+
     assertPlanPriceConfig();
 
-    // Step 1: Expire past-due subscriptions (DB-only, runs as mutation)
-    await ctx.runMutation(internal.maintenance.mutations.expirePastDueSubscriptions);
+    const batchStartedAt = args.startedAt ?? Date.now();
+    const resumeIndex = args.startIndex ?? 0;
+
+    // Step 1: Expire past-due subscriptions only on first invocation
+    if (resumeIndex === 0) {
+      await ctx.runMutation(internal.maintenance.mutations.expirePastDueSubscriptions);
+    }
 
     // Step 2: Fetch all active subscriptions with a stripeSubscriptionId
     const activeSubs = await ctx.runQuery(
       internal.subscriptions.internal.listActiveSubscriptions,
     );
 
-    // Step 3: For each, re-fetch from Stripe and correct divergences
-    for (const sub of activeSubs) {
+    // Slice to the batch we need to process
+    const remaining = activeSubs.slice(resumeIndex);
+
+    // Step 3: Process subs in batches, checking circuit-breaker between each
+    let processed = 0;
+    for (const sub of remaining) {
+      // Circuit-breaker: if we've exceeded our time budget, schedule continuation
+      if (Date.now() - batchStartedAt > CIRCUIT_BREAKER_MS) {
+        const nextIndex = resumeIndex + processed;
+        console.log(`[checkSubscriptionStatus] Circuit-breaker at ${CIRCUIT_BREAKER_MS}ms, scheduling continuation from index ${nextIndex}/${activeSubs.length}`);
+        await ctx.scheduler.runAfter(
+          0,
+          internal.maintenance.internal.checkSubscriptionStatus,
+          { startIndex: nextIndex, startedAt: Date.now() },
+        );
+        return null;
+      }
+
       try {
         const fresh = await getStripe().subscriptions.retrieve(sub.stripeSubscriptionId);
         const item = fresh.items.data[0];
 
         if (!item?.price?.id) {
           console.warn(`[checkSubscriptionStatus] Subscription ${sub.stripeSubscriptionId} has no price item, skipping`);
+          processed++;
           continue;
         }
 
@@ -94,6 +122,7 @@ export const checkSubscriptionStatus = internalAction({
 
         if (divergedFields.length === 0) {
           // No divergence, skip silently
+          processed++;
           continue;
         }
 
@@ -105,6 +134,7 @@ export const checkSubscriptionStatus = internalAction({
 
         if (!stripeCustomerId) {
           console.warn(`[checkSubscriptionStatus] No customer ID for subscription ${sub.stripeSubscriptionId}, skipping correction`);
+          processed++;
           continue;
         }
 
@@ -134,6 +164,11 @@ export const checkSubscriptionStatus = internalAction({
         // Log but don't throw -- continue checking other subscriptions
         console.error(`[checkSubscriptionStatus] Failed to check subscription ${sub.stripeSubscriptionId}`, error);
       }
+      processed++;
+    }
+
+    if (processed > 0) {
+      console.log(`[checkSubscriptionStatus] Completed batch: processed ${processed} subs (index ${resumeIndex}-${resumeIndex + processed}/${activeSubs.length})`);
     }
 
     return null;
