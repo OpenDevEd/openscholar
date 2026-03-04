@@ -58,15 +58,16 @@ export async function executeAIOperation<TInput, TOutput>(
         return repairJSON(text, error)
       }
 
+      // Widen to satisfy generateObject's complex generic constraints
       const result = await generateObject({
         model,
         schema,
         experimental_repairText: repairText,
-        providerOptions: STANDARD_PROVIDER_OPTIONS,
+        providerOptions: STANDARD_PROVIDER_OPTIONS as Record<string, Record<string, unknown>>,
         temperature,
         system: prompts.system,
         prompt: prompts.prompt,
-      } as any)
+      } as unknown as Parameters<typeof generateObject>[0])
       
       const { object, usage } = result
 

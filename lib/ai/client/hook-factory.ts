@@ -69,7 +69,7 @@ function useLocalConfig(): AIConfig {
   )
 }
 
-export function createAIHook<TParams extends Record<string, any>, TResult>(
+export function createAIHook<TParams extends Record<string, unknown>, TResult>(
   actionRef: FunctionReference<'action', 'public', TParams, TResult>,
   executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
   transformCreditsResult?: (result: TResult, params: TParams) => TResult,
@@ -143,7 +143,7 @@ export function createAIHook<TParams extends Record<string, any>, TResult>(
 
           const runCredits = async () => {
             // Server-side path: server enforces the plan gate
-            const result = await convexAction(params as any)
+            const result = await convexAction(params as never) as TResult
             return transformCreditsResult
               ? transformCreditsResult(result, params)
               : result

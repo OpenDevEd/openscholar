@@ -20,7 +20,7 @@ export const screeningQuestionsSchema = z.object({
 })
 
 export function createScreeningResponsesSchema(questions: string[]) {
-  const responseProperties: Record<string, any> = {}
+  const responseProperties: Record<string, z.ZodTypeAny> = {}
 
   for (const question of questions) {
     responseProperties[question] = z.union([z.boolean(), z.null()]).describe(
