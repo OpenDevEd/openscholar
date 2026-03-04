@@ -238,7 +238,10 @@ Plans:
   2. `grep -rn ": any\|as any\|any\[\]" components/extraction/` returns zero matches
   3. `grep -rn ": any\|as any\|any\[\]" components/paper-card/ components/country-selector* components/focus-mode*` returns zero matches
   4. All existing tests and `tsc --noEmit` pass after type changes
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 64-01-PLAN.md -- Type results-list, paper-card, focus-mode, and country-selector (COMP-01, COMP-03)
+- [ ] 64-02-PLAN.md -- Type extraction components (COMP-02)
 
 ### Phase 65: Mock Factories
 **Goal**: Typed mock factory functions exist for all commonly mocked objects in tests
