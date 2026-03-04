@@ -8,7 +8,7 @@ progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 3
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 61 in progress
+**Current focus:** v3.1 Complete Type Safety — Phase 61 complete
 
 ## Current Position
 
 Phase: 61 of 67 (Convex Production Backend)
-Plan: 2 of 2 (61-02 complete)
-Status: Phase 61 plan 02 complete
-Last activity: 2026-03-04 — Completed 61-02 (Billing Backend Type Safety)
+Plan: 2 of 2 (all complete)
+Status: Phase 61 complete
+Last activity: 2026-03-04 — Completed 61-01 (Extraction Backend Type Safety)
 
 Progress: [██░░░░░░░░] 12%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 125 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 4, cleanup: 1, quick: 2)
+- Total plans completed: 126 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 5, cleanup: 1, quick: 2)
 - Total milestones shipped: 10
 
 **By Milestone:**
@@ -63,6 +63,9 @@ See PROJECT.md Key Decisions table for full log.
 - [60-02] Reused existing ChunkMetadata interface for prepareChunksForRag return type -- exact shape match
 - [60-03] Serialize Clerk webhook data as JSON string (v.string()) since Convex 1.32.0 lacks v.unknown()
 - [60-03] Explicit unknown type annotation on JSON.parse result to match processClerkWebhookEvent parameter type
+- [61-01] Used WorkflowPaper type with SourceType union and as const for narrow literal types in workflow paper accumulator
+- [61-01] Cast storageId to Id<'_storage'> at mutation call site (PaperData uses string, mutation expects branded Id)
+- [61-01] Used inline types for Zotero/manual items matching exact schema validator shapes
 - [61-02] Removed : any from user variables -- Convex infers return type from query validators (no explicit Doc<users> needed)
 - [61-02] Used error: unknown with existing instanceof type guards for Stripe errors
 - [61-02] Imported ActionCtx from _generated/server instead of GenericActionCtx<DataModel> from convex/server
@@ -90,6 +93,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 61-02 Billing Backend Type Safety
-Stopped at: Completed 61-02-PLAN.md
+Last activity: 2026-03-04 - Completed 61-01 Extraction Backend Type Safety
+Stopped at: Completed 61-01-PLAN.md (Phase 61 all 2 plans complete)
 Resume file: None
