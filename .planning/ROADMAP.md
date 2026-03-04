@@ -11,7 +11,7 @@
 - v2.3 Codebase Hardening -- Phases 35-42 (shipped 2026-03-02)
 - v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
 - v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
-- v3.0 Zero-Any Overhaul -- Phases 54-58 (in progress)
+- v3.0 Zero-Any Overhaul -- Phases 54-59 (in progress)
 
 ## Phases
 
@@ -149,6 +149,7 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
 - [x] **Phase 56: Performance Fixes** - Bounded library count, ExcelJS migration, subscription cron batching, migration helper cleanup (completed 2026-03-04)
 - [x] **Phase 57: Incremental Aggregation** - Extraction report aggregation decoupled from loading all results (completed 2026-03-04)
 - [x] **Phase 58: Correctness and Coverage** - Credit concurrency validation, OpenAlex email fix, subscription cron test, GROBID fallback test (completed 2026-03-04)
+- [ ] **Phase 59: Tech Debt Cleanup** - Fix ResultCell prop type to ExtractionResultWithReview, delete dead highlightText function (gap closure from audit)
 
 ## Phase Details
 
@@ -228,10 +229,24 @@ Plans:
 - [ ] 58-01: TBD
 - [ ] 58-02: TBD
 
+### Phase 59: Tech Debt Cleanup
+**Goal**: Close remaining audit gaps — update ResultCell prop type to ExtractionResultWithReview for complete type safety downstream, delete dead highlightText function
+**Depends on**: Phase 54 (ExtractionResultWithReview type), Phase 55 (HighlightedText replaced highlightText)
+**Requirements**: TYPE-01 (downstream completion)
+**Gap Closure**: Closes integration gap TYPE-01-DOWNSTREAM and dead code from SEC-01
+**Success Criteria** (what must be TRUE):
+  1. `ResultCell` in `table-view.tsx` uses `ExtractionResultWithReview` type instead of `Doc<"extractionResults">`
+  2. Dead `highlightText` function is removed from `lib/extraction/filtering.ts`
+  3. TypeScript compiles cleanly with no new errors
+**Plans**: 1 plan
+
+Plans:
+- [ ] 59-01: Prop type fix and dead code removal
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58
+Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58 -> 59
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -293,3 +308,4 @@ Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58
 | 56. Performance Fixes | 2/2 | Complete    | 2026-03-04 | - |
 | 57. Incremental Aggregation | 2/2 | Complete    | 2026-03-04 | - |
 | 58. Correctness and Coverage | 2/2 | Complete    | 2026-03-04 | - |
+| 59. Tech Debt Cleanup | 0/1 | Pending    | - | - |
