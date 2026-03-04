@@ -54,7 +54,7 @@ vi.mock("date-fns", () => ({
 
 import { downloadAll, downloadItem } from "../lib/search-actions";
 import type { DownloadSearchState, ToastApi } from "../lib/search-actions";
-import type { SearchField } from "../lib/types/search.types";
+import type { SearchField, PaperResult } from "../lib/types/search.types";
 
 const mockToast: ToastApi = {
   io: { downloadFailed: vi.fn() },
@@ -68,6 +68,7 @@ const mockSearchState: DownloadSearchState = {
   searchId: "search_1",
 };
 
+// Partial test data -- only fields needed for download tests
 const mockItem = {
   id: "W123",
   title: "Test Paper",
@@ -76,11 +77,11 @@ const mockItem = {
   abstract: "Test abstract",
   doi: "https://doi.org/10.1234/test",
   open_access: { oa_url: "https://example.com/pdf" },
-};
+} as unknown as PaperResult;
 
-const mockResults = [
+const mockResults: PaperResult[] = [
   mockItem,
-  { ...mockItem, id: "W456", title: "Second Paper" },
+  { ...mockItem, id: "W456", title: "Second Paper" } as unknown as PaperResult,
 ];
 
 beforeEach(() => {

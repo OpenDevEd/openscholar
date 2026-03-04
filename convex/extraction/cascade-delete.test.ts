@@ -1,5 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
+import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 
@@ -60,7 +61,7 @@ async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
     });
 
     // 5. Extraction paper (with storageId if possible)
-    let storageId: any = undefined;
+    let storageId: Id<"_storage"> | undefined = undefined;
     try {
       storageId = await ctx.storage.store(
         new Blob(["test pdf content"])

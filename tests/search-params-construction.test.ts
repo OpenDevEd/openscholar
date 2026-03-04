@@ -45,7 +45,7 @@ describe("createSearchParameters", () => {
         citesItemId: "https://openalex.org/W123",
       };
       const result = createSearchParameters("test", filters);
-      expect(result.filter.cites).toBe("https://openalex.org/W123");
+      expect(result.filter!.cites).toBe("https://openalex.org/W123");
     });
 
     it("adds OpenAlex URL prefix for bare cites ID", () => {
@@ -54,7 +54,7 @@ describe("createSearchParameters", () => {
         citesItemId: "W123",
       };
       const result = createSearchParameters("test", filters);
-      expect(result.filter.cites).toBe("https://openalex.org/W123");
+      expect(result.filter!.cites).toBe("https://openalex.org/W123");
     });
   });
 
@@ -64,7 +64,7 @@ describe("createSearchParameters", () => {
       citedByItemId: "W456",
     };
     const result = createSearchParameters("test", filters);
-    expect(result.filter.cited_by).toBe("https://openalex.org/W456");
+    expect(result.filter!.cited_by).toBe("https://openalex.org/W456");
   });
 
   it("adds related_to filter with URL prefix", () => {
@@ -73,7 +73,7 @@ describe("createSearchParameters", () => {
       relatedToItemId: "W789",
     };
     const result = createSearchParameters("test", filters);
-    expect(result.filter.related_to).toBe("https://openalex.org/W789");
+    expect(result.filter!.related_to).toBe("https://openalex.org/W789");
   });
 
   describe("date range filter", () => {
@@ -86,8 +86,8 @@ describe("createSearchParameters", () => {
         },
       };
       const result = createSearchParameters("test", filters);
-      expect(result.filter.from_publication_date).toBe("2024-01-15");
-      expect(result.filter.to_publication_date).toBe("2024-06-30");
+      expect(result.filter!.from_publication_date).toBe("2024-01-15");
+      expect(result.filter!.to_publication_date).toBe("2024-06-30");
     });
   });
 
@@ -99,8 +99,8 @@ describe("createSearchParameters", () => {
         dateRange: undefined,
       };
       const result = createSearchParameters("test", filters);
-      expect(result.filter.from_publication_date).toBe("2020-01-01");
-      expect(result.filter.to_publication_date).toBe("2024-12-31");
+      expect(result.filter!.from_publication_date).toBe("2020-01-01");
+      expect(result.filter!.to_publication_date).toBe("2024-12-31");
     });
   });
 
@@ -114,8 +114,8 @@ describe("createSearchParameters", () => {
       yearRange: [2020, 2024] as [number, number],
     };
     const result = createSearchParameters("test", filters);
-    expect(result.filter.from_publication_date).toBe("2024-03-01");
-    expect(result.filter.to_publication_date).toBe("2024-09-01");
+    expect(result.filter!.from_publication_date).toBe("2024-03-01");
+    expect(result.filter!.to_publication_date).toBe("2024-09-01");
   });
 
   it("builds authorships.countries from selectedRegions", () => {
@@ -124,11 +124,12 @@ describe("createSearchParameters", () => {
       selectedRegions: ["africa"],
     };
     const result = createSearchParameters("test", filters);
-    expect(result.filter.authorships).toBeDefined();
-    expect(result.filter.authorships.countries).toBeDefined();
+    const authorships = result.filter!.authorships as { countries: string };
+    expect(authorships).toBeDefined();
+    expect(authorships.countries).toBeDefined();
     // countries is a pipe-separated string of country codes
-    expect(typeof result.filter.authorships.countries).toBe("string");
-    expect(result.filter.authorships.countries.length).toBeGreaterThan(0);
+    expect(typeof authorships.countries).toBe("string");
+    expect(authorships.countries.length).toBeGreaterThan(0);
   });
 
   describe("sort", () => {
@@ -171,9 +172,9 @@ describe("createSearchParameters", () => {
       yearRange: [2020, 2024] as [number, number],
     };
     const result = createSearchParameters("test", filters);
-    expect(result.filter.title).toEqual({ search: "test" });
-    expect(result.filter.cites).toBe("https://openalex.org/W100");
-    expect(result.filter.from_publication_date).toBe("2020-01-01");
-    expect(result.filter.to_publication_date).toBe("2024-12-31");
+    expect(result.filter!.title).toEqual({ search: "test" });
+    expect(result.filter!.cites).toBe("https://openalex.org/W100");
+    expect(result.filter!.from_publication_date).toBe("2020-01-01");
+    expect(result.filter!.to_publication_date).toBe("2024-12-31");
   });
 });

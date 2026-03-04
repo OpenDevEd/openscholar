@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
+import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
 
@@ -28,7 +29,7 @@ async function seedUser(
 // Helper: seed a library item for a given userId
 async function seedLibraryItem(
   t: ReturnType<typeof convexTest>,
-  userId: any,
+  userId: Id<"users">,
   overrides: Partial<{
     openalexId: string;
     rating: number;
@@ -206,7 +207,7 @@ describe("browseLibrary", () => {
     });
 
     expect(result.page).toHaveLength(2);
-    expect(result.page.every((item: any) => item.rating >= 3)).toBe(true);
+    expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 3)).toBe(true);
   });
 
   it("returns empty page when user has no library items", async () => {
@@ -273,7 +274,7 @@ describe("searchLibrary", () => {
     });
 
     expect(result.page.length).toBeGreaterThanOrEqual(1);
-    expect(result.page.some((item: any) => item.title.includes("Machine"))).toBe(
+    expect(result.page.some((item: { rating: number; title: string }) => item.title.includes("Machine"))).toBe(
       true
     );
   });
@@ -302,7 +303,7 @@ describe("searchLibrary", () => {
       paginationOpts: { numItems: 10, cursor: null },
     });
 
-    expect(result.page.every((item: any) => item.rating >= 4)).toBe(true);
+    expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 4)).toBe(true);
   });
 
   it("returns empty page when search text matches nothing", async () => {
@@ -348,7 +349,7 @@ describe("searchLibrary", () => {
 
     // Should only contain user1's paper
     expect(
-      result.page.every((item: any) => item.title.includes("User1"))
+      result.page.every((item: { rating: number; title: string }) => item.title.includes("User1"))
     ).toBe(true);
   });
 });

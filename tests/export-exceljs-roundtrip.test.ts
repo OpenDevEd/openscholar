@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 describe('ExcelJS round-trip export', () => {
   it('generates valid XLSX with correct Results sheet headers and data', async () => {
     const mod = await import('exceljs');
-    const ExcelJSModule = 'default' in mod ? (mod as Record<string, typeof mod>).default : mod;
+    const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
 
     // Generate workbook using same pattern as exportToExcel
     const workbook = new ExcelJSModule.Workbook();
@@ -15,7 +15,7 @@ describe('ExcelJS round-trip export', () => {
     // Write to buffer and parse back
     const buffer = await workbook.xlsx.writeBuffer();
     const parsed = new ExcelJSModule.Workbook();
-    await parsed.xlsx.load(buffer as Buffer);
+    await parsed.xlsx.load(buffer);
 
     // Assert Results sheet
     const sheet = parsed.getWorksheet('Results');
@@ -45,7 +45,7 @@ describe('ExcelJS round-trip export', () => {
 
   it('generates valid Questions and Summary sheets', async () => {
     const mod = await import('exceljs');
-    const ExcelJSModule = 'default' in mod ? (mod as Record<string, typeof mod>).default : mod;
+    const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
 
     const workbook = new ExcelJSModule.Workbook();
 
@@ -62,7 +62,7 @@ describe('ExcelJS round-trip export', () => {
     // Write and parse back
     const buffer = await workbook.xlsx.writeBuffer();
     const parsed = new ExcelJSModule.Workbook();
-    await parsed.xlsx.load(buffer as Buffer);
+    await parsed.xlsx.load(buffer);
 
     // Assert Questions sheet
     const qSheet = parsed.getWorksheet('Questions');

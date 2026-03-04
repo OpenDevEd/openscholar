@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import type { Doc, Id } from "../_generated/dataModel";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -28,7 +29,7 @@ async function seedUser(
 // Helper: seed a library item for a given userId
 async function seedLibraryItem(
   t: ReturnType<typeof convexTest>,
-  userId: any,
+  userId: Id<"users">,
   overrides: Partial<{
     openalexId: string;
     rating: number;
@@ -78,7 +79,7 @@ async function seedLibraryItem(
 // Helper: seed a collection directly in the mock DB
 async function seedCollection(
   t: ReturnType<typeof convexTest>,
-  userId: any,
+  userId: Id<"users">,
   name: string
 ) {
   return await t.run(async (ctx) => {
@@ -96,9 +97,9 @@ async function seedCollection(
 // Helper: seed a junction row directly in the mock DB
 async function seedJunctionRow(
   t: ReturnType<typeof convexTest>,
-  userId: any,
-  collectionId: any,
-  libraryItemId: any
+  userId: Id<"users">,
+  collectionId: Id<"collections">,
+  libraryItemId: Id<"libraryItems">
 ) {
   return await t.run(async (ctx) => {
     const id = await ctx.db.insert("libraryItemCollections", {
@@ -177,8 +178,8 @@ describe("renameCollection", () => {
     });
 
     const updated = await t.run(async (ctx) => {
-      return await ctx.db.get(collection!._id);
-    }) as any;
+      return await ctx.db.get(collection!._id) as Doc<"collections"> | null;
+    });
 
     expect(updated!.name).toBe("New Name");
     expect(updated!.updatedAt).toBeGreaterThanOrEqual(originalUpdatedAt);
@@ -290,8 +291,8 @@ describe("deleteCollection", () => {
 
     // Library item should still exist
     const existingItem = await t.run(async (ctx) => {
-      return await ctx.db.get(item!._id);
-    }) as any;
+      return await ctx.db.get(item!._id) as Doc<"libraryItems"> | null;
+    });
 
     expect(existingItem).not.toBeNull();
     expect(existingItem!.title).toBe("Default Title");
@@ -416,8 +417,8 @@ describe("removeFromLibrary cascade", () => {
 
     // Collection should still exist
     const existingCollection = await t.run(async (ctx) => {
-      return await ctx.db.get(collection!._id);
-    }) as any;
+      return await ctx.db.get(collection!._id) as Doc<"collections"> | null;
+    });
 
     expect(existingCollection).not.toBeNull();
     expect(existingCollection!.name).toBe("My Collection");
@@ -661,8 +662,8 @@ describe("getCollectionsWithCounts", () => {
     );
 
     expect(result).toHaveLength(2);
-    const favorites = result.find((c: any) => c.name === "Favorites");
-    const research = result.find((c: any) => c.name === "Research");
+    const favorites = result.find((c: { name: string; itemCount: number }) => c.name === "Favorites");
+    const research = result.find((c: { name: string; itemCount: number }) => c.name === "Research");
     expect(favorites!.itemCount).toBe(1);
     expect(research!.itemCount).toBe(2);
   });
