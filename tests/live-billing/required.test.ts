@@ -26,6 +26,18 @@ import {
   type BillingIdentity,
 } from "./support";
 
+/** Shape returned by subscriptions/queries:getMy in test assertions. */
+interface TestSubscription {
+  _id: string;
+  plan: string;
+  status: string;
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
+  creditsPerMonth?: number;
+  currentPeriodStart?: number;
+  currentPeriodEnd?: number;
+}
+
 const env = loadBillingLiveEnv();
 const stripe = createStripeClient(env);
 
@@ -114,7 +126,7 @@ describe.sequential("live billing required regressions", () => {
       },
     });
 
-    const mySubscription = await runConvexFunction<any>({
+    const mySubscription = await runConvexFunction<TestSubscription | null>({
       functionPath: "subscriptions/queries:getMy",
       payload: {},
       identity,

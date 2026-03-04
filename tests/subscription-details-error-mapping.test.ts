@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import Stripe from "stripe";
 import { mapSubscriptionDetailsErrorCode } from "../convex/subscriptions/actions";
 
-function makeStripeError<T extends Error>(ctor: new (...args: any[]) => T): T {
+function makeStripeError<T extends Error>(ctor: new (...args: unknown[]) => T): T {
   return Object.create(ctor.prototype) as T;
 }
 

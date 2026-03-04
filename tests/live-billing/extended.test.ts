@@ -23,6 +23,18 @@ import {
   type BillingIdentity,
 } from "./support";
 
+/** Shape returned by subscriptions/queries:getMy in test assertions. */
+interface TestSubscription {
+  _id: string;
+  plan: string;
+  status: string;
+  stripeSubscriptionId?: string;
+  stripeCustomerId?: string;
+  creditsPerMonth?: number;
+  currentPeriodStart?: number;
+  currentPeriodEnd?: number;
+}
+
 const env = loadBillingLiveEnv();
 const stripe = createStripeClient(env);
 
@@ -79,7 +91,7 @@ describe.sequential("live billing extended regressions", () => {
       description: `non-entitled status for ${subscription.id}`,
       timeoutMs: env.webhookWaitTimeoutMs,
       check: async () => {
-        const current = await runConvexFunction<any>({
+        const current = await runConvexFunction<TestSubscription | null>({
           functionPath: "subscriptions/queries:getMy",
           payload: {},
           identity,
@@ -184,7 +196,7 @@ describe.sequential("live billing extended regressions", () => {
       description: `upgraded local subscription sync for ${subscriptionId}`,
       timeoutMs: env.webhookWaitTimeoutMs,
       check: async () => {
-        const current = await runConvexFunction<any>({
+        const current = await runConvexFunction<TestSubscription | null>({
           functionPath: "subscriptions/queries:getMy",
           payload: {},
           identity,
@@ -331,7 +343,7 @@ describe.sequential("live billing extended regressions", () => {
       description: `pro subscription sync for ${subscription.id}`,
       timeoutMs: env.webhookWaitTimeoutMs,
       check: async () => {
-        const current = await runConvexFunction<any>({
+        const current = await runConvexFunction<TestSubscription | null>({
           functionPath: "subscriptions/queries:getMy",
           payload: {},
           identity,
@@ -372,7 +384,7 @@ describe.sequential("live billing extended regressions", () => {
     expect(scheduled.mode).toBe("scheduled");
     expect(typeof scheduled.effectiveDate).toBe("number");
 
-    const stillProBeforeBoundary = await runConvexFunction<any>({
+    const stillProBeforeBoundary = await runConvexFunction<TestSubscription | null>({
       functionPath: "subscriptions/queries:getMy",
       payload: {},
       identity,
@@ -391,7 +403,7 @@ describe.sequential("live billing extended regressions", () => {
       description: `downgraded plan sync for subscription ${subscription.id}`,
       timeoutMs: env.webhookWaitTimeoutMs,
       check: async () => {
-        const current = await runConvexFunction<any>({
+        const current = await runConvexFunction<TestSubscription | null>({
           functionPath: "subscriptions/queries:getMy",
           payload: {},
           identity,

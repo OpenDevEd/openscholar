@@ -65,7 +65,7 @@ describe("getPlanTier", () => {
   });
 
   it("returns 0 for unknown plan", () => {
-    expect(getPlanTier("unknown" as any)).toBe(0);
+    expect(getPlanTier("unknown" as never)).toBe(0);
   });
 });
 
@@ -80,7 +80,7 @@ describe("getFreeCreditCapForPlan", () => {
   });
 
   it("returns free plan cap for unknown plan", () => {
-    expect(getFreeCreditCapForPlan("unknown" as any)).toBe(
+    expect(getFreeCreditCapForPlan("unknown" as never)).toBe(
       FREE_SIGNUP_CREDIT_GRANT,
     );
   });
