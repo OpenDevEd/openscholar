@@ -41,7 +41,7 @@ Requirements for complete type safety. Each maps to roadmap phases.
 
 ### Compiler
 
-- [ ] **STRICT-01**: `tsc --noEmit` confirms zero `any` types in user-authored code (excluding `convex/_generated/`)
+- [x] **STRICT-01**: `tsc --noEmit` confirms zero `any` types in user-authored code (excluding `convex/_generated/`)
 
 ## Future Requirements
 
@@ -79,7 +79,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-01 | Phase 66 | Complete |
 | TEST-02 | Phase 66 | Complete |
 | TEST-03 | Phase 66 | Complete |
-| STRICT-01 | Phase 67 (depends on 68, 69) | Pending |
+| STRICT-01 | Phase 67 (depends on 68, 69) | Complete |
 
 **Coverage:**
 - v3.1 requirements: 18 total
