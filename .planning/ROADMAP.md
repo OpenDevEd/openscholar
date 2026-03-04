@@ -219,7 +219,7 @@ Plans:
 **Requirements**: LIB-01, LIB-02, LIB-03, LIB-04, LIB-05
 **Success Criteria** (what must be TRUE):
   1. `grep -rn ": any\|as any\|any\[\]" lib/utils.ts lib/store.ts lib/auth/use-auth-query.ts` returns zero matches
-  2. `grep -rn ": any\|as any\|any\[\]" lib/extraction/ lib/search/` returns zero matches
+  2. `grep -rn ": any\|as any\|any\[\]" lib/extraction/ lib/search-actions.ts lib/search/` returns zero matches
   3. `grep -rn ": any\|as any" lib/ai/` returns zero matches (hook-factory, schemas, execute)
   4. All ~30 any instances across 10+ library files replaced with proper types
   5. All existing tests pass after type changes
