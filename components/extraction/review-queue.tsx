@@ -87,7 +87,7 @@ export function ReviewQueue({
 
       if (currentQueue && currentQueue.status === "ok" && currentQueue.items) {
         const itemIndex = currentQueue.items.findIndex(
-          (item: any) => item.resultId === args.resultId
+          (item) => item.resultId === args.resultId
         );
 
         if (itemIndex !== -1) {
@@ -193,10 +193,10 @@ export function ReviewQueue({
 
   const citations = useMemo(() => {
     if (!current?.citations || !Array.isArray(current.citations)) return [];
-    return current.citations.map((citation: any) => ({
+    return current.citations.map((citation) => ({
       evidenceId: citation.evidenceId,
       page: citation.page,
-      charRange: citation.charRange,
+      charRange: citation.charRange as [number, number],
       text: citation.quote,
       validated: true as const,
       retrieval: citation.retrieval || {},

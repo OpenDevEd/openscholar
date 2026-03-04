@@ -93,7 +93,7 @@ export function ZoteroSelector() {
     { revalidateOnFocus: false }
   );
 
-  const getItemsKey = (pageIndex: number, previousPageData: any) => {
+  const getItemsKey = (pageIndex: number, previousPageData: { hasMore: boolean; nextCursor?: number; items: ZoteroItem[] } | null) => {
     if (!connectionStatus?.connected) return null;
     if (requiresGroupSelection) return null;
     if (previousPageData && !previousPageData.hasMore) return null;

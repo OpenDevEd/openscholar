@@ -37,7 +37,7 @@ export function HistorySelector() {
 
   return (
     <div className="space-y-0 divide-y divide-border border border-border rounded-xl overflow-hidden">
-      {searchHistory.map((entry: any, index: number) => {
+      {searchHistory.map((entry, index) => {
         const isSelected = draftJob.selectedHistoryIds.includes(entry.id);
         
         return (

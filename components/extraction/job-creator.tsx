@@ -23,6 +23,7 @@ import {
 import { useExtractionStore } from "@/lib/store/extraction";
 import { Id } from "@/convex/_generated/dataModel";
 import { useSearchHistoryStore } from "@/lib/store";
+import type { SearchResult } from "@/lib/types";
 import { QuestionBuilder } from "./question-builder";
 import { SourceSelector } from "./source-selector";
 import { SourceSummary } from "./source-summary";
@@ -103,8 +104,8 @@ export function JobCreator() {
     }
 
     const historyEntries = draftJob.selectedHistoryIds
-      .map((id) => searchHistory.find((h: any) => h.id === id))
-      .filter(Boolean) as any[];
+      .map((id) => searchHistory.find((h) => h.id === id))
+      .filter((entry): entry is SearchResult => Boolean(entry));
 
     if (hasHistory && historyEntries.length === 0) {
       toast.validation.failed(t("selectedHistoryNotFound"));
@@ -120,7 +121,9 @@ export function JobCreator() {
           query: entry.query,
           field: entry.field,
           yearRange: entry.yearRange,
-          dateRange: entry.dateRange,
+          dateRange: entry.dateRange
+            ? { from: entry.dateRange.from?.toISOString(), to: entry.dateRange.to?.toISOString() }
+            : undefined,
           filterType: entry.filterType,
           isYearRangeEnabled: entry.isYearRangeEnabled,
           sortBy: entry.sortBy,
