@@ -43,6 +43,7 @@
     "convex": "^1.31.7",
     "convex-helpers": "^0.1.111",
     "date-fns": "^4.1.0",
+    "exceljs": "^4.4.0",
     "glob": "^13.0.6",
     "jsonrepair": "^3.13.2",
     "lucide-react": "^0.487.0",
@@ -66,7 +67,6 @@
     "swr": "^2.3.3",
     "tailwind-merge": "^3.4.1",
     "vaul": "^1.1.2",
-    "xlsx": "^0.18.5",
     "zod": "^4.3.6",
     "zustand": "^5.0.5"
   },

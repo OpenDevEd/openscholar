@@ -1,5 +1,4 @@
 import type { PaperWithResults, Question } from './filtering';
-import * as XLSX from 'xlsx';
 
 /**
  * Downloads a file with the given content
@@ -185,85 +184,112 @@ export function exportToJSON(
 }
 
 /**
- * Exports papers to Excel format
+ * Exports papers to Excel format using ExcelJS (dynamically imported).
  */
-export function exportToExcel(
+export async function exportToExcel(
   papers: PaperWithResults[],
   questions: Question[],
   options: ExportOptions = {}
-): void {
+): Promise<void> {
   const {
     includeMetadata = true,
     includeConfidence = true,
     includeReasoning = false,
   } = options;
 
-  const workbook = XLSX.utils.book_new();
+  // Dynamic import to keep ExcelJS (~500KB) out of the initial bundle
+  const mod = await import('exceljs');
+  const ExcelJSModule = 'default' in mod ? (mod as any).default : mod;
+  const workbook = new ExcelJSModule.Workbook();
 
   // Sheet 1: Results
-  const resultsData = papers.map(paper => {
-    const row: any = {
-      'Title': paper.title,
-      'DOI': paper.doi || '',
-      'Year': paper.publicationYear || '',
-    };
+  const resultsSheet = workbook.addWorksheet('Results');
+
+  // Build headers
+  const headers: string[] = ['Title', 'DOI', 'Year'];
+  if (includeMetadata) {
+    headers.push('Authors', 'Open Access', 'PDF Used');
+  }
+  questions.forEach(q => {
+    headers.push(q.question);
+    if (includeConfidence) {
+      headers.push(`${q.question} (Confidence)`);
+    }
+    if (includeReasoning) {
+      headers.push(`${q.question} (Reasoning)`);
+    }
+  });
+  resultsSheet.addRow(headers);
+
+  // Add data rows
+  papers.forEach(paper => {
+    const row: any[] = [
+      paper.title,
+      paper.doi || '',
+      paper.publicationYear || '',
+    ];
 
     if (includeMetadata) {
-      row['Authors'] = paper.authors?.join('; ') || '';
-      row['Open Access'] = paper.isOpenAccess ? 'Yes' : 'No';
-      row['PDF Used'] = paper.pdfContentUsed ? 'Yes' : 'No';
+      row.push(
+        paper.authors?.join('; ') || '',
+        paper.isOpenAccess ? 'Yes' : 'No',
+        paper.pdfContentUsed ? 'Yes' : 'No'
+      );
     }
 
     questions.forEach(q => {
       const result = paper.results.find(r => r.questionKey === q.key);
       const answer = result?.correctedAnswer ?? result?.answer;
-      row[q.question] = formatAnswerForExcel(answer, q.type);
+      row.push(formatAnswerForExcel(answer, q.type));
 
       if (includeConfidence) {
-        row[`${q.question} (Confidence)`] = result?.confidence
-          ? Math.round(result.confidence * 100) / 100
-          : '';
+        row.push(
+          result?.confidence
+            ? Math.round(result.confidence * 100) / 100
+            : ''
+        );
       }
 
-      if (includeReasoning && result?.reasoning) {
-        row[`${q.question} (Reasoning)`] = result.reasoning;
+      if (includeReasoning) {
+        row.push(result?.reasoning || '');
       }
     });
 
-    return row;
+    resultsSheet.addRow(row);
   });
 
-  const resultsSheet = XLSX.utils.json_to_sheet(resultsData);
-  XLSX.utils.book_append_sheet(workbook, resultsSheet, 'Results');
-
   // Sheet 2: Questions
-  const questionsSheet = XLSX.utils.json_to_sheet(
-    questions.map(q => ({
-      Key: q.key,
-      Question: q.question,
-      Type: q.type,
-      Description: q.description || '',
-    }))
-  );
-  XLSX.utils.book_append_sheet(workbook, questionsSheet, 'Questions');
+  const questionsSheet = workbook.addWorksheet('Questions');
+  questionsSheet.addRow(['Key', 'Question', 'Type', 'Description']);
+  questions.forEach(q => {
+    questionsSheet.addRow([q.key, q.question, q.type, q.description || '']);
+  });
 
   // Sheet 3: Summary statistics
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.addRow(['Question', 'Average Confidence', 'Completed', 'Total Papers', 'Completion Rate']);
   const totalPapers = papers.length;
-  const avgConfidences = questions.map(q => {
+  questions.forEach(q => {
     const results = papers.map(p => p.results.find(r => r.questionKey === q.key));
     const validResults = results.filter(r => r?.confidence !== undefined);
     const avg = validResults.reduce((sum, r) => sum + (r!.confidence || 0), 0) / (validResults.length || 1);
-    return {
-      Question: q.question,
-      'Average Confidence': Math.round(avg * 100) / 100,
-      'Completed': validResults.length,
-      'Total Papers': totalPapers,
-      'Completion Rate': `${Math.round((validResults.length / totalPapers) * 100)}%`,
-    };
+    summarySheet.addRow([
+      q.question,
+      Math.round(avg * 100) / 100,
+      validResults.length,
+      totalPapers,
+      `${Math.round((validResults.length / totalPapers) * 100)}%`,
+    ]);
   });
 
-  const summarySheet = XLSX.utils.json_to_sheet(avgConfidences);
-  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-  XLSX.writeFile(workbook, `extraction-results-${Date.now()}.xlsx`);
+  // Write to buffer and trigger download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  downloadFile(
+    blob,
+    `extraction-results-${Date.now()}.xlsx`,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
 }

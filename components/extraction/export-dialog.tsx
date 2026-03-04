@@ -42,7 +42,7 @@ export function ExportDialog({
   const [includeReasoning, setIncludeReasoning] = useState(false);
   const [includeCitations, setIncludeCitations] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const options = {
       includeMetadata,
       includeConfidence,
@@ -55,7 +55,7 @@ export function ExportDialog({
     } else if (format === "json") {
       exportToJSON(papers, questions, options);
     } else {
-      exportToExcel(papers, questions, options);
+      await exportToExcel(papers, questions, options);
     }
 
     onOpenChange(false);
