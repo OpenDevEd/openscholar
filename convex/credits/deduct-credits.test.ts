@@ -198,4 +198,98 @@ describe("deductCredits", () => {
       expect(credits!.lifetimeUsed).toBe(50);
     });
   });
+
+  describe("concurrency", () => {
+    // convex-test serializes mutations touching the same document, mimicking
+    // Convex OCC in production. These tests prove the mutation logic is correct
+    // under serialization -- which is exactly what OCC guarantees.
+
+    it("OCC prevents negative balances under concurrent deductions", async () => {
+      const t = convexTest(schema);
+      const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
+
+      // Fire 8 concurrent deductions of 30 each (total requested: 240, available: 100)
+      // At most floor(100/30) = 3 can succeed under serialized execution
+      const promises = Array.from({ length: 8 }, (_, i) =>
+        t.mutation(internal.credits.internal.deductCredits, {
+          userId,
+          amount: 30,
+          description: `concurrent-${i}`,
+        })
+      );
+      const results = await Promise.allSettled(promises);
+
+      const successes = results.filter((r) => r.status === "fulfilled");
+      const failures = results.filter((r) => r.status === "rejected");
+
+      // At most 3 can succeed (100 / 30 = 3.33, floor = 3)
+      expect(successes.length).toBeLessThanOrEqual(3);
+      expect(failures.length).toBeGreaterThanOrEqual(5);
+
+      // Every failure should be INSUFFICIENT_CREDITS
+      for (const f of failures) {
+        expect((f as PromiseRejectedResult).reason.message).toContain(
+          "INSUFFICIENT_CREDITS"
+        );
+      }
+
+      // CRITICAL INVARIANT: balance is NEVER negative
+      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      expect(credits!.freeBalance).toBeGreaterThanOrEqual(0);
+      expect(credits!.paidBalance).toBeGreaterThanOrEqual(0);
+
+      // Balance should equal starting - (successes * 30)
+      const expectedBalance = 100 - successes.length * 30;
+      expect(credits!.freeBalance).toBe(expectedBalance);
+    });
+
+    it("all deductions fail when each exceeds total balance", async () => {
+      const t = convexTest(schema);
+      const { userId, creditsId } = await seedUserWithCredits(t, 50, 0);
+
+      // Fire 8 concurrent deductions of 60 each -- none can succeed (50 < 60)
+      const promises = Array.from({ length: 8 }, (_, i) =>
+        t.mutation(internal.credits.internal.deductCredits, {
+          userId,
+          amount: 60,
+          description: `concurrent-fail-${i}`,
+        })
+      );
+      const results = await Promise.allSettled(promises);
+
+      const successes = results.filter((r) => r.status === "fulfilled");
+      expect(successes.length).toBe(0);
+
+      // Balance unchanged
+      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      expect(credits!.freeBalance).toBe(50);
+      expect(credits!.paidBalance).toBe(0);
+      expect(credits!.lifetimeUsed).toBe(0);
+    });
+
+    it("concurrent deductions drain to zero without going negative", async () => {
+      const t = convexTest(schema);
+      const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
+
+      // Fire 10 concurrent deductions of 10 each -- exactly 10 should succeed
+      // (total requested = total available = 100)
+      const promises = Array.from({ length: 10 }, (_, i) =>
+        t.mutation(internal.credits.internal.deductCredits, {
+          userId,
+          amount: 10,
+          description: `drain-${i}`,
+        })
+      );
+      const results = await Promise.allSettled(promises);
+
+      const successes = results.filter((r) => r.status === "fulfilled");
+      expect(successes.length).toBe(10);
+
+      // Balance is exactly 0
+      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      expect(credits!.freeBalance).toBe(0);
+      expect(credits!.paidBalance).toBe(0);
+      expect(credits!.lifetimeUsed).toBe(100);
+    });
+  });
 });
