@@ -190,12 +190,16 @@ Plans:
 **Depends on**: Phase 60 (typed validators may be imported)
 **Requirements**: CONV-02, CONV-03
 **Success Criteria** (what must be TRUE):
-  1. `grep -rn ": any" convex/extraction/ convex/billing/` returns zero matches (excluding _generated/)
-  2. `grep -rn "as any" convex/extraction/ convex/billing/` returns zero matches
-  3. `grep -rn "any\[\]" convex/extraction/ convex/billing/` returns zero matches
-  4. `grep -rn "<any>" convex/billing/` returns zero matches
-  5. All existing tests pass after type changes (`npm test` green)
-**Plans**: TBD
+  1. `grep -rn ": any" convex/extraction/workflow.ts convex/extraction/workpoolActions.ts convex/extraction/actions.ts convex/extraction/mutations.ts` returns zero matches
+  2. `grep -rn "as any" convex/extraction/workpoolActions.ts` returns zero matches
+  3. `grep -rn "any\[\]" convex/extraction/workpoolActions.ts` returns zero matches
+  4. `grep -rn ": any\|as any\|<any>" convex/subscriptions/actions.ts convex/credits/actions.ts` returns zero matches
+  5. `grep -rn "GenericActionCtx<any>" convex/lib/stripeWebhookHandlers.ts` returns zero matches
+  6. All existing tests pass after type changes (`npm test` green)
+**Plans**: 2 plans
+Plans:
+- [ ] 61-01-PLAN.md -- Type extraction backend (workflow, workpoolActions, actions, mutations)
+- [ ] 61-02-PLAN.md -- Type billing backend (subscriptions/actions, credits/actions, stripeWebhookHandlers)
 
 ### Phase 62: Convex Debug & Test Backend
 **Goal**: All debug and test Convex files have proper types
