@@ -30,7 +30,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 - [ ] **PERF-01**: Fix `getLibraryCount` unbounded `.collect()` in `convex/library/queries.ts` with bounded `.take()` or proper count query
 - [ ] **PERF-02**: Implement incremental extraction report aggregation with `extractionJobStats` table, upsert on paper completion, lazy fallback for existing jobs
-- [ ] **PERF-03**: Replace static `xlsx` import with dynamic `import('exceljs')` in export handler; migrate from `xlsx` to `exceljs` API
+- [x] **PERF-03**: Replace static `xlsx` import with dynamic `import('exceljs')` in export handler; migrate from `xlsx` to `exceljs` API
 - [ ] **PERF-04**: Implement subscription cron batching with cursor-based self-scheduling and 45s circuit-breaker in `convex/subscriptions/internal.ts`
 - [ ] **PERF-05**: Remove or gate `listAllConnections` migration helper in `convex/zotero/internal.ts` that scans entire `zoteroConnections` table
 - [ ] **PERF-06**: Optimize extraction report queries to avoid loading 500 papers x N results in a single mutation context
@@ -47,7 +47,7 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 - [ ] **TEST-02**: Add test for GROBID URL discovery fallback chain when `GROBID_URL` env var is absent and Docker/localhost variants fail
 - [x] **TEST-03**: Add test for rate limiter with invalid name string verifying rejection
 - [x] **TEST-04**: Add test for workflow cancel path specifically (not just cascade delete)
-- [ ] **TEST-05**: Add round-trip ExcelJS export test (generate XLSX, parse back, assert headers and row values)
+- [x] **TEST-05**: Add round-trip ExcelJS export test (generate XLSX, parse back, assert headers and row values)
 - [x] **TEST-06**: Add test for env var validation detecting missing critical env vars
 
 ## Future Requirements
@@ -87,7 +87,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-05 | Phase 55 | Complete |
 | PERF-01 | Phase 56 | Pending |
 | PERF-02 | Phase 57 | Pending |
-| PERF-03 | Phase 56 | Pending |
+| PERF-03 | Phase 56 | Complete |
 | PERF-04 | Phase 56 | Pending |
 | PERF-05 | Phase 56 | Pending |
 | PERF-06 | Phase 57 | Pending |
@@ -98,7 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-02 | Phase 58 | Pending |
 | TEST-03 | Phase 54 | Complete |
 | TEST-04 | Phase 54 | Complete |
-| TEST-05 | Phase 56 | Pending |
+| TEST-05 | Phase 56 | Complete |
 | TEST-06 | Phase 55 | Complete |
 
 **Coverage:**

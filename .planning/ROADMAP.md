@@ -146,7 +146,7 @@ Full details: `.planning/milestones/v2.5-ROADMAP.md`
 
 - [x] **Phase 54: Type Safety Sweep** - Eliminate all remaining `as any` casts, fix module boundaries, clean dead code
 - [x] **Phase 55: Security and Audit** - XSS-safe highlighting, persistent audit table, env var validation, debug exclusion strategy (completed 2026-03-04)
-- [ ] **Phase 56: Performance Fixes** - Bounded library count, ExcelJS migration, subscription cron batching, migration helper cleanup
+- [x] **Phase 56: Performance Fixes** - Bounded library count, ExcelJS migration, subscription cron batching, migration helper cleanup (completed 2026-03-04)
 - [ ] **Phase 57: Incremental Aggregation** - Extraction report aggregation decoupled from loading all results
 - [ ] **Phase 58: Correctness and Coverage** - Credit concurrency validation, OpenAlex email fix, subscription cron test, GROBID fallback test
 
@@ -197,7 +197,7 @@ Plans:
 
 Plans:
 - [ ] 56-01: Backend performance fixes -- bounded getLibraryCount, subscription cron batching with circuit-breaker, migration helper cleanup (PERF-01, PERF-04, PERF-05)
-- [ ] 56-02: ExcelJS migration -- replace xlsx with dynamic import('exceljs'), round-trip export test (PERF-03, TEST-05)
+- [x] 56-02: ExcelJS migration -- replace xlsx with dynamic import('exceljs'), round-trip export test (PERF-03, TEST-05)
 
 ### Phase 57: Incremental Aggregation
 **Goal**: Extraction report generation is decoupled from loading all result records into memory, enabling future removal of the 500-paper cap
@@ -290,6 +290,6 @@ Phases execute in numeric order: 54 -> 55 -> 56 -> 57 -> 58
 | 53. TypeScript Compile Fix | v2.5 | 2/2 | Complete | 2026-03-03 |
 | 54. Type Safety Sweep | v3.0 | Complete    | 2026-03-03 | 2026-03-03 |
 | 55. Security and Audit | 2/2 | Complete    | 2026-03-04 | - |
-| 56. Performance Fixes | v3.0 | 0/? | Not started | - |
+| 56. Performance Fixes | 2/2 | Complete   | 2026-03-04 | - |
 | 57. Incremental Aggregation | v3.0 | 0/? | Not started | - |
 | 58. Correctness and Coverage | v3.0 | 0/? | Not started | - |

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Zero-Any Overhaul
-status: unknown
-last_updated: "2026-03-04T05:11:49.679Z"
+status: in-progress
+last_updated: "2026-03-04T06:25:12Z"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-03)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.0 Zero-Any Overhaul -- Phase 55: Security and Audit
+**Current focus:** v3.0 Zero-Any Overhaul -- Phase 56: Performance Fixes
 
 ## Current Position
 
-Phase: 55 (2 of 5) -- Security and Audit
-Plan: 55-01 and 55-02 complete (2/2)
-Status: Phase 55 complete
-Last activity: 2026-03-04 -- 55-02 executed (audit logging, env validation, assertPlanPriceConfig expansion)
+Phase: 56 (3 of 5) -- Performance Fixes
+Plan: 56-01 and 56-02 complete (2/2)
+Status: Phase 56 complete
+Last activity: 2026-03-04 -- 56-01 executed (bounded queries, circuit-breaker cron, migration cleanup)
 
-Progress: [####......] 40%
+Progress: [######....] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 103 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 4)
+- Total plans completed: 105 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 6)
 - Total milestones shipped: 9
 
 **By Milestone:**
@@ -48,6 +48,8 @@ Progress: [####......] 40%
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
 | v2.5 | 7 | 15 | 2026-03-03 |
+| Phase 56 P01 | 3min | 2 tasks | 4 files |
+| Phase 56 P02 | 3min | 2 tasks | 5 files |
 | Phase 55 P02 | 5min | 2 tasks | 13 files |
 | Phase 55 P01 | 2min | 2 tasks | 3 files |
 | Phase 54 P02 | 3min | 2 tasks | 5 files |
@@ -59,6 +61,11 @@ Progress: [####......] 40%
 
 See PROJECT.md Key Decisions table for full log.
 
+- [56-01] Circuit-breaker resets startedAt on each continuation for fresh 45s budget per batch
+- [56-01] Batching at action level (array slice) rather than modifying listActiveSubscriptions query
+- [56-01] expirePastDueSubscriptions only on first invocation (startIndex === 0)
+- [56-02] CJS/ESM interop guard pattern for ExcelJS dynamic import to handle both module formats
+- [56-02] Test uses ExcelJS directly (not exportToExcel) because exportToExcel calls DOM APIs unavailable in test env
 - [55-02] Audit logging in callers not in decryptApiKey (plain function without Convex ctx)
 - [55-02] assertPlanPriceConfig inside handler bodies only to avoid blocking all module functions
 - [55-02] envValidation uses internalAction (not mutation) for reliable process.env access with "use node"
@@ -82,7 +89,7 @@ None.
 
 ### Blockers/Concerns
 
-- ExcelJS API differences from `xlsx` require careful round-trip testing (PERF-03/TEST-05).
+None.
 
 ### Quick Tasks Completed
 
@@ -92,6 +99,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 55-02-PLAN.md (audit logging, env validation, assertPlanPriceConfig expansion)
-Stopped at: Phase 55 complete (both 55-01 and 55-02 done)
+Last activity: 2026-03-04 - Completed 56-01-PLAN.md (bounded queries, circuit-breaker cron, migration cleanup)
+Stopped at: Phase 56 complete (both 56-01 and 56-02 done)
 Resume file: None
