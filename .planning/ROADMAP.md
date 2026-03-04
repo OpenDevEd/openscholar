@@ -12,7 +12,7 @@
 - v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
 - v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
 - v3.0 Zero-Any Overhaul -- Phases 54-59 (shipped 2026-03-04)
-- v3.1 Complete Type Safety -- Phases 60-67 (in progress)
+- v3.1 Complete Type Safety -- Phases 60-69 (in progress)
 
 ## Phases
 
@@ -167,6 +167,8 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 - [ ] **Phase 65: Mock Factories** - Create typed mock factory functions for test infrastructure
 - [ ] **Phase 66: Test Files** - Type all test files using mock factories
 - [ ] **Phase 67: Compiler Verification** - Confirm zero any types via tsc --noEmit
+- [ ] **Phase 68: Fix Stripe Webhook Type Boundary** - Fix 11 tsc errors from Phase 61 ActionCtx type tightening in http.ts
+- [ ] **Phase 69: Fix Pre-existing TSC Errors** - Fix 22 pre-existing tsc errors from missing internal.lib.audit registration
 
 ## Phase Details
 
@@ -266,10 +268,32 @@ Plans:
   3. A documented verification script or grep command confirms the zero-any state is reproducible
 **Plans**: TBD
 
+### Phase 68: Fix Stripe Webhook Type Boundary
+**Goal**: Fix 11 tsc errors caused by Phase 61 tightening stripeWebhookHandlers.ts from GenericActionCtx<any> to ActionCtx
+**Depends on**: Phase 61 (introduced the type break)
+**Requirements**: CONV-03 (integration fix), STRICT-01 (partial)
+**Gap Closure**: Closes integration gap (Phase 61 → http.ts) and flow gap (Stripe webhook compilation)
+**Success Criteria** (what must be TRUE):
+  1. `npx tsc --noEmit 2>&1 | grep "http.ts"` returns zero errors related to ActionCtx/GenericActionCtx mismatch
+  2. stripeWebhookHandlers.ts maintains proper typing (no regression to `any`)
+  3. Stripe webhook runtime behavior unchanged
+**Plans**: TBD
+
+### Phase 69: Fix Pre-existing TSC Errors
+**Goal**: Fix 22 pre-existing tsc errors across 6 files caused by missing internal.lib.audit registration
+**Depends on**: Nothing (pre-existing issue)
+**Requirements**: STRICT-01 (unblocks)
+**Gap Closure**: Removes pre-existing tsc errors blocking Phase 67 compiler verification
+**Success Criteria** (what must be TRUE):
+  1. `npx tsc --noEmit 2>&1 | grep "internal.lib.audit"` returns zero matches
+  2. All 22 errors in apiKeys/actions.ts, crons.ts, workpoolActions.ts, http.ts, envValidation.ts, zotero/actions.ts resolved
+  3. No new errors introduced
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 60 -> 61 -> 62 -> 63 -> 64 -> 65 -> 66 -> 67
+Phases execute in order: 63 → 64 → 65 → 66 → 68 → 69 → 67
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -340,3 +364,5 @@ Phases execute in numeric order: 60 -> 61 -> 62 -> 63 -> 64 -> 65 -> 66 -> 67
 | 65. Mock Factories | v3.1 | 0/? | Not started | - |
 | 66. Test Files | v3.1 | 0/? | Not started | - |
 | 67. Compiler Verification | v3.1 | 0/? | Not started | - |
+| 68. Fix Stripe Webhook Type Boundary | v3.1 | 0/? | Not started | - |
+| 69. Fix Pre-existing TSC Errors | v3.1 | 0/? | Not started | - |

@@ -79,12 +79,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-01 | Phase 66 | Pending |
 | TEST-02 | Phase 66 | Pending |
 | TEST-03 | Phase 66 | Pending |
-| STRICT-01 | Phase 67 | Pending |
+| STRICT-01 | Phase 67 (depends on 68, 69) | Pending |
 
 **Coverage:**
 - v3.1 requirements: 18 total
 - Mapped to phases: 18
 - Unmapped: 0
+
+**Gap Closure Phases (from audit):**
+- Phase 68: Fixes integration break affecting CONV-03, STRICT-01
+- Phase 69: Fixes pre-existing tsc errors blocking STRICT-01
 
 ---
 *Requirements defined: 2026-03-04*
