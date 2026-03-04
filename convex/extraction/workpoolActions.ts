@@ -18,7 +18,6 @@ import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
 import { MIN_ABSTRACT_LENGTH, isPdfExtractionEnabled } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
-import { processFulltextDocumentWithGrobid } from "./grobid";
 import {
   buildChunkedEvidenceUnitsFromPdfPages,
   reciprocalRankFuse,
@@ -378,40 +377,6 @@ export function applyAbstractOnlyPolicy(params: {
   };
 }
 
-function getSectionsByPage(
-  blocks: Array<{ section: string; page?: number }>
-): Map<number, string> {
-  const byPage = new Map<number, Map<string, number>>();
-
-  for (const block of blocks) {
-    const page = Number(block.page);
-    if (!Number.isFinite(page) || page < 1) continue;
-    const section = (block.section || "body").trim().toLowerCase();
-    if (!section) continue;
-
-    if (!byPage.has(page)) {
-      byPage.set(page, new Map<string, number>());
-    }
-    const pageSections = byPage.get(page)!;
-    pageSections.set(section, (pageSections.get(section) || 0) + 1);
-  }
-
-  const selected = new Map<number, string>();
-  for (const [page, sectionCounts] of byPage.entries()) {
-    let bestSection = "body";
-    let bestCount = -1;
-    for (const [section, count] of sectionCounts.entries()) {
-      if (count > bestCount) {
-        bestSection = section;
-        bestCount = count;
-      }
-    }
-    selected.set(page, bestSection);
-  }
-
-  return selected;
-}
-
 function parseDenseScores(results: any[]): RankedEvidenceScore[] {
   const byEvidence = new Map<string, number>();
 
@@ -690,22 +655,11 @@ async function buildEvidenceUnitsFromPdf(pdfBuffer: ArrayBuffer) {
     };
   });
 
-  let sectionsByPage = new Map<number, string>();
-  try {
-    const grobid = await processFulltextDocumentWithGrobid(pdfBuffer);
-    sectionsByPage = getSectionsByPage(grobid.blocks);
-  } catch (error) {
-    console.warn(
-      "[buildEvidenceUnitsFromPdf] GROBID unavailable, continuing with PDF.js chunks",
-      error
-    );
-  }
-
   const units = buildChunkedEvidenceUnitsFromPdfPages(
     pages.map((page) => ({
       pageNumber: page.pageNumber,
       text: page.text,
-      section: sectionsByPage.get(page.pageNumber) || "body",
+      section: "body",
     })),
     {
       targetChars: 650,

@@ -24,7 +24,7 @@ export type AnchoredEvidenceUnit = {
   section?: string;
   tokens: string[];
   anchorConfidence: number;
-  source: "grobid" | "pdfjs_fallback" | "pdfjs_chunks";
+  source: "pdfjs_fallback" | "pdfjs_chunks";
 };
 
 export type RankedEvidenceScore = {
@@ -304,7 +304,7 @@ export function buildAnchoredEvidenceUnits(
 ): AnchoredEvidenceUnit[] {
   const units: AnchoredEvidenceUnit[] = [];
   const seenRanges = new Set<string>();
-  const source = options?.source || "grobid";
+  const source = options?.source || "pdfjs_chunks";
 
   for (const block of blocks) {
     const candidateSentences = buildSentenceUnits(block.text);
