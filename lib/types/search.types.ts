@@ -9,8 +9,33 @@ import type { ScreeningQuestionEntry, ScreeningResponses } from './screening.typ
 
 /**
  * Paper result from OpenAlex
+ * Extends SDK Work type with additional fields returned by the API
+ * but not yet typed in the SDK. Uses Omit to override the SDK's
+ * untyped sustainable_development_goals field with proper types.
  */
-export type PaperResult = Work;
+export type PaperResult = Omit<Work, 'sustainable_development_goals'> & {
+  /** Field-weighted citation impact */
+  fwci?: number;
+  /** Number of referenced works (API returns this alongside referenced_works) */
+  referenced_works_count?: number;
+  /** Citation percentile for publication year */
+  cited_by_percentile_year?: { min: number; max: number };
+  /** Primary topic classification */
+  primary_topic?: {
+    id: string;
+    display_name: string;
+    score?: number;
+    field?: { id: string; display_name: string };
+    subfield?: { id: string; display_name: string };
+    domain?: { id: string; display_name: string };
+  };
+  /** UN Sustainable Development Goals */
+  sustainable_development_goals?: {
+    id: string;
+    display_name: string;
+    score: number;
+  }[];
+};
 
 /**
  * Search field options

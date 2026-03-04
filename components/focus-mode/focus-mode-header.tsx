@@ -16,9 +16,10 @@ import {
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
 import { RatingSelector } from "@/components/rating-selector";
+import type { PaperResult } from "@/lib/types";
 
 export interface FocusModeHeaderProps {
-  currentPaper: any;
+  currentPaper: PaperResult;
   currentIndex: number;
   totalPapers: number;
   ratings: Record<string, number | null | undefined>;
@@ -32,8 +33,8 @@ export interface FocusModeHeaderProps {
   onToggleSettings: () => void;
   onGoToPrevious: () => void;
   onGoToNext: () => void;
-  onDownloadItem: (item: any, format: "json" | "csv") => void;
-  onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
+  onDownloadItem: (item: PaperResult, format: "json" | "csv") => void;
+  onDownloadEssentialItem: (item: PaperResult, format: "json" | "csv") => void;
   tFocus: (key: string) => string;
   tAccessibility: (key: string) => string;
 }

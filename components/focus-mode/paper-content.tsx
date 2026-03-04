@@ -3,9 +3,10 @@ import { BookOpen, Award, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
 import { ScreeningResponses } from "@/components/paper-card";
+import type { PaperResult } from "@/lib/types";
 
 export interface PaperContentProps {
-  paper: any;
+  paper: PaperResult;
   isPreview?: boolean;
   contentClasses: string;
   fontSizeClass: string;
@@ -153,7 +154,7 @@ export function PaperContent({
                 <span className="font-medium">
                   {isPreview
                     ? "85-95%"
-                    : `${paper.cited_by_percentile_year.min}-${paper.cited_by_percentile_year.max}%`}
+                    : `${paper.cited_by_percentile_year!.min}-${paper.cited_by_percentile_year!.max}%`}
                 </span>
               </span>
             )}
@@ -163,7 +164,7 @@ export function PaperContent({
                 <span className="font-medium">
                   {isPreview
                     ? tFocus("machineLearningPreview")
-                    : paper.primary_topic.display_name}
+                    : paper.primary_topic!.display_name}
                 </span>
               </span>
             )}
@@ -218,9 +219,9 @@ export function PaperContent({
               <span className="flex items-center gap-1">
                 <button
                   onClick={() => {
-                    const doiUrl = paper.doi.startsWith("http")
-                      ? paper.doi
-                      : `https://doi.org/${paper.doi}`;
+                    const doiUrl = paper.doi!.startsWith("http")
+                      ? paper.doi!
+                      : `https://doi.org/${paper.doi!}`;
                     window.open(doiUrl, "_blank");
                   }}
                   className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
@@ -228,7 +229,7 @@ export function PaperContent({
                 >
                   <ExternalLink className="h-3 w-3" />
                   <span className="font-mono">
-                    {paper.doi.replace("https://doi.org/", "")}
+                    {paper.doi!.replace("https://doi.org/", "")}
                   </span>
                 </button>
                 <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">

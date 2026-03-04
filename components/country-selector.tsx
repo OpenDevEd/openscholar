@@ -17,6 +17,11 @@ import { COUNTRY_HIERARCHY, COUNTRIES, getCountryCodesForRegions } from "@/lib/c
 import { CountryFlag } from "@/components/ui/country-flag";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 
+interface HierarchyEntry {
+  label: string;
+  children?: HierarchyEntry[];
+}
+
 type RegionNode = {
   id: string;
   label: string;
@@ -58,7 +63,7 @@ export function CountrySelector({
 
   // Build the tree structure from the hierarchy
   const buildTree = React.useMemo(() => {
-    function processEntry(entry: any, level: number = 0, parentId?: string): RegionNode {
+    function processEntry(entry: HierarchyEntry, level: number = 0, parentId?: string): RegionNode {
       const id = entry.label.toLowerCase().replace(/\s+/g, '_');
       
       const node: RegionNode = {
@@ -71,7 +76,7 @@ export function CountrySelector({
       };
 
       if (entry.children) {
-        node.children = entry.children.map((child: any) => {
+        node.children = entry.children.map((child: HierarchyEntry) => {
           // If this child has no children, it's a country code - use the code as ID
           if (!child.children || child.children.length === 0) {
             return {

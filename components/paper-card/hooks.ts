@@ -54,7 +54,7 @@ export interface TranslationContent {
  * This hook is now a pure "reader" - it doesn't trigger translations.
  */
 export function useTranslate(
-  data: { id: string; title: string; abstract: string } | undefined,
+  data: { id: string; title?: string; abstract?: string } | undefined,
   _autoSet: boolean = true
 ) {
   const locale = useLocale();
@@ -100,8 +100,8 @@ export function useTranslate(
 
 export function useScreening(data: {
   id: string;
-  title: string;
-  abstract: string;
+  title?: string;
+  abstract?: string;
 }) {
   const pathname = usePathname();
   const searchId = getEffectiveSearchId(pathname, undefined);

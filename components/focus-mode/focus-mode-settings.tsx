@@ -13,6 +13,7 @@ import { ChevronLeft, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PaperContent } from "./paper-content";
 import type { PaperContentProps } from "./paper-content";
+import type { PaperResult } from "@/lib/types";
 
 interface FocusModeSettingsConfig {
   fontSize: 'sm' | 'base' | 'lg' | 'xl';
@@ -33,7 +34,7 @@ export interface FocusModeSettingsProps {
   theme: string | undefined;
   setTheme: (theme: string) => void;
   maxWidthClass: string;
-  currentPaper: any;
+  currentPaper: PaperResult;
   paperContentProps: Omit<PaperContentProps, "paper" | "isPreview">;
   onBack: () => void;
   tFocus: (key: string) => string;

@@ -253,13 +253,13 @@ export function PaperCardListDetail({
                 )}
 
                 {/* SDGs */}
-                {result.sustainable_development_goals?.length > 0 && (
+                {(result.sustainable_development_goals?.length ?? 0) > 0 && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Leaf className="h-3.5 w-3.5 mt-0.5 text-green-600" />
                     <div>
                       <span className="font-medium">{tp("sdgsLabel")}</span>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {result.sustainable_development_goals.map(
+                        {result.sustainable_development_goals!.map(
                           (sdg: {
                             id: string;
                             display_name: string;

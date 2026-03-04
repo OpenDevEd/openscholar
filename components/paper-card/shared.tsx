@@ -178,7 +178,7 @@ export function ScreeningResponses({
   expandShortcut,
   variant,
 }: {
-  data: { id: string; title: string; abstract: string };
+  data: { id: string; title?: string; abstract?: string };
   expandShortcut?: string;
   variant?: "default" | "mobile" | "icons-only";
 }) {
@@ -474,7 +474,7 @@ export function OpenAccessBadge({
   oaUrl,
   compact = false,
 }: {
-  isOA: boolean;
+  isOA?: boolean;
   oaUrl?: string;
   compact?: boolean;
 }) {
@@ -526,7 +526,7 @@ export function DOIBadge({
   doi,
   compact = false,
 }: {
-  doi: string;
+  doi?: string;
   compact?: boolean;
 }) {
   const tAcc = useTranslations("accessibility");
@@ -604,7 +604,7 @@ export function AuthorsLine({
   maxLength = 200,
   className,
 }: {
-  authorships: { author: { display_name: string } }[];
+  authorships?: { author: { display_name: string } }[];
   maxLength?: number;
   className?: string;
 }) {
@@ -623,7 +623,7 @@ export function JournalLine({
   biblio,
   className,
 }: {
-  source?: { display_name: string };
+  source?: { display_name?: string };
   biblio?: { volume?: string; issue?: string; first_page?: string; last_page?: string };
   className?: string;
 }) {
