@@ -225,7 +225,7 @@ describe("processTranslationBatch", () => {
     });
 
     expect(mockExecute).toHaveBeenCalledOnce();
-    const callArgs = mockExecute.mock.calls[0][0] as Record<string, unknown>;
+    const callArgs = mockExecute.mock.calls[0][0] as unknown as Record<string, unknown>;
     expect(callArgs.input).not.toHaveProperty("targetLanguage");
   });
 });

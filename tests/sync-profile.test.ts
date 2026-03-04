@@ -33,7 +33,7 @@ vi.mock("../convex/lib/auth", () => ({
 import { syncProfileFromSession } from "../convex/users/mutations";
 
 // Access handler directly since mutation is mocked to return definition
-const syncDef = syncProfileFromSession as { handler: (ctx: MutationCtx, args: Record<string, unknown>) => Promise<null> };
+const syncDef = syncProfileFromSession as unknown as { handler: (ctx: MutationCtx, args: Record<string, unknown>) => Promise<null> };
 const syncHandler = syncDef.handler;
 
 function createMockCtx() {

@@ -21,7 +21,7 @@ import { ensureUser } from "../convex/users/mutations";
 const mockCreateUserWithDefaults = vi.mocked(createUserWithDefaults);
 
 // Access handler directly since mutation is mocked to return definition
-const ensureUserDef = ensureUser as { handler: (ctx: MutationCtx, args: Record<string, unknown>) => Promise<string> };
+const ensureUserDef = ensureUser as unknown as { handler: (ctx: MutationCtx, args: Record<string, unknown>) => Promise<string> };
 const ensureUserHandler = ensureUserDef.handler;
 
 const mockIdentity = createMockIdentity({
@@ -112,7 +112,7 @@ describe("ensureUser", () => {
 
     await ensureUserHandler(ctx, {});
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = vi.mocked(ctx.db.patch).mock.calls[0][1];
     expect(patchArg).not.toHaveProperty("email");
     expect(patchArg).not.toHaveProperty("firstName");
     expect(patchArg).not.toHaveProperty("lastName");
@@ -133,7 +133,7 @@ describe("ensureUser", () => {
 
     await ensureUserHandler(ctx, {});
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = vi.mocked(ctx.db.patch).mock.calls[0][1] as Record<string, unknown>;
     expect(patchArg.email).toBe("new@example.com");
     expect(patchArg.firstName).toBe("New");
     expect(patchArg.lastName).toBe("User");
@@ -153,7 +153,7 @@ describe("ensureUser", () => {
     };
     const ctx1 = createMockCtx(mockIdentity, userWithBlanks);
     await ensureUserHandler(ctx1, {});
-    const patch1 = ctx1.db.patch.mock.calls[0][1];
+    const patch1 = vi.mocked(ctx1.db.patch).mock.calls[0][1];
     expect(patch1).toHaveProperty("updatedAt");
 
     // Case 2: all filled -> updatedAt should NOT be set
@@ -168,7 +168,7 @@ describe("ensureUser", () => {
     };
     const ctx2 = createMockCtx(mockIdentity, userAllFilled);
     await ensureUserHandler(ctx2, {});
-    const patch2 = ctx2.db.patch.mock.calls[0][1];
+    const patch2 = vi.mocked(ctx2.db.patch).mock.calls[0][1];
     expect(patch2).not.toHaveProperty("updatedAt");
   });
 

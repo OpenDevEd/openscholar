@@ -45,8 +45,8 @@ describe("getStructuredCitations", () => {
   it("returns empty array when citations is not an array", async () => {
     process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "true";
     const { getStructuredCitations } = await loadCitationsModule();
-    expect(getStructuredCitations({ citations: "not an array" })).toEqual([]);
-    expect(getStructuredCitations({ citations: 42 })).toEqual([]);
+    expect(getStructuredCitations({ citations: "not an array" as unknown as unknown[] })).toEqual([]);
+    expect(getStructuredCitations({ citations: 42 as unknown as unknown[] })).toEqual([]);
     expect(getStructuredCitations({})).toEqual([]);
   });
 

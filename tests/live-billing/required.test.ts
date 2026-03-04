@@ -133,8 +133,8 @@ describe.sequential("live billing required regressions", () => {
     });
 
     expect(mySubscription).toBeTruthy();
-    expect(mySubscription.plan).toBe("go");
-    expect(mySubscription.stripeSubscriptionId).toBe(subscriptionId);
+    expect(mySubscription!.plan).toBe("go");
+    expect(mySubscription!.stripeSubscriptionId).toBe(subscriptionId);
 
     expect(countGrantTransactionsByInvoice(snapshot, invoiceId)).toBe(1);
 
