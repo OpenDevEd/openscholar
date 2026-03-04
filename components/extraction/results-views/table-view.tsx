@@ -31,6 +31,7 @@ import {
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { getReviewLabel, getReviewState, isReviewed } from "@/lib/extraction/reviews";
+import { HighlightedText } from "./highlighted-text";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -159,10 +160,9 @@ export const TableView = memo(function TableView({
                         <div
                           className="font-medium text-sm leading-snug line-clamp-2"
                           title={paper.title}
-                          dangerouslySetInnerHTML={{
-                            __html: highlightText(paper.title, searchQuery)
-                          }}
-                        />
+                        >
+                          <HighlightedText text={paper.title} query={searchQuery} />
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {paper.publicationYear && (
                             <Badge
@@ -290,12 +290,6 @@ export const TableView = memo(function TableView({
   );
 });
 
-function highlightText(text: string, query: string): string {
-  if (!query || !query.trim()) return text;
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
-  return text.replace(regex, '<mark class="bg-yellow-200/50 dark:bg-yellow-500/30 rounded px-0.5">$1</mark>');
-}
 
 const ResultCell = memo(function ResultCell({
   result,
@@ -375,19 +369,15 @@ const ResultCell = memo(function ResultCell({
                 key={String(item)}
                 variant="outline"
                 className="text-xs font-normal"
-                dangerouslySetInnerHTML={{
-                  __html: highlightText(String(item), searchQuery || '')
-                }}
-              />
+              >
+                <HighlightedText text={String(item)} query={searchQuery || ''} />
+              </Badge>
             ))}
           </div>
         ) : (
-          <div
-            className="line-clamp-3 text-sm text-foreground/90 leading-relaxed"
-            dangerouslySetInnerHTML={{
-              __html: highlightText(String(answer), searchQuery || '')
-            }}
-          />
+          <div className="line-clamp-3 text-sm text-foreground/90 leading-relaxed">
+            <HighlightedText text={String(answer)} query={searchQuery || ''} />
+          </div>
         )}
       </div>
 
@@ -445,12 +435,9 @@ const ResultCell = memo(function ResultCell({
               <PopoverContent className="w-80 p-4 text-xs leading-relaxed">
                 <div className="space-y-1">
                   <h4 className="font-medium">{tc("reasoning")}</h4>
-                  <p
-                    className="text-muted-foreground"
-                    dangerouslySetInnerHTML={{
-                      __html: highlightText(reasoning, searchQuery || '')
-                    }}
-                  />
+                  <p className="text-muted-foreground">
+                    <HighlightedText text={reasoning} query={searchQuery || ''} />
+                  </p>
                 </div>
               </PopoverContent>
             </Popover>
