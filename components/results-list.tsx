@@ -24,7 +24,7 @@ import {
   useSearchHistoryStore,
   useUIStore,
 } from "@/lib/store";
-import { ViewMode } from "@/lib/types";
+import { ViewMode, type PaperResult } from "@/lib/types";
 import { PaperCard } from "./paper-card";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
@@ -39,9 +39,9 @@ import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
 
 interface PapersListProps {
-  results: any[];
-  filteredResults: any[];
-  paginatedResults: any[];
+  results: PaperResult[];
+  filteredResults: PaperResult[];
+  paginatedResults: PaperResult[];
   ratingRange: [number, number];
   onlyRatedPapers: boolean;
   currentPage: number;
@@ -50,16 +50,16 @@ interface PapersListProps {
   isValidating?: boolean;
   currentQuery?: string;
   onBackToHome?: () => void;
-  onDownloadItem: (item: any, format: "json" | "csv") => void;
-  onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
+  onDownloadItem: (item: PaperResult, format: "json" | "csv") => void;
+  onDownloadEssentialItem: (item: PaperResult, format: "json" | "csv") => void;
   onPageChange: (page: number) => void;
   resultsContainerRef: React.RefObject<HTMLDivElement | null>;
   viewMode: ViewMode;
 }
 
 interface ResultsListProps {
-  onDownloadItem: (item: any, format: "json" | "csv") => void;
-  onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
+  onDownloadItem: (item: PaperResult, format: "json" | "csv") => void;
+  onDownloadEssentialItem: (item: PaperResult, format: "json" | "csv") => void;
   // Download all handlers for mobile ResultsFilter
   onDownloadAllJSON?: () => void;
   onDownloadAllCSV?: () => void;
@@ -94,9 +94,9 @@ function PapersGrid({
   return (
     <div ref={resultsContainerRef}>
       <div className={cn(gridClasses[viewMode])}>
-        {paginatedResults.map((result: any, index: number) => {
+        {paginatedResults.map((result, index) => {
           const originalIndex = results.findIndex(
-            (r: any) => r.id === result.id
+            (r) => r.id === result.id
           );
           return (
             <PaperCard
@@ -319,7 +319,7 @@ export function ResultsList({
   const urlQuery = search.params.q;
 
   // Filter results based on rating filter
-  const filteredResults = results.filter((result: any) => {
+  const filteredResults = results.filter((result) => {
     // Rating filter
     if (isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];

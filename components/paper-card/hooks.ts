@@ -32,7 +32,7 @@ export interface PaperData {
   };
   cited_by_count?: number;
   referenced_works_count?: number;
-  related_works?: any[];
+  related_works?: string[];
   open_access?: {
     is_oa: boolean;
     oa_url?: string;

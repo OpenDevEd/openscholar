@@ -17,16 +17,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScreening } from "./hooks";
+import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
 import { useTranslations, useFormatter } from "next-intl";
+import type { PaperResult } from "@/lib/types";
 
 // ==================== Types ====================
 
 export interface PaperCardProps {
-  result: any;
+  result: PaperResult;
   resultIndex: number;
-  onDownloadItem: (item: any, format: "json" | "csv") => void;
-  onDownloadEssentialItem: (item: any, format: "json" | "csv") => void;
+  onDownloadItem: (item: PaperResult, format: "json" | "csv") => void;
+  onDownloadEssentialItem: (item: PaperResult, format: "json" | "csv") => void;
   viewMode?: "list-simple" | "list-detail" | "grid-2" | "grid-3";
 }
 
@@ -39,7 +41,7 @@ export interface ScreeningBadgeProps {
 
 export interface TranslationToggleProps {
   isTranslating: boolean;
-  translatedContent: any;
+  translatedContent: TranslationContent | null;
   showTranslated: boolean;
   setShowTranslated: (show: boolean) => void;
   variant?: "full" | "compact";
