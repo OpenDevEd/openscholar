@@ -151,6 +151,19 @@ export default defineSchema({
     .index("by_event_type_created", ["eventType", "createdAt"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // AUDIT LOGS - Persistent security audit trail
+  // ═══════════════════════════════════════════════════════════════
+  auditLogs: defineTable({
+    action: v.string(),
+    userId: v.optional(v.string()),
+    metadata: v.optional(v.record(v.string(), v.string())),
+    timestamp: v.number(),
+  })
+    .index("by_action", ["action"])
+    .index("by_action_timestamp", ["action", "timestamp"])
+    .index("by_timestamp", ["timestamp"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // API KEYS - BYOK (Bring Your Own Key) storage
   // ═══════════════════════════════════════════════════════════════
   apiKeys: defineTable({

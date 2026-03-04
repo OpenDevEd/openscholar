@@ -38,4 +38,11 @@ crons.interval(
   internal.zotero.mutations.cleanupExpiredOAuthTokens
 );
 
+// Daily env var validation -- detects misconfiguration within 24h
+crons.interval(
+  "validate required env vars",
+  { hours: 24 },
+  internal.lib.envValidation.checkRequiredEnvVars
+);
+
 export default crons;
