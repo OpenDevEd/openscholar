@@ -5,7 +5,7 @@ import {
   type MutationCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Doc, Id, TableNames } from "../_generated/dataModel";
 
 export type BillingStripeObjectIdCollections = {
   stripeCustomerIds: string[];
@@ -71,8 +71,8 @@ export function collectBillingStripeObjectIds(args: {
   };
 }
 
-function dedupeById<T extends { _id: Id<any> }>(rows: T[]): T[] {
-  const byId = new Map<Id<any>, T>();
+function dedupeById<T extends { _id: Id<TableNames> }>(rows: T[]): T[] {
+  const byId = new Map<Id<TableNames>, T>();
   for (const row of rows) {
     byId.set(row._id, row);
   }

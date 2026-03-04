@@ -10,6 +10,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
 import { requirePublicDebugEnabled } from "../lib/debug_gate";
+import type { Id } from "../_generated/dataModel";
 
 /**
  * Internal action to trigger an immediate PDF extraction test run.
@@ -20,15 +21,29 @@ import { requirePublicDebugEnabled } from "../lib/debug_gate";
  */
 export const runPdfTestNow = internalAction({
   args: {},
-  handler: async (ctx): Promise<{ success: boolean; jobId: any; results: any }> => {
+  handler: async (ctx): Promise<{
+    success: boolean;
+    jobId: Id<"extractionJobs">;
+    results: {
+      total: number;
+      completed: number;
+      failed: number;
+      withPdf: number;
+      indexed: number;
+      pdfContentUsed: number;
+    };
+  }> => {
     requirePublicDebugEnabled();
     console.log("\n🚀 STARTING PDF EXTRACTION TEST\n");
     
     // 1. Get first user using internal query
-    const userId = await ctx.runQuery(internal.extraction.test_automation_internal.getFirstUserId, {}) as any;
+    const userId = await ctx.runQuery(internal.extraction.test_automation_internal.getFirstUserId, {});
+    if (!userId) {
+      throw new Error("No users found");
+    }
     const user = await ctx.runQuery(internal.users.internal.getUserById, {
       userId
-    }) as any;
+    });
     
     if (!user) {
       throw new Error("No users found");
@@ -53,7 +68,7 @@ export const runPdfTestNow = internalAction({
     for (let i = 0; i < 30; i++) {
       await new Promise(r => setTimeout(r, 10000));
       
-      const status = await ctx.runQuery(internal.extraction.test_automation_internal.getJobStatus, { jobId }) as any;
+      const status = await ctx.runQuery(internal.extraction.test_automation_internal.getJobStatus, { jobId });
       console.log(`[${i+1}/30] Papers: ${status.total} | Done: ${status.completed} | PDF: ${status.withPdf}`);
       
       if (status.completed >= 3 || status.status === "completed") {
@@ -62,7 +77,7 @@ export const runPdfTestNow = internalAction({
     }
     
     // 5. Get final results
-    const results = await ctx.runQuery(internal.extraction.test_automation_internal.getJobResults, { jobId }) as any;
+    const results = await ctx.runQuery(internal.extraction.test_automation_internal.getJobResults, { jobId });
     
     console.log("\n" + "=".repeat(50));
     console.log("RESULTS");
