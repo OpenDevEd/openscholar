@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
 status: unknown
-last_updated: "2026-03-04T11:27:34.569Z"
+last_updated: "2026-03-04T11:43:07.591Z"
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 61 complete
+**Current focus:** v3.1 Complete Type Safety — Phase 62 complete
 
 ## Current Position
 
-Phase: 61 of 67 (Convex Production Backend)
-Plan: 2 of 2 (all complete)
-Status: Phase 61 complete
-Last activity: 2026-03-04 — Completed 61-01 (Extraction Backend Type Safety)
+Phase: 62 of 67 (Convex Debug/Test Backend)
+Plan: 1 of 1 (all complete)
+Status: Phase 62 complete
+Last activity: 2026-03-04 — Completed 62-01 (Debug/Test Backend Type Safety)
 
-Progress: [██░░░░░░░░] 12%
+Progress: [███░░░░░░░] 16%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 126 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 5, cleanup: 1, quick: 2)
+- Total plans completed: 127 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 6, cleanup: 1, quick: 2)
 - Total milestones shipped: 10
 
 **By Milestone:**
@@ -49,6 +49,7 @@ Progress: [██░░░░░░░░] 12%
 | v2.4 | 4 | 7 | 2026-03-03 |
 | v2.5 | 7 | 15 | 2026-03-03 |
 | v3.0 | 6 | 11 | 2026-03-04 |
+| Phase 62 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ See PROJECT.md Key Decisions table for full log.
 - [61-02] Removed : any from user variables -- Convex infers return type from query validators (no explicit Doc<users> needed)
 - [61-02] Used error: unknown with existing instanceof type guards for Stripe errors
 - [61-02] Imported ActionCtx from _generated/server instead of GenericActionCtx<DataModel> from convex/server
+- [62-01] Direct Doc<extractionResults> property access for citationStatus, citations, retrievalDiagnostics -- all fields exist in schema
+- [62-01] Destructure out storageId in testWorkflow paper mapping to avoid string vs Id<_storage> mismatch
+- [62-01] Id<TableNames> for generic dedupeById instead of Id<any> -- preserves genericity with type safety
 
 ### Roadmap Evolution
 
@@ -93,6 +97,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 61-01 Extraction Backend Type Safety
-Stopped at: Completed 61-01-PLAN.md (Phase 61 all 2 plans complete)
+Last activity: 2026-03-04 - Completed 62-01 Debug/Test Backend Type Safety
+Stopped at: Completed 62-01-PLAN.md (Phase 62 all 1 plan complete)
 Resume file: None

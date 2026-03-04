@@ -13,7 +13,7 @@ Requirements for complete type safety. Each maps to roadmap phases.
 - [x] **CONV-02**: All extraction backend functions typed — workpoolActions, workflow, mutations (eliminate `: any`, `as any`, `any[]`)
 - [x] **CONV-03**: All billing backend functions typed — subscriptions/actions, credits/actions, webhooks/actions, stripeWebhookHandlers (eliminate `: any`, `as any`, `<any>`)
 - [x] **CONV-04**: `Record<string, any>` replaced with typed records in internal.ts and chunking.ts
-- [ ] **CONV-05**: All debug/test Convex files typed — test_automation, debug_job_citations, testWorkflow, debug.ts, debug_errors.ts, create_test_job.ts, test_runner.ts
+- [x] **CONV-05**: All debug/test Convex files typed — test_automation, debug_job_citations, testWorkflow, debug.ts, debug_errors.ts, create_test_job.ts, test_runner.ts
 
 ### Client Libraries
 
@@ -66,7 +66,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONV-02 | Phase 61 | Complete |
 | CONV-03 | Phase 61 | Complete |
 | CONV-04 | Phase 60 | Complete |
-| CONV-05 | Phase 62 | Pending |
+| CONV-05 | Phase 62 | Complete |
 | LIB-01 | Phase 63 | Pending |
 | LIB-02 | Phase 63 | Pending |
 | LIB-03 | Phase 63 | Pending |
