@@ -780,6 +780,13 @@ export const createExtractionReportSnapshot = mutation({
     const { questions, papers, resultsByPaper, reviewsByResult } =
       await loadJobDataForReporting(ctx, args.jobId);
 
+    // Check for pre-aggregated stats (fast path for metrics)
+    const jobStats = await ctx.db
+      .query("extractionJobStats")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+    const hasStats = jobStats.length > 0;
+
     const filteredPaperIds = new Set(
       args.scope?.filteredPaperIds || papers.map((p: Doc<"extractionPapers">) => p._id)
     );
@@ -852,19 +859,46 @@ export const createExtractionReportSnapshot = mutation({
       })
       .slice(0, 12);
 
-    const totalExpected = scopedPapers.length * Math.max(scopedQuestions.length, 1);
-    const answeredTotal = insightByQuestion.reduce(
-      (sum: number, row: InsightRow) => sum + row.aggregate.answered,
-      0
-    );
-    const groundedTotal = insightByQuestion.reduce(
-      (sum: number, row: InsightRow) => sum + row.aggregate.grounded,
-      0
-    );
-    const bestEffortTotal = insightByQuestion.reduce(
-      (sum: number, row: InsightRow) => sum + row.aggregate.citationStatusMix.best_effort,
-      0
-    );
+    // Metrics: use pre-aggregated stats when available and unscoped, else fan-out
+    let metricsAnsweredRate: number;
+    let metricsGroundedRate: number;
+    let metricsBestEffortRate: number;
+
+    // Stats are only valid for whole-job aggregation (no paper-level or question-level filtering)
+    const isUnscoped = !args.scope?.filteredPaperIds && !args.scope?.selectedQuestionKeys;
+    if (hasStats && jobStats.length === scopedQuestions.length && isUnscoped) {
+      // Fast path: metrics from pre-aggregated stats
+      const totalFromStats = jobStats.reduce((sum, s) => sum + s.totalPapers, 0);
+      const answeredFromStats = jobStats.reduce((sum, s) => sum + s.totalAnswered, 0);
+      const groundedFromStats = jobStats.reduce((sum, s) => sum + s.groundedCount, 0);
+      const bestEffortFromStats = jobStats.reduce((sum, s) => sum + s.bestEffortCount, 0);
+      metricsAnsweredRate = totalFromStats > 0 ? answeredFromStats / totalFromStats : 0;
+      metricsGroundedRate = totalFromStats > 0 ? groundedFromStats / totalFromStats : 0;
+      metricsBestEffortRate = totalFromStats > 0 ? bestEffortFromStats / totalFromStats : 0;
+    } else {
+      // Fallback: compute from fan-out (existing behavior)
+      const totalExpected = scopedPapers.length * Math.max(scopedQuestions.length, 1);
+      const answeredTotal = insightByQuestion.reduce(
+        (sum: number, row: InsightRow) => sum + row.aggregate.answered,
+        0
+      );
+      const groundedTotal = insightByQuestion.reduce(
+        (sum: number, row: InsightRow) => sum + row.aggregate.grounded,
+        0
+      );
+      const bestEffortTotal = insightByQuestion.reduce(
+        (sum: number, row: InsightRow) => sum + row.aggregate.citationStatusMix.best_effort,
+        0
+      );
+      metricsAnsweredRate = totalExpected > 0 ? answeredTotal / totalExpected : 0;
+      metricsGroundedRate = totalExpected > 0 ? groundedTotal / totalExpected : 0;
+      metricsBestEffortRate = totalExpected > 0 ? bestEffortTotal / totalExpected : 0;
+    }
+
+    // Methods section uses the same rates for display
+    const methodsAnsweredPct = Math.round(metricsAnsweredRate * 100);
+    const methodsGroundedPct = Math.round(metricsGroundedRate * 100);
+    const methodsBestEffortPct = Math.round(metricsBestEffortRate * 100);
 
     const reportId = await ctx.db.insert("extractionReportSnapshots", {
       jobId: job._id,
@@ -904,27 +938,28 @@ export const createExtractionReportSnapshot = mutation({
           title: "Methods and Limitations",
           body: [
             `- Scope: ${scopedPapers.length} papers, ${scopedQuestions.length} questions.`,
-            `- Answered rate: ${Math.round(
-              (totalExpected > 0 ? answeredTotal / totalExpected : 0) * 100
-            )}%.`,
-            `- Grounded rate: ${Math.round(
-              (totalExpected > 0 ? groundedTotal / totalExpected : 0) * 100
-            )}%.`,
-            `- Best-effort rate: ${Math.round(
-              (totalExpected > 0 ? bestEffortTotal / totalExpected : 0) * 100
-            )}%.`,
+            `- Answered rate: ${methodsAnsweredPct}%.`,
+            `- Grounded rate: ${methodsGroundedPct}%.`,
+            `- Best-effort rate: ${methodsBestEffortPct}%.`,
           ].join("\n"),
         },
       ],
       metrics: {
         totalPapers: scopedPapers.length,
-        answeredRate: totalExpected > 0 ? answeredTotal / totalExpected : 0,
-        groundedRate: totalExpected > 0 ? groundedTotal / totalExpected : 0,
-        bestEffortRate: totalExpected > 0 ? bestEffortTotal / totalExpected : 0,
+        answeredRate: metricsAnsweredRate,
+        groundedRate: metricsGroundedRate,
+        bestEffortRate: metricsBestEffortRate,
       },
       generatedAt: Date.now(),
       createdAt: Date.now(),
     });
+
+    // Schedule lazy backfill for legacy completed jobs without stats
+    if (!hasStats && job.status === "completed") {
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.backfillJobStats, {
+        jobId: args.jobId,
+      });
+    }
 
     return { reportId };
   },
@@ -1187,6 +1222,103 @@ export const cleanupFailedPaperStorage = internalMutation({
     }
 
     return { cleaned };
+  },
+});
+
+/**
+ * Backfill pre-aggregated stats for a legacy completed job.
+ * Idempotent: skips if stats already exist.
+ * Scheduled from createExtractionReportSnapshot when stats are missing.
+ */
+export const backfillJobStats = internalMutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> => {
+    // Idempotent: skip if stats already exist
+    const existingStats = await ctx.db
+      .query("extractionJobStats")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (existingStats) return null;
+
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .order("asc")
+      .collect();
+
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_PAPERS_PER_JOB);
+
+    for (const question of questions) {
+      let totalPapers = 0;
+      let totalAnswered = 0;
+      let groundedCount = 0;
+      let bestEffortCount = 0;
+      let insufficientEvidenceCount = 0;
+      let extractionErrorCount = 0;
+      let confidenceSum = 0;
+      let confidenceCount = 0;
+      let highConfidenceCount = 0;
+      let mediumConfidenceCount = 0;
+      let lowConfidenceCount = 0;
+      let unknownConfidenceCount = 0;
+
+      for (const paper of papers) {
+        if (paper.processable === false) continue;
+        const results = await ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+          .collect();
+        const result = results.find((r) => r.questionKey === question.key);
+        if (!result) {
+          totalPapers += 1;
+          unknownConfidenceCount += 1;
+          continue;
+        }
+
+        totalPapers += 1;
+        const isAnswered = result.answer !== null && result.answer !== undefined;
+        totalAnswered += isAnswered ? 1 : 0;
+        groundedCount += result.citationStatus === "grounded" ? 1 : 0;
+        bestEffortCount += result.citationStatus === "best_effort" ? 1 : 0;
+        insufficientEvidenceCount += result.citationStatus === "insufficient_evidence" ? 1 : 0;
+        extractionErrorCount += result.citationStatus === "extraction_error" ? 1 : 0;
+
+        const conf = typeof result.confidence === "number" ? result.confidence : undefined;
+        if (conf !== undefined) {
+          confidenceSum += conf;
+          confidenceCount += 1;
+          if (conf >= 0.8) highConfidenceCount += 1;
+          else if (conf >= 0.5) mediumConfidenceCount += 1;
+          else lowConfidenceCount += 1;
+        } else {
+          unknownConfidenceCount += 1;
+        }
+      }
+
+      await ctx.db.insert("extractionJobStats", {
+        jobId: args.jobId,
+        questionKey: question.key,
+        totalPapers,
+        totalAnswered,
+        groundedCount,
+        bestEffortCount,
+        insufficientEvidenceCount,
+        extractionErrorCount,
+        confidenceSum,
+        confidenceCount,
+        highConfidenceCount,
+        mediumConfidenceCount,
+        lowConfidenceCount,
+        unknownConfidenceCount,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return null;
   },
 });
 
