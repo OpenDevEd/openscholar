@@ -28,11 +28,11 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 ### Performance
 
-- [ ] **PERF-01**: Fix `getLibraryCount` unbounded `.collect()` in `convex/library/queries.ts` with bounded `.take()` or proper count query
+- [x] **PERF-01**: Fix `getLibraryCount` unbounded `.collect()` in `convex/library/queries.ts` with bounded `.take()` or proper count query
 - [ ] **PERF-02**: Implement incremental extraction report aggregation with `extractionJobStats` table, upsert on paper completion, lazy fallback for existing jobs
 - [x] **PERF-03**: Replace static `xlsx` import with dynamic `import('exceljs')` in export handler; migrate from `xlsx` to `exceljs` API
-- [ ] **PERF-04**: Implement subscription cron batching with cursor-based self-scheduling and 45s circuit-breaker in `convex/subscriptions/internal.ts`
-- [ ] **PERF-05**: Remove or gate `listAllConnections` migration helper in `convex/zotero/internal.ts` that scans entire `zoteroConnections` table
+- [x] **PERF-04**: Implement subscription cron batching with cursor-based self-scheduling and 45s circuit-breaker in `convex/subscriptions/internal.ts`
+- [x] **PERF-05**: Remove or gate `listAllConnections` migration helper in `convex/zotero/internal.ts` that scans entire `zoteroConnections` table
 - [ ] **PERF-06**: Optimize extraction report queries to avoid loading 500 papers x N results in a single mutation context
 
 ### Correctness
@@ -85,11 +85,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-03 | Phase 55 | Complete |
 | SEC-04 | Phase 55 | Complete |
 | SEC-05 | Phase 55 | Complete |
-| PERF-01 | Phase 56 | Pending |
+| PERF-01 | Phase 56 | Complete |
 | PERF-02 | Phase 57 | Pending |
 | PERF-03 | Phase 56 | Complete |
-| PERF-04 | Phase 56 | Pending |
-| PERF-05 | Phase 56 | Pending |
+| PERF-04 | Phase 56 | Complete |
+| PERF-05 | Phase 56 | Complete |
 | PERF-06 | Phase 57 | Pending |
 | CORR-01 | Phase 58 | Pending |
 | CORR-02 | Phase 58 | Pending |
