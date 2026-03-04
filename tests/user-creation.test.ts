@@ -1,20 +1,21 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { createUserWithDefaults } from "../convex/lib/userCreation";
 import { FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "../convex/lib/constants";
+import type { MutationCtx } from "../convex/_generated/server";
 
 const FIXED_TIME = new Date("2026-01-15T12:00:00Z").getTime();
 
 function createMockMutationCtx() {
-  const inserts: Array<{ table: string; doc: any }> = [];
+  const inserts: Array<{ table: string; doc: Record<string, unknown> }> = [];
   return {
     ctx: {
       db: {
-        insert: vi.fn(async (table: string, doc: any) => {
+        insert: vi.fn(async (table: string, doc: Record<string, unknown>) => {
           inserts.push({ table, doc });
           return `mock_${table}_id`;
         }),
       },
-    },
+    } as unknown as MutationCtx,
     inserts,
   };
 }
@@ -32,7 +33,7 @@ describe("createUserWithDefaults", () => {
   it("makes exactly 3 db.insert calls (atomicity)", async () => {
     const { ctx } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });
@@ -43,7 +44,7 @@ describe("createUserWithDefaults", () => {
   it("first insert is users table with state active", async () => {
     const { ctx, inserts } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });
@@ -62,7 +63,7 @@ describe("createUserWithDefaults", () => {
   it("second insert is credits table with correct freeBalance", async () => {
     const { ctx, inserts } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });
@@ -80,7 +81,7 @@ describe("createUserWithDefaults", () => {
   it("third insert is subscriptions table with plan free and status active", async () => {
     const { ctx, inserts } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });
@@ -100,7 +101,7 @@ describe("createUserWithDefaults", () => {
   it("returns the userId from the users insert", async () => {
     const { ctx } = createMockMutationCtx();
 
-    const result = await createUserWithDefaults(ctx as any, {
+    const result = await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });
@@ -111,7 +112,7 @@ describe("createUserWithDefaults", () => {
   it("passes optional profile fields to users table", async () => {
     const { ctx, inserts } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
       firstName: "Test",
@@ -129,7 +130,7 @@ describe("createUserWithDefaults", () => {
   it("omits undefined optional fields from user insert", async () => {
     const { ctx, inserts } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });
@@ -146,7 +147,7 @@ describe("createUserWithDefaults", () => {
   it("credits freeBalance matches FREE_SIGNUP_CREDIT_GRANT constant", async () => {
     const { ctx, inserts } = createMockMutationCtx();
 
-    await createUserWithDefaults(ctx as any, {
+    await createUserWithDefaults(ctx, {
       clerkId: "clerk_123",
       email: "test@example.com",
     });

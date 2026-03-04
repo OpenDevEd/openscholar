@@ -1,14 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import { requireAuth } from "../convex/lib/auth";
+import { createMockQueryCtx, createMockIdentity, createMockUser } from "./factories";
+import type { Doc } from "../convex/_generated/dataModel";
 
 /**
  * Build a mock AuthContext for requireAuth.
  * requireAuth calls ctx.auth.getUserIdentity() and then
  * ctx.db.query("users").withIndex("by_clerk_id", ...).unique()
  */
-function createMockCtx(identity: any, user: any) {
-  return {
+function createMockCtx(
+  identity: ReturnType<typeof createMockIdentity> | null,
+  user: Doc<"users"> | null,
+) {
+  return createMockQueryCtx({
     auth: {
       getUserIdentity: vi.fn().mockResolvedValue(identity),
     },
@@ -19,36 +24,34 @@ function createMockCtx(identity: any, user: any) {
         }),
       }),
     },
-  };
+  });
 }
 
-const mockIdentity = { subject: "clerk_123" };
+const mockIdentity = createMockIdentity({ subject: "clerk_123" });
 
 describe("requireAuth / assertActiveUser", () => {
   it("allows active user through", async () => {
-    const user = {
-      _id: "user1",
+    const user = createMockUser({
       state: "active",
       clerkId: "clerk_123",
       email: "test@example.com",
-    };
+    });
     const ctx = createMockCtx(mockIdentity, user);
 
-    const result = await requireAuth(ctx as any);
+    const result = await requireAuth(ctx);
     expect(result).toEqual(user);
   });
 
   it("throws FORBIDDEN for suspended user", async () => {
-    const user = {
-      _id: "user1",
+    const user = createMockUser({
       state: "suspended",
       clerkId: "clerk_123",
       email: "test@example.com",
-    };
+    });
     const ctx = createMockCtx(mockIdentity, user);
 
     try {
-      await requireAuth(ctx as any);
+      await requireAuth(ctx);
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -59,16 +62,15 @@ describe("requireAuth / assertActiveUser", () => {
   });
 
   it("throws FORBIDDEN for deleted user", async () => {
-    const user = {
-      _id: "user1",
+    const user = createMockUser({
       state: "deleted",
       clerkId: "clerk_123",
       email: "test@example.com",
-    };
+    });
     const ctx = createMockCtx(mockIdentity, user);
 
     try {
-      await requireAuth(ctx as any);
+      await requireAuth(ctx);
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -82,7 +84,7 @@ describe("requireAuth / assertActiveUser", () => {
     const ctx = createMockCtx(null, null);
 
     try {
-      await requireAuth(ctx as any);
+      await requireAuth(ctx);
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -95,7 +97,7 @@ describe("requireAuth / assertActiveUser", () => {
     const ctx = createMockCtx(mockIdentity, null);
 
     try {
-      await requireAuth(ctx as any);
+      await requireAuth(ctx);
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -108,7 +110,7 @@ describe("requireAuth / assertActiveUser", () => {
     const ctx = createMockCtx(mockIdentity, null);
 
     try {
-      await requireAuth(ctx as any, true);
+      await requireAuth(ctx, true);
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);

@@ -2,25 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import { selectCanonicalSubscription } from "../convex/subscriptions/lib/selectCanonicalSubscription";
 import { requirePlanTier } from "../convex/extraction/guard";
+import { createMockSubscription, createMockMutationCtx, mockId } from "./factories";
+import type { Doc } from "../convex/_generated/dataModel";
 
 // --- Helpers ---
 
-function makeSub(overrides: Partial<any> = {}): any {
-  return {
-    _id: "sub_default",
-    _creationTime: 0,
-    userId: "user_1",
-    plan: "free",
-    status: "active",
-    creditsPerMonth: 0,
-    seats: 1,
-    stripeSubscriptionId: undefined,
-    ...overrides,
-  };
+function makeSub(overrides?: Partial<Omit<Doc<"subscriptions">, "_id" | "_creationTime">>): Doc<"subscriptions"> {
+  return createMockSubscription(overrides);
 }
 
-function createMockCtx(subscriptions: any[]) {
-  return {
+function createMockCtx(subscriptions: Doc<"subscriptions">[]) {
+  return createMockMutationCtx({
     db: {
       query: vi.fn().mockReturnValue({
         withIndex: vi.fn().mockReturnValue({
@@ -30,7 +22,7 @@ function createMockCtx(subscriptions: any[]) {
         }),
       }),
     },
-  };
+  });
 }
 
 // --- selectCanonicalSubscription tests (PLAN-05) ---
@@ -42,9 +34,8 @@ describe("selectCanonicalSubscription", () => {
 
   it("priority 1: non-canceled paid with Stripe ID wins over all", () => {
     const subs = [
-      makeSub({ _id: "free_active", plan: "free", status: "active" }),
+      makeSub({ plan: "free", status: "active" }),
       makeSub({
-        _id: "go_stripe",
         plan: "go",
         status: "active",
         stripeSubscriptionId: "sub_123",
@@ -55,16 +46,16 @@ describe("selectCanonicalSubscription", () => {
 
   it("priority 2: non-canceled paid without Stripe ID wins over free", () => {
     const subs = [
-      makeSub({ _id: "free_active", plan: "free", status: "active" }),
-      makeSub({ _id: "pro_no_stripe", plan: "pro", status: "active" }),
+      makeSub({ plan: "free", status: "active" }),
+      makeSub({ plan: "pro", status: "active" }),
     ];
     expect(selectCanonicalSubscription(subs)).toBe(subs[1]);
   });
 
   it("priority 3: non-canceled free wins over canceled free", () => {
     const subs = [
-      makeSub({ _id: "free_canceled", plan: "free", status: "canceled" }),
-      makeSub({ _id: "free_active", plan: "free", status: "active" }),
+      makeSub({ plan: "free", status: "canceled" }),
+      makeSub({ plan: "free", status: "active" }),
     ];
     expect(selectCanonicalSubscription(subs)).toBe(subs[1]);
   });
@@ -72,21 +63,19 @@ describe("selectCanonicalSubscription", () => {
   it("priority 4: any free wins over canceled paid with Stripe ID", () => {
     const subs = [
       makeSub({
-        _id: "go_canceled_stripe",
         plan: "go",
         status: "canceled",
         stripeSubscriptionId: "sub_456",
       }),
-      makeSub({ _id: "free_canceled", plan: "free", status: "canceled" }),
+      makeSub({ plan: "free", status: "canceled" }),
     ];
     expect(selectCanonicalSubscription(subs)).toBe(subs[1]);
   });
 
   it("priority 5: any with Stripe ID wins over record without", () => {
     const subs = [
-      makeSub({ _id: "go_canceled", plan: "go", status: "canceled" }),
+      makeSub({ plan: "go", status: "canceled" }),
       makeSub({
-        _id: "pro_canceled_stripe",
         plan: "pro",
         status: "canceled",
         stripeSubscriptionId: "sub_789",
@@ -97,15 +86,14 @@ describe("selectCanonicalSubscription", () => {
 
   it("priority 6: falls back to first record", () => {
     const subs = [
-      makeSub({ _id: "go_canceled_1", plan: "go", status: "canceled" }),
-      makeSub({ _id: "pro_canceled_2", plan: "pro", status: "canceled" }),
+      makeSub({ plan: "go", status: "canceled" }),
+      makeSub({ plan: "pro", status: "canceled" }),
     ];
     expect(selectCanonicalSubscription(subs)).toBe(subs[0]);
   });
 
   it("single subscription is always returned", () => {
     const sub = makeSub({
-      _id: "only_one",
       plan: "go",
       status: "active",
       stripeSubscriptionId: "sub_x",
@@ -126,7 +114,7 @@ describe("requirePlanTier", () => {
       }),
     ]);
     await expect(
-      requirePlanTier(ctx as any, "user_1" as any, 10, "Extraction"),
+      requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction"),
     ).resolves.toBeUndefined();
   });
 
@@ -135,7 +123,7 @@ describe("requirePlanTier", () => {
       makeSub({ plan: "free", status: "active" }),
     ]);
     try {
-      await requirePlanTier(ctx as any, "user_1" as any, 10, "Extraction");
+      await requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction");
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -156,7 +144,7 @@ describe("requirePlanTier", () => {
       }),
     ]);
     await expect(
-      requirePlanTier(ctx as any, "user_1" as any, 10, "Extraction"),
+      requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction"),
     ).resolves.toBeUndefined();
   });
 
@@ -169,7 +157,7 @@ describe("requirePlanTier", () => {
       }),
     ]);
     try {
-      await requirePlanTier(ctx as any, "user_1" as any, 10, "Extraction");
+      await requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction");
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
@@ -187,7 +175,7 @@ describe("requirePlanTier", () => {
       }),
     ]);
     await expect(
-      requirePlanTier(ctx as any, "user_1" as any, 30, "Premium Feature"),
+      requirePlanTier(ctx, mockId("users", "1"), 30, "Premium Feature"),
     ).resolves.toBeUndefined();
   });
 
@@ -197,8 +185,8 @@ describe("requirePlanTier", () => {
     ]);
     try {
       await requirePlanTier(
-        ctx as any,
-        "user_1" as any,
+        ctx,
+        mockId("users", "1"),
         10,
         "PDF Processing",
       );
@@ -218,8 +206,8 @@ describe("requirePlanTier", () => {
     ]);
     try {
       await requirePlanTier(
-        ctx as any,
-        "user_1" as any,
+        ctx,
+        mockId("users", "1"),
         10,
         "Custom Feature",
       );

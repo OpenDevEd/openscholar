@@ -55,8 +55,9 @@ describe("requirePublicDebugEnabled", () => {
     try {
       requirePublicDebugEnabled();
       expect.fail("Expected requirePublicDebugEnabled to throw");
-    } catch (error: any) {
-      expect(error.data?.message ?? error.message).toContain(
+    } catch (error: unknown) {
+      const err = error as Error & { data?: { message?: string } };
+      expect(err.data?.message ?? err.message).toContain(
         "Debug functions are disabled",
       );
     }
