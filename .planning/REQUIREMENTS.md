@@ -35,8 +35,8 @@ Requirements for complete type safety. Each maps to roadmap phases.
 
 ### Test Files
 
-- [ ] **TEST-01**: All unit test files (~15 files) typed — zero `any` remaining
-- [ ] **TEST-02**: All Convex test/debug files (~5 files) typed — zero `any` remaining
+- [x] **TEST-01**: All unit test files (~15 files) typed — zero `any` remaining
+- [x] **TEST-02**: All Convex test/debug files (~5 files) typed — zero `any` remaining
 - [ ] **TEST-03**: Billing E2E test files typed — zero `any` remaining
 
 ### Compiler
@@ -76,8 +76,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-02 | Phase 64 | Complete |
 | COMP-03 | Phase 64 | Complete |
 | MOCK-01 | Phase 65 | Complete |
-| TEST-01 | Phase 66 | Pending |
-| TEST-02 | Phase 66 | Pending |
+| TEST-01 | Phase 66 | Complete |
+| TEST-02 | Phase 66 | Complete |
 | TEST-03 | Phase 66 | Pending |
 | STRICT-01 | Phase 67 (depends on 68, 69) | Pending |
 

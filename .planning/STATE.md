@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
 status: unknown
-last_updated: "2026-03-04T21:24:28.966Z"
+last_updated: "2026-03-04T22:07:27.587Z"
 progress:
   total_phases: 10
   completed_phases: 6
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 14
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 65 complete
+**Current focus:** v3.1 Complete Type Safety — Phase 66 in progress
 
 ## Current Position
 
-Phase: 65 of 67 (Mock Factories)
-Plan: 1 of 1 (all complete)
-Status: Phase 65 complete
-Last activity: 2026-03-04 — Completed 65-01 (Mock Factories)
+Phase: 66 of 67 (Test Files)
+Plan: 1 of 2
+Status: Executing Phase 66
+Last activity: 2026-03-04 — Completed 66-01 (Type Test Files)
 
 Progress: [██████░░░░] 24%
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 24%
 | Phase 64 P02 | 7min | 2 tasks | 7 files |
 | Phase 64 P01 | 8min | 2 tasks | 9 files |
 | Phase 65 P01 | 3min | 2 tasks | 4 files |
+| Phase 66 P01 | 5min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,9 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 65]: DeepPartial<T> with deep merge for context factory overrides -- enables selective nested mock customization
 - [Phase 65]: TableNames | SystemTableNames constraint on mockId generic -- satisfies Convex Id<T> type parameter requirement
 - [Phase 65]: Added createMockExtractionResult beyond plan spec -- commonly mocked in extraction tests alongside papers
+- [Phase 66]: Used createMockMutationCtx for requirePlanTier tests since it expects MutationCtx (not QueryCtx)
+- [Phase 66]: Kept local createMockMutationCtx in user-creation.test.ts with Record<string, unknown> typing and MutationCtx cast for insert tracking
+- [Phase 66]: Used explicit handler type signatures instead of as any for mutation mock access pattern
 
 ### Roadmap Evolution
 
@@ -121,6 +125,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 65-01 Mock Factories
-Stopped at: Completed 65-01-PLAN.md (Phase 65 all 1 plan complete)
+Last activity: 2026-03-04 - Completed 66-01 Type Test Files
+Stopped at: Completed 66-01-PLAN.md
 Resume file: None
