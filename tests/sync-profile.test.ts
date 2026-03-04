@@ -1,9 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import type { MutationCtx } from "../convex/_generated/server";
+import type { Id } from "../convex/_generated/dataModel";
+import { createMockMutationDef, mockId } from "./factories";
 
 // Use vi.hoisted to create mock values before vi.mock factories are hoisted
 const { mockUser, mockRequireAuth } = vi.hoisted(() => {
   const mockUser = {
-    _id: "user_123" as any,
+    _id: "mock_users_123" as unknown as Id<"users">,
+    _creationTime: 0,
     state: "active" as const,
     clerkId: "clerk_123",
     email: "",
@@ -19,9 +23,7 @@ const { mockUser, mockRequireAuth } = vi.hoisted(() => {
 });
 
 // Mock _generated/server so mutation() returns the definition object directly
-vi.mock("../convex/_generated/server", () => ({
-  mutation: (def: any) => def,
-}));
+vi.mock("../convex/_generated/server", () => createMockMutationDef());
 
 // Mock requireAuth to return the hoisted mockUser
 vi.mock("../convex/lib/auth", () => ({
@@ -31,7 +33,8 @@ vi.mock("../convex/lib/auth", () => ({
 import { syncProfileFromSession } from "../convex/users/mutations";
 
 // Access handler directly since mutation is mocked to return definition
-const syncHandler = (syncProfileFromSession as any).handler;
+const syncDef = syncProfileFromSession as { handler: (ctx: MutationCtx, args: Record<string, unknown>) => Promise<null> };
+const syncHandler = syncDef.handler;
 
 function createMockCtx() {
   return {
@@ -42,7 +45,7 @@ function createMockCtx() {
       insert: vi.fn(),
       get: vi.fn(),
     },
-  };
+  } as unknown as MutationCtx & { db: { patch: ReturnType<typeof vi.fn> } };
 }
 
 describe("syncProfileFromSession", () => {
@@ -51,7 +54,7 @@ describe("syncProfileFromSession", () => {
     vi.setSystemTime(new Date("2026-01-15T12:00:00Z"));
     // Reset mockUser to default blank state
     Object.assign(mockUser, {
-      _id: "user_123",
+      _id: "mock_users_123",
       state: "active",
       clerkId: "clerk_123",
       email: "",
@@ -59,7 +62,7 @@ describe("syncProfileFromSession", () => {
       lastName: undefined,
       avatarUrl: undefined,
     });
-    mockRequireAuth.mockResolvedValue(mockUser as any);
+    mockRequireAuth.mockResolvedValue(mockUser);
   });
 
   afterEach(() => {
@@ -73,7 +76,7 @@ describe("syncProfileFromSession", () => {
     await syncHandler(ctx, { email: "new@example.com" });
 
     expect(ctx.db.patch).toHaveBeenCalledWith(
-      "user_123",
+      "mock_users_123",
       expect.objectContaining({ email: "new@example.com" })
     );
   });

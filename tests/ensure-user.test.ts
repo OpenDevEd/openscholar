@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { ConvexError } from "convex/values";
+import { createMockMutationDef, createMockMutationCtx, createMockIdentity } from "./factories";
+import type { MutationCtx } from "../convex/_generated/server";
 
 // Mock _generated/server so mutation() returns the definition object directly,
 // giving us access to the .handler function
-vi.mock("../convex/_generated/server", () => ({
-  mutation: (def: any) => def,
-}));
+vi.mock("../convex/_generated/server", () => createMockMutationDef());
 
 // Mock createUserWithDefaults to track calls
 vi.mock("../convex/lib/userCreation", () => ({
@@ -21,18 +21,22 @@ import { ensureUser } from "../convex/users/mutations";
 const mockCreateUserWithDefaults = vi.mocked(createUserWithDefaults);
 
 // Access handler directly since mutation is mocked to return definition
-const ensureUserHandler = (ensureUser as any).handler;
+const ensureUserDef = ensureUser as { handler: (ctx: MutationCtx, args: Record<string, unknown>) => Promise<string> };
+const ensureUserHandler = ensureUserDef.handler;
 
-const mockIdentity = {
+const mockIdentity = createMockIdentity({
   subject: "clerk_123",
   email: "new@example.com",
   givenName: "New",
   familyName: "User",
   pictureUrl: "https://example.com/avatar.jpg",
-};
+});
 
-function createMockCtx(identity: any, existingUser: any) {
-  return {
+function createMockCtx(
+  identity: ReturnType<typeof createMockIdentity> | null,
+  existingUser: Record<string, unknown> | null,
+) {
+  return createMockMutationCtx({
     auth: { getUserIdentity: vi.fn().mockResolvedValue(identity) },
     db: {
       query: vi.fn().mockReturnValue({
@@ -44,7 +48,7 @@ function createMockCtx(identity: any, existingUser: any) {
       insert: vi.fn().mockResolvedValue("mock_id"),
       get: vi.fn(),
     },
-  };
+  });
 }
 
 describe("ensureUser", () => {
