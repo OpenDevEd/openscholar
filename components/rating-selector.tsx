@@ -38,12 +38,12 @@ import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { trimPaperData } from "@/lib/library/trim-paper-data";
+import { trimPaperData, type WorkInput } from "@/lib/library/trim-paper-data";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 interface RatingSelectorProps {
   paperId: string;
-  paperResult?: Record<string, any>;  // Full OpenAlex Work object for library save
+  paperResult?: WorkInput;  // Full OpenAlex Work object for library save
   variant?: "default" | "compact";
 }
 
