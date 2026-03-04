@@ -36,7 +36,6 @@
     "@openrouter/ai-sdk-provider": "^6.0.0-alpha.1",
     "@sickrin/openalex-sdk": "^1.0.0",
     "ai": "^6.0.62",
-    "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
