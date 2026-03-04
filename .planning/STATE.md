@@ -48,6 +48,7 @@ Progress: [##########] 100%
 | v2.3 | 8 | 14 | 2026-03-02 |
 | v2.4 | 4 | 7 | 2026-03-03 |
 | v2.5 | 7 | 15 | 2026-03-03 |
+| Phase 58 P01 | 2min | 2 tasks | 3 files |
 | Phase 58 P02 | 2min | 2 tasks | 2 files |
 | Phase 57 P02 | 5min | 2 tasks | 2 files |
 | Phase 57 P01 | 4min | 1 task | 3 files |
@@ -64,6 +65,8 @@ Progress: [##########] 100%
 
 See PROJECT.md Key Decisions table for full log.
 
+- [58-01] Pattern validation test for unexported closure: test replicates validation logic directly since fetchPapersFromHistory is not exported
+- [58-01] Three concurrency scenarios: partial success/failure, total failure, exact drain to zero
 - [58-02] Tests pass without production code changes -- both features already correctly implemented
 - [58-02] GROBID test placed in tests/ (node env) to avoid edge-runtime/cheerio conflict
 - [58-02] No cheerio mock needed -- real cheerio used in node environment for TEI XML parsing
@@ -111,6 +114,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-04 - Completed 58-02-PLAN.md (subscription cron + GROBID fallback tests)
+Last activity: 2026-03-04 - Completed 58-01-PLAN.md (concurrency OCC tests, OpenAlex email validation)
 Stopped at: v3.0 milestone complete (all 5 phases, 10 plans done)
 Resume file: None

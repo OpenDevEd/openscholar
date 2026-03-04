@@ -37,8 +37,8 @@ Requirements for v3.0 Zero-Any Overhaul. Each maps to roadmap phases.
 
 ### Correctness
 
-- [ ] **CORR-01**: Add concurrency invariant test for credit deduction verifying Convex OCC prevents negative balances; implement per-user workpool only if test reveals gap
-- [ ] **CORR-02**: Fix OpenAlex polite pool fallback -- fail loudly or use validated env var instead of `admin@example.com` default
+- [x] **CORR-01**: Add concurrency invariant test for credit deduction verifying Convex OCC prevents negative balances; implement per-user workpool only if test reveals gap
+- [x] **CORR-02**: Fix OpenAlex polite pool fallback -- fail loudly or use validated env var instead of `admin@example.com` default
 - [x] **CORR-03**: Add test for `checkSubscriptionStatus` cron correction path covering both expanded and non-expanded Stripe customer objects
 
 ### Test Coverage
@@ -91,8 +91,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-04 | Phase 56 | Complete |
 | PERF-05 | Phase 56 | Complete |
 | PERF-06 | Phase 57 | Complete |
-| CORR-01 | Phase 58 | Pending |
-| CORR-02 | Phase 58 | Pending |
+| CORR-01 | Phase 58 | Complete |
+| CORR-02 | Phase 58 | Complete |
 | CORR-03 | Phase 58 | Complete |
 | TEST-01 | Phase 55 | Complete |
 | TEST-02 | Phase 58 | Complete |
