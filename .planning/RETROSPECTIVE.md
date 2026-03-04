@@ -444,6 +444,64 @@
 
 ---
 
+## Milestone: v3.0 — Zero-Any Overhaul
+
+**Shipped:** 2026-03-04
+**Phases:** 6 | **Plans:** 11 | **Commits:** 57
+
+### What Was Built
+- Eliminated all `as any` casts from production code — ExtractionResultWithReview derived from validator, branded WorkflowId, v.union for rate limiter, typeof narrowing for Stripe customer
+- XSS-safe HighlightedText component replacing all dangerouslySetInnerHTML with React-native text splitting
+- Persistent auditLogs table with writeAuditLog internalMutation, env var validation cron, assertPlanPriceConfig fail-fast
+- Debug function production exclusion strategy documented
+- Incremental extraction report aggregation via extractionJobStats table with lazy backfill for legacy jobs
+- ExcelJS migration with dynamic import (~500KB bundle savings), bounded getLibraryCount, subscription cron batching with 45s circuit-breaker
+- Migration helper cleanup (listAllConnections, migrateToEncryptedKeys removed)
+- OpenAlex contact email fail-loud validation
+- 45+ new tests covering credit concurrency OCC, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron
+
+### What Worked
+- CONCERNS.md inventory from prior milestones made requirements mapping trivial — every concern became a requirement
+- Phase 59 (gap closure) was planned proactively from milestone audit, not reactively — audit passed on first run after gap closure
+- Parallel plan execution within waves (54-01/54-02, 55-01/55-02, 56-01/56-02) maximized throughput
+- Validator-derived types (Infer<typeof validator>) established single source of truth pattern
+- Text splitting over innerHTML for XSS was simpler and more correct than DOMPurify approach
+- Incremental stats upsert pattern (write on paper complete) decoupled report generation from result loading
+- Circuit-breaker cron pattern with self-scheduling continuation is infinitely scalable
+
+### What Was Inefficient
+- SUMMARY.md one_liner fields still not populated (same recurring issue from v2.0 through v2.5)
+- ROADMAP.md plan checkboxes for phases 55-59 not fully updated during execution
+- Phase 57 TBD plans required separate plan-phase runs mid-milestone
+- Progress table alignment in ROADMAP.md had inconsistent column formatting for v3.0 phases
+
+### Patterns Established
+- Infer<typeof validator> for deriving TypeScript types from Convex validators — single source of truth
+- Branded type casts (as WorkflowId) for type bridges instead of as-any
+- v.union(v.literal(...)) for runtime argument validation matching compile-time defineRateLimits keys
+- Text splitting over innerHTML for safe search highlighting
+- Persistent audit table (writeAuditLog) for security-sensitive operations
+- Cron-based env var validation for early detection of missing critical configuration
+- assertPlanPriceConfig fail-fast in billing handler bodies (not module scope)
+- Circuit-breaker cron with self-scheduling continuation for unbounded-growth operations
+- Incremental stats upsert on write with lazy backfill on first read for legacy data
+- Stats scope guard: bypass fast path when report has paper/question-level filtering
+
+### Key Lessons
+1. Validator-derived types should be the default pattern in Convex projects — eliminates manual type maintenance and ensures DB/code alignment
+2. XSS prevention via text splitting is always preferable to sanitization — correct by construction, zero dependencies
+3. Incremental aggregation (upsert on write) with lazy backfill is the right pattern for decoupling report generation from data loading
+4. Circuit-breaker crons with self-scheduling continuation handle growth without rate limit exhaustion — plan for scale in cron jobs early
+5. Cron-based env var validation catches configuration drift between deploys — better than handler-level validation that's too late
+6. Proactive gap closure phases from milestone audit prevent reactive work — audit-first completion is cleaner than iterative gap discovery
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: ~2 sessions across 2 days
+- Notable: 11 plans in 2 days — entire CONCERNS.md resolved in a single milestone
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -459,6 +517,7 @@
 | v2.3 | 57 | 8 | 14 | ~2.5min | Hardening sweep, shared crypto, cascade deletion, rate limiting |
 | v2.4 | 30 | 4 | 7 | ~3min | Concerns sweep, typed validators, credit guards, cron cleanup |
 | v2.5 | 54 | 7 | 15 | ~2min | Tech debt purge, typed Stripe, zero TS errors, audit logging |
+| v3.0 | 57 | 6 | 11 | ~2min | Zero as-any, XSS-safe rendering, incremental aggregation, audit table |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -480,3 +539,7 @@
 16. ROADMAP.md Phase Details sections must be complete for all phases — missing details break CLI tool detection (v2.4)
 17. Test safety nets before refactoring catch regressions that would be invisible without coverage (v2.5)
 18. Stricter typing in one module cascades TS errors — plan a fix phase alongside type-tightening work (v2.5)
+19. Validator-derived types (Infer<typeof validator>) should be default in Convex — eliminates manual type maintenance (v3.0)
+20. XSS prevention via text splitting is always preferable to sanitization — correct by construction, zero dependencies (v3.0)
+21. Incremental aggregation (upsert on write) with lazy backfill handles scale without loading full datasets (v3.0)
+22. Proactive gap closure from milestone audit prevents reactive work — audit-first completion is cleaner (v3.0)

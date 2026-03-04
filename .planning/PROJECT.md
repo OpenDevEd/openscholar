@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (744 tests across 73 files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, and a fully hardened codebase with zero TypeScript compile errors, typed Stripe handlers, typed extraction validators, encrypted API keys, centralized security with audit logging, and automated cleanup crons.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (750+ tests across 75+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, and a fully hardened codebase with zero `as any` casts in production code, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, and automated cleanup crons.
 
 ## Core Value
 
@@ -91,30 +91,26 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ focus-mode.tsx decomposed into 3 sub-components — v2.5
 - ✓ Stripe webhook, credit deduction, cascade deletion, and debug gate test coverage — v2.5
 - ✓ Zero TypeScript compile errors across entire codebase (production + tests) — v2.5
+- ✓ All `as any` casts eliminated from production code — ExtractionResultWithReview derived from validator, branded WorkflowId, v.union for rate limiter, typeof narrowing for Stripe customer — v3.0
+- ✓ XSS-safe HighlightedText component replacing all dangerouslySetInnerHTML — v3.0
+- ✓ Persistent auditLogs table with writeAuditLog internalMutation for security-sensitive operations — v3.0
+- ✓ Env var validation cron checking all critical env vars every 24h — v3.0
+- ✓ assertPlanPriceConfig fail-fast in all billing-critical handlers — v3.0
+- ✓ Debug function production exclusion strategy documented — v3.0
+- ✓ Incremental extraction report aggregation via extractionJobStats table with lazy backfill — v3.0
+- ✓ ExcelJS migration with dynamic import (~500KB bundle savings) — v3.0
+- ✓ Bounded getLibraryCount query (.take(10_000)) — v3.0
+- ✓ Subscription cron batching with 45s circuit-breaker and self-scheduling continuation — v3.0
+- ✓ Migration helpers removed (listAllConnections, migrateToEncryptedKeys) — v3.0
+- ✓ OpenAlex contact email fail-loud validation — v3.0
+- ✓ Credit deduction OCC concurrency validated (Convex prevents negative balances) — v3.0
+- ✓ Module boundary fix: getProviderModel moved to lib/ai/server/ — v3.0
+- ✓ Dead code removed: library-filters.tsx, test.setup.ts, highlightText function — v3.0
+- ✓ 45+ new tests: concurrency, XSS, GROBID fallback, env validation, ExcelJS round-trip, subscription cron — v3.0
 
 ### Active
 
-**Current Milestone: v3.0 Zero-Any Overhaul**
-
-**Goal:** Resolve every item in CONCERNS.md — zero `any` casts, all security/performance/fragility concerns addressed, full test coverage for gaps.
-
-**Target features:**
-- Eliminate every `as any` cast across the entire codebase (export, filtering, maintenance, rate limiter, workflow cancel)
-- Migrate upgrade metadata from Stripe to Convex
-- Persistent audit table replacing console.log audit events
-- XSS-safe highlight implementation (no dangerouslySetInnerHTML)
-- Real server-side pagination for library queries
-- Incremental extraction report aggregation
-- Dynamic XLSX import and xlsx package replacement
-- Startup env var validation
-- Debug function production exclusion strategy
-- Subscription cron batching with circuit-breaking
-- Remove dead code and orphaned files
-- Fix OpenAlex contact email fallback
-- Full test coverage for all identified gaps (subscription cron, credit concurrency, XSS, GROBID fallback)
-- Credit deduction TOCTOU mitigation
-- Rate limiter exhaustiveness enforcement
-- Module boundary cleanup (ai/client → ai/server)
+(No active milestone — all v3.0 requirements shipped)
 
 ### Out of Scope
 
@@ -141,17 +137,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 (38 files, +3181/-172), v1.1 (36 files, +4136/-210), v1.2 (1,248 LOC test infra, 351 LOC CI), v2.0 (91 files, +14,768/-100), v2.1 (258 files, +37,922/-3,469), v2.2 (46 files, +7,216/-662), v2.3 (77 files, +8,779/-769), v2.4 (64 files, +6,447/-318), and v2.5 (80 files, +7,858/-1,458).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting).
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`.
-Test suite: 73 Vitest test files (744 tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit, cascade deletion, and debug gate tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean).
+Shipped v1.0 through v3.0 (10 milestones, 59 phases, 120 plans). Latest: v3.0 (82 files, +10,498/-893).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`.
+Test suite: 75+ Vitest test files (750+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron, and job stats tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `as any` casts in production code.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
-Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export, two-column sidebar layout with collapsible filter panel.
+Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export via ExcelJS (dynamic import), two-column sidebar layout with collapsible filter panel, bounded count query.
 Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
-Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled() with audit trail and JSDoc @production annotations.
-Extraction: 18 shared typed validators for all extraction document shapes, typed query return validators (zero v.any()), typed searchFilters schema, credit-guard pattern protecting against cancelled-job billing races.
-Performance: Batch review loading (no N+1), bounded .collect() calls with .take() guards, `by_expiry` and `by_status_updatedAt` composite indexes, standard crypto import.
-Maintenance: Hourly cron for expired OAuth token cleanup, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
+Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, persistent `auditLogs` table with `writeAuditLog` internalMutation, XSS-safe `HighlightedText` component (no dangerouslySetInnerHTML), env var validation cron, assertPlanPriceConfig fail-fast, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled() with audit trail.
+Extraction: 18 shared typed validators, typed query return validators (zero v.any()), typed searchFilters schema, credit-guard pattern, incremental `extractionJobStats` aggregation with lazy backfill, `ExtractionResultWithReview` type derived from validator threaded through all downstream consumers.
+Performance: Batch review loading (no N+1), bounded .collect() calls with .take() guards, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings).
+Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation cron, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
 
 ## Constraints
 
@@ -220,6 +216,18 @@ Maintenance: Hourly cron for expired OAuth token cleanup, GDPR-compliant user ca
 | MAX_PAPERS_PER_JOB = 500 safety bound | Applied to all per-job paper queries and mutations | ✓ Good — prevents unbounded memory |
 | Required refs in stripeWebhookHandlers | All callers always provide refs via wrapper functions | ✓ Good — eliminates undefined errors |
 | Double cast (as unknown as X) for Stripe v20 tests | Union type makes Partial resolve to last member | ✓ Good — clean test mocks |
+| Derive ExtractionResultWithReview from Convex validator | Single source of truth, zero manual type maintenance | ✓ Good — used in export, filtering, table-view |
+| Branded WorkflowId cast instead of as-any | Type-safe bridge for @convex-dev/workflow API | ✓ Good — preserves type information |
+| v.union(v.literal(...)) for rate limiter names | Runtime validation matches defineRateLimits keys | ✓ Good — invalid names rejected at boundary |
+| SubscriptionItem for period boundaries | Stripe API 2026-01-28 removed subscription-level fields | ✓ Good — future-proof |
+| Text splitting over innerHTML for highlighting | Zero-dep, XSS-safe by construction | ✓ Good — no sanitization needed |
+| Persistent auditLogs table over console.log | Queryable audit trail for security investigations | ✓ Good — structured, persistent |
+| Cron-based env var validation | Handler-level too late, module-scope blocks all functions | ✓ Good — 24h catch window |
+| Circuit-breaker cron with self-scheduling | Fresh 45s budget per batch prevents Stripe rate limit exhaustion | ✓ Good — scales with subscriber growth |
+| extractionJobStats incremental upsert | Decouple report generation from loading all results | ✓ Good — enables future 500-paper cap lift |
+| Stats fast path only for summary counters | Per-question detail requires fan-out; scope guard for filtered reports | ✓ Good — 80/20 optimization |
+| Lazy backfill for legacy job stats | Compute and persist on first access, not migration | ✓ Good — zero-downtime |
+| ExcelJS dynamic import | ~500KB bundle savings, maintained library | ✓ Good — CJS/ESM interop guard handles both formats |
 
 ---
-*Last updated: 2026-03-03 after v3.0 milestone started*
+*Last updated: 2026-03-04 after v3.0 milestone completed*

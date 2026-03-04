@@ -10,18 +10,6 @@
 - Impact: Adds a live Stripe API call during webhook processing. If metadata migrates to Convex but this code is not updated, upgrade proration credit grants will silently stop working.
 - Fix approach: Once upgrade metadata is fully migrated into Convex, read from `subRecord` directly and remove the `subscription.retrieve()` call.
 
-**BUG-05: OpenAlex polite pool uses placeholder email:**
-- Issue: The User-Agent header for OpenAlex API requests falls back to `admin@example.com` when `OPENALEX_CONTACT_EMAIL` env var is not set.
-- Files: `convex/extraction/actions.ts` (line 141)
-- Impact: Production requests may not be routed through the polite pool, risking rate throttling by OpenAlex.
-- Fix approach: Ensure `OPENALEX_CONTACT_EMAIL` is set in the Convex production environment. Add a startup assertion via the env validation pattern in `convex/lib/env.ts`.
-
-**`NEXT_PUBLIC_*` env vars used in Convex backend:**
-- Issue: Feature flag checks in `convex/lib/featureFlags.ts` and `convex/extraction/guard.ts` read `NEXT_PUBLIC_*` env vars (e.g. `NEXT_PUBLIC_CREDITS_ENABLED`, `NEXT_PUBLIC_EXTRACTION_ENABLED`). These are browser-scoped naming conventions and semantically confusing when used in server-side Convex functions.
-- Files: `convex/lib/featureFlags.ts`, `convex/extraction/guard.ts`, `convex/extraction/content.ts`, `convex/credits/queries.ts`
-- Impact: Low risk currently — Convex treats all env vars identically — but creates misleading naming and may be overlooked during deployment configuration.
-- Fix approach: Rename these vars without the `NEXT_PUBLIC_` prefix for Convex-side usage, or document the dual-usage pattern explicitly.
-
 **Stripe customer type cast with `as any`:**
 - Issue: `convex/maintenance/internal.ts` (line 103) casts the Stripe `fresh.customer` as `(fresh.customer as any)?.id` to handle both string and expanded object forms. The Stripe SDK v20 exposes a typed union for this.
 - Files: `convex/maintenance/internal.ts`
@@ -157,11 +145,6 @@
 - Scaling path: Increase `maxParallelism` in `convex/workflow.ts` as Convex action concurrency limits allow; consider per-user workpools to prevent one user from starving others.
 
 ## Dependencies at Risk
-
-**`@openrouter/ai-sdk-provider` is an alpha pre-release:**
-- Risk: Package version `^6.0.0-alpha.1` is explicitly alpha. API shape or behavior may change without notice.
-- Impact: AI extraction and server-side AI operations that route through OpenRouter (`lib/ai/client/providers.ts`, `convex/ai/helpers.ts`) could break on dependency update.
-- Migration plan: Monitor for stable release of `@openrouter/ai-sdk-provider`. Pin the exact version until stable; do not allow range upgrades.
 
 **`xlsx` package is a legacy library (no ESM, large footprint):**
 - Risk: `xlsx` (`^0.18.5`) has known security vulnerabilities in certain prototype pollution scenarios and is not actively maintained in its OSS form. The `xlsx` npm package at 0.18.x is the community fork of SheetJS CE.

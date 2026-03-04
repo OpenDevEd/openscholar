@@ -1,5 +1,29 @@
 # Milestones
 
+## v3.0 Zero-Any Overhaul (Shipped: 2026-03-04)
+
+**Phases completed:** 6 phases, 11 plans
+**Git range:** `70ca612..0e9c435` (57 commits)
+**Files changed:** 82 files, +10,498/-893 lines
+**Timeline:** 2 days (2026-03-03 → 2026-03-04)
+
+**Key accomplishments:**
+- Eliminated all `as any` casts from production code — ExtractionResultWithReview derived from validator, branded WorkflowId, v.union for rate limiter, typeof narrowing for Stripe customer (Phase 54)
+- XSS-safe HighlightedText component replacing all dangerouslySetInnerHTML with React-native text splitting and 12 security tests (Phase 55)
+- Persistent audit logging table with writeAuditLog internalMutation, env var validation cron, assertPlanPriceConfig fail-fast, and debug exclusion strategy docs (Phase 55)
+- Incremental extraction report aggregation via extractionJobStats table with per-question counters, lazy backfill for legacy jobs, and stats-backed report queries (Phase 57)
+- ExcelJS migration with dynamic import (~500KB bundle savings), bounded getLibraryCount, subscription cron batching with 45s circuit-breaker (Phases 56)
+- 45+ new tests covering credit concurrency OCC, XSS safety, GROBID fallback chain, env validation, ExcelJS round-trip, and subscription cron correction (Phase 58)
+
+**Audit:** 28/28 requirements, 6/6 phases, 28/28 integrations, 4/4 E2E flows — PASSED
+
+**Tech debt carried forward:**
+- 33 `as any` casts remain in test/debug files (outside TYPE-0X scope, low severity)
+- Stale Convex codegen types for audit/envValidation (resolves on `npx convex deploy`)
+- Per-question report detail still requires fan-out (summary/metrics use fast path)
+
+---
+
 ## v2.5 Tech Debt Purge (Shipped: 2026-03-03)
 
 **Phases completed:** 7 phases, 15 plans
