@@ -1,5 +1,4 @@
-import type { FunctionReference } from "convex/server";
-import type { ActionCtx } from "../_generated/server";
+import type { FunctionReference, GenericActionCtx, GenericDataModel } from "convex/server";
 import type Stripe from "stripe";
 
 /**
@@ -21,7 +20,7 @@ export function getStripeApiVersion(event: Stripe.Event): string | undefined {
  * Records failure in stripeEventLogs.
  */
 export async function recordStripeEventFailure(
-  ctx: ActionCtx,
+  ctx: GenericActionCtx<GenericDataModel>,
   event: Stripe.Event,
   error: unknown,
   markStripeEventFailed: FunctionReference<"mutation", "internal">,
@@ -45,7 +44,7 @@ export async function recordStripeEventFailure(
  * Wraps handler with success/failure audit logging.
  */
 export async function runAuditedStripeHandler(
-  ctx: ActionCtx,
+  ctx: GenericActionCtx<GenericDataModel>,
   event: Stripe.Event,
   handler: () => Promise<void>,
   refs: {
@@ -77,7 +76,7 @@ export async function runAuditedStripeHandler(
  * Calls processInvoiceForGrant, retries on failure with 60s delay.
  */
 export async function processInvoiceForGrantNonBlocking(
-  ctx: ActionCtx,
+  ctx: GenericActionCtx<GenericDataModel>,
   event: Stripe.Event,
   invoice: Stripe.Invoice,
   refs: {
