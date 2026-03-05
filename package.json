@@ -17,7 +17,8 @@
     "test:billing:extended:ci": "BILLING_LIVE_PUSH_CONVEX=true npm run test:billing:preflight -- --push-convex && npm run test:billing:extended",
     "test:billing:e2e": "playwright test --project=billing",
     "test:e2e:auth": "playwright test e2e/auth.spec.ts --config=playwright.config.ts",
-    "test:ci": "npm run test && npm run build && npm run test:e2e:auth"
+    "test:ci": "npm run test && npm run build && npm run test:e2e:auth",
+    "test:all": "npm run test:ci && npm run test:billing:e2e"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.31",
