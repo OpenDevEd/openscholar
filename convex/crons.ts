@@ -14,7 +14,8 @@ crons.interval(
 crons.interval(
   "check subscription status",
   { hours: 1 },
-  internal.maintenance.internal.checkSubscriptionStatus
+  internal.maintenance.internal.checkSubscriptionStatus,
+  {},
 );
 
 // Hourly monitoring for stale failed Stripe events (flag only, no auto-retry)

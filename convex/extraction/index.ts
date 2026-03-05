@@ -10,14 +10,11 @@ export { testSimpleWorkflow } from "./testWorkflow";
 // Test actions
 export { createTestJob } from "./testActions";
 
-// Actions
-export { fetchPapersFromHistory } from "./actions";
-
-// Workpool Actions
-export {
-  downloadAndIndexPdfAction,
-  waitAndExtractAction,
-} from "./workpoolActions";
+// Note: "use node" action files (actions.ts, workpoolActions.ts,
+// debug_pdfjs_alignment.ts, test_automation.ts) are NOT re-exported here.
+// Re-exporting from a non-"use node" barrel file causes the Convex bundler
+// to fail on transitive node:crypto imports. These files are registered
+// individually by the Convex bundler via their own module entries.
 
 // Mutations (public)
 export {
@@ -94,7 +91,7 @@ export { getPaperErrorsInternal } from "./debug_papers";
 export { debugPaperResults } from "./debug_paper_results";
 export { debugJobContent } from "./debug_job_content";
 export { debugJobCitations } from "./debug_job_citations";
-export { debugPdfAlignment } from "./debug_pdfjs_alignment";
+// debugPdfAlignment is in a "use node" file -- imported directly, not re-exported
 
 // Test job creation
 export { createTestJobForFix } from "./create_test_job";
@@ -105,8 +102,7 @@ export {
   getTestJobStatus,
 } from "./test_runner";
 
-// Test automation - FULL AUTOMATED TEST
-export { runPdfTestNow } from "./test_automation";
+// runPdfTestNow is in a "use node" file -- imported directly, not re-exported
 
 // Internal test automation helpers
 export {
