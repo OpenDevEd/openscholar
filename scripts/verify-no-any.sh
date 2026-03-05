@@ -34,7 +34,7 @@ echo ""
 # ------------------------------------------------------------------
 # Step 1: Grep for `: any`, `as any`, `any[]` patterns in TS files
 # ------------------------------------------------------------------
-echo "[1/2] Scanning for any type patterns..."
+echo "[1/3] Scanning for any type patterns..."
 echo ""
 
 # Use grep to find candidate lines, then filter false positives
@@ -86,38 +86,63 @@ fi
 echo ""
 
 # ------------------------------------------------------------------
-# Step 2: Run tsc --noEmit and count non-Phase-68/69 errors
+# Step 2: Grep for angle-bracket <any> patterns (e.g., Validator<any>)
 # ------------------------------------------------------------------
-echo "[2/2] Running tsc --noEmit..."
+echo "[2/3] Scanning for angle-bracket <any> patterns..."
+echo ""
+
+ANGLE_CANDIDATES=$(grep -rnE '<any[>,\)]' \
+  --include='*.ts' --include='*.tsx' \
+  --exclude-dir='_generated' \
+  --exclude-dir='node_modules' \
+  --exclude-dir='.next' \
+  app/ components/ lib/ convex/ tests/ 2>/dev/null || true)
+
+if [ -n "$ANGLE_CANDIDATES" ]; then
+  while IFS= read -r candidate; do
+    content="${candidate#*:*:}"
+    trimmed=$(echo "$content" | sed 's/^[[:space:]]*//')
+
+    # Skip comment-only lines
+    case "$trimmed" in
+      //*|'*'*|\#*) continue ;;
+    esac
+
+    # Skip lines where <any> appears only inside string literals
+    without_strings=$(echo "$content" | sed "s/\"[^\"]*\"//g; s/'[^']*'//g")
+    without_strings=$(echo "$without_strings" | sed 's/`[^`]*`//g')
+    if ! echo "$without_strings" | grep -qE '<any[>,\)]'; then
+      continue
+    fi
+
+    echo "  VIOLATION: $candidate"
+    VIOLATIONS=$((VIOLATIONS + 1))
+  done <<< "$ANGLE_CANDIDATES"
+fi
+
+if [ "$VIOLATIONS" -eq 0 ]; then
+  echo "  PASS: Zero angle-bracket <any> patterns found"
+fi
+
+echo ""
+
+# ------------------------------------------------------------------
+# Step 3: Run tsc --noEmit
+# ------------------------------------------------------------------
+echo "[3/3] Running tsc --noEmit..."
 echo ""
 
 TSC_OUTPUT=$(npx tsc --noEmit 2>&1 || true)
-NON_PHASE_ERRORS=$(echo "$TSC_OUTPUT" \
-  | grep "error TS" \
-  | grep -v "convex/http.ts" \
-  | grep -v "audit" \
-  | grep -v "envValidation" \
-  | grep -v "convex/crons.ts" \
-  | wc -l \
-  | tr -d ' ')
+TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" || true)
 
-if [ "$NON_PHASE_ERRORS" -gt 0 ]; then
-  echo "  FAIL: $NON_PHASE_ERRORS tsc errors outside Phase 68/69 scope"
+if [ "$TSC_ERRORS" -gt 0 ]; then
+  echo "  FAIL: $TSC_ERRORS tsc errors found"
   echo ""
-  echo "$TSC_OUTPUT" \
-    | grep "error TS" \
-    | grep -v "convex/http.ts" \
-    | grep -v "audit" \
-    | grep -v "envValidation" \
-    | grep -v "convex/crons.ts" \
-    | head -20
-  VIOLATIONS=$((VIOLATIONS + NON_PHASE_ERRORS))
+  echo "$TSC_OUTPUT" | grep "error TS" | head -20
+  VIOLATIONS=$((VIOLATIONS + TSC_ERRORS))
 else
-  echo "  PASS: Zero tsc errors outside Phase 68/69 scope"
+  echo "  PASS: Zero tsc errors"
 fi
-
-TOTAL_TSC_ERRORS=$(echo "$TSC_OUTPUT" | grep -c "error TS" || true)
-echo "  (Total tsc errors including Phase 68/69 scope: $TOTAL_TSC_ERRORS)"
 
 # ------------------------------------------------------------------
 # Summary
