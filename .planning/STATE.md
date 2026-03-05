@@ -77,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-05 - Milestone v3.1 archived
+Last activity: 2026-03-05 - Completed quick task 4: fix billing e2e auth to use clerk testing token instead of password strategy
 Stopped at: Between milestones
 Resume file: None
