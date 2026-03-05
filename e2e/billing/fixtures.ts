@@ -13,7 +13,6 @@ import { PricingPage } from "./pages/pricing-page";
 type ClerkTestUser = {
   id: string;
   email: string;
-  password: string;
 };
 
 /**
@@ -76,11 +75,7 @@ export const test = base.extend<BillingFixtures>({
     await clerk.loaded({ page });
     await clerk.signIn({
       page,
-      signInParams: {
-        strategy: "password",
-        identifier: email,
-        password,
-      },
+      emailAddress: email,
     });
 
     // Navigate to a protected page to trigger ensureUser in Convex
@@ -89,7 +84,7 @@ export const test = base.extend<BillingFixtures>({
     // Wait for the page to finish loading (subscription state settles)
     await page.waitForLoadState("networkidle");
 
-    await use({ id: user.id, email, password });
+    await use({ id: user.id, email });
 
     // Teardown: sign out and delete the Clerk user
     try {
