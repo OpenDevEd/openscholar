@@ -316,7 +316,9 @@ Plans:
   2. `grep -n "console.log" convex/test_automation.ts convex/testWorkflow.ts` returns zero matches
   3. `createMockExtractionPaper` and `createMockExtractionResult` removed from tests/factories/convex-ids.ts exports
   4. All existing tests pass after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 70-01-PLAN.md -- Fix SUMMARY hash, remove debug console.logs, remove orphaned mock exports
 
 ### Phase 71: Verification Script & Validator\<any\> Fix
 **Goal**: Close verification coverage gap and eliminate remaining \<any\> patterns
