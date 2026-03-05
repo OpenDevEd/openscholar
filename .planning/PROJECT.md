@@ -107,22 +107,16 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ Module boundary fix: getProviderModel moved to lib/ai/server/ — v3.0
 - ✓ Dead code removed: library-filters.tsx, test.setup.ts, highlightText function — v3.0
 - ✓ 45+ new tests: concurrency, XSS, GROBID fallback, env validation, ExcelJS round-trip, subscription cron — v3.0
+- ✓ All 9 v.any() validators replaced with typed alternatives (JSON serialization for Clerk webhooks) — v3.1
+- ✓ Extraction and billing backends fully typed (workflow, workpoolActions, mutations, subscriptions, credits, stripeWebhookHandlers) — v3.1
+- ✓ Client libraries and React components fully typed (utils, store, auth, extraction, AI, results-list, paper-card, extraction components) — v3.1
+- ✓ Typed mock factory infrastructure (DeepPartial factories for Convex context, Ids/documents, Stripe events) — v3.1
+- ✓ All 20+ test files typed using mock factories (85+ `as any` casts eliminated) — v3.1
+- ✓ Zero-any verified: `tsc --noEmit` zero errors, `verify-no-any.sh` passes all 3 checks (`: any`/`as any`/`any[]`, `<any>` angle-bracket, tsc compilation) — v3.1
 
 ### Active
 
-## Current Milestone: v3.1 Complete Type Safety
-
-**Goal:** Eliminate every remaining `any` type from production and test code, achieving complete type safety across the entire codebase.
-
-**Target features:**
-- Replace all `: any` type annotations with proper types in production code (~80 instances)
-- Replace all `as any` casts in production code (~17 instances) and test code (~68 instances)
-- Replace all `Record<string, any>` with typed records (~6 production instances)
-- Replace all `v.any()` Convex validators with typed alternatives (~9 instances)
-- Replace all `any[]` with typed arrays (~15 instances)
-- Replace all `<any>` generic parameters with proper types (~16 instances)
-- Create typed mock helpers/factories for test code to eliminate mock casting
-- Replace all `: any` type annotations in test code (~40 instances)
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -149,15 +143,16 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 through v3.0 (10 milestones, 59 phases, 120 plans). Latest: v3.0 (82 files, +10,498/-893).
+Shipped v1.0 through v3.1 (11 milestones, 71 phases, 140 plans). Latest: v3.1 (143 files, +9,047/-676).
 Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`.
-Test suite: 75+ Vitest test files (750+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron, and job stats tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `as any` casts in production code.
+Test suite: 75+ Vitest test files (750+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron, and job stats tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export via ExcelJS (dynamic import), two-column sidebar layout with collapsible filter panel, bounded count query.
 Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
 Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, persistent `auditLogs` table with `writeAuditLog` internalMutation, XSS-safe `HighlightedText` component (no dangerouslySetInnerHTML), env var validation cron, assertPlanPriceConfig fail-fast, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled() with audit trail.
 Extraction: 18 shared typed validators, typed query return validators (zero v.any()), typed searchFilters schema, credit-guard pattern, incremental `extractionJobStats` aggregation with lazy backfill, `ExtractionResultWithReview` type derived from validator threaded through all downstream consumers.
+Type safety: Complete type safety across entire codebase — zero `: any`, `as any`, `any[]`, `<any>`, `Record<string, any>`, `v.any()` in user-authored code. Typed mock factories (DeepPartial<T>) for Convex context, Ids, documents, and Stripe events. GenericValidator replaces all Validator<any> instances.
 Performance: Batch review loading (no N+1), bounded .collect() calls with .take() guards, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings).
 Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation cron, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
 
@@ -241,5 +236,11 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | Lazy backfill for legacy job stats | Compute and persist on first access, not migration | ✓ Good — zero-downtime |
 | ExcelJS dynamic import | ~500KB bundle savings, maintained library | ✓ Good — CJS/ESM interop guard handles both formats |
 
+| GenericValidator replaces Validator<any,any,any> | SDK alias, zero behavior change, eliminates last <any> pattern | ✓ Good — 11 call sites updated |
+| JSON serialization for Clerk webhook data | Convex 1.32.0 lacks v.unknown(); JSON string workaround | ✓ Good — type-safe boundary |
+| DeepPartial<T> mock factories | Selective nested mock customization without as any | ✓ Good — 20+ test files migrated |
+| GenericActionCtx<GenericDataModel> for Stripe webhooks | Matches @convex-dev/stripe StripeEventHandler callback signature | ✓ Good — cross-library type boundary |
+| as never for Convex useQuery/usePaginatedQuery boundary | Satisfies generic constraints without widening to any | ✓ Good — used in use-auth-query, hook-factory |
+
 ---
-*Last updated: 2026-03-04 after v3.1 milestone started*
+*Last updated: 2026-03-05 after v3.1 milestone complete*

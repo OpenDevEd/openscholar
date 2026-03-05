@@ -1,5 +1,26 @@
 # Milestones
 
+## v3.1 Complete Type Safety (Shipped: 2026-03-05)
+
+**Phases completed:** 12 phases, 20 plans
+**Git range:** `93febde..0878e73` (82 commits)
+**Files changed:** 143 files, +9,047/-676 lines
+**Timeline:** 2 days (2026-03-04 → 2026-03-05)
+
+**Key accomplishments:**
+- All 9 v.any() validators replaced with typed alternatives including JSON serialization workaround for Clerk webhooks (Phase 60)
+- Extraction and billing backends fully typed — workflow, workpoolActions, mutations, subscriptions, credits, stripeWebhookHandlers with zero `: any`, `as any`, or `any[]` (Phases 61, 68)
+- Client libraries and React components typed — 40+ any instances eliminated across utils, store, auth, extraction, AI libraries and 10+ components (Phases 63, 64)
+- Typed mock factory infrastructure — DeepPartial factories for Convex context, Ids/documents, and Stripe events enabling type-safe test mocks (Phase 65)
+- All 20+ test files typed — 85+ `as any` casts replaced using mock factories (Phase 66)
+- Zero-any verified — `tsc --noEmit` zero errors, `verify-no-any.sh` catches `: any`, `as any`, `any[]`, and `<any>` patterns (Phases 67, 69, 71)
+
+**Audit:** 18/18 requirements, 12/12 phases, 47/47 integrations, 6/6 E2E flows — PASSED
+
+**Tech debt carried forward:** None — all 5 debt items from initial audit resolved by gap-closure phases 70 and 71
+
+---
+
 ## v3.0 Zero-Any Overhaul (Shipped: 2026-03-04)
 
 **Phases completed:** 6 phases, 11 plans

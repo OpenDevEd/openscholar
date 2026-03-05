@@ -502,6 +502,64 @@
 
 ---
 
+## Milestone: v3.1 — Complete Type Safety
+
+**Shipped:** 2026-03-05
+**Phases:** 12 | **Plans:** 20 | **Commits:** 82
+
+### What Was Built
+- All 9 v.any() validators replaced with typed alternatives (JSON serialization workaround for Clerk webhooks since Convex 1.32.0 lacks v.unknown())
+- Extraction and billing backends fully typed — workflow, workpoolActions, mutations, subscriptions, credits, stripeWebhookHandlers with zero `: any`, `as any`, or `any[]`
+- All client libraries typed — utils.ts (JsonValue recursive type), store.ts (Zustand persist migration via unknown), use-auth-query.ts (as never boundary pattern), extraction/search/AI libs
+- All React components typed — results-list (PaperResult extends Work), paper-card, extraction components (Infer<typeof validator> for saved views), focus-mode, country-selector
+- Typed mock factory infrastructure — DeepPartial<T> factories for Convex context, Ids/documents, and Stripe events enabling type-safe test mocks
+- All 20+ test files typed using mock factories — 85+ `as any` casts replaced, local test interfaces (TestSubscription, TestRetrievalCandidate) for non-exported types
+- Zero-any verified — `tsc --noEmit` zero errors, `scripts/verify-no-any.sh` passes all 3 checks (`: any`/`as any`/`any[]`, `<any>` angle-bracket, tsc compilation)
+- Gap closure: GenericActionCtx<GenericDataModel> for Stripe webhook boundary, barrel file "use node" fix, GenericValidator replacing Validator<any>, verify-no-any.sh enhanced
+
+### What Worked
+- Layered dependency ordering (validators → backend → libs → components → mocks → tests → verification) kept each phase building on the previous
+- `as never` pattern for Convex useQuery/usePaginatedQuery boundary was a clean, reusable solution for generic constraint satisfaction without widening to any
+- DeepPartial<T> with deep merge for mock factories enabled selective nested customization — far better than blanket `as any` casts
+- Mock factory barrel (tests/factories/index.ts) kept all test files importing from a single location
+- Gap closure phases (68-71) were planned proactively from milestone audit findings — all 5 tech debt items resolved cleanly
+- Milestone audit passed with perfect scores: 18/18 requirements, 12/12 phases, 47/47 integrations, 6/6 E2E flows
+- 20 plans across 12 phases executed in 2 days — average ~5min/plan including all gap closures
+
+### What Was Inefficient
+- Phase 68 and 69 were reactive gap closures for issues introduced by Phase 61 (ActionCtx tightening) and pre-existing barrel file issues — could have been caught during Phase 61 planning
+- SUMMARY.md one_liner fields still not populated (same recurring issue from v2.0 through v3.0) — required manual accomplishment extraction at milestone completion
+- Phase 60 required 3 plans (60-01, 60-02, 60-03) when the gap closure (60-03 Clerk webhook serialization) could have been identified during initial planning
+- Progress table in ROADMAP.md had inconsistent column alignment for v3.1 phases (missing Milestone column)
+
+### Patterns Established
+- `as never` instead of `as any` at Convex useQuery/usePaginatedQuery generic boundary — satisfies constraints without widening
+- DeepPartial<T> with recursive deep merge for typed mock factory overrides
+- GenericValidator from convex/values as SDK alias for Validator<any, any, any>
+- GenericActionCtx<GenericDataModel> for cross-library type boundaries (Convex → @convex-dev/stripe)
+- WorkInput interface pattern for when SDK types have incompatible nested requirements
+- `as unknown as GenericActionCtx<GenericDataModel>` for test mock contravariance
+- Local test-only interfaces (TestSubscription, TestRetrievalCandidate) for non-exported production types
+- `as never` for type-safe invalid input testing (invalid plan names, wrong argument types)
+- JSON serialization boundary pattern when Convex validator system lacks v.unknown()
+
+### Key Lessons
+1. `as never` is a better Convex boundary pattern than `as any` — satisfies generic constraints without losing type information elsewhere
+2. DeepPartial mock factories eliminate entire categories of `as any` casts in tests — invest in factory infrastructure early
+3. Cross-library type boundaries (Convex → @convex-dev/stripe) require GenericActionCtx<GenericDataModel>, not ActionCtx — library callback signatures use generic types
+4. Barrel file runtime restrictions matter in Convex — "use node" re-exports in default-runtime barrels break the bundler
+5. Verification scripts should test all any-type patterns from the start (`<any>` angle brackets were missed initially)
+6. Gap closure phases from proactive auditing are more efficient than discovering issues at milestone completion
+7. TypeScript type safety across 143 files with zero remaining any types is achievable with systematic layered approach
+8. Mock factory barrel exports (index.ts) keep test imports clean and centralized
+
+### Cost Observations
+- Model mix: quality profile (opus-dominant)
+- Sessions: ~2 sessions across 2 days
+- Notable: 20 plans in 2 days — largest plan count in a single milestone, zero tech debt remaining
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -518,6 +576,7 @@
 | v2.4 | 30 | 4 | 7 | ~3min | Concerns sweep, typed validators, credit guards, cron cleanup |
 | v2.5 | 54 | 7 | 15 | ~2min | Tech debt purge, typed Stripe, zero TS errors, audit logging |
 | v3.0 | 57 | 6 | 11 | ~2min | Zero as-any, XSS-safe rendering, incremental aggregation, audit table |
+| v3.1 | 82 | 12 | 20 | ~5min | Complete type safety, mock factories, zero any in entire codebase |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -543,3 +602,7 @@
 20. XSS prevention via text splitting is always preferable to sanitization — correct by construction, zero dependencies (v3.0)
 21. Incremental aggregation (upsert on write) with lazy backfill handles scale without loading full datasets (v3.0)
 22. Proactive gap closure from milestone audit prevents reactive work — audit-first completion is cleaner (v3.0)
+23. `as never` is a better Convex boundary pattern than `as any` — satisfies constraints without widening (v3.1)
+24. DeepPartial mock factories eliminate entire categories of `as any` in tests — invest in factory infrastructure early (v3.1)
+25. Cross-library type boundaries require generic context types, not action-specific ones — library signatures use generics (v3.1)
+26. Complete type safety across 143 files is achievable with systematic layered approach (validators → backend → libs → components → tests) (v3.1)

@@ -128,12 +128,6 @@
 - Impact: 200 papers × N questions × results data = large in-memory state; filtering is O(papers × questions) on every render cycle; potential jank on large extractions
 - Fix approach: Move filter/sort to server-side Convex query arguments; paginate the table view rather than loading all 200 upfront
 
-**GROBID is an optional self-hosted dependency with no guaranteed availability:**
-- Problem: PDF evidence extraction uses GROBID for structural analysis (`convex/extraction/grobid.ts`). GROBID is self-hosted and falls back gracefully, but the fallback path produces lower-quality evidence units. There is no health check or warm-up for the GROBID service
-- Files: `convex/extraction/grobid.ts`, `convex/extraction/workpoolActions.ts:695`
-- Cause: External Java service required for section-aware extraction; latency adds to per-paper processing time
-- Improvement path: Add a GROBID health check cron; alert when GROBID is degraded so operators know extraction quality is reduced
-
 ---
 
 ## Fragile Areas
@@ -182,11 +176,6 @@
 - Files: `lib/openalex.ts`
 - Impact: OpenAlex API calls made without app identity/email; rate limiting from the anonymous pool; no timeout protection on API calls
 - Migration plan: Configure the client with a project email env var; add request timeout; evaluate switching to direct `fetch` for simpler dependency
-
-**GROBID as self-hosted service dependency:**
-- Risk: GROBID (`convex/extraction/grobid.ts`) is a Java service that must be running alongside the Convex deployment. If not running, PDF extraction falls back to lower-quality PDF.js-only mode silently
-- Impact: Extraction quality degrades without alerting operators
-- Migration plan: Document GROBID deployment requirements explicitly; add health monitoring; consider cloud-hosted alternative (e.g., Science Parse)
 
 ---
 
