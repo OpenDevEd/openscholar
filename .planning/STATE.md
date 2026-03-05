@@ -73,6 +73,7 @@ None.
 |---|-------------|------|--------|-----------|
 | 2 | Add eKitabu to Built by footer | 2026-03-02 | abd98e1 | [2-add-ekitabu-to-built-by-footer](./quick/2-add-ekitabu-to-built-by-footer/) |
 | 3 | Remove GROBID implementation | 2026-03-04 | d20c59e | [3-get-rid-of-the-grobid-implementation-ent](./quick/3-get-rid-of-the-grobid-implementation-ent/) |
+| 4 | Fix billing e2e auth to use clerk testing token | 2026-03-05 | 6792c9d | [4-fix-billing-e2e-auth-to-use-clerk-testin](./quick/4-fix-billing-e2e-auth-to-use-clerk-testin/) |
 
 ## Session Continuity
 
