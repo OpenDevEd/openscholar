@@ -1,9 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Library, SearchX } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Library, SearchX } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 
 interface LibraryEmptyStateProps {
   variant: "empty-library" | "no-results";
@@ -15,39 +16,47 @@ export function LibraryEmptyState({
   onClearFilters,
 }: LibraryEmptyStateProps) {
   const t = useTranslations("libraryPage");
-
-  if (variant === "empty-library") {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-        <div className="rounded-full bg-muted p-4 mb-4">
-          <Library className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-medium mb-1.5">
-          {t("emptyLibraryTitle")}
-        </h3>
-        <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-          {t("emptyLibraryDescription")}
-        </p>
-        <Button asChild>
-          <Link href="/">{t("emptyLibraryCta")}</Link>
-        </Button>
-      </div>
-    );
-  }
+  const tc = useTranslations("common");
+  const isEmptyLibrary = variant === "empty-library";
+  const Icon = isEmptyLibrary ? Library : SearchX;
 
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="rounded-full bg-muted p-3 mb-3">
-        <SearchX className="h-6 w-6 text-muted-foreground" />
+    <CommandCenterContainer>
+      <div className="relative flex flex-col items-center justify-center px-6 py-14 text-center sm:px-10">
+        <div className="mb-5 rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm">
+          <Icon className="h-7 w-7 text-muted-foreground" />
+        </div>
+
+        <h2 className="text-xl font-semibold tracking-tight">
+          {isEmptyLibrary ? t("emptyLibraryTitle") : t("noResultsTitle")}
+        </h2>
+
+        <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+          {isEmptyLibrary
+            ? t("emptyLibraryDescription")
+            : tc("tryAdjustingSearch")}
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {isEmptyLibrary ? (
+            <Button asChild className="rounded-xl">
+              <Link href="/">{t("emptyLibraryCta")}</Link>
+            </Button>
+          ) : (
+            onClearFilters && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClearFilters}
+                className="rounded-xl"
+              >
+                {t("clearFilters")}
+              </Button>
+            )
+          )}
+        </div>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        {t("noResultsTitle")}
-      </p>
-      {onClearFilters && (
-        <Button variant="outline" size="sm" onClick={onClearFilters}>
-          {t("clearFilters")}
-        </Button>
-      )}
-    </div>
+    </CommandCenterContainer>
   );
 }

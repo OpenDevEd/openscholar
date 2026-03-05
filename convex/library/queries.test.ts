@@ -178,6 +178,39 @@ describe("browseLibrary", () => {
     expect(result.page[2].title).toBe("Old paper");
   });
 
+  it('sorts by citedByCount desc when sortBy="citedByCount", sortOrder="desc"', async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Low cited",
+      citedByCount: 4,
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "High cited",
+      citedByCount: 18,
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Mid cited",
+      citedByCount: 9,
+      openalexId: "https://openalex.org/W3",
+    });
+
+    const result = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "citedByCount",
+      sortOrder: "desc",
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(3);
+    expect(result.page[0].title).toBe("High cited");
+    expect(result.page[1].title).toBe("Mid cited");
+    expect(result.page[2].title).toBe("Low cited");
+  });
+
   it("filters to items with rating >= minRating when minRating is provided", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
@@ -208,6 +241,42 @@ describe("browseLibrary", () => {
 
     expect(result.page).toHaveLength(2);
     expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 3)).toBe(true);
+  });
+
+  it("applies maxRating and savedBefore together when they are provided", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Older 2 star",
+      rating: 2,
+      savedAt: 1000,
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Older 5 star",
+      rating: 5,
+      savedAt: 1500,
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Recent 2 star",
+      rating: 2,
+      savedAt: 4000,
+      openalexId: "https://openalex.org/W3",
+    });
+
+    const result = await asUser.query(api.library.queries.browseLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      maxRating: 2,
+      savedBefore: 2000,
+      paginationOpts: { numItems: 10, cursor: null },
+    });
+
+    expect(result.page).toHaveLength(1);
+    expect(result.page[0].title).toBe("Older 2 star");
   });
 
   it("returns empty page when user has no library items", async () => {
@@ -351,6 +420,85 @@ describe("searchLibrary", () => {
     expect(
       result.page.every((item: { rating: number; title: string }) => item.title.includes("User1"))
     ).toBe(true);
+  });
+});
+
+describe("listLibrary", () => {
+  it("sorts searched items using the requested sort order instead of search relevance", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Gamma machine paper",
+      searchableText: "machine gamma paper",
+      citedByCount: 10,
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Alpha machine paper",
+      searchableText: "machine alpha paper",
+      citedByCount: 3,
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Beta machine paper",
+      searchableText: "machine beta paper",
+      citedByCount: 30,
+      openalexId: "https://openalex.org/W3",
+    });
+
+    const result = await asUser.query(api.library.queries.listLibrary, {
+      searchText: "machine",
+      sortBy: "title",
+      sortOrder: "asc",
+    });
+
+    expect(result.map((item) => item.title)).toEqual([
+      "Alpha machine paper",
+      "Beta machine paper",
+      "Gamma machine paper",
+    ]);
+  });
+
+  it("returns the full filtered set for export-style library views", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Keep me",
+      rating: 4,
+      publicationYear: 2021,
+      savedAt: 1200,
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Too old",
+      rating: 4,
+      publicationYear: 2010,
+      savedAt: 1000,
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Too low rated",
+      rating: 1,
+      publicationYear: 2022,
+      savedAt: 1400,
+      openalexId: "https://openalex.org/W3",
+    });
+
+    const result = await asUser.query(api.library.queries.listLibrary, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+      minRating: 3,
+      maxRating: 4,
+      savedAfter: 1100,
+      yearFrom: 2020,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Keep me");
   });
 });
 

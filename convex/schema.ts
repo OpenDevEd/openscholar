@@ -702,6 +702,7 @@ export default defineSchema({
     .index("by_user_rating", ["userId", "rating"])
     .index("by_user_savedAt", ["userId", "savedAt"])
     .index("by_user_year", ["userId", "publicationYear"])
+    .index("by_user_citedByCount", ["userId", "citedByCount"])
     .index("by_user_title", ["userId", "title"])
     .searchIndex("search_library", {
       searchField: "searchableText",

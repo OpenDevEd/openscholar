@@ -66,7 +66,10 @@ export function SearchHistory({ onSearchResults, loadingResultIndex, currentSear
   const format = useFormatter();
   const now = useNow();
   const { searchHistory, removeSearchResult, clearSearchHistory, importSearchHistory } = useSearchHistoryStore();
-  const [currentPage, setCurrentPage] = useQueryState('historyPage', parseAsInteger.withDefault(1));
+  const [currentPage, setCurrentPage] = useQueryState(
+    'historyPage',
+    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
+  );
   const { keywords, addKeyword } = useKeywordExpansionStore();
   const itemsPerPage = compact ? 5 : 10;
   

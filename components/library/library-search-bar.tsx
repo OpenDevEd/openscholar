@@ -10,12 +10,16 @@ interface LibrarySearchBarProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  inputClassName?: string;
+  clearButtonClassName?: string;
 }
 
 export function LibrarySearchBar({
   value,
   onChange,
   className,
+  inputClassName,
+  clearButtonClassName,
 }: LibrarySearchBarProps) {
   const t = useTranslations("libraryPage");
 
@@ -26,14 +30,17 @@ export function LibrarySearchBar({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t("searchPlaceholder")}
-        className="pl-9 pr-9"
+        className={cn("pl-9 pr-9", inputClassName)}
       />
       {value.length > 0 && (
         <Button
           variant="ghost"
           size="icon-xs"
           onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          className={cn(
+            "absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground",
+            clearButtonClassName,
+          )}
         >
           <X className="h-3.5 w-3.5" />
           <span className="sr-only">Clear search</span>

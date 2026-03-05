@@ -13,7 +13,10 @@ interface SearchHistoryPaginationProps {
 export function SearchHistoryPagination({ variant = "compact" }: SearchHistoryPaginationProps) {
   const t = useTranslations();
   const { searchHistory } = useSearchHistoryStore();
-  const [currentPage, setCurrentPage] = useQueryState("historyPage", parseAsInteger.withDefault(1));
+  const [currentPage, setCurrentPage] = useQueryState(
+    "historyPage",
+    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
+  );
   const itemsPerPage = variant === "compact" ? 5 : 10;
 
   const totalPages = Math.ceil(searchHistory.length / itemsPerPage);

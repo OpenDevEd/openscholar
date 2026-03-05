@@ -14,6 +14,49 @@ interface ViewModeOption {
   shortLabel: string;
 }
 
+export interface CompactIconToggleOption<TValue extends string> {
+  value: TValue;
+  icon: React.ReactNode;
+  label: string;
+}
+
+interface CompactIconToggleGroupProps<TValue extends string> {
+  value: TValue;
+  onChange: (value: TValue) => void;
+  options: CompactIconToggleOption<TValue>[];
+}
+
+export function CompactIconToggleGroup<TValue extends string>({
+  value,
+  onChange,
+  options,
+}: CompactIconToggleGroupProps<TValue>) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/50 p-0.5 dark:bg-muted/30">
+      {options.map((option) => {
+        const isActive = value === option.value;
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "relative z-10 flex items-center justify-center rounded-md p-1.5 transition-colors",
+              isActive
+                ? "bg-background text-primary shadow-sm"
+                : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
+            )}
+            title={option.label}
+          >
+            {option.icon}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Compact version for tight spaces
 export function ViewModeToggleCompact() {
   const { viewMode, setViewMode } = useUIStore();
@@ -27,26 +70,14 @@ export function ViewModeToggleCompact() {
   ];
 
   return (
-    <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
-      {viewModeOptions.map((option) => {
-        const isActive = viewMode === option.mode;
-        
-        return (
-          <button
-            key={option.mode}
-            onClick={() => setViewMode(option.mode)}
-            className={cn(
-              "relative z-10 flex items-center justify-center p-1.5 rounded-md transition-colors",
-              isActive
-                ? "text-primary bg-background shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-            )}
-            title={option.label}
-          >
-            {option.icon}
-          </button>
-        );
-      })}
-    </div>
+    <CompactIconToggleGroup
+      value={viewMode}
+      onChange={setViewMode}
+      options={viewModeOptions.map((option) => ({
+        value: option.mode,
+        icon: option.icon,
+        label: option.label,
+      }))}
+    />
   );
 }

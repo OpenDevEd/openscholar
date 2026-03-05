@@ -20,31 +20,41 @@ function SkeletonBar({ className }: { className?: string }) {
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/40 last:border-b-0">
-      {/* Stars placeholder */}
-      <div className="flex gap-px shrink-0">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="h-3 w-3 rounded-sm bg-muted animate-pulse"
-          />
-        ))}
+    <div
+      className={cn(
+        "rounded-2xl border p-5",
+        "bg-background/80 dark:bg-background/60",
+        "border-border/40 shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
+      )}
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex-1 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-px shrink-0">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="h-3.5 w-3.5 rounded-sm bg-muted animate-pulse"
+                />
+              ))}
+            </div>
+            <SkeletonBar className="h-6 w-28 rounded-full" />
+            <SkeletonBar className="h-6 w-20 rounded-full" />
+            <SkeletonBar className="h-6 w-32 rounded-full" />
+          </div>
+          <div className="space-y-2">
+            <SkeletonBar className="h-4 w-full max-w-xl" />
+            <SkeletonBar className="h-4 w-2/3" />
+            <SkeletonBar className="h-3 w-1/2" />
+          </div>
+          <div className="space-y-2">
+            <SkeletonBar className="h-3 w-full" />
+            <SkeletonBar className="h-3 w-full" />
+            <SkeletonBar className="h-3 w-4/5" />
+          </div>
+        </div>
+        <div className="h-9 w-9 rounded-lg bg-muted animate-pulse shrink-0" />
       </div>
-
-      {/* Title */}
-      <SkeletonBar className="flex-1 max-w-[300px]" />
-
-      {/* Authors */}
-      <SkeletonBar className="w-[120px] hidden sm:block" />
-
-      {/* Year */}
-      <SkeletonBar className="w-[40px] hidden sm:block" />
-
-      {/* Journal */}
-      <SkeletonBar className="w-[100px] hidden md:block" />
-
-      {/* Menu placeholder */}
-      <div className="h-6 w-6 rounded bg-muted animate-pulse shrink-0" />
     </div>
   );
 }
@@ -56,21 +66,25 @@ function SkeletonCard() {
       "bg-background/80 dark:bg-background/60",
       "border-border/40"
     )}>
-      {/* Stars placeholder */}
-      <div className="flex gap-px">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-3 w-3 rounded-sm bg-muted animate-pulse" />
-        ))}
+      <div className="flex justify-between gap-3">
+        <div className="flex gap-px">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-3 w-3 rounded-sm bg-muted animate-pulse" />
+          ))}
+        </div>
+        <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
       </div>
-      {/* Title */}
-      <SkeletonBar className="w-full" />
-      <SkeletonBar className="w-3/4" />
-      {/* Authors */}
-      <SkeletonBar className="w-1/2" />
-      {/* Footer */}
-      <div className="flex gap-2 mt-auto">
-        <SkeletonBar className="w-12" />
-        <SkeletonBar className="w-20" />
+      <SkeletonBar className="h-4 w-full" />
+      <SkeletonBar className="h-4 w-4/5" />
+      <SkeletonBar className="h-3 w-3/5" />
+      <div className="flex flex-wrap gap-2 mt-1">
+        <SkeletonBar className="h-5 w-24 rounded-full" />
+        <SkeletonBar className="h-5 w-16 rounded-full" />
+      </div>
+      <div className="space-y-2 mt-auto">
+        <SkeletonBar className="h-3 w-full" />
+        <SkeletonBar className="h-3 w-full" />
+        <SkeletonBar className="h-3 w-2/3" />
       </div>
     </div>
   );
@@ -87,7 +101,7 @@ export function LibraryItemSkeleton({ count = 5, viewMode = "list" }: LibraryIte
     );
   }
   return (
-    <div>
+    <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
         <SkeletonRow key={i} />
       ))}

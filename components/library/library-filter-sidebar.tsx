@@ -7,25 +7,32 @@ import {
   getLibrarySidebarDimensions,
 } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
+import type {
+  LibrarySortBy,
+  LibrarySortOrder,
+} from "@/lib/library/search-params";
 import { LibraryFilterContent } from "./library-filter-content";
 
 interface LibraryFilterSidebarProps {
-  rawSearch: string;
-  onSearchChange: (value: string) => void;
   minRating: number | undefined;
-  onMinRatingChange: (rating: number | undefined) => void;
-  savedPreset: string | null;
-  onSavedPresetChange: (preset: string | null) => void;
+  maxRating: number | undefined;
+  onRatingChange: (min: number | undefined, max: number | undefined) => void;
+  savedFrom: string | null;
+  savedTo: string | null;
+  onSavedRangeChange: (from: string | null, to: string | null) => void;
   yearFrom: number | null;
   yearTo: number | null;
-  onYearFromChange: (year: number | null) => void;
-  onYearToChange: (year: number | null) => void;
+  onYearRangeChange: (from: number | null, to: number | null) => void;
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   collections:
     | Array<{ _id: string; name: string; itemCount: number }>
     | undefined;
   onManageCollections: () => void;
+  sortBy: LibrarySortBy;
+  sortOrder: LibrarySortOrder;
+  onSortByChange: (value: LibrarySortBy) => void;
+  onSortOrderChange: (value: LibrarySortOrder) => void;
   activeFilterCount: number;
   onClearAll: () => void;
 }
@@ -35,20 +42,23 @@ export function LibraryFilterSidebar(props: LibraryFilterSidebarProps) {
 
   const filterContent = (
     <LibraryFilterContent
-      rawSearch={props.rawSearch}
-      onSearchChange={props.onSearchChange}
       minRating={props.minRating}
-      onMinRatingChange={props.onMinRatingChange}
-      savedPreset={props.savedPreset}
-      onSavedPresetChange={props.onSavedPresetChange}
+      maxRating={props.maxRating}
+      onRatingChange={props.onRatingChange}
+      savedFrom={props.savedFrom}
+      savedTo={props.savedTo}
+      onSavedRangeChange={props.onSavedRangeChange}
       yearFrom={props.yearFrom}
       yearTo={props.yearTo}
-      onYearFromChange={props.onYearFromChange}
-      onYearToChange={props.onYearToChange}
+      onYearRangeChange={props.onYearRangeChange}
       collectionId={props.collectionId}
       onCollectionChange={props.onCollectionChange}
       collections={props.collections}
       onManageCollections={props.onManageCollections}
+      sortBy={props.sortBy}
+      sortOrder={props.sortOrder}
+      onSortByChange={props.onSortByChange}
+      onSortOrderChange={props.onSortOrderChange}
       isMobile={isMobile}
     />
   );

@@ -1,186 +1,96 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import type { Doc } from "@/convex/_generated/dataModel";
-import {
-  useProtectedPaginatedQuery,
-  useProtectedQuery,
-} from "@/lib/auth/use-auth-query";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { showConfirmation } from "@/lib/confirmation";
-import { useRatingsStore } from "@/lib/store";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
+  endOfDayTimestampFromParam,
   librarySearchParams,
-  savedPresetToTimestamp,
+  parseDateParam,
+  startOfDayTimestampFromParam,
+  type LibrarySortBy,
+  type LibraryViewMode,
 } from "@/lib/library/search-params";
-import type {
-  LibrarySortBy,
-  LibrarySortOrder,
-  LibraryViewMode,
-} from "@/lib/library/search-params";
-import {
-  Download,
-  ArrowUp,
-  ArrowDown,
-  LayoutList,
-  LayoutGrid,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { exportLibraryAsCSV, exportLibraryAsJSON } from "@/lib/library/export";
+import { useRatingsStore } from "@/lib/store";
 import { SidebarLayout } from "@/components/shared/sidebar-layout";
-import { LibraryFilterSidebar } from "./library-filter-sidebar";
 import { PageWrapper } from "@/components/PageWrapper";
-import { LibraryItemRow } from "./library-item-row";
-import { LibraryItemCard } from "./library-item-card";
-import { LibraryItemSkeleton } from "./library-item-skeleton";
-import { LibraryEmptyState } from "./library-empty-state";
+import { Button } from "@/components/ui/button";
+import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { CollectionManager } from "./collection-manager";
 import { CollectionPicker } from "./collection-picker";
-import type { Id } from "@/convex/_generated/dataModel";
+import { LibraryCommandCenter } from "./library-command-center";
+import { LibraryEmptyState } from "./library-empty-state";
+import { LibraryFilterSidebar } from "./library-filter-sidebar";
+import { LibraryItemCard } from "./library-item-card";
+import { LibraryItemRow } from "./library-item-row";
+import { LibraryItemSkeleton } from "./library-item-skeleton";
+
+const PAGE_SIZE = 20;
 
 export function LibraryPageClient() {
   const t = useTranslations("libraryPage");
-
-  // URL-driven state (single source of truth for filter/sort/search)
+  const tf = useTranslations("searchFilters");
+  const format = useFormatter();
   const [params, setParams] = useQueryStates(librarySearchParams);
 
-  // Local search input for debounce (don't write every keystroke to URL)
   const [rawSearch, setRawSearch] = useState(params.q);
   const debouncedSearch = useDebouncedValue(rawSearch, 300);
 
-  // Sync debounced search to URL
   useEffect(() => {
-    if (debouncedSearch !== params.q) {
+    setRawSearch(params.q);
+  }, [params.q]);
+
+  useEffect(() => {
+    if (rawSearch === debouncedSearch && debouncedSearch !== params.q) {
       setParams({ q: debouncedSearch, p: 1 });
     }
-  }, [debouncedSearch, params.q, setParams]);
+  }, [debouncedSearch, params.q, rawSearch, setParams]);
 
-  // UI-local state (not URL-persisted)
-  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-
-  // Collection state
   const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
   const [collectionPickerItemId, setCollectionPickerItemId] = useState<string | null>(null);
 
-  // Fetch collections for filter dropdown
   const { data: collectionsWithCounts } = useProtectedQuery(
     api.library.collections.getCollectionsWithCounts,
     {},
   );
 
-  // Derive collection filter from URL param
-  const collectionId = params.col ?? undefined;
-
-  // Derive query arguments from params
-  const hasSearchText = debouncedSearch.trim().length > 0;
-  // Memoize savedAfter so that new Date() is only called when the preset changes,
-  // not on every render (which would produce a new timestamp each time and cause
-  // Convex to re-run the query in an infinite loop).
-  const savedAfter = useMemo(
-    () => savedPresetToTimestamp(params.saved),
-    [params.saved],
-  );
-  const minRating = params.rating ?? undefined;
-  const yearFrom = params.yf ?? undefined;
-  const yearTo = params.yt ?? undefined;
-
-  // Count active filters for the sidebar badge
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (rawSearch.trim().length > 0) count++;
-    if (minRating !== undefined) count++;
-    if (params.saved !== null) count++;
-    if (params.yf !== null || params.yt !== null) count++;
-    if (params.col !== null) count++;
-    return count;
-  }, [rawSearch, minRating, params.saved, params.yf, params.yt, params.col]);
-
-  // Stale-while-revalidate: hold the last non-empty result set
-  const lastResultsRef = useRef<Doc<"libraryItems">[]>([]);
-
-  // Dual-path query orchestrator
-  const searchResults = useProtectedPaginatedQuery(
-    api.library.queries.searchLibrary,
-    hasSearchText
-      ? { searchText: debouncedSearch, minRating, savedAfter, yearFrom, yearTo, collectionId: collectionId as Id<"collections"> | undefined }
-      : "skip",
-    { initialNumItems: 20 },
-  );
-
-  const browseResults = useProtectedPaginatedQuery(
-    api.library.queries.browseLibrary,
-    !hasSearchText
-      ? { sortBy: params.sort, sortOrder: params.order, minRating, savedAfter, yearFrom, yearTo, collectionId: collectionId as Id<"collections"> | undefined }
-      : "skip",
-    { initialNumItems: 20 },
-  );
-
-  const activeResults = hasSearchText ? searchResults : browseResults;
-
-  // Update stale results ref when fresh data arrives
-  if (activeResults.results.length > 0 || activeResults.hasLoadedFirstPage) {
-    lastResultsRef.current = activeResults.results;
-  }
-
-  // Total count
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
     {},
   );
 
-  // Export data (non-paginated, all items matching current filters)
-  const { data: exportItems } = useProtectedQuery(
-    api.library.queries.exportLibrary,
-    hasSearchText
-      ? {
-          sortBy: params.sort,
-          sortOrder: params.order,
-          minRating,
-          savedAfter,
-          yearFrom,
-          yearTo,
-          collectionId: collectionId as Id<"collections"> | undefined,
-          searchText: debouncedSearch,
-        }
-      : {
-          sortBy: params.sort,
-          sortOrder: params.order,
-          minRating,
-          savedAfter,
-          yearFrom,
-          yearTo,
-          collectionId: collectionId as Id<"collections"> | undefined,
-        },
+  const queryText = debouncedSearch.trim();
+  const savedAfter = useMemo(
+    () => startOfDayTimestampFromParam(params.sf),
+    [params.sf],
+  );
+  const savedBefore = useMemo(
+    () => endOfDayTimestampFromParam(params.st),
+    [params.st],
   );
 
-  // Removal mutation
+  const { data: filteredItems } = useProtectedQuery(api.library.queries.listLibrary, {
+    sortBy: params.sort,
+    sortOrder: params.order,
+    minRating: params.rmin ?? undefined,
+    maxRating: params.rmax ?? undefined,
+    savedAfter,
+    savedBefore,
+    yearFrom: params.yf ?? undefined,
+    yearTo: params.yt ?? undefined,
+    collectionId: (params.col ?? undefined) as Id<"collections"> | undefined,
+    searchText: queryText || undefined,
+  });
+
   const removeItem = useMutation(api.library.mutations.removeFromLibrary);
   const { setRating } = useRatingsStore();
 
@@ -197,8 +107,8 @@ export function LibraryPageClient() {
             .then(() => {
               toast.success(t("removedFromLibrary"));
             })
-            .catch((err) => {
-              console.error("[Library] Failed to remove:", err);
+            .catch((error) => {
+              console.error("[Library] Failed to remove item:", error);
               toast.error(t("removeFromLibraryError"));
             });
           setRating(item.openalexId, null);
@@ -208,18 +118,26 @@ export function LibraryPageClient() {
     [removeItem, setRating, t],
   );
 
-  // Toggle expand
-  const handleToggleExpand = useCallback((itemId: string) => {
-    setExpandedItemId((prev) => (prev === itemId ? null : itemId));
-  }, []);
+  const handleExportCSV = useCallback(() => {
+    if (filteredItems && filteredItems.length > 0) {
+      exportLibraryAsCSV(filteredItems);
+      toast.success(t("exportSuccess"));
+    }
+  }, [filteredItems, t]);
 
-  // Clear all filters
-  const clearFilters = useCallback(() => {
-    setRawSearch("");
+  const handleExportJSON = useCallback(() => {
+    if (filteredItems && filteredItems.length > 0) {
+      exportLibraryAsJSON(filteredItems);
+      toast.success(t("exportSuccess"));
+    }
+  }, [filteredItems, t]);
+
+  const clearSidebarFilters = useCallback(() => {
     setParams({
-      q: "",
-      rating: null,
-      saved: null,
+      rmin: null,
+      rmax: null,
+      sf: null,
+      st: null,
       yf: null,
       yt: null,
       col: null,
@@ -229,334 +147,315 @@ export function LibraryPageClient() {
     });
   }, [setParams]);
 
-  // Export handlers
-  const handleExportCSV = useCallback(() => {
-    if (exportItems && exportItems.length > 0) {
-      exportLibraryAsCSV(exportItems);
-      toast.success(t("exportSuccess"));
-    }
-  }, [exportItems, t]);
+  const resetAllNarrowing = useCallback(() => {
+    setRawSearch("");
+    setParams({
+      q: "",
+      rmin: null,
+      rmax: null,
+      sf: null,
+      st: null,
+      yf: null,
+      yt: null,
+      col: null,
+      sort: "savedAt",
+      order: "desc",
+      p: 1,
+    });
+  }, [setParams]);
 
-  const handleExportJSON = useCallback(() => {
-    if (exportItems && exportItems.length > 0) {
-      exportLibraryAsJSON(exportItems);
-      toast.success(t("exportSuccess"));
-    }
-  }, [exportItems, t]);
-
-  // Determine display results (stale-while-revalidate)
-  const displayResults =
-    activeResults.isInitialLoading && lastResultsRef.current.length > 0
-      ? lastResultsRef.current
-      : activeResults.results;
-
-  const isTransitioning =
-    activeResults.isInitialLoading && lastResultsRef.current.length > 0;
-
-  // Pagination
-  const PAGE_SIZE = 20;
-  const currentPage = params.p;
-  const filteredTotal = exportItems?.length ?? 0;
+  const items = filteredItems ?? [];
+  const filteredTotal = items.length;
   const totalPages = Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
+  const effectivePage = Math.min(params.p, totalPages);
 
-  // Clamp current page to valid range (handles filter changes reducing total pages)
-  const effectivePage = Math.min(currentPage, totalPages);
-
-  // Slice display results for current page
-  const startIdx = (effectivePage - 1) * PAGE_SIZE;
-  const endIdx = effectivePage * PAGE_SIZE;
-  const pageResults = displayResults.slice(startIdx, endIdx);
-
-  // Range display values
-  const rangeStart = displayResults.length > 0 ? startIdx + 1 : 0;
-  const rangeEnd = Math.min(endIdx, displayResults.length);
-
-  // Ensure enough results are loaded for the requested page
   useEffect(() => {
-    if (endIdx > activeResults.results.length && activeResults.status === "CanLoadMore") {
-      activeResults.loadMore(PAGE_SIZE);
+    if (params.p !== effectivePage) {
+      setParams({ p: effectivePage });
     }
-  }, [effectivePage, activeResults.results.length, activeResults.status]);
+  }, [effectivePage, params.p, setParams]);
 
-  // Determine what to show
-  const isFirstLoad =
-    activeResults.isInitialLoading && lastResultsRef.current.length === 0;
-  const hasFiltersActive =
-    hasSearchText ||
-    minRating !== undefined ||
-    savedAfter !== undefined ||
-    yearFrom !== undefined ||
-    yearTo !== undefined ||
-    collectionId !== undefined;
-  const isEmpty =
-    activeResults.hasLoadedFirstPage && activeResults.results.length === 0;
-  const isEmptyLibrary = isEmpty && !hasFiltersActive && totalCount === 0;
-  const isNoResults = isEmpty && hasFiltersActive;
+  const pageResults = useMemo(
+    () =>
+      items.slice(
+        (effectivePage - 1) * PAGE_SIZE,
+        effectivePage * PAGE_SIZE,
+      ),
+    [effectivePage, items],
+  );
 
-  // Sort controls (moved from LibraryFilters Row 2)
-  const sortOptions: { value: LibrarySortBy; label: string }[] = [
-    { value: "savedAt", label: t("sortDateSaved") },
-    { value: "rating", label: t("sortRating") },
-    { value: "publicationYear", label: t("sortPublicationYear") },
-    { value: "title", label: t("sortTitle") },
-  ];
+  const rangeStart = filteredTotal > 0 ? (effectivePage - 1) * PAGE_SIZE + 1 : 0;
+  const rangeEnd = Math.min(effectivePage * PAGE_SIZE, filteredTotal);
 
-  const toggleSortOrder = () => {
-    setParams({ order: params.order === "asc" ? "desc" : "asc", p: 1 });
-  };
+  const setPageParam = useCallback(
+    (page: number) => {
+      setParams(
+        { p: Math.max(1, Math.min(page, totalPages)) },
+        { scroll: true },
+      );
+    },
+    [setParams, totalPages],
+  );
+
+  const selectedCollection = useMemo(
+    () => collectionsWithCounts?.find((collection) => collection._id === params.col),
+    [collectionsWithCounts, params.col],
+  );
+
+  const sortLabels = useMemo<Record<LibrarySortBy, string>>(
+    () => ({
+      savedAt: t("sortDateSaved"),
+      rating: t("sortRating"),
+      publicationYear: t("sortPublicationYear"),
+      citedByCount: tf("filterCitedBy"),
+      title: t("sortTitle"),
+    }),
+    [t, tf],
+  );
+
+  const activeFilterLabels = useMemo(() => {
+    const labels: string[] = [];
+
+    if (params.rmin !== null || params.rmax !== null) {
+      const min = params.rmin ?? 1;
+      const max = params.rmax ?? 5;
+      const ratingLabel =
+        min === max
+          ? tf("filterRatingRangeSingle", { min })
+          : tf("filterRatingRangeMulti", { min, max });
+      labels.push(`${t("sortRating")}: ${ratingLabel}`);
+    }
+
+    const savedFromDate = parseDateParam(params.sf);
+    const savedToDate = parseDateParam(params.st);
+    if (savedFromDate || savedToDate) {
+      const formattedSavedRange =
+        savedFromDate && savedToDate
+          ? `${format.dateTime(savedFromDate, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })} → ${format.dateTime(savedToDate, {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}`
+          : savedFromDate
+            ? `${format.dateTime(savedFromDate, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}+`
+            : format.dateTime(savedToDate!, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              });
+      labels.push(`${t("filterDateSaved")}: ${formattedSavedRange}`);
+    }
+
+    if (params.yf !== null || params.yt !== null) {
+      labels.push(
+        `${t("filterYearRange")}: ${params.yf ?? "1900"} → ${params.yt ?? new Date().getFullYear()}`,
+      );
+    }
+
+    if (selectedCollection) {
+      labels.push(`${t("filterCollection")}: ${selectedCollection.name}`);
+    }
+
+    if (params.sort !== "savedAt" || params.order !== "desc") {
+      labels.push(
+        `${t("sortBy")}: ${sortLabels[params.sort]} ${params.order === "asc" ? "↑" : "↓"}`,
+      );
+    }
+
+    return labels;
+  }, [
+    format,
+    params.order,
+    params.rmax,
+    params.rmin,
+    params.sf,
+    params.sort,
+    params.st,
+    params.yf,
+    params.yt,
+    selectedCollection,
+    sortLabels,
+    t,
+    tf,
+  ]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (params.rmin !== null || params.rmax !== null) count += 1;
+    if (params.sf !== null || params.st !== null) count += 1;
+    if (params.yf !== null || params.yt !== null) count += 1;
+    if (params.col !== null) count += 1;
+    if (params.sort !== "savedAt" || params.order !== "desc") count += 1;
+    return count;
+  }, [params.col, params.order, params.rmax, params.rmin, params.sf, params.sort, params.st, params.yf, params.yt]);
+
+  const hasNarrowingCriteria =
+    queryText.length > 0 ||
+    params.rmin !== null ||
+    params.rmax !== null ||
+    params.sf !== null ||
+    params.st !== null ||
+    params.yf !== null ||
+    params.yt !== null ||
+    params.col !== null;
+
+  const isLoading = filteredItems === undefined;
+  const isEmptyLibrary = !isLoading && filteredTotal === 0 && !hasNarrowingCriteria && totalCount === 0;
+  const isNoResults = !isLoading && filteredTotal === 0 && hasNarrowingCriteria;
 
   return (
     <SidebarLayout
       sidebar={
         <LibraryFilterSidebar
-          rawSearch={rawSearch}
-          onSearchChange={setRawSearch}
-          minRating={minRating}
-          onMinRatingChange={(r) => setParams({ rating: r === undefined ? null : r, p: 1 })}
-          savedPreset={params.saved}
-          onSavedPresetChange={(preset) => setParams({ saved: preset as typeof params.saved, p: 1 })}
+          minRating={params.rmin ?? undefined}
+          maxRating={params.rmax ?? undefined}
+          onRatingChange={(min, max) => setParams({ rmin: min ?? null, rmax: max ?? null, p: 1 })}
+          savedFrom={params.sf}
+          savedTo={params.st}
+          onSavedRangeChange={(from, to) => setParams({ sf: from, st: to, p: 1 })}
           yearFrom={params.yf}
           yearTo={params.yt}
-          onYearFromChange={(y) => setParams({ yf: y, p: 1 })}
-          onYearToChange={(y) => setParams({ yt: y, p: 1 })}
+          onYearRangeChange={(from, to) => setParams({ yf: from, yt: to, p: 1 })}
           collectionId={params.col}
           onCollectionChange={(id) => setParams({ col: id, p: 1 })}
           collections={collectionsWithCounts}
           onManageCollections={() => setCollectionManagerOpen(true)}
+          sortBy={params.sort}
+          sortOrder={params.order}
+          onSortByChange={(value) => setParams({ sort: value, p: 1 })}
+          onSortOrderChange={(value) => setParams({ order: value, p: 1 })}
           activeFilterCount={activeFilterCount}
-          onClearAll={clearFilters}
+          onClearAll={clearSidebarFilters}
         />
       }
     >
       <PageWrapper>
-        <div className="container mx-auto p-4 sm:p-6 max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-5 flex-wrap">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {t("title")}
-            </h1>
-            {totalCount !== undefined && (
-              <Badge variant="secondary" className="text-xs">
-                {t("paperCount", { count: totalCount })}
-              </Badge>
-            )}
+        <div className="container mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+          <div className="space-y-6">
+            <LibraryCommandCenter
+              rawSearch={rawSearch}
+              onSearchChange={setRawSearch}
+              totalCount={totalCount}
+              filteredCount={filteredItems ? filteredTotal : undefined}
+              activeFilterLabels={activeFilterLabels}
+              viewMode={params.view}
+              onViewModeChange={(mode) => setParams({ view: mode as LibraryViewMode })}
+              onExportCSV={handleExportCSV}
+              onExportJSON={handleExportJSON}
+              hasExportableResults={filteredTotal > 0}
+            />
 
-            {/* Sort controls */}
-            <div className="flex items-center gap-1.5 ml-auto">
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Select
-                      value={params.sort}
-                      onValueChange={(v) => setParams({ sort: v as LibrarySortBy, p: 1 })}
-                      disabled={hasSearchText}
-                    >
-                      <SelectTrigger
-                        className={cn(
-                          "h-8 w-[160px] text-xs",
-                          hasSearchText && "opacity-50 cursor-not-allowed",
-                        )}
-                      >
-                        <span className="text-muted-foreground mr-1">{t("sortBy")}:</span>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value} className="text-xs">
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </span>
-                </TooltipTrigger>
-                {hasSearchText && (
-                  <TooltipContent side="bottom" className="text-xs">
-                    {t("sortDisabledInSearch")}
-                  </TooltipContent>
-                )}
-              </Tooltip>
-
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={toggleSortOrder}
-                    disabled={hasSearchText}
-                    className={cn(
-                      "shrink-0",
-                      hasSearchText && "opacity-50 cursor-not-allowed",
-                    )}
-                    aria-label={params.order === "asc" ? t("sortAscending") : t("sortDescending")}
-                  >
-                    {params.order === "asc" ? (
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  {params.order === "asc" ? t("sortAscending") : t("sortDescending")}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-
-            {/* View mode toggle */}
-            <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
-              <button
-                type="button"
-                onClick={() => setParams({ view: "list" as LibraryViewMode })}
-                className={cn(
-                  "p-1.5 rounded-md transition-colors",
-                  params.view === "list"
-                    ? "text-primary bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-                )}
-                title={t("viewList")}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setParams({ view: "grid" as LibraryViewMode })}
-                className={cn(
-                  "p-1.5 rounded-md transition-colors",
-                  params.view === "grid"
-                    ? "text-primary bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-                )}
-                title={t("viewGrid")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Export dropdown -- only visible when there are items to export */}
-            {exportItems && exportItems.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    {t("exportLibrary")}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportCSV}>
-                    {t("exportAsCSV")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportJSON}>
-                    {t("exportAsJSON")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-
-          {/* Content area */}
-          <div className="rounded-lg border border-border/50 bg-background/80 overflow-hidden">
-            {/* Initial loading skeleton */}
-            {isFirstLoad && <LibraryItemSkeleton count={params.view === "grid" ? 6 : 5} viewMode={params.view} />}
-
-            {/* Empty library */}
-            {isEmptyLibrary && (
-              <LibraryEmptyState variant="empty-library" />
-            )}
-
-            {/* No search/filter results */}
-            {isNoResults && (
-              <LibraryEmptyState
-                variant="no-results"
-                onClearFilters={clearFilters}
+            {isLoading && (
+              <LibraryItemSkeleton
+                count={params.view === "grid" ? 6 : 4}
+                viewMode={params.view}
               />
             )}
 
-            {/* Item list */}
-            {pageResults.length > 0 && (
-              <div className={isTransitioning ? "opacity-60 transition-opacity" : ""}>
+            {isEmptyLibrary && <LibraryEmptyState variant="empty-library" />}
+
+            {isNoResults && (
+              <LibraryEmptyState
+                variant="no-results"
+                onClearFilters={resetAllNarrowing}
+              />
+            )}
+
+            {!isLoading && pageResults.length > 0 && (
+              <>
                 {params.view === "grid" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {pageResults.map((item) => (
                       <LibraryItemCard
                         key={item._id}
                         item={item}
                         onRemove={handleRemove}
-                        onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
+                        onAddToCollection={(nextItem) => setCollectionPickerItemId(nextItem._id)}
                       />
                     ))}
                   </div>
                 ) : (
-                  pageResults.map((item) => (
-                    <LibraryItemRow
-                      key={item._id}
-                      item={item}
-                      isExpanded={expandedItemId === item._id}
-                      onToggleExpand={() => handleToggleExpand(item._id)}
-                      onRemove={handleRemove}
-                      onAddToCollection={(i) => setCollectionPickerItemId(i._id)}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* Pagination bar */}
-            {filteredTotal > 0 && (
-              <div className="flex items-center justify-between py-3 px-4 border-t border-border/40">
-                <p className="text-sm text-muted-foreground">
-                  {t("showingRange", { start: rangeStart, end: rangeEnd, total: filteredTotal })}
-                </p>
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setParams({ p: Math.max(1, effectivePage - 1) })}
-                      disabled={effectivePage <= 1}
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-1" />
-                      {t("previousPage")}
-                    </Button>
-                    <span className="text-sm text-muted-foreground tabular-nums">
-                      {effectivePage} / {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setParams({ p: Math.min(totalPages, effectivePage + 1) })}
-                      disabled={effectivePage >= totalPages || (activeResults.status !== "CanLoadMore" && endIdx >= displayResults.length)}
-                    >
-                      {t("nextPage")}
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
+                  <div className="space-y-3">
+                    {pageResults.map((item) => (
+                      <LibraryItemRow
+                        key={item._id}
+                        item={item}
+                        onRemove={handleRemove}
+                        onAddToCollection={(nextItem) => setCollectionPickerItemId(nextItem._id)}
+                      />
+                    ))}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Loading indicator when fetching more data for next page */}
-            {activeResults.status === "LoadingMore" && (
-              <div className="py-3">
-                <LibraryItemSkeleton count={3} viewMode={params.view} />
-              </div>
+                <CommandCenterContainer>
+                  <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {t("showingRange", {
+                        start: rangeStart,
+                        end: rangeEnd,
+                        total: filteredTotal,
+                      })}
+                    </p>
+
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPageParam(effectivePage - 1)}
+                          disabled={effectivePage <= 1}
+                          className="rounded-xl"
+                        >
+                          <ChevronLeft className="mr-1 h-4 w-4" />
+                          {t("previousPage")}
+                        </Button>
+
+                        <span className="min-w-[110px] text-center text-sm text-muted-foreground">
+                          {format.number(effectivePage)} / {format.number(totalPages)}
+                        </span>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPageParam(effectivePage + 1)}
+                          disabled={effectivePage >= totalPages}
+                          className="rounded-xl"
+                        >
+                          {t("nextPage")}
+                          <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CommandCenterContainer>
+              </>
             )}
           </div>
 
-          {/* Collection management dialog */}
           <CollectionManager
             open={collectionManagerOpen}
             onOpenChange={setCollectionManagerOpen}
           />
 
-          {/* Collection picker dialog */}
           {collectionPickerItemId && (
             <CollectionPicker
-              libraryItemId={collectionPickerItemId as Id<"libraryItems">}
-              open={true}
+              open={collectionPickerItemId !== null}
               onOpenChange={(open) => {
-                if (!open) setCollectionPickerItemId(null);
+                if (!open) {
+                  setCollectionPickerItemId(null);
+                }
               }}
+              libraryItemId={collectionPickerItemId as Id<"libraryItems">}
             />
           )}
         </div>
