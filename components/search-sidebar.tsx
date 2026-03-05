@@ -661,8 +661,7 @@ export function SearchSidebar({
     <div
       className={cn(
         "w-80 rounded-2xl overflow-hidden",
-        "bg-background/80 dark:bg-background/60",
-        "backdrop-blur-xl backdrop-saturate-150",
+        "bg-background/95 dark:bg-background/90",
         "border border-border/50",
         "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
       )}

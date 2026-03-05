@@ -110,7 +110,7 @@ export function PdfCitationPanel({
 
   return (
     <div className="@container/citation flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-      <div className="border-b border-border/60 bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/90">
+      <div className="border-b border-border/60 bg-background/95 px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="min-w-0 truncate text-sm font-semibold">{payload.paperTitle || t('common.citation')}</h3>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">

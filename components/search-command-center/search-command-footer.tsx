@@ -206,8 +206,7 @@ Return a more targeted version of this query.`;
           layout
           transition={contextualTransition}
           className={cn(
-            "inline-flex items-center rounded-2xl border border-border/70 bg-background/70 p-1 shadow-sm",
-            "backdrop-blur supports-[backdrop-filter]:bg-background/55 supports-[backdrop-filter]:backdrop-saturate-150"
+            "inline-flex items-center rounded-2xl border border-border/70 bg-background/90 p-1 shadow-sm"
           )}
         >
           <AnimatePresence initial={false} mode="popLayout">

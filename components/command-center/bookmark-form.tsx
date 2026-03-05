@@ -39,7 +39,7 @@ export function BookmarkForm({
 
   if (variant === "overlay") {
     return (
-      <div className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col p-3 z-10 overflow-y-auto">
+      <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-background/98 p-3">
         <div className="flex-1 flex flex-col space-y-2.5">
           {/* Header */}
           <div className="flex items-center justify-between">

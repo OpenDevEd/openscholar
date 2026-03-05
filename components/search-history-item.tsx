@@ -100,8 +100,8 @@ export function SearchHistoryItem({
           : cn(
               "border-border/50 hover:border-border",
               variant === "compact"
-                ? "bg-card/50 backdrop-blur-sm hover:bg-card/80 hover:shadow-md"
-                : "bg-card/30 backdrop-blur-sm hover:bg-card/60 hover:shadow-lg"
+                ? "bg-card/85 hover:bg-card/95 hover:shadow-md"
+                : "bg-card/80 hover:bg-card/90 hover:shadow-lg"
             )
       )}
     >

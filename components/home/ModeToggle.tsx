@@ -32,7 +32,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
     <LayoutGroup id="home-mode">
       <motion.div
         layout
-        className="relative flex flex-nowrap p-1 bg-muted/50 backdrop-blur-sm rounded-full border border-border/50"
+        className="relative flex flex-nowrap rounded-full border border-border/50 bg-muted/70 p-1"
         transition={indicatorTransition}
       >
         <div className="absolute inset-0 bg-background/50 rounded-full shadow-inner pointer-events-none" />

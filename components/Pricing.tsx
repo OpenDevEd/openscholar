@@ -626,7 +626,7 @@ export function Pricing() {
               transition={{ ...subtleSpring, delay: index * 0.1 }}
               className={cn(
                 "relative rounded-xl overflow-hidden flex flex-col",
-                "bg-background/50 backdrop-blur-sm",
+                "bg-background/90",
                 "border",
                 isCurrent && "border-primary/50 bg-primary/[0.02]",
                 !isCurrent && "border-border/50",

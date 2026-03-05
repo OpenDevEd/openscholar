@@ -11,8 +11,8 @@ interface CommandCenterContainerProps {
 }
 
 /**
- * Shared glassmorphism container for command centers (bookmarks, history, search).
- * Provides consistent styling with gradient overlay.
+ * Shared elevated container for command centers (bookmarks, history, search).
+ * Provides consistent styling with a subtle gradient overlay.
  */
 export function CommandCenterContainer({
   children,
@@ -25,8 +25,7 @@ export function CommandCenterContainer({
       transition={subtleSpring}
       className={cn(
         "relative rounded-2xl overflow-hidden",
-        "bg-background/80 dark:bg-background/60",
-        "backdrop-blur-xl backdrop-saturate-150",
+        "bg-background/95 dark:bg-background/90",
         "border border-border/50",
         "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
         className

@@ -106,8 +106,8 @@ function NavItem({
           "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto",
           "group relative overflow-hidden",
           isActive
-            ? "bg-sidebar-accent/80 backdrop-blur-sm"
-            : "hover:bg-sidebar-accent/60 backdrop-blur-sm",
+            ? "bg-sidebar-accent/80"
+            : "hover:bg-sidebar-accent/60",
           isActive
             ? "text-sidebar-primary font-medium"
             : "text-sidebar-foreground",
@@ -724,7 +724,7 @@ export function AppSidebar() {
   return (
     <motion.aside
       className={cn(
-        "h-screen glass-sidebar flex flex-col",
+        "h-screen flex flex-col border-r border-sidebar-border/60 bg-sidebar",
         "sticky top-0 left-0 z-40 transition-shadow duration-300",
         "hover:shadow-lg",
       )}

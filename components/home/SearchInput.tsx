@@ -116,7 +116,7 @@ export function SearchInput({
               : "bg-background/40 shadow-xl border border-white/20 dark:border-white/5",
           )}
         >
-          <div className="relative bg-background/80 dark:bg-background/60 backdrop-blur-xl rounded-xl overflow-hidden group focus-within:ring-1 focus-within:ring-primary/30 transition-shadow">
+          <div className="relative overflow-hidden rounded-xl bg-background/95 transition-shadow group focus-within:ring-1 focus-within:ring-primary/30 dark:bg-background/90">
             <Textarea
               ref={textareaRef}
               name="query"
@@ -259,7 +259,7 @@ export function SearchInput({
                 animate="animate"
                 exit="exit"
                 transition={hintAnimTransition}
-                className="h-9 flex items-center justify-center gap-2.5 px-3 rounded-full text-xs sm:text-sm text-muted-foreground hover:text-foreground/90 bg-muted/30 hover:bg-muted/50 backdrop-blur-sm border border-border/40 hover:border-primary/25 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2"
+                className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border/40 bg-muted/50 px-3 text-xs text-muted-foreground transition-all duration-200 hover:border-primary/25 hover:bg-muted/70 hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
               >
                 <span className="flex items-center justify-center w-6 h-6 rounded-md bg-muted/80 border border-border/50 font-mono font-medium text-foreground/80">
                   ?

@@ -652,10 +652,9 @@ export function JournalLine({
 const cardContainerClasses = {
   base: cn(
     "relative group rounded-2xl border transition-all duration-200",
-    "bg-background/80 dark:bg-background/60",
+    "bg-background/95 dark:bg-background/90",
     "border-border/60 dark:border-border/40",
-    "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
-    "backdrop-blur-xl backdrop-saturate-150"
+    "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
   ),
   hover: cn(
     "hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30",

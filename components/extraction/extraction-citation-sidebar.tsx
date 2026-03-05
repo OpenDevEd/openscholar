@@ -44,8 +44,7 @@ export function ExtractionCitationSidebar({
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
-          "bg-background/80 dark:bg-background/60",
-          "backdrop-blur-xl backdrop-saturate-150",
+          "bg-background/95 dark:bg-background/90",
           "border-l border-border/50",
         )}
         initial={false}
@@ -57,7 +56,7 @@ export function ExtractionCitationSidebar({
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
         {/* Floating controls — expanded state */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-background/60 backdrop-blur-sm rounded-lg p-1 border border-border/30">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <motion.div

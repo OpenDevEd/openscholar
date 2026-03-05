@@ -75,10 +75,10 @@ export const TableView = memo(function TableView({
   };
 
   return (
-      <div className="min-w-0 overflow-x-hidden rounded-xl border border-border/40 bg-card/50 shadow-sm backdrop-blur-sm">
+      <div className="min-w-0 overflow-x-hidden rounded-xl border border-border/40 bg-card/90 shadow-sm">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+            <TableHeader className="sticky top-0 z-10 bg-card/95">
               <TableRow className="hover:bg-transparent border-b-2">
                 <TableHead className="w-12 pl-6">
                   <Checkbox
@@ -86,7 +86,7 @@ export const TableView = memo(function TableView({
                     onCheckedChange={toggleSelectAll}
                   />
                 </TableHead>
-                <TableHead className="sticky left-0 w-[320px] min-w-[320px] bg-card/95 backdrop-blur-sm font-medium text-foreground">
+                <TableHead className="sticky left-0 w-[320px] min-w-[320px] bg-card/95 font-medium text-foreground">
                   {tc("paper")}
                 </TableHead>
                 {questions.map((q) => (
@@ -155,7 +155,7 @@ export const TableView = memo(function TableView({
                     </TableCell>
 
                     {/* Paper Info Column */}
-                    <TableCell className="sticky left-0 bg-card/95 backdrop-blur-sm align-top py-4">
+                    <TableCell className="sticky left-0 bg-card/95 py-4 align-top">
                       <div className="space-y-1.5 max-w-[300px]">
                         <div
                           className="font-medium text-sm leading-snug line-clamp-2"

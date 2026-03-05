@@ -99,7 +99,7 @@ export function ResultsToolbar({
   const currentSortOption = SORT_OPTIONS.find((o) => o.value === sortBy);
 
   return (
-    <div className="sticky top-0 z-20 bg-card/95 backdrop-blur-sm border-b rounded-xl mb-6">
+    <div className="sticky top-0 z-20 mb-6 rounded-xl border-b bg-card/95">
       {/* Top row: View toggle + Search + Sort + Export */}
       <div className="flex flex-col sm:flex-row gap-3 p-4">
         {/* View mode toggle - icon-only matching shared toolbar */}

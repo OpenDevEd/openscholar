@@ -23,10 +23,9 @@ export function LibraryItemRow({
     <article
       className={cn(
         "group rounded-2xl border p-5 transition-all duration-200",
-        "bg-background/80 dark:bg-background/60",
+        "bg-background/95 dark:bg-background/90",
         "border-border/60 dark:border-border/40",
         "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
-        "backdrop-blur-xl backdrop-saturate-150",
         "hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-xl hover:shadow-black/[0.05]",
       )}
     >

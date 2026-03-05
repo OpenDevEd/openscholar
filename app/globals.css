@@ -358,19 +358,6 @@
   }
 }
 
-/* Glass sidebar effect */
-@utility glass-sidebar {
-  background: oklch(0.975 0.006 55 / 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-right: 1px solid oklch(0.91 0.008 55 / 0.6);
-
-  .dark & {
-    background: oklch(0.15 0.008 55 / 0.85);
-    border-right: 1px solid oklch(0.28 0.01 55 / 0.6);
-  }
-}
-
 /* Button hover effect */
 @utility btn-hover {
   transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
