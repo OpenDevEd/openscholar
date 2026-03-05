@@ -13,7 +13,7 @@ import {
   createMockMutationRefs,
   createMockGrantRefs,
 } from "./factories";
-import type { ActionCtx } from "../convex/_generated/server";
+import type { GenericActionCtx, GenericDataModel } from "convex/server";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,13 +79,13 @@ describe("getStripeApiVersion", () => {
 // ---------------------------------------------------------------------------
 
 describe("runAuditedStripeHandler", () => {
-  let ctx: ActionCtx;
+  let ctx: GenericActionCtx<GenericDataModel>;
 
   beforeEach(() => {
     ctx = createMockActionCtx({
       runMutation: vi.fn().mockResolvedValue(undefined),
       runAction: vi.fn().mockResolvedValue(undefined),
-    });
+    }) as unknown as GenericActionCtx<GenericDataModel>;
   });
 
   it("calls markStripeEventProcessed on success", async () => {
@@ -138,7 +138,7 @@ describe("runAuditedStripeHandler", () => {
 // ---------------------------------------------------------------------------
 
 describe("processInvoiceForGrantNonBlocking", () => {
-  let ctx: ActionCtx;
+  let ctx: GenericActionCtx<GenericDataModel>;
   let runAction: ReturnType<typeof vi.fn>;
   let runMutation: ReturnType<typeof vi.fn>;
   let schedulerRunAfter: ReturnType<typeof vi.fn>;
@@ -153,7 +153,7 @@ describe("processInvoiceForGrantNonBlocking", () => {
       runAction,
       runMutation,
       scheduler: { runAfter: schedulerRunAfter },
-    });
+    }) as unknown as GenericActionCtx<GenericDataModel>;
   });
 
   it("calls processInvoiceForGrant with correct args on success", async () => {
