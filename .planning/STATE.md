@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
-status: unknown
-last_updated: "2026-03-05T07:12:10.093Z"
+status: active
+last_updated: "2026-03-05T07:26:39Z"
 progress:
-  total_phases: 12
-  completed_phases: 11
-  total_plans: 19
-  completed_plans: 19
+  total_phases: 13
+  completed_phases: 12
+  total_plans: 20
+  completed_plans: 20
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 70 complete
+**Current focus:** v3.1 Complete Type Safety -- Phase 71 complete
 
 ## Current Position
 
-Phase: 70 of 70 (Documentation & Dead Code Cleanup)
+Phase: 71 of 71 (Verification Script & Validator Any Fix)
 Plan: 1 of 1
 Status: Phase complete
-Last activity: 2026-03-05 -- Completed 70-01 (Documentation & Dead Code Cleanup)
+Last activity: 2026-03-05 -- Completed 71-01 (Verification Script & Validator Any Fix)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 133 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 11, cleanup: 2, quick: 2)
+- Total plans completed: 134 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 12, cleanup: 2, quick: 2)
 - Total milestones shipped: 10
 
 **By Milestone:**
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 68 P01 | 3min | 2 tasks | 2 files |
 | Phase 69 P01 | 1min | 2 tasks | 3 files |
 | Phase 70 P01 | 2min | 2 tasks | 4 files |
+| Phase 71 P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -121,12 +122,15 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 68]: as unknown as GenericActionCtx<GenericDataModel> cast in test mocks -- ActionCtx not assignable due to contravariance
 - [Phase 69]: Removed "use node" re-exports from extraction barrel file instead of adding directive -- barrel must stay in default Convex runtime
 - [Phase 70]: Removed unused v import from test_automation.ts after console.log removal left it unreferenced
+- [Phase 71]: GenericValidator from convex/values replaces Validator<any, any, any> -- SDK alias, zero behavior change
+- [Phase 71]: Removed Phase 68/69 tsc exclusion filters from verify-no-any.sh -- those phases are complete
 
 ### Roadmap Evolution
 
 10 milestones shipped (v1.0 through v3.0). 59 phases, 121 plans total.
 v3.1 adds 10 phases (60-69) for complete type safety.
 Phase 70 added for documentation and dead code cleanup (gap closure).
+Phase 71 added for verification script enhancement and Validator<any> elimination.
 
 ### Pending Todos
 
@@ -146,6 +150,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-05 - Completed 70-01 Documentation & Dead Code Cleanup
-Stopped at: Completed 70-01-PLAN.md
+Last activity: 2026-03-05 - Completed 71-01 Verification Script & Validator Any Fix
+Stopped at: Completed 71-01-PLAN.md
 Resume file: None

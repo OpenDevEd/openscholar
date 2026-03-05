@@ -170,7 +170,7 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 - [x] **Phase 68: Fix Stripe Webhook Type Boundary** - Fix 11 tsc errors from Phase 61 ActionCtx type tightening in http.ts (completed 2026-03-05)
 - [x] **Phase 69: Fix Pre-existing TSC Errors** - Fix 10 pre-existing tsc errors from missing internal.lib.audit registration (completed 2026-03-05)
 - [x] **Phase 70: Documentation & Dead Code Cleanup** - Fix SUMMARY hash discrepancy, remove debug console.logs, remove orphaned mock exports (completed 2026-03-05)
-- [ ] **Phase 71: Verification Script & Validator\<any\> Fix** - Enhance verify-no-any.sh to detect \<any\> patterns, replace Validator\<any\> in query_states.ts, verify full test suite
+- [x] **Phase 71: Verification Script & Validator\<any\> Fix** - Enhance verify-no-any.sh to detect \<any\> patterns, replace Validator\<any\> in query_states.ts, verify full test suite (completed 2026-03-05)
 
 ## Phase Details
 
@@ -410,4 +410,4 @@ Phases execute in order: 63 → 64 → 65 → 66 → 68 → 69 → 67
 | 68. Fix Stripe Webhook Type Boundary | 1/1 | Complete    | 2026-03-05 | - |
 | 69. Fix Pre-existing TSC Errors | v3.1 | Complete    | 2026-03-05 | 2026-03-05 |
 | 70. Documentation & Dead Code Cleanup | 1/1 | Complete    | 2026-03-05 | - |
-| 71. Verification Script & Validator\<any\> Fix | v3.1 | Pending | - | - |
+| 71. Verification Script & Validator\<any\> Fix | 1/1 | Complete   | 2026-03-05 | - |
