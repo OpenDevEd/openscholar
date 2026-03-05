@@ -67,7 +67,7 @@ completed: 2026-03-04
 
 Each task was committed atomically:
 
-1. **Task 1: Type extraction workflow.ts variables and callbacks** - `7e4d8dc` (feat)
+1. **Task 1: Type extraction workflow.ts variables and callbacks** - `8d8303e` (feat)
 2. **Task 2: Type workpoolActions.ts, actions.ts, and mutations.ts** - `1025ae4` (feat)
 
 **Plan metadata:** pending (docs: complete plan)
@@ -94,7 +94,7 @@ Each task was committed atomically:
 - **Fix:** Added `as const` assertions on all sourceType literal values
 - **Files modified:** convex/extraction/workflow.ts
 - **Verification:** tsc --noEmit passes with no errors in workflow.ts
-- **Committed in:** 7e4d8dc (Task 1 commit)
+- **Committed in:** 8d8303e (Task 1 commit)
 
 **2. [Rule 1 - Bug] Fixed storageId branded type mismatch**
 - **Found during:** Task 1 (workflow.ts typing)
@@ -102,7 +102,7 @@ Each task was committed atomically:
 - **Fix:** Added explicit cast `as Id<"_storage"> | undefined` at the mutation call site
 - **Files modified:** convex/extraction/workflow.ts
 - **Verification:** tsc --noEmit passes
-- **Committed in:** 7e4d8dc (Task 1 commit)
+- **Committed in:** 8d8303e (Task 1 commit)
 
 **3. [Rule 1 - Bug] Fixed question type string widening**
 - **Found during:** Task 1 (workflow.ts typing)
@@ -110,7 +110,7 @@ Each task was committed atomically:
 - **Fix:** Used the exact union type in the question parameter annotation
 - **Files modified:** convex/extraction/workflow.ts
 - **Verification:** tsc --noEmit passes
-- **Committed in:** 7e4d8dc (Task 1 commit)
+- **Committed in:** 8d8303e (Task 1 commit)
 
 ---
 
@@ -130,7 +130,7 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
-All 4 modified files exist. Both task commits (7e4d8dc, 1025ae4) verified in git log. SUMMARY.md created.
+All 4 modified files exist. Both task commits (8d8303e, 1025ae4) verified in git log. SUMMARY.md created.
 
 ---
 *Phase: 61-convex-production-backend*
