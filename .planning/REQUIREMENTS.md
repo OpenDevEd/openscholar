@@ -89,6 +89,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Gap Closure Phases (from audit):**
 - Phase 68: Fixes integration break affecting CONV-03, STRICT-01
 - Phase 69: Fixes pre-existing tsc errors blocking STRICT-01
+- Phase 70: Fixes documentation hash, debug console.logs, orphaned exports (tech debt)
+- Phase 71: Fixes verify-no-any.sh coverage gap and 7 Validator\<any\> instances (strengthens STRICT-01)
 
 ---
 *Requirements defined: 2026-03-04*

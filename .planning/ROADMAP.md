@@ -12,7 +12,7 @@
 - v2.4 Concerns Sweep -- Phases 43-46 (shipped 2026-03-03)
 - v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
 - v3.0 Zero-Any Overhaul -- Phases 54-59 (shipped 2026-03-04)
-- v3.1 Complete Type Safety -- Phases 60-69 (in progress)
+- v3.1 Complete Type Safety -- Phases 60-71 (in progress)
 
 ## Phases
 
@@ -169,6 +169,8 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 - [x] **Phase 67: Compiler Verification** - Confirm zero any types via tsc --noEmit (completed 2026-03-04)
 - [x] **Phase 68: Fix Stripe Webhook Type Boundary** - Fix 11 tsc errors from Phase 61 ActionCtx type tightening in http.ts (completed 2026-03-05)
 - [x] **Phase 69: Fix Pre-existing TSC Errors** - Fix 10 pre-existing tsc errors from missing internal.lib.audit registration (completed 2026-03-05)
+- [ ] **Phase 70: Documentation & Dead Code Cleanup** - Fix SUMMARY hash discrepancy, remove debug console.logs, remove orphaned mock exports
+- [ ] **Phase 71: Verification Script & Validator\<any\> Fix** - Enhance verify-no-any.sh to detect \<any\> patterns, replace Validator\<any\> in query_states.ts, verify full test suite
 
 ## Phase Details
 
@@ -304,6 +306,31 @@ Plans:
 Plans:
 - [x] 69-01-PLAN.md -- Fix Convex bundler blocker and regenerate API types
 
+### Phase 70: Documentation & Dead Code Cleanup
+**Goal**: Fix accumulated documentation and dead code issues from audit
+**Depends on**: Nothing (cleanup only)
+**Requirements**: None (tech debt closure)
+**Gap Closure**: Closes tech debt from audit phases 61, 62, 65
+**Success Criteria** (what must be TRUE):
+  1. Phase 61 SUMMARY.md references correct commit hash 8d8303e (not 7e4d8dc)
+  2. `grep -n "console.log" convex/test_automation.ts convex/testWorkflow.ts` returns zero matches
+  3. `createMockExtractionPaper` and `createMockExtractionResult` removed from tests/factories/convex-ids.ts exports
+  4. All existing tests pass after changes
+**Plans**: TBD
+
+### Phase 71: Verification Script & Validator\<any\> Fix
+**Goal**: Close verification coverage gap and eliminate remaining \<any\> patterns
+**Depends on**: Phase 70 (cleanup first)
+**Requirements**: STRICT-01 (strengthens)
+**Gap Closure**: Closes tech debt from audit phase 67
+**Success Criteria** (what must be TRUE):
+  1. `scripts/verify-no-any.sh` detects angle-bracket `<any>` patterns (e.g., `Validator<any>`, `GenericActionCtx<any>`)
+  2. `grep -n "Validator<any" convex/lib/query_states.ts` returns zero matches (all 7 instances replaced with proper types)
+  3. `scripts/verify-no-any.sh` passes after Validator fix
+  4. Full test suite (`npm test`) executed and passes with zero failures
+  5. `tsc --noEmit` still passes
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
@@ -380,3 +407,5 @@ Phases execute in order: 63 → 64 → 65 → 66 → 68 → 69 → 67
 | 67. Compiler Verification | 2/2 | Complete    | 2026-03-04 | - |
 | 68. Fix Stripe Webhook Type Boundary | 1/1 | Complete    | 2026-03-05 | - |
 | 69. Fix Pre-existing TSC Errors | v3.1 | Complete    | 2026-03-05 | 2026-03-05 |
+| 70. Documentation & Dead Code Cleanup | v3.1 | Pending | - | - |
+| 71. Verification Script & Validator\<any\> Fix | v3.1 | Pending | - | - |
