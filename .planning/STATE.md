@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v3.1
 milestone_name: Complete Type Safety
-status: unknown
-last_updated: "2026-03-05T04:46:13.131Z"
+status: complete
+last_updated: "2026-03-05T05:35:08Z"
 progress:
   total_phases: 10
-  completed_phases: 9
-  total_plans: 17
-  completed_plans: 17
+  completed_phases: 10
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State
@@ -18,21 +18,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.1 Complete Type Safety — Phase 68 complete
+**Current focus:** v3.1 Complete Type Safety — Phase 69 complete
 
 ## Current Position
 
-Phase: 68 of 68 (Fix Stripe Webhook Type Boundary)
+Phase: 69 of 69 (Fix Pre-existing TSC Errors)
 Plan: 1 of 1
 Status: Phase complete
-Last activity: 2026-03-05 -- Completed 68-01 (Stripe Webhook Type Boundary Fix)
+Last activity: 2026-03-05 -- Completed 69-01 (Fix Pre-existing TSC Errors)
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 131 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 10, cleanup: 1, quick: 2)
+- Total plans completed: 132 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 11, cleanup: 1, quick: 2)
 - Total milestones shipped: 10
 
 **By Milestone:**
@@ -61,6 +61,7 @@ Progress: [██████████] 100%
 | Phase 67 P01 | 9min | 2 tasks | 10 files |
 | Phase 67 P02 | 10min | 2 tasks | 14 files |
 | Phase 68 P01 | 3min | 2 tasks | 2 files |
+| Phase 69 P01 | 1min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -117,11 +118,12 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 67]: abstract new (...args: never[]) for Stripe error constructor generics without any
 - [Phase 68]: GenericActionCtx<GenericDataModel> from convex/server for Stripe webhook handlers -- matches @convex-dev/stripe StripeEventHandler callback signature
 - [Phase 68]: as unknown as GenericActionCtx<GenericDataModel> cast in test mocks -- ActionCtx not assignable due to contravariance
+- [Phase 69]: Removed "use node" re-exports from extraction barrel file instead of adding directive -- barrel must stay in default Convex runtime
 
 ### Roadmap Evolution
 
 10 milestones shipped (v1.0 through v3.0). 59 phases, 121 plans total.
-v3.1 adds 9 phases (60-68) for complete type safety.
+v3.1 adds 10 phases (60-69) for complete type safety.
 
 ### Pending Todos
 
@@ -141,6 +143,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-05 - Completed 68-01 Stripe Webhook Type Boundary Fix
-Stopped at: Completed 68-01-PLAN.md
+Last activity: 2026-03-05 - Completed 69-01 Fix Pre-existing TSC Errors
+Stopped at: Completed 69-01-PLAN.md
 Resume file: None

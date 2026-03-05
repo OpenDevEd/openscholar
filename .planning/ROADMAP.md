@@ -168,7 +168,7 @@ Full details: `.planning/milestones/v3.0-ROADMAP.md`
 - [x] **Phase 66: Test Files** - Type all test files using mock factories (completed 2026-03-04)
 - [x] **Phase 67: Compiler Verification** - Confirm zero any types via tsc --noEmit (completed 2026-03-04)
 - [x] **Phase 68: Fix Stripe Webhook Type Boundary** - Fix 11 tsc errors from Phase 61 ActionCtx type tightening in http.ts (completed 2026-03-05)
-- [ ] **Phase 69: Fix Pre-existing TSC Errors** - Fix 22 pre-existing tsc errors from missing internal.lib.audit registration
+- [x] **Phase 69: Fix Pre-existing TSC Errors** - Fix 10 pre-existing tsc errors from missing internal.lib.audit registration (completed 2026-03-05)
 
 ## Phase Details
 
@@ -300,7 +300,9 @@ Plans:
   1. `npx tsc --noEmit 2>&1 | grep "internal.lib.audit"` returns zero matches
   2. All 22 errors in apiKeys/actions.ts, crons.ts, workpoolActions.ts, http.ts, envValidation.ts, zotero/actions.ts resolved
   3. No new errors introduced
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [x] 69-01-PLAN.md -- Fix Convex bundler blocker and regenerate API types
 
 ## Progress
 
@@ -377,4 +379,4 @@ Phases execute in order: 63 → 64 → 65 → 66 → 68 → 69 → 67
 | 66. Test Files | 2/2 | Complete    | 2026-03-04 | - |
 | 67. Compiler Verification | 2/2 | Complete    | 2026-03-04 | - |
 | 68. Fix Stripe Webhook Type Boundary | 1/1 | Complete    | 2026-03-05 | - |
-| 69. Fix Pre-existing TSC Errors | v3.1 | 0/? | Not started | - |
+| 69. Fix Pre-existing TSC Errors | v3.1 | 1/1 | Complete | 2026-03-05 |
