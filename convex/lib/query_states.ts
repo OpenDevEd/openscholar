@@ -1,4 +1,4 @@
-import { v, type Validator } from "convex/values";
+import { v, type GenericValidator } from "convex/values";
 
 export const queryStatusValidator = v.union(
   v.literal("ok"),
@@ -29,21 +29,21 @@ export function notFound() {
   return { status: "not_found" as const };
 }
 
-export function statusResultValidator<Fields extends Record<string, Validator<any, any, any>>>(
+export function statusResultValidator<Fields extends Record<string, GenericValidator>>(
   fields: Fields,
   includeNotFound = false
 ) {
-  const base: Validator<any, any, any>[] = [
-    v.object({ status: v.literal("ok"), ...fields }) as Validator<any, any, any>,
-    v.object({ status: v.literal("unauthenticated") }) as Validator<any, any, any>,
-    v.object({ status: v.literal("no_access") }) as Validator<any, any, any>,
+  const base: GenericValidator[] = [
+    v.object({ status: v.literal("ok"), ...fields }) as GenericValidator,
+    v.object({ status: v.literal("unauthenticated") }) as GenericValidator,
+    v.object({ status: v.literal("no_access") }) as GenericValidator,
   ];
 
   if (includeNotFound) {
-    base.push(v.object({ status: v.literal("not_found") }) as Validator<any, any, any>);
+    base.push(v.object({ status: v.literal("not_found") }) as GenericValidator);
   }
 
   return v.union(
-    ...(base as [Validator<any, any, any>, Validator<any, any, any>, ...Validator<any, any, any>[]])
+    ...(base as [GenericValidator, GenericValidator, ...GenericValidator[]])
   );
 }
