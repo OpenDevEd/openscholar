@@ -560,6 +560,52 @@
 
 ---
 
+## Milestone: v3.2 — Production Readiness
+
+**Shipped:** 2026-03-06
+**Phases:** 3 | **Plans:** 4 | **Commits:** 11 source
+
+### What Was Built
+- Debug endpoints converted from public functions with env-var gate to internal functions (platform-enforced unreachability)
+- O(1) library count via denormalized libraryItemCount field with atomic counter in all 3 mutation paths
+- All high-traffic .collect() calls bounded with .take(N) guards using shared MAX constants from queryBounds.ts
+- ~40 naturally-bounded queries annotated with cardinality comments
+- Cascade delete paths verified safe from over-bounding (no orphaned data)
+
+### What Worked
+- Small, focused milestone (3 phases, 4 plans) executed cleanly in a single day
+- All 3 phases were independent — no inter-phase dependencies meant zero contention
+- yolo mode with auto-advance pipeline ran all 3 phases without manual intervention
+- Research phase before each plan caught important details (Convex query context lacks scheduler, search queries can't use .take())
+- All 8/8 requirements checked off with zero gap closure phases needed
+- 786 tests passing (8 new counter tests + 13-assertion internal registration test)
+
+### What Was Inefficient
+- Phase 72 Plan 02 was nearly a no-op (1 minute, 1 file) since Plan 01 already deleted the files it was supposed to delete
+- Plan line number references in Phase 74 were slightly off from research (auto-fixed during execution)
+
+### Patterns Established
+- Internal function registration as security boundary (no runtime env-var gate needed)
+- Denormalized counter: optional field + lazy scan fallback + mutation-driven initialization
+- Math.max(0, count - 1) for negative counter prevention
+- MAX constant + .take(N) from shared queryBounds.ts for all high-traffic queries
+- Cardinality comment annotation for naturally-bounded queries
+- Unbounded comment annotation for cascade delete paths
+
+### Key Lessons
+1. Internal function registration is strictly superior to env-var gating — platform-enforced unreachability eliminates an entire class of security bugs
+2. Denormalized counters with lazy backfill handle the existing-user problem without requiring data migration
+3. Shared constant modules prevent inconsistent bounds across query files — worth the extra indirection
+4. Cascade delete paths must remain unbounded — over-bounding silently orphans data
+5. Small, focused production-readiness milestones are efficient — 3 independent phases with clear success criteria execute fast
+
+### Cost Observations
+- Model mix: budget profile
+- Sessions: 1 session for full milestone
+- Notable: 4 plans in ~18 minutes total — smallest milestone by plan count, clean execution
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -577,6 +623,7 @@
 | v2.5 | 54 | 7 | 15 | ~2min | Tech debt purge, typed Stripe, zero TS errors, audit logging |
 | v3.0 | 57 | 6 | 11 | ~2min | Zero as-any, XSS-safe rendering, incremental aggregation, audit table |
 | v3.1 | 82 | 12 | 20 | ~5min | Complete type safety, mock factories, zero any in entire codebase |
+| v3.2 | 11 | 3 | 4 | ~4.5min | Internal debug endpoints, O(1) library count, query bounding |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -606,3 +653,7 @@
 24. DeepPartial mock factories eliminate entire categories of `as any` in tests — invest in factory infrastructure early (v3.1)
 25. Cross-library type boundaries require generic context types, not action-specific ones — library signatures use generics (v3.1)
 26. Complete type safety across 143 files is achievable with systematic layered approach (validators → backend → libs → components → tests) (v3.1)
+27. Internal function registration is strictly superior to env-var gating for debug endpoints — platform-enforced unreachability (v3.2)
+28. Denormalized counters with lazy backfill avoid data migration while providing O(1) reads (v3.2)
+29. Shared constant modules (queryBounds.ts) prevent inconsistent bounds across files — centralize all MAX values (v3.2)
+30. Small, focused milestones (3 independent phases) execute cleanly in a single session with zero gap closures (v3.2)

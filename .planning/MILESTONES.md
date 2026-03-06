@@ -1,5 +1,23 @@
 # Milestones
 
+## v3.2 Production Readiness (Shipped: 2026-03-06)
+
+**Phases completed:** 3 phases, 4 plans, 7 tasks
+**Git range:** `1dac00b..d047fd6` (11 source commits)
+**Files changed:** 79 files, +2,240/-1,803 lines
+**Timeline:** 1 day (2026-03-06)
+
+**Key accomplishments:**
+- Debug endpoints converted to internal functions — platform-enforced unreachability replaces env-var gates, debug_gate.ts deleted (Phase 72)
+- O(1) library count via denormalized libraryItemCount field with atomic counter maintenance in all 3 mutation paths (Phase 73)
+- All high-traffic .collect() calls bounded with .take(N) guards using shared MAX constants from queryBounds.ts (Phase 74)
+- ~40 naturally-bounded queries annotated with cardinality comments, cascade deletes verified safe from over-bounding (Phase 74)
+- 8 new counter tests + 13-assertion internal registration test added (786 total tests passing)
+
+**Tech debt carried forward:** None
+
+---
+
 ## v3.1 Complete Type Safety (Shipped: 2026-03-05)
 
 **Phases completed:** 12 phases, 20 plans

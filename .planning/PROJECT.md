@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (750+ tests across 75+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, and a fully hardened codebase with zero `as any` casts in production code, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, and automated cleanup crons.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (786+ tests across 81+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, and a production-hardened codebase with zero `as any` casts, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, automated cleanup crons, internal-only debug endpoints, denormalized O(1) library counting, and bounded queries with shared MAX constants.
 
 ## Core Value
 
@@ -113,23 +113,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ Typed mock factory infrastructure (DeepPartial factories for Convex context, Ids/documents, Stripe events) — v3.1
 - ✓ All 20+ test files typed using mock factories (85+ `as any` casts eliminated) — v3.1
 - ✓ Zero-any verified: `tsc --noEmit` zero errors, `verify-no-any.sh` passes all 3 checks (`: any`/`as any`/`any[]`, `<any>` angle-bracket, tsc compilation) — v3.1
-
-## Current Milestone: v3.2 Production Readiness
-
-**Goal:** Fix security and performance blockers before production launch.
-
-**Target features:**
-- Convert debug endpoints from public functions with env gate to internal functions (security blocker)
-- Replace library count query (.take(10_000) + .length) with efficient counter/aggregate
-- Audit and bound unbounded .collect() calls on high-traffic query paths
+- ✓ Debug endpoints converted to internal functions — platform-enforced unreachability, debug_gate.ts deleted — v3.2
+- ✓ O(1) library count via denormalized libraryItemCount with atomic counter in all mutation paths — v3.2
+- ✓ All high-traffic .collect() calls bounded with .take(N) guards and shared MAX constants — v3.2
+- ✓ Cascade delete paths verified safe from over-bounding — v3.2
+- ✓ ~40 naturally-bounded queries annotated with cardinality comments — v3.2
 
 ### Active
 
-<!-- Current scope. Building toward these. -->
+<!-- Next milestone scope. -->
 
-- [ ] Debug endpoints converted to internal functions (no public access, even with env var)
-- [ ] Library count query uses efficient counting (not fetching 10k documents)
-- [ ] High-traffic .collect() calls audited and bounded with .take() guards
+(No active milestone — run `/gsd:new-milestone` to start next cycle)
 
 ### Out of Scope
 
@@ -156,17 +150,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 through v3.1 (11 milestones, 71 phases, 140 plans). Latest: v3.1 (143 files, +9,047/-676).
+Shipped v1.0 through v3.2 (12 milestones, 74 phases, 144 plans). Latest: v3.2 (79 files, +2,240/-1,803).
 Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`.
-Test suite: 75+ Vitest test files (750+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron, and job stats tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
+Test suite: 81+ Vitest test files (786+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron, and job stats tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export via ExcelJS (dynamic import), two-column sidebar layout with collapsible filter panel, bounded count query.
 Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
-Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, persistent `auditLogs` table with `writeAuditLog` internalMutation, XSS-safe `HighlightedText` component (no dangerouslySetInnerHTML), env var validation cron, assertPlanPriceConfig fail-fast, rate limiting on all exposed endpoints, debug functions gated behind requirePublicDebugEnabled() with audit trail.
+Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, persistent `auditLogs` table with `writeAuditLog` internalMutation, XSS-safe `HighlightedText` component (no dangerouslySetInnerHTML), env var validation cron, assertPlanPriceConfig fail-fast, rate limiting on all exposed endpoints, debug functions registered as internalQuery/internalMutation (platform-enforced unreachability).
 Extraction: 18 shared typed validators, typed query return validators (zero v.any()), typed searchFilters schema, credit-guard pattern, incremental `extractionJobStats` aggregation with lazy backfill, `ExtractionResultWithReview` type derived from validator threaded through all downstream consumers.
 Type safety: Complete type safety across entire codebase — zero `: any`, `as any`, `any[]`, `<any>`, `Record<string, any>`, `v.any()` in user-authored code. Typed mock factories (DeepPartial<T>) for Convex context, Ids, documents, and Stripe events. GenericValidator replaces all Validator<any> instances.
-Performance: Batch review loading (no N+1), bounded .collect() calls with .take() guards, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings).
+Performance: Batch review loading (no N+1), bounded .collect() calls with .take(N) guards and shared MAX constants from queryBounds.ts, O(1) library count via denormalized counter, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings), ~40 queries annotated with cardinality comments.
 Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation cron, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
 
 ## Constraints
@@ -254,6 +248,11 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | DeepPartial<T> mock factories | Selective nested mock customization without as any | ✓ Good — 20+ test files migrated |
 | GenericActionCtx<GenericDataModel> for Stripe webhooks | Matches @convex-dev/stripe StripeEventHandler callback signature | ✓ Good — cross-library type boundary |
 | as never for Convex useQuery/usePaginatedQuery boundary | Satisfies generic constraints without widening to any | ✓ Good — used in use-auth-query, hook-factory |
+| Internal function registration for debug endpoints | Platform-enforced unreachability vs runtime env-var gate | ✓ Good — eliminates debug_gate.ts, no env var needed |
+| Denormalized libraryItemCount counter | O(1) read vs O(N) scan, low write contention | ✓ Good — atomic maintenance in 3 mutation paths |
+| Math.max(0, count-1) negative counter guard | Prevents edge-case negative counts | ✓ Good — defensive, no correctness impact |
+| Shared queryBounds.ts MAX constants | Centralized bounds vs co-located per-file | ✓ Good — prevents inconsistent bounds |
+| Cascade deletes left unbounded | Bounding would orphan data | ✓ Good — annotated with comments |
 
 ---
-*Last updated: 2026-03-06 after v3.2 pivoted to Production Readiness*
+*Last updated: 2026-03-06 after v3.2 milestone*

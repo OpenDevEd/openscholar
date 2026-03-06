@@ -4,39 +4,6 @@
 
 ## Tech Debt
 
-**Oversized Backend Modules:**
-- Issue: Several Convex modules exceed 1000 lines, concentrating too many responsibilities in single files. These are difficult to navigate, review, and test in isolation.
-- Files:
-  - `convex/extraction/mutations.ts` (2275 lines) - largest backend file; mixes job creation, cancellation, result saving, insight aggregation, cascade deletion, and stats computation
-  - `convex/extraction/queries.ts` (1629 lines) - all extraction read queries in one module
-  - `convex/credits/internal.ts` (1433 lines) - credit granting, reconciliation, retry logic, and refunds
-  - `convex/extraction/workpoolActions.ts` (1153 lines) - PDF processing, RAG search, evidence extraction, AI calls
-  - `convex/zotero/actions.ts` (1110 lines) - OAuth flow, collection fetching, item fetching, all in one file
-  - `convex/subscriptions/actions.ts` (1021 lines) - Stripe checkout, plan changes, schedule management
-- Impact: High cognitive load when modifying billing or extraction logic; merge conflicts likely when multiple contributors touch these files.
-- Fix approach: Extract logical sub-modules (e.g., split `mutations.ts` into `job-lifecycle.ts`, `insight-aggregation.ts`, `cascade-delete.ts`; split `subscriptions/actions.ts` into `checkout.ts`, `plan-change.ts`).
-
-**Oversized Frontend Page Component:**
-- Issue: The extraction job detail page is a 1019-line single component with complex tab switching, filtering, pagination, and multiple sub-views.
-- Files: `app/extraction/[jobId]/page.tsx`
-- Impact: Hard to reason about state management; difficult to test individual tabs in isolation.
-- Fix approach: Extract each tab (results, insights, review, report, schema) into separate route segments or dedicated components with their own state.
-
-**Oversized Client-Side Store:**
-- Issue: `lib/store.ts` (1275 lines) is a monolithic Zustand store handling search history, ratings, bookmarks, AI preferences, screening questions, keyword expansion, and more.
-- Files: `lib/store.ts`
-- Impact: Every consumer re-renders on any slice change unless selectors are used carefully. Growing surface area makes the store fragile.
-- Fix approach: Split into domain-specific stores (e.g., `lib/stores/search-history.ts`, `lib/stores/ai-preferences.ts`, `lib/stores/ratings.ts`).
-
-**Duplicated Stripe Client Initialization:**
-- Issue: The `getStripe()` lazy-init pattern is duplicated identically in multiple files rather than being centralized.
-- Files:
-  - `convex/subscriptions/actions.ts` (line 37-49)
-  - `convex/maintenance/internal.ts` (line 11-23)
-  - `convex/credits/actions.ts` (line 29-35)
-- Impact: If the Stripe API version or initialization changes, all three must be updated. Risk of drift.
-- Fix approach: A single `convex/stripe.ts` already exists (imported in `subscriptions/actions.ts`). Consolidate all `getStripe()` usages to use that shared module.
-
 **Loose `any` Type in Extraction Filtering:**
 - Issue: `FilterState.questionFilters` is typed as `Map<string, any>`, losing type safety for filter values.
 - Files: `lib/extraction/filtering.ts` (line 10)
@@ -48,16 +15,6 @@
 No explicit bugs identified (no TODO/FIXME/HACK comments exist in source code). The codebase is notably clean of inline bug markers.
 
 ## Security Considerations
-
-**Encryption Key Dependency:**
-- Risk: API key encryption/decryption relies on a single `ENCRYPTION_KEY` environment variable. If this key is lost or rotated without re-encrypting existing keys, all stored API keys and Zotero connections become unrecoverable.
-- Files:
-  - `convex/zotero/actions.ts` (line 35)
-  - `convex/apiKeys/actions.ts` (lines 58, 99)
-  - `convex/extraction/workpoolActions.ts` (line 713)
-  - `convex/lib/crypto.ts`
-- Current mitigation: Key prefix stored separately for display; encryption uses standard Node.js crypto.
-- Recommendations: Document key rotation procedure; consider adding a key version field to encrypted records to support rotation.
 
 **Environment Variable Sprawl:**
 - Risk: Over 35 `process.env.*` references across the Convex backend with no centralized validation at startup beyond `convex/lib/env.ts` (which only validates `NEXT_PUBLIC_APP_URL`). Missing env vars fail at runtime, not at deploy time.
@@ -74,6 +31,7 @@ No explicit bugs identified (no TODO/FIXME/HACK comments exist in source code). 
   - `convex/lib/debug_gate.ts`
 - Current mitigation: `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var must be set to `"true"` to enable.
 - Recommendations: Ensure this env var is never set in production. Consider using Convex internal functions instead of public functions with a gate.
+- Action: THIS SHOULD NEVER BE ACCESSIBLE OUTSIDE OF DEVELOPMENT!! Not even by environment variable
 
 ## Performance Bottlenecks
 
@@ -145,11 +103,6 @@ No explicit bugs identified (no TODO/FIXME/HACK comments exist in source code). 
 - Scaling path: Maintain a counter or use Convex aggregates.
 
 ## Dependencies at Risk
-
-**Alpha SDK Dependency:**
-- Risk: `@openrouter/ai-sdk-provider` is pinned at `^6.0.0-alpha.1` - an alpha release with no stability guarantees.
-- Impact: Breaking changes in minor/patch releases could disrupt OpenRouter AI provider functionality.
-- Migration plan: Monitor for stable release; pin to exact version in the interim.
 
 **Convex Dev Dependencies:**
 - Risk: Multiple `@convex-dev/*` packages (`rag`, `stripe`, `workflow`, `workpool`) are at early versions (0.x). These are community/experimental components, not core Convex.
