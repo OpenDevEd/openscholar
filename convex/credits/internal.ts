@@ -95,6 +95,7 @@ async function getLatestCreditsByUser(
   ctx: MutationCtx,
   userId: Doc<"users">["_id"],
 ): Promise<Doc<"credits"> | null> {
+  // Cardinality: ~1-3 credit records per user
   const rows = await ctx.db
     .query("credits")
     .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -174,6 +175,7 @@ async function resolveTopupUserId(
   }
 
   if (args.stripeCustomerId) {
+    // Cardinality: 1 billing customer per Stripe customer ID
     const rows = await ctx.db
       .query("billingCustomers")
       .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId!))
@@ -195,6 +197,7 @@ async function findGrantSubscription(
   },
 ) {
   if (args.stripeSubscriptionId) {
+    // Cardinality: ~1-3 subscriptions per Stripe subscription ID
     const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) => q.eq("stripeSubscriptionId", args.stripeSubscriptionId!))
@@ -205,6 +208,7 @@ async function findGrantSubscription(
   }
 
   if (args.stripeCustomerId) {
+    // Cardinality: 1 billing customer per Stripe customer ID
     const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId!))
@@ -842,6 +846,7 @@ export const grantUpgradeProRataCredits = internalMutation({
     // updated.latest_invoice from Stripe may still point to the original
     // subscription cycle invoice (which grantMonthlyCredits already recorded),
     // causing a false "already_granted" on every upgrade.
+    // Cardinality: ~1-3 credit records per user
     const recentGrants = await ctx.db
       .query("creditTransactions")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -1047,6 +1052,7 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
       );
     }
 
+    // Cardinality: 1 transaction per Stripe payment intent
     const existingTransactions = await ctx.db
       .query("creditTransactions")
       .withIndex("by_stripe_payment_intent", (q) =>
@@ -1157,6 +1163,7 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
       return { outcome: "ignored_zero_refund", reversedCredits: 0 };
     }
 
+    // Cardinality: 1 transaction per Stripe payment intent
     const transactions = await ctx.db
       .query("creditTransactions")
       .withIndex("by_stripe_payment_intent", (q) =>
@@ -1393,6 +1400,7 @@ export const addCredits = internalMutation({
     let actualAdded = args.amount;
 
     if (args.creditType === "free") {
+      // Cardinality: ~1-5 subscriptions per user
       const subscriptions = await ctx.db
         .query("subscriptions")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))

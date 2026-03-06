@@ -16,7 +16,7 @@ export const storeRequestToken = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { token, tokenSecret, userId }) => {
-    // Delete any existing tokens for this user
+    // Cardinality: 1 OAuth token per user
     const existing = await ctx.db
       .query("zoteroOAuthTokens")
       .withIndex("by_user", (q) => q.eq("userId", userId))

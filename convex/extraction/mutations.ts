@@ -29,6 +29,7 @@ import {
 
 import { createError } from "../lib/errors";
 import { searchFiltersValidator } from "./validators";
+import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../lib/queryBounds";
 
 /** Safety bound for per-job paper queries to prevent unbounded memory usage. */
 const MAX_PAPERS_PER_JOB = 500;
@@ -49,6 +50,7 @@ async function loadJobDataForReporting(
   ctx: MutationCtx,
   jobId: Id<"extractionJobs">
 ) {
+  // Cardinality: ~5-20 questions per extraction job
   const [questions, papers] = await Promise.all([
     ctx.db
       .query("extractionQuestions")
@@ -66,10 +68,12 @@ async function loadJobDataForReporting(
 
   await Promise.all(papers.map(async (paper) => {
     const [results, reviews] = await Promise.all([
+      // Cardinality: ~5-20 results per paper
       ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .collect(),
+      // Cardinality: ~5-20 reviews per paper
       ctx.db
         .query("extractionResultReviews")
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
@@ -300,6 +304,7 @@ export const duplicateExtraction = mutation({
       throw createError("NOT_FOUND", "Job not found");
     }
 
+    // Cardinality: ~5-20 questions per extraction job
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -590,6 +595,7 @@ export const saveWorkflowTemplateFromJob = mutation({
     await requireProPlan(ctx, user._id, "Workflow templates");
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
 
+    // Cardinality: ~5-20 questions per extraction job
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -780,7 +786,7 @@ export const createExtractionReportSnapshot = mutation({
     const { questions, papers, resultsByPaper, reviewsByResult } =
       await loadJobDataForReporting(ctx, args.jobId);
 
-    // Check for pre-aggregated stats (fast path for metrics)
+    // Cardinality: ~1 stat record per question per job
     const jobStats = await ctx.db
       .query("extractionJobStats")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -1241,6 +1247,7 @@ export const backfillJobStats = internalMutation({
       .first();
     if (existingStats) return null;
 
+    // Cardinality: ~5-20 questions per extraction job
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -1268,6 +1275,7 @@ export const backfillJobStats = internalMutation({
 
       for (const paper of papers) {
         if (paper.processable === false) continue;
+        // Cardinality: ~5-20 results per paper
         const results = await ctx.db
           .query("extractionResults")
           .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
@@ -2249,7 +2257,7 @@ export const replacePaperEvidenceUnits = internalMutation({
     const existing = await ctx.db
       .query("extractionEvidenceUnits")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .collect();
+      .take(MAX_EVIDENCE_UNITS_PER_PAPER);
 
     for (const row of existing) {
       await ctx.db.delete(row._id);

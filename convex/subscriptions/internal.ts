@@ -99,10 +99,12 @@ async function upsertBillingCustomerLinkRecord(
 ): Promise<void> {
   const now = Date.now();
 
+  // Cardinality: ~1-3 billing customers per user
   const byUser = await ctx.db
     .query("billingCustomers")
     .withIndex("by_user", (q) => q.eq("userId", args.userId))
     .collect();
+  // Cardinality: 1 billing customer per Stripe customer ID
   const byStripeCustomer = await ctx.db
     .query("billingCustomers")
     .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId))
@@ -152,6 +154,7 @@ async function getSubscriptionByStripeOrMetadata(
   },
 ): Promise<Doc<"subscriptions"> | null> {
   if (args.stripeSubscriptionId) {
+    // Cardinality: ~1-5 subscriptions per user/customer
     const bySub = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) => q.eq("stripeSubscriptionId", args.stripeSubscriptionId!))
@@ -162,6 +165,7 @@ async function getSubscriptionByStripeOrMetadata(
   }
 
   if (args.stripeCustomerId) {
+    // Cardinality: ~1-5 subscriptions per user/customer
     const byCustomer = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId!))
@@ -173,6 +177,7 @@ async function getSubscriptionByStripeOrMetadata(
 
   if (args.metadata?.userId) {
     const userId = args.metadata.userId as Id<"users">;
+    // Cardinality: ~1-5 subscriptions per user
     const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -249,6 +254,7 @@ export const getBillingCustomerByUser = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
+    // Cardinality: ~1-3 billing customers per user
     const rows = await ctx.db
       .query("billingCustomers")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -280,6 +286,7 @@ export const getBillingCustomerByStripeCustomer = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
+    // Cardinality: 1 billing customer per Stripe customer ID
     const rows = await ctx.db
       .query("billingCustomers")
       .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId))
@@ -302,6 +309,7 @@ export const getSubscriptionByUser = internalQuery({
   },
   returns: v.union(subscriptionValidator, v.null()),
   handler: async (ctx, args) => {
+    // Cardinality: ~1-5 subscriptions per user
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -325,6 +333,7 @@ export const getSubscriptionByStripeId = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
+    // Cardinality: ~1-3 subscriptions per Stripe subscription ID
     const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) =>
@@ -443,6 +452,7 @@ export const syncSubscription = internalMutation({
     let userId: Id<"users"> | undefined = subscription?.userId;
 
     if (!userId && args.stripeCustomerId) {
+      // Cardinality: 1 billing customer per Stripe customer ID
       const linkedRows = await ctx.db
         .query("billingCustomers")
         .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", args.stripeCustomerId))
@@ -538,6 +548,7 @@ export const handleSubscriptionCanceled = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Cardinality: ~1-3 subscriptions per Stripe subscription ID
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) => q.eq("stripeSubscriptionId", args.stripeSubscriptionId))
@@ -586,6 +597,7 @@ export const handlePaymentFailed = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Cardinality: ~1-3 subscriptions per Stripe subscription ID
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripe_sub", (q) => q.eq("stripeSubscriptionId", args.stripeSubscriptionId))

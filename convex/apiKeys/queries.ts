@@ -22,6 +22,7 @@ export const getMy = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
+    // Cardinality: ~1-3 API keys per user
     const keys = await ctx.db
       .query("apiKeys")
       .withIndex("by_user", (q) => q.eq("userId", user._id))

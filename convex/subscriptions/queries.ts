@@ -13,6 +13,7 @@ export const getMy = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
+    // Cardinality: ~1-5 subscriptions per user
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -30,6 +31,7 @@ export const getTier = query({
     const user = await getCurrentUser(ctx);
     if (!user) return 0;
 
+    // Cardinality: ~1-5 subscriptions per user
     const subscriptions = await ctx.db
       .query("subscriptions")
       .withIndex("by_user", (q) => q.eq("userId", user._id))

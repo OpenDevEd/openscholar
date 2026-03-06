@@ -27,6 +27,11 @@ import {
 } from "../../lib/extraction/insights";
 import { createError } from "../lib/errors";
 import {
+  MAX_REVIEWS_PER_JOB,
+  MAX_EXTRACTION_JOBS_PER_USER,
+  MAX_EVIDENCE_UNITS_PER_PAPER,
+} from "../lib/queryBounds";
+import {
   extractionJobValidator,
   extractionQuestionValidator,
   extractionPaperValidator,
@@ -138,6 +143,7 @@ async function attachReviewMetadata(
   paperId: Id<"extractionPapers">,
   results: Doc<"extractionResults">[]
 ) {
+  // Cardinality: ~5-20 reviews per paper (one per question)
   const reviews = await ctx.db
     .query("extractionResultReviews")
     .withIndex("by_paper", (q) => q.eq("paperId", paperId))
@@ -169,7 +175,7 @@ async function loadReviewsByJob(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
   const allReviews = await ctx.db
     .query("extractionResultReviews")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(MAX_REVIEWS_PER_JOB);
   return new Map<string, Doc<"extractionResultReviews">>(
     allReviews.map((review) => [review.resultId, review])
   );
@@ -212,6 +218,7 @@ function buildQuestionInfoByKey(questions: Doc<"extractionQuestions">[]) {
 }
 
 async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs">) {
+  // Cardinality: ~5-20 questions per extraction job (enforced by UI limit)
   const questions = await ctx.db
     .query("extractionQuestions")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -228,6 +235,7 @@ async function loadJobPapersAndResults(ctx: QueryCtx, jobId: Id<"extractionJobs"
 
   const resultsByPaper = new Map<string, ResultWithReview[]>();
   await Promise.all(papers.map(async (paper) => {
+    // Cardinality: ~5-20 results per paper (one per question)
     const results = await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
@@ -346,6 +354,7 @@ export const getJobDetails = query({
     }
     const { job } = access;
 
+    // Cardinality: ~5-20 questions per extraction job
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -401,6 +410,7 @@ export const getPaperResults = query({
     }
     const { paper } = access;
 
+    // Cardinality: ~5-20 results per paper
     const results = await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
@@ -415,6 +425,7 @@ export const getPaperResults = query({
 export const getPaperResultsInternal = internalQuery({
   args: { paperId: v.id("extractionPapers") },
   handler: async (ctx, args) => {
+    // Cardinality: ~5-20 results per paper
     return await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
@@ -486,6 +497,7 @@ export const getJobResults = query({
     }
     const { job } = access;
 
+    // Cardinality: ~5-20 questions per extraction job
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -507,6 +519,7 @@ export const getJobResults = query({
     > = {};
 
     for (const paper of papers) {
+      // Cardinality: ~5-20 results per paper
       const results = await ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
@@ -574,6 +587,7 @@ export const getJobResultsPaginated = query({
 
     const papersWithResults = await Promise.all(
       result.page.map(async (paper) => {
+        // Cardinality: ~5-20 results per paper
         const results = await ctx.db
           .query("extractionResults")
           .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
@@ -683,7 +697,7 @@ export const getJobInsights = query({
     }
     const { job } = access;
 
-    // Fast-path: load pre-aggregated stats (populated by incremental upsert on paper completion)
+    // Cardinality: ~1 stat record per question per job
     const jobStats = await ctx.db
       .query("extractionJobStats")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -1281,6 +1295,7 @@ export const getSavedViews = query({
       return access;
     }
 
+    // Cardinality: ~1-5 report snapshots per job
     const views = await ctx.db
       .query("extractionSavedViews")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -1329,7 +1344,7 @@ export const getWorkflowTemplates = query({
       .query("extractionWorkflowTemplates")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .collect();
+      .take(MAX_EXTRACTION_JOBS_PER_USER);
   },
 });
 
@@ -1345,6 +1360,7 @@ export const getReportSnapshots = query({
       return access;
     }
 
+    // Cardinality: ~1-5 report snapshots per job
     const reports = await ctx.db
       .query("extractionReportSnapshots")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -1417,6 +1433,7 @@ export const debugRecentPapers = internalQuery({
 export const getQuestionsInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
+    // Cardinality: ~5-20 questions per extraction job
     return await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
@@ -1454,7 +1471,7 @@ export const getEvidenceUnitsInternal = internalQuery({
     return await ctx.db
       .query("extractionEvidenceUnits")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .collect();
+      .take(MAX_EVIDENCE_UNITS_PER_PAPER);
   },
 });
 

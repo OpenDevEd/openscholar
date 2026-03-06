@@ -84,7 +84,7 @@ export const removeFromLibraryByOpenalexId = mutation({
       .unique();
 
     if (item) {
-      // Cascade-delete junction rows (collection memberships)
+      // Unbounded: cascade delete of single item's collection memberships (safe: bounded by collections per user, ~50 max)
       const memberships = await ctx.db
         .query("libraryItemCollections")
         .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
@@ -118,7 +118,7 @@ export const removeFromLibrary = mutation({
       throw createError("FORBIDDEN", "Not your library item");
     }
 
-    // Cascade-delete junction rows (collection memberships)
+    // Unbounded: cascade delete of single item's collection memberships (safe: bounded by collections per user, ~50 max)
     const memberships = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_item", (q) => q.eq("libraryItemId", args.itemId))

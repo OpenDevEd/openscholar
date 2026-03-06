@@ -4,6 +4,7 @@ import { paginationOptsValidator, type Cursor } from "convex/server";
 import { v } from "convex/values";
 import { filter } from "convex-helpers/server/filter";
 import { requireAuth } from "../lib/auth";
+import { MAX_COLLECTION_MEMBERS, MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 
 const librarySortValidator = v.union(
   v.literal("savedAt"),
@@ -52,7 +53,7 @@ async function loadCollectionItemIds(
   const memberships = await ctx.db
     .query("libraryItemCollections")
     .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
-    .collect();
+    .take(MAX_COLLECTION_MEMBERS);
 
   return new Set(memberships.map((membership) => membership.libraryItemId as string));
 }
@@ -179,6 +180,7 @@ async function collectLibraryItems(
   const normalizedSearch = searchText?.trim();
 
   if (normalizedSearch) {
+    // Cardinality: bounded by Convex search engine (max ~256 results)
     return await ctx.db
       .query("libraryItems")
       .withSearchIndex("search_library", (q) =>
@@ -191,7 +193,7 @@ async function collectLibraryItems(
     .query("libraryItems")
     .withIndex(SORT_INDEX_MAP[sortBy], (q) => q.eq("userId", userId))
     .order(sortOrder)
-    .collect();
+    .take(MAX_LIBRARY_BROWSE);
 }
 
 export const browseLibrary = query({
@@ -346,7 +348,7 @@ export const getLibraryCount = query({
     const items = await ctx.db
       .query("libraryItems")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(MAX_LIBRARY_BROWSE);
     return items.length;
   },
 });

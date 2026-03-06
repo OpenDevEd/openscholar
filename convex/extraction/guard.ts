@@ -27,6 +27,7 @@ export async function requirePlanTier(
   minTier: number,
   featureName: string
 ): Promise<void> {
+  // Cardinality: ~1-5 subscriptions per user
   const subscriptions = await ctx.db
     .query("subscriptions")
     .withIndex("by_user", (q) => q.eq("userId", userId))

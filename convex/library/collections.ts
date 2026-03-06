@@ -2,6 +2,7 @@ import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
 
 // ═══════════════════════════════════════════════════════════════
 // COLLECTION CRUD (Plan 01 prerequisites)
@@ -65,7 +66,7 @@ export const deleteCollection = mutation({
     const memberships = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
-      .collect();
+      .take(MAX_COLLECTION_MEMBERS);
     for (const m of memberships) {
       await ctx.db.delete(m._id);
     }
@@ -78,6 +79,7 @@ export const listCollections = query({
   args: {},
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
+    // Cardinality: ~1-50 collections per user (user-created)
     const collections = await ctx.db
       .query("collections")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -174,7 +176,7 @@ export const getCollectionsWithCounts = query({
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
-    // Fetch all user collections
+    // Cardinality: ~1-50 collections per user (user-created)
     const collections = await ctx.db
       .query("collections")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -183,6 +185,7 @@ export const getCollectionsWithCounts = query({
     // Count junction rows per collection
     const result = await Promise.all(
       collections.map(async (collection) => {
+        // Unbounded: cascade delete of collection memberships (safe: bounded by library size per user)
         const memberships = await ctx.db
           .query("libraryItemCollections")
           .withIndex("by_collection", (q) =>
@@ -206,6 +209,7 @@ export const getItemCollections = query({
   handler: async (ctx, args) => {
     await requireAuth(ctx);
 
+    // Cardinality: ~1-50 collections per library item (user-created)
     const memberships = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_item", (q) => q.eq("libraryItemId", args.libraryItemId))

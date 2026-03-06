@@ -196,6 +196,7 @@ export const getLatestGrantStatus = query({
       }
     }
 
+    // Cardinality: ~1-3 billing customers per user
     const billingCustomers = await ctx.db
       .query("billingCustomers")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
