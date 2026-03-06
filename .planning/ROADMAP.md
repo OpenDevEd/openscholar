@@ -221,7 +221,9 @@ Plans:
   1. Every high-traffic `.collect()` call has an explicit `.take(N)` guard with a documented MAX constant
   2. Cascade delete paths do not use `.take(N)` bounds that would silently orphan data (verified by inspection or test)
   3. Naturally-bounded `.collect()` calls (small cardinality tables) have inline comments documenting their expected cardinality
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 74-01-PLAN.md -- Create queryBounds constants + apply .take(N) guards and cardinality annotations
 
 ## Progress
 
@@ -243,4 +245,4 @@ Phases execute in numeric order: 72 -> 73 -> 74
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72. Debug Endpoint Security | 2/2 | Complete    | 2026-03-06 | - |
 | 73. Library Count Optimization | 1/1 | Complete    | 2026-03-06 | - |
-| 74. Query Bounding Audit | v3.2 | 0/0 | Not started | - |
+| 74. Query Bounding Audit | v3.2 | 0/1 | Not started | - |
