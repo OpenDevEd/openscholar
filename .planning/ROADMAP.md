@@ -195,7 +195,7 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
   2. The `debug_gate.ts` module and `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var no longer exist in the codebase
   3. Tests verify debug functions are registered as internal (not that an env gate blocks them)
   4. `tsc --noEmit` passes with zero errors after all API path changes
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 - [ ] 72-01-PLAN.md -- Convert all 12 debug files to internal + write replacement test
 - [ ] 72-02-PLAN.md -- Delete debug gate module and old test, verify clean build
@@ -239,6 +239,6 @@ Phases execute in numeric order: 72 -> 73 -> 74
 | 47-53 | v2.5 | 15/15 | Complete | 2026-03-03 |
 | 54-59 | v3.0 | 11/11 | Complete | 2026-03-04 |
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
-| 72. Debug Endpoint Security | v3.2 | 0/2 | Not started | - |
+| 72. Debug Endpoint Security | 1/2 | In Progress|  | - |
 | 73. Library Count Optimization | v3.2 | 0/0 | Not started | - |
 | 74. Query Bounding Audit | v3.2 | 0/0 | Not started | - |

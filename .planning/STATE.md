@@ -2,13 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Production Readiness
-status: ready to plan
-last_updated: "2026-03-06"
+status: executing
+stopped_at: Completed 72-01-PLAN.md
+last_updated: "2026-03-06T07:25:00Z"
+last_activity: 2026-03-06 -- Completed Phase 72 Plan 01 (debug endpoint security hardening)
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -23,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-06)
 ## Current Position
 
 Phase: 72 of 74 (Debug Endpoint Security Hardening)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-03-06 -- Roadmap created for v3.2 Production Readiness (3 phases, 8 requirements)
+Plan: 1 of 2 complete
+Status: Executing
+Last activity: 2026-03-06 -- Completed Phase 72 Plan 01
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -61,6 +64,8 @@ Recent for v3.2:
 - Manual counter field over @convex-dev/sharded-counter (low contention, only 2 mutation paths)
 - Remove debug gate entirely (internal functions are architecturally unreachable, no env-var defense-in-depth needed)
 - Wire writeAuditLog into debug functions directly instead of through env-var gate
+- Removed ownership checks from converted debug functions (internal callers are trusted)
+- Added userId argument to testActions.ts and create_test_job.ts (replaces requireAuth)
 
 ### Pending Todos
 
@@ -80,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-06 -- Roadmap created for v3.2
-Stopped at: Roadmap complete, ready to plan Phase 72
+Last activity: 2026-03-06 -- Completed Phase 72 Plan 01
+Stopped at: Completed 72-01-PLAN.md
 Resume file: None
