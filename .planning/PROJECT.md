@@ -114,27 +114,22 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ All 20+ test files typed using mock factories (85+ `as any` casts eliminated) — v3.1
 - ✓ Zero-any verified: `tsc --noEmit` zero errors, `verify-no-any.sh` passes all 3 checks (`: any`/`as any`/`any[]`, `<any>` angle-bracket, tsc compilation) — v3.1
 
-## Current Milestone: v3.2 Library UI Parity
+## Current Milestone: v3.2 Production Readiness
 
-**Goal:** Overhaul the library page UI to match the search page in visual quality, filter power, and component architecture.
+**Goal:** Fix security and performance blockers before production launch.
 
 **Target features:**
-- Replace arbitrary library filter presets with rich filter controls matching the search page (date range calendar, rating range, year range picker)
-- Achieve visual and interaction parity between library and search filter sidebars
-- DRY: extract and share filter components used by both pages
-- Elevate library item cards/rows to match search result card quality
+- Convert debug endpoints from public functions with env gate to internal functions (security blocker)
+- Replace library count query (.take(10_000) + .length) with efficient counter/aggregate
+- Audit and bound unbounded .collect() calls on high-traffic query paths
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Library filters use full date range calendar picker (matching search page)
-- [ ] Library rating filter uses range picker (min AND max, matching search's RatingRangePicker)
-- [ ] Library year filter uses YearRangePicker component (matching search page)
-- [ ] Library filter sidebar uses same glassmorphic chrome as search filter sidebar
-- [ ] Shared filter components DRY'd between search and library
-- [ ] Library item cards/rows polished to match search result card quality
-- [ ] Library page header and toolbar match search results page layout
+- [ ] Debug endpoints converted to internal functions (no public access, even with env var)
+- [ ] Library count query uses efficient counting (not fetching 10k documents)
+- [ ] High-traffic .collect() calls audited and bounded with .take() guards
 
 ### Out of Scope
 
@@ -261,4 +256,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | as never for Convex useQuery/usePaginatedQuery boundary | Satisfies generic constraints without widening to any | ✓ Good — used in use-auth-query, hook-factory |
 
 ---
-*Last updated: 2026-03-05 after v3.2 milestone started*
+*Last updated: 2026-03-06 after v3.2 pivoted to Production Readiness*

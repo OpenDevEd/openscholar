@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
 milestone: v3.2
-milestone_name: Library UI Parity
+milestone_name: Production Readiness
 status: defining requirements
 last_updated: "2026-03-05"
 progress:
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-05)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.2 Library UI Parity
+**Current focus:** v3.2 Production Readiness
 
 ## Current Position
 
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-03-05 — Milestone v3.2 started
+Last activity: 2026-03-06 — Milestone v3.2 pivoted to Production Readiness
 
 ## Performance Metrics
 
