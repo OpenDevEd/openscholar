@@ -84,7 +84,7 @@ export {
 // User lookup moved to mutations for self-hosted compatibility
 
 
-// Debug queries
+// Debug queries (internal -- not exposed to public API; used for internal diagnostics only)
 export { diagnoseJob } from "./debug";
 export { getFailedPapersDebug } from "./debug_errors";
 export { getPaperErrorsInternal } from "./debug_papers";
