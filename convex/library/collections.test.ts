@@ -86,6 +86,7 @@ async function seedCollection(
     const now = Date.now();
     const id = await ctx.db.insert("collections", {
       userId,
+      itemCount: 0,
       name,
       createdAt: now,
       updatedAt: now,
@@ -108,6 +109,13 @@ async function seedJunctionRow(
       libraryItemId,
       assignedAt: Date.now(),
     });
+    // Increment denormalized counter
+    const collection = await ctx.db.get(collectionId);
+    if (collection) {
+      await ctx.db.patch(collectionId, {
+        itemCount: (collection.itemCount ?? 0) + 1,
+      });
+    }
     return await ctx.db.get(id);
   });
 }
