@@ -209,7 +209,9 @@ Plans:
   2. Saving a paper to library increments the counter; removing a paper decrements it (including bulk remove)
   3. A user with no pre-existing counter gets an accurate count computed and persisted on first access (lazy backfill)
   4. Counter stays correct across save, remove, and bulk-remove sequences (test-verified)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 73-01-PLAN.md -- Schema change + counter wiring + tests
 
 ### Phase 74: Query Bounding Audit
 **Goal**: All high-traffic query paths have explicit upper bounds preventing unbounded memory growth
@@ -240,5 +242,5 @@ Phases execute in numeric order: 72 -> 73 -> 74
 | 54-59 | v3.0 | 11/11 | Complete | 2026-03-04 |
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72. Debug Endpoint Security | 2/2 | Complete    | 2026-03-06 | - |
-| 73. Library Count Optimization | v3.2 | 0/0 | Not started | - |
+| 73. Library Count Optimization | v3.2 | 0/1 | Not started | - |
 | 74. Query Bounding Audit | v3.2 | 0/0 | Not started | - |
