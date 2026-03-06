@@ -2,6 +2,7 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 
 export const backfillLibraryCount = internalMutation({
   args: { userId: v.id("users"), count: v.number() },
@@ -9,6 +10,29 @@ export const backfillLibraryCount = internalMutation({
     const user = await ctx.db.get(args.userId);
     if (!user || user.libraryItemCount !== undefined) return;
     await ctx.db.patch(args.userId, { libraryItemCount: args.count });
+  },
+});
+
+export const backfillAllLibraryCounts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Cardinality: small user base, safe to collect
+    const users = await ctx.db.query("users").collect();
+    let backfilled = 0;
+
+    for (const user of users) {
+      if (user.libraryItemCount !== undefined) continue;
+
+      const items = await ctx.db
+        .query("libraryItems")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .take(MAX_LIBRARY_BROWSE);
+
+      await ctx.db.patch(user._id, { libraryItemCount: items.length });
+      backfilled++;
+    }
+
+    console.log(`Backfilled libraryItemCount for ${backfilled} users`);
   },
 });
 
@@ -90,6 +114,11 @@ export const removeFromLibraryByOpenalexId = mutation({
         .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
         .collect();
       for (const m of memberships) {
+        const col = await ctx.db.get(m.collectionId);
+        if (col) {
+          const currentColCount = col.itemCount ?? 0;
+          await ctx.db.patch(m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
+        }
         await ctx.db.delete(m._id);
       }
       await ctx.db.delete(item._id);
@@ -124,6 +153,11 @@ export const removeFromLibrary = mutation({
       .withIndex("by_item", (q) => q.eq("libraryItemId", args.itemId))
       .collect();
     for (const m of memberships) {
+      const col = await ctx.db.get(m.collectionId);
+      if (col) {
+        const currentColCount = col.itemCount ?? 0;
+        await ctx.db.patch(m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
+      }
       await ctx.db.delete(m._id);
     }
 

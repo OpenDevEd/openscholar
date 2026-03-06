@@ -718,6 +718,7 @@ export default defineSchema({
     name: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    itemCount: v.optional(v.number()),
   })
     .index("by_user", ["userId"]),
 

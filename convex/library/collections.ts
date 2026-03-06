@@ -1,4 +1,4 @@
-import { mutation, query } from "../_generated/server";
+import { mutation, query, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -75,6 +75,29 @@ export const deleteCollection = mutation({
   },
 });
 
+export const backfillCollectionCounts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    // Cardinality: small total collection count across all users
+    const collections = await ctx.db.query("collections").collect();
+    let backfilled = 0;
+
+    for (const collection of collections) {
+      if (collection.itemCount !== undefined) continue;
+
+      const memberships = await ctx.db
+        .query("libraryItemCollections")
+        .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
+        .collect();
+
+      await ctx.db.patch(collection._id, { itemCount: memberships.length });
+      backfilled++;
+    }
+
+    console.log(`Backfilled itemCount for ${backfilled} collections`);
+  },
+});
+
 export const listCollections = query({
   args: {},
   handler: async (ctx) => {
@@ -131,6 +154,11 @@ export const addToCollection = mutation({
       libraryItemId: args.libraryItemId,
       assignedAt: Date.now(),
     });
+
+    // Increment denormalized collection counter
+    const currentCount = collection.itemCount ?? 0;
+    await ctx.db.patch(args.collectionId, { itemCount: currentCount + 1 });
+
     return null;
   },
 });
@@ -162,6 +190,10 @@ export const removeFromCollection = mutation({
 
     if (existing) {
       await ctx.db.delete(existing._id);
+
+      // Decrement denormalized collection counter
+      const currentCount = collection.itemCount ?? 0;
+      await ctx.db.patch(args.collectionId, { itemCount: Math.max(0, currentCount - 1) });
     }
     return null;
   },
@@ -182,22 +214,11 @@ export const getCollectionsWithCounts = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Count junction rows per collection
-    const result = await Promise.all(
-      collections.map(async (collection) => {
-        // Unbounded: cascade delete of collection memberships (safe: bounded by library size per user)
-        const memberships = await ctx.db
-          .query("libraryItemCollections")
-          .withIndex("by_collection", (q) =>
-            q.eq("collectionId", collection._id)
-          )
-          .collect();
-        return {
-          ...collection,
-          itemCount: memberships.length,
-        };
-      })
-    );
+    // Read denormalized counter (fallback to 0 for unbackfilled)
+    const result = collections.map((collection) => ({
+      ...collection,
+      itemCount: collection.itemCount ?? 0,
+    }));
 
     // Sort alphabetically by name (case-insensitive)
     return result.sort((a, b) => a.name.localeCompare(b.name));
