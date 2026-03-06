@@ -10,7 +10,7 @@ Requirements for production readiness. Each maps to roadmap phases.
 ### Security
 
 - [x] **SEC-01**: Debug query functions converted from public to internal (no client access possible)
-- [ ] **SEC-02**: Debug gate module (`debug_gate.ts`) and env var pattern deleted
+- [x] **SEC-02**: Debug gate module (`debug_gate.ts`) and env var pattern deleted
 - [x] **SEC-03**: Debug gate test updated to verify internal function registration
 
 ### Performance — Counting
@@ -55,7 +55,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SEC-01 | Phase 72 | Complete |
-| SEC-02 | Phase 72 | Pending |
+| SEC-02 | Phase 72 | Complete |
 | SEC-03 | Phase 72 | Complete |
 | PERF-01 | Phase 73 | Pending |
 | PERF-02 | Phase 73 | Pending |
