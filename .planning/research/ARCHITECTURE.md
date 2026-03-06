@@ -1,1055 +1,328 @@
-# Architecture Research: v3.0 Zero-Any Overhaul Integration
+# Architecture Patterns
 
-**Domain:** Codebase maintenance — resolving all CONCERNS.md items in existing Convex + Next.js extraction platform
-**Researched:** 2026-03-03
-**Confidence:** HIGH (all integration points verified against actual codebase files)
+**Domain:** Production readiness fixes for Convex-backed academic search platform
+**Researched:** 2026-03-06
 
-## Existing Architecture Overview (v2.5 baseline)
+## Recommended Architecture
 
+Three focused changes to the existing Convex backend. No new layers, no new frontend components. All changes are backend-only modifications to existing modules.
+
+### Component Boundaries
+
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| `convex/extraction/debug*.ts` (6 files) | Debug/diagnostic queries for extraction jobs | `convex/lib/debug_gate.ts`, extraction tables |
+| `convex/extraction/test*.ts` (5 files) | Test job creation and automation | `convex/lib/debug_gate.ts`, extraction mutations |
+| `convex/debug_papers.ts` (1 file) | Top-level debug query | extraction tables |
+| `convex/library/queries.ts` | Library browsing, search, count | `libraryItems` table |
+| `convex/library/mutations.ts` | Library item CRUD (save, delete, rate) | `libraryItems` table, sharded counter |
+| `convex/library/collections.ts` | Collection CRUD and assignment | `collections`, `libraryItemCollections` tables |
+| High-traffic `.collect()` query paths | Various extraction and library queries | Multiple extraction and library tables |
+
+### Data Flow
+
+**Current debug endpoint flow (INSECURE):**
 ```
-+-----------------------------------------------------------------------+
-|                          Next.js Frontend                              |
-|  +----------+  +-----------+  +------------------+                    |
-|  | Search   |  | Library   |  | Extraction Pages |                    |
-|  | Page     |  | Page      |  | (job/papers/view)|                    |
-|  +----+-----+  +-----+-----+  +--------+---------+                    |
-|       |               |                |                               |
-|  +----+-----+   +-----+-----+   +------+--------+  +---------------+  |
-|  | Zustand  |   | nuqs URL  |   | Convex        |  | ExportDialog  |  |
-|  | Stores   |   | State     |   | useQuery()    |  | (xlsx import) |  |
-|  +----------+   +-----------+   +-----+---------+  +-------+-------+  |
-|                                       |                     |          |
-|  +------------------------------------|-----------+  lib/extraction/   |
-|  | lib/ai/client/providers.ts (WRONG) |           |  export.ts (XLSX) |
-|  | lib/extraction/export.ts  (any)    |           |                    |
-|  | lib/extraction/filtering.ts (any)  |           |                    |
-|  +------------------------------------|-----------+                    |
-+---------------------------------------|----------------------------+---+
-                                        |
-+---------------------------------------|----------------------------+
-|                  Convex Backend        |                           |
-|                                        |                           |
-|  +-------------------------------------v------------------------+  |
-|  |            Public API Layer (queries / mutations)            |  |
-|  |  extraction/queries.ts    extraction/mutations.ts            |  |
-|  |  library/queries.ts       maintenance/mutations.ts           |  |
-|  |  credits/actions.ts       zotero/mutations.ts                |  |
-|  +--------+----------+-----------+----------------------------+  |
-|           |          |           |                             |  |
-|  +--------v--+ +-----v----+ +----v--------------------+       |  |
-|  | Workflow  | | Workpool | | Cron Jobs (crons.ts)    |       |  |
-|  | Manager   | | (PDF)    | | - cleanup users         |       |  |
-|  | @convex-  | | parallel:| | - check subscriptions   |       |  |
-|  | dev/wflow | | 3 / 10   | | - monitor stripe        |       |  |
-|  +--------+--+ +----+-----+ | - reconcile invoices    |       |  |
-|           |         |       | - cleanup zotero tokens |       |  |
-|           v         v       +-------------------------+       |  |
-|  +---------------------+                                      |  |
-|  | workpoolActions.ts  |                                      |  |
-|  | download -> extract |                                      |  |
-|  +---------------------+                                      |  |
-|                                                               |  |
-|  +----------------------------------------------------------+ |  |
-|  |  lib/crypto.ts  lib/rateLimit.ts  lib/debug_gate.ts     | |  |
-|  |  lib/constants.ts  (audit via console.log currently)     | |  |
-|  +----------------------------------------------------------+ |  |
-|                                                               |  |
-|  +----------------------------------------------------------+ |  |
-|  |  Schema: users, subscriptions, credits, libraryItems,    | |  |
-|  |  collections, libraryItemCollections, extractionJobs,    | |  |
-|  |  extractionPapers, extractionResults, extractionQuestions,| |  |
-|  |  extractionResultReviews, extractionRunDiffs, ...        | |  |
-|  +----------------------------------------------------------+ |  |
-+---------------------------------------------------------------+--+
+Client SDK --> public query/mutation (diagnoseJob, getFailedPapersDebug, createTestJob, createTestJobForFix)
+           --> requirePublicDebugEnabled() env var check
+           --> requireAuth() user check
+           --> database query
 ```
 
-## Concern-to-Architecture Mapping
+**Target debug endpoint flow (SECURE):**
+```
+Convex Dashboard / npx convex run --> internalQuery/internalMutation
+                                  --> database query (no env gate needed)
+```
 
-All CONCERNS.md items map to one of five architectural domains. This document
-analyzes integration points, new vs modified components, and data flows for each.
+**Current library count flow (WASTEFUL):**
+```
+useProtectedQuery(getLibraryCount) --> .withIndex("by_user").take(10_000) --> items.length
+```
 
----
+**Target library count flow (EFFICIENT):**
+```
+useProtectedQuery(getLibraryCount) --> counter.count(ctx, userId) --> O(1) number
+```
 
-## Domain 1: Persistent Audit Table (SECURITY: Audit log uses console.log)
+## Change 1: Debug Endpoint Internalization
 
 ### Current State
 
-`convex/lib/crypto.ts` (line 81) and `convex/lib/debug_gate.ts` (line 25) emit
-structured `console.log` calls with `[AUDIT:KEY_DECRYPT]` and `[AUDIT:DEBUG_ACCESS]`
-prefixes. These appear in Convex function logs but are not queryable, tamper-evident,
-or persistent beyond log retention.
+12 debug/test files in the convex codebase are gated by `requirePublicDebugEnabled()`. Of these, the critical security concern is the **4 files using `query` or `mutation`** (public Convex functions callable from any client):
 
-### New Component: `auditLogs` Table
+| File | Function Type | Security Risk |
+|------|--------------|---------------|
+| `convex/extraction/debug.ts` | `query` (PUBLIC) | **HIGH** - `diagnoseJob` exposes job internals |
+| `convex/extraction/debug_errors.ts` | `query` (PUBLIC) | **HIGH** - `getFailedPapersDebug` exposes error details |
+| `convex/extraction/testActions.ts` | `mutation` (PUBLIC) | **CRITICAL** - `createTestJob` can create jobs |
+| `convex/extraction/create_test_job.ts` | `mutation` (PUBLIC) | **CRITICAL** - `createTestJobForFix` can create jobs |
 
-Add a new table to `convex/schema.ts`:
+The remaining 8 files already use `internalQuery`/`internalMutation`/`internalAction` and are not callable from clients. They still call `requirePublicDebugEnabled()` as a defense-in-depth measure, but the env gate is redundant for internal functions.
 
+### Target Architecture
+
+**Convert all 4 public functions to internal functions.** The `requirePublicDebugEnabled()` gate and `debug_gate.ts` module become unnecessary and should be removed entirely.
+
+**Specific changes per file:**
+
+1. `convex/extraction/debug.ts`: `query` -> `internalQuery`, remove `requirePublicDebugEnabled()` call, remove `requireAuth()` (internal functions are trusted)
+2. `convex/extraction/debug_errors.ts`: `query` -> `internalQuery`, remove both gates
+3. `convex/extraction/testActions.ts`: `mutation` -> `internalMutation`, remove both gates
+4. `convex/extraction/create_test_job.ts`: `mutation` -> `internalMutation`, remove both gates
+
+**For the 8 already-internal files:** Remove `requirePublicDebugEnabled()` calls since they serve no purpose on internal functions.
+
+**Remove entirely:**
+- `convex/lib/debug_gate.ts` - no longer needed
+- `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var from all environments
+
+**Update:**
+- `convex/extraction/index.ts` - keep exports but note they are now internal
+- `tests/debug-gate.test.ts` - either delete or convert to verify functions are `internalQuery`/`internalMutation` (the inventory test is still valuable as a structural check)
+- Any frontend code referencing `getFailedPapersDebug` or `diagnoseJob` via the Convex client SDK must be removed (grep confirms no frontend imports exist beyond generated types)
+
+### Impact Assessment
+
+- **Frontend:** Zero impact. No React components call debug queries.
+- **Dashboard access:** Debug functions remain callable via `npx convex run` for staging diagnostics.
+- **Test suite:** `tests/debug-gate.test.ts` needs rewrite. The debug gate behavior tests become irrelevant. The inventory test should verify internal function registration instead.
+- **Convex generated types:** `convex/_generated/api.d.ts` will update automatically on next `npx convex dev`.
+
+## Change 2: Efficient Library Counting
+
+### Current State
+
+`getLibraryCount` in `convex/library/queries.ts` (lines 330-341) fetches up to 10,000 documents just to return `.length`. This is a reactive query subscribed by the library page via `useProtectedQuery` -- it re-runs on every library mutation.
+
+### Decision: Sharded Counter over Aggregate Component
+
+**Use `@convex-dev/sharded-counter` because:**
+
+1. **Exact match for the use case.** We need one thing: a per-user count of library items. Sharded counter is a key-value store (string -> number) with `inc`/`dec`/`count`. That is literally the entire requirement.
+
+2. **Simpler API.** `counter.inc(ctx, userId)` on save, `counter.dec(ctx, userId)` on delete, `counter.count(ctx, userId)` on query. No `namespace`/`sortKey`/`TableAggregate` ceremony.
+
+3. **Already proven pattern.** The project uses 4 `@convex-dev/*` components (rag, stripe, workflow, workpool). Adding a 5th is a known pattern.
+
+4. **Previous decision rationale holds.** In v3.0 (milestone 57), `@convex-dev/aggregate` was explicitly rejected for `extractionJobStats` as "adds a dependency and complexity; simple upsert table is sufficient." The aggregate component is overkill for a single counter per user.
+
+5. **No schema changes needed.** Sharded counter manages its own internal tables via the component system.
+
+**Why NOT `@convex-dev/aggregate`:**
+- Requires `TableAggregate` class with generic params (Namespace, Key, DataModel, TableName)
+- Designed for COUNT + SUM + MAX + offset-pagination -- we only need COUNT
+- More complex trigger setup (must hook into all mutations that modify the table)
+- Aggregate is the right choice when you need sorted aggregates or offset pagination; we need neither
+
+**Why NOT a manual counter field on `credits` or `users` table:**
+- OCC contention: counter update conflicts with other mutations on the same user/credits row
+- Sharded counter solves this by distributing writes across shards (default 16)
+
+### Target Architecture
+
+**New file: `convex/library/counter.ts`**
 ```typescript
-auditLogs: defineTable({
-  userId: v.string(),           // Clerk ID or Convex user ID string
-  action: v.string(),           // e.g. "KEY_DECRYPT", "DEBUG_ACCESS"
-  purpose: v.optional(v.string()),
-  metadata: v.optional(v.record(v.string(), v.string())),
-  createdAt: v.number(),
-}).index("by_user", ["userId"])
-  .index("by_action_created", ["action", "createdAt"])
-  .index("by_created", ["createdAt"]),
+import { components } from "../_generated/api";
+import { ShardedCounter } from "@convex-dev/sharded-counter";
+
+export const libraryCounter = new ShardedCounter(components.shardedCounter, {
+  defaultShards: 4, // Low contention (single user saves at a time)
+});
 ```
 
-**Why this schema:** The `userId` is a string (not `v.id("users")`) because audit
-events fire from `"use node"` actions where the user may only be known by Clerk ID.
-Forcing `v.id("users")` would require an extra DB lookup. `action` + `createdAt`
-composite index enables time-ranged audit queries by action type.
+**Modified files:**
 
-### New Internal Mutation: `convex/lib/audit.ts`
+1. `convex/convex.config.ts` - add `app.use(shardedCounter)`
+2. `convex/library/mutations.ts` - on `rateOrSaveItem` (line ~76): `libraryCounter.inc(ctx, user._id)` on INSERT path only; on delete: `libraryCounter.dec(ctx, user._id)`
+3. `convex/library/queries.ts` - rewrite `getLibraryCount` to use `libraryCounter.count(ctx, user._id)`
 
+**Migration for existing data:**
+Existing users have library items but no counter value. Two approaches:
+
+- **Lazy backfill (recommended):** On `getLibraryCount`, check if counter returns 0 for a user who has items. If so, count via `.take(10_000)` once and set the counter. This matches the project's established pattern (see `extractionJobStats` lazy backfill in v3.0).
+- **One-time migration:** Write an `internalMutation` that iterates all users, counts their items, and sets the counter. Run via `npx convex run`.
+
+Lazy backfill is preferred because it requires zero downtime and no migration coordination.
+
+**Concurrency note:** The `rateOrSaveItem` mutation already does a "check if exists, if not insert" pattern. The counter increment must only happen on the INSERT path (new item), not the UPDATE path (re-rating existing item). Similarly, delete must only decrement when actually deleting. This is already structurally safe in the existing code.
+
+### Impact Assessment
+
+- **New dependency:** `@convex-dev/sharded-counter` (npm install)
+- **Schema:** No changes to `convex/schema.ts`. Component manages its own tables.
+- **Frontend:** Zero changes. `getLibraryCount` return type (`v.number()`) is unchanged.
+- **Test suite:** `convex/library/queries.test.ts` `getLibraryCount` tests need updating to account for counter initialization.
+- **Performance:** O(1) count query instead of O(n) document scan. Eliminates reactive query re-reads of up to 10,000 documents.
+
+## Change 3: Unbounded `.collect()` Bounding
+
+### Current State
+
+124 `.collect()` calls across 26 Convex files. Most are safe due to index scoping (e.g., `.withIndex("by_user").collect()` where a user has few records). The concern is **high-traffic query paths** where the number of matching documents could grow large.
+
+### Audit Classification
+
+**Category A: Already bounded or inherently safe (NO ACTION)**
+
+These `.collect()` calls are safe because the result set is inherently small:
+
+| Pattern | Why Safe | Examples |
+|---------|----------|----------|
+| `by_user` on small tables (collections, apiKeys, zoteroConnections, subscriptions) | Users have few collections (<50), few API keys (<5), 1 Zotero connection, few subscriptions (<3) | `collections.ts:84`, `apiKeys/queries.ts:28`, `subscriptions/queries.ts:20` |
+| `by_job` on questions table | Jobs have 5-15 questions max | `queries.ts:219`, `mutations.ts:57` |
+| `by_stripe_*` lookups | 1:1 mappings | `credits/internal.ts:102` |
+| Test files | Not production code | All `*.test.ts` files |
+| `zoteroOAuthTokens` cleanup | 0-5 rows total | `maintenance/mutations.ts:32` |
+
+**Category B: Bounded by MAX_PAPERS_PER_JOB but using `.collect()` (LOW RISK)**
+
+These query per-paper data within extraction jobs. Papers per job are capped at 500 (`MAX_PAPERS_PER_JOB`). The `.collect()` on per-paper results/reviews/evidence returns at most ~15 rows per paper (one per question).
+
+| File | Line | Query | Max Docs |
+|------|------|-------|----------|
+| `extraction/queries.ts` | 144 | reviews `by_paper` | ~15 per paper |
+| `extraction/queries.ts` | 234 | results `by_paper` | ~15 per paper |
+| `extraction/mutations.ts` | 72 | results `by_paper` | ~15 per paper |
+| `extraction/mutations.ts` | 76 | reviews `by_paper` | ~15 per paper |
+
+These are safe for the current 500-paper cap but should get `.take()` guards as defense-in-depth.
+
+**Category C: High-traffic paths needing bounds (ACTION REQUIRED)**
+
+| File | Line | Query | Risk | Recommended Bound |
+|------|------|-------|------|-------------------|
+| `library/queries.ts` | 55 | `libraryItemCollections` `by_collection` | Collection membership unbounded | `.take(10_000)` |
+| `library/queries.ts` | 187 | `collectLibraryItems` search path | Search results unbounded | `.take(10_000)` |
+| `library/queries.ts` | 194 | `collectLibraryItems` browse path | All user items unbounded | `.take(10_000)` |
+| `library/collections.ts` | 68 | `libraryItemCollections` `by_collection` (delete cascade) | Unbounded cascade | `.take(1_000)` with continuation |
+| `library/collections.ts` | 181 | `libraryItemCollections` `by_item` (delete item cascade) | Small per-item, but unbounded | `.take(100)` |
+| `library/mutations.ts` | 76 | `libraryItemCollections` `by_item` | Check for existing memberships | `.take(100)` |
+| `extraction/queries.ts` | 172 | `loadReviewsByJob` all reviews | 500 papers x 15 questions = 7,500 max | `.take(10_000)` |
+| `extraction/mutations.ts` | 307 | papers `by_job` for cancel | Already bounded by MAX_PAPERS_PER_JOB | Add explicit `.take(MAX_PAPERS_PER_JOB)` |
+| `extraction/mutations.ts` | 597 | papers `by_job` for duplicate | Same | Add explicit `.take(MAX_PAPERS_PER_JOB)` |
+| `extraction/mutations.ts` | 787 | papers `by_job` for insight | Same | Add explicit `.take(MAX_PAPERS_PER_JOB)` |
+| `subscriptions/internal.ts` | multiple | `by_user` subscriptions | Users should have 1-3 | `.take(10)` (already safe, add as documentation) |
+
+### Bounding Strategy
+
+Use `.take(N)` where N is the known upper bound plus a safety margin. Do NOT change to `.paginate()` -- that would change return types and require frontend changes.
+
+For the `collectLibraryItems` paths in `library/queries.ts` (lines 187, 194): These feed `listLibrary` which is used for export. The `.collect()` is intentional -- it loads all items for CSV/JSON export. The `10_000` bound matches the existing `getLibraryCount` bound and represents a reasonable library size limit. Add `.take(10_000)` as an explicit cap.
+
+For `loadReviewsByJob` (line 172): This loads all reviews for a job to avoid N+1. With 500 papers and ~15 questions, the theoretical max is 7,500. Use `.take(10_000)` as a safety bound.
+
+### Impact Assessment
+
+- **Frontend:** Zero changes.
+- **Behavior:** No functional change for users within bounds. Users exceeding bounds get truncated results (acceptable -- these are safety caps, not expected limits).
+- **Test suite:** Existing tests continue to pass since test data is well within bounds.
+
+## Patterns to Follow
+
+### Pattern 1: Internal Function for Admin/Debug Operations
+**What:** Use `internalQuery`/`internalMutation` for any function that should not be client-callable.
+**When:** Diagnostic queries, test job creation, data migration, admin operations.
+**Example:**
 ```typescript
-// "use node" NOT needed — this is a mutation, not an action
-import { internalMutation } from "../_generated/server";
-import { v } from "convex/values";
+import { internalQuery } from "../_generated/server";
 
-export const writeAuditLog = internalMutation({
-  args: {
-    userId: v.string(),
-    action: v.string(),
-    purpose: v.optional(v.string()),
-    metadata: v.optional(v.record(v.string(), v.string())),
-  },
-  returns: v.null(),
+export const diagnoseJob = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
-    await ctx.db.insert("auditLogs", {
-      userId: args.userId,
-      action: args.action,
-      purpose: args.purpose,
-      metadata: args.metadata,
-      createdAt: Date.now(),
-    });
-    return null;
+    // No auth check needed -- internal functions are trusted
+    const job = await ctx.db.get(args.jobId);
+    // ...
   },
 });
 ```
 
-### Modified Component: `convex/lib/crypto.ts`
-
-`decryptApiKey` is in a `"use node"` module — it cannot call `ctx.runMutation`
-directly. The audit write must be delegated via the caller's action context.
-
-**Approach:** Change `decryptApiKey` signature to accept an optional `auditWriter`
-callback, keeping `console.log` as a fallback for contexts where the callback is
-not provided:
-
+### Pattern 2: Sharded Counter for Document Counting
+**What:** Use `@convex-dev/sharded-counter` instead of `.collect().length` for counting documents.
+**When:** A reactive query needs to return a count that changes on mutations.
+**Example:**
 ```typescript
-export function decryptApiKey(
-  encrypted: string,
-  keyHex: string,
-  audit: { userId: string; purpose: string },
-  writeAudit?: (args: AuditArgs) => Promise<void>
-): string {
-  const decrypted = decrypt(encrypted, keyHex);
-  // Always log (grep-friendly Convex log fallback)
-  console.log("[AUDIT:KEY_DECRYPT]", JSON.stringify({
-    userId: audit.userId,
-    purpose: audit.purpose,
-    timestamp: new Date().toISOString(),
-  }));
-  // Persist to DB if caller provides writer
-  if (writeAudit) {
-    void writeAudit({ userId: audit.userId, action: "KEY_DECRYPT", purpose: audit.purpose });
-  }
-  return decrypted;
-}
+// In mutations: increment on create, decrement on delete
+await libraryCounter.inc(ctx, userId);
+await libraryCounter.dec(ctx, userId);
+
+// In queries: O(1) count
+const count = await libraryCounter.count(ctx, userId);
 ```
 
-Callers (Convex actions with `ctx`) pass `async (args) => ctx.runMutation(internal.lib.audit.writeAuditLog, args)`.
-
-### Modified Component: `convex/lib/debug_gate.ts`
-
-Same pattern — `requirePublicDebugEnabled()` can only `console.log`. Pass an
-optional audit writer from callers that have action context. For the initial
-implementation, retaining `console.log` while adding a parallel DB write in the
-callers is sufficient and avoids refactoring the gate signature.
-
-### Data Flow (New)
-
-```
-decryptApiKey() called in "use node" action
-  |
-  +--> console.log [AUDIT:KEY_DECRYPT] (existing, keep)
-  |
-  +--> writeAudit callback -> ctx.runMutation(writeAuditLog)
-                              -> INSERT into auditLogs table
-```
-
-### Integration Points
-
-| Component | Action | Files |
-|-----------|--------|-------|
-| `convex/schema.ts` | ADD `auditLogs` table | schema.ts |
-| `convex/lib/audit.ts` | NEW internal mutation | audit.ts (new file) |
-| `convex/lib/crypto.ts` | MODIFY `decryptApiKey` to accept optional writer | crypto.ts |
-| `convex/lib/debug_gate.ts` | MODIFY to accept optional writer | debug_gate.ts |
-| Callers of `decryptApiKey` | PASS audit writer via ctx | workpoolActions.ts, apiKeys actions |
-
----
-
-## Domain 2: Library Pagination — Cursor-Based (PERFORMANCE: unbounded .collect())
-
-### Current State
-
-`convex/library/queries.ts` already uses `paginationOptsValidator` and `.paginate()` for
-both `browseLibrary` and `searchLibrary`. The CONCERNS.md describes the *previous* state —
-this was already partially fixed. However, a specific remaining issue exists: when a
-`collectionId` filter is active, the query pre-fetches all collection memberships via
-`.collect()` on `libraryItemCollections`, then passes a `Set<string>` to the
-`convex-helpers` `filter()` helper.
-
-**Verified state (library/queries.ts lines 36-46):** The membership `.collect()` is
-correct — `libraryItemCollections` for a single collection is bounded by how many
-items the user has in that collection, not by the user's total library size. This is
-not the same as collecting all library items. The CONCERNS.md refers to the *pre-cursor*
-state before the paginate migration.
-
-**Actual remaining issue:** The `filter()` helper from convex-helpers has a known
-limitation with pagination: it does not guarantee full pages when the filter is
-selective. If 50 items are fetched but only 3 match the collection filter, the page
-returns 3 items, not 50. This causes sparse pages that the UI must handle with
-`loadMore()` calls.
-
-**`getLibraryCount` (lines 243-254)** still uses `.collect()` unconditionally:
+### Pattern 3: Defensive `.take()` Bounds
+**What:** Always add `.take(N)` to `.collect()` calls with a comment explaining the bound.
+**When:** Any query that could theoretically return an unbounded number of documents.
+**Example:**
 ```typescript
-const items = await ctx.db
-  .query("libraryItems")
-  .withIndex("by_user", (q) => q.eq("userId", user._id))
-  .collect();
-return items.length;
+// MAX_PAPERS_PER_JOB (500) is the hard cap for papers per extraction job
+const papers = await ctx.db
+  .query("extractionPapers")
+  .withIndex("by_job", (q) => q.eq("jobId", jobId))
+  .take(MAX_PAPERS_PER_JOB); // Safety: bounded by job creation validation
 ```
-This is unbounded for large libraries.
-
-### Integration Changes
-
-**`getLibraryCount` fix:** Replace with a `.take(N)` bounded approach or a paginated
-count pattern. Since Convex has no native COUNT, the simplest fix is to bound via
-`.take(10_000)` and return `items.length`. A more correct fix uses incremental
-aggregation (see Domain 3 below) or accepts approximate counts.
-
-**Collection filter sparse page handling:** The `filter()` + `.paginate()` pattern
-already in place is the correct Convex approach. The sparse-page limitation is a
-convex-helpers known issue (GitHub issue #864). The mitigation is UI-side: the
-library page must call `loadMore()` automatically when a page is unexpectedly small
-(less than `numItems`) and `isDone` is false.
-
-**`exportLibrary` (lines 155-241):** Still uses `.collect()` for export. This is
-intentional — export must gather all filtered items. No change needed; the comment
-already justifies this as the non-paginated export path.
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `convex/library/queries.ts` — `getLibraryCount` | Replace unbounded `.collect()` with `.take(10_000)` bound | LOW |
-| `components/library/library-page-client.tsx` | Handle sparse pages by calling `loadMore()` when `page.length < numItems && !isDone` | LOW |
-| No schema changes needed | Already indexed correctly | — |
-
----
-
-## Domain 3: Incremental Aggregation for Extraction Reports (PERFORMANCE: 5,000 records in memory)
-
-### Current State
-
-`convex/extraction/mutations.ts` `loadJobDataForReporting()` (lines 47-84) loads all
-papers (up to 500) and fans out N parallel queries for results + reviews per paper.
-For 500 papers x 10 questions, this is 5,000 result records loaded in a single
-mutation context.
-
-`MAX_PAPERS_PER_JOB = 500` is the safety bound, but the fan-out is still O(papers × questions).
-
-### Recommended Architecture: Pre-Aggregate on Result Arrival
-
-Rather than computing insights at report-generation time, aggregate incrementally as
-each paper's extraction completes. Store aggregate state in a new `extractionJobStats`
-table.
-
-**New table in `convex/schema.ts`:**
-
-```typescript
-extractionJobStats: defineTable({
-  jobId: v.id("extractionJobs"),
-  questionKey: v.string(),
-  // Running counts by citation status
-  groundedCount: v.number(),
-  bestEffortCount: v.number(),
-  insufficientEvidenceCount: v.number(),
-  extractionErrorCount: v.number(),
-  totalAnswered: v.number(),
-  // Running confidence sum (for average)
-  confidenceSum: v.number(),
-  confidenceCount: v.number(),
-  updatedAt: v.number(),
-}).index("by_job", ["jobId"])
-  .index("by_job_question", ["jobId", "questionKey"]),
-```
-
-**Modified mutation: `handleExtractionComplete` in workpoolActions.ts**
-
-When each paper's extraction results are written, also upsert the job stats:
-
-```typescript
-// After inserting each extractionResult:
-const existingStat = await ctx.db
-  .query("extractionJobStats")
-  .withIndex("by_job_question", (q) =>
-    q.eq("jobId", args.jobId).eq("questionKey", result.questionKey))
-  .unique();
-
-if (existingStat) {
-  await ctx.db.patch(existingStat._id, {
-    groundedCount: existingStat.groundedCount + (result.citationStatus === "grounded" ? 1 : 0),
-    // ... other fields
-    updatedAt: Date.now(),
-  });
-} else {
-  await ctx.db.insert("extractionJobStats", { jobId: args.jobId, questionKey: result.questionKey, ... });
-}
-```
-
-**Modified `loadJobDataForReporting`:** Read from `extractionJobStats` instead of
-fanning out per-paper queries. Report generation becomes O(questions) not O(papers × questions).
-
-**Migration path:** Existing completed jobs have no stats records. The first time a
-report is requested for an existing job, fall back to the fan-out approach and
-backfill the stats table. New jobs always use incremental stats.
-
-### Integration Points
-
-| Component | Action | Files |
-|-----------|--------|-------|
-| `convex/schema.ts` | ADD `extractionJobStats` table | schema.ts |
-| `convex/extraction/workpoolActions.ts` | MODIFY `handleExtractionComplete` to upsert stats | workpoolActions.ts |
-| `convex/extraction/mutations.ts` | MODIFY `loadJobDataForReporting` to read stats first | mutations.ts |
-| Cascade delete | ADD deletion of `extractionJobStats` records in `deleteExtractionInternal` | mutations.ts |
-
-**Note:** Convex mutations are atomic, so upsert-on-arrival is race-free (OCC handles
-concurrent paper completions). The `@convex-dev/aggregate` component exists for this
-pattern but adds a new component dependency. A simple upsert table is sufficient for
-this use case without a new package dependency.
-
----
-
-## Domain 4: Module Boundary Cleanup (TECH DEBT: lib/ai/client → lib/ai/server)
-
-### Current State
-
-`convex/ai/helpers.ts` (line 20) imports `getProviderModel` from `lib/ai/client/providers`.
-The `client/` subdirectory name implies browser-only code. The function uses dynamic
-`await import('@ai-sdk/openai')` etc., which is Node.js compatible but structurally
-misplaced.
-
-**Verified in `lib/ai/client/providers.ts`:** The function uses dynamic imports of
-`@ai-sdk/*` packages — all Node.js compatible. There are no browser-only APIs in this
-file. The boundary violation is conceptual but creates genuine risk: future developers
-may add browser-only imports to `lib/ai/client/` (e.g., React hooks, localStorage)
-without realizing the backend depends on it.
-
-### Recommended Change: Create `lib/ai/server/providers.ts`
-
-```
-lib/ai/
-  client/
-    executor.ts       (browser-side AI execution)
-    hook-factory.ts   (React hooks for AI)
-    mode-routing.ts   (client-side routing)
-    router.ts         (client router)
-    providers.ts      (MOVE content to server/)
-  core/               (existing — shared utilities)
-  server/             (NEW)
-    providers.ts      (MOVED from client/providers.ts)
-```
-
-**`lib/ai/server/providers.ts`** — identical content to current `lib/ai/client/providers.ts`.
-
-**`lib/ai/client/providers.ts`** — replace with a re-export for backward compatibility
-with any other client-side callers:
-```typescript
-// Deprecated: use lib/ai/server/providers instead
-export { getProviderModel } from '../server/providers';
-```
-
-**`convex/ai/helpers.ts` (line 20)** — update import path:
-```typescript
-import { getProviderModel } from "../../lib/ai/server/providers";
-```
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `lib/ai/server/providers.ts` | NEW file (content moved from client/) | LOW |
-| `lib/ai/client/providers.ts` | MODIFY to re-export from server/ | LOW |
-| `convex/ai/helpers.ts` | UPDATE import path | LOW |
-| Any other client-side callers | Unchanged (re-export handles backward compat) | NONE |
-
----
-
-## Domain 5: ExcelJS Dynamic Import (PERFORMANCE/DEPENDENCY: xlsx static import)
-
-### Current State
-
-`lib/extraction/export.ts` line 2:
-```typescript
-import * as XLSX from 'xlsx';
-```
-
-This is a static top-level import. The `xlsx` package is ~500KB and is bundled into
-every page that imports `export.ts`. `components/extraction/export-dialog.tsx` (line 17)
-statically imports from `export.ts`, pulling XLSX into the extraction job page bundle.
-
-`xlsx` v0.18.5 is the SheetJS Community Edition — not actively maintained for security.
-CONCERNS.md recommends replacing with `exceljs` (actively maintained, ESM-compatible).
-
-### Recommended Architecture: Dynamic Import + ExcelJS
-
-**Replace static import in `lib/extraction/export.ts`:**
-
-```typescript
-// Remove: import * as XLSX from 'xlsx';
-
-export async function exportToExcel(
-  papers: PaperWithResults[],
-  questions: Question[],
-  options: ExportOptions = {}
-): Promise<void> {
-  const ExcelJS = await import('exceljs');  // Dynamic import
-  const workbook = new ExcelJS.Workbook();
-  // ... rest of implementation using ExcelJS API
-}
-```
-
-**ExcelJS API differences from xlsx:**
-- `new ExcelJS.Workbook()` instead of `XLSX.utils.book_new()`
-- `workbook.addWorksheet('name')` instead of `XLSX.utils.book_append_sheet()`
-- `worksheet.addRow([...])` instead of building array-of-arrays
-- Export via `workbook.xlsx.writeBuffer()` returning an `ArrayBuffer`
-
-**`components/extraction/export-dialog.tsx`** — the static import of `exportToExcel`
-from `export.ts` must remain static (the dialog needs the function signature at
-compile time), but the XLSX bundle is only loaded when `exportToExcel` is *called*,
-not when the dialog is mounted. Dynamic import inside the function is sufficient —
-no need to lazy-load the entire `export-dialog.tsx` component.
-
-### ExcelJS ESM Compatibility Note
-
-ExcelJS has a known issue with ESM in certain bundler configurations: `"Dynamic require of 'crypto' is not supported"`. This is avoided by ensuring the import path resolves to the CJS build. Next.js 14+ handles this automatically for `node_modules` that have both CJS and ESM exports. Verify by running `npm run build` after migration.
-
-**Package change:**
-```bash
-npm uninstall xlsx
-npm install exceljs
-```
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `lib/extraction/export.ts` | REPLACE static `import * as XLSX` with `await import('exceljs')` inside `exportToExcel` | MEDIUM (API change) |
-| `package.json` | REMOVE `xlsx`, ADD `exceljs` | LOW |
-| `components/extraction/export-dialog.tsx` | No change needed (import is the async function, not XLSX directly) | NONE |
-| Test: `lib/extraction/export.test.ts` | UPDATE mocks from `vi.mock('xlsx')` to `vi.mock('exceljs')` | LOW |
-
----
-
-## Domain 6: Env Var Startup Validation (SECURITY: no startup assertion)
-
-### Current State
-
-`convex/lib/constants.ts` has `assertPlanPriceConfig()` (line 55) which throws if
-`GO_PRICE_ID` or `PRO_PRICE_ID` are empty. This function is not called at startup —
-only inside specific handler paths. Silent misconfiguration is possible.
-
-`convex/lib/env.ts` has `requireAppUrl()` but only validates `NEXT_PUBLIC_APP_URL`.
-
-Critical vars without startup checks: `STRIPE_SECRET_KEY`, `ENCRYPTION_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `CLERK_JWT_ISSUER_DOMAIN`, `STRIPE_GO_PRICE_ID`,
-`STRIPE_PRO_PRICE_ID`.
-
-### Recommended Integration Point: Extend Existing Cron
-
-There is no `init.ts` pattern currently. The cleanest integration point is the
-existing `checkSubscriptionStatus` hourly cron — it already calls Stripe and implicitly
-validates `STRIPE_SECRET_KEY`. A dedicated validation cron is cleaner.
-
-**New internal action: `convex/lib/startup.ts`**
-
-```typescript
-"use node";
-
-import { internalAction } from "../_generated/server";
-import { v } from "convex/values";
-
-const REQUIRED_VARS = [
-  "STRIPE_SECRET_KEY",
-  "ENCRYPTION_KEY",
-  "STRIPE_WEBHOOK_SECRET",
-  "STRIPE_GO_PRICE_ID",
-  "STRIPE_PRO_PRICE_ID",
-] as const;
-
-export const validateEnvVars = internalAction({
-  args: {},
-  returns: v.null(),
-  handler: async (_ctx) => {
-    const missing: string[] = [];
-    for (const name of REQUIRED_VARS) {
-      if (!process.env[name]) missing.push(name);
-    }
-    if (missing.length > 0) {
-      // Log prominently — will appear in Convex function logs
-      console.error("[STARTUP:ENV_MISSING]", JSON.stringify({ missing, timestamp: new Date().toISOString() }));
-      throw new Error(`Missing required env vars: ${missing.join(", ")}`);
-    }
-    console.log("[STARTUP:ENV_OK]", JSON.stringify({ vars: REQUIRED_VARS.length, timestamp: new Date().toISOString() }));
-    return null;
-  },
-});
-```
-
-**Add to `convex/crons.ts`:** Run validation at startup interval (every 6 hours is
-sufficient — env vars only change on deploy):
-
-```typescript
-crons.interval(
-  "validate env vars",
-  { hours: 6 },
-  internal.lib.startup.validateEnvVars
-);
-```
-
-**CLERK_JWT_ISSUER_DOMAIN** is not a Convex env var — it is a Next.js public variable.
-Validate it in `lib/auth/` during Next.js initialization, not in Convex.
-
-### Integration Points
-
-| Component | Action | Files |
-|-----------|--------|-------|
-| `convex/lib/startup.ts` | NEW internal action | startup.ts (new file) |
-| `convex/crons.ts` | ADD validation cron entry | crons.ts |
-| `convex/lib/constants.ts` | No change needed (`assertPlanPriceConfig` called by startup) | — |
-
----
-
-## Domain 7: Type Narrowing for Stripe SDK Unions
-
-### Current State — Two Separate Issues
-
-**Issue A:** `convex/maintenance/internal.ts` line 103:
-```typescript
-const stripeCustomerId =
-  typeof fresh.customer === "string"
-    ? fresh.customer
-    : (fresh.customer as any)?.id;
-```
-The `typeof === 'string'` branch is already correct. The `else` branch uses `as any`
-because `fresh` is typed `any` (line 51: `const fresh: any = ...`).
-
-**Issue B:** `convex/lib/rateLimit.ts` line 52:
-```typescript
-name: args.name as any,
-```
-The `consume` internal mutation accepts `name: v.string()` but passes it to `rateLimit()`
-which expects `Name extends keyof Limits` (a branded union type from `defineRateLimits`).
-
-### Fix A: Remove `any` from Stripe subscription fetch
-
-`convex/maintenance/internal.ts` line 51 types the Stripe subscription as `any` to
-avoid Stripe SDK type complexity. The fix is to import the Stripe type and use it:
-
-```typescript
-// Before:
-const fresh: any = await getStripe().subscriptions.retrieve(sub.stripeSubscriptionId);
-
-// After:
-import type Stripe from "stripe";
-const fresh: Stripe.Subscription = await getStripe().subscriptions.retrieve(
-  sub.stripeSubscriptionId
-);
-```
-
-With proper typing, the customer extraction becomes:
-```typescript
-const stripeCustomerId =
-  typeof fresh.customer === "string"
-    ? fresh.customer
-    : fresh.customer?.id;   // no cast needed — Stripe.Customer has .id
-```
-
-### Fix B: Rate Limiter Exhaustiveness
-
-The `consume` mutation in `convex/lib/rateLimit.ts` must validate that the incoming
-`name` string is one of the defined rate limit names before passing it to `rateLimit()`.
-
-**Pattern: typed union via `v.union()` validator:**
-
-```typescript
-// In convex/lib/rateLimit.ts — derive names from the config
-const RATE_LIMIT_NAMES = ["start-extraction", "api-key-save", "checkout-session"] as const;
-type RateLimitName = typeof RATE_LIMIT_NAMES[number];
-
-const rateLimitNameValidator = v.union(
-  v.literal("start-extraction"),
-  v.literal("api-key-save"),
-  v.literal("checkout-session")
-);
-
-export const consume = internalMutation({
-  args: {
-    name: rateLimitNameValidator,  // Replace v.string()
-    key: v.string(),
-    count: v.optional(v.number()),
-  },
-  // ...
-  handler: async (ctx, args) => {
-    await rateLimit(ctx, {
-      name: args.name,  // Now typed as the correct union, no cast needed
-      // ...
-    });
-  },
-});
-```
-
-Callers must pass a valid rate limit name string — Convex's runtime validator rejects
-invalid names at the boundary before the handler runs.
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `convex/maintenance/internal.ts` | REMOVE `const fresh: any`, use `Stripe.Subscription` type | LOW |
-| `convex/lib/rateLimit.ts` | REPLACE `v.string()` with typed `rateLimitNameValidator`, REMOVE `as any` cast | LOW |
-| Callers of `consume` mutation | Verified at compile time — no runtime changes | NONE |
-
----
-
-## Domain 8: Typed Workflow IDs (FRAGILE: workflow cancel uses `as any`)
-
-### Current State
-
-`convex/extraction/mutations.ts` line 263:
-```typescript
-await workflow.cancel(ctx, job.workflowId as any);
-```
-
-`job.workflowId` is `v.optional(v.string())` in the schema. `workflow.cancel()` expects
-a `WorkflowId` type (a branded string: `string & { __isWorkflowId: true }`).
-
-**Verified in installed package** (`node_modules/@convex-dev/workflow/dist/types.d.ts` line 3):
-```typescript
-export type WorkflowId = string & { __isWorkflowId: true };
-export declare const vWorkflowId: VString<WorkflowId>;
-```
-
-`vWorkflowId` is `v.string()` at runtime — it is a branded type only at the TypeScript
-level. `workflow.start()` returns a `WorkflowId`. Storing and retrieving it as `v.string()`
-works at runtime but loses the brand.
-
-### Fix: Store with `vWorkflowId` Validator
-
-**`convex/schema.ts`** — change `workflowId` field in `extractionJobs`:
-```typescript
-// Before:
-workflowId: v.optional(v.string()),
-
-// After:
-workflowId: v.optional(vWorkflowId),
-```
-
-Import: `import { vWorkflowId } from "@convex-dev/workflow";`
-
-**`convex/extraction/mutations.ts`** — remove the cast:
-```typescript
-// Before:
-await workflow.cancel(ctx, job.workflowId as any);
-
-// After (job.workflowId is now WorkflowId | undefined):
-if (job.workflowId) {
-  await workflow.cancel(ctx, job.workflowId);
-}
-```
-
-**`setJobWorkflowId` internal mutation** (line 1616-1623) — update arg type:
-```typescript
-args: {
-  jobId: v.id("extractionJobs"),
-  workflowId: vWorkflowId,  // was v.string()
-},
-```
-
-**Callers of `setJobWorkflowId`:** `workflow.start()` returns `WorkflowId`, which
-is already the correct type. The store call becomes type-safe end-to-end.
-
-**Schema change impact:** `vWorkflowId` is `v.string()` at runtime. This is a no-op
-schema change — no data migration needed. Convex will accept the deployment because
-the stored values are still valid strings.
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `convex/schema.ts` | MODIFY `workflowId` to `v.optional(vWorkflowId)` | NONE (runtime no-op) |
-| `convex/extraction/mutations.ts` | REMOVE `as any` from `workflow.cancel()`, update `setJobWorkflowId` args | LOW |
-| `convex/workflow.ts` | No change | — |
-
----
-
-## Domain 9: ExtractionResultWithReview Type (TECH DEBT: as any in export/filter)
-
-### Current State
-
-`lib/extraction/export.ts` and `lib/extraction/filtering.ts` access `correctedAnswer`,
-`citations`, `citationStatus`, and `reviewState` via `result as any`. These fields
-exist in the schema (`extractionResults` + `extractionResultReviews`) but are not
-part of the `Doc<"extractionResults">` type (which only has schema fields, not joined data).
-
-The functions receive `PaperWithResults` (defined in `filtering.ts` line 19):
-```typescript
-export interface PaperWithResults extends Doc<"extractionPapers"> {
-  results: Array<Doc<"extractionResults">>;
-}
-```
-
-The query path that constructs `PaperWithResults` joins review data inline, but the
-type does not reflect the join.
-
-### Fix: Derive `ExtractionResultWithReview` from Convex Validators
-
-**In `convex/extraction/validators.ts`** — add a new combined validator that matches
-the actual joined shape returned by queries:
-
-```typescript
-export const extractionResultWithReviewValidator = v.object({
-  // All extractionResults fields
-  _id: v.id("extractionResults"),
-  _creationTime: v.number(),
-  paperId: v.id("extractionPapers"),
-  questionKey: v.string(),
-  answer: answerValidator,
-  confidence: v.optional(v.number()),
-  reasoning: v.optional(v.string()),
-  citations: v.array(citationValidator),
-  citationStatus: citationStatusValidator,
-  // ... all other result fields
-
-  // Joined review fields (optional — paper may have no review)
-  correctedAnswer: v.optional(answerValidator),
-  reviewState: v.optional(reviewStateValidator),
-});
-```
-
-**In `lib/extraction/filtering.ts`** — derive the TypeScript type:
-
-```typescript
-import type { Infer } from "convex/values";
-import { extractionResultWithReviewValidator } from "@/convex/extraction/validators";
-
-export type ExtractionResultWithReview = Infer<typeof extractionResultWithReviewValidator>;
-
-export interface PaperWithResults extends Doc<"extractionPapers"> {
-  results: Array<ExtractionResultWithReview>;
-}
-```
-
-**In `lib/extraction/export.ts`** — remove all `result as any` casts; access
-`result.correctedAnswer`, `result.citations`, `result.citationStatus`, `result.reviewState`
-directly.
-
-**Query return type alignment:** The Convex query that builds `PaperWithResults` must
-return the `ExtractionResultWithReview` shape. Update the `returns` validator in the
-relevant query to use `extractionResultWithReviewValidator` for result items.
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `convex/extraction/validators.ts` | ADD `extractionResultWithReviewValidator` | LOW |
-| `lib/extraction/filtering.ts` | REPLACE `PaperWithResults.results` type, REMOVE `as any` accesses | LOW |
-| `lib/extraction/export.ts` | REMOVE all `result as any` casts (5 locations) | LOW |
-| Convex query returning joined data | UPDATE `returns` validator to use new combined shape | MEDIUM (must match exactly) |
-
----
-
-## Domain 10: XSS-Safe Highlight (SECURITY: dangerouslySetInnerHTML)
-
-### Current State
-
-`components/extraction/results-views/table-view.tsx` line 293:
-```typescript
-function highlightText(text: string, query: string): string {
-  if (!query || !query.trim()) return text;
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
-  return text.replace(regex, '<mark class="...">$1</mark>');
-}
-```
-
-The *query* is regex-escaped but the *text* (paper title, AI answer) is not sanitized
-before injection via `dangerouslySetInnerHTML`. AI-generated answers are the risk source.
-
-### Fix: React-Native Text Splitting (no dangerouslySetInnerHTML)
-
-Replace `highlightText()` (which returns an HTML string) with a React component that
-splits text into segments and renders `<mark>` elements natively:
-
-```typescript
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-
-  const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(${escapedQuery})`, 'gi');
-  const parts = text.split(regex);
-
-  return (
-    <>
-      {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark key={i} className="bg-yellow-200/50 dark:bg-yellow-500/30 rounded px-0.5">
-            {part}
-          </mark>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
-}
-```
-
-This approach:
-- Never calls `dangerouslySetInnerHTML`
-- React's JSX escaping handles all HTML characters in `text` automatically
-- No external sanitization library needed (DOMPurify unnecessary for React-native rendering)
-- All existing usages of `highlightText()` with `dangerouslySetInnerHTML` replaced with `<HighlightedText text={...} query={...} />`
-
-**Usage sites to update** (3 locations in `table-view.tsx` per CONCERNS.md):
-- Lines 159-165, 378-388, 450-451
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `components/extraction/results-views/table-view.tsx` | REPLACE `highlightText()` + `dangerouslySetInnerHTML` with `<HighlightedText />` component | LOW |
-| No new dependencies | Pure React approach | NONE |
-
----
-
-## Domain 11: Dead Code Removal
-
-### Items with Zero Architectural Impact
-
-**`components/library/library-filters.tsx`:** Delete the file. Knip confirms no imports.
-No cascading changes.
-
-**`convex/test.setup.ts`:** Verify whether it should be in `vitest.config.ts` as a
-`setupFiles` entry. If it contains Convex module discovery for `convex-test`, add it
-to the `edge-runtime` environment's `setupFiles`. If its content duplicates
-`tests/setup.ts`, delete it.
-
-**`convex/zotero/internal.ts` `listAllConnections`:** This global `.collect()` on
-`zoteroConnections` was a migration helper. Add `requirePublicDebugEnabled()` gate
-or delete it entirely if the migration is confirmed complete.
-
-**BILL-02 follow-up (`convex/credits/actions.ts` line 374-393):** The
-`processInvoiceForGrant` path still reads upgrade metadata from Stripe API when
-local Convex `subscriptions` table already has `pendingFromPlan`, `pendingToPlan`,
-`pendingChangeTimestamp` fields. Replace `getStripe().subscriptions.retrieve()` call
-with direct read from `subRecord` (the already-fetched Convex subscription record).
-Remove the extra Stripe API call.
-
-### Integration Points
-
-| Component | Action | Risk |
-|-----------|--------|------|
-| `components/library/library-filters.tsx` | DELETE | NONE |
-| `convex/test.setup.ts` | VERIFY and either add to vitest config or DELETE | LOW |
-| `convex/zotero/internal.ts` `listAllConnections` | ADD debug gate or DELETE | LOW |
-| `convex/credits/actions.ts` lines 374-393 | REPLACE Stripe API call with Convex DB read | LOW |
-
----
-
-## Cross-Domain Data Flow Changes Summary
-
-### New Data Flows
-
-| Flow | Trigger | Path |
-|------|---------|------|
-| Persistent audit event | `decryptApiKey` called | `decryptApiKey()` -> auditWriter callback -> `writeAuditLog` mutation -> `auditLogs` table |
-| Persistent debug audit | `requirePublicDebugEnabled()` success | caller action -> `writeAuditLog` mutation -> `auditLogs` table |
-| Incremental stats update | Paper extraction completes | `handleExtractionComplete` -> upsert `extractionJobStats` per result |
-| Report generation (fast path) | Report requested | Read `extractionJobStats` (O(questions)) instead of fan-out |
-| Env var validation | Hourly cron (new) | `validateEnvVars` action -> check `process.env` -> throw/log |
-
-### Modified Data Flows
-
-| Flow | Change |
-|------|--------|
-| XLSX export | Static import -> dynamic `await import('exceljs')` inside function |
-| Workflow cancel | `as any` cast removed; schema uses `vWorkflowId` typed brand |
-| Rate limit consume | `v.string()` name -> typed `rateLimitNameValidator` union |
-| Export/filter field access | `result as any` -> `ExtractionResultWithReview` typed access |
-| Text highlighting | `dangerouslySetInnerHTML` -> `<HighlightedText />` React component |
-| Upgrade credit grant | Stripe API call removed; reads `pendingFromPlan`/`pendingToPlan` from Convex |
-| Subscription customer ID | `fresh.customer as any` -> `Stripe.Subscription` typed access |
-
-### New Schema Tables
-
-| Table | Purpose | Indexes |
-|-------|---------|---------|
-| `auditLogs` | Persistent tamper-evident audit trail | `by_user`, `by_action_created`, `by_created` |
-| `extractionJobStats` | Pre-aggregated extraction report data | `by_job`, `by_job_question` |
-
----
-
-## Suggested Build Order (Dependency-Aware)
-
-The 11 domains have few hard dependencies. Order by risk profile and coupling:
-
-### Phase A: Zero-Risk Isolated Cleanups
-
-No dependencies. Ship first to reduce concern count without risk.
-
-| Priority | Domain | Rationale |
-|----------|--------|-----------|
-| 1 | Delete `library-filters.tsx` | Single file delete, zero references |
-| 2 | Delete/fix `convex/test.setup.ts` | Zero production impact |
-| 3 | `lib/ai/client` -> `lib/ai/server` boundary | Import path change only |
-| 4 | Remove `listAllConnections` or add debug gate | Contained to `zotero/internal.ts` |
-
-### Phase B: Type Safety (No Schema Changes)
-
-Fix type casts without touching schema or data.
-
-| Priority | Domain | Rationale |
-|----------|--------|-----------|
-| 5 | Stripe SDK type in `maintenance/internal.ts` | Replace `const fresh: any`, 1-line fix |
-| 6 | Rate limiter typed validator | Replace `v.string()` + `as any` in one file |
-| 7 | Workflow `vWorkflowId` schema brand | Runtime no-op, compile-time safety |
-| 8 | `ExtractionResultWithReview` type + export/filter de-any | Validator + type threading |
-
-### Phase C: Frontend Safety
-
-Pure UI changes, no backend impact.
-
-| Priority | Domain | Rationale |
-|----------|--------|-----------|
-| 9 | `<HighlightedText />` XSS fix | Component replacement, no Convex changes |
-| 10 | Library pagination sparse page handling | UI `loadMore()` logic addition |
-
-### Phase D: Performance + Package
-
-Moderate risk due to API surface changes.
-
-| Priority | Domain | Rationale |
-|----------|--------|-----------|
-| 11 | ExcelJS dynamic import | Package replacement, test updates needed |
-| 12 | `getLibraryCount` bounded collect | Simple query bound |
-
-### Phase E: New Schema + Infrastructure
-
-These require schema deploys and carry moderate complexity.
-
-| Priority | Domain | Rationale |
-|----------|--------|-----------|
-| 13 | Env var validation cron | New file + cron entry |
-| 14 | BILL-02: read from Convex instead of Stripe API | Credits action change, verify with existing tests |
-| 15 | `auditLogs` table + persistent audit writes | New schema table + mutation wiring |
-| 16 | `extractionJobStats` incremental aggregation | New schema table + workpool action change + migration path |
-
-**Phase E ordering rationale:** Schema changes require Convex deploy cycles. The audit
-table (15) is simpler than aggregation stats (16) because it has no migration concern —
-it starts empty and fills forward. Aggregation stats (16) needs a migration path for
-existing completed jobs.
-
----
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Audit Write in "use node" Module Directly
+### Anti-Pattern 1: Public Functions with Runtime Gates
+**What:** Using `query`/`mutation` with env var checks to restrict access.
+**Why bad:** Any client can call public Convex functions. Env var gates rely on operational discipline ("never set this in prod"). A misconfiguration exposes all gated functions. The Convex platform already provides the `internalQuery`/`internalMutation` mechanism for exactly this purpose.
+**Instead:** Use `internalQuery`/`internalMutation`. They are not callable from the client SDK at all -- enforced by the Convex runtime, not by application code.
 
-**What fails:** Calling `ctx.runMutation` inside `decryptApiKey()` in `crypto.ts`
-**Why:** `crypto.ts` uses `"use node"` and does not receive a `ctx` parameter. The
-crypto function must remain a pure function.
-**Do this instead:** Pass an async callback from the calling action; the action has `ctx`.
+### Anti-Pattern 2: Counting via Document Fetch
+**What:** Fetching documents with `.take(N)` and returning `.length`.
+**Why bad:** Reads N documents from the database, transfers them over the wire, and discards the data. Wasteful of database bandwidth and Convex function execution time. Gets worse as the collection grows.
+**Instead:** Use a counter (sharded counter or manual counter field) that is updated on mutations.
 
-### Anti-Pattern 2: ExcelJS Synchronous Import
+### Anti-Pattern 3: Unbounded `.collect()` Without Size Analysis
+**What:** Using `.collect()` without considering the maximum result set size.
+**Why bad:** A user with 50,000 library items or a future feature that removes the 500-paper cap will cause queries to load unbounded data, potentially exceeding Convex function memory limits or timeout constraints.
+**Instead:** Always add `.take(N)` with a comment explaining why N is the correct bound.
 
-**What fails:** `import * as ExcelJS from 'exceljs'` at module top level in `export.ts`
-**Why:** Adds ~700KB to the page bundle even for users who never export to Excel.
-**Do this instead:** `await import('exceljs')` inside the async `exportToExcel` function.
+## Scalability Considerations
 
-### Anti-Pattern 3: `v.id("extractionJobStats")` in Cascade Delete — Forgetting New Table
+| Concern | At 100 users | At 10K users | At 1M users |
+|---------|--------------|--------------|-------------|
+| Library count | `.take(10_000)` is fine | Sharded counter eliminates scan | Sharded counter scales linearly |
+| Debug endpoints | Internal functions: zero attack surface | Same | Same |
+| `.collect()` bounds | All within limits | All within limits | May need to revisit extraction paper limits |
+| Counter migration | Lazy backfill handles all users | Lazy backfill amortizes over time | Consider batch migration at this scale |
 
-**What fails:** Adding `extractionJobStats` to schema without adding it to `deleteExtractionInternal`
-**Why:** Cascade delete must cover all tables with a `jobId` foreign key. Orphaned stats
-records accumulate forever.
-**Do this instead:** After adding any table with `jobId`, immediately add it to the cascade
-delete steps. Maintain the table in the cascade delete code comment listing all 9 (now 10) child tables.
+## Build Order
 
-### Anti-Pattern 4: Replacing `dangerouslySetInnerHTML` with DOMPurify
+**Phase 1: Debug endpoint internalization (no dependencies)**
+1. Convert 4 public debug functions to internal
+2. Remove `requirePublicDebugEnabled()` from all 12 files
+3. Delete `convex/lib/debug_gate.ts`
+4. Update/delete `tests/debug-gate.test.ts`
+5. Remove `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var documentation
+6. Deploy and verify via `npx convex run`
 
-**What fails:** `DOMPurify.sanitize(text)` then `dangerouslySetInnerHTML`
-**Why:** Adds a browser-only dependency, increases bundle, and still uses the risky API.
-React's JSX escaping is already correct — splitting and rendering is the idiomatic pattern.
-**Do this instead:** The `<HighlightedText />` component approach with `text.split(regex)`.
+**Phase 2: Sharded counter for library count (independent of Phase 1)**
+1. Install `@convex-dev/sharded-counter`
+2. Add to `convex/convex.config.ts`
+3. Create `convex/library/counter.ts` with `ShardedCounter` instance
+4. Add `inc`/`dec` calls to `library/mutations.ts` save and delete paths
+5. Rewrite `getLibraryCount` to use counter with lazy backfill
+6. Update `convex/library/queries.test.ts`
+7. Deploy and verify counts match
 
-### Anti-Pattern 5: Typed `WorkflowId` Requiring Data Migration
+**Phase 3: `.collect()` bounding (independent of Phase 1 and 2)**
+1. Add `.take()` bounds to Category C paths
+2. Add `.take()` bounds to Category B paths (defense-in-depth)
+3. Add comments explaining each bound
+4. Run full test suite to verify no behavioral changes
 
-**What worries developers:** Changing `workflowId: v.optional(v.string())` to `v.optional(vWorkflowId)` might break existing stored data.
-**Why it is safe:** `vWorkflowId` is `v.string()` at runtime. The branded type is TypeScript-only. Zero data migration needed.
-
----
-
-## New vs Modified Components Summary
-
-| Type | Component | Action | Domain |
-|------|-----------|--------|--------|
-| NEW | `convex/schema.ts` — `auditLogs` table | ADD table | Audit |
-| NEW | `convex/schema.ts` — `extractionJobStats` table | ADD table | Aggregation |
-| NEW | `convex/lib/audit.ts` | ADD `writeAuditLog` internalMutation | Audit |
-| NEW | `convex/lib/startup.ts` | ADD `validateEnvVars` internalAction | Env vars |
-| NEW | `lib/ai/server/providers.ts` | MOVE content from client/providers.ts | Module boundary |
-| MODIFIED | `convex/lib/crypto.ts` | Accept optional audit writer callback | Audit |
-| MODIFIED | `convex/lib/debug_gate.ts` | Accept optional audit writer callback | Audit |
-| MODIFIED | `convex/lib/rateLimit.ts` | Replace `v.string()` with typed union validator | Rate limiter |
-| MODIFIED | `convex/schema.ts` — `extractionJobs.workflowId` | Change to `vWorkflowId` brand | Workflow IDs |
-| MODIFIED | `convex/extraction/mutations.ts` — `cancelExtraction` | Remove `as any` cast | Workflow IDs |
-| MODIFIED | `convex/extraction/mutations.ts` — `setJobWorkflowId` | Update arg type | Workflow IDs |
-| MODIFIED | `convex/extraction/mutations.ts` — `loadJobDataForReporting` | Read from stats table | Aggregation |
-| MODIFIED | `convex/extraction/mutations.ts` — `deleteExtractionInternal` | Add stats table to cascade | Aggregation |
-| MODIFIED | `convex/extraction/validators.ts` | ADD `extractionResultWithReviewValidator` | Export/filter types |
-| MODIFIED | `convex/extraction/workpoolActions.ts` | Upsert `extractionJobStats` on result arrival | Aggregation |
-| MODIFIED | `convex/maintenance/internal.ts` | Replace `const fresh: any` with `Stripe.Subscription` | Stripe types |
-| MODIFIED | `convex/credits/actions.ts` | Replace Stripe API call with Convex DB read (BILL-02) | Dead code |
-| MODIFIED | `convex/crons.ts` | ADD env var validation cron | Env vars |
-| MODIFIED | `convex/ai/helpers.ts` | Update import path to `lib/ai/server/providers` | Module boundary |
-| MODIFIED | `lib/ai/client/providers.ts` | Replace with re-export from server/ | Module boundary |
-| MODIFIED | `lib/extraction/export.ts` | Replace static XLSX import with dynamic ExcelJS | ExcelJS |
-| MODIFIED | `lib/extraction/filtering.ts` | Use `ExtractionResultWithReview` type | Export/filter types |
-| MODIFIED | `convex/library/queries.ts` — `getLibraryCount` | Bound collect with `.take(10_000)` | Library perf |
-| MODIFIED | `components/extraction/results-views/table-view.tsx` | Replace highlight with `<HighlightedText />` | XSS |
-| DELETED | `components/library/library-filters.tsx` | Unused component | Dead code |
-| DELETED/FIXED | `convex/test.setup.ts` | Verify or delete | Dead code |
-| DELETED | `convex/zotero/internal.ts` `listAllConnections` | Migration helper | Dead code |
-| PACKAGE | `xlsx` | REMOVE | ExcelJS |
-| PACKAGE | `exceljs` | ADD | ExcelJS |
-
----
+**Ordering rationale:** All three phases are independent and could be done in parallel. However, Phase 1 (debug internalization) is the highest-priority security fix and should ship first. Phase 2 (sharded counter) requires an npm install and component registration. Phase 3 (`.collect()` bounding) is the lowest risk and can be done last as a sweep.
 
 ## Sources
 
-- `@convex-dev/workflow` `vWorkflowId` and `WorkflowId` type — verified in installed package `node_modules/@convex-dev/workflow/dist/types.d.ts` (HIGH confidence)
-- `convex-helpers` `filter()` pagination limitation — GitHub issue #864 (MEDIUM confidence, known limitation)
-- ExcelJS dynamic import in Next.js — community reports of CJS/ESM conflicts; mitigated by Next.js 14+ handling (MEDIUM confidence)
-- React text splitting vs `dangerouslySetInnerHTML` — OWASP recommendation, React documentation pattern (HIGH confidence)
-- Convex `@convex-dev/aggregate` component — exists but not chosen due to added dependency complexity; upsert table is sufficient (HIGH confidence)
-- All file paths and line numbers verified against actual codebase (HIGH confidence)
+- Convex Aggregate Component: [Official page](https://www.convex.dev/components/aggregate), [GitHub](https://github.com/get-convex/aggregate), [Stack article](https://stack.convex.dev/efficient-count-sum-max-with-the-aggregate-component)
+- Convex Sharded Counter: [Official page](https://www.convex.dev/components/sharded-counter), [GitHub](https://github.com/get-convex/sharded-counter), [npm](https://www.npmjs.com/package/@convex-dev/sharded-counter)
+- Prior decision: `.planning/milestones/v3.0-phases/57-incremental-aggregation/57-RESEARCH.md` rejected `@convex-dev/aggregate` for simple counting
+- Codebase analysis: direct inspection of all 12 debug files, 124 `.collect()` call sites, library count query, and frontend usage
+- Confidence: HIGH for debug internalization (straightforward Convex pattern), HIGH for sharded counter (official component, exact use case match), HIGH for `.collect()` bounding (mechanical change with known bounds)
 
 ---
 
-*Architecture research for: v3.0 Zero-Any Overhaul*
-*Researched: 2026-03-03*
+*Architecture analysis: 2026-03-06*

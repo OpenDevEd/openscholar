@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** OpenAlex Count — v3.0 Zero-Any Overhaul
-**Domain:** Codebase hardening — eliminating `as any` casts, XSS vectors, unbounded queries, and ephemeral audit logging from an existing Convex + Next.js academic extraction platform
-**Researched:** 2026-03-03
+**Project:** OpenAlex Count — v3.2 Production Readiness
+**Domain:** Production readiness fixes for Convex-backed academic search/extraction platform
+**Researched:** 2026-03-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This is a codebase hardening milestone, not a greenfield feature build. The v3.0 overhaul resolves 12 documented concerns across four categories: type safety (`as any` casts), security (XSS, audit persistence, env validation), performance (unbounded queries, synchronous bundle weight), and correctness (rate limiter exhaustiveness, credit TOCTOU, typed workflow IDs). Every concern has a known fix pattern that uses existing dependencies — **no new npm packages are required beyond a single conditional install** (`exceljs` if the XLSX migration proceeds). The stack is already configured for every capability needed.
+v3.2 addresses three production readiness concerns: publicly accessible debug endpoints (security), inefficient library document counting (performance), and unbounded `.collect()` calls on high-traffic paths (reliability). All three are backend-only changes to the existing Convex codebase. No frontend modifications are required. No new UI features ship in this milestone.
 
-The recommended approach is to resolve concerns in dependency order, moving from cheap isolated type fixes to medium-cost security changes to high-cost architectural changes. The lowest-risk items (Stripe cast fix, rate limiter typing, export/filtering type derivation) can ship independently and immediately. The highest-risk items (library pagination count fix, incremental aggregation) require careful testing against existing Convex behaviors and must not change cursor formats that are persisted in user URLs via nuqs.
+The recommended approach is straightforward: convert 4 remaining public debug/test functions to `internalQuery`/`internalMutation` (eliminating the attack surface architecturally rather than via env-var gates), replace the `getLibraryCount` document-scan with an atomic counter maintained in save/delete mutations, and add `.take(N)` bounds to the ~10 highest-traffic `.collect()` paths. Zero new npm packages are needed -- every capability uses existing Convex primitives already present in the codebase.
 
-The most significant risk in this milestone is not implementation complexity but subtle behavioral breakage: removing `as any` casts can silently produce `undefined` where values were previously returned (Stripe customer union), changing pagination cursor formats can break bookmarked library URLs, and audit table writes added to hot paths can slow extraction mutations by introducing OCC contention. Every fix requires a test written before the change, covering both the happy path and the previously-hidden failure path that the `as any` was masking.
+The primary risks are: (1) breaking generated API paths when changing function visibility (mitigated by running `tsc --noEmit` after conversion), (2) counter drift if increment/decrement is missed on a mutation path (mitigated by the fact that only 2 mutation entry points modify libraryItems), and (3) over-bounding safe `.collect()` calls that are inherently small (mitigated by categorizing each call by cardinality before acting). All three concerns have well-documented Convex patterns and the project already uses these patterns elsewhere (5 of 7 debug files are already internal; `extractionJobStats` uses the manual counter pattern; `.take()` is used extensively).
 
 ---
 
@@ -19,160 +19,99 @@ The most significant risk in this milestone is not implementation complexity but
 
 ### Recommended Stack
 
-The existing stack (Next.js, Convex `^1.31.7`, `@convex-dev/workflow ^0.3.4`, Stripe SDK v20, Zod `^4.3.6`, `convex-test ^0.0.41`) already contains every capability needed to resolve all 12 concerns. The only conditional addition is `exceljs@4.4.0` to replace the unmaintained `xlsx@0.18.5` package. The XSS fix requires zero new dependencies (React-native text splitting instead of DOMPurify).
+No new npm packages required. All three fixes use existing Convex primitives (`internalQuery`, `ctx.db.patch()`, `.take(N)`) available since well before the project's current `convex@^1.31.7`.
 
-**Core technologies for v3.0 fixes:**
-- `exceljs@4.4.0` (conditional install): Actively maintained XLSX library; replaces `xlsx` which has known prototype pollution CVEs and is stagnant. Uses dynamic import to avoid the ~500KB static bundle weight.
-- `paginationOptsValidator` from `convex ^1.31.7` (already installed): Apply to `getLibraryCount` unbounded `.collect()` — the main browse/search pagination was already migrated in a prior phase; only the count query and sparse-page UI handling remain.
-- `vWorkflowId` from `@convex-dev/workflow ^0.3.4` (already installed): Replaces `workflowId as any` cast in extraction cancel path; requires verifying the component's exported type before changing schema.
-- Zod `^4.3.6` (already installed): Env var validation schema for Convex-side startup validation; use `.issues` not `.errors` for error access in v4 API.
-- `convex-test ^0.0.41` (already installed): Sequential concurrency invariant tests; true OCC simulation is not possible in the test mock — document this and test the invariant instead.
+**Core technologies (all existing):**
+- `internalQuery`/`internalMutation` from `convex/server` -- converts public debug endpoints to platform-enforced private functions
+- `ctx.db.patch()` -- atomic increment/decrement for manual counter field on library item counts
+- `.take(N)` on query builder -- explicit bounds for `.collect()` calls on high-traffic paths
 
-### Expected Features (Fix Scope)
+**Disagreement resolved:** FEATURES.md and ARCHITECTURE.md recommend `@convex-dev/sharded-counter` for library counting. STACK.md recommends a manual counter field. **The manual counter field is the correct choice.** Rationale: library writes are user-initiated (not concurrent batch operations), only 2 mutation paths modify libraryItems, the project already rejected `@convex-dev/aggregate` for identical reasons in v3.0, and a manual counter avoids adding a 5th component dependency. OCC contention is negligible for single-user save/unsave operations. The sharded counter solves a high-contention problem that does not exist here.
 
-**Must fix — active risk or broken at scale (P1):**
-- XSS-safe text highlighting — `dangerouslySetInnerHTML` with unsanitized paper titles and AI answers is an active XSS vector; replace with React-native `HighlightedText` component
-- Startup env var validation — silent misconfiguration on deployment; add cron-based validation calling existing `assertPlanPriceConfig()` plus a new encryption key check
-- Rate limiter exhaustiveness — `name as any` in `consume` mutation allows any string, bypassing rate limit enforcement; replace with runtime validation against `Object.keys(rateLimitConfig)`
-- Real library pagination (count fix) — `getLibraryCount` uses unbounded `.collect()`; the browse/search queries were already paginated in a prior phase
+### Expected Features
 
-**Should fix — accumulating debt or reliability risk (P2):**
-- Persistent audit table — `console.log` audit events are ephemeral and non-queryable; add `auditLogs` table with `writeAuditLog` internalMutation; audit only security-sensitive callers, not extraction hot paths
-- Dynamic XLSX import + exceljs migration — remove ~500KB from initial bundle and replace CVE-exposed `xlsx` with actively maintained `exceljs`
-- Subscription cron batching — 1,000 subscriptions processed per cron without circuit-breaking risks Stripe rate limit exhaustion; adopt self-scheduling batch pattern already used by `cleanupDeletedUsers`
-- Typed `as any` casts in export/filtering — derive `ExtractionResultWithReview` type from existing validator; zero runtime change, pure compile-time safety
-- Stripe customer type cast fix — direct pattern transplant from `convex/http.ts` to `maintenance/internal.ts`; requires test for expanded customer object path
+**Must have (table stakes):**
+- Debug endpoint conversion -- 2 public queries and 2 public mutations converted to internal (security blocker)
+- Library count efficiency -- replace `.take(10_000).length` with O(1) counter read (performance blocker, incorrect for >10k items)
+- `.collect()` bounding on ~10 high-traffic paths -- add `.take(N)` guards (reliability blocker)
 
-**Defer or conditional (P3):**
-- Incremental extraction report aggregation — high complexity architectural change; add `extractionJobStats` table and incremental upsert in workpool; prerequisite for lifting the 500-paper cap but optional for v3.0 completion
-- Typed workflow cancel IDs — requires verifying `@convex-dev/workflow` exported type before changing schema; treat as a research item first
-- Credit TOCTOU mitigation — precautionary; Convex OCC already prevents negative balances; add concurrency invariant test, implement workpool serialization only if negative balance is observed in production
+**Should have (high-value, low-cost):**
+- Delete `convex/lib/debug_gate.ts` and remove `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var (dead code removal)
+- Remove `requireAuth()` from debug functions (internal functions lack client auth context -- keeping it makes them uncallable from dashboard/CLI)
+- Document cardinality expectations with inline comments on naturally-bounded `.collect()` calls
 
-**Anti-features (avoid):**
-- DOMPurify for XSS highlighting — adds bundle weight and DOM requirement; React text splitting is strictly simpler and correct for this use case
-- `assertPlanPriceConfig()` at module scope — blocks ALL functions in the module if env var missing; always call inside handlers, never at module load time
-- Per-user workpool for all credit operations — introduces deadlock potential and serializes hot extraction paths unnecessarily
-- Offset-based pagination — Convex does not natively support it; cursor-based pagination is already implemented for browse/search
+**Defer (v2+):**
+- Server-side pagination for library (high complexity, not blocking at current scale)
+- Collection membership counters (nice-to-have, no known bottleneck)
+- Full `@convex-dev/aggregate` component (over-engineering for current needs)
+- Custom admin dashboard for debug queries (scope creep)
 
 ### Architecture Approach
 
-The v3.0 overhaul makes surgical modifications to five architectural domains without restructuring the existing Next.js + Convex layering. New schema components are limited to: an `auditLogs` table, a `logAuditEvent` internalMutation, and optionally an `extractionJobStats` table (for incremental aggregation). All other changes are in-place replacements within existing files. The client-facing library UI requires one targeted change: auto-calling `loadMore()` when a sparse page is returned from the collection-filtered query, which is a known behavior of the `convex-helpers` `filter()` + `.paginate()` pattern.
+Three independent backend changes to existing modules with no new files except potentially a `libraryCounters` table or counter field. All changes are confined to `convex/extraction/debug*.ts`, `convex/extraction/test*.ts`, `convex/library/queries.ts`, `convex/library/mutations.ts`, and a handful of extraction/credit query files. No new layers, no frontend components, no API surface changes.
 
-**Major components modified:**
-1. `convex/lib/crypto.ts` + `convex/lib/debug_gate.ts` — add optional `auditWriter` callback for persistent audit logging; keep `console.log` as fallback for hot-path callers
-2. `convex/library/queries.ts` — fix `getLibraryCount` unbounded `.collect()` to `.take(10_000)` bound; sparse-page UI side effect handled client-side
-3. `convex/extraction/workpoolActions.ts` + `mutations.ts` — add incremental stats upsert on paper completion (if Domain 3 is in scope)
-4. `lib/extraction/export.ts` + `export-dialog.tsx` — swap static `xlsx` import for dynamic `exceljs` import inside handler
-5. `convex/schema.ts` — add `auditLogs` table; optionally add `extractionJobStats` table
-6. `components/extraction/results-views/table-view.tsx` — replace all three `dangerouslySetInnerHTML` call sites with `<HighlightedText>` React component
+**Major components:**
+1. Debug endpoint internalization (6 debug files + 2 test files) -- convert `query`/`mutation` to `internalQuery`/`internalMutation`, remove env-var gate module
+2. Library counter system (queries.ts + mutations.ts + schema.ts) -- add counter field, patch atomically in save/delete mutations, rewrite `getLibraryCount` to read counter
+3. `.collect()` bounding (extraction/queries.ts, library/queries.ts, credits/internal.ts) -- add `.take(N)` with documented MAX constants to ~10 high-traffic paths
 
 ### Critical Pitfalls
 
-1. **`as any` removal silently produces `undefined` for Stripe customer union** — `fresh.customer` is a string by default (not an expanded object); any narrowing that throws for the string case will crash the maintenance cron for ALL subscriptions. Fix: `typeof fresh.customer === 'string' ? fresh.customer : fresh.customer?.id`. Write a test for BOTH branches before deploying.
+1. **Generated API paths break on visibility change** -- `api.extraction.debug.diagnoseJob` becomes `internal.extraction.debug.diagnoseJob`. Run `tsc --noEmit` after conversion to catch all broken references. Grep for string-based function names.
 
-2. **Library cursor format invalidation breaks bookmarked URLs** — the main browse/search queries already use `.paginate()`; only `getLibraryCount` still uses `.collect()`. DO NOT change the cursor format of existing paginated queries. Changing from `convex-helpers filter()` cursors to index-based cursors invalidates user-bookmarked URLs and requires a cursor migration handler (catch parse error, reset to page 1 via nuqs).
+2. **`requireAuth()` makes internal functions uncallable** -- Internal functions called via `npx convex run` or `ctx.runQuery` have no client auth context. Remove `requireAuth()` from all debug functions when converting to internal. Accept `userId` as an explicit argument if user-scoping is needed.
 
-3. **ExcelJS API differences produce silently corrupt XLSX files** — ExcelJS uses a builder pattern incompatible with `xlsx`'s array-of-arrays API. A successful compile does not mean a valid Excel file. Write a round-trip test (generate, parse back, assert header and row counts) before shipping. Start with dynamic import of `xlsx` first; migrate to `exceljs` API in a second step.
+3. **Over-bounding safe `.collect()` calls** -- Many `.collect()` calls are inherently bounded (e.g., 5-15 extraction questions per job, 1-3 subscriptions per user). Adding `.take(N)` to cascade-delete paths silently orphans data. Categorize each call by cardinality before acting.
 
-4. **Audit table writes in extraction hot paths cause OCC contention** — if `decryptApiKey` is called inside extraction loops and each call inserts an audit record, a 500-paper job creates 500 DB writes in one mutation context. Keep `console.log` for hot-path callers; persist to DB only for user-facing security-sensitive operations (API key save, debug gate access).
+4. **Counter drift from missed mutation paths** -- The counter must be updated in EVERY mutation that creates or deletes library items. Verify only 2 entry points exist: `saveToLibrary` (insert) and `removeFromLibrary`/`removeMultipleFromLibrary` (delete).
 
-5. **Env var validation at module scope blocks non-billing functions** — calling `assertPlanPriceConfig()` at the top level of `convex/lib/constants.ts` will block ALL functions that import that module when Stripe env vars are missing (including subscription status queries). Always call validation inside the specific handler that uses the env var, never at module load time.
+5. **Search index `.collect()` cannot use `.take()`** -- Convex search queries return up to 256 results by default. Do not attempt to bound them; they are already inherently capped.
 
 ---
 
 ## Implications for Roadmap
 
-Based on dependencies, risk level, and test requirements, the recommended phase structure is:
+Based on research, suggested phase structure:
 
-### Phase 1: Type Safety Sweep
+### Phase 1: Debug Endpoint Security Hardening
 
-**Rationale:** These are the cheapest changes with the highest compile-time safety payoff and zero runtime risk if approached with test-first discipline. They are independent of each other and of all other phases — ideal to ship first to build confidence.
+**Rationale:** Highest-priority security fix with lowest complexity. No dependencies on other phases. Pattern already established (5 of 7 debug files are already internal).
+**Delivers:** All debug/test functions unreachable from client SDK. Env-var gate eliminated. Clean security model.
+**Addresses:** Debug endpoint conversion (table stakes), debug gate removal (should-have), requireAuth removal (should-have)
+**Avoids:** Pitfall 1 (API path break -- run tsc), Pitfall 7 (auth in internal -- remove requireAuth)
+**Scope:** Convert 4 public functions to internal, remove `requirePublicDebugEnabled()` from all 12 files, delete `debug_gate.ts`, update/rewrite `debug-gate.test.ts`, remove env var.
 
-**Delivers:** Elimination of `as any` casts from non-architectural paths; TypeScript catches field renames and schema changes from this point forward.
+### Phase 2: Library Count Optimization
 
-**Addresses:**
-- Typed `as any` casts in `lib/extraction/export.ts` and `filtering.ts` (derive `ExtractionResultWithReview` from existing `extractionResultWithReviewValidator`)
-- Stripe customer type cast fix in `convex/maintenance/internal.ts` (pattern transplant from `convex/http.ts`)
-- Rate limiter exhaustiveness in `consume` mutation (runtime validation against `Object.keys(rateLimitConfig)`)
-- Typed workflow cancel IDs (research `@convex-dev/workflow` type first, then schema fix or intermediate guard)
+**Rationale:** Performance fix with medium complexity. Independent of Phase 1. Requires schema change (new counter field or table) and backfill strategy.
+**Delivers:** O(1) library count query. Correct counts for users with >10,000 items. Eliminated 10,000-document scan on every library page load.
+**Addresses:** Library count efficiency (table stakes)
+**Avoids:** Pitfall 3 (aggregate complexity -- use manual counter, not component), Pitfall 6 (counter race -- Convex OCC handles retries correctly), Pitfall 8 (cap at 10k -- counter has no upper bound)
+**Scope:** Add counter field/table to schema, increment in `saveToLibrary`, decrement in `removeFromLibrary` and `removeMultipleFromLibrary`, rewrite `getLibraryCount`, implement lazy backfill for existing users, update tests.
 
-**Avoids:** Write tests for both union branches of the Stripe customer fix before deploying. Research `@convex-dev/workflow` exported types before touching schema — do not cast to `Id<"_scheduled_functions">` without verification.
+### Phase 3: Unbounded `.collect()` Audit and Bounding
 
-**Research flag:** Standard type guard narrowing patterns — skip research-phase. Workflow ID type requires one focused lookup of `@convex-dev/workflow` type definitions before writing any code.
-
----
-
-### Phase 2: Security and Audit
-
-**Rationale:** These require new infrastructure (audit table schema change) or cross-cutting call site updates (XSS fix touches three render sites, env validation requires a new cron). Grouped together because they share a schema deploy and have a related security scope.
-
-**Delivers:** XSS-safe highlighting, startup misconfiguration detection, queryable audit history for security-sensitive operations.
-
-**Addresses:**
-- XSS-safe `HighlightedText` React component (replace all three `dangerouslySetInnerHTML` sites in `table-view.tsx`)
-- Startup env var validation (cron calls `assertPlanPriceConfig()` plus encryption key check — never at module scope)
-- Persistent audit table (`auditLogs` schema, `writeAuditLog` internalMutation, optional writer pattern in `crypto.ts` via callback, not signature change)
-
-**Avoids:** XSS test must verify HTML characters in both `text` and `query` parameters; highlighting must remain case-insensitive with regex-escaped query. Env validation must call inside handlers. Audit writes must NOT enter extraction loops — define audit scope (user-facing security operations only) before writing code.
-
-**Research flag:** Standard well-documented patterns — skip research-phase for XSS React component and audit table. Env validation placement has a Convex-specific pitfall (module-scope blocking) that is documented in PITFALLS.md — consult before implementation.
-
----
-
-### Phase 3: Performance Fixes
-
-**Rationale:** The remaining `.collect()` in `getLibraryCount` is a correctness-at-scale issue. Subscription cron batching and dynamic XLSX import are reliability and bundle improvements. Grouped together as infrastructure-touching changes that are each independent of one another.
-
-**Delivers:** Bounded library item count query, XLSX bundle removed from initial page load (~500KB reduction), Stripe rate limit risk eliminated from subscription cron.
-
-**Addresses:**
-- `getLibraryCount` unbounded `.collect()` fix (`.take(10_000)` bound)
-- Dynamic XLSX import + `exceljs` migration (remove `xlsx`, install `exceljs`, rewrite export API with dynamic import inside handler)
-- Subscription cron batching with circuit-breaker (cursor-based self-scheduling, 45s time budget, parallel Stripe calls within each batch)
-
-**Avoids:** ExcelJS migration requires a round-trip XLSX test before shipping. Ship the dynamic import of `xlsx` first as a separate step to confirm bundle size reduction before committing to full API rewrite. The subscription batch pattern has a direct codebase analog (`cleanupDeletedUsers`) — read that pattern first.
-
-**Research flag:** ExcelJS API differences from `xlsx` are non-trivial — dedicate time to reading ExcelJS docs for workbook/worksheet/row construction before writing code. This phase benefits from a brief research-phase for the ExcelJS migration step.
-
----
-
-### Phase 4: Incremental Extraction Aggregation (Conditional)
-
-**Rationale:** The highest-complexity change in the overhaul. Requires a new table, a modified write path in workpool workers on every paper completion, and a modified read path in reporting. It is the prerequisite for lifting the 500-paper cap in a future milestone. Deferred to its own phase because it can be implemented independently and carries the highest regression risk to the extraction pipeline.
-
-**Delivers:** Extraction report generation decoupled from loading all result records; O(questions) instead of O(papers × questions) at report time; `MAX_PAPERS_PER_JOB` cap can be lifted in a subsequent milestone once the incremental path is validated end-to-end.
-
-**Addresses:**
-- Incremental extraction report aggregation (`extractionJobStats` table, upsert in `workpoolActions.ts`, backfill fallback for existing jobs, cascade delete inclusion)
-
-**Avoids:** Upsert must be atomic (Convex OCC handles this). Cascade delete must include `extractionJobStats` records. Existing jobs need a backfill path (first report request fans out, then persists stats). Do NOT remove the 500-paper cap until the incremental path is tested in production with real jobs.
-
-**Research flag:** This phase warrants `/gsd:research-phase` during planning to validate the upsert pattern, confirm OCC handles concurrent paper completions correctly, and design the backfill strategy for existing completed jobs.
-
----
-
-### Phase 5: Credit Concurrency Validation (Conditional)
-
-**Rationale:** The credit TOCTOU concern is documented but no negative-balance incident has been observed. Convex OCC already prevents negative balances. This phase adds the missing concurrency invariant test and closes the concern based on test evidence rather than assumption.
-
-**Delivers:** Confirmed OCC protection for credit deduction; per-user workpool mitigation implemented only if test reveals an actual gap (negative balance produced).
-
-**Addresses:**
-- Credit TOCTOU mitigation (concurrency invariant test first; workpool implementation only if negative balance is observed in test output)
-
-**Avoids:** Do NOT implement per-user workpool unless the test confirms OCC is insufficient — it introduces deadlock potential for nested workpool calls and serializes hot extraction paths. The test must assert no negative balance, not merely that two concurrent requests are processed.
-
-**Research flag:** Standard concurrency testing pattern in `convex-test` — skip research-phase. This phase can run in parallel with any other phase since it is test-only until a gap is confirmed.
-
----
+**Rationale:** Lowest risk, most mechanical. Independent of Phases 1 and 2. Requires careful categorization to avoid over-bounding.
+**Delivers:** Explicit `.take(N)` bounds on all high-traffic query paths. Documented cardinality expectations. Defense-in-depth against future data growth.
+**Addresses:** `.collect()` bounding (table stakes), cardinality documentation (should-have)
+**Avoids:** Pitfall 4 (over-bounding -- categorize by cardinality first), Pitfall 11 (search index -- skip search `.collect()` calls)
+**Scope:** Add `.take(N)` to ~10 Category C paths, add `.take(N)` to Category B paths as defense-in-depth, document cardinality for Category A paths, skip test files and search index queries.
 
 ### Phase Ordering Rationale
 
-- Phase 1 is first because type fixes are isolated, low-risk, and immediately verifiable — they build implementation confidence before touching infrastructure.
-- Phase 2 follows because the security fixes require a schema deploy (audit table) and cross-cutting call site changes that are easier to reason about after the type fixes are clean.
-- Phase 3 groups the remaining performance fixes that have external dependency changes (`exceljs`) and cron restructuring — isolated from core extraction path changes.
-- Phase 4 is last among code changes because it modifies the write path of every active extraction job — highest regression risk, requires the most careful testing.
-- Phase 5 is conditional and can run in parallel with any other phase since it is test-only until a gap is confirmed.
+- All three phases are independent and could run in parallel. The suggested order reflects priority: security (Phase 1) before performance (Phase 2) before reliability hardening (Phase 3).
+- Phase 1 is the smallest change (import swaps + deletions) with the highest security impact. Ship it first to reduce attack surface immediately.
+- Phase 2 requires a schema change and backfill, making it the most complex. It benefits from shipping after Phase 1 so the deploy pipeline is validated.
+- Phase 3 is pure mechanical bounding with zero risk of breaking behavior for users within reasonable limits. It can be done as a sweep after the more impactful phases.
+
+### Research Flags
+
+Phases with standard patterns (skip `/gsd:research-phase`):
+- **Phase 1 (Debug Internalization):** Well-documented Convex pattern. 5 of 7 files already follow the pattern. Mechanical conversion.
+- **Phase 3 (.collect() Bounding):** Mechanical `.take(N)` additions. The audit categorization is already done in ARCHITECTURE.md and FEATURES.md.
+
+Phases that may benefit from brief research during planning:
+- **Phase 2 (Library Counter):** The manual counter approach is straightforward, but the backfill strategy and test updates deserve a quick review of the existing `extractionJobStats` lazy backfill pattern to ensure consistency. Not a full research phase -- just reference the v3.0 implementation.
 
 ---
 
@@ -180,47 +119,39 @@ Based on dependencies, risk level, and test requirements, the recommended phase 
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All fixes use already-installed dependencies. Only ExcelJS is a conditional new install. ESM compatibility verified for Next.js route handler context. ExcelJS ESM issue is a bundler artifact — not applicable to Next.js Node.js API routes. |
-| Features | HIGH | 12 concerns fully enumerated in CONCERNS.md with exact file/line citations. Fix scope is tightly bounded with no ambiguity about scope. BILL-02 explicitly out of scope. |
-| Architecture | HIGH | All integration points verified against actual codebase files. Critical discovery: browse/search library pagination was already migrated in a prior phase — only `getLibraryCount` still uses `.collect()`. |
-| Pitfalls | HIGH | Critical pitfalls derived from direct codebase inspection plus prior research (PITFALLS.md v2.3 and v2.4 are referenced — Pitfalls 5 and 6 from v2.3 remain directly applicable to env validation in v3.0). |
+| Stack | HIGH | Zero new dependencies. All APIs verified against installed Convex version. Prior decisions (v3.0) validated. |
+| Features | HIGH | All three concerns verified against codebase. Exact file paths and line numbers identified. |
+| Architecture | HIGH | Changes confined to existing modules. No new architectural layers. Pattern established by existing internal functions and extractionJobStats counter. |
+| Pitfalls | HIGH | 11 pitfalls identified with concrete prevention strategies. All verified against actual codebase behavior. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`@convex-dev/workflow` ID type for `workflow.cancel()`:** The exact TypeScript type returned by `workflow.start()` must be read from the component's type definitions before changing the `extractionJobs` schema or removing the cast. If the type is a plain `string`, the fix is simpler than a schema migration. Treat Phase 1's workflow ID item as a research-first task.
+- **Disagreement on counting approach:** FEATURES.md and ARCHITECTURE.md recommend `@convex-dev/sharded-counter`. STACK.md and PITFALLS.md favor a manual counter. This summary resolves in favor of the manual counter (see Key Findings). The roadmapper should use the manual counter approach. If OCC contention is observed during implementation (unlikely for user-initiated operations), the sharded counter can be reconsidered.
 
-- **Sparse-page UI behavior for collection-filtered library:** The `convex-helpers` `filter()` + `.paginate()` pattern produces sparse pages when the filter is selective. The library UI must handle `page.length < numItems && !isDone` by calling `loadMore()` automatically. The current behavior should be observed in the running app before assuming code changes are needed.
+- **Disagreement on debug gate retention:** PITFALLS.md (Pitfall 2) recommends keeping `requirePublicDebugEnabled()` even on internal functions for defense-in-depth and audit logging. STACK.md and ARCHITECTURE.md recommend removing it entirely. This summary resolves in favor of **removing the gate** -- internal functions are architecturally unreachable from clients, and the audit logging concern should be addressed by wiring `writeAuditLog` (existing internalMutation) into debug functions directly rather than through the env-var gate. The test inventory should be rewritten to verify functions are `internalQuery`/`internalMutation` instead of checking for gate imports.
 
-- **ExcelJS API parity for extraction data shapes:** The `formatAnswerForExcel()` function returns `any` and the export handles booleans, nulls, arrays, and strings. ExcelJS `CellValue` types must be verified compatible with each answer shape before migration is complete. A round-trip test is mandatory.
+- **Exact `.collect()` paths:** STACK.md identifies 7 high-priority paths. FEATURES.md identifies ~6. ARCHITECTURE.md identifies ~11 with more granular categorization. Use ARCHITECTURE.md's Category C list as the authoritative set during implementation.
 
-- **BILL-02 (upgrade metadata Stripe to Convex):** Listed in CONCERNS.md as tech debt but explicitly out of scope for v3.0. Do not add to any phase — verify migration completeness separately before implementing in a future milestone.
+- **Backfill timing:** Lazy backfill is recommended by all research files, but no research covers what happens if a user's first `getLibraryCount` call triggers the backfill during a high-traffic period. The backfill is a single `.take(10_000).length` call per user (one-time), which is the same cost as the current implementation. This is acceptable.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Direct codebase inspection: `convex/lib/rateLimit.ts:52`, `convex/maintenance/internal.ts:103`, `convex/library/queries.ts:243-254`, `convex/extraction/mutations.ts:263`, `convex/lib/crypto.ts:81-86`, `components/extraction/results-views/table-view.tsx:162-165/378-388/450-451`, `lib/extraction/export.ts:2`, `lib/extraction/filtering.ts:48/51`
-- [Convex Pagination Docs](https://docs.convex.dev/database/pagination) — `paginationOptsValidator`, `.paginate()`, Cursor type
-- [Convex OCC Docs](https://docs.convex.dev/database/advanced/occ) — serializability guarantees, automatic retry
-- [Convex Transaction Limits](https://docs.convex.dev/production/state/limits) — 16,000 writes per transaction limit
-- [ExcelJS GitHub Releases](https://github.com/exceljs/exceljs/releases) — v4.4.0 (October 2024), CJS-only internals
-- [ExcelJS ESM Discussion #2853](https://github.com/exceljs/exceljs/discussions/2853) — CJS dynamic require issue in bundled ESM; not applicable to Next.js Node.js route handler context
-- [Stripe SDK issue #1556](https://github.com/stripe/stripe-node/issues/1556) — `typeof x === 'string'` is the official workaround for the customer union type; conditional generics explicitly declined by maintainers
-- [@convex-dev/workflow npm](https://www.npmjs.com/package/@convex-dev/workflow) — v0.3.4, `vWorkflowId` exported; v0.2.7 added `WorkflowId` type
-- [Zod v4 Changelog](https://zod.dev/v4/changelog) — `.issues` not `.errors`; `.parse()` and `.safeParse()` unchanged
+- [Convex Internal Functions](https://docs.convex.dev/functions/internal-functions) -- `internalQuery`/`internalMutation` behavior, namespace separation
+- [Convex Best Practices](https://docs.convex.dev/understanding/best-practices/) -- `.collect()` guidance, security recommendations
+- [Convex Reading Data](https://docs.convex.dev/database/reading-data) -- `.take()`, `.paginate()`, `.first()`, `.unique()`
+- Codebase: 125 `.collect()` calls across 27 files, 12 debug/test files, library count implementation -- all verified by direct inspection
 
 ### Secondary (MEDIUM confidence)
-- [Convex Stack: Take Control of Pagination](https://stack.convex.dev/pagination) — `getPage` helper; `convex-helpers` sparse page behavior
-- Prior research: `.planning/research/FEATURES_v2.3_HARDENING.md`, `.planning/research/PITFALLS_v2.4_CONCERNS_SWEEP.md` — scheduler batching patterns and env validation pitfalls remain directly applicable
-- [@t3-oss/env-nextjs docs](https://env.t3.gg/docs/introduction) — evaluated and rejected; does not cover Convex runtime env vars
-
-### Tertiary (LOW confidence)
-- `convex-helpers` GitHub issue #864 — sparse page behavior with `filter().paginate()`; workaround is UI-side `loadMore()` on short pages
+- [Convex Aggregate Component](https://stack.convex.dev/efficient-count-sum-max-with-the-aggregate-component) -- evaluated and rejected for this use case
+- [Convex Sharded Counter](https://www.convex.dev/components/sharded-counter) -- evaluated; appropriate for high-contention scenarios but not needed here
+- [Queries That Scale](https://stack.convex.dev/queries-that-scale) -- `.collect()` bounds, pagination patterns
+- Prior decision: `.planning/milestones/v3.0-phases/57-incremental-aggregation/57-RESEARCH.md` -- validates manual counter over aggregate component
 
 ---
-
-*Research completed: 2026-03-03*
+*Research completed: 2026-03-06*
 *Ready for roadmap: yes*
