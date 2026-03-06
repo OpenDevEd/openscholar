@@ -555,6 +555,195 @@ describe("getLibraryCount", () => {
   });
 });
 
+describe("library counter", () => {
+  it("saveToLibrary increments counter for new items", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 3,
+      title: "Paper 1",
+    });
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W2",
+      rating: 4,
+      title: "Paper 2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(2);
+  });
+
+  it("saveToLibrary re-rate does not double-count", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 3,
+      title: "Paper 1",
+    });
+    // Re-rate same paper
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 5,
+      title: "Paper 1",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
+
+  it("removeFromLibrary decrements counter", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const itemId1 = await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 3,
+      title: "Paper 1",
+    });
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W2",
+      rating: 4,
+      title: "Paper 2",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      itemId: itemId1,
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
+
+  it("removeFromLibraryByOpenalexId decrements counter", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 3,
+      title: "Paper 1",
+    });
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W2",
+      rating: 4,
+      title: "Paper 2",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
+
+  it("removeFromLibraryByOpenalexId with non-existent item does not change counter", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 3,
+      title: "Paper 1",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+      openalexId: "https://openalex.org/W999",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
+
+  it("lazy backfill returns correct count for user with no counter field", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    // Seed items directly (bypassing mutations) so no counter gets set
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W3",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(3);
+  });
+
+  it("counter does not go below zero", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    // Save and remove to get counter to 0
+    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W1",
+      rating: 3,
+      title: "Paper 1",
+    });
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      itemId,
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(0);
+
+    // Try removing a non-existent item -- counter should stay at 0
+    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+      openalexId: "https://openalex.org/W999",
+    });
+
+    const countAfter = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(countAfter).toBe(0);
+  });
+
+  it("save-remove-save sequence maintains correct count", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    // Save A
+    const itemA = await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/WA",
+      rating: 3,
+      title: "Paper A",
+    });
+    // Save B
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/WB",
+      rating: 4,
+      title: "Paper B",
+    });
+    // Remove A
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      itemId: itemA,
+    });
+    // Save C
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/WC",
+      rating: 5,
+      title: "Paper C",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(2);
+  });
+});
+
 describe("removeFromLibrary", () => {
   it("deletes item owned by authenticated user, returns null", async () => {
     const t = convexTest(schema);
