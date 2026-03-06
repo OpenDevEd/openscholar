@@ -15,9 +15,9 @@ Requirements for production readiness. Each maps to roadmap phases.
 
 ### Performance — Counting
 
-- [ ] **PERF-01**: Library count query uses denormalized counter (not `.take(10_000).length`)
-- [ ] **PERF-02**: Counter atomically incremented/decremented in all save/delete mutations
-- [ ] **PERF-03**: Lazy backfill computes count on first access for existing users
+- [x] **PERF-01**: Library count query uses denormalized counter (not `.take(10_000).length`)
+- [x] **PERF-02**: Counter atomically incremented/decremented in all save/delete mutations
+- [x] **PERF-03**: Lazy backfill computes count on first access for existing users
 
 ### Performance — Query Bounding
 
@@ -57,9 +57,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-01 | Phase 72 | Complete |
 | SEC-02 | Phase 72 | Complete |
 | SEC-03 | Phase 72 | Complete |
-| PERF-01 | Phase 73 | Pending |
-| PERF-02 | Phase 73 | Pending |
-| PERF-03 | Phase 73 | Pending |
+| PERF-01 | Phase 73 | Complete |
+| PERF-02 | Phase 73 | Complete |
+| PERF-03 | Phase 73 | Complete |
 | PERF-04 | Phase 74 | Pending |
 | PERF-05 | Phase 74 | Pending |
 

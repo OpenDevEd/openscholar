@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Production Readiness
 status: executing
-stopped_at: Completed 72-02-PLAN.md
-last_updated: "2026-03-06T07:31:02.728Z"
-last_activity: 2026-03-06 -- Completed Phase 72 Plan 02
+stopped_at: Completed 73-01-PLAN.md
+last_updated: "2026-03-06T08:12:40Z"
+last_activity: 2026-03-06 -- Completed Phase 73 Plan 01
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.2 Production Readiness -- Phase 72
+**Current focus:** v3.2 Production Readiness -- Phase 73
 
 ## Current Position
 
-Phase: 72 of 74 (Debug Endpoint Security Hardening)
-Plan: 2 of 2 complete
+Phase: 73 of 74 (Library Count Optimization)
+Plan: 1 of 1 complete
 Status: Executing
-Last activity: 2026-03-06 -- Completed Phase 72 Plan 02
+Last activity: 2026-03-06 -- Completed Phase 73 Plan 01
 
 Progress: [██████████] 100%
 
@@ -54,6 +54,7 @@ Progress: [██████████] 100%
 | v3.0 | 6 | 11 | 2026-03-04 |
 | v3.1 | 12 | 20 | 2026-03-05 |
 | Phase 72 P02 | 1min | 1 tasks | 1 files |
+| Phase 73 P01 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent for v3.2:
 - Wire writeAuditLog into debug functions directly instead of through env-var gate
 - Removed ownership checks from converted debug functions (internal callers are trusted)
 - Added userId argument to testActions.ts and create_test_job.ts (replaces requireAuth)
+- Skip scheduler backfill in query context (Convex limitation) -- counter initializes on first mutation
+- Use Math.max(0, count - 1) to prevent negative counters
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-06 -- Completed Phase 72 Plan 02
-Stopped at: Completed 72-02-PLAN.md
+Last activity: 2026-03-06 -- Completed Phase 73 Plan 01
+Stopped at: Completed 73-01-PLAN.md
 Resume file: None
