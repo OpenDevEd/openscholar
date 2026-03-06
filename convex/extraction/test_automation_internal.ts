@@ -1,19 +1,15 @@
 import { internalQuery, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
  * Internal query to get the first user ID for test job creation.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalQuery) -- not exposed to clients.
  */
 export const getFirstUserId = internalQuery({
   args: {},
   handler: async (ctx): Promise<Id<"users"> | null> => {
-    requirePublicDebugEnabled();
     const user = await ctx.db.query("users").first();
     return user?._id || null;
   },
@@ -22,14 +18,11 @@ export const getFirstUserId = internalQuery({
 /**
  * Internal mutation to create a test extraction job for automation.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalMutation) -- not exposed to clients.
  */
 export const createTestJob = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }): Promise<Id<"extractionJobs">> => {
-    requirePublicDebugEnabled();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       name: `PDF Test ${Date.now()}`,
@@ -73,14 +66,11 @@ export const createTestJob = internalMutation({
 /**
  * Internal query to check test job processing status.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalQuery) -- not exposed to clients.
  */
 export const getJobStatus = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
-    requirePublicDebugEnabled();
     const job = await ctx.db.get(jobId);
     const papers = await ctx.db
       .query("extractionPapers")
@@ -100,14 +90,11 @@ export const getJobStatus = internalQuery({
 /**
  * Internal query to retrieve results from a test extraction job.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalQuery) -- not exposed to clients.
  */
 export const getJobResults = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
-    requirePublicDebugEnabled();
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))

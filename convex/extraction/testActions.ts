@@ -1,27 +1,22 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
-import { requireAuth } from "../lib/auth";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
- * Public mutation to create a test extraction job for debugging.
+ * Internal mutation to create a test extraction job for debugging.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
- * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ * Access: Internal only (internalMutation) -- not exposed to clients.
  */
-export const createTestJob = mutation({
-  args: {},
+export const createTestJob = internalMutation({
+  args: {
+    userId: v.id("users"),
+  },
   returns: v.object({
     jobId: v.string(),
   }),
-  handler: async (ctx) => {
-    requirePublicDebugEnabled();
-
-    const user = await requireAuth(ctx);
-    const userId = user._id;
+  handler: async (ctx, args) => {
+    const userId = args.userId;
 
     // Create job directly in database
     const jobId = await ctx.db.insert("extractionJobs", {

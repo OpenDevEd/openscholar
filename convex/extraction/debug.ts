@@ -1,17 +1,12 @@
-import { query } from "../_generated/server";
+import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/auth";
-import { createError } from "../lib/errors";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
  * Diagnostic query to inspect extraction job status, paper counts, and processing state.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
- * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ * Access: Internal only (internalQuery) -- not exposed to clients.
  */
-export const diagnoseJob = query({
+export const diagnoseJob = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     job: v.object({
@@ -42,12 +37,9 @@ export const diagnoseJob = query({
     })),
   }),
   handler: async (ctx, args) => {
-    requirePublicDebugEnabled();
-
-    const user = await requireAuth(ctx);
     const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw createError("FORBIDDEN", "Unauthorized access");
+    if (!job) {
+      throw new Error("Job not found");
     }
 
     const papers = await ctx.db

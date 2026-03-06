@@ -1,17 +1,12 @@
-import { query } from "../_generated/server";
+import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { createError } from "../lib/errors";
-import { requireAuth } from "../lib/auth";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
  * Debug query to retrieve papers that failed during extraction with error details.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
- * Auth: Requires authenticated user via ctx.auth.getUserIdentity().
+ * Access: Internal only (internalQuery) -- not exposed to clients.
  */
-export const getFailedPapersDebug = query({
+export const getFailedPapersDebug = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     failedPapers: v.array(v.object({
@@ -32,15 +27,6 @@ export const getFailedPapersDebug = query({
     totalDownloadFailed: v.number(),
   }),
   handler: async (ctx, args) => {
-    requirePublicDebugEnabled();
-
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== user._id) {
-      throw createError("FORBIDDEN", "Unauthorized access");
-    }
-
     // Get failed papers with error messages
     const failedPapers = await ctx.db
       .query("extractionPapers")

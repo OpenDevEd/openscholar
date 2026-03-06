@@ -2,14 +2,11 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 /**
  * Internal mutation to create and immediately start a test extraction job.
  * Bypasses authentication for testing purposes.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalMutation) -- not exposed to clients.
  */
 export const createAndRunTestJob = internalMutation({
@@ -24,7 +21,6 @@ export const createAndRunTestJob = internalMutation({
     userId: v.id("users"),
   }),
   handler: async (ctx, args) => {
-    requirePublicDebugEnabled();
     // Get first user
     const user = await ctx.db
       .query("users")
@@ -117,8 +113,6 @@ export const createAndRunTestJob = internalMutation({
 /**
  * Internal mutation to check the status of a test extraction job.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalMutation) -- not exposed to clients.
  */
 export const getTestJobStatus = internalMutation({
@@ -145,7 +139,6 @@ export const getTestJobStatus = internalMutation({
     })),
   }),
   handler: async (ctx, args) => {
-    requirePublicDebugEnabled();
     const job = await ctx.db.get(args.jobId);
     if (!job) {
       throw new Error("Job not found");

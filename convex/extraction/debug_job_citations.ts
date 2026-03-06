@@ -1,6 +1,5 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 
 const EFFECTIVE_CONFIDENCE_MULTIPLIER: Record<string, number> = {
   grounded: 1,
@@ -78,8 +77,6 @@ function buildArrayProfileSignature(entities: string[]) {
 /**
  * Internal query to inspect citation extraction results for papers in a job.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalQuery) -- not exposed to clients.
  */
 export const debugJobCitations = internalQuery({
@@ -88,7 +85,6 @@ export const debugJobCitations = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    requirePublicDebugEnabled();
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))

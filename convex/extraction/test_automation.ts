@@ -8,14 +8,11 @@
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflow";
-import { requirePublicDebugEnabled } from "../lib/debug_gate";
 import type { Id } from "../_generated/dataModel";
 
 /**
  * Internal action to trigger an immediate PDF extraction test run.
  *
- * @production STAGING ONLY -- gated by ENABLE_PUBLIC_DEBUG_FUNCTIONS env var.
- * Gate: requirePublicDebugEnabled() throws FORBIDDEN when env var is not "true".
  * Access: Internal only (internalAction) -- not exposed to clients.
  */
 export const runPdfTestNow = internalAction({
@@ -32,7 +29,6 @@ export const runPdfTestNow = internalAction({
       pdfContentUsed: number;
     };
   }> => {
-    requirePublicDebugEnabled();
 
     // 1. Get first user using internal query
     const userId = await ctx.runQuery(internal.extraction.test_automation_internal.getFirstUserId, {});
