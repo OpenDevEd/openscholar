@@ -1,185 +1,172 @@
 # Architecture
 
-**Analysis Date:** 2026-03-04
+**Analysis Date:** 2026-03-06
 
 ## Pattern Overview
 
-**Overall:** Full-stack SaaS with Next.js (App Router) frontend and Convex as the reactive backend-as-a-service. External data comes from the OpenAlex academic API and AI providers (OpenAI, Anthropic, Google, OpenRouter). Billing is Stripe-managed.
+**Overall:** Full-stack Next.js App Router + Convex BaaS with domain-driven module organization
 
 **Key Characteristics:**
-- Next.js App Router handles routing, SSR/metadata, and Next.js API routes (OpenAlex proxy, OpenRouter proxy)
-- Convex provides real-time database, serverless functions (queries/mutations/actions), durable workflows, HTTP webhook handlers, and scheduled cron jobs
-- Clerk provides authentication; user identity syncs into Convex `users` table via Clerk webhooks
-- Client state uses Zustand (persisted to localStorage) plus URL state via `nuqs`
-- Internationalization via `next-intl` with message files in `messages/`
+- Next.js 16 App Router for frontend with React 19 and React Compiler enabled
+- Convex as backend-as-a-service: database, real-time queries, mutations, actions, cron jobs, HTTP endpoints
+- URL-driven search state (nuqs) with SWR data fetching, Zustand for client-side persistence
+- Durable workflow orchestration via `@convex-dev/workflow` and `@convex-dev/workpool` for extraction pipelines
+- Clerk for authentication, Stripe for billing, OpenAlex API for academic paper search
+- Internationalization via `next-intl` with 6 locales
 
 ## Layers
 
-**Next.js App Router (Routing & UI):**
-- Purpose: Pages, layouts, metadata, access gates, page-level data composition
-- Location: `app/`
-- Contains: `page.tsx`, `layout.tsx`, route-specific components, access gate wrappers
-- Depends on: `components/`, `lib/`, Convex generated API
-- Used by: Browser
+**Presentation Layer (Next.js App Router):**
+- Purpose: Page routing, layouts, server components, and React client components
+- Location: `app/`, `components/`
+- Contains: Page components, UI components, layout wrappers, client providers
+- Depends on: Convex client SDK, Zustand stores, SWR, nuqs
+- Used by: End users via browser
 
-**React Components:**
-- Purpose: UI building blocks from primitive shadcn/ui atoms to complex feature panels
-- Location: `components/`
-- Contains: Feature-specific components (extraction, library, search, billing), global layout components, shadcn-ui primitives under `components/ui/`
-- Depends on: `lib/`, Convex hooks (`convex/react`), `next-intl`
-- Used by: `app/` pages
+**Search State Layer:**
+- Purpose: Manages search parameters, data fetching, and results caching
+- Location: `lib/search/`, `lib/store.ts`, `lib/search-params/`
+- Contains: SearchProvider context, URL param parsers (nuqs), SWR fetcher, Zustand stores
+- Depends on: OpenAlex API (via `app/api/openalex/search/route.ts`), nuqs, SWR
+- Used by: All search-related components
 
-**Client Library (`lib/`):**
-- Purpose: Business logic, shared utilities, type definitions, client-side state, and hooks
-- Location: `lib/`
-- Contains: Zustand stores (`lib/store.ts`), type definitions (`lib/types/`), search utilities, billing entitlements, auth helpers, extraction logic, toast routing, analytics
-- Depends on: Convex generated API, external SDKs
-- Used by: `components/`, `app/`
+**Client-Side AI Layer:**
+- Purpose: AI-powered paper screening and analysis in the browser
+- Location: `lib/ai/client/`, `lib/ai/core/`
+- Contains: AI executor, mode routing (BYOK vs platform credits), batch processing, prompt templates
+- Depends on: Vercel AI SDK, multiple LLM providers (OpenAI, Anthropic, Google, DeepSeek, OpenRouter)
+- Used by: Search results screening, paper analysis features
 
-**Convex Backend:**
-- Purpose: Database, reactive queries, mutations, server actions, webhooks, cron jobs, durable workflows
+**Backend Layer (Convex):**
+- Purpose: All server-side logic, database, real-time subscriptions, durable workflows
 - Location: `convex/`
-- Contains: Domain modules (`extraction/`, `credits/`, `subscriptions/`, `users/`, `zotero/`, `ai/`, `apiKeys/`, `library/`, `maintenance/`, `webhooks/`), schema (`convex/schema.ts`), HTTP router (`convex/http.ts`), crons (`convex/crons.ts`)
-- Depends on: Stripe, Clerk, AI SDKs, GROBID, Convex components (workflow, workpool, RAG, stripe)
-- Used by: Frontend (via generated `convex/_generated/api`)
+- Contains: Schema, queries, mutations, actions, HTTP endpoints, cron jobs, webhooks
+- Depends on: Convex platform, Stripe SDK, Clerk webhooks, OpenAlex HTTP API
+- Used by: Frontend via Convex React client, external webhooks (Clerk, Stripe)
 
-**Next.js API Routes:**
-- Purpose: Server-side proxies for external APIs (prevents exposing OpenAlex and OpenRouter keys to client)
-- Location: `app/api/`
-- Contains: `app/api/openalex/search/route.ts` (OpenAlex search proxy), `app/api/openalex.ts`, `app/api/openrouter.ts`
-- Depends on: `lib/openalex.ts`, `lib/utils.ts`
-- Used by: Client-side search hook via SWR
-
-**Next.js Server Actions:**
-- Purpose: Server-side mutations for OpenAlex fetching during extraction
-- Location: `app/actions/`
-- Contains: `openalex.ts` (fetch papers from OpenAlex for extraction jobs)
-- Depends on: OpenAlex SDK
-- Used by: Convex `extraction/actions.ts`
+**Shared Utilities:**
+- Purpose: Cross-cutting utilities, types, constants, formatting
+- Location: `lib/`
+- Contains: Type definitions, utility functions, constants, validation, formatting
+- Depends on: Zod (validation), date-fns
+- Used by: Both frontend components and server actions
 
 ## Data Flow
 
 **Search Flow:**
 
-1. User enters query in `components/search-sidebar.tsx` or `components/search-command-center/`
-2. Query updates URL params via `nuqs` (`useQueryStates`)
-3. `lib/search/provider.tsx` (`SearchProvider`) reads URL params, calls `/api/openalex/search` via SWR
-4. `app/api/openalex/search/route.ts` proxies to OpenAlex API using `@sickrin/openalex-sdk`
-5. Results returned to `SearchProvider` context, consumed by `components/results-list.tsx`
-6. Search history saved to Zustand store (persisted localStorage) via `useSearchHistoryStore`
+1. User enters query on home page (`app/page.tsx`) -> creates search ID -> navigates to `app/results/[searchId]/page.tsx`
+2. `SearchProvider` (`lib/search/provider.tsx`) reads URL params via nuqs as source of truth
+3. SWR fetcher calls `getSearchResultsWithFilters()` (`lib/search-utils.ts`) which hits OpenAlex API
+4. Results rendered in `results-list.tsx`, filters managed via URL params synced to Zustand store
+5. Search history persisted in Zustand store with `persist` middleware (localStorage)
 
-**Extraction (AI Data Extraction) Flow:**
+**Extraction Workflow (Convex Durable Workflow):**
 
-1. User creates job in `app/extraction/new/page.tsx` → calls `api.extraction.mutations.startExtraction`
-2. Convex mutation creates `extractionJobs` record, triggers `runExtractionWorkflow` via `@convex-dev/workflow`
-3. Workflow orchestrates steps via `convex/extraction/workflow.ts`:
-   - Calls `app/actions/openalex.ts` (Next.js server action) to fetch papers from OpenAlex
-   - Dispatches per-paper workpool actions (`downloadAndIndexPdfAction`, `waitAndExtractAction`) via `@convex-dev/workpool`
-4. Per-paper action: downloads PDF → indexes text via `@convex-dev/rag` → calls AI provider to extract structured data → stores `extractionResults`
-5. Frontend polls/subscribes via `useProtectedPaginatedQuery(api.extraction.queries.getJobResultsPaginated)` in `app/extraction/[jobId]/page.tsx`
+1. User creates extraction job with questions -> `convex/extraction/mutations.ts` creates job record
+2. `runExtractionWorkflow` (`convex/extraction/workflow.ts`) orchestrated by `@convex-dev/workflow`
+3. Step 1: Fetch papers from OpenAlex/Zotero/manual sources
+4. Step 2: Create paper records, deduplicate
+5. Step 3: Enqueue each paper to `pdfProcessingPool` (`convex/workpool.ts`, max parallelism 3)
+6. Per-paper: Download PDF -> Index in RAG (`@convex-dev/rag`) -> Extract answers via AI -> Store results
+7. Job status updates in real-time via Convex reactive queries
 
-**Auth/User Sync Flow:**
+**Authentication Flow:**
 
-1. Clerk handles sign-in/sign-up at `app/sign-in/` and `app/sign-up/`
-2. Clerk sends webhook to `convex/http.ts` → `/webhooks/clerk` handler
-3. `convex/webhooks/clerk.ts` upserts user into Convex `users` table
-4. `components/providers/convex-provider.tsx` (`ConvexClientProvider`) bridges Clerk auth to Convex via `ConvexProviderWithClerk`
-5. Auth readiness state exposed via `useAuthReadiness()` hook
-6. `lib/auth/use-auth-query.ts` exports `useProtectedQuery` / `useProtectedPaginatedQuery` which defer until auth is ready
+1. Clerk handles sign-in/sign-up (`app/sign-in/`, `app/sign-up/`)
+2. `ConvexProviderWithClerk` (`components/providers/convex-provider.tsx`) bridges Clerk auth to Convex
+3. `AuthReadinessProvider` calls `ensureUser` mutation on auth to sync Clerk user to Convex `users` table
+4. Clerk webhook (`convex/webhooks/clerk.ts`) at `/webhooks/clerk` syncs user updates/deletions
 
-**Billing/Credits Flow:**
+**Billing Flow:**
 
-1. Stripe webhooks arrive at `convex/http.ts` → routed by `@convex-dev/stripe`
-2. `convex/lib/stripeWebhookHandlers.ts` processes events: subscription changes → `convex/subscriptions/`, invoice payment → `convex/credits/actions.ts` (grants credits)
-3. Credits deducted during AI extraction in `convex/extraction/workpoolActions.ts` via `withUserCreditsBatch`
-4. Credit balance readable by client via `api.credits.queries.*`
-5. Plan entitlements derived client-side by `lib/billing/entitlements.ts:resolveEffectivePlan()`
+1. Stripe webhooks registered at `/webhooks/stripe` via `@convex-dev/stripe` (`convex/http.ts`)
+2. Subscription events -> `convex/subscriptions/` handles plan changes with idempotent handlers
+3. Invoice/payment events -> `convex/credits/` grants/reverses credits with dedup gates
+4. Credit usage tracked per extraction via `creditTransactions` table
+5. Hourly cron reconciliation ensures Stripe and Convex stay in sync (`convex/crons.ts`)
 
 **State Management:**
 
-- URL (via `nuqs`): search query params, extraction view mode, active filters
-- Zustand (persisted localStorage): search history, ratings, bookmarks, UI state, keyword expansion, extraction citation panel
-- Convex reactive queries: server-owned data (extraction jobs, credits, subscription, library items, API keys)
-- SWR: OpenAlex search results cache
+- **URL State (Source of Truth for Search):** nuqs manages search params in URL; `SearchProvider` reads them
+- **Client Persistence:** Zustand stores with `persist` middleware for search history, bookmarks, ratings, AI settings (`lib/store.ts`)
+- **Server State:** Convex database is the source of truth for users, subscriptions, credits, extraction jobs, library items
+- **Real-time:** Convex reactive queries auto-update UI when server data changes
 
 ## Key Abstractions
 
-**`useProtectedQuery` / `useProtectedPaginatedQuery`:**
-- Purpose: Auth-aware Convex query hooks that defer until Clerk+Convex auth is settled
-- Examples: `lib/auth/use-auth-query.ts`
-- Pattern: Returns `{ data, settlement, isDeferred }` where `settlement` is `"auth_loading" | "anonymous" | "query_loading" | "ready"`
+**Search System:**
+- Purpose: Academic paper search with complex filtering
+- Examples: `lib/search/provider.tsx`, `lib/search/types.ts`, `lib/search-params/parsers.ts`
+- Pattern: URL-as-state via nuqs, SWR for fetching, context provider for distribution
 
-**`resolveEffectivePlan`:**
-- Purpose: Resolves the effective subscription plan accounting for non-entitled statuses (canceled, paused, etc.)
-- Examples: `lib/billing/entitlements.ts`
-- Pattern: Returns `"free"` if subscription is null or status is non-entitled, otherwise returns subscription plan
+**Extraction Pipeline:**
+- Purpose: AI-powered data extraction from academic papers
+- Examples: `convex/extraction/workflow.ts`, `convex/extraction/actions.ts`, `convex/extraction/prompts.ts`
+- Pattern: Durable workflow with workpool parallelism, RAG indexing, citation grounding
 
-**Convex Domain Modules:**
-- Purpose: Each module owns its queries, mutations, and actions by domain (not by function type)
-- Examples: `convex/extraction/`, `convex/credits/`, `convex/subscriptions/`, `convex/zotero/`, `convex/users/`, `convex/library/`, `convex/apiKeys/`
-- Pattern: Each domain has `queries.ts`, `mutations.ts`, optionally `actions.ts`, `internal.ts`, and a domain-specific `lib/` subfolder
+**Credit System:**
+- Purpose: Usage-based billing with free and paid credit pools
+- Examples: `convex/credits/internal.ts`, `convex/credits/actions.ts`, `convex/credits/lib/`
+- Pattern: Dual balance (free/paid), idempotent grant/deduct via Stripe dedup keys
 
-**Extraction Workflow:**
-- Purpose: Durable, resumable multi-step AI extraction over large paper sets
-- Examples: `convex/extraction/workflow.ts`, `convex/extraction/workpoolActions.ts`
-- Pattern: `@convex-dev/workflow` orchestrates steps; `@convex-dev/workpool` parallelizes per-paper actions with retry; `@convex-dev/rag` indexes PDF content for RAG retrieval
+**Library:**
+- Purpose: User's saved/rated paper collection with collections
+- Examples: `convex/library/mutations.ts`, `convex/library/queries.ts`, `components/library/`
+- Pattern: Convex tables with full-text search index, many-to-many via junction table
 
-**`FilterState` + `preprocessPapers` / `filterPapers`:**
-- Purpose: Client-side filtering of extraction results with O(n) preprocessing to avoid repeated expensive computation
-- Examples: `lib/extraction/filtering.ts`
-- Pattern: Preprocess once when papers change, then filter on every filter state change
+**AI Integration:**
+- Purpose: Multi-provider AI for screening and extraction
+- Examples: `lib/ai/client/router.ts`, `lib/ai/core/execute.ts`, `convex/ai/`
+- Pattern: BYOK (bring your own key) + platform credits mode routing, Vercel AI SDK
 
 ## Entry Points
 
-**Web Application:**
+**Next.js App Router:**
 - Location: `app/layout.tsx`
-- Triggers: Every page request
-- Responsibilities: Provider tree setup (theme, Convex+Clerk, i18n, nuqs, sidebar layout, toast, cookie consent)
+- Triggers: All page loads
+- Responsibilities: Provider tree setup (NextIntl -> Theme -> Convex/Clerk -> Config -> Nuqs -> Tooltips), sidebar + mobile navbar layout
 
-**Home / Search Page:**
-- Location: `app/page.tsx` → `components/PageContent.tsx`
-- Triggers: Route `/`
-- Responsibilities: Renders search interface and initial landing content
+**API Route:**
+- Location: `app/api/openalex/search/route.ts`
+- Triggers: SWR fetcher from SearchProvider
+- Responsibilities: Proxy search queries to OpenAlex API with consistent parameter building
 
-**Search Results:**
-- Location: `app/results/[searchId]/page.tsx` → `components/results-page-content.tsx`
-- Triggers: Route `/results/:searchId`
-- Responsibilities: Displays paginated search results using `SearchProvider` context
-
-**Extraction Job Detail:**
-- Location: `app/extraction/[jobId]/page.tsx`
-- Triggers: Route `/extraction/:jobId`
-- Responsibilities: Full extraction results UI with tabs (results, insights, review, report), pagination, filtering, citation panel, export
+**Server Actions:**
+- Location: `app/actions/openalex.ts`, `app/actions/openrouter.ts`
+- Triggers: Client-side AI operations
+- Responsibilities: Server-side API calls for AI providers and OpenAlex
 
 **Convex HTTP Router:**
 - Location: `convex/http.ts`
-- Triggers: Incoming HTTP requests to Convex deployment URL
-- Responsibilities: Routes `/webhooks/clerk` (user sync), `/api/zotero/callback` (OAuth), Stripe webhook endpoints
+- Triggers: External webhooks (Clerk at `/webhooks/clerk`, Stripe at `/webhooks/stripe`, Zotero OAuth at `/api/zotero/callback`)
+- Responsibilities: Webhook processing, idempotent event handling, audit logging
 
 **Convex Cron Jobs:**
 - Location: `convex/crons.ts`
 - Triggers: Scheduled intervals (hourly/daily)
-- Responsibilities: Delete soft-deleted users, check subscription status, monitor failed Stripe events, reconcile Stripe invoices, cleanup Zotero OAuth tokens, validate env vars
+- Responsibilities: Cleanup deleted users, check subscription status, reconcile Stripe invoices, monitor failed events, cleanup OAuth tokens, validate env vars
 
 ## Error Handling
 
-**Strategy:** Layered — Convex functions throw typed errors (`convex/lib/errors.ts:createError()`), frontend catches via try/catch in event handlers and routes to `useAppToast()` toast notifications. Auth state errors are surfaced via `AuthStatePanel` component variants.
+**Strategy:** Multi-layered with structured errors on backend, toast notifications on frontend
 
 **Patterns:**
-- Convex mutations/actions throw `ConvexError` with typed codes; frontend catches and maps via `lib/toast/` resolvers
-- `getAuthSensitiveListRenderState()` in `lib/auth/list-render-state.ts` maps auth settlement + data state to render state enums ("loading", "empty", "filtered_empty", "ready")
-- Extraction errors stored per-paper in `extractionPapers.status` field; job-level errors in `extractionJobs.status`
-- Stripe webhook failures logged to `stripeEventLogs` table with retry state machine
+- Convex backend uses `createError()` factory (`convex/lib/errors.ts`) for typed errors (NOT_FOUND, VALIDATION_ERROR, etc.)
+- Stripe webhook handlers wrap in `runAuditedStripeHandler` for idempotent processing with retry tracking via `stripeEventLogs`
+- Frontend uses toast system (`lib/toast/`) for user-facing errors
+- Auth sync has exponential backoff retry (up to 6 attempts) in `AuthReadinessProvider`
+- Rate limiting via `convex-helpers/server/rateLimit`
 
 ## Cross-Cutting Concerns
 
-**Logging:** `console.log` in Convex functions; PostHog event tracking (`lib/posthog-search.ts`, `lib/posthog-ai.ts`) for analytics
-**Validation:** `convex/lib/validators.ts` and `convex/extraction/validators.ts` for Convex value validators; `lib/keyword-validation.ts` for client-side query keyword validation
-**Authentication:** Clerk for identity; `ConvexProviderWithClerk` bridges JWT to Convex; `AuthRouteGate` in `app/layout.tsx` for route-level protection; `ExtractionAccessGate` for feature-level protection
-**Rate Limiting:** `convex-helpers/server/rateLimit` tables in schema; `convex/lib/rateLimit.ts` for enforcement
-**Internationalization:** `next-intl` with locale files at `messages/en-US.json`, `messages/en-GB.json`, `messages/fr.json`, `messages/hi.json`, `messages/ja.json`, `messages/zh.json`
-**Feature Flags:** `lib/extraction/feature-flags.ts` and `convex/lib/featureFlags.ts` for controlling experimental features
+**Logging:** `console.log`/`console.error` with `[Module]` prefixes (e.g., `[Workflow]`, `[StripeWebhook]`, `[Auth]`)
+**Validation:** Convex validators for backend args, Zod for frontend schemas, `searchFiltersValidator` shared between client and server
+**Authentication:** Clerk JWT verified by Convex via `auth.config.ts`; `AuthRouteGate` component gates protected pages; `convex/lib/auth.ts` provides server-side auth helpers
+**Internationalization:** `next-intl` with 6 locales (en-US, en-GB, fr, hi, ja, zh) in `messages/` directory, locale detection in `i18n/`
+**Analytics:** PostHog for product analytics with detailed search event tracking (`lib/posthog-search.ts`, `lib/posthog-ai.ts`)
+**Feature Flags:** Feature flags managed in `convex/lib/featureFlags.ts`, `lib/credits/feature-flags.ts`, `lib/extraction/feature-flags.ts`
 
 ---
 
-*Architecture analysis: 2026-03-04*
+*Architecture analysis: 2026-03-06*
