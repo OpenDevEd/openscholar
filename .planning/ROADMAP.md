@@ -182,7 +182,7 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
 - [x] **Phase 72: Debug Endpoint Security Hardening** - Convert public debug functions to internal, eliminate env-var gate (completed 2026-03-06)
 - [x] **Phase 73: Library Count Optimization** - Replace document-scan counting with atomic denormalized counter (completed 2026-03-06)
-- [ ] **Phase 74: Query Bounding Audit** - Bound high-traffic .collect() calls with .take(N) guards
+- [x] **Phase 74: Query Bounding Audit** - Bound high-traffic .collect() calls with .take(N) guards (completed 2026-03-06)
 
 ## Phase Details
 
@@ -245,4 +245,4 @@ Phases execute in numeric order: 72 -> 73 -> 74
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72. Debug Endpoint Security | 2/2 | Complete    | 2026-03-06 | - |
 | 73. Library Count Optimization | 1/1 | Complete    | 2026-03-06 | - |
-| 74. Query Bounding Audit | v3.2 | 0/1 | Not started | - |
+| 74. Query Bounding Audit | 1/1 | Complete   | 2026-03-06 | - |

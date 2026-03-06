@@ -21,8 +21,8 @@ Requirements for production readiness. Each maps to roadmap phases.
 
 ### Performance — Query Bounding
 
-- [ ] **PERF-04**: All high-traffic `.collect()` calls bounded with `.take(N)` and documented MAX constants
-- [ ] **PERF-05**: Cascade delete paths verified to not be over-bounded (no orphaned data)
+- [x] **PERF-04**: All high-traffic `.collect()` calls bounded with `.take(N)` and documented MAX constants
+- [x] **PERF-05**: Cascade delete paths verified to not be over-bounded (no orphaned data)
 
 ## Future Requirements
 
@@ -60,8 +60,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-01 | Phase 73 | Complete |
 | PERF-02 | Phase 73 | Complete |
 | PERF-03 | Phase 73 | Complete |
-| PERF-04 | Phase 74 | Pending |
-| PERF-05 | Phase 74 | Pending |
+| PERF-04 | Phase 74 | Complete |
+| PERF-05 | Phase 74 | Complete |
 
 **Coverage:**
 - v3.2 requirements: 8 total
