@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v3.2
 milestone_name: Production Readiness
-status: defining requirements
-last_updated: "2026-03-05"
+status: ready to plan
+last_updated: "2026-03-06"
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,17 +15,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-05)
+See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v3.2 Production Readiness
+**Current focus:** v3.2 Production Readiness -- Phase 72
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-06 — Milestone v3.2 pivoted to Production Readiness
+Phase: 72 of 74 (Debug Endpoint Security Hardening)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-03-06 -- Roadmap created for v3.2 Production Readiness (3 phases, 8 requirements)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -54,11 +56,11 @@ Last activity: 2026-03-06 — Milestone v3.2 pivoted to Production Readiness
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-See .planning/milestones/v3.1-ROADMAP.md for v3.1 decisions archive.
 
-### Roadmap Evolution
-
-11 milestones shipped (v1.0 through v3.1). 71 phases, 140 plans total.
+Recent for v3.2:
+- Manual counter field over @convex-dev/sharded-counter (low contention, only 2 mutation paths)
+- Remove debug gate entirely (internal functions are architecturally unreachable, no env-var defense-in-depth needed)
+- Wire writeAuditLog into debug functions directly instead of through env-var gate
 
 ### Pending Todos
 
@@ -78,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-05 - Completed quick task 4: fix billing e2e auth to use clerk testing token instead of password strategy
-Stopped at: Between milestones
+Last activity: 2026-03-06 -- Roadmap created for v3.2
+Stopped at: Roadmap complete, ready to plan Phase 72
 Resume file: None

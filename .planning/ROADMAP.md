@@ -13,6 +13,7 @@
 - v2.5 Tech Debt Purge -- Phases 47-53 (shipped 2026-03-03)
 - v3.0 Zero-Any Overhaul -- Phases 54-59 (shipped 2026-03-04)
 - v3.1 Complete Type Safety -- Phases 60-71 (shipped 2026-03-05)
+- v3.2 Production Readiness -- Phases 72-74 (in progress)
 
 ## Phases
 
@@ -175,7 +176,52 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 
 </details>
 
+### v3.2 Production Readiness (In Progress)
+
+**Milestone Goal:** Fix security and performance blockers before production launch.
+
+- [ ] **Phase 72: Debug Endpoint Security Hardening** - Convert public debug functions to internal, eliminate env-var gate
+- [ ] **Phase 73: Library Count Optimization** - Replace document-scan counting with atomic denormalized counter
+- [ ] **Phase 74: Query Bounding Audit** - Bound high-traffic .collect() calls with .take(N) guards
+
+## Phase Details
+
+### Phase 72: Debug Endpoint Security Hardening
+**Goal**: Debug/test endpoints are architecturally unreachable from client SDK
+**Depends on**: Nothing (independent)
+**Requirements**: SEC-01, SEC-02, SEC-03
+**Success Criteria** (what must be TRUE):
+  1. All debug query/mutation functions use `internalQuery`/`internalMutation` and do not appear in the generated `api` namespace
+  2. The `debug_gate.ts` module and `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var no longer exist in the codebase
+  3. Tests verify debug functions are registered as internal (not that an env gate blocks them)
+  4. `tsc --noEmit` passes with zero errors after all API path changes
+**Plans**: TBD
+
+### Phase 73: Library Count Optimization
+**Goal**: Library page loads item count in O(1) without scanning documents
+**Depends on**: Nothing (independent)
+**Requirements**: PERF-01, PERF-02, PERF-03
+**Success Criteria** (what must be TRUE):
+  1. `getLibraryCount` reads a counter value instead of fetching and counting documents
+  2. Saving a paper to library increments the counter; removing a paper decrements it (including bulk remove)
+  3. A user with no pre-existing counter gets an accurate count computed and persisted on first access (lazy backfill)
+  4. Counter stays correct across save, remove, and bulk-remove sequences (test-verified)
+**Plans**: TBD
+
+### Phase 74: Query Bounding Audit
+**Goal**: All high-traffic query paths have explicit upper bounds preventing unbounded memory growth
+**Depends on**: Nothing (independent)
+**Requirements**: PERF-04, PERF-05
+**Success Criteria** (what must be TRUE):
+  1. Every high-traffic `.collect()` call has an explicit `.take(N)` guard with a documented MAX constant
+  2. Cascade delete paths do not use `.take(N)` bounds that would silently orphan data (verified by inspection or test)
+  3. Naturally-bounded `.collect()` calls (small cardinality tables) have inline comments documenting their expected cardinality
+**Plans**: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 72 -> 73 -> 74
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -190,3 +236,6 @@ Full details: `.planning/milestones/v3.1-ROADMAP.md`
 | 47-53 | v2.5 | 15/15 | Complete | 2026-03-03 |
 | 54-59 | v3.0 | 11/11 | Complete | 2026-03-04 |
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
+| 72. Debug Endpoint Security | v3.2 | 0/0 | Not started | - |
+| 73. Library Count Optimization | v3.2 | 0/0 | Not started | - |
+| 74. Query Bounding Audit | v3.2 | 0/0 | Not started | - |

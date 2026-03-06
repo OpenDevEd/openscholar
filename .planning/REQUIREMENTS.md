@@ -54,20 +54,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | — | Pending |
-| SEC-02 | — | Pending |
-| SEC-03 | — | Pending |
-| PERF-01 | — | Pending |
-| PERF-02 | — | Pending |
-| PERF-03 | — | Pending |
-| PERF-04 | — | Pending |
-| PERF-05 | — | Pending |
+| SEC-01 | Phase 72 | Pending |
+| SEC-02 | Phase 72 | Pending |
+| SEC-03 | Phase 72 | Pending |
+| PERF-01 | Phase 73 | Pending |
+| PERF-02 | Phase 73 | Pending |
+| PERF-03 | Phase 73 | Pending |
+| PERF-04 | Phase 74 | Pending |
+| PERF-05 | Phase 74 | Pending |
 
 **Coverage:**
 - v3.2 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8
+- Mapped to phases: 8
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after initial definition*
+*Last updated: 2026-03-06 after roadmap creation*
