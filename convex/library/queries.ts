@@ -332,10 +332,21 @@ export const getLibraryCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
+
+    // O(1) path: read denormalized counter directly
+    if (user.libraryItemCount !== undefined) {
+      return user.libraryItemCount;
+    }
+
+    // Lazy backfill path: scan items for users who don't have the counter yet.
+    // The counter will be initialized on the next save/remove mutation.
+    // Note: ctx.scheduler is not available in query context, so we cannot
+    // schedule a backfill from here. The counter gets set on the first
+    // mutation (save or remove) for this user.
     const items = await ctx.db
       .query("libraryItems")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .take(10_000);
+      .collect();
     return items.length;
   },
 });

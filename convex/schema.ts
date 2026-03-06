@@ -24,6 +24,7 @@ export default defineSchema({
     lastLoginAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    libraryItemCount: v.optional(v.number()),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])

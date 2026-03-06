@@ -1,7 +1,16 @@
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+
+export const backfillLibraryCount = internalMutation({
+  args: { userId: v.id("users"), count: v.number() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.libraryItemCount !== undefined) return;
+    await ctx.db.patch(args.userId, { libraryItemCount: args.count });
+  },
+});
 
 export const saveToLibrary = mutation({
   args: {
@@ -44,13 +53,19 @@ export const saveToLibrary = mutation({
     }
 
     // New save: insert full document
-    return await ctx.db.insert("libraryItems", {
+    const id = await ctx.db.insert("libraryItems", {
       userId: user._id,
       ...args,
       searchableText,
       savedAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // Increment denormalized counter
+    const currentCount = user.libraryItemCount ?? 0;
+    await ctx.db.patch(user._id, { libraryItemCount: currentCount + 1 });
+
+    return id;
   },
 });
 
@@ -78,6 +93,10 @@ export const removeFromLibraryByOpenalexId = mutation({
         await ctx.db.delete(m._id);
       }
       await ctx.db.delete(item._id);
+
+      // Decrement denormalized counter
+      const currentCount = user.libraryItemCount ?? 0;
+      await ctx.db.patch(user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
     }
     return null;
   },
@@ -109,6 +128,11 @@ export const removeFromLibrary = mutation({
     }
 
     await ctx.db.delete(args.itemId);
+
+    // Decrement denormalized counter
+    const currentCount = user.libraryItemCount ?? 0;
+    await ctx.db.patch(user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
+
     return null;
   },
 });
