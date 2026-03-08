@@ -121,9 +121,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-<!-- Next milestone scope. -->
+## Current Milestone: v4.0 Bulk Screening & Auto-Rating
 
-(No active milestone — run `/gsd:new-milestone` to start next cycle)
+**Goal:** Add a bulk screening feature that processes up to 200 search results in the background, scores and rates papers based on user-defined criteria, and adds them to a library collection.
+
+**Target features:**
+- Bulk screening job that processes up to 200 papers in background via Convex
+- User-defined scoring rules per screening question (yes/no → +/- points)
+- User-defined star rating thresholds (score ranges → 0-5 stars)
+- Collection selection for auto-adding screened papers
+- Job progress tracking with paper count and credit cost estimation
+- Configuration dialog triggered from "Screen All" button on results page
 
 ### Out of Scope
 
@@ -255,4 +263,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | Cascade deletes left unbounded | Bounding would orphan data | ✓ Good — annotated with comments |
 
 ---
-*Last updated: 2026-03-06 after v3.2 milestone*
+*Last updated: 2026-03-08 after v4.0 milestone start*

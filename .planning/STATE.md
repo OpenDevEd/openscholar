@@ -1,34 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.2
-milestone_name: Production Readiness
-status: completed
-stopped_at: Milestone v3.2 archived
-last_updated: "2026-03-06T09:00:00.000Z"
-last_activity: 2026-03-06 -- Milestone v3.2 completed and archived
+milestone: v4.0
+milestone_name: Bulk Screening & Auto-Rating
+status: in_progress
+stopped_at: null
+last_updated: "2026-03-08T00:00:00.000Z"
+last_activity: 2026-03-08 -- Milestone v4.0 started
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-06)
+See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** Bulk Screening & Auto-Rating
 
 ## Current Position
 
-Milestone v3.2 Production Readiness: SHIPPED 2026-03-06
-Next: Run `/gsd:new-milestone` to start next cycle
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-08 — Milestone v4.0 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
