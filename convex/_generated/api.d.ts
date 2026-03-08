@@ -67,6 +67,7 @@ import type * as lib_freeCredits from "../lib/freeCredits.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_stripeCustomer from "../lib/stripeCustomer.js";
 import type * as lib_stripeWebhookHandlers from "../lib/stripeWebhookHandlers.js";
 import type * as lib_stripeWebhookSecret from "../lib/stripeWebhookSecret.js";
 import type * as lib_userCreation from "../lib/userCreation.js";
@@ -165,6 +166,7 @@ declare const fullApi: ApiFromModules<{
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/stripeCustomer": typeof lib_stripeCustomer;
   "lib/stripeWebhookHandlers": typeof lib_stripeWebhookHandlers;
   "lib/stripeWebhookSecret": typeof lib_stripeWebhookSecret;
   "lib/userCreation": typeof lib_userCreation;

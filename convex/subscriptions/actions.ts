@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { requireActionAuth } from "../lib/auth";
 import { internal, components } from "../_generated/api";
 import { stripeClient } from "../stripe";
+import { getOrCreateValidCustomer } from "../lib/stripeCustomer";
 import {
   assertPlanPriceConfig,
   getPlanFromPriceId,
@@ -251,7 +252,7 @@ export const createCheckoutSession = action({
       );
     }
 
-    const customer = await stripeClient.getOrCreateCustomer(ctx, {
+    const customer = await getOrCreateValidCustomer(ctx, {
       userId: user._id,
       email: identity.email,
       name: identity.name,

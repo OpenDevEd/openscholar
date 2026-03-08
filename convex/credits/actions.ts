@@ -14,6 +14,7 @@ import {
   shouldRetryCreditGrant,
 } from "./lib/retryPolicy";
 import { stripeClient } from "../stripe";
+import { getOrCreateValidCustomer } from "../lib/stripeCustomer";
 import { requireActionAuth } from "../lib/auth";
 import { requireCreditsEnabled, requireCreditTopupsEnabled } from "../lib/featureFlags";
 import {
@@ -76,7 +77,7 @@ export const createTopupCheckoutSession = action({
       );
     }
 
-    const customer = await stripeClient.getOrCreateCustomer(ctx, {
+    const customer = await getOrCreateValidCustomer(ctx, {
       userId: user._id,
       email: identity.email,
       name: identity.name,
