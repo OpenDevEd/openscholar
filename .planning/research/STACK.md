@@ -1,158 +1,228 @@
-# Technology Stack: v3.2 Production Readiness
+# Technology Stack: v4.0 Bulk Screening & Auto-Rating
 
 **Project:** OpenAlex Count
-**Researched:** 2026-03-06
+**Researched:** 2026-03-08
 **Confidence:** HIGH
-**Scope:** NEW capabilities only. Existing stack (Next.js, Convex ^1.31.7, Stripe SDK v20.3.0, convex-helpers, convex-test, Vitest, Playwright, 750+ tests, zero-any codebase) is validated -- NOT re-researched.
+**Scope:** Stack additions for background bulk screening, user-defined scoring/rating rules, and progress tracking. Existing stack (Next.js, Convex ^1.31.7, @convex-dev/workflow ^0.3.4, @convex-dev/workpool ^0.3.1, ai ^6.0.62, Zustand, nuqs, sonner, 786+ tests, zero-any codebase) is validated -- NOT re-researched.
 
 ---
 
-## Context
+## Key Finding: No New Dependencies Needed
 
-v3.2 addresses three production readiness concerns from CONCERNS.md. None require new npm packages.
-
-| Concern | Capability Needed | Decision |
-|---------|-------------------|---------|
-| Debug endpoints publicly accessible | Convert `query()` to `internalQuery()` | Convex built-in `internalQuery` (no new dep) |
-| Library count fetches 10,000 docs | Efficient document counting | Manual counter field with atomic increment/decrement (no new dep) |
-| Unbounded `.collect()` on high-traffic paths | Bounded query guards | `.take(N)` bounds on identified paths (no new dep) |
-
-**Result: zero new npm packages required.** Every capability uses existing Convex primitives.
+The existing stack contains every building block required for v4.0. This is an **integration milestone**, not an infrastructure milestone. The project already has durable workflow orchestration, parallel background processing, a production-proven batch screening action, complete library/collection mutation infrastructure, reactive progress queries, and a credit guard pattern for background jobs.
 
 ---
 
-## Recommended Stack
+## Existing Stack (Validated - DO NOT change)
 
-### No New Dependencies
-
-| Capability | Package | Version | What Changes |
-|------------|---------|---------|-------------|
-| Internal functions | `convex` | ^1.31.7 (installed) | `internalQuery` from `convex/server` -- already used by 5 of 7 debug files |
-| Counter field | `convex` | ^1.31.7 (installed) | `ctx.db.patch()` for atomic increment/decrement in mutations |
-| Query bounding | `convex` | ^1.31.7 (installed) | `.take(N)` method on query builder -- already used extensively |
-| Testing | `convex-test` | ^0.0.41 (installed) | Verify counter consistency and internal function access |
-
-### What NOT to Add
-
-| Candidate | Version | Why Skip |
-|-----------|---------|----------|
-| `@convex-dev/aggregate` | 0.2.1 | Provides O(log n) count/sum/max with B-tree component. Requires registering in `convex.config.ts`, maintaining insert/replace/delete hooks on every write path, and adds a 0.x dependency. Library count is a single per-user counter with low write frequency (user-initiated save/unsave). A manual counter field patched atomically in the same mutation is simpler and matches the project's existing `extractionJobStats` pattern. |
-| `@convex-dev/sharded-counter` | 0.2.0 | Optimizes for high-throughput concurrent increments via sharding. Library save/unsave is user-initiated (not batch), so OCC contention is negligible. A single counter field is sufficient. |
+| Technology | Version | v4.0 Role |
+|------------|---------|-----------|
+| `@convex-dev/workflow` | ^0.3.4 | Top-level bulk screening job orchestration (same pattern as extraction workflow) |
+| `@convex-dev/workpool` | ^0.3.1 | Parallel batch fan-out with retry (if needed for speed) |
+| `convex` | ^1.31.7 | Mutations, queries, actions, scheduler, reactive subscriptions |
+| `convex-helpers` | ^0.1.111 | Rate limiting on the new screening endpoint |
+| `ai` | ^6.0.62 | LLM calls via `generateBatchScreeningResponses` action |
+| `zustand` | ^5.0.5 | Client-side dialog state, optimistic UI |
+| `nuqs` | ^2.6.0 | URL state for screening job filters |
+| `sonner` | ^2.0.7 | Toast feedback for job creation/completion |
 
 ---
 
-## Approach Per Concern
+## What v4.0 Needs (All Achievable With Existing Stack)
 
-### 1. Debug Endpoint Security
+### 1. Bulk Screening Job Orchestration
 
-**Current state (verified in codebase):**
+**Use:** `@convex-dev/workflow` (existing `workflow.ts` singleton)
 
-| File | Export | Type | Status |
-|------|--------|------|--------|
-| `debug.ts` | `diagnoseJob` | `query()` (PUBLIC) | Must convert |
-| `debug_errors.ts` | `getFailedPapersDebug` | `query()` (PUBLIC) | Must convert |
-| `debug_job_citations.ts` | `debugJobCitations` | `internalQuery` | Already internal |
-| `debug_job_content.ts` | `debugJobContent` | `internalQuery` | Already internal |
-| `debug_paper_results.ts` | `debugPaperResults` | `internalQuery` | Already internal |
-| `debug_papers.ts` | `getPaperErrorsInternal` | `internalQuery` | Already internal |
-| `debug_pdfjs_alignment.ts` | `debugPdfAlignment` | `internalAction` | Already internal |
+The extraction workflow (`convex/extraction/workflow.ts`) is the exact pattern to follow. It demonstrates:
+- Multi-step durable execution (`step.runQuery`, `step.runMutation`, `step.runAction`)
+- Paper batching and deduplication
+- Status updates at each stage
+- Workpool integration for parallel processing
+- Credit guard pattern for cancelled jobs
 
-**Fix:**
-1. Convert `diagnoseJob` and `getFailedPapersDebug` from `query()` to `internalQuery` (import change only)
-2. Remove `requirePublicDebugEnabled()` calls from all 7 debug files (internal functions are not client-callable)
-3. Remove `requireAuth()` from debug files that have it (internal functions bypass auth by design -- they are only callable from other server functions)
-4. Delete `convex/lib/debug_gate.ts` entirely
-5. Remove `ENABLE_PUBLIC_DEBUG_FUNCTIONS` env var from all environments
+**For bulk screening:** Define a new `runBulkScreeningWorkflow` following the same pattern:
+1. Create `bulkScreeningJobs` record (status: "pending")
+2. Batch papers (up to 200) into chunks of 10-20 for `generateBatchScreeningResponses`
+3. Process each batch via `step.runAction` (sequential within workflow, retried on failure)
+4. After each batch: apply scoring rules, compute ratings, save to library, assign to collection
+5. Update progress counters after each batch via `step.runMutation`
 
-**Stack needed:** `internalQuery` from `convex/server` (already available). Zero new packages.
+**Why sequential batches over workpool fan-out:** Start simple. The screening workload is lighter than extraction (no PDF downloads, just LLM calls on title+abstract). With 200 papers in batches of 20, that is 10 sequential batch calls. At ~20-40s per batch, total wall time is 200-400s -- acceptable for a background job. If speed becomes a concern, add a second `Workpool` instance with zero new dependencies (just another instantiation in `workpool.ts`).
 
-**Why `internalQuery` over env var gate:** Internal functions are architecturally unreachable from clients. The env var gate is a runtime check that can be misconfigured. `internalQuery` eliminates the attack surface entirely -- there is no HTTP endpoint to call, no matter what env vars are set.
+**Confidence:** HIGH -- extraction workflow proves the pattern at scale.
 
-### 2. Library Count Optimization
+### 2. Background Batch Processing
 
-**Current state:** `getLibraryCount` in `convex/library/queries.ts:330-341` does:
+**Use:** `generateBatchScreeningResponses` action (existing `convex/ai/actions.ts`)
+
+This action already:
+- Accepts `papers: Array<{id, title, abstract}>` and `questions: Array<string>`
+- Returns `results: Record<paperId, {responses: Record<questionKey, boolean|null>, confidence: number}>`
+- Handles per-paper credit deduction via `withAuthAndCreditsBatch`
+- Encodes question keys for Convex compatibility via `encodeQuestionResponseMap`
+
+**Integration consideration:** The existing action uses `withAuthAndCreditsBatch` which requires auth context. For background workflow execution, create an internal variant that uses `withUserCreditsBatch` (already exists in `ai/helpers.ts`) accepting `userId` directly. This follows the exact pattern used by `waitAndExtractAction` in `convex/extraction/workpoolActions.ts`.
+
+**Confidence:** HIGH -- action is production-proven.
+
+### 3. Scoring & Rating Rules Engine
+
+**Use:** Pure TypeScript functions (no library needed)
+
+Scoring rules are simple arithmetic:
+- Each screening question has a score weight: `yes -> +N points`, `no -> -M points`, `null -> 0`
+- Total score = sum of per-question scores
+- Star rating thresholds: user-defined score ranges map to 0-5 stars
+
+This is a pure function: `(screeningResponses, scoringRules, ratingThresholds) -> { score, rating }`. No library needed. Store rules in the job configuration document.
+
+**Schema design for scoring rules:**
 ```typescript
-const items = await ctx.db
-  .query("libraryItems")
-  .withIndex("by_user", (q) => q.eq("userId", user._id))
-  .take(10_000);
-return items.length;
+scoringRules: v.array(v.object({
+  questionIndex: v.number(),
+  yesScore: v.number(),     // Points when answer is true (e.g., +2)
+  noScore: v.number(),      // Points when answer is false (e.g., -1)
+})),
+ratingThresholds: v.array(v.object({
+  minScore: v.number(),     // Minimum score for this rating
+  rating: v.number(),       // 0-5 stars
+})),
 ```
 
-This fetches up to 10,000 full documents just to count them. Users with >10,000 items get incorrect counts. Users with large libraries pay unnecessary read bandwidth.
+**Confidence:** HIGH -- pure arithmetic, no external dependencies.
 
-**Recommended approach:** Maintain a `libraryItemCount` counter on a dedicated document, incremented/decremented atomically in the same mutations that insert/delete library items.
+### 4. Progress Tracking
 
-**Integration points (all existing files, no new files needed):**
+**Use:** Convex reactive queries (existing pattern)
 
-| File | Change |
-|------|--------|
-| `convex/schema.ts` | Add `libraryItemCount: v.number()` field to user-associated record, or create a `libraryCounters` table with `by_user` index |
-| `convex/library/mutations.ts` | `saveToLibrary`: increment counter after insert. `removeFromLibrary`: decrement after delete. `removeMultipleFromLibrary`: decrement by batch count after deletes. |
-| `convex/library/queries.ts` | `getLibraryCount`: read counter document instead of `.take(10_000)` |
-| Backfill | One-time internal mutation to count existing items per user and set initial counter values |
+The extraction workflow already demonstrates this exact pattern:
+- `extractionJobs.processedPapers` / `totalPapers` counters updated via `updateJobStatus` mutation
+- Client subscribes via `useQuery` and gets real-time updates automatically
 
-**Why a counter field over @convex-dev/aggregate (0.2.1):**
-- Library writes are user-initiated, not batch -- OCC contention is near zero
-- Only 2 mutation entry points modify libraryItems (save and remove/removeMultiple)
-- The project already uses this exact pattern for `extractionJobStats` incremental counters (v3.0)
-- No new component registration in `convex.config.ts` (currently has 4 components: stripe, rag, workflow, workpool)
-- No new 0.x dependency to pin and monitor
-- Counter is always consistent because increment/decrement runs in the same mutation as the insert/delete (Convex OCC guarantees atomicity)
+**For bulk screening:** Same pattern. The `bulkScreeningJobs` table has `totalPapers`, `processedPapers`, `failedPapers` counters. Client uses `useQuery(api.screening.queries.getJobProgress, { jobId })` for live updates. Convex's reactive query system means the UI updates automatically when the workflow mutates progress counters -- no polling, no WebSocket setup, no SSE.
 
-**Why a counter field over @convex-dev/sharded-counter (0.2.0):**
-- Sharded counters solve high-contention concurrent writes (e.g., thousands of simultaneous increments)
-- Library save/unsave is a single-user action -- only one mutation runs at a time per user
-- Adding a component for a problem that does not exist adds complexity with no benefit
+**Confidence:** HIGH -- Convex reactive queries make this trivial.
 
-### 3. Unbounded .collect() Audit
+### 5. Library Save & Collection Assignment from Background Jobs
 
-**Current state:** 125 `.collect()` calls across 27 files in `convex/`. Most are properly scoped by narrow index filters returning small result sets. The audit classifies each call.
+**Use:** Internal variants of existing `saveToLibrary` + `addToCollection` mutations
 
-**Classification framework:**
+Both mutations exist and are production-proven. The bulk screening workflow needs **internal variants** (no auth check, accepts userId directly) because background jobs run without user auth context.
 
-| Category | Criteria | Action |
-|----------|----------|--------|
-| Safe | Returns 1-5 rows by unique/narrow index (billing, subscriptions, per-user lookups) | No change |
-| Bounded by design | Scoped to per-job data capped at MAX_PAPERS_PER_JOB=500 or per-question data (5-15 questions) | No change |
-| Needs .take() guard | Could grow with usage (credit transactions, saved views, templates, report snapshots) | Add `.take(N)` |
-| Test-only | In test files (`.test.ts`, `test_*.ts`) | No change |
+**Pattern:**
+```typescript
+export const internalSaveToLibrary = internalMutation({
+  args: {
+    userId: v.id("users"),
+    // ... same fields as saveToLibrary
+  },
+  handler: async (ctx, args) => {
+    // Same logic as saveToLibrary but uses args.userId instead of requireAuth()
+  },
+});
+```
 
-**High-priority .collect() calls to bound:**
+This follows the existing `withUserCreditsBatch` pattern in `ai/helpers.ts` which already handles background jobs without auth context. The extraction workflow uses this same approach.
 
-| File | Query | Risk | Recommended Bound |
-|------|-------|------|-------------------|
-| `credits/internal.ts:99-102` | `creditTransactions` by user | Grows with every purchase/grant | `.take(1000)` |
-| `credits/internal.ts:846-849` | `creditTransactions` by user (all history) | Same | `.take(1000)` |
-| `extraction/queries.ts:1285-1288` | `extractionSavedViews` by job | Could grow per job | `.take(100)` |
-| `extraction/queries.ts:1329-1332` | `extractionWorkflowTemplates` by user | Could grow over time | `.take(100)` |
-| `extraction/queries.ts:1349-1352` | `extractionReportSnapshots` by job | Could grow per job | `.take(50)` |
-| `extraction/queries.ts:1454-1457` | `extractionEvidenceUnits` by paper | Bounded by paper content but no explicit guard | `.take(500)` |
-| `subscriptions/internal.ts:177-180` | `subscriptions` by user | Should be 1-3 but no guard | `.take(10)` |
+**Confidence:** HIGH -- straightforward internal mutation variants.
 
-**Safe .collect() calls (no change needed):**
-- `billingCustomers` by user/stripe_customer: 1 row per user (unique index)
-- `subscriptions` by stripe_sub: 1 row per subscription (unique index)
-- `extractionQuestions` by job: 5-15 questions per job (bounded by design)
-- `extractionResults` by paper: bounded by question count (5-15 per paper)
-- `extractionResultReviews` by paper/job: bounded by question count
-- `extractionJobStats` by job: bounded by question count
-- All test file `.collect()` calls: test-only, controlled data
+### 6. Credit Cost Estimation
 
-**Stack needed:** `.take(N)` is a built-in Convex query method. Zero new packages.
+**Use:** Existing `calculateServerCreditsToDeduct` + model cost registry
+
+Pre-screening cost estimation: multiply estimated per-paper token usage by paper count. Based on observed screening calls: ~500 input tokens (title + abstract + questions), ~100 output tokens per paper. The `calculateCreditsToDeductFromUsage` function provides the credit conversion.
+
+**Display:** Show as range ("~X-Y credits") since actual costs vary with abstract length.
+
+**Confidence:** MEDIUM -- estimates are approximate; actual costs vary with abstract length and question count.
 
 ---
 
-## Alternatives Considered
+## Recommended New Convex Tables
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| Library counting | Manual counter field | `@convex-dev/aggregate` v0.2.1 | Adds component dependency and insert/replace/delete hooks for a single low-frequency counter |
-| Library counting | Manual counter field | `@convex-dev/sharded-counter` v0.2.0 | Solves high-contention writes that do not exist here |
-| Debug security | `internalQuery` | Keep env var gate with stronger checks | Runtime check can be misconfigured; `internalQuery` eliminates the attack surface architecturally |
-| Debug security | `internalQuery` | Delete debug files entirely | Debug functions are useful in development/staging; internal functions preserve utility while removing public access |
-| .collect() bounding | `.take(N)` guards | Server-side pagination everywhere | Over-engineering; most queries return small result sets; `.take(N)` is the right guard for bounded-but-not-paginated queries |
-| .collect() bounding | `.take(N)` guards | Convex query limits (automatic) | Convex has a 16MB response limit but no automatic row cap; explicit `.take(N)` is defense-in-depth |
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `bulkScreeningJobs` | Job state, config, progress | userId, status, totalPapers, processedPapers, failedPapers, questions, scoringRules, ratingThresholds, targetCollectionId, workflowId, estimatedCredits, createdAt, updatedAt, completedAt |
+| `bulkScreeningResults` | Per-paper screening outcomes | jobId, openalexId, title, abstract, authors, publicationYear, doi, responses, score, rating, libraryItemId, status, error, processedAt |
+
+**Index design (following existing patterns):**
+```
+bulkScreeningJobs:
+  .index("by_user", ["userId"])
+  .index("by_user_status", ["userId", "status"])
+  .index("by_workflow", ["workflowId"])
+
+bulkScreeningResults:
+  .index("by_job", ["jobId"])
+  .index("by_job_status", ["jobId", "status"])
+```
+
+---
+
+## Recommended New Functions
+
+| Function | Type | Purpose |
+|----------|------|---------|
+| `screening/workflow.runBulkScreeningWorkflow` | `workflow.define` | Orchestrates full screening pipeline |
+| `screening/mutations.createBulkScreeningJob` | `mutation` | Creates job record, validates config, starts workflow |
+| `screening/mutations.cancelBulkScreeningJob` | `mutation` | Cancels in-progress job (follows extraction cancel pattern) |
+| `screening/mutations.updateScreeningProgress` | `internalMutation` | Updates progress counters |
+| `screening/mutations.saveScreeningResult` | `internalMutation` | Stores per-paper result |
+| `screening/queries.getJobProgress` | `query` | Live progress for UI (reactive) |
+| `screening/queries.getJobResults` | `query` | Results list for completed job |
+| `screening/queries.listMyScreeningJobs` | `query` | User's screening job history |
+| `screening/actions.processScreeningBatch` | `internalAction` | Calls AI screening, applies scoring, saves results |
+| `library/mutations.internalSaveToLibrary` | `internalMutation` | Auth-free save for background jobs |
+| `library/collections.internalAddToCollection` | `internalMutation` | Auth-free collection assignment |
+| `lib/scoring.ts` | pure functions | `computeScore()` and `computeRating()` |
+
+---
+
+## What NOT to Add
+
+| Anti-Addition | Why Not |
+|---------------|---------|
+| Redis / BullMQ / any job queue | Convex workflow + workpool already provides durable job processing with retries, progress tracking, and cancellation |
+| WebSocket / SSE library | Convex reactive queries provide real-time updates out of the box via `useQuery` |
+| XState / state machine library | Job status transitions are linear (pending -> screening -> scoring -> saving -> completed); a union type with `v.literal()` suffices |
+| react-hook-form / formik | Configuration dialog has ~10-15 fields; local `useState` or Zustand slice is sufficient |
+| New AI provider or SDK | `generateBatchScreeningResponses` uses the configured provider via Vercel AI SDK |
+| Database migration tool | New tables are purely additive; Convex handles schema evolution automatically |
+| Progress bar component library | A div with `width: ${(processed/total)*100}%` is sufficient; existing Radix UI provides primitives if needed |
+| `@convex-dev/crons` or scheduler add-on | `ctx.scheduler.runAfter(0, ...)` and workflow's built-in retry handle all scheduling needs |
+| Separate `screeningPool` workpool (initially) | Start with sequential batch processing in the workflow; add parallelism only if wall time is unacceptable |
+
+---
+
+## Critical Integration Points
+
+### 1. Auth Context in Background Jobs
+
+The existing `withUserCreditsBatch` helper in `ai/helpers.ts` solves this. It accepts `userId` directly and skips auth checks. The bulk screening workflow must:
+1. Capture `userId` at job creation time (from authenticated `createBulkScreeningJob` mutation)
+2. Pass `userId` through the workflow to all internal actions/mutations
+3. Use `withUserCreditsBatch` for credit-aware AI calls in `processScreeningBatch`
+4. Use `internalSaveToLibrary` / `internalAddToCollection` for library writes
+
+### 2. Credit Guard Pattern
+
+Follow the extraction workflow's credit guard (from `workpoolActions.ts:958-973`):
+- Before each batch, re-read job status from DB
+- If job is cancelled, skip processing and credit deduction
+- Race window of 0-1 batch (~10-20 papers) is acceptable
+
+### 3. Rate Limiting
+
+Add a rate limit for `createBulkScreeningJob` using the existing `defineRateLimits` pattern in `lib/rateLimit.ts`. Suggested: 5 jobs per hour per user (token bucket).
+
+### 4. Bounded Queries
+
+Follow `queryBounds.ts` pattern. Add:
+```typescript
+export const MAX_SCREENING_RESULTS_PER_JOB = 200;
+export const MAX_SCREENING_JOBS_PER_USER = 100;
+```
 
 ---
 
@@ -160,41 +230,44 @@ This fetches up to 10,000 full documents just to count them. Users with >10,000 
 
 ```bash
 # No new packages to install.
-# All changes are code-level refactoring using existing Convex primitives:
-#   - internalQuery (convex/server) -- debug endpoint conversion
-#   - ctx.db.patch() (convex/server) -- counter increment/decrement
-#   - .take(N) (convex query builder) -- .collect() bounding
+# All changes use existing Convex primitives and installed libraries.
 ```
 
 ---
 
 ## Version Compatibility
 
-| Package | Current Version | Relevance to v3.2 |
-|---------|----------------|-------------------|
-| `convex` | ^1.31.7 | `internalQuery`, `ctx.db.patch()`, `.take()` -- all stable APIs since v1.0 |
-| `convex-test` | ^0.0.41 | Testing internal function access patterns and counter consistency |
+| Package | Current Version | v4.0 Relevance |
+|---------|----------------|----------------|
+| `convex` | ^1.31.7 | All APIs used (mutations, queries, actions, scheduler) are stable since v1.0 |
+| `@convex-dev/workflow` | ^0.3.4 | `workflow.define()` for durable orchestration -- same as extraction |
+| `@convex-dev/workpool` | ^0.3.1 | Available if parallelism needed later |
+| `ai` | ^6.0.62 | `generateObject` and batch processing -- already in use |
+| `convex-helpers` | ^0.1.111 | `defineRateLimits` for new endpoint |
 
-No version bumps required. All APIs used are stable Convex primitives available since well before v1.31.7.
+No version bumps required. All APIs used are stable and production-proven in this codebase.
 
 ---
 
 ## Sources
 
-- [Convex aggregate component](https://github.com/get-convex/aggregate) -- evaluated and rejected; O(log n) count/sum/max is overkill for single per-user counter (HIGH confidence)
-- [Convex sharded-counter component](https://github.com/get-convex/sharded-counter) -- evaluated and rejected; high-throughput sharding not needed for user-initiated operations (HIGH confidence)
-- [Convex aggregate npm](https://www.npmjs.com/package/@convex-dev/aggregate) -- v0.2.1, peer dep convex ^1.24.8 (HIGH confidence, verified via npm registry)
-- [Convex sharded-counter npm](https://www.npmjs.com/package/@convex-dev/sharded-counter) -- v0.2.0, peer dep convex ^1.24.8 (HIGH confidence, verified via npm registry)
-- [Efficient COUNT, SUM, MAX with the Aggregate Component](https://stack.convex.dev/efficient-count-sum-max-with-the-aggregate-component) -- Convex blog on aggregate component use cases (MEDIUM confidence)
-- Codebase: `convex/extraction/debug*.ts` -- 2 public, 5 internal debug functions verified (HIGH confidence)
-- Codebase: `convex/lib/debug_gate.ts` -- env var gate implementation verified (HIGH confidence)
-- Codebase: `convex/library/queries.ts:330-341` -- getLibraryCount .take(10_000) pattern verified (HIGH confidence)
-- Codebase: `convex/library/mutations.ts` -- 2 mutation paths for libraryItem insert/delete verified (HIGH confidence)
-- Codebase: 125 .collect() calls across 27 convex files verified via grep (HIGH confidence)
-- Prior research: `.planning/milestones/v3.0-phases/57-incremental-aggregation/57-RESEARCH.md` -- validates manual counter pattern over @convex-dev/aggregate for this project (HIGH confidence)
-- Codebase: `convex/convex.config.ts` -- 4 components registered (stripe, rag, workflow, workpool) (HIGH confidence)
+- Codebase analysis (HIGH confidence):
+  - `convex/extraction/workflow.ts` -- proven durable workflow pattern (multi-step, progress tracking, workpool integration)
+  - `convex/ai/actions.ts` -- `generateBatchScreeningResponses` action (batch AI screening with credit deduction)
+  - `convex/ai/helpers.ts` -- `withUserCreditsBatch` for background job credit handling, `withAuthAndCreditsBatch` for auth-aware batch processing
+  - `convex/extraction/workpoolActions.ts` -- credit guard pattern for cancelled jobs (lines 958-973)
+  - `convex/workpool.ts` -- workpool configuration (maxParallelism: 3, retry behavior)
+  - `convex/workflow.ts` -- workflow manager configuration
+  - `convex/library/mutations.ts` -- `saveToLibrary` mutation with upsert and denormalized counter
+  - `convex/library/collections.ts` -- `addToCollection` mutation with idempotent assignment and denormalized counter
+  - `convex/schema.ts` -- existing table design patterns (index naming, validator patterns, field conventions)
+  - `convex/lib/queryBounds.ts` -- bounded query constant pattern
+  - `convex/lib/rateLimit.ts` -- rate limiting pattern with `defineRateLimits`
+  - `convex/lib/constants.ts` -- plan tiers and credit configuration
+  - `convex/convex.config.ts` -- 4 components registered (stripe, rag, workflow, workpool) -- no new components needed
+  - `package.json` -- all required dependencies already installed
 
 ---
 
-*Stack research for: v3.2 Production Readiness*
-*Researched: 2026-03-06*
+*Stack research for: v4.0 Bulk Screening & Auto-Rating*
+*Researched: 2026-03-08*
