@@ -277,7 +277,7 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 | 79. Export Query | 1/1 | Complete    | 2026-03-09 | - |
 | 80. Export Functions | 1/1 | Complete    | 2026-03-09 | - |
 | 81. Export UI | 1/1 | Complete    | 2026-03-09 | - |
-| 82. Simplify Star Thresholds | v4.1 | 0/1 | Not started | - |
+| 82. Simplify Star Thresholds | v4.1 | 0/2 | Not started | - |
 
 ### Phase 82: Simplify Star Thresholds
 **Goal**: Remove maxScore from star thresholds — each threshold defines only minScore + stars, highest matching minScore wins
@@ -288,7 +288,8 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
   2. Rating assignment evaluates thresholds sorted by minScore descending, first match wins
   3. Existing screening jobs with stored maxScore data are read without error (backward-compatible)
   4. Star threshold editor UI shows only minScore + stars per row
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 82-01: TBD
+- [ ] 82-01-PLAN.md — TDD: Scoring engine refactor + schema/validator/query updates for minScore-only thresholds
+- [ ] 82-02-PLAN.md — UI editor, default config, and export format cleanup (remove maxScore)
