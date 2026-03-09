@@ -33,7 +33,7 @@ Progress: [██████████] 100%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 154 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, cleanup: 2, quick: 6)
+- Total plans completed: 155 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, cleanup: 2, quick: 7)
 - Total milestones shipped: 13
 
 **By Milestone:**
@@ -78,9 +78,10 @@ None.
 | 5 | Denormalized counters backfill (library + collections) | 2026-03-06 | b6f2446 | [5-denormalized-counters-backfill-libraryit](./quick/5-denormalized-counters-backfill-libraryit/) |
 | 6 | Audit schema vs validators (no mismatches found) | 2026-03-06 | -- | [6-check-if-theres-any-such-issues](./quick/6-check-if-theres-any-such-issues/) |
 | 7 | Redesign screening modal UI/UX | 2026-03-09 | eb1ccb1 | [7-redesign-screening-modal-ui-ux](./quick/7-redesign-screening-modal-ui-ux/) |
+| 8 | Improve create-collection inline flow | 2026-03-09 | c27344b | [8-improve-create-new-collection-inline-flo](./quick/8-improve-create-new-collection-inline-flo/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed quick task 7 (screening modal UI redesign)
-Stopped at: Quick task 7 complete
+Last activity: 2026-03-09 -- Completed quick task 8 (create-collection inline flow)
+Stopped at: Quick task 8 complete
 Resume file: None
