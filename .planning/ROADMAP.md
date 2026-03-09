@@ -14,6 +14,7 @@
 - v3.0 Zero-Any Overhaul -- Phases 54-59 (shipped 2026-03-04)
 - v3.1 Complete Type Safety -- Phases 60-71 (shipped 2026-03-05)
 - v3.2 Production Readiness -- Phases 72-74 (shipped 2026-03-06)
+- v4.0 Bulk Screening & Auto-Rating -- Phases 75-78 (in progress)
 
 ## Phases
 
@@ -187,6 +188,17 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 </details>
 
+### v4.0 Bulk Screening & Auto-Rating (In Progress)
+
+**Milestone Goal:** Add bulk screening that processes up to 200 search results in background, scores and rates papers based on user-defined criteria, and adds them to a library collection.
+
+- [ ] **Phase 75: Schema & Job Infrastructure** - Tables, job creation/cancellation mutations, credit verification, and reactive progress query
+- [ ] **Phase 76: Scoring Engine & Rating Logic** - Pure scoring functions, per-question point rules, score-to-star threshold mapping, and minimum score filtering
+- [ ] **Phase 77: Workflow Processing & Library Integration** - Background workflow+workpool pipeline, auto-save qualifying papers to library with computed rating, auto-assign to collection
+- [ ] **Phase 78: Configuration Dialog & Progress UI** - Screen All button, configuration dialog with scoring/threshold/collection editors, cost estimate, progress tracking, and job history
+
+Full details: `.planning/milestones/v4.0-ROADMAP.md`
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -203,3 +215,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 | 54-59 | v3.0 | 11/11 | Complete | 2026-03-04 |
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
+| 75. Schema & Job Infrastructure | v4.0 | 0/TBD | Not started | - |
+| 76. Scoring Engine & Rating Logic | v4.0 | 0/TBD | Not started | - |
+| 77. Workflow Processing & Library Integration | v4.0 | 0/TBD | Not started | - |
+| 78. Configuration Dialog & Progress UI | v4.0 | 0/TBD | Not started | - |

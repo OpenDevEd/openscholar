@@ -68,35 +68,35 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| JOB-01 | — | Pending |
-| JOB-02 | — | Pending |
-| JOB-03 | — | Pending |
-| JOB-04 | — | Pending |
-| JOB-05 | — | Pending |
-| JOB-06 | — | Pending |
-| JOB-07 | — | Pending |
-| JOB-08 | — | Pending |
-| SCORE-01 | — | Pending |
-| SCORE-02 | — | Pending |
-| SCORE-03 | — | Pending |
-| SCORE-04 | — | Pending |
-| SCORE-05 | — | Pending |
-| LIB-01 | — | Pending |
-| LIB-02 | — | Pending |
-| LIB-03 | — | Pending |
-| DIALOG-01 | — | Pending |
-| DIALOG-02 | — | Pending |
-| DIALOG-03 | — | Pending |
-| DIALOG-04 | — | Pending |
-| DIALOG-05 | — | Pending |
-| DIALOG-06 | — | Pending |
-| DIALOG-07 | — | Pending |
+| JOB-01 | Phase 75 | Pending |
+| JOB-02 | Phase 78 | Pending |
+| JOB-03 | Phase 78 | Pending |
+| JOB-04 | Phase 75 | Pending |
+| JOB-05 | Phase 77 | Pending |
+| JOB-06 | Phase 78 | Pending |
+| JOB-07 | Phase 75 | Pending |
+| JOB-08 | Phase 78 | Pending |
+| SCORE-01 | Phase 76 | Pending |
+| SCORE-02 | Phase 76 | Pending |
+| SCORE-03 | Phase 76 | Pending |
+| SCORE-04 | Phase 76 | Pending |
+| SCORE-05 | Phase 76 | Pending |
+| LIB-01 | Phase 77 | Pending |
+| LIB-02 | Phase 77 | Pending |
+| LIB-03 | Phase 77 | Pending |
+| DIALOG-01 | Phase 78 | Pending |
+| DIALOG-02 | Phase 78 | Pending |
+| DIALOG-03 | Phase 78 | Pending |
+| DIALOG-04 | Phase 78 | Pending |
+| DIALOG-05 | Phase 78 | Pending |
+| DIALOG-06 | Phase 78 | Pending |
+| DIALOG-07 | Phase 78 | Pending |
 
 **Coverage:**
 - v4.0 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 ⚠️
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-08*
-*Last updated: 2026-03-08 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*

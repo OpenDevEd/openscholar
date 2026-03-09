@@ -4,10 +4,10 @@ milestone: v4.0
 milestone_name: Bulk Screening & Auto-Rating
 status: in_progress
 stopped_at: null
-last_updated: "2026-03-08T00:00:00.000Z"
-last_activity: 2026-03-08 -- Milestone v4.0 started
+last_updated: "2026-03-09T00:00:00.000Z"
+last_activity: 2026-03-09 -- Roadmap created for v4.0
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-08)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Bulk Screening & Auto-Rating
+**Current focus:** Phase 75 -- Schema & Job Infrastructure (v4.0 Bulk Screening & Auto-Rating)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-03-08 — Milestone v4.0 started
+Phase: 75 (1 of 4 in v4.0)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-03-09 -- Roadmap created for v4.0 milestone
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -60,6 +60,11 @@ Progress: [░░░░░░░░░░] 0%
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
+Recent decisions affecting current work:
+
+- [v4.0]: Reuse extraction workflow+workpool pattern for bulk screening
+- [v4.0]: Pure-function scoring engine (no external library)
+- [v4.0]: Two new tables (screeningJobs, screeningResults), zero new dependencies
 
 ### Pending Todos
 
@@ -67,7 +72,9 @@ None.
 
 ### Blockers/Concerns
 
-None.
+- Counter contention risk when bulk-saving 200 papers (serialize or batch counter updates)
+- Credit TOCTOU: credits can exhaust mid-job (per-batch deduction + creditsExhausted status)
+- Scoring UX is novel (no competitor does per-question point weighting) -- needs design decisions in Phase 78
 
 ### Quick Tasks Completed
 
@@ -81,6 +88,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-06 -- Quick task 6: audit schema vs validators (all match)
-Stopped at: Completed quick-6 plan
+Last activity: 2026-03-09 -- Roadmap created for v4.0 milestone
+Stopped at: Roadmap created, Phase 75 ready to plan
 Resume file: None
