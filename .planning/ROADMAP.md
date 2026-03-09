@@ -14,7 +14,7 @@
 - v3.0 Zero-Any Overhaul -- Phases 54-59 (shipped 2026-03-04)
 - v3.1 Complete Type Safety -- Phases 60-71 (shipped 2026-03-05)
 - v3.2 Production Readiness -- Phases 72-74 (shipped 2026-03-06)
-- v4.0 Bulk Screening & Auto-Rating -- Phases 75-78 (in progress)
+- v4.0 Bulk Screening & Auto-Rating -- Phases 75-78 (shipped 2026-03-09)
 
 ## Phases
 
@@ -188,32 +188,17 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 </details>
 
-### v4.0 Bulk Screening & Auto-Rating (In Progress)
+<details>
+<summary>v4.0 Bulk Screening & Auto-Rating (Phases 75-78) -- SHIPPED 2026-03-09</summary>
 
-**Milestone Goal:** Add bulk screening that processes up to 200 search results in background, scores and rates papers based on user-defined criteria, and adds them to a library collection.
-
-- [x] **Phase 75: Schema & Job Infrastructure** (3 plans) - Tables, job creation/cancellation mutations, credit verification, and reactive progress query (completed 2026-03-09)
-  Plans:
-  - [ ] 75-01-PLAN.md -- Schema tables, validators, error codes, workpool, query bounds
-  - [ ] 75-02-PLAN.md -- TDD: createScreeningJob mutation with credit/concurrency guards
-  - [ ] 75-03-PLAN.md -- TDD: cancelScreeningJob mutation and progress queries
-- [x] **Phase 76: Scoring Engine & Rating Logic** (1 plan) - Pure scoring functions, per-question point rules, score-to-star threshold mapping, and minimum score filtering (completed 2026-03-09)
-  **Plans:** 1 plan
-  Plans:
-  - [ ] 76-01-PLAN.md -- TDD: Pure scoring engine (computeScore, computeStarRating, isQualified, scorePaper, validateScoringConfig)
-- [x] **Phase 77: Workflow Processing & Library Integration** (2 plans) - Background workflow+workpool pipeline, auto-save qualifying papers to library with computed rating, auto-assign to collection (completed 2026-03-09)
-  **Plans:** 2 plans
-  Plans:
-  - [ ] 77-01-PLAN.md -- Internal queries/mutations, onComplete handler with scoring + library save + collection add
-  - [ ] 77-02-PLAN.md -- Workpool action, workflow definition, wire createScreeningJob to start workflow
-- [x] **Phase 78: Configuration Dialog & Progress UI** (3 plans) - Screen All button, configuration dialog with scoring/threshold/collection editors, cost estimate, progress tracking, and job history (completed 2026-03-09)
-  **Plans:** 3 plans
-  Plans:
-  - [ ] 78-01-PLAN.md -- Screen All button, dialog shell with dismiss guards, abstract utility, i18n keys
-  - [ ] 78-02-PLAN.md -- Scoring rules editor, star threshold editor, collection selector, submit handler
-  - [ ] 78-03-PLAN.md -- listUserScreeningJobs query, progress component, job history component
+- [x] Phase 75: Schema & Job Infrastructure (3/3 plans) -- completed 2026-03-09
+- [x] Phase 76: Scoring Engine & Rating Logic (1/1 plan) -- completed 2026-03-09
+- [x] Phase 77: Workflow Processing & Library Integration (2/2 plans) -- completed 2026-03-09
+- [x] Phase 78: Configuration Dialog & Progress UI (3/3 plans) -- completed 2026-03-09
 
 Full details: `.planning/milestones/v4.0-ROADMAP.md`
+
+</details>
 
 ## Progress
 
@@ -231,7 +216,4 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 54-59 | v3.0 | 11/11 | Complete | 2026-03-04 |
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
-| 75. Schema & Job Infrastructure | 3/3 | Complete    | 2026-03-09 | - |
-| 76. Scoring Engine & Rating Logic | 1/1 | Complete    | 2026-03-09 | - |
-| 77. Workflow Processing & Library Integration | 2/2 | Complete    | 2026-03-09 | - |
-| 78. Configuration Dialog & Progress UI | 3/3 | Complete    | 2026-03-09 | - |
+| 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |

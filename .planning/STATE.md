@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Bulk Screening & Auto-Rating
-status: executing
-stopped_at: Completed 78-02-PLAN.md
-last_updated: "2026-03-09T02:07:35.516Z"
-last_activity: 2026-03-09 -- Completed 78-02 form editors, submit handler, and progress integration
+status: shipped
+stopped_at: Milestone complete
+last_updated: "2026-03-09"
+last_activity: 2026-03-09 -- Shipped v4.0 Bulk Screening & Auto-Rating
 progress:
   total_phases: 4
   completed_phases: 4
@@ -18,25 +18,23 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-08)
+See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 75 -- Schema & Job Infrastructure (v4.0 Bulk Screening & Auto-Rating)
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 78 (4 of 4 in v4.0)
-Plan: 2 of 3 in current phase
-Status: Executing
-Last activity: 2026-03-09 -- Completed 78-02 form editors, submit handler, and progress integration
+Milestone v4.0 shipped. No active milestone.
+Last activity: 2026-03-09 -- Shipped v4.0 Bulk Screening & Auto-Rating
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 148 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, cleanup: 2, quick: 5)
-- Total milestones shipped: 12
+- Total plans completed: 153 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, cleanup: 2, quick: 5)
+- Total milestones shipped: 13
 
 **By Milestone:**
 
@@ -54,43 +52,13 @@ Progress: [██████████] 100%
 | v3.0 | 6 | 11 | 2026-03-04 |
 | v3.1 | 12 | 20 | 2026-03-05 |
 | v3.2 | 3 | 4 | 2026-03-06 |
-| Phase 75 P01 | 2min | 2 tasks | 6 files |
-| Phase 75 P02 | 2min | 2 tasks | 2 files |
-| Phase 75 P03 | 4min | 2 tasks | 4 files |
-| Phase 76 P01 | 2min | 2 tasks | 2 files |
-| Phase 77 P01 | 5min | 2 tasks | 3 files |
-| Phase 77 P02 | 5min | 2 tasks | 4 files |
-| Phase 78 P03 | 3min | 2 tasks | 4 files |
-| Phase 78 P01 | 5min | 2 tasks | 6 files |
-| Phase 78 P02 | 4min | 2 tasks | 5 files |
+| v4.0 | 4 | 9 | 2026-03-09 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-Recent decisions affecting current work:
-
-- [v4.0]: Reuse extraction workflow+workpool pattern for bulk screening
-- [v4.0]: Pure-function scoring engine (no external library)
-- [v4.0]: Two new tables (screeningJobs, screeningResults), zero new dependencies
-- [Phase 75]: Separate screeningWorkpool component for true cancelAll() isolation from extraction
-- [Phase 75]: Two separate index queries for active job check (pending + processing) since Convex cannot OR on index values
-- [Phase 75]: getCurrentUser (null-safe) for queries vs requireAuth (throws) for mutations
-- [Phase 76]: Clamp star ratings to 0-5 in computeStarRating as defensive safety net
-- [Phase 76]: First-match-wins for overlapping thresholds (array order)
-- [Phase 76]: Missing answer keys treated as null (use nullPoints)
-- [Phase 77]: Doc<T> type cast in defineOnComplete handler for typed DB access
-- [Phase 77]: Store AI confidence in aiMetadata.confidence (schema-aligned)
-- [Phase 77]: Created workpoolActions.ts stub for type generation (Plan 02 implements)
-- [Phase 77]: Explicit type annotations to break circular Convex type inference in workpoolActions
-- [Phase 77]: Try-catch workflow.start in mutations for convex-test compatibility
-- [Phase 78]: useQuery (direct) for ScreeningProgress vs useProtectedQuery for ScreeningJobHistory
-- [Phase 78]: Status badge variant mapping pattern for screening job statuses
-- [Phase 78]: Merged pre-existing screeningDialog i18n keys into comprehensive namespace
-- [Phase 78]: Direct sonner toast.success for success, showStyledToast for errors (project pattern)
-- [Phase 78]: Default scoring yes=1/no=0/null=0 with 5-tier star thresholds from question count
-- [Phase 78]: Configure-vs-progress dialog modes via activeJobId state
 
 ### Pending Todos
 
@@ -98,9 +66,7 @@ None.
 
 ### Blockers/Concerns
 
-- Counter contention risk when bulk-saving 200 papers (serialize or batch counter updates)
-- Credit TOCTOU: credits can exhaust mid-job (per-batch deduction + creditsExhausted status)
-- Scoring UX is novel (no competitor does per-question point weighting) -- needs design decisions in Phase 78
+None.
 
 ### Quick Tasks Completed
 
@@ -114,6 +80,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed 78-02 form editors, submit handler, and progress integration
-Stopped at: Completed 78-02-PLAN.md
+Last activity: 2026-03-09 -- Shipped v4.0 milestone
+Stopped at: Milestone complete
 Resume file: None

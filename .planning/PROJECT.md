@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (786+ tests across 81+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, and a production-hardened codebase with zero `as any` casts, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, automated cleanup crons, internal-only debug endpoints, denormalized O(1) library counting, and bounded queries with shared MAX constants.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (786+ tests across 81+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, bulk screening that processes up to 200 search results in background with user-defined scoring rules and auto-rating, and a production-hardened codebase with zero `as any` casts, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, automated cleanup crons, internal-only debug endpoints, denormalized O(1) library counting, and bounded queries with shared MAX constants.
 
 ## Core Value
 
@@ -118,20 +118,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ All high-traffic .collect() calls bounded with .take(N) guards and shared MAX constants — v3.2
 - ✓ Cascade delete paths verified safe from over-bounding — v3.2
 - ✓ ~40 naturally-bounded queries annotated with cardinality comments — v3.2
+- ✓ Bulk screening job processing up to 200 papers in background via Convex workflow+workpool — v4.0
+- ✓ User-defined scoring rules per screening question with per-answer point values (yes/no/null → +/- points) — v4.0
+- ✓ Score-to-star rating threshold mapping with minimum score filtering — v4.0
+- ✓ Auto-save qualifying papers to library with computed rating and collection assignment — v4.0
+- ✓ Configuration dialog with scoring rules editor, star threshold editor, collection picker, cost estimate, and dismiss guards — v4.0
+- ✓ Real-time progress tracking and paginated job history — v4.0
+- ✓ Cancel screening job mutation with credit-guard protection (backend; UI button pending) — v4.0
 
 ### Active
 
-## Current Milestone: v4.0 Bulk Screening & Auto-Rating
-
-**Goal:** Add a bulk screening feature that processes up to 200 search results in the background, scores and rates papers based on user-defined criteria, and adds them to a library collection.
-
-**Target features:**
-- Bulk screening job that processes up to 200 papers in background via Convex
-- User-defined scoring rules per screening question (yes/no → +/- points)
-- User-defined star rating thresholds (score ranges → 0-5 stars)
-- Collection selection for auto-adding screened papers
-- Job progress tracking with paper count and credit cost estimation
-- Configuration dialog triggered from "Screen All" button on results page
+(No active milestone — run `/gsd:new-milestone` to start next)
 
 ### Out of Scope
 
@@ -158,9 +155,9 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 through v3.2 (12 milestones, 74 phases, 144 plans). Latest: v3.2 (79 files, +2,240/-1,803).
+Shipped v1.0 through v4.0 (13 milestones, 78 phases, 153 plans). Latest: v4.0 (56 files, +8,557/-90).
 Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`.
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`, `screeningJobs`, `screeningResults`.
 Test suite: 81+ Vitest test files (786+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, GROBID fallback, env validation, ExcelJS round-trip, subscription cron, and job stats tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export via ExcelJS (dynamic import), two-column sidebar layout with collapsible filter panel, bounded count query.
@@ -252,6 +249,11 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | ExcelJS dynamic import | ~500KB bundle savings, maintained library | ✓ Good — CJS/ESM interop guard handles both formats |
 
 | GenericValidator replaces Validator<any,any,any> | SDK alias, zero behavior change, eliminates last <any> pattern | ✓ Good — 11 call sites updated |
+| Reuse extraction workflow+workpool pattern for screening | Proven pattern, minimal new infrastructure | ✓ Good — separate screeningPool for isolation |
+| Pure-function scoring engine | No external library, testable, composable | ✓ Good — 5 pure functions with full TDD |
+| First-match-wins for overlapping star thresholds | Array order determines priority, simple mental model | ✓ Good — documented behavior |
+| Default scoring yes=1/no=0/null=0 with auto star thresholds | Sensible defaults from question count | ✓ Good — zero-config path works |
+| Configure-vs-progress dialog modes via activeJobId state | Single dialog component, two modes | ✓ Good — clean state management |
 | JSON serialization for Clerk webhook data | Convex 1.32.0 lacks v.unknown(); JSON string workaround | ✓ Good — type-safe boundary |
 | DeepPartial<T> mock factories | Selective nested mock customization without as any | ✓ Good — 20+ test files migrated |
 | GenericActionCtx<GenericDataModel> for Stripe webhooks | Matches @convex-dev/stripe StripeEventHandler callback signature | ✓ Good — cross-library type boundary |
@@ -263,4 +265,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | Cascade deletes left unbounded | Bounding would orphan data | ✓ Good — annotated with comments |
 
 ---
-*Last updated: 2026-03-08 after v4.0 milestone start*
+*Last updated: 2026-03-09 after v4.0 milestone*

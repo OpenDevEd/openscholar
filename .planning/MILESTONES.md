@@ -1,5 +1,30 @@
 # Milestones
 
+## v4.0 Bulk Screening & Auto-Rating (Shipped: 2026-03-09)
+
+**Phases completed:** 4 phases, 9 plans
+**Git range:** `75d174b..c0e7235` (42 commits)
+**Files changed:** 56 files, +8,557/-90 lines
+**Timeline:** 1 day (2026-03-09)
+
+**Key accomplishments:**
+- Schema & job infrastructure with screeningJobs/screeningResults tables, dedicated screening workpool, and credit-gated createScreeningJob/cancelScreeningJob mutations with 9+ TDD tests (Phase 75)
+- Pure scoring engine with per-question point rules (yes/no/null → +/- points), score-to-star threshold mapping, minimum score filtering, and config validation (Phase 76)
+- Background workflow pipeline processing up to 200 papers with AI screening, scoring, auto-save qualifying papers to library with computed rating, and collection assignment (Phase 77)
+- Configuration dialog with scoring rules editor, star threshold editor, collection picker (with create-new), cost estimate, paper count, and dismiss guards (Phase 78)
+- Real-time progress tracking via reactive queries, status badge mapping, and paginated job history list with date/status display (Phase 78)
+
+**Audit:** 22/23 requirements satisfied, JOB-07 cancel UI gap (backend mutation exists, no UI button)
+
+**Known Gaps:**
+- JOB-07: cancelScreeningJob mutation implemented with 9 passing tests, but no cancel button in ScreeningProgress or ScreeningDialog UI
+
+**Tech debt carried forward:**
+- Cancel button UI for running screening jobs (JOB-07)
+- Counter contention risk when bulk-saving 200 papers (documented, not yet observed)
+
+---
+
 ## v3.2 Production Readiness (Shipped: 2026-03-06)
 
 **Phases completed:** 3 phases, 4 plans, 7 tasks
