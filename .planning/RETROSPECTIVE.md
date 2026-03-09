@@ -606,6 +606,51 @@
 
 ---
 
+## Milestone: v4.0 — Bulk Screening & Auto-Rating
+
+**Shipped:** 2026-03-09
+**Phases:** 4 | **Plans:** 9 | **Commits:** 42
+
+### What Was Built
+- Schema & job infrastructure with screeningJobs/screeningResults tables, dedicated screening workpool, and credit-gated mutations
+- Pure scoring engine with per-question point rules, score-to-star threshold mapping, and minimum score filtering
+- Background workflow pipeline processing up to 200 papers with AI screening, scoring, library save, and collection assignment
+- Configuration dialog with scoring rules editor, star threshold editor, collection picker, cost estimate, and dismiss guards
+- Real-time progress tracking via reactive queries and paginated job history list
+
+### What Worked
+- Reusing extraction workflow+workpool pattern eliminated design uncertainty — proven infrastructure adapted quickly
+- TDD throughout all 4 phases: failing tests first, then implementation, yielding reliable coverage
+- Pure-function scoring engine design made unit testing trivial — no Convex context needed
+- Phase dependency ordering (schema → scoring → workflow → UI) meant zero back-tracking
+- Budget model profile worked well for this feature-build milestone — clean execution without quality issues
+
+### What Was Inefficient
+- JOB-07 cancel UI was not implemented despite backend mutation being ready — audit caught the gap
+- SUMMARY.md one_liner fields still missing (recurring issue across milestones)
+- Roadmap analyze CLI returned 0 phases due to missing phase details format — required manual verification
+
+### Patterns Established
+- Separate workpool component for feature isolation (screeningPool independent of extractionPool)
+- Configure-vs-progress dialog mode pattern via activeJobId state
+- Default scoring config generation from question count (auto sensible defaults)
+- reconstructAbstract utility for abstract text recovery from highlight objects
+- Status badge variant mapping pattern for job status display
+
+### Key Lessons
+1. Reusing proven infrastructure patterns (workflow+workpool) dramatically reduces design time for new features
+2. Cancel UI must be planned explicitly as a phase deliverable — backend-only implementation leaves an E2E gap
+3. Pure-function scoring engines are highly testable and composable — no framework coupling needed
+4. Single-day milestones are achievable for well-scoped feature additions building on existing infrastructure
+5. Milestone audit pre-check catches integration gaps that phase-level verification misses
+
+### Cost Observations
+- Model mix: budget profile
+- Sessions: 1 session for full milestone
+- Notable: 9 plans completed in single session — fastest feature-build milestone by velocity
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -624,6 +669,7 @@
 | v3.0 | 57 | 6 | 11 | ~2min | Zero as-any, XSS-safe rendering, incremental aggregation, audit table |
 | v3.1 | 82 | 12 | 20 | ~5min | Complete type safety, mock factories, zero any in entire codebase |
 | v3.2 | 11 | 3 | 4 | ~4.5min | Internal debug endpoints, O(1) library count, query bounding |
+| v4.0 | 42 | 4 | 9 | ~3min | Bulk screening feature build, workflow+workpool reuse, TDD scoring engine |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -657,3 +703,5 @@
 28. Denormalized counters with lazy backfill avoid data migration while providing O(1) reads (v3.2)
 29. Shared constant modules (queryBounds.ts) prevent inconsistent bounds across files — centralize all MAX values (v3.2)
 30. Small, focused milestones (3 independent phases) execute cleanly in a single session with zero gap closures (v3.2)
+31. Proven infrastructure patterns (workflow+workpool) dramatically reduce new feature design time — reuse over reinvent (v4.0)
+32. Cancel/abort UI must be an explicit phase deliverable — backend-only implementation leaves E2E gaps that milestone audit catches (v4.0)
