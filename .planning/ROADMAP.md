@@ -206,7 +206,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 **Milestone Goal:** Enable users to download screening job results as CSV, JSON, or XLSX directly from job history.
 
 - [x] **Phase 79: Export Query** - Auth-gated backend query to fetch all screening results for a completed job (completed 2026-03-09)
-- [ ] **Phase 80: Export Functions** - Pure CSV, JSON, and XLSX export functions for screening results
+- [x] **Phase 80: Export Functions** - Pure CSV, JSON, and XLSX export functions for screening results (completed 2026-03-09)
 - [ ] **Phase 81: Export UI** - Export dropdown on job history cards with format selection, loading states, and i18n
 - [ ] **Phase 82: Simplify Star Thresholds** - Remove maxScore from star thresholds, keep minScore only with highest-match-wins logic
 
@@ -275,7 +275,7 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79. Export Query | 1/1 | Complete    | 2026-03-09 | - |
-| 80. Export Functions | v4.1 | 0/1 | Not started | - |
+| 80. Export Functions | 1/1 | Complete   | 2026-03-09 | - |
 | 81. Export UI | v4.1 | 0/1 | Not started | - |
 | 82. Simplify Star Thresholds | v4.1 | 0/1 | Not started | - |
 

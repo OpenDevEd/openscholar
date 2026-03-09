@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Screening Export
 status: completed
-stopped_at: Completed 79-01-PLAN.md
-last_updated: "2026-03-09T07:38:47.023Z"
+stopped_at: Completed 80-01-PLAN.md
+last_updated: "2026-03-09T07:53:13.467Z"
 last_activity: 2026-03-09 — Completed 79-01 Export Query
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 79 - Export Query
+**Current focus:** Phase 80 - Export Functions
 
 ## Current Position
 
-Phase: 79 of 81 (Export Query) -- 1 of 3 in v4.1
+Phase: 80 of 81 (Export Functions) -- 2 of 3 in v4.1
 Plan: 1 of 1 in current phase
-Status: Phase 79 complete
-Last activity: 2026-03-09 — Completed 79-01 Export Query
+Status: Phase 80 complete
+Last activity: 2026-03-09 — Completed 80-01 Export Functions
 
 Progress: [██████████] 100%
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 | v3.2 | 3 | 4 | 2026-03-06 |
 | v4.0 | 4 | 9 | 2026-03-09 |
 | Phase 79 P01 | 1min | 2 tasks | 2 files |
+| Phase 80 P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,7 @@ Progress: [██████████] 100%
 
 See PROJECT.md Key Decisions table for full log.
 - [Phase 79]: Return null on auth/ownership failure for export query (no throws)
+- [Phase 80]: Inline downloadFile helper to avoid cross-module coupling; separate generate* pure functions for testability
 
 ### Pending Todos
 
@@ -95,5 +97,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-09 -- Roadmap created for v4.1 Screening Export
-Stopped at: Completed 79-01-PLAN.md
+Stopped at: Completed 80-01-PLAN.md
 Resume file: None

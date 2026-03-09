@@ -10,10 +10,10 @@ Requirements for screening export milestone. Each maps to roadmap phases.
 ### Export Data
 
 - [x] **EXP-01**: User can fetch all screening results for a completed job via auth-gated query
-- [ ] **EXP-02**: User can export screening results as CSV with paper metadata, question answer columns, score, stars, and qualified status
-- [ ] **EXP-03**: User can export screening results as JSON with structured paper data, answers, and scoring
-- [ ] **EXP-04**: User can export screening results as XLSX with results sheet and summary sheet (job config, scoring rules, statistics)
-- [ ] **EXP-05**: Export handles failed/skipped papers gracefully with null fallbacks for missing answer columns
+- [x] **EXP-02**: User can export screening results as CSV with paper metadata, question answer columns, score, stars, and qualified status
+- [x] **EXP-03**: User can export screening results as JSON with structured paper data, answers, and scoring
+- [x] **EXP-04**: User can export screening results as XLSX with results sheet and summary sheet (job config, scoring rules, statistics)
+- [x] **EXP-05**: Export handles failed/skipped papers gracefully with null fallbacks for missing answer columns
 
 ### Scoring Simplification
 
@@ -51,10 +51,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EXP-01 | Phase 79 | Complete |
-| EXP-02 | Phase 80 | Pending |
-| EXP-03 | Phase 80 | Pending |
-| EXP-04 | Phase 80 | Pending |
-| EXP-05 | Phase 80 | Pending |
+| EXP-02 | Phase 80 | Complete |
+| EXP-03 | Phase 80 | Complete |
+| EXP-04 | Phase 80 | Complete |
+| EXP-05 | Phase 80 | Complete |
 | UI-01 | Phase 81 | Pending |
 | UI-02 | Phase 81 | Pending |
 | UI-03 | Phase 81 | Pending |
