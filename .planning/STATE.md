@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: Bulk Screening & Auto-Rating
-status: shipped
-stopped_at: Milestone complete
+milestone: v4.1
+milestone_name: Screening Export
+status: active
+stopped_at: null
 last_updated: "2026-03-09"
-last_activity: 2026-03-09 -- Shipped v4.0 Bulk Screening & Auto-Rating
+last_activity: 2026-03-09 -- Milestone v4.1 started
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** Screening Export
 
 ## Current Position
 
-Milestone v4.0 shipped. No active milestone.
-Last activity: 2026-03-09 -- Shipped v4.0 Bulk Screening & Auto-Rating
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-09 — Milestone v4.1 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 

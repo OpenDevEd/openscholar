@@ -128,7 +128,14 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start next)
+## Current Milestone: v4.1 Screening Export
+
+**Goal:** Enable users to download screening job results as CSV, JSON, or XLSX directly from job history.
+
+**Target features:**
+- Export screening results with paper metadata, question answers, scores, stars, and qualification status
+- Download from job history entry in CSV, JSON, and XLSX formats
+- Reuse existing export patterns (extraction/library export utilities)
 
 ### Out of Scope
 
