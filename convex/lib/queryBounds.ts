@@ -21,3 +21,11 @@ export const MAX_REVIEWS_PER_JOB = 10_000;
 /** Maximum credit transactions loaded per user.
  * Users accumulate transactions over time; 1,000 is generous. */
 export const MAX_CREDIT_TRANSACTIONS = 1_000;
+
+/** Maximum papers in a single screening job.
+ * Balances throughput with credit/cost predictability. */
+export const MAX_SCREENING_PAPERS_PER_JOB = 200;
+
+/** Maximum screening jobs listed per user.
+ * Matches extraction job limit for consistency. */
+export const MAX_SCREENING_JOBS_PER_USER = 500;
