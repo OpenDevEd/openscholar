@@ -51,6 +51,8 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { api } from "@/convex/_generated/api";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -271,6 +273,96 @@ function NavItem({
   );
 }
 
+function ScreeningFooterButton({
+  onClick,
+  isCollapsed,
+  progressPercent,
+  label,
+}: {
+  onClick: () => void;
+  isCollapsed: boolean;
+  progressPercent: number | null;
+  label: string;
+}) {
+  const circumference = 2 * Math.PI * 15; // ~94.25
+
+  const iconWithRing = (
+    <span className="relative inline-flex items-center justify-center w-9 h-9">
+      {progressPercent !== null && (
+        <svg
+          viewBox="0 0 36 36"
+          className="absolute inset-0 w-9 h-9"
+          fill="none"
+        >
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            opacity="0.1"
+          />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            stroke="oklch(0.70 0.17 54)"
+            strokeWidth="2.5"
+            strokeDasharray={circumference}
+            strokeDashoffset={
+              circumference - (circumference * progressPercent) / 100
+            }
+            strokeLinecap="round"
+            transform="rotate(-90 18 18)"
+            className="transition-[stroke-dashoffset] duration-500 ease-out"
+          />
+        </svg>
+      )}
+      <ListChecks className="h-5 w-5 text-muted-foreground" />
+    </span>
+  );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onClick}
+            className="flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-all duration-200"
+          >
+            {iconWithRing}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="flex items-center gap-2">
+          {label}
+          {progressPercent !== null && (
+            <span className="text-xs text-muted-foreground">
+              {Math.round(progressPercent)}%
+            </span>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-all duration-200"
+    >
+      {iconWithRing}
+      <span className="flex-1 text-sm truncate text-left">{label}</span>
+      {progressPercent !== null && (
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {Math.round(progressPercent)}%
+        </span>
+      )}
+    </button>
+  );
+}
+
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const tc = useTranslations("common");
   const ts = useTranslations("sidebar");
@@ -285,6 +377,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
   const effectiveSearchId = useEffectiveSearchId();
+
+  // Screening job progress for footer button
+  const { data: screeningJobs } = useProtectedQuery(
+    api.screening.queries.listUserScreeningJobs,
+    { limit: 1 },
+  );
+  const activeJob = screeningJobs?.find(
+    (j) => j.status === "pending" || j.status === "processing",
+  );
+  const progressPercent =
+    activeJob
+      ? activeJob.totalPapers > 0
+        ? (activeJob.processedPapers / activeJob.totalPapers) * 100
+        : 0
+      : null;
 
   // Determine active query - now uses store for real-time updates on all pages
   // Fallback to URL params if store is empty (shouldn't happen but safety first)
@@ -394,106 +501,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             onClick={handleNavClick}
             index={2}
           />
-
-          {/* Screening nav item — button-based since it opens a dialog, not a route */}
-          {isCollapsed && !isMobile ? (
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <motion.div
-                  whileHover={{ x: 2 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={hoverSpring}
-                >
-                  <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                      duration: 0.2,
-                      delay: 3 * staggerDelay,
-                      ease: [0.32, 0.72, 0, 1],
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setIsScreeningJobsOpen(true)}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto w-full",
-                        "group relative overflow-hidden",
-                        "hover:bg-sidebar-accent/60",
-                        "text-sidebar-foreground",
-                        "justify-center",
-                        "transition-all duration-200 ease-out",
-                      )}
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.15 }}
-                        whileTap={{ scale: 0.95 }}
-                        transition={hoverSpring}
-                        className="relative z-10"
-                      >
-                        <ListChecks className="h-5 w-5 flex-shrink-0 transition-colors duration-200 text-muted-foreground group-hover:text-sidebar-foreground" />
-                      </motion.div>
-                    </button>
-                  </motion.div>
-                </motion.div>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="flex items-center gap-2">
-                {tc("screening")}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ x: 2, scale: 0.98 }}
-              transition={hoverSpring}
-            >
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  duration: 0.2,
-                  delay: 3 * staggerDelay,
-                  ease: [0.32, 0.72, 0, 1],
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setIsScreeningJobsOpen(true)}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto w-full",
-                    "group relative overflow-hidden",
-                    "hover:bg-sidebar-accent/60",
-                    "text-sidebar-foreground",
-                    "transition-all duration-200 ease-out",
-                  )}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={hoverSpring}
-                    className="relative z-10"
-                  >
-                    <ListChecks className="h-5 w-5 flex-shrink-0 transition-colors duration-200 text-muted-foreground group-hover:text-sidebar-foreground" />
-                  </motion.div>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      transition={{
-                        duration: 0.2,
-                        delay: 3 * staggerDelay,
-                        ease: [0.32, 0.72, 0, 1],
-                      }}
-                      className="flex-1 flex items-center gap-2 relative z-10"
-                    >
-                      <span className="flex-1 truncate">{tc("screening")}</span>
-                    </motion.div>
-                  </AnimatePresence>
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
 
           <NavItem
             href="/history"
@@ -735,6 +742,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
+            <ScreeningFooterButton
+              onClick={() => setIsScreeningJobsOpen(true)}
+              isCollapsed={false}
+              progressPercent={progressPercent}
+              label={tc("screening")}
+            />
             <div className="flex items-center gap-1">
               <ThemeToggle />
               <LanguageSwitcher isCollapsed={false} />
@@ -743,6 +756,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </motion.div>
         ) : (
           <>
+            <ScreeningFooterButton
+              onClick={() => setIsScreeningJobsOpen(true)}
+              isCollapsed={true}
+              progressPercent={progressPercent}
+              label={tc("screening")}
+            />
             <ThemeToggle />
             <LanguageSwitcher isCollapsed={true} />
             <AuthButton isCollapsed={true} />
