@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import type { ScoringRule } from "@/convex/screening/scoring";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 interface ScoringRulesEditorProps {
   questions: { key: string; question: string }[];
@@ -44,15 +45,24 @@ export function ScoringRulesEditor({
         return (
           <div
             key={q.key}
-            className="rounded-lg border p-3 space-y-2"
+            className="rounded-lg border border-border/50 bg-card p-3 space-y-2.5"
           >
-            <p className="text-sm font-medium text-foreground/90">
-              {i + 1}. {q.question}
-            </p>
-            <div className="grid grid-cols-3 gap-3">
+            {/* Question text with numbered badge */}
+            <div className="flex items-start gap-2">
+              <Badge
+                variant="outline"
+                className="mt-0.5 h-5 min-w-5 shrink-0 justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums"
+              >
+                {i + 1}
+              </Badge>
+              <span className="text-sm text-foreground/90">{q.question}</span>
+            </div>
+
+            {/* Point inputs - fixed-width labels for alignment */}
+            <div className="grid grid-cols-3 gap-3 pl-7">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  {t("yesLabel")} ({t("pointsLabel")})
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                  {t("yesLabel")}
                 </Label>
                 <Input
                   type="number"
@@ -69,8 +79,8 @@ export function ScoringRulesEditor({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  {t("noLabel")} ({t("pointsLabel")})
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                  {t("noLabel")}
                 </Label>
                 <Input
                   type="number"
@@ -87,8 +97,8 @@ export function ScoringRulesEditor({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">
-                  {t("uncertainLabel")} ({t("pointsLabel")})
+                <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                  {t("uncertainLabel")}
                 </Label>
                 <Input
                   type="number"
@@ -110,8 +120,8 @@ export function ScoringRulesEditor({
       })}
 
       {/* Minimum score to save */}
-      <div className="rounded-lg border p-3 space-y-1">
-        <Label className="text-xs text-muted-foreground">
+      <div className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1">
+        <Label className="text-xs font-medium text-muted-foreground">
           {t("minimumScoreLabel")}
         </Label>
         <Input

@@ -13,7 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, AlertCircle, ListChecks } from "lucide-react";
 import { useSearchOptional } from "@/lib/search";
@@ -280,7 +279,7 @@ export function ScreeningDialog({
           if (isSubmitting) e.preventDefault();
         }}
         showCloseButton={!isSubmitting}
-        className="sm:max-w-lg max-h-[85vh] flex flex-col"
+        className="sm:max-w-2xl max-h-[85vh] flex flex-col"
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -319,7 +318,7 @@ export function ScreeningDialog({
             <ScrollArea className="flex-1 overflow-y-auto pr-2">
               <div className="space-y-4 py-2">
                 {/* Paper count */}
-                <div className="rounded-lg border p-3">
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
                   <p className="text-sm font-medium">
                     {isCapped
                       ? t("paperCountCapped", {
@@ -333,10 +332,10 @@ export function ScreeningDialog({
                 {/* Credit cost */}
                 {balanceCheck && (
                   <div
-                    className={`rounded-lg border p-3 space-y-1 ${
+                    className={`rounded-lg border border-border/50 p-3 space-y-1 ${
                       !balanceCheck.hasEnough
                         ? "border-destructive/50 bg-destructive/5"
-                        : ""
+                        : "bg-muted/30"
                     }`}
                   >
                     <p className="text-sm font-medium">
@@ -356,42 +355,11 @@ export function ScreeningDialog({
                   </div>
                 )}
 
-                {/* Screening questions (read-only) */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">
-                    {t("questionsTitle")}
-                  </h4>
-                  {screeningQuestions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      {t("noQuestions")}
-                    </p>
-                  ) : (
-                    <ol className="space-y-1.5 pl-1">
-                      {screeningQuestions.map((q, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-2 text-sm"
-                        >
-                          <Badge
-                            variant="outline"
-                            className="mt-0.5 h-5 min-w-5 shrink-0 justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums"
-                          >
-                            {i + 1}
-                          </Badge>
-                          <span className="text-foreground/90">
-                            {q.question}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </div>
-
-                {/* Scoring rules editor */}
-                {keyedQuestions.length > 0 && (
+                {/* Questions & Scoring rules editor (merged) */}
+                {keyedQuestions.length > 0 ? (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium">
-                      {t("scoringTitle")}
+                    <h4 className="text-sm font-semibold">
+                      {t("questionsTitle")} & {t("scoringTitle")}
                     </h4>
                     <ScoringRulesEditor
                       questions={keyedQuestions}
@@ -402,12 +370,16 @@ export function ScreeningDialog({
                       disabled={isSubmitting}
                     />
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t("noQuestions")}
+                  </p>
                 )}
 
                 {/* Star threshold editor */}
                 {keyedQuestions.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium">
+                    <h4 className="text-sm font-semibold">
                       {t("thresholdsTitle")}
                     </h4>
                     <StarThresholdEditor
@@ -422,7 +394,7 @@ export function ScreeningDialog({
 
                 {/* Collection selector */}
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">
+                  <h4 className="text-sm font-semibold">
                     {t("collectionTitle")}
                   </h4>
                   <CollectionSelector
