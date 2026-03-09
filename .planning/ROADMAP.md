@@ -192,7 +192,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
 
 **Milestone Goal:** Add bulk screening that processes up to 200 search results in background, scores and rates papers based on user-defined criteria, and adds them to a library collection.
 
-- [ ] **Phase 75: Schema & Job Infrastructure** (3 plans) - Tables, job creation/cancellation mutations, credit verification, and reactive progress query
+- [x] **Phase 75: Schema & Job Infrastructure** (3 plans) - Tables, job creation/cancellation mutations, credit verification, and reactive progress query (completed 2026-03-09)
   Plans:
   - [ ] 75-01-PLAN.md -- Schema tables, validators, error codes, workpool, query bounds
   - [ ] 75-02-PLAN.md -- TDD: createScreeningJob mutation with credit/concurrency guards
@@ -219,7 +219,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 54-59 | v3.0 | 11/11 | Complete | 2026-03-04 |
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
-| 75. Schema & Job Infrastructure | 2/3 | In Progress|  | - |
+| 75. Schema & Job Infrastructure | 3/3 | Complete   | 2026-03-09 | - |
 | 76. Scoring Engine & Rating Logic | v4.0 | 0/TBD | Not started | - |
 | 77. Workflow Processing & Library Integration | v4.0 | 0/TBD | Not started | - |
 | 78. Configuration Dialog & Progress UI | v4.0 | 0/TBD | Not started | - |

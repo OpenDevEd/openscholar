@@ -15,7 +15,7 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 - [x] **JOB-04**: System verifies user has sufficient credits before starting the job
 - [ ] **JOB-05**: Bulk screening runs in background via Convex workflow (papers processed even if user closes browser)
 - [ ] **JOB-06**: User can view real-time progress of a running job (X/N papers screened)
-- [ ] **JOB-07**: User can cancel a running bulk screening job (stops processing, keeps partial results)
+- [x] **JOB-07**: User can cancel a running bulk screening job (stops processing, keeps partial results)
 - [ ] **JOB-08**: User can view a list of past bulk screening jobs with status, paper count, and date
 
 ### Scoring & Rating
@@ -74,7 +74,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JOB-04 | Phase 75 | Complete |
 | JOB-05 | Phase 77 | Pending |
 | JOB-06 | Phase 78 | Pending |
-| JOB-07 | Phase 75 | Pending |
+| JOB-07 | Phase 75 | Complete |
 | JOB-08 | Phase 78 | Pending |
 | SCORE-01 | Phase 76 | Pending |
 | SCORE-02 | Phase 76 | Pending |
