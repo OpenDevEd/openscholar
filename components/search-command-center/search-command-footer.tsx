@@ -6,7 +6,7 @@ import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Expand, Minimize2, Loader2, Eye, ChevronDown } from "lucide-react";
+import { Expand, Minimize2, Loader2, Eye, ChevronDown, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedCount } from "./components/animated-count";
@@ -18,6 +18,7 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
+import { ScreeningDialog } from "@/components/screening/screening-dialog";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -26,6 +27,7 @@ interface SearchCommandFooterProps {
   onScreeningToggle: () => void;
   screeningPanelId: string;
   screeningQuestionCount: number;
+  searchId: string;
   isLoading?: boolean;
 }
 
@@ -36,6 +38,7 @@ export function SearchCommandFooter({
   onScreeningToggle,
   screeningPanelId,
   screeningQuestionCount,
+  searchId,
   isLoading,
 }: SearchCommandFooterProps) {
   const toast = useAppToast();
@@ -51,6 +54,7 @@ export function SearchCommandFooter({
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
+  const [isScreeningDialogOpen, setIsScreeningDialogOpen] = useState(false);
 
   // Use the new router hook
   const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
@@ -278,6 +282,27 @@ Return a more targeted version of this query.`;
             triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
           />
 
+          {screeningQuestionCount > 0 && (
+            <>
+              <div className="mx-1 h-6 w-px bg-border/70" />
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={() => setIsScreeningDialogOpen(true)}
+                disabled={Boolean(isLoading)}
+                title={tsc("screenAll")}
+                aria-label={tsc("screenAll")}
+                className="h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+              >
+                <ListChecks className="h-3.5 w-3.5" />
+                <span className="hidden text-sm font-medium sm:inline">
+                  {tsc("screenAll")}
+                </span>
+              </Button>
+            </>
+          )}
+
           <div className="mx-1 h-6 w-px bg-border/70" />
 
           {/* Right: Screen toggle */}
@@ -321,6 +346,12 @@ Return a more targeted version of this query.`;
           </Button>
         </motion.div>
       </div>
+
+      <ScreeningDialog
+        open={isScreeningDialogOpen}
+        onOpenChange={setIsScreeningDialogOpen}
+        searchId={searchId}
+      />
     </div>
   );
 }

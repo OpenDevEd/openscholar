@@ -95,6 +95,7 @@ export function SearchCommandCenter({
         onScreeningToggle={() => toggleScreeningPanel(screenStateKey)}
         screeningPanelId={screeningPanelId}
         screeningQuestionCount={screeningQuestionCount}
+        searchId={searchId}
         isLoading={isLoading || isValidating}
       />
 
