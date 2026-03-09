@@ -218,3 +218,42 @@ export const getPendingResults = internalQuery({
     }));
   },
 });
+
+/**
+ * Load a single screening result by ID from background context (no auth).
+ *
+ * Used by the workpool action to get paper details for AI screening.
+ */
+export const getResultInternal = internalQuery({
+  args: { resultId: v.id("screeningResults") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("screeningResults"),
+      jobId: v.id("screeningJobs"),
+      openalexId: v.string(),
+      title: v.string(),
+      abstract: v.optional(v.string()),
+      authors: v.optional(v.array(v.string())),
+      publicationYear: v.optional(v.number()),
+      doi: v.optional(v.string()),
+      status: screeningResultStatusValidator,
+    })
+  ),
+  handler: async (ctx, args) => {
+    const result = await ctx.db.get(args.resultId);
+    if (!result) return null;
+
+    return {
+      _id: result._id,
+      jobId: result.jobId,
+      openalexId: result.openalexId,
+      title: result.title,
+      abstract: result.abstract,
+      authors: result.authors,
+      publicationYear: result.publicationYear,
+      doi: result.doi,
+      status: result.status,
+    };
+  },
+});
