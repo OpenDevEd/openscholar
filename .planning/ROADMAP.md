@@ -197,7 +197,10 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
   - [ ] 75-01-PLAN.md -- Schema tables, validators, error codes, workpool, query bounds
   - [ ] 75-02-PLAN.md -- TDD: createScreeningJob mutation with credit/concurrency guards
   - [ ] 75-03-PLAN.md -- TDD: cancelScreeningJob mutation and progress queries
-- [ ] **Phase 76: Scoring Engine & Rating Logic** - Pure scoring functions, per-question point rules, score-to-star threshold mapping, and minimum score filtering
+- [ ] **Phase 76: Scoring Engine & Rating Logic** (1 plan) - Pure scoring functions, per-question point rules, score-to-star threshold mapping, and minimum score filtering
+  **Plans:** 1 plan
+  Plans:
+  - [ ] 76-01-PLAN.md -- TDD: Pure scoring engine (computeScore, computeStarRating, isQualified, scorePaper, validateScoringConfig)
 - [ ] **Phase 77: Workflow Processing & Library Integration** - Background workflow+workpool pipeline, auto-save qualifying papers to library with computed rating, auto-assign to collection
 - [ ] **Phase 78: Configuration Dialog & Progress UI** - Screen All button, configuration dialog with scoring/threshold/collection editors, cost estimate, progress tracking, and job history
 
@@ -220,6 +223,6 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75. Schema & Job Infrastructure | 3/3 | Complete    | 2026-03-09 | - |
-| 76. Scoring Engine & Rating Logic | v4.0 | 0/TBD | Not started | - |
+| 76. Scoring Engine & Rating Logic | v4.0 | 0/1 | Not started | - |
 | 77. Workflow Processing & Library Integration | v4.0 | 0/TBD | Not started | - |
 | 78. Configuration Dialog & Progress UI | v4.0 | 0/TBD | Not started | - |
