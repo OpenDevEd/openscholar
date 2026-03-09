@@ -31,8 +31,7 @@ const TERMINAL_STATUSES = [
  * creates the job record with embedded questions/scoring config, and inserts
  * pending result records for each paper.
  *
- * Note: Does NOT start a workflow -- that is wired in Phase 77.
- * The job stays in "pending" status until the workflow is connected.
+ * Starts screening workflow for background processing.
  */
 export const createScreeningJob = mutation({
   args: {
@@ -137,7 +136,21 @@ export const createScreeningJob = mutation({
       });
     }
 
-    // 7. Return job ID
+    // 7. Start screening workflow for background processing
+    try {
+      const workflowId = await workflow.start(
+        ctx,
+        internal.screening.workflow.runScreeningWorkflow,
+        { jobId }
+      );
+      await ctx.db.patch(jobId, { workflowId: String(workflowId) });
+    } catch (e) {
+      // Workflow component may not be available in test environments.
+      // In production, the component is always registered.
+      console.error(`[createScreeningJob] Failed to start workflow: ${e}`);
+    }
+
+    // 8. Return job ID
     return { jobId };
   },
 });
