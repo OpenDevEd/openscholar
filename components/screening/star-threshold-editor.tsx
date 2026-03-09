@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Star } from "lucide-react";
 import type {
   ScoringRule,
   StarThreshold,
@@ -72,7 +72,7 @@ export function StarThresholdEditor({
       {thresholds.map((th, i) => (
         <div
           key={i}
-          className="flex items-end gap-2"
+          className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 p-3"
         >
           <div className="space-y-1 flex-1">
             <Label className="text-xs text-muted-foreground">
@@ -117,7 +117,14 @@ export function StarThresholdEditor({
               <SelectContent>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <SelectItem key={s} value={String(s)}>
-                    {s} {"*".repeat(s)}
+                    <span className="flex items-center gap-1.5">
+                      <span>{s}</span>
+                      <span className="flex">
+                        {Array.from({ length: s }, (_, i) => (
+                          <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        ))}
+                      </span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
