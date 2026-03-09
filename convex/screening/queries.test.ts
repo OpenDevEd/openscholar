@@ -71,11 +71,16 @@ describe("getScreeningProgress", () => {
 
   it("returns null for non-existent jobId", async () => {
     const t = convexTest(schema);
-    await seedUser(t, "clerk_prog2", "prog2@test.com");
+    const user = await seedUser(t, "clerk_prog2", "prog2@test.com");
     const asUser = t.withIdentity({ subject: "clerk_prog2" });
 
-    const fakeJobId = "fake_job_id_12345" as Id<"screeningJobs">;
-    const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId: fakeJobId });
+    // Create and delete a job to get a valid-shaped but non-existent ID
+    const jobId = await seedScreeningJob(t, user._id);
+    await t.run(async (ctx) => {
+      await ctx.db.delete(jobId);
+    });
+
+    const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId });
     expect(result).toBeNull();
   });
 

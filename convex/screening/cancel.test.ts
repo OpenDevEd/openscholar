@@ -107,11 +107,14 @@ describe("cancelScreeningJob", () => {
     const user = await seedUser(t, "clerk_cancel2", "cancel2@test.com");
     const asUser = t.withIdentity({ subject: "clerk_cancel2" });
 
-    // Use a valid-shaped but non-existent ID
-    const fakeJobId = "fake_job_id_12345" as Id<"screeningJobs">;
+    // Create and delete a job to get a valid-shaped but non-existent ID
+    const jobId = await seedScreeningJob(t, user._id);
+    await t.run(async (ctx) => {
+      await ctx.db.delete(jobId);
+    });
 
     await expect(
-      asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId: fakeJobId })
+      asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId })
     ).rejects.toThrow();
   });
 

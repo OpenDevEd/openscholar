@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import type { WorkflowId } from "@convex-dev/workflow";
 import {
   screeningPaperInputValidator,
   screeningQuestionValidator,
@@ -8,6 +9,15 @@ import {
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { workflow } from "../workflow";
+import { screeningPool } from "../workpool";
+
+const TERMINAL_STATUSES = [
+  "completed",
+  "cancelled",
+  "failed",
+  "creditsExhausted",
+] as const;
 
 /**
  * Create a bulk screening job.
@@ -124,5 +134,61 @@ export const createScreeningJob = mutation({
 
     // 7. Return job ID
     return { jobId };
+  },
+});
+
+/**
+ * Cancel a running screening job.
+ *
+ * - Sets status to "cancelled" for non-terminal jobs
+ * - Idempotent: terminal statuses (completed, cancelled, failed, creditsExhausted)
+ *   are no-ops (no error, no state change)
+ * - Preserves existing screening results
+ * - Cancels workflow and workpool items if present (forward-compatible with Phase 77)
+ */
+export const cancelScreeningJob = mutation({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+
+    const job = await ctx.db.get(args.jobId);
+
+    if (!job || job.userId !== user._id) {
+      throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
+    }
+
+    // Terminal states are idempotent no-ops
+    if (
+      TERMINAL_STATUSES.includes(
+        job.status as (typeof TERMINAL_STATUSES)[number]
+      )
+    ) {
+      return null;
+    }
+
+    // Update job status to cancelled
+    await ctx.db.patch(args.jobId, {
+      status: "cancelled",
+      updatedAt: Date.now(),
+    });
+
+    // Cancel workflow if running (forward-compatible with Phase 77)
+    if (job.workflowId) {
+      try {
+        await workflow.cancel(ctx, job.workflowId as WorkflowId);
+      } catch (e) {
+        console.warn(`[cancelScreeningJob] Failed to cancel workflow: ${e}`);
+      }
+    }
+
+    // Cancel all pending workpool items for screening
+    try {
+      await screeningPool.cancelAll(ctx);
+    } catch (e) {
+      console.warn(`[cancelScreeningJob] Failed to cancel workpool items: ${e}`);
+    }
+
+    return null;
   },
 });
