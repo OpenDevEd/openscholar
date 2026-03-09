@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import posthog from "posthog-js";
@@ -13,8 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, AlertCircle, ListChecks } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, AlertCircle, Import } from "lucide-react";
 import { useSearchOptional } from "@/lib/search";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -70,21 +70,24 @@ export function ScreeningDialog({
 }: ScreeningDialogProps) {
   const t = useTranslations("screeningDialog");
 
-  // Screening questions from search history store
-  const screeningQuestions = useSearchHistoryStore(
+  // Footer screening questions (from store) — read-only, used for import
+  const footerQuestions = useSearchHistoryStore(
     (state) =>
       state.searchHistory.find((item) => item.id === searchId)
         ?.screeningQuestions || []
   );
 
+  // Local question state (independent from footer/store)
+  const [localQuestions, setLocalQuestions] = useState<string[]>([]);
+
   // Build keyed questions for scoring engine
   const keyedQuestions = useMemo(
     () =>
-      screeningQuestions.map((q, i) => ({
+      localQuestions.map((q, i) => ({
         key: `q${i}`,
-        question: q.question,
+        question: q,
       })),
-    [screeningQuestions]
+    [localQuestions]
   );
 
   // Default config derived from questions
@@ -108,11 +111,88 @@ export function ScreeningDialog({
     import("@/convex/_generated/dataModel").Id<"collections"> | undefined
   >(undefined);
 
-  // Reset form state when questions change
+  // Reset all form state when dialog opens
+  const prevOpenRef = useRef(false);
   useEffect(() => {
-    setScoringRules(defaults.rules);
-    setStarThresholds(defaults.starThresholds);
-  }, [defaults]);
+    if (open && !prevOpenRef.current) {
+      setLocalQuestions([]);
+      setScoringRules([]);
+      setStarThresholds(getDefaultScoringConfig([]).starThresholds);
+      setMinimumScore(undefined);
+      setSelectedCollectionId(undefined);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
+
+  // -----------------------------------------------------------------------
+  // Question management handlers (local state only — no store mutations)
+  // -----------------------------------------------------------------------
+
+  const handleAddQuestion = useCallback(
+    (question: string) => {
+      const duplicate = localQuestions.some(
+        (q) => q.toLowerCase() === question.toLowerCase()
+      );
+      if (duplicate) return;
+      setLocalQuestions((prev) => [...prev, question]);
+      // Append a default rule for the new question
+      const newKey = `q${localQuestions.length}`;
+      setScoringRules((prev) => [
+        ...prev,
+        { questionKey: newKey, yesPoints: 1, noPoints: 0, nullPoints: 0 },
+      ]);
+    },
+    [localQuestions]
+  );
+
+  const handleRemoveQuestion = useCallback(
+    (index: number) => {
+      setLocalQuestions((prev) => prev.filter((_, i) => i !== index));
+      // Remove the rule and re-key remaining rules
+      setScoringRules((prev) => {
+        const filtered = prev.filter((_, i) => i !== index);
+        return filtered.map((r, i) => ({ ...r, questionKey: `q${i}` }));
+      });
+    },
+    []
+  );
+
+  const handleEditQuestion = useCallback(
+    (index: number, newQuestion: string) => {
+      setLocalQuestions((prev) =>
+        prev.map((q, i) => (i === index ? newQuestion : q))
+      );
+    },
+    []
+  );
+
+  // Import questions from screening footer
+  const handleImportQuestions = useCallback(() => {
+    if (footerQuestions.length === 0) return;
+
+    const existingLower = new Set(localQuestions.map((q) => q.toLowerCase()));
+    const newQuestions = footerQuestions
+      .map((q) => q.question)
+      .filter((q) => !existingLower.has(q.toLowerCase()));
+
+    if (newQuestions.length === 0) return;
+
+    const allQuestions = [...localQuestions, ...newQuestions];
+    setLocalQuestions(allQuestions);
+
+    // Rebuild scoring rules for all questions
+    const newRules: ScoringRule[] = allQuestions.map((_, i) => {
+      // Preserve existing rules, add defaults for new ones
+      const existing = scoringRules.find((r) => r.questionKey === `q${i}`);
+      return existing ?? {
+        questionKey: `q${i}`,
+        yesPoints: 1,
+        noPoints: 0,
+        nullPoints: 0,
+      };
+    });
+    setScoringRules(newRules);
+  }, [footerQuestions, localQuestions, scoringRules]);
 
   // Paper count from search context
   const search = useSearchOptional();
@@ -235,6 +315,15 @@ export function ScreeningDialog({
   // Render
   // -----------------------------------------------------------------------
 
+  const hasFooterQuestions = footerQuestions.length > 0;
+  const allFooterImported =
+    hasFooterQuestions &&
+    footerQuestions.every((fq) =>
+      localQuestions.some(
+        (lq) => lq.toLowerCase() === fq.question.toLowerCase()
+      )
+    );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -248,23 +337,21 @@ export function ScreeningDialog({
           if (isSubmitting) e.preventDefault();
         }}
         showCloseButton={!isSubmitting}
-        className="sm:max-w-2xl max-h-[85vh] flex flex-col"
+        className="sm:max-w-xl max-h-[85vh] flex flex-col"
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ListChecks className="h-5 w-5" />
-            {t("title")}
-          </DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
             {t("description", { max: MAX_SCREENING_PAPERS_PER_JOB })}
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-y-auto pr-2">
+        <div className="flex-1 overflow-y-auto -mx-6 px-6">
           <div className="space-y-4 py-2">
-            {/* Paper count */}
-            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-              <p className="text-sm font-medium">
+            {/* Credit usage card */}
+            <div className="rounded-lg border border-border/50 bg-card px-4 py-3 space-y-3">
+              {/* Paper count context */}
+              <p className="text-xs text-muted-foreground">
                 {isCapped
                   ? t("paperCountCapped", {
                       max: MAX_SCREENING_PAPERS_PER_JOB,
@@ -272,88 +359,116 @@ export function ScreeningDialog({
                     })
                   : t("paperCount", { count: paperCount })}
               </p>
+
+              {/* Usage gauge */}
+              {balanceCheck && (
+                <div className="space-y-1.5">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        balanceCheck.hasEnough
+                          ? "bg-primary"
+                          : "bg-destructive"
+                      }`}
+                      style={{
+                        width: `${Math.min((paperCount / balanceCheck.total) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs tabular-nums">
+                      <span className="font-semibold">~{paperCount.toLocaleString()}</span>
+                      <span className="text-muted-foreground"> {t("estCredits")}</span>
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {balanceCheck.total.toLocaleString()} {t("balanceLabel")}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Insufficient credits warning */}
+              {balanceCheck && !balanceCheck.hasEnough && (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {t("insufficientCredits", {
+                    deficit: balanceCheck.deficit,
+                  })}
+                </p>
+              )}
             </div>
 
-            {/* Credit cost */}
-            {balanceCheck && (
-              <div
-                className={`rounded-lg border border-border/50 p-3 space-y-1 ${
-                  !balanceCheck.hasEnough
-                    ? "border-destructive/50 bg-destructive/5"
-                    : "bg-muted/30"
-                }`}
-              >
-                <p className="text-sm font-medium">
-                  {t("creditCost", { count: paperCount })}
+            {/* Section 1: Questions & Scoring Rules */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {t("questionsTitle")} & {t("scoringTitle")}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("currentBalance", { balance: balanceCheck.total })}
-                </p>
-                {!balanceCheck.hasEnough && (
-                  <p className="flex items-center gap-1.5 text-xs text-destructive">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    {t("insufficientCredits", {
-                      deficit: balanceCheck.deficit,
-                    })}
-                  </p>
+                {hasFooterQuestions && !allFooterImported && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleImportQuestions}
+                    disabled={isSubmitting}
+                    className="h-6 gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <Import className="h-3 w-3" />
+                    {t("importQuestions", { count: footerQuestions.length })}
+                  </Button>
                 )}
               </div>
-            )}
-
-            {/* Questions & Scoring rules editor (merged) */}
-            {keyedQuestions.length > 0 ? (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">
-                  {t("questionsTitle")} & {t("scoringTitle")}
-                </h4>
-                <ScoringRulesEditor
-                  questions={keyedQuestions}
-                  rules={scoringRules}
-                  onChange={setScoringRules}
-                  minimumScore={minimumScore}
-                  onMinimumScoreChange={setMinimumScore}
-                  disabled={isSubmitting}
-                />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t("noQuestions")}
-              </p>
-            )}
-
-            {/* Star threshold editor */}
-            {keyedQuestions.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">
-                  {t("thresholdsTitle")}
-                </h4>
-                <StarThresholdEditor
-                  thresholds={starThresholds}
-                  onChange={setStarThresholds}
-                  rules={scoringRules}
-                  minimumScore={minimumScore}
-                  disabled={isSubmitting}
-                />
-              </div>
-            )}
-
-            {/* Collection selector */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold">
-                {t("collectionTitle")}
-              </h4>
-              <CollectionSelector
-                selectedId={selectedCollectionId}
-                onSelect={setSelectedCollectionId}
+              <ScoringRulesEditor
+                questions={keyedQuestions}
+                rules={scoringRules}
+                onChange={setScoringRules}
+                minimumScore={minimumScore}
+                onMinimumScoreChange={setMinimumScore}
+                onAddQuestion={handleAddQuestion}
+                onRemoveQuestion={handleRemoveQuestion}
+                onEditQuestion={handleEditQuestion}
                 disabled={isSubmitting}
               />
             </div>
+
+            {keyedQuestions.length > 0 && (
+              <>
+                <Separator />
+
+                {/* Section 2: Star Thresholds */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {t("thresholdsTitle")}
+                  </p>
+                  <StarThresholdEditor
+                    thresholds={starThresholds}
+                    onChange={setStarThresholds}
+                    rules={scoringRules}
+                    minimumScore={minimumScore}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Section 3: Target Collection */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {t("collectionTitle")}
+                  </p>
+                  <CollectionSelector
+                    selectedId={selectedCollectionId}
+                    onSelect={setSelectedCollectionId}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </>
+            )}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
@@ -363,7 +478,7 @@ export function ScreeningDialog({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
-              screeningQuestions.length === 0 ||
+              localQuestions.length === 0 ||
               !balanceCheck?.hasEnough
             }
           >

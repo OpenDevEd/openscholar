@@ -1,22 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Trash2, Plus, Star } from "lucide-react";
+import { ArrowRight, Plus, Star, X } from "lucide-react";
 import type {
   ScoringRule,
   StarThreshold,
 } from "@/convex/screening/scoring";
 import { validateScoringConfig } from "@/convex/screening/scoring";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface StarThresholdEditorProps {
   thresholds: StarThreshold[];
@@ -59,7 +52,7 @@ export function StarThresholdEditor({
         : -1;
     onChange([
       ...thresholds,
-      { minScore: lastMin + 1, stars: 1 },
+      { minScore: lastMin + 1, stars: Math.min(thresholds.length + 1, 5) },
     ]);
   }
 
@@ -68,73 +61,85 @@ export function StarThresholdEditor({
   }
 
   return (
-    <div className="space-y-3">
-      {thresholds.map((th, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 p-3"
-        >
-          <div className="space-y-1 flex-1">
-            <Label className="text-xs text-muted-foreground">
-              {t("minScoreLabel")}
-            </Label>
-            <Input
-              type="number"
-              value={th.minScore}
-              onChange={(e) =>
-                handleChange(i, "minScore", Number(e.target.value))
-              }
-              disabled={disabled}
-              className="h-8"
-            />
+    <div className="space-y-2">
+      <div className="rounded-lg border border-border/50 bg-card">
+        {thresholds.length === 0 ? (
+          <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+            {t("addThreshold")}
           </div>
-          <div className="space-y-1 w-24">
-            <Label className="text-xs text-muted-foreground">
-              {t("starsLabel")}
-            </Label>
-            <Select
-              value={String(th.stars)}
-              onValueChange={(v) => handleChange(i, "stars", Number(v))}
-              disabled={disabled}
+        ) : (
+          thresholds.map((th, i) => (
+            <div
+              key={i}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5",
+                i < thresholds.length - 1 && "border-b border-border/30"
+              )}
             >
-              <SelectTrigger className="h-8 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
+              {/* Score condition: ≥ [number] */}
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-xs font-medium text-muted-foreground">
+                  ≥
+                </span>
+                <Input
+                  type="number"
+                  value={th.minScore}
+                  onChange={(e) =>
+                    handleChange(i, "minScore", Number(e.target.value))
+                  }
+                  disabled={disabled}
+                  className="h-7 w-14 text-center tabular-nums"
+                  aria-label={t("minScoreLabel")}
+                />
+              </div>
+
+              {/* Arrow */}
+              <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+
+              {/* Inline clickable stars */}
+              <div className="flex items-center gap-0.5 flex-1">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <SelectItem key={s} value={String(s)}>
-                    <span className="flex items-center gap-1.5">
-                      <span>{s}</span>
-                      <span className="flex">
-                        {Array.from({ length: s }, (_, i) => (
-                          <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        ))}
-                      </span>
-                    </span>
-                  </SelectItem>
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => handleChange(i, "stars", s)}
+                    className="rounded p-0.5 transition-transform hover:scale-110 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <Star
+                      className={cn(
+                        "h-4 w-4 transition-colors",
+                        s <= th.stars
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-muted-foreground/25 hover:text-yellow-400/50"
+                      )}
+                    />
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleRemove(i)}
-            disabled={disabled}
-            className="h-8 w-8 shrink-0"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span className="sr-only">{t("removeThreshold")}</span>
-          </Button>
-        </div>
-      ))}
+              </div>
+
+              {/* Remove */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleRemove(i)}
+                disabled={disabled}
+                className="h-6 w-6 shrink-0 text-muted-foreground/50 hover:text-destructive"
+              >
+                <X className="h-3 w-3" />
+                <span className="sr-only">{t("removeThreshold")}</span>
+              </Button>
+            </div>
+          ))
+        )}
+      </div>
 
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
         onClick={handleAdd}
         disabled={disabled}
-        className="gap-1.5"
+        className="gap-1.5 text-muted-foreground"
       >
         <Plus className="h-3.5 w-3.5" />
         {t("addThreshold")}
@@ -143,7 +148,10 @@ export function StarThresholdEditor({
       {warnings.length > 0 && (
         <div className="space-y-1">
           {warnings.map((w, i) => (
-            <p key={i} className="text-xs text-amber-600 dark:text-amber-400">
+            <p
+              key={i}
+              className="text-xs text-amber-600 dark:text-amber-400"
+            >
               {w.message}
             </p>
           ))}

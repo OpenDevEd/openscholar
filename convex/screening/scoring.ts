@@ -19,7 +19,6 @@ export interface ScoringRule {
 
 export interface StarThreshold {
   minScore: number;
-  maxScore?: number; // Deprecated: kept optional for backward-compat reads
   stars: number;
 }
 

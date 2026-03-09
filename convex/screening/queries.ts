@@ -86,7 +86,6 @@ export const getScreeningJob = query({
         starThresholds: v.array(
           v.object({
             minScore: v.number(),
-            maxScore: v.optional(v.number()),
             stars: v.number(),
           })
         ),

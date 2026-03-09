@@ -76,16 +76,6 @@ describe("computeStarRating", () => {
     expect(computeStarRating(2, thresholds)).toBe(1);
   });
 
-  it("handles backward-compat thresholds with maxScore present (ignored)", () => {
-    const thresholds = [
-      { minScore: 0, maxScore: 2, stars: 1 },
-      { minScore: 3, maxScore: 5, stars: 2 },
-    ] as Array<{ minScore: number; maxScore?: number; stars: number }>;
-    expect(computeStarRating(5, thresholds)).toBe(2);
-    expect(computeStarRating(0, thresholds)).toBe(1);
-    expect(computeStarRating(4, thresholds)).toBe(2);
-  });
-
   it("returns 0 for score below all minScores", () => {
     const thresholds = [{ minScore: 5, stars: 1 }];
     expect(computeStarRating(3, thresholds)).toBe(0);

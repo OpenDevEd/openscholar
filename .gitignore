@@ -45,3 +45,5 @@ logs/
 .pm2/
 
 .cursor
+
+.gsd-auto-logs

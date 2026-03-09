@@ -21,7 +21,6 @@ export interface ScreeningExportData {
       }>;
       starThresholds: Array<{
         minScore: number;
-        maxScore?: number;
         stars: number;
       }>;
       minimumScore?: number;

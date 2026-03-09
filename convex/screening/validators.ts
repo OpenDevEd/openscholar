@@ -28,7 +28,6 @@ export const screeningScoringConfigValidator = v.object({
   starThresholds: v.array(
     v.object({
       minScore: v.number(),
-      maxScore: v.optional(v.number()),
       stars: v.number(),
     })
   ),

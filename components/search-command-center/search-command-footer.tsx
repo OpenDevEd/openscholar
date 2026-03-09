@@ -282,26 +282,22 @@ Return a more targeted version of this query.`;
             triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
           />
 
-          {screeningQuestionCount > 0 && (
-            <>
-              <div className="mx-1 h-6 w-px bg-border/70" />
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                onClick={() => setIsScreeningDialogOpen(true)}
-                disabled={Boolean(isLoading)}
-                title={tsc("screenAll")}
-                aria-label={tsc("screenAll")}
-                className="h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-              >
-                <ListChecks className="h-3.5 w-3.5" />
-                <span className="hidden text-sm font-medium sm:inline">
-                  {tsc("screenAll")}
-                </span>
-              </Button>
-            </>
-          )}
+          <div className="mx-1 h-6 w-px bg-border/70" />
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={() => setIsScreeningDialogOpen(true)}
+            disabled={Boolean(isLoading)}
+            title={tsc("screenAll")}
+            aria-label={tsc("screenAll")}
+            className="h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+          >
+            <ListChecks className="h-3.5 w-3.5" />
+            <span className="hidden text-sm font-medium sm:inline">
+              {tsc("screenAll")}
+            </span>
+          </Button>
 
           <div className="mx-1 h-6 w-px bg-border/70" />
 
