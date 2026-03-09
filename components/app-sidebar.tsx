@@ -284,41 +284,41 @@ function ScreeningFooterButton({
   progressPercent: number | null;
   label: string;
 }) {
-  const circumference = 2 * Math.PI * 15; // ~94.25
+  const circumference = 2 * Math.PI * 8; // ~50.27 for r=8 (fits inside h-[1.2rem] icon area)
 
-  const iconWithRing = (
-    <span className="relative inline-flex items-center justify-center w-9 h-9">
+  const icon = (
+    <span className="relative inline-flex items-center justify-center h-[1.2rem] w-[1.2rem]">
       {progressPercent !== null && (
         <svg
-          viewBox="0 0 36 36"
-          className="absolute inset-0 w-9 h-9"
+          viewBox="0 0 24 24"
+          className="absolute -inset-0.5 h-5 w-5"
           fill="none"
         >
           <circle
-            cx="18"
-            cy="18"
-            r="15"
+            cx="12"
+            cy="12"
+            r="8"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="2"
             opacity="0.1"
           />
           <circle
-            cx="18"
-            cy="18"
-            r="15"
+            cx="12"
+            cy="12"
+            r="8"
             stroke="oklch(0.70 0.17 54)"
-            strokeWidth="2.5"
+            strokeWidth="2"
             strokeDasharray={circumference}
             strokeDashoffset={
               circumference - (circumference * progressPercent) / 100
             }
             strokeLinecap="round"
-            transform="rotate(-90 18 18)"
+            transform="rotate(-90 12 12)"
             className="transition-[stroke-dashoffset] duration-500 ease-out"
           />
         </svg>
       )}
-      <ListChecks className="h-5 w-5 text-muted-foreground" />
+      <ListChecks className="h-[1.2rem] w-[1.2rem]" />
     </span>
   );
 
@@ -326,13 +326,14 @@ function ScreeningFooterButton({
     return (
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClick}
-            className="flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-all duration-200"
+            className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent/80"
           >
-            {iconWithRing}
-          </button>
+            {icon}
+          </Button>
         </TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2">
           {label}
@@ -347,19 +348,19 @@ function ScreeningFooterButton({
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={onClick}
-      className="flex items-center gap-2 w-full rounded-lg px-2 py-1.5 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60 transition-all duration-200"
+      className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent/80"
     >
-      {iconWithRing}
-      <span className="flex-1 text-sm truncate text-left">{label}</span>
+      {icon}
       {progressPercent !== null && (
-        <span className="text-xs tabular-nums text-muted-foreground">
+        <span className="ml-1 text-xs tabular-nums text-muted-foreground">
           {Math.round(progressPercent)}%
         </span>
       )}
-    </button>
+    </Button>
   );
 }
 
@@ -742,13 +743,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
           >
-            <ScreeningFooterButton
-              onClick={() => setIsScreeningJobsOpen(true)}
-              isCollapsed={false}
-              progressPercent={progressPercent}
-              label={tc("screening")}
-            />
             <div className="flex items-center gap-1">
+              <ScreeningFooterButton
+                onClick={() => setIsScreeningJobsOpen(true)}
+                isCollapsed={false}
+                progressPercent={progressPercent}
+                label={tc("screening")}
+              />
               <ThemeToggle />
               <LanguageSwitcher isCollapsed={false} />
             </div>
