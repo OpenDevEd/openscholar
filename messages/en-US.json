@@ -1562,7 +1562,6 @@
     "noLabel": "No",
     "uncertainLabel": "Uncertain/Missing",
     "minScoreLabel": "Min Score",
-    "maxScoreLabel": "Max Score",
     "starsLabel": "Stars",
     "addThreshold": "Add threshold",
     "removeThreshold": "Remove",

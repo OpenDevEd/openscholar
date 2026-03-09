@@ -43,23 +43,11 @@ function getDefaultScoringConfig(questions: { key: string; question: string }[])
 
   const n = questions.length;
   const starThresholds: StarThreshold[] = [
-    { minScore: 0, maxScore: 0, stars: 1 },
-    { minScore: 1, maxScore: Math.floor(n * 0.25), stars: 2 },
-    {
-      minScore: Math.floor(n * 0.25) + 1,
-      maxScore: Math.floor(n * 0.5),
-      stars: 3,
-    },
-    {
-      minScore: Math.floor(n * 0.5) + 1,
-      maxScore: Math.floor(n * 0.75),
-      stars: 4,
-    },
-    {
-      minScore: Math.floor(n * 0.75) + 1,
-      maxScore: n,
-      stars: 5,
-    },
+    { minScore: 0, stars: 1 },
+    { minScore: 1, stars: 2 },
+    { minScore: Math.floor(n * 0.25) + 1, stars: 3 },
+    { minScore: Math.floor(n * 0.5) + 1, stars: 4 },
+    { minScore: Math.floor(n * 0.75) + 1, stars: 5 },
   ];
 
   return { rules, starThresholds };

@@ -53,13 +53,13 @@ export function StarThresholdEditor({
   }
 
   function handleAdd() {
-    const lastMax =
+    const lastMin =
       thresholds.length > 0
-        ? thresholds[thresholds.length - 1].maxScore
+        ? thresholds[thresholds.length - 1].minScore
         : -1;
     onChange([
       ...thresholds,
-      { minScore: lastMax + 1, maxScore: lastMax + 2, stars: 1 },
+      { minScore: lastMin + 1, stars: 1 },
     ]);
   }
 
@@ -83,20 +83,6 @@ export function StarThresholdEditor({
               value={th.minScore}
               onChange={(e) =>
                 handleChange(i, "minScore", Number(e.target.value))
-              }
-              disabled={disabled}
-              className="h-8"
-            />
-          </div>
-          <div className="space-y-1 flex-1">
-            <Label className="text-xs text-muted-foreground">
-              {t("maxScoreLabel")}
-            </Label>
-            <Input
-              type="number"
-              value={th.maxScore}
-              onChange={(e) =>
-                handleChange(i, "maxScore", Number(e.target.value))
               }
               disabled={disabled}
               className="h-8"
