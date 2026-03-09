@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
-import { Plus, Check } from "lucide-react";
+import { Plus, Check, FolderPlus, X } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -63,15 +63,20 @@ export function CollectionSelector({
 
   if (isCreating) {
     return (
-      <div className="rounded-md border border-border bg-muted/50 p-3 space-y-2">
-        <label className="text-xs font-medium text-muted-foreground">
-          {t("createCollectionLabel")}
-        </label>
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+            <FolderPlus className="h-4 w-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium">
+            {t("createNewCollection")}
+          </span>
+        </div>
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t("newCollectionName")}
-          className="h-8"
+          className="h-9"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -92,18 +97,19 @@ export function CollectionSelector({
               setIsCreating(false);
               setNewName("");
             }}
-            className="h-7 px-3 text-xs"
+            className="h-8 px-3 gap-1.5"
           >
+            <X className="h-3.5 w-3.5" />
             {t("cancel")}
           </Button>
           <Button
             size="sm"
             onClick={handleCreate}
             disabled={!newName.trim()}
-            className="h-7 px-3 text-xs"
+            className="h-8 px-4 gap-1.5"
           >
-            <Check className="h-3.5 w-3.5 mr-1.5" />
-            {t("createNewCollection")}
+            <Check className="h-3.5 w-3.5" />
+            {t("createCollectionConfirm")}
           </Button>
         </div>
       </div>

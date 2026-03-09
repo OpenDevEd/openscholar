@@ -1523,6 +1523,7 @@
     "activeFilters": "{count, plural, one {# filtre actif} other {# filtres actifs}}"
   },
   "screeningDialog": {
-    "createCollectionLabel": "Nom de la nouvelle collection"
+    "createCollectionLabel": "Nom de la nouvelle collection",
+    "createCollectionConfirm": "Créer"
   }
 }

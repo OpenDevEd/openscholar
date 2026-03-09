@@ -1523,6 +1523,7 @@
     "activeFilters": "{count, plural, other {#件のアクティブフィルター}}"
   },
   "screeningDialog": {
-    "createCollectionLabel": "新しいコレクション名"
+    "createCollectionLabel": "新しいコレクション名",
+    "createCollectionConfirm": "作成"
   }
 }

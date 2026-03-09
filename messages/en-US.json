@@ -1571,6 +1571,7 @@
     "qualifiedCount": "{count} qualified",
     "newCollectionName": "Collection name",
     "createCollectionLabel": "New collection name",
+    "createCollectionConfirm": "Create",
     "closeDialog": "Close",
     "newScreening": "New Screening"
   }

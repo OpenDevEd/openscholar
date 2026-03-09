@@ -1523,6 +1523,7 @@
     "activeFilters": "{count, plural, one {# सक्रिय फ़िल्टर} other {# सक्रिय फ़िल्टर}}"
   },
   "screeningDialog": {
-    "createCollectionLabel": "नए संग्रह का नाम"
+    "createCollectionLabel": "नए संग्रह का नाम",
+    "createCollectionConfirm": "बनाएं"
   }
 }

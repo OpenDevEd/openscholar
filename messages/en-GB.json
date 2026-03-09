@@ -1525,6 +1525,7 @@
     "activeFilters": "{count, plural, one {# active filter} other {# active filters}}"
   },
   "screeningDialog": {
-    "createCollectionLabel": "New collection name"
+    "createCollectionLabel": "New collection name",
+    "createCollectionConfirm": "Create"
   }
 }
