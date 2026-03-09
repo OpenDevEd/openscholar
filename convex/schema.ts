@@ -679,6 +679,97 @@ export default defineSchema({
     .index("by_job_generated", ["jobId", "generatedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // SCREENING JOBS - bulk screening job records
+  // ═══════════════════════════════════════════════════════════════
+  screeningJobs: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("failed"),
+      v.literal("creditsExhausted")
+    ),
+    totalPapers: v.number(),
+    processedPapers: v.number(),
+    failedPapers: v.number(),
+    qualifiedPapers: v.number(),
+    questions: v.array(
+      v.object({ key: v.string(), question: v.string() })
+    ),
+    scoringConfig: v.object({
+      rules: v.array(
+        v.object({
+          questionKey: v.string(),
+          yesPoints: v.number(),
+          noPoints: v.number(),
+          nullPoints: v.number(),
+        })
+      ),
+      starThresholds: v.array(
+        v.object({
+          minScore: v.number(),
+          maxScore: v.number(),
+          stars: v.number(),
+        })
+      ),
+      minimumScore: v.optional(v.number()),
+    }),
+    targetCollectionId: v.optional(v.id("collections")),
+    workflowId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_workflow", ["workflowId"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // SCREENING RESULTS - individual paper screening outcomes
+  // ═══════════════════════════════════════════════════════════════
+  screeningResults: defineTable({
+    jobId: v.id("screeningJobs"),
+    openalexId: v.string(),
+    title: v.string(),
+    abstract: v.optional(v.string()),
+    authors: v.optional(v.array(v.string())),
+    publicationYear: v.optional(v.number()),
+    doi: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("skipped")
+    ),
+    answers: v.optional(
+      v.record(v.string(), v.union(v.boolean(), v.null()))
+    ),
+    score: v.optional(v.number()),
+    stars: v.optional(v.number()),
+    qualified: v.optional(v.boolean()),
+    aiMetadata: v.optional(
+      v.object({
+        reasoning: v.optional(v.string()),
+        confidence: v.optional(v.number()),
+        model: v.optional(v.string()),
+        provider: v.optional(v.string()),
+      })
+    ),
+    creditsUsed: v.optional(v.number()),
+    savedToLibrary: v.optional(v.boolean()),
+    libraryItemId: v.optional(v.id("libraryItems")),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_status", ["jobId", "status"])
+    .index("by_job_openalexId", ["jobId", "openalexId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library (rated papers)
   // ═══════════════════════════════════════════════════════════════
   libraryItems: defineTable({
