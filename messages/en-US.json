@@ -6,6 +6,7 @@
     "history": "History",
     "extraction": "Extraction",
     "library": "Library",
+    "screening": "Screening",
     "settings": "Settings",
     "save": "Save",
     "cancel": "Cancel",
@@ -1524,6 +1525,7 @@
     "activeFilters": "{count, plural, one {# active filter} other {# active filters}}"
   },
   "screeningDialog": {
+    "jobsDialogTitle": "Screening Jobs",
     "title": "Screen All Papers",
     "description": "Configure scoring rules and screen up to {max} papers from your search results.",
     "paperCount": "{count} papers will be screened",

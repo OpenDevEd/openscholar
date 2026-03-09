@@ -6,6 +6,7 @@
     "history": "历史",
     "extraction": "提取",
     "library": "文献库",
+    "screening": "筛选",
     "settings": "设置",
     "save": "保存",
     "cancel": "取消",
@@ -1523,6 +1524,7 @@
     "activeFilters": "{count, plural, other {#个活跃筛选器}}"
   },
   "screeningDialog": {
+    "jobsDialogTitle": "筛选任务",
     "createCollectionLabel": "新集合名称",
     "createCollectionConfirm": "创建"
   }

@@ -6,6 +6,7 @@
     "history": "इतिहास",
     "extraction": "एक्सट्रैक्शन",
     "library": "लाइब्रेरी",
+    "screening": "स्क्रीनिंग",
     "settings": "सेटिंग्स",
     "save": "सहेजें",
     "cancel": "रद्द करें",
@@ -1523,6 +1524,7 @@
     "activeFilters": "{count, plural, one {# सक्रिय फ़िल्टर} other {# सक्रिय फ़िल्टर}}"
   },
   "screeningDialog": {
+    "jobsDialogTitle": "स्क्रीनिंग कार्य",
     "createCollectionLabel": "नए संग्रह का नाम",
     "createCollectionConfirm": "बनाएं"
   }

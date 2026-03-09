@@ -6,6 +6,7 @@
     "history": "History",
     "extraction": "Extraction",
     "library": "Library",
+    "screening": "Screening",
     "settings": "Settings",
     "save": "Save",
     "cancel": "Cancel",
@@ -1525,6 +1526,7 @@
     "activeFilters": "{count, plural, one {# active filter} other {# active filters}}"
   },
   "screeningDialog": {
+    "jobsDialogTitle": "Screening Jobs",
     "createCollectionLabel": "New collection name",
     "createCollectionConfirm": "Create"
   }

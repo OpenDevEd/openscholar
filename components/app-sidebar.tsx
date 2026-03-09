@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import React, { useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
@@ -40,6 +40,7 @@ import {
   Home,
   BookOpen,
   Library,
+  ListChecks,
   Clock,
   Database,
   PanelLeft,
@@ -49,6 +50,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
+import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -273,6 +275,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const tc = useTranslations("common");
   const ts = useTranslations("sidebar");
   const pathname = usePathname();
+  const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
@@ -391,6 +394,106 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             onClick={handleNavClick}
             index={2}
           />
+
+          {/* Screening nav item — button-based since it opens a dialog, not a route */}
+          {isCollapsed && !isMobile ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <motion.div
+                  whileHover={{ x: 2 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={hoverSpring}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{
+                      duration: 0.2,
+                      delay: 3 * staggerDelay,
+                      ease: [0.32, 0.72, 0, 1],
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setIsScreeningJobsOpen(true)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto w-full",
+                        "group relative overflow-hidden",
+                        "hover:bg-sidebar-accent/60",
+                        "text-sidebar-foreground",
+                        "justify-center",
+                        "transition-all duration-200 ease-out",
+                      )}
+                    >
+                      <motion.div
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.95 }}
+                        transition={hoverSpring}
+                        className="relative z-10"
+                      >
+                        <ListChecks className="h-5 w-5 flex-shrink-0 transition-colors duration-200 text-muted-foreground group-hover:text-sidebar-foreground" />
+                      </motion.div>
+                    </button>
+                  </motion.div>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="flex items-center gap-2">
+                {tc("screening")}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <motion.div
+              whileHover={{ x: 4 }}
+              whileTap={{ x: 2, scale: 0.98 }}
+              transition={hoverSpring}
+            >
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{
+                  duration: 0.2,
+                  delay: 3 * staggerDelay,
+                  ease: [0.32, 0.72, 0, 1],
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsScreeningJobsOpen(true)}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto w-full",
+                    "group relative overflow-hidden",
+                    "hover:bg-sidebar-accent/60",
+                    "text-sidebar-foreground",
+                    "transition-all duration-200 ease-out",
+                  )}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={hoverSpring}
+                    className="relative z-10"
+                  >
+                    <ListChecks className="h-5 w-5 flex-shrink-0 transition-colors duration-200 text-muted-foreground group-hover:text-sidebar-foreground" />
+                  </motion.div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{
+                        duration: 0.2,
+                        delay: 3 * staggerDelay,
+                        ease: [0.32, 0.72, 0, 1],
+                      }}
+                      className="flex-1 flex items-center gap-2 relative z-10"
+                    >
+                      <span className="flex-1 truncate">{tc("screening")}</span>
+                    </motion.div>
+                  </AnimatePresence>
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
 
           <NavItem
             href="/history"
@@ -646,6 +749,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           </>
         )}
       </motion.div>
+
+      <ScreeningJobsDialog
+        open={isScreeningJobsOpen}
+        onOpenChange={setIsScreeningJobsOpen}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@
     "history": "Historique",
     "extraction": "Extraction",
     "library": "Bibliothèque",
+    "screening": "Criblage",
     "settings": "Paramètres",
     "save": "Enregistrer",
     "cancel": "Annuler",
@@ -1523,6 +1524,7 @@
     "activeFilters": "{count, plural, one {# filtre actif} other {# filtres actifs}}"
   },
   "screeningDialog": {
+    "jobsDialogTitle": "Taches de criblage",
     "createCollectionLabel": "Nom de la nouvelle collection",
     "createCollectionConfirm": "Créer"
   }

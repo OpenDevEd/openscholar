@@ -6,6 +6,7 @@
     "history": "履歴",
     "extraction": "抽出",
     "library": "ライブラリ",
+    "screening": "スクリーニング",
     "settings": "設定",
     "save": "保存",
     "cancel": "キャンセル",
@@ -1523,6 +1524,7 @@
     "activeFilters": "{count, plural, other {#件のアクティブフィルター}}"
   },
   "screeningDialog": {
+    "jobsDialogTitle": "スクリーニングジョブ",
     "createCollectionLabel": "新しいコレクション名",
     "createCollectionConfirm": "作成"
   }
