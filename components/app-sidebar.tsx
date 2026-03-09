@@ -292,7 +292,7 @@ function ScreeningFooterButton({
       {progressPercent !== null && (
         <svg
           viewBox="0 0 24 24"
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-[2] origin-center"
           fill="none"
         >
           <circle
