@@ -1528,6 +1528,12 @@
   "screeningDialog": {
     "jobsDialogTitle": "Screening Jobs",
     "createCollectionLabel": "New collection name",
-    "createCollectionConfirm": "Create"
+    "createCollectionConfirm": "Create",
+    "jobsDialogDescription": "View your screening job history and progress",
+    "questionsUsed": "Questions",
+    "questionsMore": "+{count} more",
+    "targetCollection": "Collection",
+    "viewCollection": "View in library",
+    "collectionDeleted": "Collection deleted"
   }
 }

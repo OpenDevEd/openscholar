@@ -1575,6 +1575,12 @@
     "createCollectionLabel": "New collection name",
     "createCollectionConfirm": "Create",
     "closeDialog": "Close",
-    "newScreening": "New Screening"
+    "newScreening": "New Screening",
+    "jobsDialogDescription": "View your screening job history and progress",
+    "questionsUsed": "Questions",
+    "questionsMore": "+{count} more",
+    "targetCollection": "Collection",
+    "viewCollection": "View in library",
+    "collectionDeleted": "Collection deleted"
   }
 }

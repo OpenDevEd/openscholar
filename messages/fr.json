@@ -1526,6 +1526,12 @@
   "screeningDialog": {
     "jobsDialogTitle": "Taches de criblage",
     "createCollectionLabel": "Nom de la nouvelle collection",
-    "createCollectionConfirm": "Créer"
+    "createCollectionConfirm": "Créer",
+    "jobsDialogDescription": "Voir l'historique et la progression de vos taches de screening",
+    "questionsUsed": "Questions",
+    "questionsMore": "+{count} de plus",
+    "targetCollection": "Collection",
+    "viewCollection": "Voir dans la bibliothèque",
+    "collectionDeleted": "Collection supprimée"
   }
 }

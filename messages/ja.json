@@ -1526,6 +1526,12 @@
   "screeningDialog": {
     "jobsDialogTitle": "スクリーニングジョブ",
     "createCollectionLabel": "新しいコレクション名",
-    "createCollectionConfirm": "作成"
+    "createCollectionConfirm": "作成",
+    "jobsDialogDescription": "スクリーニングジョブの履歴と進捗を確認",
+    "questionsUsed": "質問",
+    "questionsMore": "+{count}件",
+    "targetCollection": "コレクション",
+    "viewCollection": "ライブラリで表示",
+    "collectionDeleted": "コレクションは削除されました"
   }
 }

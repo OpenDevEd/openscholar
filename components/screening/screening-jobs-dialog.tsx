@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -45,6 +46,9 @@ export function ScreeningJobsDialog({
             <ListChecks className="h-5 w-5" />
             {t("jobsDialogTitle")}
           </DialogTitle>
+          <DialogDescription>
+            {t("jobsDialogDescription")}
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="flex-1 overflow-y-auto pr-2">

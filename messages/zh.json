@@ -1526,6 +1526,12 @@
   "screeningDialog": {
     "jobsDialogTitle": "筛选任务",
     "createCollectionLabel": "新集合名称",
-    "createCollectionConfirm": "创建"
+    "createCollectionConfirm": "创建",
+    "jobsDialogDescription": "查看您的筛选任务历史和进度",
+    "questionsUsed": "问题",
+    "questionsMore": "+{count}个",
+    "targetCollection": "集合",
+    "viewCollection": "在库中查看",
+    "collectionDeleted": "集合已删除"
   }
 }

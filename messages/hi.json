@@ -1526,6 +1526,12 @@
   "screeningDialog": {
     "jobsDialogTitle": "स्क्रीनिंग कार्य",
     "createCollectionLabel": "नए संग्रह का नाम",
-    "createCollectionConfirm": "बनाएं"
+    "createCollectionConfirm": "बनाएं",
+    "jobsDialogDescription": "अपने स्क्रीनिंग कार्यों का इतिहास और प्रगति देखें",
+    "questionsUsed": "प्रश्न",
+    "questionsMore": "+{count} और",
+    "targetCollection": "संग्रह",
+    "viewCollection": "लाइब्रेरी में देखें",
+    "collectionDeleted": "संग्रह हटाया गया"
   }
 }
