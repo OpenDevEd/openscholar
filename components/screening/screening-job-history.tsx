@@ -90,10 +90,12 @@ function getStatusConfig(status: ScreeningStatus) {
 
 interface ScreeningJobHistoryProps {
   onSelectJob?: (jobId: Id<"screeningJobs">) => void;
+  onClose?: () => void;
 }
 
 export function ScreeningJobHistory({
   onSelectJob,
+  onClose,
 }: ScreeningJobHistoryProps) {
   const t = useTranslations("screeningDialog");
   const format = useFormatter();
@@ -264,6 +266,7 @@ export function ScreeningJobHistory({
                         <Link
                           href={`/library?col=${job.targetCollectionId}`}
                           title={t("viewCollection")}
+                          onClick={() => onClose?.()}
                         >
                           <ArrowUpRight className="h-3.5 w-3.5" />
                         </Link>

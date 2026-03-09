@@ -56,6 +56,7 @@ export function ScreeningJobsDialog({
             {selectedJobId && <ScreeningProgress jobId={selectedJobId} />}
             <ScreeningJobHistory
               onSelectJob={(jobId) => setSelectedJobId(jobId)}
+              onClose={() => handleOpenChange(false)}
             />
           </div>
         </ScrollArea>
