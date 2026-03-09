@@ -21,7 +21,7 @@ export interface ScreeningExportData {
       }>;
       starThresholds: Array<{
         minScore: number;
-        maxScore: number;
+        maxScore?: number;
         stars: number;
       }>;
       minimumScore?: number;
@@ -328,9 +328,9 @@ export async function generateScreeningXLSXWorkbook(
 
   // Section 4: Star Thresholds
   summarySheet.addRow(['Star Thresholds']);
-  summarySheet.addRow(['Min Score', 'Max Score', 'Stars']);
+  summarySheet.addRow(['Min Score', 'Stars']);
   job.scoringConfig.starThresholds.forEach((t) => {
-    summarySheet.addRow([t.minScore, t.maxScore, t.stars]);
+    summarySheet.addRow([t.minScore, t.stars]);
   });
   summarySheet.addRow([]); // spacer
 
