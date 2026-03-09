@@ -15,6 +15,7 @@
 - v3.1 Complete Type Safety -- Phases 60-71 (shipped 2026-03-05)
 - v3.2 Production Readiness -- Phases 72-74 (shipped 2026-03-06)
 - v4.0 Bulk Screening & Auto-Rating -- Phases 75-78 (shipped 2026-03-09)
+- v4.1 Screening Export -- Phases 79-81 (in progress)
 
 ## Phases
 
@@ -200,7 +201,62 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 
 </details>
 
+### v4.1 Screening Export (In Progress)
+
+**Milestone Goal:** Enable users to download screening job results as CSV, JSON, or XLSX directly from job history.
+
+- [ ] **Phase 79: Export Query** - Auth-gated backend query to fetch all screening results for a completed job
+- [ ] **Phase 80: Export Functions** - Pure CSV, JSON, and XLSX export functions for screening results
+- [ ] **Phase 81: Export UI** - Export dropdown on job history cards with format selection, loading states, and i18n
+
+## Phase Details
+
+### Phase 79: Export Query
+**Goal**: Users can retrieve all screening results for a completed job through a secure, bounded query
+**Depends on**: Nothing (first phase of v4.1; builds on v4.0 screening infrastructure)
+**Requirements**: EXP-01
+**Success Criteria** (what must be TRUE):
+  1. Authenticated user can fetch all results for a screening job they own, receiving paper metadata, per-question answers, score, stars, and qualified status
+  2. Unauthenticated users or non-owners cannot access any results (auth gate rejects)
+  3. Results are bounded by MAX_SCREENING_PAPERS_PER_JOB to prevent unbounded memory usage
+**Plans**: TBD
+
+Plans:
+- [ ] 79-01: TBD
+
+### Phase 80: Export Functions
+**Goal**: Users can generate screening export files in CSV, JSON, and XLSX formats with complete, correctly formatted result data
+**Depends on**: Phase 79
+**Requirements**: EXP-02, EXP-03, EXP-04, EXP-05
+**Success Criteria** (what must be TRUE):
+  1. CSV export contains paper metadata columns, one column per screening question with Yes/No/N/A answers, plus score, stars, and qualified columns
+  2. JSON export contains structured paper data with answers object, scoring fields, and job metadata envelope
+  3. XLSX export contains a Results sheet with all data and a Summary sheet with job config, scoring rules, and aggregate statistics
+  4. Failed or skipped papers appear in all export formats with null/N/A fallbacks for missing answer columns (no crashes, no missing rows)
+**Plans**: TBD
+
+Plans:
+- [ ] 80-01: TBD
+
+### Phase 81: Export UI
+**Goal**: Users can download screening results directly from job history with format selection and clear visual feedback
+**Depends on**: Phase 80
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06
+**Success Criteria** (what must be TRUE):
+  1. Completed screening job cards in job history display an export button
+  2. User can select CSV, JSON, or XLSX from a dropdown menu and the selected format downloads immediately
+  3. Exported files have descriptive filenames including the job date and completion status
+  4. A loading indicator appears while the export file is being generated, and a warning appears when exporting from cancelled or incomplete jobs
+  5. All export UI text (button labels, format names, warnings, loading messages) is translated across all 6 supported locales
+**Plans**: TBD
+
+Plans:
+- [ ] 81-01: TBD
+
 ## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 79 -> 80 -> 81
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -217,3 +273,6 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
+| 79. Export Query | v4.1 | 0/1 | Not started | - |
+| 80. Export Functions | v4.1 | 0/1 | Not started | - |
+| 81. Export UI | v4.1 | 0/1 | Not started | - |

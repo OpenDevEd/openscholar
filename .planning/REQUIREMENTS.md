@@ -44,23 +44,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXP-01 | — | Pending |
-| EXP-02 | — | Pending |
-| EXP-03 | — | Pending |
-| EXP-04 | — | Pending |
-| EXP-05 | — | Pending |
-| UI-01 | — | Pending |
-| UI-02 | — | Pending |
-| UI-03 | — | Pending |
-| UI-04 | — | Pending |
-| UI-05 | — | Pending |
-| UI-06 | — | Pending |
+| EXP-01 | Phase 79 | Pending |
+| EXP-02 | Phase 80 | Pending |
+| EXP-03 | Phase 80 | Pending |
+| EXP-04 | Phase 80 | Pending |
+| EXP-05 | Phase 80 | Pending |
+| UI-01 | Phase 81 | Pending |
+| UI-02 | Phase 81 | Pending |
+| UI-03 | Phase 81 | Pending |
+| UI-04 | Phase 81 | Pending |
+| UI-05 | Phase 81 | Pending |
+| UI-06 | Phase 81 | Pending |
 
 **Coverage:**
 - v4.1 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-09*
-*Last updated: 2026-03-09 after initial definition*
+*Last updated: 2026-03-09 after roadmap creation*
