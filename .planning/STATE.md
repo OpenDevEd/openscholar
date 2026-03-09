@@ -70,19 +70,19 @@ None.
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 2 | Add eKitabu to Built by footer | 2026-03-02 | abd98e1 | [2-add-ekitabu-to-built-by-footer](./quick/2-add-ekitabu-to-built-by-footer/) |
-| 3 | Remove GROBID implementation | 2026-03-04 | d20c59e | [3-get-rid-of-the-grobid-implementation-ent](./quick/3-get-rid-of-the-grobid-implementation-ent/) |
-| 4 | Fix billing e2e auth to use clerk testing token | 2026-03-05 | 6792c9d | [4-fix-billing-e2e-auth-to-use-clerk-testin](./quick/4-fix-billing-e2e-auth-to-use-clerk-testin/) |
-| 5 | Denormalized counters backfill (library + collections) | 2026-03-06 | b6f2446 | [5-denormalized-counters-backfill-libraryit](./quick/5-denormalized-counters-backfill-libraryit/) |
-| 6 | Audit schema vs validators (no mismatches found) | 2026-03-06 | -- | [6-check-if-theres-any-such-issues](./quick/6-check-if-theres-any-such-issues/) |
-| 7 | Redesign screening modal UI/UX | 2026-03-09 | eb1ccb1 | [7-redesign-screening-modal-ui-ux](./quick/7-redesign-screening-modal-ui-ux/) |
-| 8 | Improve create-collection inline flow | 2026-03-09 | c27344b | [8-improve-create-new-collection-inline-flo](./quick/8-improve-create-new-collection-inline-flo/) |
-| 9 | Polish create-collection inline flow | 2026-03-09 | 79fce1e | [9-polish-screening-dialog-visual-design](./quick/9-polish-screening-dialog-visual-design/) |
-| 10 | Extract screening progress into standalone dialog | 2026-03-09 | 12d954f | [10-extract-screening-progress-into-standalo](./quick/10-extract-screening-progress-into-standalo/) |
-| 11 | Move screening button to sidebar footer with progress ring | 2026-03-09 | 6a8dc0b | [11-move-screening-button-to-sidebar-footer-](./quick/11-move-screening-button-to-sidebar-footer-/) |
-| 12 | Enhance screening jobs modal UI/UX | 2026-03-09 | 262cc1f | [12-enhance-screening-jobs-modal-ui-ux-with-](./quick/12-enhance-screening-jobs-modal-ui-ux-with-/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 2 | Add eKitabu to Built by footer | 2026-03-02 | abd98e1 | | [2-add-ekitabu-to-built-by-footer](./quick/2-add-ekitabu-to-built-by-footer/) |
+| 3 | Remove GROBID implementation | 2026-03-04 | d20c59e | | [3-get-rid-of-the-grobid-implementation-ent](./quick/3-get-rid-of-the-grobid-implementation-ent/) |
+| 4 | Fix billing e2e auth to use clerk testing token | 2026-03-05 | 6792c9d | | [4-fix-billing-e2e-auth-to-use-clerk-testin](./quick/4-fix-billing-e2e-auth-to-use-clerk-testin/) |
+| 5 | Denormalized counters backfill (library + collections) | 2026-03-06 | b6f2446 | | [5-denormalized-counters-backfill-libraryit](./quick/5-denormalized-counters-backfill-libraryit/) |
+| 6 | Audit schema vs validators (no mismatches found) | 2026-03-06 | -- | | [6-check-if-theres-any-such-issues](./quick/6-check-if-theres-any-such-issues/) |
+| 7 | Redesign screening modal UI/UX | 2026-03-09 | eb1ccb1 | | [7-redesign-screening-modal-ui-ux](./quick/7-redesign-screening-modal-ui-ux/) |
+| 8 | Improve create-collection inline flow | 2026-03-09 | c27344b | | [8-improve-create-new-collection-inline-flo](./quick/8-improve-create-new-collection-inline-flo/) |
+| 9 | Polish create-collection inline flow | 2026-03-09 | 79fce1e | | [9-polish-screening-dialog-visual-design](./quick/9-polish-screening-dialog-visual-design/) |
+| 10 | Extract screening progress into standalone dialog | 2026-03-09 | 12d954f | | [10-extract-screening-progress-into-standalo](./quick/10-extract-screening-progress-into-standalo/) |
+| 11 | Move screening button to sidebar footer with progress ring | 2026-03-09 | 6a8dc0b | | [11-move-screening-button-to-sidebar-footer-](./quick/11-move-screening-button-to-sidebar-footer-/) |
+| 12 | Enhance screening jobs modal UI/UX | 2026-03-09 | 90e8dc7 | Verified | [12-enhance-screening-jobs-modal-ui-ux-with-](./quick/12-enhance-screening-jobs-modal-ui-ux-with-/) |
 
 ## Session Continuity
 
