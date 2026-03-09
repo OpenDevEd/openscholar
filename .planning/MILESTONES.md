@@ -1,5 +1,26 @@
 # Milestones
 
+## v4.1 Screening Export (Shipped: 2026-03-09)
+
+**Phases completed:** 4 phases, 5 plans, 10 tasks
+**Git range:** `23a790c..bfb8640` (21 commits)
+**Files changed:** 45 files, +5,020/-153 lines
+**Timeline:** 1 day (2026-03-09)
+
+**Key accomplishments:**
+- Auth-gated getScreeningResultsForExport query with ownership check, bounded read, and explicit field mapping (Phase 79)
+- CSV, JSON, and XLSX screening export functions with dynamic question columns, Yes/No/N/A answer formatting, and graceful failed/skipped paper handling (Phase 80)
+- Export dropdown UI on screening job history cards with format selection, loading spinner, incomplete-job warnings, and full 6-locale i18n (Phase 81)
+- Simplified star thresholds to minScore-only with descending-sort first-match scoring algorithm, removing maxScore from schema write path, validators, UI, and export (Phase 82)
+- Full backward compatibility — existing screening jobs with stored maxScore data continue to work via v.optional() in read validators and export types (Phase 82)
+
+**Audit:** 14/14 requirements, 4/4 phases, 10/10 integrations, 3/3 E2E flows — PASSED
+
+**Tech debt carried forward:**
+- Unused `exportLoading` translation key in 6 locale files (cosmetic, loading state uses Loader2 icon instead)
+
+---
+
 ## v4.0 Bulk Screening & Auto-Rating (Shipped: 2026-03-09)
 
 **Phases completed:** 4 phases, 9 plans

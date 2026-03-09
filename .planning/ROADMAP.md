@@ -15,7 +15,7 @@
 - v3.1 Complete Type Safety -- Phases 60-71 (shipped 2026-03-05)
 - v3.2 Production Readiness -- Phases 72-74 (shipped 2026-03-06)
 - v4.0 Bulk Screening & Auto-Rating -- Phases 75-78 (shipped 2026-03-09)
-- v4.1 Screening Export -- Phases 79-81 (in progress)
+- v4.1 Screening Export -- Phases 79-82 (shipped 2026-03-09)
 
 ## Phases
 
@@ -201,63 +201,19 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 
 </details>
 
-### v4.1 Screening Export (In Progress)
+<details>
+<summary>v4.1 Screening Export (Phases 79-82) -- SHIPPED 2026-03-09</summary>
 
-**Milestone Goal:** Enable users to download screening job results as CSV, JSON, or XLSX directly from job history.
+- [x] Phase 79: Export Query (1/1 plan) -- completed 2026-03-09
+- [x] Phase 80: Export Functions (1/1 plan) -- completed 2026-03-09
+- [x] Phase 81: Export UI (1/1 plan) -- completed 2026-03-09
+- [x] Phase 82: Simplify Star Thresholds (2/2 plans) -- completed 2026-03-09
 
-- [x] **Phase 79: Export Query** - Auth-gated backend query to fetch all screening results for a completed job (completed 2026-03-09)
-- [x] **Phase 80: Export Functions** - Pure CSV, JSON, and XLSX export functions for screening results (completed 2026-03-09)
-- [x] **Phase 81: Export UI** - Export dropdown on job history cards with format selection, loading states, and i18n (completed 2026-03-09)
-- [x] **Phase 82: Simplify Star Thresholds** - Remove maxScore from star thresholds, keep minScore only with highest-match-wins logic (completed 2026-03-09)
+Full details: `.planning/milestones/v4.1-ROADMAP.md`
 
-## Phase Details
-
-### Phase 79: Export Query
-**Goal**: Users can retrieve all screening results for a completed job through a secure, bounded query
-**Depends on**: Nothing (first phase of v4.1; builds on v4.0 screening infrastructure)
-**Requirements**: EXP-01
-**Success Criteria** (what must be TRUE):
-  1. Authenticated user can fetch all results for a screening job they own, receiving paper metadata, per-question answers, score, stars, and qualified status
-  2. Unauthenticated users or non-owners cannot access any results (auth gate rejects)
-  3. Results are bounded by MAX_SCREENING_PAPERS_PER_JOB to prevent unbounded memory usage
-**Plans**: 1 plan
-
-Plans:
-- [ ] 79-01-PLAN.md — TDD: getScreeningResultsForExport query + unit tests
-
-### Phase 80: Export Functions
-**Goal**: Users can generate screening export files in CSV, JSON, and XLSX formats with complete, correctly formatted result data
-**Depends on**: Phase 79
-**Requirements**: EXP-02, EXP-03, EXP-04, EXP-05
-**Success Criteria** (what must be TRUE):
-  1. CSV export contains paper metadata columns, one column per screening question with Yes/No/N/A answers, plus score, stars, and qualified columns
-  2. JSON export contains structured paper data with answers object, scoring fields, and job metadata envelope
-  3. XLSX export contains a Results sheet with all data and a Summary sheet with job config, scoring rules, and aggregate statistics
-  4. Failed or skipped papers appear in all export formats with null/N/A fallbacks for missing answer columns (no crashes, no missing rows)
-**Plans**: 1 plan
-
-Plans:
-- [ ] 80-01-PLAN.md — TDD: CSV, JSON, and XLSX export functions + unit tests
-
-### Phase 81: Export UI
-**Goal**: Users can download screening results directly from job history with format selection and clear visual feedback
-**Depends on**: Phase 80
-**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06
-**Success Criteria** (what must be TRUE):
-  1. Completed screening job cards in job history display an export button
-  2. User can select CSV, JSON, or XLSX from a dropdown menu and the selected format downloads immediately
-  3. Exported files have descriptive filenames including the job date and completion status
-  4. A loading indicator appears while the export file is being generated, and a warning appears when exporting from cancelled or incomplete jobs
-  5. All export UI text (button labels, format names, warnings, loading messages) is translated across all 6 supported locales
-**Plans**: 1 plan
-
-Plans:
-- [ ] 81-01-PLAN.md — Export dropdown on job cards with format selection, loading states, warnings, and i18n
+</details>
 
 ## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -274,22 +230,4 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 | 60-71 | v3.1 | 20/20 | Complete | 2026-03-05 |
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
-| 79. Export Query | 1/1 | Complete    | 2026-03-09 | - |
-| 80. Export Functions | 1/1 | Complete    | 2026-03-09 | - |
-| 81. Export UI | 1/1 | Complete    | 2026-03-09 | - |
-| 82. Simplify Star Thresholds | 2/2 | Complete    | 2026-03-09 | - |
-
-### Phase 82: Simplify Star Thresholds
-**Goal**: Remove maxScore from star thresholds — each threshold defines only minScore + stars, highest matching minScore wins
-**Depends on**: Nothing (independent of export phases; touches scoring engine and UI)
-**Requirements**: SCORE-01, SCORE-02, SCORE-03
-**Success Criteria** (what must be TRUE):
-  1. Star threshold schema, validators, and scoring engine use only minScore + stars (no maxScore field)
-  2. Rating assignment evaluates thresholds sorted by minScore descending, first match wins
-  3. Existing screening jobs with stored maxScore data are read without error (backward-compatible)
-  4. Star threshold editor UI shows only minScore + stars per row
-**Plans**: 2 plans
-
-Plans:
-- [ ] 82-01-PLAN.md — TDD: Scoring engine refactor + schema/validator/query updates for minScore-only thresholds
-- [ ] 82-02-PLAN.md — UI editor, default config, and export format cleanup (remove maxScore)
+| 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |

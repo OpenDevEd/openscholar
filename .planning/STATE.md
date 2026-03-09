@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Screening Export
-status: completed
-stopped_at: Completed 82-02-PLAN.md
-last_updated: "2026-03-09T08:41:54.063Z"
-last_activity: 2026-03-09 — Completed 82-02 UI + Export maxScore Removal
+status: archived
+stopped_at: Milestone v4.1 archived
+last_updated: "2026-03-09T08:55:00.000Z"
+last_activity: 2026-03-09 — Milestone v4.1 archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -21,22 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 82 - Simplify Star Thresholds
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 82 of 82 (Simplify Star Thresholds) -- 5 of 5 in v4.1
-Plan: 2 of 2 in current phase
-Status: Phase 82 complete -- all plans done
-Last activity: 2026-03-09 — Completed 82-02 UI + Export maxScore Removal
-
-Progress: [██████████] 100%
+Milestone v4.1 Screening Export -- SHIPPED 2026-03-09
+All 82 phases complete across 14 milestones.
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 159 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, cleanup: 2, quick: 11)
-- Total milestones shipped: 13
+- Total plans completed: 164 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, cleanup: 2, quick: 14)
+- Total milestones shipped: 14
 
 **By Milestone:**
 
@@ -55,22 +51,13 @@ Progress: [██████████] 100%
 | v3.1 | 12 | 20 | 2026-03-05 |
 | v3.2 | 3 | 4 | 2026-03-06 |
 | v4.0 | 4 | 9 | 2026-03-09 |
-| Phase 79 P01 | 1min | 2 tasks | 2 files |
-| Phase 80 P01 | 2min | 2 tasks | 2 files |
-| Phase 81 P01 | 2min | 2 tasks | 8 files |
-| Phase 82 P01 | 2min | 2 tasks | 8 files |
-| Phase 82 P02 | 2min | 2 tasks | 5 files |
+| v4.1 | 4 | 5 | 2026-03-09 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-- [Phase 79]: Return null on auth/ownership failure for export query (no throws)
-- [Phase 80]: Inline downloadFile helper to avoid cross-module coupling; separate generate* pure functions for testability
-- [Phase 81]: Used IIFE pattern for conditional rendering with local vars in JSX; useConvex().query() for on-demand export data fetch
-- [Phase 82]: v.optional(v.number()) for maxScore backward compat; removed maxScore from schema write path; removed gap/overlap from ConfigValidationWarning type
-- [Phase 82-02]: Made maxScore optional in ScreeningExportData for backward compat; XLSX summary shows only Min Score + Stars columns
 
 ### Pending Todos
 
@@ -78,7 +65,7 @@ None.
 
 ### Roadmap Evolution
 
-- Phase 82 added: Simplify star thresholds — remove maxScore, keep minScore only, highest matching wins
+None — milestone complete.
 
 ### Blockers/Concerns
 
@@ -102,6 +89,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed 82-02 UI + Export maxScore Removal
-Stopped at: Completed 82-02-PLAN.md
+Last activity: 2026-03-09 -- Milestone v4.1 archived
+Stopped at: Milestone v4.1 archived
 Resume file: None

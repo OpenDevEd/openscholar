@@ -651,6 +651,46 @@
 
 ---
 
+## Milestone: v4.1 — Screening Export
+
+**Shipped:** 2026-03-09
+**Phases:** 4 | **Plans:** 5 | **Commits:** 21
+
+### What Was Built
+- Auth-gated screening export query with ownership check, bounded read, and explicit field mapping
+- CSV, JSON, and XLSX export functions with dynamic question columns, answer formatting, and failed/skipped paper handling
+- Export dropdown UI on job history cards with format selection, loading spinner, incomplete-job warnings, and 6-locale i18n
+- Simplified star thresholds to minScore-only with descending-sort first-match scoring algorithm
+- Backward-compatible schema evolution: maxScore removed from write path, kept optional in read validators
+
+### What Worked
+- Reuse of established export patterns (extraction/library) for screening export — minimal new design needed
+- Linear dependency chain (79→80→81) with independent Phase 82 allowed clean sequential execution
+- TDD approach produced high-quality pure functions with comprehensive test coverage (19+ screening export tests)
+- Backward-compat schema evolution pattern (remove from write, keep optional in read) worked flawlessly
+
+### What Was Inefficient
+- exportLoading translation key added to 6 locale files but never used in component (Loader2 icon used instead) — minor waste
+- Phase 82 was additive (not in original milestone scope) — could have been a separate milestone, but small enough to include
+
+### Patterns Established
+- Export query pattern: auth gate + ownership check + bounded read + explicit field mapping
+- Screening answer formatting: true→Yes, false→No, null/undefined→N/A
+- Backward-compat schema evolution: remove field from write schema, keep optional in read validators
+- Floor-based threshold matching: sort descending by minScore, first score >= minScore wins
+
+### Key Lessons
+1. On-demand `useConvex().query()` is better than reactive `useQuery` for one-shot export actions — no subscription overhead
+2. Inline helper duplication (downloadFile) is acceptable when the alternative is cross-module coupling between unrelated features
+3. Adding a simplification phase (82) to a feature milestone works when the phase is small and touches the same code surface
+
+### Cost Observations
+- Model mix: 100% budget profile (per config)
+- Sessions: 1
+- Notable: 5 plans completed in ~10 minutes total — fastest per-plan velocity of any milestone (~2min/plan)
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -670,6 +710,7 @@
 | v3.1 | 82 | 12 | 20 | ~5min | Complete type safety, mock factories, zero any in entire codebase |
 | v3.2 | 11 | 3 | 4 | ~4.5min | Internal debug endpoints, O(1) library count, query bounding |
 | v4.0 | 42 | 4 | 9 | ~3min | Bulk screening feature build, workflow+workpool reuse, TDD scoring engine |
+| v4.1 | 21 | 4 | 5 | ~2min | Screening export, pattern reuse, backward-compat schema evolution |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -705,3 +746,5 @@
 30. Small, focused milestones (3 independent phases) execute cleanly in a single session with zero gap closures (v3.2)
 31. Proven infrastructure patterns (workflow+workpool) dramatically reduce new feature design time — reuse over reinvent (v4.0)
 32. Cancel/abort UI must be an explicit phase deliverable — backend-only implementation leaves E2E gaps that milestone audit catches (v4.0)
+33. Backward-compat schema evolution (remove from write, keep optional in read) is a safe, zero-downtime pattern for field removal (v4.1)
+34. On-demand query (useConvex().query()) over reactive subscription (useQuery) for one-shot data fetches like export (v4.1)
