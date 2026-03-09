@@ -206,7 +206,7 @@ Full details: `.planning/milestones/v3.2-ROADMAP.md`
   Plans:
   - [ ] 77-01-PLAN.md -- Internal queries/mutations, onComplete handler with scoring + library save + collection add
   - [ ] 77-02-PLAN.md -- Workpool action, workflow definition, wire createScreeningJob to start workflow
-- [ ] **Phase 78: Configuration Dialog & Progress UI** (3 plans) - Screen All button, configuration dialog with scoring/threshold/collection editors, cost estimate, progress tracking, and job history
+- [x] **Phase 78: Configuration Dialog & Progress UI** (3 plans) - Screen All button, configuration dialog with scoring/threshold/collection editors, cost estimate, progress tracking, and job history (completed 2026-03-09)
   **Plans:** 3 plans
   Plans:
   - [ ] 78-01-PLAN.md -- Screen All button, dialog shell with dismiss guards, abstract utility, i18n keys
@@ -234,4 +234,4 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 75. Schema & Job Infrastructure | 3/3 | Complete    | 2026-03-09 | - |
 | 76. Scoring Engine & Rating Logic | 1/1 | Complete    | 2026-03-09 | - |
 | 77. Workflow Processing & Library Integration | 2/2 | Complete    | 2026-03-09 | - |
-| 78. Configuration Dialog & Progress UI | 2/3 | In Progress|  | - |
+| 78. Configuration Dialog & Progress UI | 3/3 | Complete   | 2026-03-09 | - |

@@ -36,9 +36,9 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 
 - [x] **DIALOG-01**: "Screen All" button on results page opens a configuration dialog
 - [x] **DIALOG-02**: Dialog displays the screening questions from the existing screening panel
-- [ ] **DIALOG-03**: Dialog provides a scoring rules editor per question (point values for yes/no/null)
-- [ ] **DIALOG-04**: Dialog provides a star rating threshold editor (score ranges → stars)
-- [ ] **DIALOG-05**: Dialog includes a collection picker with option to create new collection
+- [x] **DIALOG-03**: Dialog provides a scoring rules editor per question (point values for yes/no/null)
+- [x] **DIALOG-04**: Dialog provides a star rating threshold editor (score ranges → stars)
+- [x] **DIALOG-05**: Dialog includes a collection picker with option to create new collection
 - [x] **DIALOG-06**: Dialog shows paper count, credit cost estimate, and confirm/cancel buttons
 - [x] **DIALOG-07**: Dialog prevents dismissal during job submission (dismiss guards like upgrade dialog)
 
@@ -86,9 +86,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-03 | Phase 77 | Complete |
 | DIALOG-01 | Phase 78 | Complete |
 | DIALOG-02 | Phase 78 | Complete |
-| DIALOG-03 | Phase 78 | Pending |
-| DIALOG-04 | Phase 78 | Pending |
-| DIALOG-05 | Phase 78 | Pending |
+| DIALOG-03 | Phase 78 | Complete |
+| DIALOG-04 | Phase 78 | Complete |
+| DIALOG-05 | Phase 78 | Complete |
 | DIALOG-06 | Phase 78 | Complete |
 | DIALOG-07 | Phase 78 | Complete |
 
