@@ -284,45 +284,41 @@ function ScreeningFooterButton({
   progressPercent: number | null;
   label: string;
 }) {
-  const radius = 11;
-  const strokeWidth = 2;
-  const size = (radius + strokeWidth) * 2;
-  const center = size / 2;
-  const circumference = 2 * Math.PI * radius;
+  const circumference = 2 * Math.PI * 10;
 
   const icon = (
-    <span className="relative inline-flex items-center justify-center h-7 w-7">
+    <span className="relative inline-flex items-center justify-center">
+      <ListChecks className="h-[1.1rem] w-[1.1rem]" />
       {progressPercent !== null && (
         <svg
-          viewBox={`0 0 ${size} ${size}`}
-          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 24 24"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9"
           fill="none"
         >
           <circle
-            cx={center}
-            cy={center}
-            r={radius}
+            cx="12"
+            cy="12"
+            r="10"
             stroke="currentColor"
-            strokeWidth={strokeWidth}
+            strokeWidth="1.5"
             opacity="0.1"
           />
           <circle
-            cx={center}
-            cy={center}
-            r={radius}
+            cx="12"
+            cy="12"
+            r="10"
             stroke="oklch(0.70 0.17 54)"
-            strokeWidth={strokeWidth}
+            strokeWidth="1.5"
             strokeDasharray={circumference}
             strokeDashoffset={
               circumference - (circumference * progressPercent) / 100
             }
             strokeLinecap="round"
-            transform={`rotate(-90 ${center} ${center})`}
+            transform="rotate(-90 12 12)"
             className="transition-[stroke-dashoffset] duration-500 ease-out"
           />
         </svg>
       )}
-      <ListChecks className="h-4 w-4" />
     </span>
   );
 
