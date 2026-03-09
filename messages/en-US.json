@@ -1569,6 +1569,8 @@
     "noJobsYet": "No screening jobs yet",
     "papersCount": "{count} papers",
     "qualifiedCount": "{count} qualified",
-    "newCollectionName": "Collection name"
+    "newCollectionName": "Collection name",
+    "closeDialog": "Close",
+    "newScreening": "New Screening"
   }
 }
