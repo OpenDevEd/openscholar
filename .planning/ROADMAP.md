@@ -249,10 +249,10 @@ Plans:
   3. Exported files have descriptive filenames including the job date and completion status
   4. A loading indicator appears while the export file is being generated, and a warning appears when exporting from cancelled or incomplete jobs
   5. All export UI text (button labels, format names, warnings, loading messages) is translated across all 6 supported locales
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 81-01: TBD
+- [ ] 81-01-PLAN.md — Export dropdown on job cards with format selection, loading states, warnings, and i18n
 
 ## Progress
 
