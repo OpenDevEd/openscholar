@@ -52,56 +52,75 @@ describe("computeScore", () => {
 });
 
 describe("computeStarRating", () => {
-  const thresholds = [
-    { minScore: 0, maxScore: 2, stars: 1 },
-    { minScore: 3, maxScore: 5, stars: 2 },
-  ];
-
-  it("returns correct stars for score in second threshold", () => {
-    expect(computeStarRating(5, thresholds)).toBe(2);
-  });
-
-  it("returns correct stars for score in first threshold", () => {
-    expect(computeStarRating(0, thresholds)).toBe(1);
-  });
-
-  it("returns 0 stars for score in gap between thresholds", () => {
-    const gappedThresholds = [
-      { minScore: 0, maxScore: 3, stars: 1 },
-      { minScore: 5, maxScore: 10, stars: 2 },
+  it("returns stars for highest matching minScore (descending sort, first match)", () => {
+    const thresholds = [
+      { minScore: 0, stars: 1 },
+      { minScore: 3, stars: 2 },
+      { minScore: 5, stars: 3 },
     ];
-    expect(computeStarRating(4, gappedThresholds)).toBe(0);
+    expect(computeStarRating(5, thresholds)).toBe(3); // matches minScore 5
+    expect(computeStarRating(4, thresholds)).toBe(2); // matches minScore 3
+    expect(computeStarRating(3, thresholds)).toBe(2); // matches minScore 3
+    expect(computeStarRating(1, thresholds)).toBe(1); // matches minScore 0
+    expect(computeStarRating(0, thresholds)).toBe(1); // matches minScore 0
+  });
+
+  it("works regardless of array order (implementation sorts)", () => {
+    // Given in ascending order -- implementation should sort descending
+    const thresholds = [
+      { minScore: 0, stars: 1 },
+      { minScore: 3, stars: 2 },
+    ];
+    expect(computeStarRating(5, thresholds)).toBe(2);
+    expect(computeStarRating(0, thresholds)).toBe(1);
+    expect(computeStarRating(2, thresholds)).toBe(1);
+  });
+
+  it("handles backward-compat thresholds with maxScore present (ignored)", () => {
+    const thresholds = [
+      { minScore: 0, maxScore: 2, stars: 1 },
+      { minScore: 3, maxScore: 5, stars: 2 },
+    ] as Array<{ minScore: number; maxScore?: number; stars: number }>;
+    expect(computeStarRating(5, thresholds)).toBe(2);
+    expect(computeStarRating(0, thresholds)).toBe(1);
+    expect(computeStarRating(4, thresholds)).toBe(2);
+  });
+
+  it("returns 0 for score below all minScores", () => {
+    const thresholds = [{ minScore: 5, stars: 1 }];
+    expect(computeStarRating(3, thresholds)).toBe(0);
   });
 
   it("returns 0 stars for negative score with no negative coverage", () => {
+    const thresholds = [
+      { minScore: 0, stars: 1 },
+      { minScore: 3, stars: 2 },
+    ];
     expect(computeStarRating(-5, thresholds)).toBe(0);
   });
 
-  it("uses first match for overlapping thresholds", () => {
-    const overlapping = [
-      { minScore: 0, maxScore: 5, stars: 1 },
-      { minScore: 3, maxScore: 8, stars: 2 },
+  it("handles negative minScore thresholds", () => {
+    const thresholds = [
+      { minScore: -10, stars: 1 },
+      { minScore: 0, stars: 2 },
     ];
-    expect(computeStarRating(4, overlapping)).toBe(1); // first match wins
+    expect(computeStarRating(-5, thresholds)).toBe(1); // matches minScore -10
+    expect(computeStarRating(0, thresholds)).toBe(2);  // matches minScore 0
+    expect(computeStarRating(5, thresholds)).toBe(2);  // matches minScore 0
   });
 
   it("clamps stars above 5 to 5", () => {
-    const outOfRange = [{ minScore: 0, maxScore: 10, stars: 7 }];
+    const outOfRange = [{ minScore: 0, stars: 7 }];
     expect(computeStarRating(3, outOfRange)).toBe(5);
   });
 
   it("clamps stars below 0 to 0", () => {
-    const negative = [{ minScore: 0, maxScore: 10, stars: -2 }];
+    const negative = [{ minScore: 0, stars: -2 }];
     expect(computeStarRating(3, negative)).toBe(0);
   });
 
   it("returns 0 stars for empty thresholds", () => {
     expect(computeStarRating(5, [])).toBe(0);
-  });
-
-  it("handles score at exact threshold boundary (inclusive)", () => {
-    expect(computeStarRating(2, thresholds)).toBe(1); // maxScore inclusive
-    expect(computeStarRating(3, thresholds)).toBe(2); // minScore inclusive
   });
 });
 
@@ -143,31 +162,34 @@ describe("scorePaper", () => {
       { questionKey: "q3", yesPoints: 1, noPoints: -2, nullPoints: 0 },
     ],
     starThresholds: [
-      { minScore: -10, maxScore: -1, stars: 0 },
-      { minScore: 0, maxScore: 2, stars: 1 },
-      { minScore: 3, maxScore: 4, stars: 2 },
-      { minScore: 5, maxScore: 6, stars: 3 },
+      { minScore: -10, stars: 0 },
+      { minScore: 0, stars: 1 },
+      { minScore: 3, stars: 2 },
+      { minScore: 5, stars: 3 },
     ],
     minimumScore: 2,
   };
 
   it("scores all-yes answers correctly", () => {
+    // score = 3+2+1 = 6, highest minScore match: 5 -> stars 3, qualified (6>=2)
     const result = scorePaper({ q1: true, q2: true, q3: true }, config);
     expect(result).toEqual({ score: 6, stars: 3, qualified: true });
   });
 
   it("scores mixed answers correctly", () => {
+    // score = 3+0+(-2) = 1, highest minScore match: 0 -> stars 1, not qualified (1<2)
     const result = scorePaper({ q1: true, q2: false, q3: false }, config);
     expect(result).toEqual({ score: 1, stars: 1, qualified: false });
   });
 
   it("scores all-null answers correctly", () => {
+    // score = 0+(-1)+0 = -1, highest minScore match: -10 -> stars 0, not qualified (-1<2)
     const result = scorePaper({ q1: null, q2: null, q3: null }, config);
     expect(result).toEqual({ score: -1, stars: 0, qualified: false });
   });
 
   it("treats missing answer key as null (uses nullPoints)", () => {
-    // Missing q3 -> nullPoints=0. Score = 3+2+0 = 5 -> 3 stars -> qualified
+    // Missing q3 -> nullPoints=0. Score = 3+2+0 = 5, highest minScore match: 5 -> 3 stars, qualified
     const result = scorePaper({ q1: true, q2: true }, config);
     expect(result).toEqual({ score: 5, stars: 3, qualified: true });
   });
@@ -186,7 +208,7 @@ describe("validateScoringConfig", () => {
   it("returns empty warnings for valid config", () => {
     const config = {
       rules: [{ questionKey: "q1", yesPoints: 2, noPoints: 0, nullPoints: 0 }],
-      starThresholds: [{ minScore: 0, maxScore: 10, stars: 3 }],
+      starThresholds: [{ minScore: 0, stars: 3 }],
     };
     expect(validateScoringConfig(config)).toEqual([]);
   });
@@ -194,7 +216,7 @@ describe("validateScoringConfig", () => {
   it("warns about star values above 5", () => {
     const config = {
       rules: [],
-      starThresholds: [{ minScore: 0, maxScore: 10, stars: 7 }],
+      starThresholds: [{ minScore: 0, stars: 7 }],
     };
     const warnings = validateScoringConfig(config);
     expect(warnings).toHaveLength(1);
@@ -204,7 +226,7 @@ describe("validateScoringConfig", () => {
   it("warns about non-integer star values", () => {
     const config = {
       rules: [],
-      starThresholds: [{ minScore: 0, maxScore: 10, stars: 2.5 }],
+      starThresholds: [{ minScore: 0, stars: 2.5 }],
     };
     const warnings = validateScoringConfig(config);
     expect(warnings).toHaveLength(1);
@@ -214,7 +236,7 @@ describe("validateScoringConfig", () => {
   it("warns about negative star values", () => {
     const config = {
       rules: [],
-      starThresholds: [{ minScore: 0, maxScore: 10, stars: -1 }],
+      starThresholds: [{ minScore: 0, stars: -1 }],
     };
     const warnings = validateScoringConfig(config);
     expect(warnings).toHaveLength(1);
@@ -226,7 +248,7 @@ describe("validateScoringConfig", () => {
       rules: [
         { questionKey: "q1", yesPoints: 2, noPoints: -3, nullPoints: 0 },
       ],
-      starThresholds: [{ minScore: 0, maxScore: 10, stars: 2 }],
+      starThresholds: [{ minScore: 0, stars: 2 }],
     };
     const warnings = validateScoringConfig(config);
     expect(warnings.some((w) => w.type === "missing_negative_coverage")).toBe(
@@ -239,7 +261,7 @@ describe("validateScoringConfig", () => {
       rules: [
         { questionKey: "q1", yesPoints: 2, noPoints: -3, nullPoints: 0 },
       ],
-      starThresholds: [{ minScore: -10, maxScore: 10, stars: 2 }],
+      starThresholds: [{ minScore: -10, stars: 2 }],
     };
     const warnings = validateScoringConfig(config);
     expect(warnings.some((w) => w.type === "missing_negative_coverage")).toBe(
@@ -253,8 +275,8 @@ describe("validateScoringConfig", () => {
         { questionKey: "q1", yesPoints: 2, noPoints: -1, nullPoints: 0 },
       ],
       starThresholds: [
-        { minScore: 0, maxScore: 5, stars: 7 },
-        { minScore: 6, maxScore: 10, stars: -2 },
+        { minScore: 0, stars: 7 },
+        { minScore: 6, stars: -2 },
       ],
     };
     const warnings = validateScoringConfig(config);
