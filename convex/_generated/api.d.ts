@@ -77,6 +77,11 @@ import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as maintenance_internal from "../maintenance/internal.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
+import type * as screening_mutations from "../screening/mutations.js";
+import type * as screening_queries from "../screening/queries.js";
+import type * as screening_scoring from "../screening/scoring.js";
+import type * as screening_validators from "../screening/validators.js";
+import type * as screening_workpoolActions from "../screening/workpoolActions.js";
 import type * as stripe from "../stripe.js";
 import type * as subscriptions_actions from "../subscriptions/actions.js";
 import type * as subscriptions_internal from "../subscriptions/internal.js";
@@ -176,6 +181,11 @@ declare const fullApi: ApiFromModules<{
   "library/queries": typeof library_queries;
   "maintenance/internal": typeof maintenance_internal;
   "maintenance/mutations": typeof maintenance_mutations;
+  "screening/mutations": typeof screening_mutations;
+  "screening/queries": typeof screening_queries;
+  "screening/scoring": typeof screening_scoring;
+  "screening/validators": typeof screening_validators;
+  "screening/workpoolActions": typeof screening_workpoolActions;
   stripe: typeof stripe;
   "subscriptions/actions": typeof subscriptions_actions;
   "subscriptions/internal": typeof subscriptions_internal;
@@ -1434,6 +1444,104 @@ export declare const components: {
     };
   };
   workpool: {
+    config: {
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          maxParallelism?: number;
+        },
+        any
+      >;
+    };
+    lib: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          id: string;
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      cancelAll: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          before?: number;
+          limit?: number;
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      enqueue: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
+          };
+          fnArgs: any;
+          fnHandle: string;
+          fnName: string;
+          fnType: "action" | "mutation" | "query";
+          onComplete?: { context?: any; fnHandle: string };
+          retryBehavior?: {
+            base: number;
+            initialBackoffMs: number;
+            maxAttempts: number;
+          };
+          runAt: number;
+        },
+        string
+      >;
+      enqueueBatch: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
+          };
+          items: Array<{
+            fnArgs: any;
+            fnHandle: string;
+            fnName: string;
+            fnType: "action" | "mutation" | "query";
+            onComplete?: { context?: any; fnHandle: string };
+            retryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            runAt: number;
+          }>;
+        },
+        Array<string>
+      >;
+      status: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        | { previousAttempts: number; state: "pending" }
+        | { previousAttempts: number; state: "running" }
+        | { state: "finished" }
+      >;
+      statusBatch: FunctionReference<
+        "query",
+        "internal",
+        { ids: Array<string> },
+        Array<
+          | { previousAttempts: number; state: "pending" }
+          | { previousAttempts: number; state: "running" }
+          | { state: "finished" }
+        >
+      >;
+    };
+  };
+  screeningWorkpool: {
     config: {
       update: FunctionReference<
         "mutation",
