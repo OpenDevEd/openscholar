@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Screening Export
-status: active
-stopped_at: null
-last_updated: "2026-03-09"
-last_activity: 2026-03-09 -- Roadmap created for v4.1
+status: planning
+stopped_at: Completed 79-01-PLAN.md
+last_updated: "2026-03-09T07:36:36.894Z"
+last_activity: 2026-03-09 — Roadmap created for v4.1 Screening Export
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 3
-  completed_plans: 0
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
   percent: 0
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 79 of 81 (Export Query) -- 1 of 3 in v4.1
-Plan: 0 of 1 in current phase
-Status: Ready to plan
-Last activity: 2026-03-09 — Roadmap created for v4.1 Screening Export
+Plan: 1 of 1 in current phase
+Status: Phase 79 complete
+Last activity: 2026-03-09 — Completed 79-01 Export Query
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -55,16 +55,22 @@ Progress: [░░░░░░░░░░] 0%
 | v3.1 | 12 | 20 | 2026-03-05 |
 | v3.2 | 3 | 4 | 2026-03-06 |
 | v4.0 | 4 | 9 | 2026-03-09 |
+| Phase 79 P01 | 1min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
+- [Phase 79]: Return null on auth/ownership failure for export query (no throws)
 
 ### Pending Todos
 
 None.
+
+### Roadmap Evolution
+
+- Phase 82 added: Simplify star thresholds — remove maxScore, keep minScore only, highest matching wins
 
 ### Blockers/Concerns
 
@@ -89,5 +95,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-09 -- Roadmap created for v4.1 Screening Export
-Stopped at: Roadmap creation complete, ready to plan Phase 79
+Stopped at: Completed 79-01-PLAN.md
 Resume file: None
