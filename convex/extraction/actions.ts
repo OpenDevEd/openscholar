@@ -9,6 +9,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import type { PaperData } from "./types";
 import { searchFiltersValidator } from "./validators";
+import { reconstructAbstract } from "../../lib/openalex/reconstruct-abstract";
 
 // Fetch papers from OpenAlex via HTTP API with abstract support
 export const fetchPapersFromHistory = internalAction({
@@ -193,20 +194,3 @@ export const fetchPapersFromHistory = internalAction({
   },
 });
 
-// Helper to reconstruct abstract from OpenAlex inverted index
-function reconstructAbstract(invertedIndex: Record<string, number[]>): string {
-  if (!invertedIndex || Object.keys(invertedIndex).length === 0) {
-    return "";
-  }
-
-  const positionMap: Map<number, string> = new Map();
-
-  for (const [word, positions] of Object.entries(invertedIndex)) {
-    for (const pos of positions) {
-      positionMap.set(pos, word);
-    }
-  }
-
-  const sortedPositions = Array.from(positionMap.keys()).sort((a, b) => a - b);
-  return sortedPositions.map((pos) => positionMap.get(pos)).join(" ");
-}
