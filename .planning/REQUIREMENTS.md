@@ -13,7 +13,7 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 - [ ] **JOB-02**: User sees how many papers will be screened (capped at 200 with clear messaging if results exceed cap)
 - [ ] **JOB-03**: User sees estimated credit cost before confirming the job
 - [x] **JOB-04**: System verifies user has sufficient credits before starting the job
-- [ ] **JOB-05**: Bulk screening runs in background via Convex workflow (papers processed even if user closes browser)
+- [x] **JOB-05**: Bulk screening runs in background via Convex workflow (papers processed even if user closes browser)
 - [ ] **JOB-06**: User can view real-time progress of a running job (X/N papers screened)
 - [x] **JOB-07**: User can cancel a running bulk screening job (stops processing, keeps partial results)
 - [ ] **JOB-08**: User can view a list of past bulk screening jobs with status, paper count, and date
@@ -28,9 +28,9 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 
 ### Library & Collection Integration
 
-- [ ] **LIB-01**: Qualifying papers are automatically saved to the user's library with the computed star rating
-- [ ] **LIB-02**: Qualifying papers are automatically added to the user-selected collection
-- [ ] **LIB-03**: User selects a target collection (or creates a new one) in the configuration dialog
+- [x] **LIB-01**: Qualifying papers are automatically saved to the user's library with the computed star rating
+- [x] **LIB-02**: Qualifying papers are automatically added to the user-selected collection
+- [x] **LIB-03**: User selects a target collection (or creates a new one) in the configuration dialog
 
 ### Configuration Dialog
 
@@ -72,7 +72,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JOB-02 | Phase 78 | Pending |
 | JOB-03 | Phase 78 | Pending |
 | JOB-04 | Phase 75 | Complete |
-| JOB-05 | Phase 77 | Pending |
+| JOB-05 | Phase 77 | Complete |
 | JOB-06 | Phase 78 | Pending |
 | JOB-07 | Phase 75 | Complete |
 | JOB-08 | Phase 78 | Pending |
@@ -81,9 +81,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCORE-03 | Phase 76 | Complete |
 | SCORE-04 | Phase 76 | Complete |
 | SCORE-05 | Phase 76 | Complete |
-| LIB-01 | Phase 77 | Pending |
-| LIB-02 | Phase 77 | Pending |
-| LIB-03 | Phase 77 | Pending |
+| LIB-01 | Phase 77 | Complete |
+| LIB-02 | Phase 77 | Complete |
+| LIB-03 | Phase 77 | Complete |
 | DIALOG-01 | Phase 78 | Pending |
 | DIALOG-02 | Phase 78 | Pending |
 | DIALOG-03 | Phase 78 | Pending |
