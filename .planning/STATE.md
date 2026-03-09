@@ -4,8 +4,8 @@ milestone: v4.0
 milestone_name: Bulk Screening & Auto-Rating
 status: executing
 stopped_at: Completed 77-02-PLAN.md
-last_updated: "2026-03-09T01:27:07.754Z"
-last_activity: 2026-03-09 -- Completed 77-02 workflow processing and workpool action
+last_updated: "2026-03-09T01:54:24Z"
+last_activity: 2026-03-09 -- Completed 78-03 progress and job history UI
 progress:
   total_phases: 3
   completed_phases: 3
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-08)
 
 ## Current Position
 
-Phase: 77 (3 of 4 in v4.0)
-Plan: 2 of 2 in current phase
+Phase: 78 (4 of 4 in v4.0)
+Plan: 3 of 3 in current phase
 Status: Executing
-Last activity: 2026-03-09 -- Completed 77-02 workflow processing and workpool action
+Last activity: 2026-03-09 -- Completed 78-03 progress and job history UI
 
 Progress: [██████████] 100%
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100%
 | Phase 76 P01 | 2min | 2 tasks | 2 files |
 | Phase 77 P01 | 5min | 2 tasks | 3 files |
 | Phase 77 P02 | 5min | 2 tasks | 4 files |
+| Phase 78 P03 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions affecting current work:
 - [Phase 77]: Created workpoolActions.ts stub for type generation (Plan 02 implements)
 - [Phase 77]: Explicit type annotations to break circular Convex type inference in workpoolActions
 - [Phase 77]: Try-catch workflow.start in mutations for convex-test compatibility
+- [Phase 78]: useQuery (direct) for ScreeningProgress vs useProtectedQuery for ScreeningJobHistory
+- [Phase 78]: Status badge variant mapping pattern for screening job statuses
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed 77-02 workflow processing and workpool action
-Stopped at: Completed 77-02-PLAN.md
+Last activity: 2026-03-09 -- Completed 78-03 progress and job history UI
+Stopped at: Completed 78-03-PLAN.md
 Resume file: None
