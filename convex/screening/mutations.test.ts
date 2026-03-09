@@ -63,7 +63,7 @@ async function seedScreeningJob(
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
-        starThresholds: [{ minScore: 0, maxScore: 1, stars: 1 }],
+        starThresholds: [{ minScore: 0, stars: 1 }],
       },
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -90,7 +90,7 @@ function makePapers(count: number) {
 const defaultQuestions = [{ key: "q1", question: "Is this relevant?" }];
 const defaultScoringConfig = {
   rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
-  starThresholds: [{ minScore: 0, maxScore: 1, stars: 1 }],
+  starThresholds: [{ minScore: 0, stars: 1 }],
 };
 
 // ---------------------------------------------------------------------------
@@ -256,8 +256,8 @@ describe("createScreeningJob", () => {
         { questionKey: "q2", yesPoints: 1, noPoints: 0, nullPoints: 0 },
       ],
       starThresholds: [
-        { minScore: 0, maxScore: 1, stars: 1 },
-        { minScore: 2, maxScore: 3, stars: 2 },
+        { minScore: 0, stars: 1 },
+        { minScore: 2, stars: 2 },
       ],
       minimumScore: 1,
     };

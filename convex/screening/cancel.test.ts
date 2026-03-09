@@ -50,7 +50,7 @@ async function seedScreeningJob(
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
-        starThresholds: [{ minScore: 0, maxScore: 1, stars: 1 }],
+        starThresholds: [{ minScore: 0, stars: 1 }],
       },
       createdAt: now,
       updatedAt: now,

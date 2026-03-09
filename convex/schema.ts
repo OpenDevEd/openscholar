@@ -710,7 +710,6 @@ export default defineSchema({
       starThresholds: v.array(
         v.object({
           minScore: v.number(),
-          maxScore: v.number(),
           stars: v.number(),
         })
       ),
