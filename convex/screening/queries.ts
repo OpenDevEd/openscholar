@@ -144,6 +144,9 @@ export const listUserScreeningJobs = query({
       qualifiedPapers: v.number(),
       createdAt: v.number(),
       completedAt: v.optional(v.number()),
+      questions: v.array(screeningQuestionValidator),
+      targetCollectionId: v.optional(v.id("collections")),
+      targetCollectionName: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -156,16 +159,23 @@ export const listUserScreeningJobs = query({
       .order("desc")
       .take(args.limit ?? 20);
 
-    return jobs.map((j) => ({
-      _id: j._id,
-      _creationTime: j._creationTime,
-      status: j.status,
-      totalPapers: j.totalPapers,
-      processedPapers: j.processedPapers,
-      qualifiedPapers: j.qualifiedPapers,
-      createdAt: j.createdAt,
-      completedAt: j.completedAt,
-    }));
+    return Promise.all(
+      jobs.map(async (j) => ({
+        _id: j._id,
+        _creationTime: j._creationTime,
+        status: j.status,
+        totalPapers: j.totalPapers,
+        processedPapers: j.processedPapers,
+        qualifiedPapers: j.qualifiedPapers,
+        createdAt: j.createdAt,
+        completedAt: j.completedAt,
+        questions: j.questions,
+        targetCollectionId: j.targetCollectionId,
+        targetCollectionName: j.targetCollectionId
+          ? (await ctx.db.get(j.targetCollectionId))?.name
+          : undefined,
+      }))
+    );
   },
 });
 
