@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Screening Export
-status: completed
-stopped_at: Completed 81-01-PLAN.md
-last_updated: "2026-03-09T08:15:41.393Z"
-last_activity: 2026-03-09 — Completed 81-01 Export UI
+status: in_progress
+stopped_at: Completed 82-01-PLAN.md
+last_updated: "2026-03-09T08:32:19Z"
+last_activity: 2026-03-09 — Completed 82-01 Scoring Engine + Schema
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 3
-  total_plans: 3
-  completed_plans: 3
-  percent: 100
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 81 - Export UI
+**Current focus:** Phase 82 - Simplify Star Thresholds
 
 ## Current Position
 
-Phase: 81 of 81 (Export UI) -- 3 of 3 in v4.1
-Plan: 1 of 1 in current phase
-Status: Phase 81 complete
-Last activity: 2026-03-09 — Completed 81-01 Export UI
+Phase: 82 of 82 (Simplify Star Thresholds) -- 5 of 5 in v4.1
+Plan: 1 of 2 in current phase
+Status: Plan 82-01 complete, 82-02 remaining
+Last activity: 2026-03-09 — Completed 82-01 Scoring Engine + Schema
 
-Progress: [██████████] 100%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██████████] 100%
 | Phase 79 P01 | 1min | 2 tasks | 2 files |
 | Phase 80 P01 | 2min | 2 tasks | 2 files |
 | Phase 81 P01 | 2min | 2 tasks | 8 files |
+| Phase 82 P01 | 2min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 79]: Return null on auth/ownership failure for export query (no throws)
 - [Phase 80]: Inline downloadFile helper to avoid cross-module coupling; separate generate* pure functions for testability
 - [Phase 81]: Used IIFE pattern for conditional rendering with local vars in JSX; useConvex().query() for on-demand export data fetch
+- [Phase 82]: v.optional(v.number()) for maxScore backward compat; removed maxScore from schema write path; removed gap/overlap from ConfigValidationWarning type
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Roadmap created for v4.1 Screening Export
-Stopped at: Completed 81-01-PLAN.md
+Last activity: 2026-03-09 -- Completed 82-01 Scoring Engine + Schema
+Stopped at: Completed 82-01-PLAN.md
 Resume file: None

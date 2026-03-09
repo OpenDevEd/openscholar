@@ -277,7 +277,7 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 | 79. Export Query | 1/1 | Complete    | 2026-03-09 | - |
 | 80. Export Functions | 1/1 | Complete    | 2026-03-09 | - |
 | 81. Export UI | 1/1 | Complete    | 2026-03-09 | - |
-| 82. Simplify Star Thresholds | v4.1 | 0/2 | Not started | - |
+| 82. Simplify Star Thresholds | 1/2 | In Progress|  | - |
 
 ### Phase 82: Simplify Star Thresholds
 **Goal**: Remove maxScore from star thresholds — each threshold defines only minScore + stars, highest matching minScore wins

@@ -17,9 +17,9 @@ Requirements for screening export milestone. Each maps to roadmap phases.
 
 ### Scoring Simplification
 
-- [ ] **SCORE-01**: Star thresholds use only minScore (maxScore field removed from schema, validators, scoring engine, and UI)
-- [ ] **SCORE-02**: Star rating assignment uses highest-matching-minScore-wins logic (thresholds sorted descending, first match returns)
-- [ ] **SCORE-03**: Existing screening jobs with maxScore in stored data continue to work (backward-compatible read)
+- [x] **SCORE-01**: Star thresholds use only minScore (maxScore field removed from schema, validators, scoring engine, and UI)
+- [x] **SCORE-02**: Star rating assignment uses highest-matching-minScore-wins logic (thresholds sorted descending, first match returns)
+- [x] **SCORE-03**: Existing screening jobs with maxScore in stored data continue to work (backward-compatible read)
 
 ### UI Integration
 
@@ -61,9 +61,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-04 | Phase 81 | Complete |
 | UI-05 | Phase 81 | Complete |
 | UI-06 | Phase 81 | Complete |
-| SCORE-01 | Phase 82 | Pending |
-| SCORE-02 | Phase 82 | Pending |
-| SCORE-03 | Phase 82 | Pending |
+| SCORE-01 | Phase 82 | Complete |
+| SCORE-02 | Phase 82 | Complete |
+| SCORE-03 | Phase 82 | Complete |
 
 **Coverage:**
 - v4.1 requirements: 14 total
