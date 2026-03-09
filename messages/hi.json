@@ -1532,6 +1532,8 @@
     "questionsMore": "+{count} और",
     "targetCollection": "संग्रह",
     "viewCollection": "लाइब्रेरी में देखें",
-    "collectionDeleted": "संग्रह हटाया गया"
+    "collectionDeleted": "संग्रह हटाया गया",
+    "papersLabel": "पेपर",
+    "qualifiedLabel": "योग्य"
   }
 }

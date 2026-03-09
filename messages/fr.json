@@ -1532,6 +1532,8 @@
     "questionsMore": "+{count} de plus",
     "targetCollection": "Collection",
     "viewCollection": "Voir dans la bibliothèque",
-    "collectionDeleted": "Collection supprimée"
+    "collectionDeleted": "Collection supprimée",
+    "papersLabel": "articles",
+    "qualifiedLabel": "qualifiés"
   }
 }

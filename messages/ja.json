@@ -1532,6 +1532,8 @@
     "questionsMore": "+{count}件",
     "targetCollection": "コレクション",
     "viewCollection": "ライブラリで表示",
-    "collectionDeleted": "コレクションは削除されました"
+    "collectionDeleted": "コレクションは削除されました",
+    "papersLabel": "論文",
+    "qualifiedLabel": "適格"
   }
 }

@@ -1532,6 +1532,8 @@
     "questionsMore": "+{count}个",
     "targetCollection": "集合",
     "viewCollection": "在库中查看",
-    "collectionDeleted": "集合已删除"
+    "collectionDeleted": "集合已删除",
+    "papersLabel": "篇论文",
+    "qualifiedLabel": "合格"
   }
 }
