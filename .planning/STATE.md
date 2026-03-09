@@ -33,7 +33,7 @@ Progress: [██████████] 100%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 155 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, cleanup: 2, quick: 7)
+- Total plans completed: 156 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, cleanup: 2, quick: 8)
 - Total milestones shipped: 13
 
 **By Milestone:**
@@ -80,9 +80,10 @@ None.
 | 7 | Redesign screening modal UI/UX | 2026-03-09 | eb1ccb1 | [7-redesign-screening-modal-ui-ux](./quick/7-redesign-screening-modal-ui-ux/) |
 | 8 | Improve create-collection inline flow | 2026-03-09 | c27344b | [8-improve-create-new-collection-inline-flo](./quick/8-improve-create-new-collection-inline-flo/) |
 | 9 | Polish create-collection inline flow | 2026-03-09 | 79fce1e | [9-polish-screening-dialog-visual-design](./quick/9-polish-screening-dialog-visual-design/) |
+| 10 | Extract screening progress into standalone dialog | 2026-03-09 | 12d954f | [10-extract-screening-progress-into-standalo](./quick/10-extract-screening-progress-into-standalo/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed quick task 9 (polish create-collection flow)
-Stopped at: Quick task 9 complete
+Last activity: 2026-03-09 -- Completed quick task 10 (extract screening progress into standalone dialog)
+Stopped at: Quick task 10 complete
 Resume file: None
