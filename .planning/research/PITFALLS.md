@@ -1,203 +1,324 @@
-# Domain Pitfalls
+# Pitfalls Research
 
-**Domain:** Production readiness fixes for Convex app (public-to-internal conversion, aggregate counting, .collect() audit)
-**Researched:** 2026-03-06
+**Domain:** Screening result export (CSV/JSON/XLSX) for academic screening tool
+**Researched:** 2026-03-09
+**Confidence:** HIGH (based on direct codebase analysis of existing export patterns and screening schema)
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, security regressions, or production incidents.
+### Pitfall 1: Dynamic Question Columns Misaligned Between Job and Results
 
-### Pitfall 1: Generated API Paths Break When Functions Change Visibility
+**What goes wrong:**
+Screening jobs have user-defined questions (`questions: [{key, question}]`) stored on the job document. Each `screeningResult` stores `answers: Record<string, boolean | null>` keyed by question key. If the export builds columns from job.questions but a result has missing keys (e.g., the paper failed or was skipped mid-processing), the CSV/XLSX columns silently shift, corrupting the entire row alignment.
 
-**What goes wrong:** Converting `query` to `internalQuery` changes the function's generated API path. A function at `api.extraction.debug.diagnoseJob` moves to `internal.extraction.debug.diagnoseJob`. Any code still referencing the `api.*` path gets a TypeScript error at best, or a runtime "function not found" error if using string-based calls.
+**Why it happens:**
+The extraction export (`lib/extraction/export.ts`) iterates `questions.forEach(q => { result = paper.results.find(r => r.questionKey === q.key) })` -- safe because extraction results are stored per-question as separate array elements. But screening results store all answers in a single `Record<string, boolean | null>`, so a missing key is a missing property, not a missing array element. Developers copy the extraction pattern without adapting for the flat record structure.
 
-**Why it happens:** Convex code-generates two separate API trees: `api` (public) and `internal` (private). The function identifier changes namespace, not just access level.
+**How to avoid:**
+Always iterate over `job.questions` as the column source, and use `result.answers?.[q.key] ?? null` with explicit null fallback for each cell. Never iterate over `result.answers` keys directly (order is not guaranteed and may include stale keys from schema changes).
 
-**Consequences:** TypeScript catches most references at compile time (`tsc --noEmit`), but these sources can slip through:
-- String-based references in test inventory files (the `DEBUG_GATED_FILES` array in `tests/debug-gate.test.ts` reads file contents but does not call via `api.*`, so it is safe)
-- Dashboard bookmarks or Convex CLI scripts that use `npx convex run api.extraction.debug.diagnoseJob`
-- Any `ctx.scheduler.runAfter` or `ctx.runQuery` calls using the old `api.*` path
+**Warning signs:**
+- CSV has fewer columns than expected for some rows
+- XLSX rows appear shifted when opened in Excel
+- Tests pass with complete results but fail with partial/skipped results
 
-**Prevention:**
-1. After converting, run `tsc --noEmit` -- it will flag every broken `api.*` reference.
-2. Search the entire codebase for the old function name string (not just import paths): `grep -r "debug.diagnoseJob" .` to catch string references.
-3. The three files that are currently public and need conversion are: `convex/extraction/debug.ts` (`diagnoseJob` -- public query), `convex/extraction/debug_errors.ts` (`getFailedPapersDebug` -- public query), `convex/extraction/testActions.ts` (`createTestJob` -- public mutation), and `convex/extraction/create_test_job.ts` (`createTestJobForFix` -- public mutation). Verify zero client-side references exist (confirmed: no `app/` or `components/` files reference these).
-
-**Detection:** `tsc --noEmit` failure, `verify-no-any.sh` includes tsc check.
-
-**Confidence:** HIGH -- verified against actual codebase; 4 public functions need conversion, 9 are already internal.
+**Phase to address:**
+Phase 1 (data layer) -- the `formatScreeningResultRow()` function must handle missing answers from the start.
 
 ---
 
-### Pitfall 2: Removing requirePublicDebugEnabled Gate From Internal Functions
+### Pitfall 2: No Query to Fetch All Results for a Job
 
-**What goes wrong:** After converting functions to `internalQuery`/`internalMutation`, developers remove the `requirePublicDebugEnabled()` call reasoning "it's internal now, the gate is unnecessary." This breaks the existing `debug-gate.test.ts` inventory test which asserts ALL debug files import `requirePublicDebugEnabled`.
+**What goes wrong:**
+The existing screening queries (`convex/screening/queries.ts`) have no public query that returns all `screeningResults` for a given job. There is `getPendingResults` (internal, pending-only) and `getResultInternal` (single result by ID). Developers try to build the export purely client-side without a backend query, or misuse the internal queries, or forget auth guards.
 
-**Why it happens:** The gate serves two purposes: (1) access control (redundant once internal), and (2) audit logging with `[AUDIT:DEBUG_ACCESS]` structured log. Removing the gate eliminates the audit trail.
+**Why it happens:**
+The screening feature was built for real-time progress tracking (polling job status), not batch data retrieval. The export use case was not anticipated in v4.0, so no "get all results for job" query exists.
 
-**Consequences:**
-- `tests/debug-gate.test.ts` "debug gate inventory" test fails because it checks that every file in `DEBUG_GATED_FILES` imports `requirePublicDebugEnabled`.
-- Loss of audit logging for debug function invocations.
-- If the function is later accidentally changed back to public, there is no safety net.
+**How to avoid:**
+Create a new `getScreeningJobResults` public query in `convex/screening/queries.ts` that:
+1. Authenticates the user and verifies job ownership (same pattern as `getScreeningJob`)
+2. Uses the `by_job` index on `screeningResults`
+3. Applies `.take(MAX_SCREENING_PAPERS_PER_JOB)` bound (200 -- already defined in queryBounds.ts)
+4. Returns all fields needed for export: answers, score, stars, qualified, paper metadata, aiMetadata
 
-**Prevention:**
-- Keep `requirePublicDebugEnabled()` in all debug/test functions even after internal conversion. The gate provides defense-in-depth and audit logging. Several files already follow this pattern (`debug_papers.ts`, `test_runner.ts`, `test_automation.ts` are internal but still use the gate).
-- Update the test inventory array if files are deleted, but do not remove the gate.
+**Warning signs:**
+- Export feature tries to call internal queries from client code
+- Export loads results one-by-one in a loop (N+1 pattern)
+- No auth check on the results query
 
-**Detection:** `tests/debug-gate.test.ts` will fail immediately.
-
-**Confidence:** HIGH -- verified: the test explicitly reads each file and checks for the import.
-
----
-
-### Pitfall 3: Aggregate Component Introduces Schema Migration and Component Registration
-
-**What goes wrong:** Adopting `@convex-dev/aggregate` for the `getLibraryCount` fix requires registering it in `convex.config.ts` as a Convex component, adding component tables to the schema, and running an initial backfill. This is a multi-step deployment that can break if partially applied.
-
-**Why it happens:** Convex components are not simple npm packages -- they add their own tables and require explicit registration. The aggregate component uses a B-tree structure that must be populated before queries return correct results.
-
-**Consequences:**
-- Deploying the schema change without the backfill returns count of 0 for all users.
-- The aggregate must be updated on every `libraryItems` insert/delete mutation, adding coupling.
-- If the backfill is interrupted, counts are silently wrong with no error.
-
-**Prevention:**
-- **Prefer the simpler approach first:** A denormalized counter on the user record (increment on insert, decrement on delete) avoids the component dependency entirely. The project already decided against `@convex-dev/aggregate` in v3.0 for `extractionJobStats` (see MILESTONES.md: "Component adds a dependency and complexity; simple upsert table is sufficient").
-- If using a counter: wrap increment/decrement in the existing `addToLibrary` and `removeFromLibrary` mutations. Use a separate `libraryUserStats` table or add a field to `credits`/`users`.
-- If using `@convex-dev/aggregate`: register in `convex.config.ts`, deploy schema first, run backfill action, verify counts match before switching queries.
-
-**Detection:** Compare aggregate count against `.take(10_000).length` result during backfill verification.
-
-**Confidence:** HIGH -- official Convex docs confirm component registration requirement; project already rejected this approach once.
+**Phase to address:**
+Phase 1 (data layer) -- this query must exist before any export logic can be written or tested.
 
 ---
 
-### Pitfall 4: Unbounded .collect() Audit Misses Index-Scoped Calls That Are Actually Safe
+### Pitfall 3: Exporting In-Progress or Failed Jobs Without Warning
 
-**What goes wrong:** An overzealous audit adds `.take(N)` bounds to every `.collect()` call, including ones that are inherently bounded by narrow index equality filters (e.g., "all questions for a job" where a job has 3-15 questions, or "all collection memberships for a user's collection").
+**What goes wrong:**
+Users click export on a job with status `processing`, `cancelled`, `creditsExhausted`, or `failed`. The export silently produces a partial dataset with missing/incomplete results. The user imports this into their systematic review workflow (e.g., PRISMA) and draws conclusions from incomplete data.
 
-**Why it happens:** The audit sees 125 `.collect()` calls across 27 files and applies a blanket rule. But many of these are scoped by indexes like `by_job`, `by_paper`, `by_collection`, `by_user` where the result set is inherently small.
+**Why it happens:**
+The extraction export dialog receives pre-filtered, complete data. The screening export will receive raw job data that may include results with status `pending`, `processing`, `failed`, or `skipped`. Developers don't filter by result status before export.
 
-**Consequences:**
-- `.take(N)` silently truncates results. If N is too small, data is lost without error.
-- Adding `.take(500)` to a query that loads all extraction results for a paper (typically 5-15 results) adds misleading code that implies the result could be larger.
-- Worse: adding `.take(N)` to mutation cleanup paths (like cascade delete) causes orphaned data -- some child records are deleted but not all.
+**How to avoid:**
+1. Only show the export button on completed jobs (`status === "completed"`)
+2. For `creditsExhausted` or `cancelled` jobs, show export with a visible warning banner: "X of Y papers were screened. Export contains partial results."
+3. Filter out results with `status !== "completed"` from the export dataset
+4. Include a metadata row or sheet indicating total papers, screened papers, and skipped/failed counts
 
-**Prevention:**
-- Categorize each `.collect()` call into three buckets:
-  1. **Inherently bounded** (scoped by narrow index, known small cardinality): leave as-is, add a comment explaining the bound. Examples: `extractionResults.by_paper` (max ~15), `extractionQuestions.by_job` (max ~15), `zoteroConnections.by_user` (max 1-3).
-  2. **User-proportional** (grows with user activity): add `.take(N)` with a generous bound. Examples: `libraryItems.by_user`, `libraryItemCollections.by_collection`.
-  3. **Unbounded** (could grow with table size): must paginate or use an aggregate. Example: the former `getLibraryCount` pattern.
-- Document the rationale for each decision.
+**Warning signs:**
+- Export button visible on in-progress jobs
+- Export file contains empty answer columns for some papers with no explanation
+- No count of included vs. excluded papers in the export
 
-**Detection:** Code review; no automated detection for "is this .collect() safe?" -- requires understanding the data model cardinality.
+**Phase to address:**
+Phase 2 (export functions) -- status filtering and warning logic built into the export utilities.
 
-**Confidence:** HIGH -- verified by examining actual `.collect()` calls in the codebase. The project already made this mistake once (bounding OAuth token cleanup `.collect()` was unnecessary since table has 0-5 rows, and the decision was documented).
+---
+
+### Pitfall 4: CSV Special Character Corruption in Question Text Used as Headers
+
+**What goes wrong:**
+Screening questions are user-authored free text (e.g., `"Does the study use RCT, quasi-experimental, or case-control design?"`). These become CSV column headers. Commas, quotes, and newlines in question text corrupt CSV structure. The existing extraction export escapes cell values (`cell.replace(/"/g, '""')`) but the same escaping must also apply to headers.
+
+**Why it happens:**
+The existing extraction export builds headers from `q.question` directly (line 89 of `lib/extraction/export.ts`), but extraction questions have system-controlled text. Screening questions are user-authored and can contain any characters including commas, double quotes, and newlines.
+
+**How to avoid:**
+Apply the same CSV escaping to header cells as to data cells: wrap each header in double quotes and escape internal quotes. Also truncate question text for XLSX column headers (Excel has practical limits on header length that cause display issues).
+
+**Warning signs:**
+- CSV opens incorrectly in Excel with column misalignment
+- Tests only use simple question text like "Is this relevant?"
+- XLSX headers appear truncated or wrapped unexpectedly
+
+**Phase to address:**
+Phase 2 (export functions) -- CSV/XLSX header generation must escape and truncate.
+
+---
+
+### Pitfall 5: Scoring Config Not Included in Export
+
+**What goes wrong:**
+The export contains answers (yes/no/null), scores, and stars, but not the scoring rules that produced them. A researcher reviewing the export cannot verify how scores were calculated, making the export non-reproducible for systematic review methodology.
+
+**Why it happens:**
+Developers treat the export as a data dump rather than a reproducible research artifact. The scoring config (`rules`, `starThresholds`, `minimumScore`) lives on the job document and is easy to omit from a results-focused export.
+
+**How to avoid:**
+- JSON export: include the full `scoringConfig` object in the metadata section
+- XLSX export: add a "Configuration" sheet with scoring rules and star thresholds (follows the existing "Questions" and "Summary" sheet pattern in the extraction XLSX export)
+- CSV export: accept that CSV is inherently flat and cannot include config metadata; document this limitation
+
+**Warning signs:**
+- JSON export has no `scoringConfig` field
+- XLSX has results sheet but no configuration sheet
+- Reviewers ask "how was the score calculated?" after receiving the export
+
+**Phase to address:**
+Phase 2 (export functions) -- built into the export data structure from the start.
 
 ## Moderate Pitfalls
 
-### Pitfall 5: Convex Auto-Generated API Object Becomes Stale After File Renames
+### Pitfall 6: Boolean Answers Displayed as "true"/"false" Instead of "Yes"/"No"
 
-**What goes wrong:** After converting `convex/extraction/debug.ts` functions from `query` to `internalQuery`, the generated `_generated/api.ts` still exports the old path until `npx convex dev` or `npx convex deploy` regenerates it. Tests and type-checks against the stale generated file pass locally but fail on deploy.
+**What goes wrong:**
+Screening answers are typed `boolean | null` in the schema (`v.union(v.boolean(), v.null())`). Directly stringifying `true`/`false`/`null` produces programmer-readable values ("true", "false", "null") instead of researcher-readable values ("Yes", "No", "N/A").
 
-**Prevention:** Always run `npx convex dev` (which regenerates `_generated/`) after changing function visibility. Do not commit without verifying the generated types match. In CI, `npx convex deploy` handles this automatically.
+**Why it happens:**
+The extraction export has `formatAnswerForCSV` and `formatAnswerForExcel` that handle multiple answer types. Screening only has boolean answers, so developers might skip the formatter and call `String(answer)` directly.
 
----
+**How to avoid:**
+Create a dedicated `formatScreeningAnswer(answer: boolean | null): string` that returns "Yes" / "No" / "N/A". Reuse for all three export formats.
 
-### Pitfall 6: Counter Increment/Decrement Race Condition
+**Warning signs:**
+- Export file contains literal "true", "false", or "null" strings
 
-**What goes wrong:** A denormalized counter for library count can become inconsistent if two mutations (e.g., simultaneous bulk import and single delete) race. Convex mutations are serialized per-document, but if the counter is on a different document than the library item, the counter read-modify-write can conflict.
-
-**Why it happens:** Convex uses optimistic concurrency control (OCC). Two mutations reading the same counter document, modifying it, and writing back will cause one to retry. This is correct behavior but can cause unexpected retry loops under high write load.
-
-**Prevention:**
-- Convex OCC handles this correctly -- the retrying mutation will re-read the current count and re-apply. No manual locking needed.
-- For bulk operations (like Zotero sync importing many items), batch the counter update: increment by N in a single mutation rather than N separate mutations.
-- The project already validated OCC behavior for credit deductions (see PROJECT.md: "Credit deduction OCC concurrency validated").
-
-**Detection:** Convex logs show retry counts. If retries spike during bulk imports, batching is needed.
-
-**Confidence:** MEDIUM -- Convex OCC is well-documented, but the specific counter pattern has not been implemented in this codebase yet.
+**Phase to address:**
+Phase 2 (export functions).
 
 ---
 
-### Pitfall 7: Debug Functions With Auth Checks Become Unreachable When Internal
+### Pitfall 7: ExcelJS Imported Statically Instead of Dynamically
 
-**What goes wrong:** Several debug functions call `requireAuth(ctx)` which checks `ctx.auth.getUserIdentity()`. Internal functions called via `ctx.runQuery` from actions do NOT have auth context unless the action explicitly passes it. If these internal functions are called from other server-side code (crons, other internal functions), `requireAuth` throws "Authentication required."
+**What goes wrong:**
+ExcelJS is ~500KB. The extraction export already uses dynamic `import('exceljs')` with a CJS/ESM interop guard (lines 201-203 of `lib/extraction/export.ts`). If the screening export imports ExcelJS statically, it adds ~500KB to the initial JS bundle for a feature that is used occasionally.
 
-**Why it happens:** `ctx.auth` is populated by the client's auth token. When a function is called server-side via `ctx.runQuery(internal.extraction.debug.diagnoseJob, ...)`, there is no client auth context.
+**Why it happens:**
+Static imports are simpler and the developer forgets this is a browser-side module where bundle size matters.
 
-**Consequences:** The debug functions become unusable from the Convex dashboard "Run function" feature or from other internal functions, which defeats the purpose of having diagnostic tools.
+**How to avoid:**
+Copy the exact dynamic import pattern from extraction export:
+```typescript
+const mod = await import('exceljs');
+const ExcelJSModule = 'default' in mod ? (mod as unknown as { default: typeof mod }).default : mod;
+```
 
-**Prevention:**
-- For functions that are ONLY for developer diagnosis (all debug functions), remove `requireAuth(ctx)` when converting to internal. Internal functions are inherently trusted -- only your own Convex code can call them.
-- For functions that need user-scoping, accept `userId` as an explicit argument instead of deriving it from auth context.
-- The files affected are: `debug.ts` (has `requireAuth`), `debug_errors.ts` (has `requireAuth`), `testActions.ts` (has `requireAuth`). Files like `debug_papers.ts` and `debug_job_content.ts` are already internal and do NOT use `requireAuth`.
+**Warning signs:**
+- `next build` shows increased bundle size
+- Static `import ExcelJS from 'exceljs'` at top of file
 
-**Detection:** Attempting to call the function from the Convex dashboard or via `npx convex run` will throw.
-
-**Confidence:** HIGH -- verified by reading each debug file; `requireAuth` depends on client auth token which internal callers lack.
+**Phase to address:**
+Phase 2 (export functions).
 
 ---
 
-### Pitfall 8: .take(10_000).length Returns Incorrect Count for Large Libraries
+### Pitfall 8: Duplicating downloadFile/CSV-Escaping Instead of Extracting Shared Utilities
 
-**What goes wrong:** The current `getLibraryCount` uses `.take(10_000)` which caps at 10,000. Users with more than 10,000 library items get an incorrect count. The replacement must handle the "count exceeds reasonable bound" case explicitly.
+**What goes wrong:**
+The codebase already has two separate download mechanisms: `downloadFile()` in `lib/extraction/export.ts` and `downloadAsFile()` in `lib/utils.ts` (used by library export). A third copy in screening export creates three divergent implementations of the same logic.
 
-**Why it happens:** `.take(N)` is a band-aid. Any fixed N has a cliff where the count becomes wrong.
+**Why it happens:**
+Each export module was built independently. The extraction export has its own `downloadFile`, the library export uses a utility from `lib/utils.ts`, and a screening export will be tempted to copy one of them.
 
-**Prevention:**
-- A denormalized counter has no upper bound -- it is always accurate.
-- If keeping `.take(N)` temporarily, display "10,000+" in the UI when count equals the cap. The current client code (`library-page-client.tsx` line 67) uses the raw number for a badge -- it does not handle the cap case.
-- The aggregate component also has no upper bound but adds dependency complexity.
+**How to avoid:**
+Use the existing `downloadAsFile` from `lib/utils.ts` (already imported by library export). For the CSV escaping utility, extract the `row.map(cell => ...)` pattern from `lib/extraction/export.ts` into a shared helper, or build the screening CSV export using the same `jsonToCSV` utility the library export uses.
 
-**Detection:** `getLibraryCount` test should include a "count at cap" test case.
+**Warning signs:**
+- A new `downloadFile` function in the screening export module
+- CSV escaping logic copy-pasted rather than shared
 
-**Confidence:** HIGH -- verified current implementation and client usage.
+**Phase to address:**
+Phase 2 (export functions) -- decide on shared utility approach before writing formatters.
 
 ## Minor Pitfalls
 
-### Pitfall 9: Test File Inventory Needs Manual Update
+### Pitfall 9: Missing i18n Strings for Export UI
 
-**What goes wrong:** The `debug gate inventory` test in `tests/debug-gate.test.ts` maintains a hardcoded `DEBUG_GATED_FILES` array listing all 12 debug/test files. If a file is renamed or deleted during the conversion, the test fails with a file-not-found error (it uses `readFileSync`).
+**What goes wrong:**
+The project uses next-intl with 6 locale files. Adding an export button, format selector, and option checkboxes to the screening job history requires new translation keys. Missing keys cause fallback to the key string (e.g., "screeningExport.downloadButton" shown to users).
 
-**Prevention:** Update the `DEBUG_GATED_FILES` array whenever renaming or deleting debug files. Consider whether this inventory test should be updated to also verify that converted files use `internalQuery`/`internalMutation` instead of `query`/`mutation`.
+**Why it happens:**
+i18n updates are easy to forget, especially across 6 locales.
+
+**How to avoid:**
+Add all screening export i18n keys to all 6 locale files in the same PR as the UI component. Check the browser console for missing translation warnings.
+
+**Warning signs:**
+- Raw translation key strings visible in UI
+- Console warnings from next-intl about missing keys
+
+**Phase to address:**
+Phase 3 (UI integration).
 
 ---
 
-### Pitfall 10: Removing the ENABLE_PUBLIC_DEBUG_FUNCTIONS Env Var Too Early
+### Pitfall 10: Export Filename Not Descriptive Enough
 
-**What goes wrong:** After all functions are internal, someone removes the env var from the Convex dashboard thinking it is unused. But the `requirePublicDebugEnabled()` gate still checks it. All debug functions start throwing FORBIDDEN even when called internally.
+**What goes wrong:**
+Generic filenames like `screening-results-1741510800000.csv` (Unix timestamp) are impossible to identify later. The extraction export uses `extraction-results-${Date.now()}` and the library export uses `library-export-${ISO-date}`.
 
-**Prevention:** Either (a) keep the env var set to "true" in staging after conversion, or (b) if removing the gate entirely, do it in a single atomic change that also updates the test inventory.
+**Why it happens:**
+Following the existing timestamp pattern without considering that screening jobs are discrete, identifiable units (unlike general library exports).
 
----
+**How to avoid:**
+Include the job date and result count in the filename: `screening-2026-03-09-142papers.csv`. This matches academic workflow expectations where researchers manage many export files.
 
-### Pitfall 11: Search Index .collect() Cannot Use .take()
+**Warning signs:**
+- Users re-downloading exports because they cannot identify previous files
 
-**What goes wrong:** The `queryLibraryItems` helper in `convex/library/queries.ts` (line 187) uses `.withSearchIndex().collect()`. Convex search index queries do not support `.take()` -- they return up to 256 results by default (the Convex search limit). Attempting to add `.take(N)` to a search index query may be a no-op or error.
+**Phase to address:**
+Phase 3 (UI integration).
 
-**Prevention:** Do not attempt to bound search index `.collect()` calls -- they are already bounded by Convex's built-in search result limit (256). Document this in the audit as "inherently bounded by search index limit."
+## Technical Debt Patterns
 
-**Confidence:** HIGH -- Convex search index behavior is documented.
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|----------------|-----------------|
+| Copy extraction export verbatim for screening | Fast implementation | Two divergent export systems with different data shapes, hard to maintain | Never -- extract shared utilities (download, CSV escaping, ExcelJS dynamic import) and build screening-specific formatters |
+| Skip ExcelJS dynamic import for screening | Simpler code | +500KB to initial bundle for an occasional feature | Never -- pattern already established |
+| Hardcode column order instead of deriving from job.questions | Works for current test cases | Breaks when questions differ between jobs | Never -- column order must derive from job.questions |
+| Export all results without status filter | Shows complete dataset | Includes garbage data (pending/failed) that misleads researchers | Only with explicit status column AND warning banner |
+| Inline the results query in an action instead of a query | Avoids adding a new query function | Cannot use Convex reactivity, harder to test | Never -- query is needed anyway and follows established patterns |
 
-## Phase-Specific Warnings
+## Integration Gotchas
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Debug endpoint conversion | Pitfall 1 (API path break), Pitfall 2 (gate removal), Pitfall 7 (auth in internal) | Convert import, keep gate, remove requireAuth, update test inventory, run tsc |
-| Library count replacement | Pitfall 3 (aggregate complexity), Pitfall 8 (cap at 10k), Pitfall 6 (counter race) | Use denormalized counter, not aggregate component. Increment/decrement in existing mutations. |
-| .collect() audit | Pitfall 4 (over-bounding safe calls), Pitfall 11 (search index) | Categorize by cardinality. Leave inherently-bounded calls alone. Skip search index calls. |
-| All phases | Pitfall 5 (stale generated API), Pitfall 9 (test inventory) | Regenerate with `npx convex dev`, update test arrays |
+| Integration | Common Mistake | Correct Approach |
+|-------------|----------------|------------------|
+| Convex query for results | Using `.collect()` without bounds | Use `.take(MAX_SCREENING_PAPERS_PER_JOB)` (200) via `by_job` index |
+| ExcelJS dynamic import | Static `import ExcelJS from 'exceljs'` | Dynamic `const mod = await import('exceljs')` with CJS/ESM interop guard |
+| Screening job ownership | Fetching results without verifying job belongs to user | Query job first, check `job.userId === user._id`, then query results by jobId |
+| Answer type coercion | Treating `boolean \| null` answers as strings directly | Use explicit formatter: `true` -> "Yes", `false` -> "No", `null` -> "N/A" |
+| Existing download utility | Creating a third `downloadFile` function | Use `downloadAsFile` from `lib/utils.ts` (already used by library export) |
+| Screening result status | Including `pending`/`failed`/`skipped` results in export | Filter to `status === "completed"` only, document excluded count |
+
+## Performance Traps
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|----------------|
+| Loading results without the by_job index | Full table scan on screeningResults | Use `.withIndex("by_job", q => q.eq("jobId", jobId))` | Even at 200 results per job, table scan hits all jobs' results |
+| Re-rendering job history list on export button click | Dialog flickers or re-fetches data | Use stable query reference, memoize export data | Noticeable with 10+ jobs in history |
+| Building XLSX synchronously blocking main thread | UI freezes for 1-2 seconds | ExcelJS `writeBuffer()` is async -- ensure proper `await` with loading state | At 200 papers with 5+ questions |
+
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Results query without auth + ownership check | Any user could export another user's screening results by guessing job ID | Follow `getScreeningJob` pattern: `getCurrentUser(ctx)` + `job.userId !== user._id` null return |
+| Including AI provider/model details in default CSV export | Leaks internal infrastructure choices | Include AI metadata only in JSON format under explicit opt-in flag |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|-------------|-----------------|
+| Export button with no loading state | User clicks multiple times, gets duplicate downloads | Disable button during export, show spinner, re-enable on completion |
+| No indication of what is being exported | User unsure if getting all papers or just qualified | Show count in button text: "Export 142 results" |
+| Export available on in-progress or empty jobs | User exports empty or partial file, confused | Hide export button when `processedPapers === 0`; show warning for partial jobs |
+| No format description on selection | User picks wrong format, has to re-export | Brief description under each option (CSV: "spreadsheet compatible", XLSX: "Excel with multiple sheets", JSON: "structured data with full metadata") |
+
+## "Looks Done But Isn't" Checklist
+
+- [ ] **Results query:** Has auth guard AND job ownership check -- verify both paths return null for unauthorized access
+- [ ] **CSV headers:** Question text is escaped (commas, quotes, newlines) -- verify with a question containing `"Is it a "good" study?"`
+- [ ] **XLSX column types:** Score is number not string -- verify Excel shows numeric sorting, not lexicographic
+- [ ] **Partial job export:** Warning shows when job is not `completed` -- verify with `creditsExhausted` status
+- [ ] **Empty answers:** `null` answers render as "N/A" not empty string or literal "null" -- verify in all three formats
+- [ ] **i18n:** Export dialog strings added to all 6 locale files -- verify no missing translation warnings
+- [ ] **ExcelJS import:** Uses dynamic `import()` not static -- verify bundle size unchanged with `next build`
+- [ ] **Scoring config:** JSON export includes `scoringConfig`, XLSX has configuration sheet -- verify both present
+- [ ] **File download:** `URL.revokeObjectURL()` called after download -- verify no memory leak
+- [ ] **Boolean display:** `true`/`false` shown as "Yes"/"No" not "true"/"false" -- verify in CSV and XLSX
+- [ ] **Status filter:** Only `completed` results exported, failed/skipped excluded -- verify with mixed-status job
+- [ ] **Shared utilities:** No duplicate downloadFile function -- verify reusing `downloadAsFile` from `lib/utils.ts`
+
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|---------------|----------------|
+| Column misalignment from missing answers | LOW | Fix formatter to use `answers?.[key] ?? null`, re-export. No data loss -- results persist in Convex. |
+| No results query exists | MEDIUM | Write query with auth guard, deploy, wire up UI. Blocks entire export feature until resolved. |
+| Partial data exported without warning | LOW | Add warning banner and status filter, re-export. User may need to re-run analysis. |
+| CSV corruption from special characters | LOW | Fix escaping in header generation, re-export. |
+| Missing scoring config in export | LOW | Add to export format, re-export. No data migration needed. |
+| Bundle size regression from static ExcelJS | MEDIUM | Switch to dynamic import, redeploy. No data changes. |
+| Boolean "true"/"false" in export | LOW | Add formatter, re-export. |
+
+## Pitfall-to-Phase Mapping
+
+| Pitfall | Prevention Phase | Verification |
+|---------|------------------|--------------|
+| No results query (P2) | Phase 1 (data layer) | `getScreeningJobResults` query exists with auth guard and ownership check, tested with convex-test |
+| Dynamic column misalignment (P1) | Phase 1 (data layer) | Unit test with partial answers (some questions unanswered) produces correct column count |
+| Auth on results query (P2) | Phase 1 (data layer) | convex-test verifying null return for non-owner and unauthenticated users |
+| Exporting incomplete jobs (P3) | Phase 2 (export functions) | Status filter test: only `completed` results included; partial job triggers warning |
+| CSV special characters (P4) | Phase 2 (export functions) | Unit test with question text containing commas, quotes, and newlines |
+| Missing scoring config (P5) | Phase 2 (export functions) | JSON round-trip test includes scoringConfig; XLSX has configuration sheet |
+| Boolean formatting (P6) | Phase 2 (export functions) | Formatter test: true->"Yes", false->"No", null->"N/A" |
+| ExcelJS static import (P7) | Phase 2 (export functions) | Dynamic import pattern used; bundle size unchanged |
+| Shared utilities (P8) | Phase 2 (export functions) | No duplicate downloadFile; uses `downloadAsFile` from lib/utils |
+| Missing i18n (P9) | Phase 3 (UI integration) | All 6 locale files updated, no console warnings |
+| Filename clarity (P10) | Phase 3 (UI integration) | Filename includes date and paper count |
+| Loading state (UX) | Phase 3 (UI integration) | Button disabled during export, spinner shown |
 
 ## Sources
 
-- [Convex Internal Functions](https://docs.convex.dev/functions/internal-functions) -- official docs on internalQuery/internalMutation/internalAction, confirms namespace change from `api` to `internal`
-- [Convex Best Practices](https://docs.convex.dev/understanding/best-practices/) -- .collect() guidance, counting patterns, security recommendations
-- [Convex Aggregate Component](https://www.convex.dev/components/aggregate) -- B-tree based counting, requires component registration
-- [Efficient COUNT, SUM, MAX with the Aggregate Component](https://stack.convex.dev/efficient-count-sum-max-with-the-aggregate-component) -- implementation guide for aggregate-based counting
-- Codebase inspection: `convex/extraction/debug*.ts`, `convex/extraction/test*.ts`, `convex/lib/debug_gate.ts`, `convex/library/queries.ts`, `tests/debug-gate.test.ts`, `components/library/library-page-client.tsx`
+- Direct codebase analysis: `convex/schema.ts` (lines 684-770 -- screeningJobs and screeningResults table definitions)
+- Existing screening queries: `convex/screening/queries.ts` (no public results-for-job query exists)
+- Existing export patterns: `lib/extraction/export.ts` (CSV/JSON/XLSX with dynamic ExcelJS), `lib/library/export.ts` (CSV/JSON via downloadAsFile)
+- Export dialog: `components/extraction/export-dialog.tsx` (format selection + options UI pattern)
+- Query bounds: `convex/lib/queryBounds.ts` (MAX_SCREENING_PAPERS_PER_JOB = 200)
+- Screening types: `lib/types/screening.types.ts` (ScreeningResult interface)
+- Job history UI: `components/screening/screening-job-history.tsx` (where export button will be added)
 
 ---
-
-*Pitfalls research: 2026-03-06*
+*Pitfalls research for: Screening result export (CSV/JSON/XLSX)*
+*Researched: 2026-03-09*

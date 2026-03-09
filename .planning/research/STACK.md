@@ -1,227 +1,164 @@
-# Technology Stack: v4.0 Bulk Screening & Auto-Rating
+# Technology Stack: v4.1 Screening Export (CSV/JSON/XLSX)
 
 **Project:** OpenAlex Count
-**Researched:** 2026-03-08
+**Researched:** 2026-03-09
 **Confidence:** HIGH
-**Scope:** Stack additions for background bulk screening, user-defined scoring/rating rules, and progress tracking. Existing stack (Next.js, Convex ^1.31.7, @convex-dev/workflow ^0.3.4, @convex-dev/workpool ^0.3.1, ai ^6.0.62, Zustand, nuqs, sonner, 786+ tests, zero-any codebase) is validated -- NOT re-researched.
+**Scope:** Stack additions for exporting screening job results as CSV, JSON, and XLSX from job history. Existing stack (Next.js, Convex, ExcelJS dynamic import, CSV/JSON export utilities, next-intl, shadcn/ui) is validated -- NOT re-researched.
 
 ---
 
-## Key Finding: No New Dependencies Needed
+## Key Finding: Zero New Dependencies
 
-The existing stack contains every building block required for v4.0. This is an **integration milestone**, not an infrastructure milestone. The project already has durable workflow orchestration, parallel background processing, a production-proven batch screening action, complete library/collection mutation infrastructure, reactive progress queries, and a credit guard pattern for background jobs.
+The existing codebase contains every library and utility needed for screening export. No new packages, no version bumps, no new patterns required. This is a **data-shape adaptation**, not a capability gap.
 
----
+Two battle-tested export systems already exist:
+1. **Extraction export** (`lib/extraction/export.ts`) -- CSV/JSON/XLSX with ExcelJS dynamic import, multi-sheet workbooks, `downloadFile` helper
+2. **Library export** (`lib/library/export.ts`) -- CSV/JSON using `jsonToCSV` and `downloadAsFile` from `lib/utils.ts`
 
-## Existing Stack (Validated - DO NOT change)
-
-| Technology | Version | v4.0 Role |
-|------------|---------|-----------|
-| `@convex-dev/workflow` | ^0.3.4 | Top-level bulk screening job orchestration (same pattern as extraction workflow) |
-| `@convex-dev/workpool` | ^0.3.1 | Parallel batch fan-out with retry (if needed for speed) |
-| `convex` | ^1.31.7 | Mutations, queries, actions, scheduler, reactive subscriptions |
-| `convex-helpers` | ^0.1.111 | Rate limiting on the new screening endpoint |
-| `ai` | ^6.0.62 | LLM calls via `generateBatchScreeningResponses` action |
-| `zustand` | ^5.0.5 | Client-side dialog state, optimistic UI |
-| `nuqs` | ^2.6.0 | URL state for screening job filters |
-| `sonner` | ^2.0.7 | Toast feedback for job creation/completion |
+The screening export follows the extraction export pattern (dynamic question columns, multi-sheet XLSX) but with a simpler data shape (boolean answers vs mixed types).
 
 ---
 
-## What v4.0 Needs (All Achievable With Existing Stack)
+## Existing Stack to Reuse
 
-### 1. Bulk Screening Job Orchestration
+### Export Infrastructure (already in codebase)
 
-**Use:** `@convex-dev/workflow` (existing `workflow.ts` singleton)
+| Technology | Location | Purpose | Reuse Strategy |
+|------------|----------|---------|----------------|
+| ExcelJS (dynamic import) | `lib/extraction/export.ts` | XLSX generation with multi-sheet workbooks | Clone `exportToExcel` pattern; adapt columns for screening data shape |
+| `downloadFile` helper | `lib/extraction/export.ts` | Browser-side Blob download trigger | Import directly -- generic, format-agnostic |
+| `jsonToCSV` | `lib/utils.ts` | Flat object array to CSV string | Use for screening CSV (library export pattern) |
+| `downloadAsFile` | `lib/utils.ts` | CSV/JSON download with MIME types | Use for CSV/JSON paths (library export pattern) |
+| `formatAnswerForCSV` | `lib/extraction/export.ts` | Type-aware answer formatting | Screening answers are `boolean | null` -- simpler case, but helper handles it |
+| `formatAnswerForExcel` | `lib/extraction/export.ts` | Type-aware answer formatting for Excel | Same as above |
 
-The extraction workflow (`convex/extraction/workflow.ts`) is the exact pattern to follow. It demonstrates:
-- Multi-step durable execution (`step.runQuery`, `step.runMutation`, `step.runAction`)
-- Paper batching and deduplication
-- Status updates at each stage
-- Workpool integration for parallel processing
-- Credit guard pattern for cancelled jobs
+### Data Access (already in codebase)
 
-**For bulk screening:** Define a new `runBulkScreeningWorkflow` following the same pattern:
-1. Create `bulkScreeningJobs` record (status: "pending")
-2. Batch papers (up to 200) into chunks of 10-20 for `generateBatchScreeningResponses`
-3. Process each batch via `step.runAction` (sequential within workflow, retried on failure)
-4. After each batch: apply scoring rules, compute ratings, save to library, assign to collection
-5. Update progress counters after each batch via `step.runMutation`
+| Technology | Location | Purpose | Reuse Strategy |
+|------------|----------|---------|----------------|
+| `screeningResults` table | `convex/schema.ts` L732-770 | Per-paper outcomes with answers, score, stars, qualified | Query via `by_job` index, bounded with `MAX_SCREENING_PAPERS_PER_JOB` |
+| `screeningJobs` table | `convex/schema.ts` | Job metadata: questions, scoring config | `getScreeningJob` already returns questions and scoringConfig for column headers |
+| `by_job` index | `convex/schema.ts` L768 | Index on screeningResults.jobId | Fetch all results for a completed job |
 
-**Why sequential batches over workpool fan-out:** Start simple. The screening workload is lighter than extraction (no PDF downloads, just LLM calls on title+abstract). With 200 papers in batches of 20, that is 10 sequential batch calls. At ~20-40s per batch, total wall time is 200-400s -- acceptable for a background job. If speed becomes a concern, add a second `Workpool` instance with zero new dependencies (just another instantiation in `workpool.ts`).
+### UI Components (already in codebase)
 
-**Confidence:** HIGH -- extraction workflow proves the pattern at scale.
-
-### 2. Background Batch Processing
-
-**Use:** `generateBatchScreeningResponses` action (existing `convex/ai/actions.ts`)
-
-This action already:
-- Accepts `papers: Array<{id, title, abstract}>` and `questions: Array<string>`
-- Returns `results: Record<paperId, {responses: Record<questionKey, boolean|null>, confidence: number}>`
-- Handles per-paper credit deduction via `withAuthAndCreditsBatch`
-- Encodes question keys for Convex compatibility via `encodeQuestionResponseMap`
-
-**Integration consideration:** The existing action uses `withAuthAndCreditsBatch` which requires auth context. For background workflow execution, create an internal variant that uses `withUserCreditsBatch` (already exists in `ai/helpers.ts`) accepting `userId` directly. This follows the exact pattern used by `waitAndExtractAction` in `convex/extraction/workpoolActions.ts`.
-
-**Confidence:** HIGH -- action is production-proven.
-
-### 3. Scoring & Rating Rules Engine
-
-**Use:** Pure TypeScript functions (no library needed)
-
-Scoring rules are simple arithmetic:
-- Each screening question has a score weight: `yes -> +N points`, `no -> -M points`, `null -> 0`
-- Total score = sum of per-question scores
-- Star rating thresholds: user-defined score ranges map to 0-5 stars
-
-This is a pure function: `(screeningResponses, scoringRules, ratingThresholds) -> { score, rating }`. No library needed. Store rules in the job configuration document.
-
-**Schema design for scoring rules:**
-```typescript
-scoringRules: v.array(v.object({
-  questionIndex: v.number(),
-  yesScore: v.number(),     // Points when answer is true (e.g., +2)
-  noScore: v.number(),      // Points when answer is false (e.g., -1)
-})),
-ratingThresholds: v.array(v.object({
-  minScore: v.number(),     // Minimum score for this rating
-  rating: v.number(),       // 0-5 stars
-})),
-```
-
-**Confidence:** HIGH -- pure arithmetic, no external dependencies.
-
-### 4. Progress Tracking
-
-**Use:** Convex reactive queries (existing pattern)
-
-The extraction workflow already demonstrates this exact pattern:
-- `extractionJobs.processedPapers` / `totalPapers` counters updated via `updateJobStatus` mutation
-- Client subscribes via `useQuery` and gets real-time updates automatically
-
-**For bulk screening:** Same pattern. The `bulkScreeningJobs` table has `totalPapers`, `processedPapers`, `failedPapers` counters. Client uses `useQuery(api.screening.queries.getJobProgress, { jobId })` for live updates. Convex's reactive query system means the UI updates automatically when the workflow mutates progress counters -- no polling, no WebSocket setup, no SSE.
-
-**Confidence:** HIGH -- Convex reactive queries make this trivial.
-
-### 5. Library Save & Collection Assignment from Background Jobs
-
-**Use:** Internal variants of existing `saveToLibrary` + `addToCollection` mutations
-
-Both mutations exist and are production-proven. The bulk screening workflow needs **internal variants** (no auth check, accepts userId directly) because background jobs run without user auth context.
-
-**Pattern:**
-```typescript
-export const internalSaveToLibrary = internalMutation({
-  args: {
-    userId: v.id("users"),
-    // ... same fields as saveToLibrary
-  },
-  handler: async (ctx, args) => {
-    // Same logic as saveToLibrary but uses args.userId instead of requireAuth()
-  },
-});
-```
-
-This follows the existing `withUserCreditsBatch` pattern in `ai/helpers.ts` which already handles background jobs without auth context. The extraction workflow uses this same approach.
-
-**Confidence:** HIGH -- straightforward internal mutation variants.
-
-### 6. Credit Cost Estimation
-
-**Use:** Existing `calculateServerCreditsToDeduct` + model cost registry
-
-Pre-screening cost estimation: multiply estimated per-paper token usage by paper count. Based on observed screening calls: ~500 input tokens (title + abstract + questions), ~100 output tokens per paper. The `calculateCreditsToDeductFromUsage` function provides the credit conversion.
-
-**Display:** Show as range ("~X-Y credits") since actual costs vary with abstract length.
-
-**Confidence:** MEDIUM -- estimates are approximate; actual costs vary with abstract length and question count.
-
----
-
-## Recommended New Convex Tables
-
-| Table | Purpose | Key Fields |
-|-------|---------|------------|
-| `bulkScreeningJobs` | Job state, config, progress | userId, status, totalPapers, processedPapers, failedPapers, questions, scoringRules, ratingThresholds, targetCollectionId, workflowId, estimatedCredits, createdAt, updatedAt, completedAt |
-| `bulkScreeningResults` | Per-paper screening outcomes | jobId, openalexId, title, abstract, authors, publicationYear, doi, responses, score, rating, libraryItemId, status, error, processedAt |
-
-**Index design (following existing patterns):**
-```
-bulkScreeningJobs:
-  .index("by_user", ["userId"])
-  .index("by_user_status", ["userId", "status"])
-  .index("by_workflow", ["workflowId"])
-
-bulkScreeningResults:
-  .index("by_job", ["jobId"])
-  .index("by_job_status", ["jobId", "status"])
-```
-
----
-
-## Recommended New Functions
-
-| Function | Type | Purpose |
-|----------|------|---------|
-| `screening/workflow.runBulkScreeningWorkflow` | `workflow.define` | Orchestrates full screening pipeline |
-| `screening/mutations.createBulkScreeningJob` | `mutation` | Creates job record, validates config, starts workflow |
-| `screening/mutations.cancelBulkScreeningJob` | `mutation` | Cancels in-progress job (follows extraction cancel pattern) |
-| `screening/mutations.updateScreeningProgress` | `internalMutation` | Updates progress counters |
-| `screening/mutations.saveScreeningResult` | `internalMutation` | Stores per-paper result |
-| `screening/queries.getJobProgress` | `query` | Live progress for UI (reactive) |
-| `screening/queries.getJobResults` | `query` | Results list for completed job |
-| `screening/queries.listMyScreeningJobs` | `query` | User's screening job history |
-| `screening/actions.processScreeningBatch` | `internalAction` | Calls AI screening, applies scoring, saves results |
-| `library/mutations.internalSaveToLibrary` | `internalMutation` | Auth-free save for background jobs |
-| `library/collections.internalAddToCollection` | `internalMutation` | Auth-free collection assignment |
-| `lib/scoring.ts` | pure functions | `computeScore()` and `computeRating()` |
+| Technology | Location | Purpose | Reuse Strategy |
+|------------|----------|---------|----------------|
+| `screening-job-history.tsx` | `components/screening/` | Job history list with per-job actions | Add export dropdown for completed jobs |
+| shadcn/ui DropdownMenu | `components/ui/` | Dropdown for format selection | CSV/JSON/XLSX picker |
+| lucide-react | Throughout | Icons | `Download` or `FileDown` icon for export button |
+| next-intl | Throughout | i18n (6 locales) | Add screening export keys to translation files |
+| sonner toasts | Throughout | User feedback | Toast on export start/completion |
 
 ---
 
 ## What NOT to Add
 
-| Anti-Addition | Why Not |
-|---------------|---------|
-| Redis / BullMQ / any job queue | Convex workflow + workpool already provides durable job processing with retries, progress tracking, and cancellation |
-| WebSocket / SSE library | Convex reactive queries provide real-time updates out of the box via `useQuery` |
-| XState / state machine library | Job status transitions are linear (pending -> screening -> scoring -> saving -> completed); a union type with `v.literal()` suffices |
-| react-hook-form / formik | Configuration dialog has ~10-15 fields; local `useState` or Zustand slice is sufficient |
-| New AI provider or SDK | `generateBatchScreeningResponses` uses the configured provider via Vercel AI SDK |
-| Database migration tool | New tables are purely additive; Convex handles schema evolution automatically |
-| Progress bar component library | A div with `width: ${(processed/total)*100}%` is sufficient; existing Radix UI provides primitives if needed |
-| `@convex-dev/crons` or scheduler add-on | `ctx.scheduler.runAfter(0, ...)` and workflow's built-in retry handle all scheduling needs |
-| Separate `screeningPool` workpool (initially) | Start with sequential batch processing in the workflow; add parallelism only if wall time is unacceptable |
+| Temptation | Why Not | What to Do Instead |
+|------------|---------|-------------------|
+| `file-saver` / `FileSaver.js` | `downloadFile` in `lib/extraction/export.ts` already handles Blob downloads | Import existing helper |
+| `papaparse` for CSV | `jsonToCSV` in `lib/utils.ts` handles CSV; screening data is flat | Import existing helper |
+| `xlsx` / `SheetJS` | ExcelJS already installed with dynamic import and CJS/ESM interop guard | Reuse existing ExcelJS pattern |
+| Server-side export (Convex action) | Max 500 papers per job (`MAX_SCREENING_PAPERS_PER_JOB`); client-side generation handles this volume easily | Client-side export like extraction/library |
+| Streaming/chunked export | 500 rows is trivially small for in-memory generation | Single-pass export |
+| New export component library | Three format-specific functions + one dropdown is all that is needed | Plain functions + shadcn DropdownMenu |
+| `react-hot-toast` | Project uses sonner toasts | Use existing toast pattern |
 
 ---
 
-## Critical Integration Points
+## New Code Needed (Not Dependencies)
 
-### 1. Auth Context in Background Jobs
+### 1. Convex Query: `getScreeningResultsForExport`
 
-The existing `withUserCreditsBatch` helper in `ai/helpers.ts` solves this. It accepts `userId` directly and skips auth checks. The bulk screening workflow must:
-1. Capture `userId` at job creation time (from authenticated `createBulkScreeningJob` mutation)
-2. Pass `userId` through the workflow to all internal actions/mutations
-3. Use `withUserCreditsBatch` for credit-aware AI calls in `processScreeningBatch`
-4. Use `internalSaveToLibrary` / `internalAddToCollection` for library writes
+**Location:** `convex/screening/queries.ts`
 
-### 2. Credit Guard Pattern
+New auth-gated query fetching all results for a completed job via `by_job` index with `.take(MAX_SCREENING_PAPERS_PER_JOB)` bound. Returns paper metadata + answers + score + stars + qualified + aiMetadata.
 
-Follow the extraction workflow's credit guard (from `workpoolActions.ts:958-973`):
-- Before each batch, re-read job status from DB
-- If job is cancelled, skip processing and credit deduction
-- Race window of 0-1 batch (~10-20 papers) is acceptable
+**Why a new query:** `getPendingResults` filters by status=pending and returns subset fields. `getResultInternal` is per-result and internal-only. Export needs all completed results with full answer/scoring data in one auth-gated query.
 
-### 3. Rate Limiting
-
-Add a rate limit for `createBulkScreeningJob` using the existing `defineRateLimits` pattern in `lib/rateLimit.ts`. Suggested: 5 jobs per hour per user (token bucket).
-
-### 4. Bounded Queries
-
-Follow `queryBounds.ts` pattern. Add:
+**Return shape:**
 ```typescript
-export const MAX_SCREENING_RESULTS_PER_JOB = 200;
-export const MAX_SCREENING_JOBS_PER_USER = 100;
+v.array(v.object({
+  title: v.string(),
+  doi: v.optional(v.string()),
+  authors: v.optional(v.array(v.string())),
+  publicationYear: v.optional(v.number()),
+  openalexId: v.string(),
+  status: screeningResultStatusValidator,
+  answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
+  score: v.optional(v.number()),
+  stars: v.optional(v.number()),
+  qualified: v.optional(v.boolean()),
+  savedToLibrary: v.optional(v.boolean()),
+}))
+```
+
+### 2. Export Module: `lib/screening/export.ts`
+
+**Location:** New file following `lib/extraction/export.ts` pattern
+
+Three functions:
+- `exportScreeningToCSV(job, results)` -- flat rows with dynamic question columns
+- `exportScreeningToJSON(job, results)` -- structured JSON with metadata envelope
+- `exportScreeningToExcel(job, results)` -- multi-sheet XLSX (Results sheet + Summary sheet)
+
+**Column structure for all formats:**
+
+| Column Type | Columns |
+|------------|---------|
+| Paper metadata | Title, DOI, Year, Authors |
+| Per-question answers | Dynamic from `job.questions` (Yes/No/N/A per question) |
+| Scoring | Score, Stars, Qualified (Yes/No), Saved to Library (Yes/No) |
+| Status | Result status (completed/failed/skipped) |
+
+**XLSX-specific:** Two sheets:
+1. **Results** -- all rows with all columns above
+2. **Summary** -- total papers, qualified count, qualification rate, per-question yes/no/null breakdown
+
+### 3. UI: Export Button in Job History
+
+**Location:** `components/screening/screening-job-history.tsx`
+
+DropdownMenu with 3 format options (CSV, JSON, XLSX), shown only for completed/creditsExhausted jobs. On click: fetch results via `useQuery`, call export function, show toast.
+
+---
+
+## Integration Points
+
+| Integration | How It Connects |
+|-------------|-----------------|
+| `screening-job-history.tsx` -> export module | Button triggers query for results, then calls format-specific export function |
+| Export module -> `lib/extraction/export.ts` | Import `downloadFile` for Blob download trigger |
+| Export module -> ExcelJS | Dynamic import with exact same CJS/ESM interop pattern as extraction export |
+| Convex query -> `queryBounds.ts` | Import `MAX_SCREENING_PAPERS_PER_JOB` for `.take()` bound |
+| i18n -> translation files | Add keys: "Export", "Export as CSV", "Export as JSON", "Export as XLSX", "Exporting..." in 6 locales |
+
+---
+
+## Screening Data Shape (from schema, verified)
+
+```typescript
+// screeningResults fields available for export (convex/schema.ts L732-770):
+{
+  title: string;
+  doi?: string;
+  authors?: string[];
+  publicationYear?: number;
+  openalexId: string;
+  status: "pending" | "processing" | "completed" | "failed" | "skipped";
+  answers?: Record<string, boolean | null>;  // key = question key
+  score?: number;
+  stars?: number;
+  qualified?: boolean;
+  aiMetadata?: { reasoning?: string; confidence?: number; model?: string; provider?: string; };
+  savedToLibrary?: boolean;
+}
+
+// screeningJobs.questions (for dynamic column headers):
+Array<{ key: string; question: string; }>
+
+// screeningJobs.scoringConfig (for summary context):
+{ rules: ScoringRule[]; starThresholds: StarThreshold[]; minimumScore?: number; }
 ```
 
 ---
@@ -230,44 +167,36 @@ export const MAX_SCREENING_JOBS_PER_USER = 100;
 
 ```bash
 # No new packages to install.
-# All changes use existing Convex primitives and installed libraries.
+# Zero changes to package.json.
 ```
 
 ---
 
-## Version Compatibility
+## Confidence Assessment
 
-| Package | Current Version | v4.0 Relevance |
-|---------|----------------|----------------|
-| `convex` | ^1.31.7 | All APIs used (mutations, queries, actions, scheduler) are stable since v1.0 |
-| `@convex-dev/workflow` | ^0.3.4 | `workflow.define()` for durable orchestration -- same as extraction |
-| `@convex-dev/workpool` | ^0.3.1 | Available if parallelism needed later |
-| `ai` | ^6.0.62 | `generateObject` and batch processing -- already in use |
-| `convex-helpers` | ^0.1.111 | `defineRateLimits` for new endpoint |
-
-No version bumps required. All APIs used are stable and production-proven in this codebase.
+| Claim | Confidence | Basis |
+|-------|------------|-------|
+| No new dependencies needed | HIGH | All export utilities verified in codebase: ExcelJS, CSV helpers, download helpers |
+| Client-side export sufficient for 500 papers | HIGH | Extraction export handles similar volume client-side; MAX_SCREENING_PAPERS_PER_JOB = 500 |
+| ExcelJS dynamic import pattern works | HIGH | Production-proven in `lib/extraction/export.ts` with CJS/ESM interop |
+| `by_job` index exists on screeningResults | HIGH | Verified in `convex/schema.ts` line 768 |
+| Screening answers are `Record<string, boolean \| null>` | HIGH | Verified in `convex/schema.ts` lines 747-749 |
+| `downloadFile` helper is reusable | HIGH | Generic function accepting `string \| Blob` with any MIME type |
 
 ---
 
 ## Sources
 
-- Codebase analysis (HIGH confidence):
-  - `convex/extraction/workflow.ts` -- proven durable workflow pattern (multi-step, progress tracking, workpool integration)
-  - `convex/ai/actions.ts` -- `generateBatchScreeningResponses` action (batch AI screening with credit deduction)
-  - `convex/ai/helpers.ts` -- `withUserCreditsBatch` for background job credit handling, `withAuthAndCreditsBatch` for auth-aware batch processing
-  - `convex/extraction/workpoolActions.ts` -- credit guard pattern for cancelled jobs (lines 958-973)
-  - `convex/workpool.ts` -- workpool configuration (maxParallelism: 3, retry behavior)
-  - `convex/workflow.ts` -- workflow manager configuration
-  - `convex/library/mutations.ts` -- `saveToLibrary` mutation with upsert and denormalized counter
-  - `convex/library/collections.ts` -- `addToCollection` mutation with idempotent assignment and denormalized counter
-  - `convex/schema.ts` -- existing table design patterns (index naming, validator patterns, field conventions)
-  - `convex/lib/queryBounds.ts` -- bounded query constant pattern
-  - `convex/lib/rateLimit.ts` -- rate limiting pattern with `defineRateLimits`
-  - `convex/lib/constants.ts` -- plan tiers and credit configuration
-  - `convex/convex.config.ts` -- 4 components registered (stripe, rag, workflow, workpool) -- no new components needed
-  - `package.json` -- all required dependencies already installed
+- `lib/extraction/export.ts` -- extraction export (CSV/JSON/XLSX) with ExcelJS dynamic import, `downloadFile`, answer formatters
+- `lib/library/export.ts` -- library export (CSV/JSON) using `jsonToCSV` and `downloadAsFile`
+- `lib/utils.ts` -- `jsonToCSV` (L144), `downloadAsFile` (L169) utilities
+- `convex/schema.ts` L732-770 -- screeningResults table definition with answers, score, stars, qualified fields
+- `convex/screening/validators.ts` -- screening type validators (question, scoring config, status)
+- `convex/screening/queries.ts` -- existing queries (getScreeningJob, getPendingResults, getResultInternal)
+- `convex/lib/queryBounds.ts` -- MAX_SCREENING_PAPERS_PER_JOB bound constant
+- `components/screening/screening-job-history.tsx` -- UI integration point for export button
 
 ---
 
-*Stack research for: v4.0 Bulk Screening & Auto-Rating*
-*Researched: 2026-03-08*
+*Stack research for: v4.1 Screening Export (CSV/JSON/XLSX)*
+*Researched: 2026-03-09*
