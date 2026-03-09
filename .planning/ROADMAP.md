@@ -228,5 +228,5 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75. Schema & Job Infrastructure | 3/3 | Complete    | 2026-03-09 | - |
 | 76. Scoring Engine & Rating Logic | 1/1 | Complete    | 2026-03-09 | - |
-| 77. Workflow Processing & Library Integration | 2/2 | Complete   | 2026-03-09 | - |
+| 77. Workflow Processing & Library Integration | 2/2 | Complete    | 2026-03-09 | - |
 | 78. Configuration Dialog & Progress UI | v4.0 | 0/TBD | Not started | - |
