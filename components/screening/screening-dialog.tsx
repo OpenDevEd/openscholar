@@ -24,13 +24,10 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { reconstructAbstract } from "@/lib/openalex/reconstruct-abstract";
 import { api } from "@/convex/_generated/api";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
-import type { Id } from "@/convex/_generated/dataModel";
 import type { ScoringRule, StarThreshold } from "@/convex/screening/scoring";
 import { ScoringRulesEditor } from "@/components/screening/scoring-rules-editor";
 import { StarThresholdEditor } from "@/components/screening/star-threshold-editor";
 import { CollectionSelector } from "@/components/screening/collection-selector";
-import { ScreeningProgress } from "@/components/screening/screening-progress";
-import { ScreeningJobHistory } from "@/components/screening/screening-job-history";
 
 // ---------------------------------------------------------------------------
 // Default scoring config generator
@@ -110,9 +107,6 @@ export function ScreeningDialog({
 
   // Local form state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeJobId, setActiveJobId] = useState<Id<"screeningJobs"> | null>(
-    null
-  );
   const [scoringRules, setScoringRules] = useState<ScoringRule[]>(
     defaults.rules
   );
@@ -123,7 +117,7 @@ export function ScreeningDialog({
     undefined
   );
   const [selectedCollectionId, setSelectedCollectionId] = useState<
-    Id<"collections"> | undefined
+    import("@/convex/_generated/dataModel").Id<"collections"> | undefined
   >(undefined);
 
   // Reset form state when questions change
@@ -201,7 +195,7 @@ export function ScreeningDialog({
       });
 
       // 3. Call createScreeningJob mutation
-      const { jobId } = await createScreeningJob({
+      await createScreeningJob({
         papers,
         questions: keyedQuestions,
         scoringConfig: {
@@ -212,8 +206,8 @@ export function ScreeningDialog({
         targetCollectionId: selectedCollectionId,
       });
 
-      setActiveJobId(jobId);
       toast.success(t("submitSuccess"), { duration: 3000 });
+      onOpenChange(false);
       posthog.capture("screening_job_submitted", {
         paperCount: papers.length,
         questionCount: keyedQuestions.length,
@@ -245,26 +239,13 @@ export function ScreeningDialog({
     minimumScore,
     selectedCollectionId,
     createScreeningJob,
+    onOpenChange,
     t,
   ]);
 
   // -----------------------------------------------------------------------
-  // Reset to configure mode
-  // -----------------------------------------------------------------------
-
-  function handleNewScreening() {
-    setActiveJobId(null);
-    setScoringRules(defaults.rules);
-    setStarThresholds(defaults.starThresholds);
-    setMinimumScore(undefined);
-    setSelectedCollectionId(undefined);
-  }
-
-  // -----------------------------------------------------------------------
   // Render
   // -----------------------------------------------------------------------
-
-  const isProgressMode = activeJobId !== null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -291,149 +272,123 @@ export function ScreeningDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {isProgressMode ? (
-          /* ============ Progress Mode ============ */
-          <>
-            <ScrollArea className="flex-1 overflow-y-auto pr-2">
-              <div className="space-y-4 py-2">
-                <ScreeningProgress jobId={activeJobId} />
-                <ScreeningJobHistory
-                  onSelectJob={(jobId) => setActiveJobId(jobId)}
+        <ScrollArea className="flex-1 overflow-y-auto pr-2">
+          <div className="space-y-4 py-2">
+            {/* Paper count */}
+            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+              <p className="text-sm font-medium">
+                {isCapped
+                  ? t("paperCountCapped", {
+                      max: MAX_SCREENING_PAPERS_PER_JOB,
+                      total: totalCount,
+                    })
+                  : t("paperCount", { count: paperCount })}
+              </p>
+            </div>
+
+            {/* Credit cost */}
+            {balanceCheck && (
+              <div
+                className={`rounded-lg border border-border/50 p-3 space-y-1 ${
+                  !balanceCheck.hasEnough
+                    ? "border-destructive/50 bg-destructive/5"
+                    : "bg-muted/30"
+                }`}
+              >
+                <p className="text-sm font-medium">
+                  {t("creditCost", { count: paperCount })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("currentBalance", { balance: balanceCheck.total })}
+                </p>
+                {!balanceCheck.hasEnough && (
+                  <p className="flex items-center gap-1.5 text-xs text-destructive">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    {t("insufficientCredits", {
+                      deficit: balanceCheck.deficit,
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Questions & Scoring rules editor (merged) */}
+            {keyedQuestions.length > 0 ? (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">
+                  {t("questionsTitle")} & {t("scoringTitle")}
+                </h4>
+                <ScoringRulesEditor
+                  questions={keyedQuestions}
+                  rules={scoringRules}
+                  onChange={setScoringRules}
+                  minimumScore={minimumScore}
+                  onMinimumScoreChange={setMinimumScore}
+                  disabled={isSubmitting}
                 />
               </div>
-            </ScrollArea>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("noQuestions")}
+              </p>
+            )}
 
-            <DialogFooter>
-              <Button variant="outline" onClick={handleNewScreening}>
-                {t("newScreening")}
-              </Button>
-              <Button onClick={() => onOpenChange(false)}>
-                {t("closeDialog")}
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
-          /* ============ Configure Mode ============ */
-          <>
-            <ScrollArea className="flex-1 overflow-y-auto pr-2">
-              <div className="space-y-4 py-2">
-                {/* Paper count */}
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-sm font-medium">
-                    {isCapped
-                      ? t("paperCountCapped", {
-                          max: MAX_SCREENING_PAPERS_PER_JOB,
-                          total: totalCount,
-                        })
-                      : t("paperCount", { count: paperCount })}
-                  </p>
-                </div>
-
-                {/* Credit cost */}
-                {balanceCheck && (
-                  <div
-                    className={`rounded-lg border border-border/50 p-3 space-y-1 ${
-                      !balanceCheck.hasEnough
-                        ? "border-destructive/50 bg-destructive/5"
-                        : "bg-muted/30"
-                    }`}
-                  >
-                    <p className="text-sm font-medium">
-                      {t("creditCost", { count: paperCount })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t("currentBalance", { balance: balanceCheck.total })}
-                    </p>
-                    {!balanceCheck.hasEnough && (
-                      <p className="flex items-center gap-1.5 text-xs text-destructive">
-                        <AlertCircle className="h-3.5 w-3.5" />
-                        {t("insufficientCredits", {
-                          deficit: balanceCheck.deficit,
-                        })}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Questions & Scoring rules editor (merged) */}
-                {keyedQuestions.length > 0 ? (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold">
-                      {t("questionsTitle")} & {t("scoringTitle")}
-                    </h4>
-                    <ScoringRulesEditor
-                      questions={keyedQuestions}
-                      rules={scoringRules}
-                      onChange={setScoringRules}
-                      minimumScore={minimumScore}
-                      onMinimumScoreChange={setMinimumScore}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t("noQuestions")}
-                  </p>
-                )}
-
-                {/* Star threshold editor */}
-                {keyedQuestions.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold">
-                      {t("thresholdsTitle")}
-                    </h4>
-                    <StarThresholdEditor
-                      thresholds={starThresholds}
-                      onChange={setStarThresholds}
-                      rules={scoringRules}
-                      minimumScore={minimumScore}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                )}
-
-                {/* Collection selector */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">
-                    {t("collectionTitle")}
-                  </h4>
-                  <CollectionSelector
-                    selectedId={selectedCollectionId}
-                    onSelect={setSelectedCollectionId}
-                    disabled={isSubmitting}
-                  />
-                </div>
+            {/* Star threshold editor */}
+            {keyedQuestions.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">
+                  {t("thresholdsTitle")}
+                </h4>
+                <StarThresholdEditor
+                  thresholds={starThresholds}
+                  onChange={setStarThresholds}
+                  rules={scoringRules}
+                  minimumScore={minimumScore}
+                  disabled={isSubmitting}
+                />
               </div>
-            </ScrollArea>
+            )}
 
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
+            {/* Collection selector */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold">
+                {t("collectionTitle")}
+              </h4>
+              <CollectionSelector
+                selectedId={selectedCollectionId}
+                onSelect={setSelectedCollectionId}
                 disabled={isSubmitting}
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={
-                  isSubmitting ||
-                  screeningQuestions.length === 0 ||
-                  !balanceCheck?.hasEnough
-                }
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("submitting")}
-                  </>
-                ) : (
-                  t("submit")
-                )}
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+              />
+            </div>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              isSubmitting ||
+              screeningQuestions.length === 0 ||
+              !balanceCheck?.hasEnough
+            }
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t("submitting")}
+              </>
+            ) : (
+              t("submit")
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
