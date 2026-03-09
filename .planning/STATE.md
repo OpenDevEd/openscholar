@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Screening Export
 status: completed
-stopped_at: Completed 80-01-PLAN.md
-last_updated: "2026-03-09T07:55:29.035Z"
-last_activity: 2026-03-09 — Completed 80-01 Export Functions
+stopped_at: Completed 81-01-PLAN.md
+last_updated: "2026-03-09T08:12:43.642Z"
+last_activity: 2026-03-09 — Completed 81-01 Export UI
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 3
+  total_plans: 3
+  completed_plans: 3
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-09)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 80 - Export Functions
+**Current focus:** Phase 81 - Export UI
 
 ## Current Position
 
-Phase: 80 of 81 (Export Functions) -- 2 of 3 in v4.1
+Phase: 81 of 81 (Export UI) -- 3 of 3 in v4.1
 Plan: 1 of 1 in current phase
-Status: Phase 80 complete
-Last activity: 2026-03-09 — Completed 80-01 Export Functions
+Status: Phase 81 complete
+Last activity: 2026-03-09 — Completed 81-01 Export UI
 
 Progress: [██████████] 100%
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | v4.0 | 4 | 9 | 2026-03-09 |
 | Phase 79 P01 | 1min | 2 tasks | 2 files |
 | Phase 80 P01 | 2min | 2 tasks | 2 files |
+| Phase 81 P01 | 2min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Progress: [██████████] 100%
 See PROJECT.md Key Decisions table for full log.
 - [Phase 79]: Return null on auth/ownership failure for export query (no throws)
 - [Phase 80]: Inline downloadFile helper to avoid cross-module coupling; separate generate* pure functions for testability
+- [Phase 81]: Used IIFE pattern for conditional rendering with local vars in JSX; useConvex().query() for on-demand export data fetch
 
 ### Pending Todos
 
@@ -97,5 +99,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-09 -- Roadmap created for v4.1 Screening Export
-Stopped at: Completed 80-01-PLAN.md
+Stopped at: Completed 81-01-PLAN.md
 Resume file: None

@@ -23,12 +23,12 @@ Requirements for screening export milestone. Each maps to roadmap phases.
 
 ### UI Integration
 
-- [ ] **UI-01**: User sees an export button on completed screening job cards in job history
-- [ ] **UI-02**: User can select export format (CSV, JSON, XLSX) from a dropdown menu
-- [ ] **UI-03**: User sees a loading state while export file is being generated
-- [ ] **UI-04**: Exported files have descriptive filenames including job date and status
-- [ ] **UI-05**: User sees a warning when exporting results from cancelled or incomplete jobs
-- [ ] **UI-06**: Export UI is translated across all 6 supported locales
+- [x] **UI-01**: User sees an export button on completed screening job cards in job history
+- [x] **UI-02**: User can select export format (CSV, JSON, XLSX) from a dropdown menu
+- [x] **UI-03**: User sees a loading state while export file is being generated
+- [x] **UI-04**: Exported files have descriptive filenames including job date and status
+- [x] **UI-05**: User sees a warning when exporting results from cancelled or incomplete jobs
+- [x] **UI-06**: Export UI is translated across all 6 supported locales
 
 ## Future Requirements
 
@@ -55,12 +55,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-03 | Phase 80 | Complete |
 | EXP-04 | Phase 80 | Complete |
 | EXP-05 | Phase 80 | Complete |
-| UI-01 | Phase 81 | Pending |
-| UI-02 | Phase 81 | Pending |
-| UI-03 | Phase 81 | Pending |
-| UI-04 | Phase 81 | Pending |
-| UI-05 | Phase 81 | Pending |
-| UI-06 | Phase 81 | Pending |
+| UI-01 | Phase 81 | Complete |
+| UI-02 | Phase 81 | Complete |
+| UI-03 | Phase 81 | Complete |
+| UI-04 | Phase 81 | Complete |
+| UI-05 | Phase 81 | Complete |
+| UI-06 | Phase 81 | Complete |
 | SCORE-01 | Phase 82 | Pending |
 | SCORE-02 | Phase 82 | Pending |
 | SCORE-03 | Phase 82 | Pending |
