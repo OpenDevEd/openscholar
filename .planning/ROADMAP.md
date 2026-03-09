@@ -276,7 +276,7 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79. Export Query | 1/1 | Complete    | 2026-03-09 | - |
 | 80. Export Functions | 1/1 | Complete    | 2026-03-09 | - |
-| 81. Export UI | 1/1 | Complete   | 2026-03-09 | - |
+| 81. Export UI | 1/1 | Complete    | 2026-03-09 | - |
 | 82. Simplify Star Thresholds | v4.1 | 0/1 | Not started | - |
 
 ### Phase 82: Simplify Star Thresholds
