@@ -1534,6 +1534,12 @@
     "viewCollection": "Voir dans la bibliothèque",
     "collectionDeleted": "Collection supprimée",
     "papersLabel": "articles",
-    "qualifiedLabel": "qualifiés"
+    "qualifiedLabel": "qualifiés",
+    "exportButton": "Exporter les resultats",
+    "exportCSV": "Telecharger en CSV",
+    "exportJSON": "Telecharger en JSON",
+    "exportXLSX": "Telecharger en Excel",
+    "exportIncompleteWarning": "Ce job n'est pas termine. Les resultats peuvent etre partiels.",
+    "exportLoading": "Preparation de l'export..."
   }
 }

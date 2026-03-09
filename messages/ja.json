@@ -1534,6 +1534,12 @@
     "viewCollection": "ライブラリで表示",
     "collectionDeleted": "コレクションは削除されました",
     "papersLabel": "論文",
-    "qualifiedLabel": "適格"
+    "qualifiedLabel": "適格",
+    "exportButton": "結果をエクスポート",
+    "exportCSV": "CSVでダウンロード",
+    "exportJSON": "JSONでダウンロード",
+    "exportXLSX": "Excelでダウンロード",
+    "exportIncompleteWarning": "このジョブは完了していません。結果が不完全な場合があります。",
+    "exportLoading": "エクスポート準備中..."
   }
 }

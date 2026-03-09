@@ -1534,6 +1534,12 @@
     "viewCollection": "在库中查看",
     "collectionDeleted": "集合已删除",
     "papersLabel": "篇论文",
-    "qualifiedLabel": "合格"
+    "qualifiedLabel": "合格",
+    "exportButton": "导出结果",
+    "exportCSV": "下载为CSV",
+    "exportJSON": "下载为JSON",
+    "exportXLSX": "下载为Excel",
+    "exportIncompleteWarning": "此任务未完成。结果可能不完整。",
+    "exportLoading": "正在准备导出..."
   }
 }

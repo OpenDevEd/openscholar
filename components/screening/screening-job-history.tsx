@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import Link from "next/link";
+import { useConvex } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -13,11 +15,19 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   FileText,
   CheckCircle2,
   Clock,
   XCircle,
   AlertCircle,
+  AlertTriangle,
+  Download,
   MessageSquareText,
   FolderOpen,
   ArrowUpRight,
@@ -26,6 +36,11 @@ import {
   Ban,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  exportScreeningToCSV,
+  exportScreeningToJSON,
+  exportScreeningToXLSX,
+} from "@/lib/screening/export";
 
 type ScreeningStatus =
   | "pending"
@@ -99,10 +114,41 @@ export function ScreeningJobHistory({
 }: ScreeningJobHistoryProps) {
   const t = useTranslations("screeningDialog");
   const format = useFormatter();
+  const convex = useConvex();
+  const [exportingJobId, setExportingJobId] = useState<string | null>(null);
   const { data: jobs } = useProtectedQuery(
     api.screening.queries.listUserScreeningJobs,
     { limit: 10 }
   );
+
+  async function handleExport(
+    jobId: Id<"screeningJobs">,
+    format: "csv" | "json" | "xlsx"
+  ) {
+    setExportingJobId(jobId);
+    try {
+      const data = await convex.query(
+        api.screening.queries.getScreeningResultsForExport,
+        { jobId }
+      );
+      if (!data) return;
+      switch (format) {
+        case "csv":
+          exportScreeningToCSV(data);
+          break;
+        case "json":
+          exportScreeningToJSON(data);
+          break;
+        case "xlsx":
+          await exportScreeningToXLSX(data);
+          break;
+      }
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExportingJobId(null);
+    }
+  }
 
   if (!jobs || jobs.length === 0) {
     return (
@@ -156,11 +202,60 @@ export function ScreeningJobHistory({
                   {t(`jobStatus.${job.status}`)}
                 </Badge>
               </div>
-              <time className="text-xs font-medium text-muted-foreground/80">
-                {format.dateTime(new Date(job.createdAt), {
-                  dateStyle: "medium",
-                })}
-              </time>
+              <div className="flex items-center gap-2">
+                <time className="text-xs font-medium text-muted-foreground/80">
+                  {format.dateTime(new Date(job.createdAt), {
+                    dateStyle: "medium",
+                  })}
+                </time>
+                {!isInProgress && (() => {
+                  const isIncompleteJob = job.status !== "completed";
+                  const isExportingThis = exportingJobId === job._id;
+                  return (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            disabled={isExportingThis}
+                            title={t("exportButton")}
+                          >
+                            {isExportingThis ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Download className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {isIncompleteJob && (
+                            <div className="px-2 py-1.5 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 border-b border-border/40 mb-1">
+                              <AlertTriangle className="h-3 w-3 shrink-0" />
+                              {t("exportIncompleteWarning")}
+                            </div>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => handleExport(job._id, "csv")}
+                          >
+                            {t("exportCSV")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport(job._id, "json")}
+                          >
+                            {t("exportJSON")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExport(job._id, "xlsx")}
+                          >
+                            {t("exportXLSX")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* Stats Row */}

@@ -1534,6 +1534,12 @@
     "viewCollection": "लाइब्रेरी में देखें",
     "collectionDeleted": "संग्रह हटाया गया",
     "papersLabel": "पेपर",
-    "qualifiedLabel": "योग्य"
+    "qualifiedLabel": "योग्य",
+    "exportButton": "परिणाम निर्यात करें",
+    "exportCSV": "CSV के रूप में डाउनलोड करें",
+    "exportJSON": "JSON के रूप में डाउनलोड करें",
+    "exportXLSX": "Excel के रूप में डाउनलोड करें",
+    "exportIncompleteWarning": "यह कार्य पूरा नहीं हुआ। परिणाम अधूरे हो सकते हैं।",
+    "exportLoading": "निर्यात तैयार हो रहा है..."
   }
 }
