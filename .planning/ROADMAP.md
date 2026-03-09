@@ -234,10 +234,10 @@ Plans:
   2. JSON export contains structured paper data with answers object, scoring fields, and job metadata envelope
   3. XLSX export contains a Results sheet with all data and a Summary sheet with job config, scoring rules, and aggregate statistics
   4. Failed or skipped papers appear in all export formats with null/N/A fallbacks for missing answer columns (no crashes, no missing rows)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 80-01: TBD
+- [ ] 80-01-PLAN.md — TDD: CSV, JSON, and XLSX export functions + unit tests
 
 ### Phase 81: Export UI
 **Goal**: Users can download screening results directly from job history with format selection and clear visual feedback
