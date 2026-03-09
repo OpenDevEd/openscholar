@@ -179,6 +179,86 @@ export const listUserScreeningJobs = query({
   },
 });
 
+/**
+ * Get all screening results for a job, for export.
+ *
+ * Returns job metadata and all results (any status) for the authenticated
+ * owner, or null if unauthenticated / non-owner / job not found.
+ * Results are bounded by MAX_SCREENING_PAPERS_PER_JOB.
+ * Does NOT include aiMetadata or abstract (out of scope for export).
+ */
+export const getScreeningResultsForExport = query({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      job: v.object({
+        _id: v.id("screeningJobs"),
+        status: screeningJobStatusValidator,
+        questions: v.array(screeningQuestionValidator),
+        scoringConfig: screeningScoringConfigValidator,
+        totalPapers: v.number(),
+        qualifiedPapers: v.number(),
+        createdAt: v.number(),
+        completedAt: v.optional(v.number()),
+      }),
+      results: v.array(
+        v.object({
+          openalexId: v.string(),
+          title: v.string(),
+          authors: v.optional(v.array(v.string())),
+          publicationYear: v.optional(v.number()),
+          doi: v.optional(v.string()),
+          status: screeningResultStatusValidator,
+          answers: v.optional(
+            v.record(v.string(), v.union(v.boolean(), v.null()))
+          ),
+          score: v.optional(v.number()),
+          stars: v.optional(v.number()),
+          qualified: v.optional(v.boolean()),
+        })
+      ),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) return null;
+
+    const results = await ctx.db
+      .query("screeningResults")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_SCREENING_PAPERS_PER_JOB);
+
+    return {
+      job: {
+        _id: job._id,
+        status: job.status,
+        questions: job.questions,
+        scoringConfig: job.scoringConfig,
+        totalPapers: job.totalPapers,
+        qualifiedPapers: job.qualifiedPapers,
+        createdAt: job.createdAt,
+        completedAt: job.completedAt,
+      },
+      results: results.map((r) => ({
+        openalexId: r.openalexId,
+        title: r.title,
+        authors: r.authors,
+        publicationYear: r.publicationYear,
+        doi: r.doi,
+        status: r.status,
+        answers: r.answers,
+        score: r.score,
+        stars: r.stars,
+        qualified: r.qualified,
+      })),
+    };
+  },
+});
+
 // ═══════════════════════════════════════════════════════════════
 // INTERNAL QUERIES (for workflow/workpool background context)
 // ═══════════════════════════════════════════════════════════════
