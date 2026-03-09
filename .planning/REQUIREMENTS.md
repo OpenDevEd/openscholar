@@ -20,11 +20,11 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 
 ### Scoring & Rating
 
-- [ ] **SCORE-01**: User can define point values per screening question for each answer (yes → +/- points, no → +/- points, null/uncertain → +/- points)
-- [ ] **SCORE-02**: System computes a total score per paper based on AI screening responses and user-defined rules
-- [ ] **SCORE-03**: User can define star rating thresholds (score ranges that map to 0-5 stars)
-- [ ] **SCORE-04**: System maps each paper's total score to a star rating using user-defined thresholds
-- [ ] **SCORE-05**: User can set a minimum score threshold — only papers meeting the threshold are saved to library
+- [x] **SCORE-01**: User can define point values per screening question for each answer (yes → +/- points, no → +/- points, null/uncertain → +/- points)
+- [x] **SCORE-02**: System computes a total score per paper based on AI screening responses and user-defined rules
+- [x] **SCORE-03**: User can define star rating thresholds (score ranges that map to 0-5 stars)
+- [x] **SCORE-04**: System maps each paper's total score to a star rating using user-defined thresholds
+- [x] **SCORE-05**: User can set a minimum score threshold — only papers meeting the threshold are saved to library
 
 ### Library & Collection Integration
 
@@ -76,11 +76,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | JOB-06 | Phase 78 | Pending |
 | JOB-07 | Phase 75 | Complete |
 | JOB-08 | Phase 78 | Pending |
-| SCORE-01 | Phase 76 | Pending |
-| SCORE-02 | Phase 76 | Pending |
-| SCORE-03 | Phase 76 | Pending |
-| SCORE-04 | Phase 76 | Pending |
-| SCORE-05 | Phase 76 | Pending |
+| SCORE-01 | Phase 76 | Complete |
+| SCORE-02 | Phase 76 | Complete |
+| SCORE-03 | Phase 76 | Complete |
+| SCORE-04 | Phase 76 | Complete |
+| SCORE-05 | Phase 76 | Complete |
 | LIB-01 | Phase 77 | Pending |
 | LIB-02 | Phase 77 | Pending |
 | LIB-03 | Phase 77 | Pending |

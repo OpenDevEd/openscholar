@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Bulk Screening & Auto-Rating
 status: executing
-stopped_at: Completed 75-03-PLAN.md
-last_updated: "2026-03-09T00:33:08.699Z"
+stopped_at: Completed 76-01-PLAN.md
+last_updated: "2026-03-09T00:49:09.046Z"
 last_activity: 2026-03-09 -- Completed 75-03 cancel mutation and screening queries
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 2
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
   percent: 100
 ---
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 75 P01 | 2min | 2 tasks | 6 files |
 | Phase 75 P02 | 2min | 2 tasks | 2 files |
 | Phase 75 P03 | 4min | 2 tasks | 4 files |
+| Phase 76 P01 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Recent decisions affecting current work:
 - [Phase 75]: Separate screeningWorkpool component for true cancelAll() isolation from extraction
 - [Phase 75]: Two separate index queries for active job check (pending + processing) since Convex cannot OR on index values
 - [Phase 75]: getCurrentUser (null-safe) for queries vs requireAuth (throws) for mutations
+- [Phase 76]: Clamp star ratings to 0-5 in computeStarRating as defensive safety net
+- [Phase 76]: First-match-wins for overlapping thresholds (array order)
+- [Phase 76]: Missing answer keys treated as null (use nullPoints)
 
 ### Pending Todos
 
@@ -95,5 +99,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-09 -- Completed 75-03 cancel mutation and screening queries
-Stopped at: Completed 75-03-PLAN.md
+Stopped at: Completed 76-01-PLAN.md
 Resume file: None
