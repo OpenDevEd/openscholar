@@ -10,8 +10,8 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 ### Bulk Job Infrastructure
 
 - [x] **JOB-01**: User can trigger a bulk screening job for up to 200 search results from the results page
-- [ ] **JOB-02**: User sees how many papers will be screened (capped at 200 with clear messaging if results exceed cap)
-- [ ] **JOB-03**: User sees estimated credit cost before confirming the job
+- [x] **JOB-02**: User sees how many papers will be screened (capped at 200 with clear messaging if results exceed cap)
+- [x] **JOB-03**: User sees estimated credit cost before confirming the job
 - [x] **JOB-04**: System verifies user has sufficient credits before starting the job
 - [x] **JOB-05**: Bulk screening runs in background via Convex workflow (papers processed even if user closes browser)
 - [x] **JOB-06**: User can view real-time progress of a running job (X/N papers screened)
@@ -34,13 +34,13 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 
 ### Configuration Dialog
 
-- [ ] **DIALOG-01**: "Screen All" button on results page opens a configuration dialog
-- [ ] **DIALOG-02**: Dialog displays the screening questions from the existing screening panel
+- [x] **DIALOG-01**: "Screen All" button on results page opens a configuration dialog
+- [x] **DIALOG-02**: Dialog displays the screening questions from the existing screening panel
 - [ ] **DIALOG-03**: Dialog provides a scoring rules editor per question (point values for yes/no/null)
 - [ ] **DIALOG-04**: Dialog provides a star rating threshold editor (score ranges → stars)
 - [ ] **DIALOG-05**: Dialog includes a collection picker with option to create new collection
-- [ ] **DIALOG-06**: Dialog shows paper count, credit cost estimate, and confirm/cancel buttons
-- [ ] **DIALOG-07**: Dialog prevents dismissal during job submission (dismiss guards like upgrade dialog)
+- [x] **DIALOG-06**: Dialog shows paper count, credit cost estimate, and confirm/cancel buttons
+- [x] **DIALOG-07**: Dialog prevents dismissal during job submission (dismiss guards like upgrade dialog)
 
 ## Future Requirements
 
@@ -69,8 +69,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | JOB-01 | Phase 75 | Complete |
-| JOB-02 | Phase 78 | Pending |
-| JOB-03 | Phase 78 | Pending |
+| JOB-02 | Phase 78 | Complete |
+| JOB-03 | Phase 78 | Complete |
 | JOB-04 | Phase 75 | Complete |
 | JOB-05 | Phase 77 | Complete |
 | JOB-06 | Phase 78 | Complete |
@@ -84,13 +84,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIB-01 | Phase 77 | Complete |
 | LIB-02 | Phase 77 | Complete |
 | LIB-03 | Phase 77 | Complete |
-| DIALOG-01 | Phase 78 | Pending |
-| DIALOG-02 | Phase 78 | Pending |
+| DIALOG-01 | Phase 78 | Complete |
+| DIALOG-02 | Phase 78 | Complete |
 | DIALOG-03 | Phase 78 | Pending |
 | DIALOG-04 | Phase 78 | Pending |
 | DIALOG-05 | Phase 78 | Pending |
-| DIALOG-06 | Phase 78 | Pending |
-| DIALOG-07 | Phase 78 | Pending |
+| DIALOG-06 | Phase 78 | Complete |
+| DIALOG-07 | Phase 78 | Complete |
 
 **Coverage:**
 - v4.0 requirements: 23 total
