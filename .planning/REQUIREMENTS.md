@@ -1,0 +1,66 @@
+# Requirements: OpenAlex Count — Screening Export
+
+**Defined:** 2026-03-09
+**Core Value:** Reliable, well-tested academic search and AI extraction
+
+## v4.1 Requirements
+
+Requirements for screening export milestone. Each maps to roadmap phases.
+
+### Export Data
+
+- [ ] **EXP-01**: User can fetch all screening results for a completed job via auth-gated query
+- [ ] **EXP-02**: User can export screening results as CSV with paper metadata, question answer columns, score, stars, and qualified status
+- [ ] **EXP-03**: User can export screening results as JSON with structured paper data, answers, and scoring
+- [ ] **EXP-04**: User can export screening results as XLSX with results sheet and summary sheet (job config, scoring rules, statistics)
+- [ ] **EXP-05**: Export handles failed/skipped papers gracefully with null fallbacks for missing answer columns
+
+### UI Integration
+
+- [ ] **UI-01**: User sees an export button on completed screening job cards in job history
+- [ ] **UI-02**: User can select export format (CSV, JSON, XLSX) from a dropdown menu
+- [ ] **UI-03**: User sees a loading state while export file is being generated
+- [ ] **UI-04**: Exported files have descriptive filenames including job date and status
+- [ ] **UI-05**: User sees a warning when exporting results from cancelled or incomplete jobs
+- [ ] **UI-06**: Export UI is translated across all 6 supported locales
+
+## Future Requirements
+
+None — this is a focused enhancement milestone.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| AI reasoning/confidence in export | User scoped to core results only (metadata + answers + score + stars + qualified) |
+| Server-side export generation | Max 200 papers per job; client-side generation is sufficient |
+| Export from search results directly | Separate feature; screening export is from job history |
+| Bulk export across multiple jobs | Single-job export covers the use case |
+| Email/share export link | Download-only for now |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| EXP-01 | — | Pending |
+| EXP-02 | — | Pending |
+| EXP-03 | — | Pending |
+| EXP-04 | — | Pending |
+| EXP-05 | — | Pending |
+| UI-01 | — | Pending |
+| UI-02 | — | Pending |
+| UI-03 | — | Pending |
+| UI-04 | — | Pending |
+| UI-05 | — | Pending |
+| UI-06 | — | Pending |
+
+**Coverage:**
+- v4.1 requirements: 11 total
+- Mapped to phases: 0
+- Unmapped: 11
+
+---
+*Requirements defined: 2026-03-09*
+*Last updated: 2026-03-09 after initial definition*
