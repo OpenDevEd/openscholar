@@ -19,7 +19,7 @@ export interface ScoringRule {
 
 export interface StarThreshold {
   minScore: number;
-  maxScore: number;
+  maxScore?: number; // Deprecated: kept optional for backward-compat reads
   stars: number;
 }
 
@@ -36,7 +36,7 @@ export interface ScoringResult {
 }
 
 export interface ConfigValidationWarning {
-  type: "gap" | "overlap" | "star_out_of_range" | "missing_negative_coverage";
+  type: "star_out_of_range" | "missing_negative_coverage";
   message: string;
 }
 
@@ -77,8 +77,8 @@ export function computeScore(
 /**
  * Map a total score to a star rating using user-defined thresholds.
  *
- * Thresholds use inclusive ranges: minScore <= score <= maxScore.
- * First match wins for overlapping thresholds (array order).
+ * Thresholds sorted by minScore descending, first match wins.
+ * A threshold matches when score >= t.minScore.
  * Returns 0 if no threshold matches.
  * Clamps result to 0-5 range.
  */
@@ -86,8 +86,9 @@ export function computeStarRating(
   score: number,
   thresholds: StarThreshold[]
 ): number {
-  for (const t of thresholds) {
-    if (score >= t.minScore && score <= t.maxScore) {
+  const sorted = [...thresholds].sort((a, b) => b.minScore - a.minScore);
+  for (const t of sorted) {
+    if (score >= t.minScore) {
       return Math.max(0, Math.min(5, t.stars));
     }
   }
