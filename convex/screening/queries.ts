@@ -126,6 +126,49 @@ export const getScreeningJob = query({
   },
 });
 
+/**
+ * List screening jobs for the authenticated user, newest first.
+ *
+ * Returns a paginated list of job summaries (default limit 20).
+ * Returns empty array for unauthenticated users.
+ */
+export const listUserScreeningJobs = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("screeningJobs"),
+      _creationTime: v.number(),
+      status: screeningJobStatusValidator,
+      totalPapers: v.number(),
+      processedPapers: v.number(),
+      qualifiedPapers: v.number(),
+      createdAt: v.number(),
+      completedAt: v.optional(v.number()),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const jobs = await ctx.db
+      .query("screeningJobs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(args.limit ?? 20);
+
+    return jobs.map((j) => ({
+      _id: j._id,
+      _creationTime: j._creationTime,
+      status: j.status,
+      totalPapers: j.totalPapers,
+      processedPapers: j.processedPapers,
+      qualifiedPapers: j.qualifiedPapers,
+      createdAt: j.createdAt,
+      completedAt: j.completedAt,
+    }));
+  },
+});
+
 // ═══════════════════════════════════════════════════════════════
 // INTERNAL QUERIES (for workflow/workpool background context)
 // ═══════════════════════════════════════════════════════════════

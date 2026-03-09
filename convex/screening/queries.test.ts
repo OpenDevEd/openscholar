@@ -185,3 +185,77 @@ describe("getScreeningJob", () => {
     expect(result).toBeNull();
   });
 });
+
+describe("listUserScreeningJobs", () => {
+  it("returns empty array when no jobs exist for user", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_list1", "list1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_list1" });
+
+    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
+    expect(result).toEqual([]);
+  });
+
+  it("returns jobs ordered by creation time descending (newest first)", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_list2", "list2@test.com");
+
+    // Create three jobs with different statuses
+    const job1 = await seedScreeningJob(t, user._id, { status: "completed" });
+    const job2 = await seedScreeningJob(t, user._id, { status: "processing" });
+    const job3 = await seedScreeningJob(t, user._id, { status: "pending" });
+
+    const asUser = t.withIdentity({ subject: "clerk_list2" });
+    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
+
+    expect(result).toHaveLength(3);
+    // Newest first (desc order by _creationTime)
+    expect(result[0]._id).toBe(job3);
+    expect(result[1]._id).toBe(job2);
+    expect(result[2]._id).toBe(job1);
+  });
+
+  it("respects limit parameter (default 20)", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_list3", "list3@test.com");
+
+    // Create 3 jobs, request limit of 2
+    await seedScreeningJob(t, user._id, { status: "completed" });
+    await seedScreeningJob(t, user._id, { status: "processing" });
+    await seedScreeningJob(t, user._id, { status: "pending" });
+
+    const asUser = t.withIdentity({ subject: "clerk_list3" });
+    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, { limit: 2 });
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("returns only jobs belonging to authenticated user (user isolation)", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_list4", "list4@test.com");
+    const user2 = await seedUser(t, "clerk_list5", "list5@test.com");
+
+    // User1 has 2 jobs, User2 has 1 job
+    await seedScreeningJob(t, user1._id, { status: "completed" });
+    await seedScreeningJob(t, user1._id, { status: "processing" });
+    await seedScreeningJob(t, user2._id, { status: "pending" });
+
+    const asUser1 = t.withIdentity({ subject: "clerk_list4" });
+    const result1 = await asUser1.query(api.screening.queries.listUserScreeningJobs, {});
+    expect(result1).toHaveLength(2);
+
+    const asUser2 = t.withIdentity({ subject: "clerk_list5" });
+    const result2 = await asUser2.query(api.screening.queries.listUserScreeningJobs, {});
+    expect(result2).toHaveLength(1);
+  });
+
+  it("returns empty array for unauthenticated users", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_list6", "list6@test.com");
+    await seedScreeningJob(t, user._id);
+
+    // No identity
+    const result = await t.query(api.screening.queries.listUserScreeningJobs, {});
+    expect(result).toEqual([]);
+  });
+});
