@@ -9,7 +9,7 @@ Requirements for Bulk Screening & Auto-Rating milestone. Each maps to roadmap ph
 
 ### Bulk Job Infrastructure
 
-- [ ] **JOB-01**: User can trigger a bulk screening job for up to 200 search results from the results page
+- [x] **JOB-01**: User can trigger a bulk screening job for up to 200 search results from the results page
 - [ ] **JOB-02**: User sees how many papers will be screened (capped at 200 with clear messaging if results exceed cap)
 - [ ] **JOB-03**: User sees estimated credit cost before confirming the job
 - [ ] **JOB-04**: System verifies user has sufficient credits before starting the job
@@ -68,7 +68,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| JOB-01 | Phase 75 | Pending |
+| JOB-01 | Phase 75 | Complete |
 | JOB-02 | Phase 78 | Pending |
 | JOB-03 | Phase 78 | Pending |
 | JOB-04 | Phase 75 | Pending |
