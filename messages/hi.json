@@ -1521,5 +1521,8 @@
     "clearAllFilters": "सभी फ़िल्टर साफ़ करें",
     "clearAllCount": "सभी साफ़ करें ({count})",
     "activeFilters": "{count, plural, one {# सक्रिय फ़िल्टर} other {# सक्रिय फ़िल्टर}}"
+  },
+  "screeningDialog": {
+    "createCollectionLabel": "नए संग्रह का नाम"
   }
 }

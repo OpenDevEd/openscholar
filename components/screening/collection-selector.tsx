@@ -63,12 +63,15 @@ export function CollectionSelector({
 
   if (isCreating) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="rounded-md border border-border bg-muted/50 p-3 space-y-2">
+        <label className="text-xs font-medium text-muted-foreground">
+          {t("createCollectionLabel")}
+        </label>
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder={t("newCollectionName")}
-          className="h-8 flex-1"
+          className="h-8"
           autoFocus
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -81,15 +84,28 @@ export function CollectionSelector({
             }
           }}
         />
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleCreate}
-          disabled={!newName.trim()}
-          className="h-8 w-8 p-0"
-        >
-          <Check className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setIsCreating(false);
+              setNewName("");
+            }}
+            className="h-7 px-3 text-xs"
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleCreate}
+            disabled={!newName.trim()}
+            className="h-7 px-3 text-xs"
+          >
+            <Check className="h-3.5 w-3.5 mr-1.5" />
+            {t("createNewCollection")}
+          </Button>
+        </div>
       </div>
     );
   }

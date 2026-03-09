@@ -1521,5 +1521,8 @@
     "clearAllFilters": "清除所有筛选器",
     "clearAllCount": "全部清除 ({count})",
     "activeFilters": "{count, plural, other {#个活跃筛选器}}"
+  },
+  "screeningDialog": {
+    "createCollectionLabel": "新集合名称"
   }
 }

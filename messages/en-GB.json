@@ -1523,5 +1523,8 @@
     "clearAllFilters": "Clear All Filters",
     "clearAllCount": "Clear All ({count})",
     "activeFilters": "{count, plural, one {# active filter} other {# active filters}}"
+  },
+  "screeningDialog": {
+    "createCollectionLabel": "New collection name"
   }
 }

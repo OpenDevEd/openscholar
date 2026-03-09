@@ -1570,6 +1570,7 @@
     "papersCount": "{count} papers",
     "qualifiedCount": "{count} qualified",
     "newCollectionName": "Collection name",
+    "createCollectionLabel": "New collection name",
     "closeDialog": "Close",
     "newScreening": "New Screening"
   }

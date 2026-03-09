@@ -1521,5 +1521,8 @@
     "clearAllFilters": "Effacer tous les filtres",
     "clearAllCount": "Tout effacer ({count})",
     "activeFilters": "{count, plural, one {# filtre actif} other {# filtres actifs}}"
+  },
+  "screeningDialog": {
+    "createCollectionLabel": "Nom de la nouvelle collection"
   }
 }
