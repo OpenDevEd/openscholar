@@ -58,6 +58,152 @@ async function seedScreeningJob(
   });
 }
 
+// Helper: seed a screening result
+async function seedScreeningResult(
+  t: ReturnType<typeof convexTest>,
+  jobId: Id<"screeningJobs">,
+  overrides: Partial<{
+    openalexId: string;
+    title: string;
+    status: "pending" | "processing" | "completed" | "failed" | "skipped";
+    answers: Record<string, boolean | null>;
+    score: number;
+    stars: number;
+    qualified: boolean;
+    authors: string[];
+    publicationYear: number;
+    doi: string;
+  }> = {}
+) {
+  return await t.run(async (ctx) => {
+    return await ctx.db.insert("screeningResults", {
+      jobId,
+      openalexId: overrides.openalexId ?? "https://openalex.org/W123",
+      title: overrides.title ?? "Test Paper",
+      status: overrides.status ?? "completed",
+      answers: overrides.answers ?? { q1: true },
+      score: overrides.score ?? 1,
+      stars: overrides.stars ?? 3,
+      qualified: overrides.qualified ?? true,
+      authors: overrides.authors,
+      publicationYear: overrides.publicationYear,
+      doi: overrides.doi,
+      createdAt: Date.now(),
+    });
+  });
+}
+
+describe("getScreeningResultsForExport", () => {
+  it("returns null for unauthenticated calls", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_exp1", "exp1@test.com");
+    const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
+    await seedScreeningResult(t, jobId);
+
+    // No identity
+    const result = await t.query(api.screening.queries.getScreeningResultsForExport, { jobId });
+    expect(result).toBeNull();
+  });
+
+  it("returns null for non-owner", async () => {
+    const t = convexTest(schema);
+    const user1 = await seedUser(t, "clerk_exp2", "exp2@test.com");
+    const user2 = await seedUser(t, "clerk_exp3", "exp3@test.com");
+    const jobId = await seedScreeningJob(t, user1._id, { status: "completed" });
+    await seedScreeningResult(t, jobId);
+
+    const asUser2 = t.withIdentity({ subject: "clerk_exp3" });
+    const result = await asUser2.query(api.screening.queries.getScreeningResultsForExport, { jobId });
+    expect(result).toBeNull();
+  });
+
+  it("returns job metadata and results for authenticated owner", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_exp4", "exp4@test.com");
+    const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
+
+    // Seed two results: one fully populated, one minimal
+    await seedScreeningResult(t, jobId, {
+      openalexId: "https://openalex.org/W100",
+      title: "Full Paper",
+      status: "completed",
+      answers: { q1: true },
+      score: 1,
+      stars: 3,
+      qualified: true,
+      authors: ["Author A"],
+      publicationYear: 2024,
+      doi: "10.1234/test",
+    });
+    await seedScreeningResult(t, jobId, {
+      openalexId: "https://openalex.org/W200",
+      title: "Minimal Paper",
+      status: "completed",
+      answers: { q1: false },
+      score: 0,
+      stars: 1,
+      qualified: false,
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_exp4" });
+    const result = await asUser.query(api.screening.queries.getScreeningResultsForExport, { jobId });
+
+    expect(result).not.toBeNull();
+    // Job metadata
+    expect(result!.job._id).toBe(jobId);
+    expect(result!.job.status).toBe("completed");
+    expect(result!.job.questions).toHaveLength(1);
+    expect(result!.job.scoringConfig).toBeDefined();
+    expect(result!.job.totalPapers).toBeDefined();
+    expect(result!.job.qualifiedPapers).toBeDefined();
+    expect(result!.job.createdAt).toBeDefined();
+
+    // Results
+    expect(result!.results).toHaveLength(2);
+    const fullResult = result!.results.find((r) => r.openalexId === "https://openalex.org/W100");
+    expect(fullResult).toBeDefined();
+    expect(fullResult!.title).toBe("Full Paper");
+    expect(fullResult!.status).toBe("completed");
+    expect(fullResult!.answers).toEqual({ q1: true });
+    expect(fullResult!.score).toBe(1);
+    expect(fullResult!.stars).toBe(3);
+    expect(fullResult!.qualified).toBe(true);
+    expect(fullResult!.authors).toEqual(["Author A"]);
+    expect(fullResult!.publicationYear).toBe(2024);
+    expect(fullResult!.doi).toBe("10.1234/test");
+  });
+
+  it("includes failed results with undefined answers", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_exp5", "exp5@test.com");
+    const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
+
+    // Seed a failed result without answers/score/stars/qualified
+    await t.run(async (ctx) => {
+      await ctx.db.insert("screeningResults", {
+        jobId,
+        openalexId: "https://openalex.org/W999",
+        title: "Failed Paper",
+        status: "failed",
+        createdAt: Date.now(),
+      });
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_exp5" });
+    const result = await asUser.query(api.screening.queries.getScreeningResultsForExport, { jobId });
+
+    expect(result).not.toBeNull();
+    expect(result!.results).toHaveLength(1);
+    const failedResult = result!.results[0];
+    expect(failedResult.status).toBe("failed");
+    expect(failedResult.openalexId).toBe("https://openalex.org/W999");
+    expect(failedResult.answers).toBeUndefined();
+    expect(failedResult.score).toBeUndefined();
+    expect(failedResult.stars).toBeUndefined();
+    expect(failedResult.qualified).toBeUndefined();
+  });
+});
+
 describe("getScreeningProgress", () => {
   it("returns null for unauthenticated calls", async () => {
     const t = convexTest(schema);
