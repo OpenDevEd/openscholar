@@ -208,6 +208,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 - [ ] **Phase 79: Export Query** - Auth-gated backend query to fetch all screening results for a completed job
 - [ ] **Phase 80: Export Functions** - Pure CSV, JSON, and XLSX export functions for screening results
 - [ ] **Phase 81: Export UI** - Export dropdown on job history cards with format selection, loading states, and i18n
+- [ ] **Phase 82: Simplify Star Thresholds** - Remove maxScore from star thresholds, keep minScore only with highest-match-wins logic
 
 ## Phase Details
 
@@ -219,10 +220,10 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
   1. Authenticated user can fetch all results for a screening job they own, receiving paper metadata, per-question answers, score, stars, and qualified status
   2. Unauthenticated users or non-owners cannot access any results (auth gate rejects)
   3. Results are bounded by MAX_SCREENING_PAPERS_PER_JOB to prevent unbounded memory usage
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 79-01: TBD
+- [ ] 79-01-PLAN.md — TDD: getScreeningResultsForExport query + unit tests
 
 ### Phase 80: Export Functions
 **Goal**: Users can generate screening export files in CSV, JSON, and XLSX formats with complete, correctly formatted result data
@@ -256,7 +257,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 79 -> 80 -> 81
+Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -276,3 +277,18 @@ Phases execute in numeric order: 79 -> 80 -> 81
 | 79. Export Query | v4.1 | 0/1 | Not started | - |
 | 80. Export Functions | v4.1 | 0/1 | Not started | - |
 | 81. Export UI | v4.1 | 0/1 | Not started | - |
+| 82. Simplify Star Thresholds | v4.1 | 0/1 | Not started | - |
+
+### Phase 82: Simplify Star Thresholds
+**Goal**: Remove maxScore from star thresholds — each threshold defines only minScore + stars, highest matching minScore wins
+**Depends on**: Nothing (independent of export phases; touches scoring engine and UI)
+**Requirements**: SCORE-01, SCORE-02, SCORE-03
+**Success Criteria** (what must be TRUE):
+  1. Star threshold schema, validators, and scoring engine use only minScore + stars (no maxScore field)
+  2. Rating assignment evaluates thresholds sorted by minScore descending, first match wins
+  3. Existing screening jobs with stored maxScore data are read without error (backward-compatible)
+  4. Star threshold editor UI shows only minScore + stars per row
+**Plans**: TBD
+
+Plans:
+- [ ] 82-01: TBD
