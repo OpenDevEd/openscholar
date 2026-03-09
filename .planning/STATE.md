@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Screening Export
 status: in_progress
-stopped_at: Completed 82-01-PLAN.md
-last_updated: "2026-03-09T08:32:19Z"
-last_activity: 2026-03-09 — Completed 82-01 Scoring Engine + Schema
+stopped_at: Completed 82-02-PLAN.md
+last_updated: "2026-03-09T08:37:00Z"
+last_activity: 2026-03-09 — Completed 82-02 UI + Export maxScore Removal
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 5
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-03-09)
 ## Current Position
 
 Phase: 82 of 82 (Simplify Star Thresholds) -- 5 of 5 in v4.1
-Plan: 1 of 2 in current phase
-Status: Plan 82-01 complete, 82-02 remaining
-Last activity: 2026-03-09 — Completed 82-01 Scoring Engine + Schema
+Plan: 2 of 2 in current phase
+Status: Phase 82 complete -- all plans done
+Last activity: 2026-03-09 — Completed 82-02 UI + Export maxScore Removal
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [████████░░] 80%
 | Phase 80 P01 | 2min | 2 tasks | 2 files |
 | Phase 81 P01 | 2min | 2 tasks | 8 files |
 | Phase 82 P01 | 2min | 2 tasks | 8 files |
+| Phase 82 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,7 @@ See PROJECT.md Key Decisions table for full log.
 - [Phase 80]: Inline downloadFile helper to avoid cross-module coupling; separate generate* pure functions for testability
 - [Phase 81]: Used IIFE pattern for conditional rendering with local vars in JSX; useConvex().query() for on-demand export data fetch
 - [Phase 82]: v.optional(v.number()) for maxScore backward compat; removed maxScore from schema write path; removed gap/overlap from ConfigValidationWarning type
+- [Phase 82-02]: Made maxScore optional in ScreeningExportData for backward compat; XLSX summary shows only Min Score + Stars columns
 
 ### Pending Todos
 
@@ -100,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed 82-01 Scoring Engine + Schema
-Stopped at: Completed 82-01-PLAN.md
+Last activity: 2026-03-09 -- Completed 82-02 UI + Export maxScore Removal
+Stopped at: Completed 82-02-PLAN.md
 Resume file: None

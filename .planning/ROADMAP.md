@@ -208,7 +208,7 @@ Full details: `.planning/milestones/v4.0-ROADMAP.md`
 - [x] **Phase 79: Export Query** - Auth-gated backend query to fetch all screening results for a completed job (completed 2026-03-09)
 - [x] **Phase 80: Export Functions** - Pure CSV, JSON, and XLSX export functions for screening results (completed 2026-03-09)
 - [x] **Phase 81: Export UI** - Export dropdown on job history cards with format selection, loading states, and i18n (completed 2026-03-09)
-- [ ] **Phase 82: Simplify Star Thresholds** - Remove maxScore from star thresholds, keep minScore only with highest-match-wins logic
+- [x] **Phase 82: Simplify Star Thresholds** - Remove maxScore from star thresholds, keep minScore only with highest-match-wins logic (completed 2026-03-09)
 
 ## Phase Details
 
@@ -277,7 +277,7 @@ Phases execute in numeric order: 79 -> 80 -> 81 -> 82
 | 79. Export Query | 1/1 | Complete    | 2026-03-09 | - |
 | 80. Export Functions | 1/1 | Complete    | 2026-03-09 | - |
 | 81. Export UI | 1/1 | Complete    | 2026-03-09 | - |
-| 82. Simplify Star Thresholds | 1/2 | In Progress|  | - |
+| 82. Simplify Star Thresholds | 2/2 | Complete   | 2026-03-09 | - |
 
 ### Phase 82: Simplify Star Thresholds
 **Goal**: Remove maxScore from star thresholds — each threshold defines only minScore + stars, highest matching minScore wins
