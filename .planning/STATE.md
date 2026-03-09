@@ -79,9 +79,10 @@ None.
 | 6 | Audit schema vs validators (no mismatches found) | 2026-03-06 | -- | [6-check-if-theres-any-such-issues](./quick/6-check-if-theres-any-such-issues/) |
 | 7 | Redesign screening modal UI/UX | 2026-03-09 | eb1ccb1 | [7-redesign-screening-modal-ui-ux](./quick/7-redesign-screening-modal-ui-ux/) |
 | 8 | Improve create-collection inline flow | 2026-03-09 | c27344b | [8-improve-create-new-collection-inline-flo](./quick/8-improve-create-new-collection-inline-flo/) |
+| 9 | Polish create-collection inline flow | 2026-03-09 | 79fce1e | [9-polish-screening-dialog-visual-design](./quick/9-polish-screening-dialog-visual-design/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-09 -- Completed quick task 8 (create-collection inline flow)
-Stopped at: Quick task 8 complete
+Last activity: 2026-03-09 -- Completed quick task 9 (polish create-collection flow)
+Stopped at: Quick task 9 complete
 Resume file: None
