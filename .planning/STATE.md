@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 85-bar-visualization/85-00-PLAN.md
-last_updated: "2026-03-10T09:43:56.125Z"
+stopped_at: Completed 85-bar-visualization/85-01-PLAN.md
+last_updated: "2026-03-10T09:47:42.236Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 8
   percent: 0
 ---
 
@@ -62,6 +62,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 84-summary-cards-confidence-display P02 | 1min | 1 tasks | 2 files |
 | Phase 84-summary-cards-confidence-display P03 | 2min | 2 tasks | 4 files |
 | Phase 85-bar-visualization P00 | 1 | 2 tasks | 6 files |
+| Phase 85-bar-visualization P01 | 1min | 1 tasks | 2 files |
+| Phase 85-bar-visualization P02 | 1min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -89,6 +91,9 @@ Recent decisions for v5.0:
 - [Phase 85-bar-visualization]: recharts@^2.15.4 installed as production dependency (satisfies ^2.14.0 constraint)
 - [Phase 85-bar-visualization]: Wave 0 test stubs import from non-existent source files confirming RED state for TDD Plans 01 and 02
 - [Phase 85-bar-visualization]: Recharts vi.mock pattern established in jsdom stubs — BarChart/Bar/XAxis/YAxis/Tooltip/ResponsiveContainer all stubbed
+- [Phase 85-bar-visualization]: normalizeToMax sanitizes values to safe[] first then applies Math.max(...safe, 1) — NaN inputs zeroed before guard
+- [Phase 85-bar-visualization]: scaleAnswersForDisplay preserves raw count on output items for tooltip display (Pitfall 2 avoidance)
+- [Phase 85-bar-visualization]: CITATION_STATUS_COLORS hex values match BADGE_COLOR_CLASSES in card-thresholds.ts to prevent color drift
 
 ### Pending Todos
 
@@ -122,5 +127,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 85-bar-visualization/85-00-PLAN.md
+Stopped at: Completed 85-bar-visualization/85-01-PLAN.md
 Resume file: None
