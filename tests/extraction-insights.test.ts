@@ -709,3 +709,85 @@ describe("aggregateQuestionInsights bar scaling edge cases", () => {
     expect(aggregate.topAnswers[0]?.count).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 83: Confidence context mapping (documents expected behavior for Phase 84 confidence badge)
+// ---------------------------------------------------------------------------
+
+describe("aggregateQuestionInsights confidence context mapping", () => {
+  it("abstract-only context: all best_effort, avgConfidence capped at ≤0.7", () => {
+    const entries: InsightEntry[] = Array.from({ length: 5 }, (_, i) => ({
+      paperId: `p${i}`,
+      title: `Paper ${i}`,
+      openalexId: `oa:${i}`,
+      questionKey: "methods",
+      answer: "RCT design",
+      confidence: 0.7, // Abstract-only ceiling
+      citationStatus: "best_effort" as CitationStatus,
+    }));
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.citationStatusMix.best_effort).toBe(5);
+    expect(aggregate.citationStatusMix.grounded).toBe(0);
+    expect(aggregate.citationStatusMix.insufficient_evidence).toBe(0);
+    // Phase 84 confidence badge: when best_effort dominates, show "Abstract-only extraction" label
+    expect(aggregate.avgConfidence).toBeLessThanOrEqual(0.7);
+    expect(aggregate.answered).toBe(5);
+  });
+
+  it("no-content context: all insufficient_evidence, confidence=0, answered=0", () => {
+    const entries: InsightEntry[] = Array.from({ length: 3 }, (_, i) => ({
+      paperId: `p${i}`,
+      title: `Paper ${i}`,
+      openalexId: `oa:${i}`,
+      questionKey: "outcomes",
+      answer: null,
+      confidence: 0,
+      citationStatus: "insufficient_evidence" as CitationStatus,
+    }));
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.answered).toBe(0);
+    expect(aggregate.citationStatusMix.insufficient_evidence).toBe(3);
+    expect(aggregate.citationStatusMix.grounded).toBe(0);
+    expect(aggregate.citationStatusMix.best_effort).toBe(0);
+    // Phase 84 confidence badge: when insufficient_evidence dominates, show "No content available" label
+    expect(aggregate.avgConfidence).toBe(0);
+    expect(Number.isNaN(aggregate.avgConfidence)).toBe(false);
+    expect(aggregate.topAnswers).toEqual([]);
+  });
+
+  it("full-text context: grounded status, avgConfidence reflects actual value", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.92,
+        citationStatus: "grounded",
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: "yes",
+        confidence: 0.88,
+        citationStatus: "grounded",
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.citationStatusMix.grounded).toBe(2);
+    expect(aggregate.citationStatusMix.best_effort).toBe(0);
+    expect(aggregate.citationStatusMix.insufficient_evidence).toBe(0);
+    // Phase 84 confidence badge: grounded papers show real confidence, no cap
+    expect(aggregate.avgConfidence).toBeCloseTo(0.9, 1); // (0.92 + 0.88) / 2 = 0.9
+    expect(aggregate.avgConfidence).toBeGreaterThan(0.7); // Above abstract-only ceiling
+  });
+});
