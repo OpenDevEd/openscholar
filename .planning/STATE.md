@@ -5,9 +5,9 @@ milestone_name: Extraction Insights Overhaul
 status: active
 stopped_at: null
 last_updated: "2026-03-10T00:00:00.000Z"
-last_activity: 2026-03-10 — Milestone v5.0 started
+last_activity: 2026-03-10 — Roadmap created for v5.0 (5 phases, 83-87)
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v5.0 Extraction Insights Overhaul
+**Current focus:** v5.0 Extraction Insights Overhaul — Phase 83 ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 83 of 87 (Test Foundation & i18n Keys)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-03-10 — Milestone v5.0 started
+Status: Ready to plan
+Last activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -61,13 +63,21 @@ Last activity: 2026-03-10 — Milestone v5.0 started
 
 See PROJECT.md Key Decisions table for full log.
 
+Recent decisions for v5.0:
+- Zero backend changes: all 6 features consume existing getJobInsights/getQuestionInsights queries
+- Recharts ^2.14.0 is the only new dependency, lazy-loaded on insights tab access (INFRA-02)
+- i18n keys added in Phase 83 upfront (process-first) to prevent missing-key shipping
+- Snapshot tests refactored to structural in Phase 83 before any component changes
+- GROUP-* (semantic grouping) deferred to Phase 87 — highest complexity, comes last
+- MVP grouping: case/whitespace/basic synonyms only; fuzzy/NLP matching deferred to v5.1+
+
 ### Pending Todos
 
 None.
 
 ### Roadmap Evolution
 
-None — milestone complete.
+None yet.
 
 ### Blockers/Concerns
 
@@ -92,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-10 -- Quick task 13 complete
-Stopped at: Completed quick-13 (disable Review Queue and Report Builder)
+Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
+Stopped at: Roadmap created, ready to plan Phase 83
 Resume file: None

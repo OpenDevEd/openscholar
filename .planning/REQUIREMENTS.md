@@ -66,31 +66,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BAR-01 | — | Pending |
-| BAR-02 | — | Pending |
-| BAR-03 | — | Pending |
-| BAR-04 | — | Pending |
-| CARD-01 | — | Pending |
-| CARD-02 | — | Pending |
-| CARD-03 | — | Pending |
-| CONF-01 | — | Pending |
-| CONF-02 | — | Pending |
-| CONF-03 | — | Pending |
-| QLIST-01 | — | Pending |
-| QLIST-02 | — | Pending |
-| QLIST-03 | — | Pending |
-| GROUP-01 | — | Pending |
-| GROUP-02 | — | Pending |
-| GROUP-03 | — | Pending |
-| GROUP-04 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
+| BAR-01 | Phase 85 | Pending |
+| BAR-02 | Phase 85 | Pending |
+| BAR-03 | Phase 85 | Pending |
+| BAR-04 | Phase 85 | Pending |
+| CARD-01 | Phase 84 | Pending |
+| CARD-02 | Phase 84 | Pending |
+| CARD-03 | Phase 84 | Pending |
+| CONF-01 | Phase 84 | Pending |
+| CONF-02 | Phase 84 | Pending |
+| CONF-03 | Phase 84 | Pending |
+| QLIST-01 | Phase 86 | Pending |
+| QLIST-02 | Phase 86 | Pending |
+| QLIST-03 | Phase 86 | Pending |
+| GROUP-01 | Phase 87 | Pending |
+| GROUP-02 | Phase 87 | Pending |
+| GROUP-03 | Phase 87 | Pending |
+| GROUP-04 | Phase 87 | Pending |
+| INFRA-01 | Phase 83 | Pending |
+| INFRA-02 | Phase 85 | Pending |
 
 **Coverage:**
 - v5.0 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after initial definition*
+*Last updated: 2026-03-10 after roadmap creation (v5.0 phases 83-87)*

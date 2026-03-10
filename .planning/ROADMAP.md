@@ -16,6 +16,7 @@
 - v3.2 Production Readiness -- Phases 72-74 (shipped 2026-03-06)
 - v4.0 Bulk Screening & Auto-Rating -- Phases 75-78 (shipped 2026-03-09)
 - v4.1 Screening Export -- Phases 79-82 (shipped 2026-03-09)
+- v5.0 Extraction Insights Overhaul -- Phases 83-87 (in progress)
 
 ## Phases
 
@@ -213,6 +214,75 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 
 </details>
 
+### v5.0 Extraction Insights Overhaul (Phases 83-87)
+
+**Milestone Goal:** Overhaul the extraction insights page to fix data visualization issues, merge semantic duplicates, and improve overall UX/UI quality. Zero backend changes — all features consume data from existing queries.
+
+- [ ] **Phase 83: Test Foundation & i18n Keys** - Refactor snapshot tests to structural, add edge-case tests, seed all new locale strings upfront
+- [ ] **Phase 84: Summary Cards & Confidence Display** - Color-accented metric cards and contextual confidence badge
+- [ ] **Phase 85: Bar Visualization** - Relative-to-max scaling and stacked horizontal bars with Recharts
+- [ ] **Phase 86: Question List & Progress Bars** - Status dots and mini progress bars for scannability
+- [ ] **Phase 87: Answer Semantic Grouping** - Merge synonym variants with expandable drill-down
+
+## Phase Details
+
+### Phase 83: Test Foundation & i18n Keys
+**Goal**: The insights test suite uses structural assertions (not snapshots) and all 6 locale files contain every new translation key, so subsequent UI phases can iterate without breaking tests or shipping missing-key placeholders.
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: INFRA-01
+**Success Criteria** (what must be TRUE):
+  1. InsightsOverview.test.ts assertions target DOM structure and data attributes, not rendered HTML snapshots — a component refactor does not trigger test failures
+  2. All new extraction insights translation keys exist in all 6 locale JSON files (en, fr, de, es, ja, zh) before any UI component is written
+  3. Edge-case tests exist for bar scaling (all-zero distribution, single-dominant value, one-answer question) with documented expected outputs
+  4. Edge-case tests exist for confidence context mapping (abstract-only cap, no content, full-text) with documented expected outputs
+**Plans**: TBD
+
+### Phase 84: Summary Cards & Confidence Display
+**Goal**: Users scanning the insights overview see reordered summary cards with color-coded health signals and a single contextual confidence badge that explains why the confidence value is what it is.
+**Depends on**: Phase 83
+**Requirements**: CARD-01, CARD-02, CARD-03, CONF-01, CONF-02, CONF-03
+**Success Criteria** (what must be TRUE):
+  1. Summary cards appear in actionable order — completion and quality metrics appear before derived/secondary metrics
+  2. Each card displays a color accent (green/yellow/red) that changes based on the metric value crossing defined thresholds, visible without interaction
+  3. Metrics that are misleading in abstract-only jobs (e.g., "0% grounded") are contextualized or hidden rather than shown as alarming zeroes
+  4. A single confidence badge replaces "effective confidence" and shows one clear percentage with a tooltip explaining its source (abstract cap, full-text, no content)
+  5. The confidence badge color matches the value: green for >=85%, yellow for 60-84%, red for <60%
+**Plans**: TBD
+
+### Phase 85: Bar Visualization
+**Goal**: Users looking at answer distributions see bars that meaningfully fill the available space, with stacked horizontal bars showing the part-to-whole breakdown per question, rendered via Recharts loaded only on demand.
+**Depends on**: Phase 83
+**Requirements**: BAR-01, BAR-02, BAR-03, BAR-04, INFRA-02
+**Success Criteria** (what must be TRUE):
+  1. Answer distribution bars scale relative to the highest count — the dominant answer fills the bar container and minority answers are visually proportional to it, not invisible at 2-4%
+  2. A stacked horizontal bar renders per question showing grounded/best-effort/insufficient/error segments as distinct colored regions
+  3. Edge cases render without NaN or layout breaks: all-zero distributions show empty state, single-dominant values show one full bar, single-answer questions show a single segment
+  4. Each bar or segment displays a count label and percentage value on hover or keyboard focus
+  5. Recharts (~65KB gzipped) is only loaded when the user navigates to the insights tab, not on initial page load
+**Plans**: TBD
+
+### Phase 86: Question List & Progress Bars
+**Goal**: Users can scan the question list at a glance to see which questions have complete, partial, or empty extraction coverage without expanding individual questions.
+**Depends on**: Phase 85
+**Requirements**: QLIST-01, QLIST-02, QLIST-03
+**Success Criteria** (what must be TRUE):
+  1. Each question in the list shows a status dot — green for complete (all papers answered), yellow for partial, grey for empty — visible without expanding the question
+  2. Each question shows a mini progress bar indicating the percentage of papers that returned an answer, with the percentage displayed as text alongside the bar
+  3. The question list is scannable end-to-end without any expand/collapse interaction — all status and progress information is visible in the collapsed list view
+  4. Progress bars render 0% (not NaN) when a question has zero answers, and aria-valuenow plus aria-label are present for accessibility
+**Plans**: TBD
+
+### Phase 87: Answer Semantic Grouping
+**Goal**: Users see deduplicated answer distributions where case variants, whitespace differences, and common synonyms are merged into single representative groups, with expandable drill-down to inspect individual variants.
+**Depends on**: Phase 86
+**Requirements**: GROUP-01, GROUP-02, GROUP-03, GROUP-04
+**Success Criteria** (what must be TRUE):
+  1. Answers that differ only by case, leading/trailing whitespace, or basic synonym equivalence appear as a single grouped row rather than multiple near-duplicate rows
+  2. Each grouped row shows a disclosure control (e.g., "5 variants") that expands inline to reveal the individual raw answer strings and their individual counts
+  3. The count shown on a grouped row is the sum of all variant counts — the aggregated total is accurate and matches the sum of expanded variant counts
+  4. The disagreement detection logic treats grouped answers as equivalent — papers that gave semantically identical answers are not flagged as disagreements
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -231,3 +301,8 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
+| 83 | v5.0 | 0/TBD | Not started | - |
+| 84 | v5.0 | 0/TBD | Not started | - |
+| 85 | v5.0 | 0/TBD | Not started | - |
+| 86 | v5.0 | 0/TBD | Not started | - |
+| 87 | v5.0 | 0/TBD | Not started | - |
