@@ -41,7 +41,7 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: All new UI strings translated across 6 locales
+- [x] **INFRA-01**: All new UI strings translated across 6 locales
 - [ ] **INFRA-02**: Recharts lazy-loaded only when insights tab is accessed
 
 ## Future Requirements
@@ -83,7 +83,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GROUP-02 | Phase 87 | Pending |
 | GROUP-03 | Phase 87 | Pending |
 | GROUP-04 | Phase 87 | Pending |
-| INFRA-01 | Phase 83 | Pending |
+| INFRA-01 | Phase 83 | Complete |
 | INFRA-02 | Phase 85 | Pending |
 
 **Coverage:**
