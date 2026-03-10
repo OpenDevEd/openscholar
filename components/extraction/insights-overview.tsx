@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
+import { SummaryCards } from "./summary-cards";
 
 interface InsightsOverviewProps {
   jobId: Id<"extractionJobs">;
@@ -63,24 +64,15 @@ export function InsightsOverview({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">{tc("answered")}</div>
-          <div className="text-xl font-semibold">{pct(summary.answeredRate)}</div>
-        </div>
-        <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">{tc("grounded")}</div>
-          <div className="text-xl font-semibold">{pct(summary.groundedRate)}</div>
-        </div>
-        <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">{tc("bestEffort")}</div>
-          <div className="text-xl font-semibold">{pct(summary.bestEffortRate)}</div>
-        </div>
-        <div className="rounded-lg border border-border/50 bg-card p-4">
-          <div className="text-xs text-muted-foreground">{tc("noContentPapers")}</div>
-          <div className="text-xl font-semibold">{summary.noContentCount}</div>
-        </div>
-      </div>
+      <SummaryCards
+        answeredRate={summary.answeredRate}
+        groundedRate={summary.groundedRate}
+        bestEffortRate={summary.bestEffortRate}
+        averageConfidence={summary.averageConfidence}
+        noContentCount={summary.noContentCount}
+        abstractOnlyCount={summary.abstractOnlyCount}
+        totalPapers={questions.length > 0 ? questions[0].total : summary.noContentCount + summary.abstractOnlyCount}
+      />
 
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">

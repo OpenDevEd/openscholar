@@ -8,6 +8,25 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+// Mock SummaryCards to avoid deep rendering (Tooltip, card-thresholds, confidence-badge)
+// The test validates InsightsOverview wiring, not SummaryCards internals
+vi.mock("../components/extraction/summary-cards", () => ({
+  SummaryCards: ({ answeredRate, groundedRate, bestEffortRate, noContentCount }: {
+    answeredRate: number;
+    groundedRate: number;
+    bestEffortRate: number;
+    noContentCount: number;
+    [key: string]: unknown;
+  }) => (
+    <div data-testid="summary-cards-mock">
+      <span>{Math.round(answeredRate * 100)}%</span>
+      <span>{Math.round(groundedRate * 100)}%</span>
+      <span>{Math.round(bestEffortRate * 100)}%</span>
+      <span>{noContentCount}</span>
+    </div>
+  ),
+}));
+
 const mockInsights = {
   status: "ok" as const,
   summary: {
@@ -15,6 +34,8 @@ const mockInsights = {
     groundedRate: 0.6,
     bestEffortRate: 0.15,
     noContentCount: 3,
+    averageConfidence: 0.82,
+    abstractOnlyCount: 2,
   },
   questions: [
     {
