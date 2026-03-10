@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { DisagreementList } from "@/components/extraction/disagreement-list";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
+import { BarVisualization } from "@/components/extraction/bar-visualization";
 
 interface InsightsQuestionPanelProps {
   jobId: Id<"extractionJobs">;
@@ -228,41 +229,41 @@ export function InsightsQuestionPanel({
               {t("noEntityValues")}
             </div>
           ) : (
-            <div className="space-y-3">
-              {entityDistribution.map((entity) => (
-                <div key={entity.entity} className="space-y-1">
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate">
-                      {entity.entity}
-                      {entity.generic ? ` ${t("genericSuffix")}` : ""}
-                    </span>
-                    <span className="text-muted-foreground">{entity.count}</span>
-                  </div>
-                  <Bar value={entity.count / total} />
-                  <div className="text-[11px] text-muted-foreground">
-                    {tc("grounded").toLowerCase()} {pct(entity.groundedRate || 0)} · {t("avgConf")}{" "}
-                    {Math.round((entity.avgConfidence || 0) * 100)}%
-                  </div>
-                </div>
-              ))}
-            </div>
+            <BarVisualization
+              answers={entityDistribution.map((entity) => {
+                const groundedCount = Math.round(entity.count * (entity.groundedRate || 0));
+                return {
+                  answer: entity.entity + (entity.generic ? ` ${t("genericSuffix")}` : ""),
+                  count: entity.count,
+                  citationStatusMix: {
+                    grounded: groundedCount,
+                    best_effort: entity.count - groundedCount,
+                    insufficient_evidence: 0,
+                    extraction_error: 0,
+                  },
+                };
+              })}
+              maxCount={Math.max(...entityDistribution.map((e) => e.count), 1)}
+            />
           )
         ) : rawAnswerDistribution.length === 0 ? (
           <div className="text-sm text-muted-foreground">
             {t("noAnswerValues")}
           </div>
         ) : (
-          <div className="space-y-3">
-            {rawAnswerDistribution.map((answer) => (
-              <div key={answer.normalized} className="space-y-1">
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate">{answer.display}</span>
-                  <span className="text-muted-foreground">{answer.count}</span>
-                </div>
-                <Bar value={answer.count / total} />
-              </div>
-            ))}
-          </div>
+          <BarVisualization
+            answers={rawAnswerDistribution.map((answer) => ({
+              answer: answer.display,
+              count: answer.count,
+              citationStatusMix: (answer as { citationStatusMix?: { grounded: number; best_effort: number; insufficient_evidence: number; extraction_error: number } }).citationStatusMix ?? {
+                grounded: 0,
+                best_effort: 0,
+                insufficient_evidence: 0,
+                extraction_error: 0,
+              },
+            }))}
+            maxCount={Math.max(...rawAnswerDistribution.map((a) => a.count), 1)}
+          />
         )}
       </div>
 
