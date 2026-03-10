@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 87-02-PLAN.md
-last_updated: "2026-03-10T10:48:43.594Z"
+stopped_at: Completed 87-01-PLAN.md
+last_updated: "2026-03-10T10:48:52.668Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
@@ -111,6 +111,9 @@ Recent decisions for v5.0:
 - [Phase 87-answer-semantic-grouping]: GroupedAnswerRow uses local useState(false) for expansion — not lifted to parent
 - [Phase 87-answer-semantic-grouping]: Single-variant groups render no disclosure control (same as ungrouped rows visually)
 - [Phase 87-answer-semantic-grouping]: No animation for MVP (instant show/hide per CONTEXT.md locked decisions)
+- [Phase 87-answer-semantic-grouping]: groupAnswersBySynonym uses normalized key for grouping (not display), matching CONTEXT.md locked decision
+- [Phase 87-answer-semantic-grouping]: mergeDisagreementClusters concatenates ALL examples from merged clusters (not capped at 5)
+- [Phase 87-answer-semantic-grouping]: AnswerBucketInput defined inline in answer-grouping.ts rather than importing AnswerBucket to avoid coupling to citationStatusMix absence
 
 ### Pending Todos
 
@@ -144,5 +147,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 87-02-PLAN.md
+Stopped at: Completed 87-01-PLAN.md
 Resume file: None

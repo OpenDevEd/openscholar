@@ -34,10 +34,10 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 
 ### Answer Grouping
 
-- [ ] **GROUP-01**: Semantically similar answers merged into groups (case, whitespace, basic synonyms)
+- [x] **GROUP-01**: Semantically similar answers merged into groups (case, whitespace, basic synonyms)
 - [x] **GROUP-02**: Grouped answers show expandable drill-down to see individual variants
-- [ ] **GROUP-03**: Group counts aggregate variant counts for accurate totals
-- [ ] **GROUP-04**: Disagreement detection respects grouping (grouped answers are not flagged as disagreements)
+- [x] **GROUP-03**: Group counts aggregate variant counts for accurate totals
+- [x] **GROUP-04**: Disagreement detection respects grouping (grouped answers are not flagged as disagreements)
 
 ### Infrastructure
 
@@ -79,10 +79,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QLIST-01 | Phase 86 | Complete |
 | QLIST-02 | Phase 86 | Complete |
 | QLIST-03 | Phase 86 | Complete |
-| GROUP-01 | Phase 87 | Pending |
+| GROUP-01 | Phase 87 | Complete |
 | GROUP-02 | Phase 87 | Complete |
-| GROUP-03 | Phase 87 | Pending |
-| GROUP-04 | Phase 87 | Pending |
+| GROUP-03 | Phase 87 | Complete |
+| GROUP-04 | Phase 87 | Complete |
 | INFRA-01 | Phase 83 | Complete |
 | INFRA-02 | Phase 85 | Complete |
 
