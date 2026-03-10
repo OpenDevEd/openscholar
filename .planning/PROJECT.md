@@ -2,7 +2,7 @@
 
 ## What This Is
 
-OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (884+ tests across 87+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, bulk screening that processes up to 200 search results in background with user-defined scoring rules and auto-rating, screening result export (CSV/JSON/XLSX) with dynamic question columns and scoring metadata, simplified minScore-only star thresholds with highest-match-wins logic, and a production-hardened codebase with zero `as any` casts, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, automated cleanup crons, internal-only debug endpoints, denormalized O(1) library counting, and bounded queries with shared MAX constants.
+OpenAlex Count is an academic literature search and extraction tool built with Next.js + Convex. It provides AI-powered screening, translation, and data extraction across academic papers sourced from OpenAlex. The platform includes Stripe-integrated billing with subscription tiers (free, go, pro, enterprise), credit-based usage metering, a comprehensive test suite (1072+ tests across 90+ files), a persistent library with collections, advanced filtering, a polished two-column sidebar layout shared across search and library pages, bulk screening that processes up to 200 search results in background with user-defined scoring rules and auto-rating, screening result export (CSV/JSON/XLSX) with dynamic question columns and scoring metadata, simplified minScore-only star thresholds with highest-match-wins logic, overhauled extraction insights with color-coded summary cards, contextual confidence badge, Recharts stacked bar visualization (lazy-loaded), question status dots with progress bars, and answer semantic grouping with expandable drill-down, and a production-hardened codebase with zero `as any` casts, XSS-safe rendering, persistent audit logging, incremental report aggregation, dynamic XLSX export, env var validation, automated cleanup crons, internal-only debug endpoints, denormalized O(1) library counting, and bounded queries with shared MAX constants.
 
 ## Core Value
 
@@ -132,19 +132,18 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ Simplified star thresholds: minScore-only with descending first-match scoring algorithm — v4.1
 - ✓ Backward-compatible schema evolution for maxScore removal (optional in read, removed from write) — v4.1
 
+- ✓ Structural assertion tests replacing snapshot tests for insights UI — v5.0
+- ✓ i18n keys seeded across all 6 locale files before UI component development — v5.0
+- ✓ Color-coded summary cards with threshold-based green/yellow/red accents — v5.0
+- ✓ Contextual ConfidenceBadge replacing "effective confidence" with source tooltip — v5.0
+- ✓ Relative-to-max bar scaling with stacked horizontal Recharts bars, lazy-loaded — v5.0
+- ✓ Question list status dots and mini progress bars for at-a-glance scanning — v5.0
+- ✓ Answer semantic grouping merging case/whitespace/synonym variants with expandable drill-down — v5.0
+- ✓ Recharts lazy-loaded via next/dynamic only when insights tab accessed — v5.0
+
 ### Active
 
-## Current Milestone: v5.0 Extraction Insights Overhaul
-
-**Goal:** Overhaul the extraction insights page to fix data visualization issues, merge semantic duplicates, and improve overall UX/UI quality.
-
-**Target features:**
-- Bar scaling — relative to max value, not total (bars currently nearly invisible at 2-4%)
-- Summary cards — reframe/reorder with color accents
-- Confidence display — contextual callout replacing confusing "effective conf"
-- Question list — status dots + mini progress bars
-- Stacked horizontal bars for distributions
-- Answer semantic grouping — merge synonyms with expandable variants
+(None yet — define in next milestone)
 
 ### Out of Scope
 
@@ -171,17 +170,18 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 through v4.1 (14 milestones, 82 phases, 158 plans). Latest: v4.1 (45 files, +5,020/-153).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
+Shipped v1.0 through v5.0 (15 milestones, 87 phases, 179 plans). Latest: v5.0 (83 files, +12,465/-149).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Recharts (lazy-loaded), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
 Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`, `screeningJobs`, `screeningResults`.
-Test suite: 87+ Vitest test files (884+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, env validation, ExcelJS round-trip, subscription cron, job stats, screening export, and translation key coverage tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
+Test suite: 90+ Vitest test files (1072+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, env validation, ExcelJS round-trip, subscription cron, job stats, screening export, translation key coverage, extraction insights components, bar scaling, confidence context, question status, and answer grouping tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
 CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
 Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export via ExcelJS (dynamic import), two-column sidebar layout with collapsible filter panel, bounded count query.
 Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
+Extraction Insights: Color-coded summary cards with threshold-based accents, contextual ConfidenceBadge with tooltip, Recharts stacked horizontal bars (lazy-loaded via next/dynamic), question status dots and progress bars, answer semantic grouping with synonym merging and expandable drill-down.
 Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, persistent `auditLogs` table with `writeAuditLog` internalMutation, XSS-safe `HighlightedText` component (no dangerouslySetInnerHTML), env var validation cron, assertPlanPriceConfig fail-fast, rate limiting on all exposed endpoints, debug functions registered as internalQuery/internalMutation (platform-enforced unreachability).
 Extraction: 18 shared typed validators, typed query return validators (zero v.any()), typed searchFilters schema, credit-guard pattern, incremental `extractionJobStats` aggregation with lazy backfill, `ExtractionResultWithReview` type derived from validator threaded through all downstream consumers.
 Type safety: Complete type safety across entire codebase — zero `: any`, `as any`, `any[]`, `<any>`, `Record<string, any>`, `v.any()` in user-authored code. Typed mock factories (DeepPartial<T>) for Convex context, Ids, documents, and Stripe events. GenericValidator replaces all Validator<any> instances.
-Performance: Batch review loading (no N+1), bounded .collect() calls with .take(N) guards and shared MAX constants from queryBounds.ts, O(1) library count via denormalized counter, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings), ~40 queries annotated with cardinality comments.
+Performance: Batch review loading (no N+1), bounded .collect() calls with .take(N) guards and shared MAX constants from queryBounds.ts, O(1) library count via denormalized counter, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings), Recharts lazy-loaded via next/dynamic (~65KB gzipped deferred), ~40 queries annotated with cardinality comments.
 Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation cron, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
 
 ## Constraints
@@ -286,5 +286,13 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | Shared queryBounds.ts MAX constants | Centralized bounds vs co-located per-file | ✓ Good — prevents inconsistent bounds |
 | Cascade deletes left unbounded | Bounding would orphan data | ✓ Good — annotated with comments |
 
+| Structural tests over snapshots | Component refactors don't break tests | ✓ Good — v5.0 insight components iterated freely |
+| i18n keys seeded before UI work | Prevents missing-key placeholders in production | ✓ Good — all 6 locales complete before Phase 84 |
+| Recharts lazy-loaded via next/dynamic | ~65KB gzipped deferred from initial page load | ✓ Good — only loads on insights tab access |
+| normalizeToMax bar scaling | Dominant answer fills container, minorities proportional | ✓ Good — eliminates near-invisible 2-4% bars |
+| Synonym grouping: case/whitespace/basic only | MVP complexity; fuzzy/NLP deferred to v5.1+ | ✓ Good — covers common duplicates without over-engineering |
+| GroupedAnswerRow local useState | Expansion state not lifted to parent | ✓ Good — simple, no cross-component coupling |
+| IIFE pattern for grouping computation in JSX | synonymMap built once, shared by answer and disagreement transforms | ✓ Good — avoids double computation |
+
 ---
-*Last updated: 2026-03-10 after v5.0 milestone started*
+*Last updated: 2026-03-10 after v5.0 milestone completed*

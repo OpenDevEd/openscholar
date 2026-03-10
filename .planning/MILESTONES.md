@@ -1,5 +1,27 @@
 # Milestones
 
+## v5.0 Extraction Insights Overhaul (Shipped: 2026-03-10)
+
+**Phases completed:** 5 phases, 14 plans
+**Git range:** `6b23d6c..9ce0704` (65 commits)
+**Files changed:** 83 files, +12,465/-149 lines
+**Timeline:** 1 day (2026-03-10)
+
+**Key accomplishments:**
+- Test foundation with structural assertions replacing snapshots and 11 new i18n keys seeded across all 6 locale files upfront (Phase 83)
+- Color-coded summary cards with threshold-based green/yellow/red accents and contextual ConfidenceBadge replacing confusing "effective confidence" display (Phase 84)
+- Relative-to-max bar scaling with Recharts stacked horizontal bars, lazy-loaded via next/dynamic to avoid ~65KB gzipped on initial page load (Phase 85)
+- Question list with status dots (green/yellow/grey) and mini progress bars showing answer completion percentage at a glance (Phase 86)
+- Answer semantic grouping merging case/whitespace/synonym variants into single rows with expandable drill-down to inspect individual variants and counts (Phase 87)
+
+**Audit:** 19/19 requirements, 5/5 phases, 18/18 integrations, 4/4 E2E flows — PASSED
+
+**Tech debt carried forward:**
+- TypeScript `any` on Recharts tooltip props (stacked-answer-bars.tsx:174) — Recharts type incompatibility, safe in practice
+- Old div-based Bar component retained for citationStatusMix (correct design decision, Recharts not needed)
+
+---
+
 ## v4.1 Screening Export (Shipped: 2026-03-09)
 
 **Phases completed:** 4 phases, 5 plans, 10 tasks

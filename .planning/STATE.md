@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
-status: planning
-stopped_at: Completed 87-03-PLAN.md
-last_updated: "2026-03-10T10:58:39.108Z"
-last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
+status: completed
+stopped_at: Milestone v5.0 completed and archived
+last_updated: "2026-03-10T11:15:00.000Z"
+last_activity: 2026-03-10 — v5.0 milestone completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 14
   completed_plans: 14
-  percent: 0
+  percent: 100
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v5.0 Extraction Insights Overhaul — Phase 83 ready to plan
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 83 of 87 (Test Foundation & i18n Keys)
-Plan: —
-Status: Ready to plan
-Last activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
+Phase: -- (milestone complete)
+Plan: --
+Status: Milestone v5.0 shipped
+Last activity: 2026-03-10 — v5.0 Extraction Insights Overhaul completed and archived
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 165 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, cleanup: 2, quick: 15)
-- Total milestones shipped: 14
+- Total plans completed: 179 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, v5.0: 14, cleanup: 2, quick: 15)
+- Total milestones shipped: 15
 
 **By Milestone:**
 
@@ -56,67 +56,13 @@ Progress: [░░░░░░░░░░] 0%
 | v3.2 | 3 | 4 | 2026-03-06 |
 | v4.0 | 4 | 9 | 2026-03-09 |
 | v4.1 | 4 | 5 | 2026-03-09 |
-| Phase 83 P02 | 2 | 2 tasks | 1 files |
-| Phase 83-test-foundation-i18n-keys P01 | 10 | 3 tasks | 9 files |
-| Phase 84-summary-cards-confidence-display P01 | 2 | 2 tasks | 4 files |
-| Phase 84-summary-cards-confidence-display P02 | 1min | 1 tasks | 2 files |
-| Phase 84-summary-cards-confidence-display P03 | 2min | 2 tasks | 4 files |
-| Phase 85-bar-visualization P00 | 1 | 2 tasks | 6 files |
-| Phase 85-bar-visualization P01 | 1min | 1 tasks | 2 files |
-| Phase 85-bar-visualization P02 | 1min | 2 tasks | 1 files |
-| Phase 85-bar-visualization P03 | 3min | 2 tasks | 4 files |
-| Phase 85-bar-visualization P03 | 3min | 3 tasks | 4 files |
-| Phase 86-question-list-progress-bars P01 | 1min | 2 tasks | 2 files |
-| Phase 86-question-list-progress-bars P02 | 2min | 3 tasks | 4 files |
-| Phase 87-answer-semantic-grouping P02 | 2min | 1 tasks | 2 files |
-| Phase 87-answer-semantic-grouping P01 | 2min | 1 tasks | 2 files |
-| Phase 87 P03 | 4min | 2 tasks | 2 files |
+| v5.0 | 5 | 14 | 2026-03-10 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-
-Recent decisions for v5.0:
-- Zero backend changes: all 6 features consume existing getJobInsights/getQuestionInsights queries
-- Recharts ^2.14.0 is the only new dependency, lazy-loaded on insights tab access (INFRA-02)
-- i18n keys added in Phase 83 upfront (process-first) to prevent missing-key shipping
-- Snapshot tests refactored to structural in Phase 83 before any component changes
-- GROUP-* (semantic grouping) deferred to Phase 87 — highest complexity, comes last
-- MVP grouping: case/whitespace/basic synonyms only; fuzzy/NLP matching deferred to v5.1+
-- [Phase 83]: CitationStatus type added to imports in test file to support precise type-cast assertions
-- [Phase 83]: Bar scaling and confidence context tests document Phase 84/85 UI contracts before component implementation
-- [Phase 83-01]: Updated vitest.config.ts to include tests/*.test.tsx in jsdom environment — plan specified tsx path outside existing glob coverage
-- [Phase 83-01]: i18n keys appended after planGateProNote in all 6 locale files — clean, non-disruptive insertion point at end of extraction namespace
-- [Phase 84-01]: Threshold constants use named color keys (green/yellow) for readable boundary comparisons; BADGE_COLOR_CLASSES co-located with threshold logic for single-import component use
-- [Phase 84-01]: getConfidenceTooltipKey() is a pure function (no React): no-content > abstract-only > mixed > confidence priority chain
-- [Phase 84-02]: Radix tooltip mocked via vi.mock to expose portal content in jsdom for unit tests (TooltipContent wraps in data-testid div)
-- [Phase 84-02]: Badge uses className override with BADGE_COLOR_CLASSES to bypass default variant; HelpCircle uses aria-hidden=true since tooltip provides accessible mechanism
-- [Phase 84-summary-cards-confidence-display]: SummaryCards mocked in extraction-insights-overview.test.tsx to isolate wiring from Radix Tooltip portal issues in jsdom
-- [Phase 84-summary-cards-confidence-display]: totalPapers derived from questions[0].total when available, falls back to noContentCount + abstractOnlyCount
-- [Phase 85-bar-visualization]: recharts@^2.15.4 installed as production dependency (satisfies ^2.14.0 constraint)
-- [Phase 85-bar-visualization]: Wave 0 test stubs import from non-existent source files confirming RED state for TDD Plans 01 and 02
-- [Phase 85-bar-visualization]: Recharts vi.mock pattern established in jsdom stubs — BarChart/Bar/XAxis/YAxis/Tooltip/ResponsiveContainer all stubbed
-- [Phase 85-bar-visualization]: normalizeToMax sanitizes values to safe[] first then applies Math.max(...safe, 1) — NaN inputs zeroed before guard
-- [Phase 85-bar-visualization]: scaleAnswersForDisplay preserves raw count on output items for tooltip display (Pitfall 2 avoidance)
-- [Phase 85-bar-visualization]: CITATION_STATUS_COLORS hex values match BADGE_COLOR_CLASSES in card-thresholds.ts to prevent color drift
-- [Phase 85-02]: renderTooltipContent exported as pure function — avoids jsdom Tooltip event simulation; directly tests BAR-04 percentage/count formatting
-- [Phase 85-02]: isAnimationActive=false on all Recharts Bar components — prevents animation-related jsdom test issues
-- [Phase 85-bar-visualization]: bar-visualization.tsx uses named export BarVisualization; bar-chart-content.tsx default export for next/dynamic; test file .tsx for jsdom; rawAnswerDistribution and entityDistribution use BarVisualization; confidenceDistribution and citationStatusMix keep simple Bar
-- [Phase 86-question-list-progress-bars]: STATUS_DOT_COLORS.complete hardcoded to #10b981 explicitly matching CITATION_STATUS_COLORS.grounded — no indirect import to prevent tree-shaking fragility
-- [Phase 86-question-list-progress-bars]: getAnswerPercentage uses Math.max(total, 1) guard — returns 0 for (0,0) rather than NaN
-- [Phase 86-question-list-progress-bars]: statusFromCompletion checks total===0 first — total=0 always returns empty regardless of answered value
-- [Phase 86-question-list-progress-bars]: QuestionListItem mock in InsightsOverview integration test renders data-testid=status-dot and progress-bar — isolates parent wiring from child rendering
-- [Phase 86-question-list-progress-bars]: Badge/pct()/tc removed from InsightsOverview — QuestionListItem now owns all per-question rendering
-- [Phase 87-answer-semantic-grouping]: GroupedAnswerRow uses local useState(false) for expansion — not lifted to parent
-- [Phase 87-answer-semantic-grouping]: Single-variant groups render no disclosure control (same as ungrouped rows visually)
-- [Phase 87-answer-semantic-grouping]: No animation for MVP (instant show/hide per CONTEXT.md locked decisions)
-- [Phase 87-answer-semantic-grouping]: groupAnswersBySynonym uses normalized key for grouping (not display), matching CONTEXT.md locked decision
-- [Phase 87-answer-semantic-grouping]: mergeDisagreementClusters concatenates ALL examples from merged clusters (not capped at 5)
-- [Phase 87-answer-semantic-grouping]: AnswerBucketInput defined inline in answer-grouping.ts rather than importing AnswerBucket to avoid coupling to citationStatusMix absence
-- [Phase 87]: Grouping tests added to extraction-insights-question-panel.test.tsx (not overview test file) — existing InsightsQuestionPanel mock infrastructure present there
-- [Phase 87]: IIFE pattern in JSX ternary used for multi-statement grouping computation, synonymMap built once per render shared by both transforms
 
 ### Pending Todos
 
@@ -149,6 +95,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 87-03-PLAN.md
+Last activity: 2026-03-10 -- v5.0 milestone completed and archived
+Stopped at: Milestone v5.0 completed
 Resume file: None
