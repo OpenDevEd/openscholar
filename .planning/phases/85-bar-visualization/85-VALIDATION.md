@@ -2,9 +2,10 @@
 phase: 85
 slug: bar-visualization
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-03-10
+revised: 2026-03-10
 ---
 
 # Phase 85 — Validation Strategy
@@ -38,10 +39,12 @@ created: 2026-03-10
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 85-01-01 | 01 | 1 | BAR-01 | unit | `npm test -- tests/bar-scaling.test.ts` | ❌ W0 | ⬜ pending |
-| 85-01-02 | 01 | 1 | BAR-03 | unit | `npm test -- tests/bar-validation.test.ts` | ❌ W0 | ⬜ pending |
-| 85-02-01 | 02 | 1 | BAR-02 | unit | `npm test -- tests/stacked-answer-bars.test.tsx` | ❌ W0 | ⬜ pending |
-| 85-02-02 | 02 | 1 | BAR-04 | unit | `npm test -- tests/bar-tooltip.test.tsx` | ❌ W0 | ⬜ pending |
+| 85-00-01 | 00 | 0 | BAR-01..04 | setup | `node -e "require('./package.json').dependencies.recharts"` | ✅ | ⬜ pending |
+| 85-00-02 | 00 | 0 | BAR-01..04 | setup | `ls tests/bar-scaling.test.ts tests/bar-validation.test.ts tests/stacked-answer-bars.test.tsx tests/bar-tooltip.test.tsx` | ✅ | ⬜ pending |
+| 85-01-F1 | 01 | 1 | BAR-01 | unit | `npm test -- tests/bar-scaling.test.ts` | ✅ W0 | ⬜ pending |
+| 85-01-F2 | 01 | 1 | BAR-03 | unit | `npm test -- tests/bar-validation.test.ts` | ✅ W0 | ⬜ pending |
+| 85-02-F1 | 02 | 1 | BAR-02 | unit | `npm test -- tests/stacked-answer-bars.test.tsx` | ✅ W0 | ⬜ pending |
+| 85-02-F2 | 02 | 1 | BAR-04 | unit | `npm test -- tests/bar-tooltip.test.tsx` | ✅ W0 | ⬜ pending |
 | 85-03-01 | 03 | 2 | INFRA-02 | manual | `npm run build && Chrome DevTools Network` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -50,13 +53,23 @@ created: 2026-03-10
 
 ## Wave 0 Requirements
 
-- [ ] `tests/bar-scaling.test.ts` — stubs for BAR-01 (max-relative normalization)
-- [ ] `tests/bar-validation.test.ts` — stubs for BAR-03 (edge case guards)
-- [ ] `tests/stacked-answer-bars.test.tsx` — stubs for BAR-02 (stacked bar rendering)
-- [ ] `tests/bar-tooltip.test.tsx` — stubs for BAR-04 (tooltip labels on hover/focus)
-- [ ] `recharts` dependency in package.json — `npm install recharts@^2.14.0`
+- [ ] `tests/bar-scaling.test.ts` — stubs for BAR-01 (max-relative normalization) — created by Plan 00
+- [ ] `tests/bar-validation.test.ts` — stubs for BAR-03 (edge case guards) — created by Plan 00
+- [ ] `tests/stacked-answer-bars.test.tsx` — stubs for BAR-02 (stacked bar rendering) — created by Plan 00
+- [ ] `tests/bar-tooltip.test.tsx` — stubs for BAR-04 (tooltip labels on hover/focus) — created by Plan 00
+- [ ] `recharts` dependency in package.json — installed by Plan 00 Task 1
 
 *Vitest config already supports jsdom; no framework setup needed.*
+
+---
+
+## Wave Structure
+
+| Wave | Plans | Purpose |
+|------|-------|---------|
+| 0 | 85-00 | Install recharts, create test stubs (RED state) |
+| 1 | 85-01, 85-02 | TDD: drive stubs GREEN with source implementations |
+| 2 | 85-03 | Wire lazy-loading infrastructure, human verify bundle split |
 
 ---
 
@@ -70,11 +83,11 @@ created: 2026-03-10
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (Plan 00 creates all 4 stub files + installs recharts)
+- [x] No watch-mode flags
+- [x] Feedback latency < 5s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** revised 2026-03-10 — Nyquist compliance restored via Plan 00 (Wave 0)
