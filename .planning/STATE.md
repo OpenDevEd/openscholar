@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 85-bar-visualization/85-02-PLAN.md
-last_updated: "2026-03-10T09:47:49.551Z"
+stopped_at: "Checkpoint: 85-bar-visualization/85-03-PLAN.md Task 3 (human-verify)"
+last_updated: "2026-03-10T09:53:48.568Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 85-bar-visualization P00 | 1 | 2 tasks | 6 files |
 | Phase 85-bar-visualization P01 | 1min | 1 tasks | 2 files |
 | Phase 85-bar-visualization P02 | 1min | 2 tasks | 1 files |
+| Phase 85-bar-visualization P03 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,7 @@ Recent decisions for v5.0:
 - [Phase 85-bar-visualization]: CITATION_STATUS_COLORS hex values match BADGE_COLOR_CLASSES in card-thresholds.ts to prevent color drift
 - [Phase 85-02]: renderTooltipContent exported as pure function — avoids jsdom Tooltip event simulation; directly tests BAR-04 percentage/count formatting
 - [Phase 85-02]: isAnimationActive=false on all Recharts Bar components — prevents animation-related jsdom test issues
+- [Phase 85-bar-visualization]: bar-visualization.tsx uses named export BarVisualization; bar-chart-content.tsx default export for next/dynamic; test file .tsx for jsdom; rawAnswerDistribution and entityDistribution use BarVisualization; confidenceDistribution and citationStatusMix keep simple Bar
 
 ### Pending Todos
 
@@ -129,5 +131,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 85-bar-visualization/85-02-PLAN.md
+Stopped at: Checkpoint: 85-bar-visualization/85-03-PLAN.md Task 3 (human-verify)
 Resume file: None
