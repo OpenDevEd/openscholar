@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 85-bar-visualization/85-01-PLAN.md
-last_updated: "2026-03-10T09:47:42.236Z"
+stopped_at: Completed 85-bar-visualization/85-02-PLAN.md
+last_updated: "2026-03-10T09:47:49.551Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
@@ -94,6 +94,8 @@ Recent decisions for v5.0:
 - [Phase 85-bar-visualization]: normalizeToMax sanitizes values to safe[] first then applies Math.max(...safe, 1) — NaN inputs zeroed before guard
 - [Phase 85-bar-visualization]: scaleAnswersForDisplay preserves raw count on output items for tooltip display (Pitfall 2 avoidance)
 - [Phase 85-bar-visualization]: CITATION_STATUS_COLORS hex values match BADGE_COLOR_CLASSES in card-thresholds.ts to prevent color drift
+- [Phase 85-02]: renderTooltipContent exported as pure function — avoids jsdom Tooltip event simulation; directly tests BAR-04 percentage/count formatting
+- [Phase 85-02]: isAnimationActive=false on all Recharts Bar components — prevents animation-related jsdom test issues
 
 ### Pending Todos
 
@@ -127,5 +129,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 85-bar-visualization/85-01-PLAN.md
+Stopped at: Completed 85-bar-visualization/85-02-PLAN.md
 Resume file: None
