@@ -132,9 +132,10 @@ const booleanInsights = {
 };
 
 // Array mode question with 3 entities — entityDistribution should NOT be grouped
-const entityInsights = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const entityInsights: any = {
   ...baseInsights,
-  insightMode: "array" as const,
+  insightMode: "array",
   rawAnswerDistribution: [],
   entityDistribution: [
     { entity: "Entity A", count: 5, groundedRate: 0.8 },
@@ -168,19 +169,19 @@ vi.mock("@/lib/auth/use-auth-query", () => {
 
 // ─── Helper: configure query mock to serve specific insights data ──────────────
 
-function setInsightsMock(insightsData: typeof baseInsights) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setInsightsMock(insightsData: any) {
   let callCount = 0;
-  vi.mocked(authQuery.useProtectedQuery).mockImplementation(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (vi.mocked(authQuery.useProtectedQuery) as any).mockImplementation(
     (_query: unknown, args: unknown) => {
       if (args === "skip") return { data: undefined, isDeferred: false };
       callCount++;
       // Odd calls = questionInsights, even calls = disagreements
       if (callCount % 2 === 1) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return { data: insightsData as any, isDeferred: false };
+        return { data: insightsData, isDeferred: false };
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return { data: baseDisagreements as any, isDeferred: false };
+        return { data: baseDisagreements, isDeferred: false };
       }
     }
   );

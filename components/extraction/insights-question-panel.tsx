@@ -10,6 +10,8 @@ import { DisagreementList } from "@/components/extraction/disagreement-list";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 import { BarVisualization } from "@/components/extraction/bar-visualization";
+import { buildSynonymMap, groupAnswersBySynonym, mergeDisagreementClusters } from "@/lib/extraction/answer-grouping";
+import { GroupedAnswerRow } from "@/components/extraction/grouped-answer-row";
 
 interface InsightsQuestionPanelProps {
   jobId: Id<"extractionJobs">;
@@ -98,6 +100,7 @@ export function InsightsQuestionPanel({
   const entityDistribution = questionInsights.entityDistribution || [];
   const isArrayMode = questionInsights.insightMode === "array";
   const effectiveArrayView = isArrayMode ? arrayView : "raw";
+  const synonymMap = buildSynonymMap();
   const disagreementTitle =
     disagreementData?.status === "ok" && disagreementData.viewMode === "answer_profiles"
       ? t("answerProfiles")
@@ -250,35 +253,43 @@ export function InsightsQuestionPanel({
           <div className="text-sm text-muted-foreground">
             {t("noAnswerValues")}
           </div>
-        ) : (
-          <BarVisualization
-            answers={rawAnswerDistribution.map((answer) => ({
-              answer: answer.display,
-              count: answer.count,
-              citationStatusMix: (answer as { citationStatusMix?: { grounded: number; best_effort: number; insufficient_evidence: number; extraction_error: number } }).citationStatusMix ?? {
-                grounded: 0,
-                best_effort: 0,
-                insufficient_evidence: 0,
-                extraction_error: 0,
-              },
-            }))}
-            maxCount={Math.max(...rawAnswerDistribution.map((a) => a.count), 1)}
-          />
-        )}
+        ) : (() => {
+          const groupedAnswers = groupAnswersBySynonym(rawAnswerDistribution, synonymMap);
+          const displayAnswers = groupedAnswers.map((group) => ({
+            answer: group.groupRepresentative,
+            count: group.count,
+            citationStatusMix: group.citationStatusMix,
+          }));
+          const maxCount = Math.max(...displayAnswers.map((a) => a.count), 1);
+          return (
+            <div className="space-y-2">
+              {groupedAnswers.map((group, idx) => (
+                <GroupedAnswerRow key={group.groupNormalized || idx} group={group} />
+              ))}
+              <BarVisualization answers={displayAnswers} maxCount={maxCount} />
+            </div>
+          );
+        })()}
       </div>
 
       <div className="rounded-lg border border-border/50 bg-card p-4 space-y-3">
         <div className="text-sm font-medium">{disagreementTitle}</div>
-        <DisagreementList
-          key={`${(disagreementData?.status === "ok" ? disagreementData.clusters ?? [] : []).length}-${disagreementData?.status === "ok" ? disagreementData.viewMode : ""}`}
-          viewMode={disagreementData?.status === "ok" ? disagreementData.viewMode : undefined}
-          suppressedSingletonCount={
-            disagreementData?.status === "ok" ? disagreementData.suppressedSingletonCount || 0 : 0
-          }
-          clusters={disagreementData?.status === "ok" ? disagreementData.clusters || [] : []}
-          maxInitial={10}
-          onJumpToExample={(paperId) => onJumpToPaper?.(paperId)}
-        />
+        {(() => {
+          const rawClusters = disagreementData?.status === "ok" ? disagreementData.clusters || [] : [];
+          const mergedClusters = mergeDisagreementClusters(rawClusters, synonymMap);
+          return (
+            <DisagreementList
+              key={`${mergedClusters.length}-${disagreementData?.status === "ok" ? disagreementData.viewMode : ""}`}
+              viewMode={disagreementData?.status === "ok" ? disagreementData.viewMode : undefined}
+              suppressedSingletonCount={
+                disagreementData?.status === "ok" ? disagreementData.suppressedSingletonCount || 0 : 0
+              }
+              clusters={mergedClusters}
+              maxInitial={10}
+              onJumpToExample={(paperId) => onJumpToPaper?.(paperId)}
+            />
+          );
+        })()}
       </div>
     </div>
   );
