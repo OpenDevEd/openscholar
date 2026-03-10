@@ -17,14 +17,14 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 ### Summary Cards
 
 - [ ] **CARD-01**: Summary cards reordered to prioritize actionable metrics (completion, quality)
-- [ ] **CARD-02**: Cards use color accents (green/yellow/red) based on value thresholds
+- [x] **CARD-02**: Cards use color accents (green/yellow/red) based on value thresholds
 - [ ] **CARD-03**: Misleading metrics (e.g., "0% grounded" for abstract-only) are contextualized or hidden
 
 ### Confidence Display
 
 - [ ] **CONF-01**: "Effective confidence" replaced with single contextual confidence badge
-- [ ] **CONF-02**: Badge explains source (abstract-only cap, full-text, no content) via tooltip
-- [ ] **CONF-03**: Color-coded thresholds: green (>=85%), yellow (60-84%), red (<60%)
+- [x] **CONF-02**: Badge explains source (abstract-only cap, full-text, no content) via tooltip
+- [x] **CONF-03**: Color-coded thresholds: green (>=85%), yellow (60-84%), red (<60%)
 
 ### Question List
 
@@ -71,11 +71,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BAR-03 | Phase 85 | Pending |
 | BAR-04 | Phase 85 | Pending |
 | CARD-01 | Phase 84 | Pending |
-| CARD-02 | Phase 84 | Pending |
+| CARD-02 | Phase 84 | Complete |
 | CARD-03 | Phase 84 | Pending |
 | CONF-01 | Phase 84 | Pending |
-| CONF-02 | Phase 84 | Pending |
-| CONF-03 | Phase 84 | Pending |
+| CONF-02 | Phase 84 | Complete |
+| CONF-03 | Phase 84 | Complete |
 | QLIST-01 | Phase 86 | Pending |
 | QLIST-02 | Phase 86 | Pending |
 | QLIST-03 | Phase 86 | Pending |

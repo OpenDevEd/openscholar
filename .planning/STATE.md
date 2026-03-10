@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 83-test-foundation-i18n-keys/83-01-PLAN.md
-last_updated: "2026-03-10T08:45:14.964Z"
+stopped_at: Completed 84-summary-cards-confidence-display/84-01-PLAN.md
+last_updated: "2026-03-10T09:05:26.276Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 5
+  completed_plans: 3
   percent: 0
 ---
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | v4.1 | 4 | 5 | 2026-03-09 |
 | Phase 83 P02 | 2 | 2 tasks | 1 files |
 | Phase 83-test-foundation-i18n-keys P01 | 10 | 3 tasks | 9 files |
+| Phase 84-summary-cards-confidence-display P01 | 2 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent decisions for v5.0:
 - [Phase 83]: Bar scaling and confidence context tests document Phase 84/85 UI contracts before component implementation
 - [Phase 83-01]: Updated vitest.config.ts to include tests/*.test.tsx in jsdom environment — plan specified tsx path outside existing glob coverage
 - [Phase 83-01]: i18n keys appended after planGateProNote in all 6 locale files — clean, non-disruptive insertion point at end of extraction namespace
+- [Phase 84-01]: Threshold constants use named color keys (green/yellow) for readable boundary comparisons; BADGE_COLOR_CLASSES co-located with threshold logic for single-import component use
+- [Phase 84-01]: getConfidenceTooltipKey() is a pure function (no React): no-content > abstract-only > mixed > confidence priority chain
 
 ### Pending Todos
 
@@ -109,5 +112,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 83-test-foundation-i18n-keys/83-01-PLAN.md
+Stopped at: Completed 84-summary-cards-confidence-display/84-01-PLAN.md
 Resume file: None
