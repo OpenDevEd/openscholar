@@ -284,7 +284,11 @@ Plans:
   2. Each question shows a mini progress bar indicating the percentage of papers that returned an answer, with the percentage displayed as text alongside the bar
   3. The question list is scannable end-to-end without any expand/collapse interaction — all status and progress information is visible in the collapsed list view
   4. Progress bars render 0% (not NaN) when a question has zero answers, and aria-valuenow plus aria-label are present for accessibility
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 86-01-PLAN.md — question-status utilities (statusFromCompletion, getAnswerPercentage, STATUS_DOT_COLORS) with TDD
+- [ ] 86-02-PLAN.md — QuestionListItem component + InsightsOverview wiring + human verify
 
 ### Phase 87: Answer Semantic Grouping
 **Goal**: Users see deduplicated answer distributions where case variants, whitespace differences, and common synonyms are merged into single representative groups, with expandable drill-down to inspect individual variants.
