@@ -30,7 +30,7 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 
 - [x] **QLIST-01**: Each question shows status dot (complete/partial/empty)
 - [x] **QLIST-02**: Each question shows mini progress bar with completion percentage
-- [ ] **QLIST-03**: Question list is scannable without expanding individual questions
+- [x] **QLIST-03**: Question list is scannable without expanding individual questions
 
 ### Answer Grouping
 
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CONF-03 | Phase 84 | Complete |
 | QLIST-01 | Phase 86 | Complete |
 | QLIST-02 | Phase 86 | Complete |
-| QLIST-03 | Phase 86 | Pending |
+| QLIST-03 | Phase 86 | Complete |
 | GROUP-01 | Phase 87 | Pending |
 | GROUP-02 | Phase 87 | Pending |
 | GROUP-03 | Phase 87 | Pending |

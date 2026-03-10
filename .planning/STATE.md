@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 86-question-list-progress-bars/86-01-PLAN.md
-last_updated: "2026-03-10T10:16:09.234Z"
+stopped_at: Completed 86-question-list-progress-bars/86-02-PLAN.md
+last_updated: "2026-03-10T10:20:12.561Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 85-bar-visualization P03 | 3min | 2 tasks | 4 files |
 | Phase 85-bar-visualization P03 | 3min | 3 tasks | 4 files |
 | Phase 86-question-list-progress-bars P01 | 1min | 2 tasks | 2 files |
+| Phase 86-question-list-progress-bars P02 | 2min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions for v5.0:
 - [Phase 86-question-list-progress-bars]: STATUS_DOT_COLORS.complete hardcoded to #10b981 explicitly matching CITATION_STATUS_COLORS.grounded — no indirect import to prevent tree-shaking fragility
 - [Phase 86-question-list-progress-bars]: getAnswerPercentage uses Math.max(total, 1) guard — returns 0 for (0,0) rather than NaN
 - [Phase 86-question-list-progress-bars]: statusFromCompletion checks total===0 first — total=0 always returns empty regardless of answered value
+- [Phase 86-question-list-progress-bars]: QuestionListItem mock in InsightsOverview integration test renders data-testid=status-dot and progress-bar — isolates parent wiring from child rendering
+- [Phase 86-question-list-progress-bars]: Badge/pct()/tc removed from InsightsOverview — QuestionListItem now owns all per-question rendering
 
 ### Pending Todos
 
@@ -136,5 +139,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 86-question-list-progress-bars/86-01-PLAN.md
+Stopped at: Completed 86-question-list-progress-bars/86-02-PLAN.md
 Resume file: None
