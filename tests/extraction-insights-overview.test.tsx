@@ -8,6 +8,30 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+// Mock QuestionListItem to avoid deep rendering (progress, status utilities)
+// The test validates InsightsOverview wiring, not QuestionListItem internals
+vi.mock("../components/extraction/question-list-item", () => ({
+  QuestionListItem: ({
+    question,
+    answered,
+    total,
+    isSelected,
+    onClick,
+  }: {
+    question: string;
+    answered: number;
+    total: number;
+    isSelected?: boolean;
+    onClick?: () => void;
+  }) => (
+    <button onClick={onClick} data-selected={isSelected}>
+      <span>{question}</span>
+      <div data-testid="status-dot" />
+      <div data-testid="progress-bar">{Math.round((answered / Math.max(total, 1)) * 100)}%</div>
+    </button>
+  ),
+}));
+
 // Mock SummaryCards to avoid deep rendering (Tooltip, card-thresholds, confidence-badge)
 // The test validates InsightsOverview wiring, not SummaryCards internals
 vi.mock("../components/extraction/summary-cards", () => ({
@@ -125,5 +149,39 @@ describe("InsightsOverview component", () => {
       ?.closest("button");
     sampleSizeBtn?.click();
     expect(onSelect).toHaveBeenCalledWith("sample_size");
+  });
+
+  it("renders status dot and progress bar for each question in the list", () => {
+    render(
+      <InsightsOverview
+        jobId={mockJobId}
+        onSelectQuestion={() => {}}
+        enabled={true}
+      />
+    );
+    // Each mock question renders a status-dot and progress-bar testid
+    const statusDots = screen.getAllByTestId("status-dot");
+    const progressBars = screen.getAllByTestId("progress-bar");
+    // 2 questions in mockInsights
+    expect(statusDots.length).toBe(2);
+    expect(progressBars.length).toBe(2);
+  });
+
+  it("progress bar shows percentage text without NaN", () => {
+    render(
+      <InsightsOverview
+        jobId={mockJobId}
+        onSelectQuestion={() => {}}
+        enabled={true}
+      />
+    );
+    // sample_size question: answered=7, total=10 → 70%
+    const progressBars = screen.getAllByTestId("progress-bar");
+    const sampleSizeBar = progressBars.find((el) =>
+      el.textContent?.includes("70%")
+    );
+    expect(sampleSizeBar).toBeTruthy();
+    // Ensure no NaN% appears anywhere
+    expect(screen.queryByText(/NaN%/)).toBeNull();
   });
 });

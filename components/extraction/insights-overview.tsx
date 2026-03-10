@@ -2,12 +2,12 @@
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 import { SummaryCards } from "./summary-cards";
+import { QuestionListItem } from "./question-list-item";
 
 interface InsightsOverviewProps {
   jobId: Id<"extractionJobs">;
@@ -15,10 +15,6 @@ interface InsightsOverviewProps {
   onSelectQuestion: (questionKey: string) => void;
   onRerun?: () => void;
   enabled?: boolean;
-}
-
-function pct(value: number) {
-  return `${Math.round(value * 100)}%`;
 }
 
 export function InsightsOverview({
@@ -29,7 +25,6 @@ export function InsightsOverview({
   enabled = true,
 }: InsightsOverviewProps) {
   const t = useTranslations("extraction");
-  const tc = useTranslations("common");
   const insightsQuery = useProtectedQuery(
     api.extraction.queries.getJobInsights,
     enabled ? { jobId } : "skip",
@@ -109,22 +104,15 @@ export function InsightsOverview({
         </div>
         <div className="divide-y divide-border/40">
           {questions.map((question) => (
-            <button
+            <QuestionListItem
               key={question.key}
-              className={`w-full px-4 py-3 text-left hover:bg-muted/20 transition-colors ${
-                selectedQuestionKey === question.key ? "bg-primary/5" : ""
-              }`}
+              questionKey={question.key}
+              question={question.question}
+              answered={question.answered}
+              total={question.total}
+              isSelected={selectedQuestionKey === question.key}
               onClick={() => onSelectQuestion(question.key)}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="font-medium">{question.question}</div>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <Badge variant="outline">{pct(question.answered / Math.max(question.total, 1))} {tc("answered").toLowerCase()}</Badge>
-                  <Badge variant="outline">{pct(question.grounded / Math.max(question.total, 1))} {tc("grounded").toLowerCase()}</Badge>
-                  <Badge variant="secondary">{Math.round(question.avgConfidence * 100)}% {t("avgConf")}</Badge>
-                </div>
-              </div>
-            </button>
+            />
           ))}
         </div>
       </div>
