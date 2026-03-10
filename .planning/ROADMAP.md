@@ -268,7 +268,12 @@ Plans:
   3. Edge cases render without NaN or layout breaks: all-zero distributions show empty state, single-dominant values show one full bar, single-answer questions show a single segment
   4. Each bar or segment displays a count label and percentage value on hover or keyboard focus
   5. Recharts (~65KB gzipped) is only loaded when the user navigates to the insights tab, not on initial page load
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 85-01-PLAN.md — Install Recharts + bar scaling utilities (normalizeToMax, scaleAnswersForDisplay) + bar validation (validateBarData) with TDD
+- [ ] 85-02-PLAN.md — StackedAnswerBars component with Recharts stacked bars and tooltip (TDD)
+- [ ] 85-03-PLAN.md — Lazy-load wrapper (next/dynamic, ssr=false) and InsightsQuestionPanel wiring + human verify
 
 ### Phase 86: Question List & Progress Bars
 **Goal**: Users can scan the question list at a glance to see which questions have complete, partial, or empty extraction coverage without expanding individual questions.
@@ -312,6 +317,6 @@ Plans:
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83 | v5.0 | 2/2 | Complete | 2026-03-10 |
 | 84 | 3/3 | Complete    | 2026-03-10 | - |
-| 85 | v5.0 | 0/TBD | Not started | - |
+| 85 | v5.0 | 0/3 | Not started | - |
 | 86 | v5.0 | 0/TBD | Not started | - |
 | 87 | v5.0 | 0/TBD | Not started | - |
