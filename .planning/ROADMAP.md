@@ -219,7 +219,7 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 **Milestone Goal:** Overhaul the extraction insights page to fix data visualization issues, merge semantic duplicates, and improve overall UX/UI quality. Zero backend changes — all features consume data from existing queries.
 
 - [x] **Phase 83: Test Foundation & i18n Keys** - Refactor snapshot tests to structural, add edge-case tests, seed all new locale strings upfront (completed 2026-03-10)
-- [ ] **Phase 84: Summary Cards & Confidence Display** - Color-accented metric cards and contextual confidence badge
+- [x] **Phase 84: Summary Cards & Confidence Display** - Color-accented metric cards and contextual confidence badge (completed 2026-03-10)
 - [ ] **Phase 85: Bar Visualization** - Relative-to-max scaling and stacked horizontal bars with Recharts
 - [ ] **Phase 86: Question List & Progress Bars** - Status dots and mini progress bars for scannability
 - [ ] **Phase 87: Answer Semantic Grouping** - Merge synonym variants with expandable drill-down
@@ -311,7 +311,7 @@ Plans:
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83 | v5.0 | 2/2 | Complete | 2026-03-10 |
-| 84 | 2/3 | In Progress|  | - |
+| 84 | 3/3 | Complete   | 2026-03-10 | - |
 | 85 | v5.0 | 0/TBD | Not started | - |
 | 86 | v5.0 | 0/TBD | Not started | - |
 | 87 | v5.0 | 0/TBD | Not started | - |

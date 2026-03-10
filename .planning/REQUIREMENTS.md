@@ -16,9 +16,9 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 
 ### Summary Cards
 
-- [ ] **CARD-01**: Summary cards reordered to prioritize actionable metrics (completion, quality)
+- [x] **CARD-01**: Summary cards reordered to prioritize actionable metrics (completion, quality)
 - [x] **CARD-02**: Cards use color accents (green/yellow/red) based on value thresholds
-- [ ] **CARD-03**: Misleading metrics (e.g., "0% grounded" for abstract-only) are contextualized or hidden
+- [x] **CARD-03**: Misleading metrics (e.g., "0% grounded" for abstract-only) are contextualized or hidden
 
 ### Confidence Display
 
@@ -70,9 +70,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BAR-02 | Phase 85 | Pending |
 | BAR-03 | Phase 85 | Pending |
 | BAR-04 | Phase 85 | Pending |
-| CARD-01 | Phase 84 | Pending |
+| CARD-01 | Phase 84 | Complete |
 | CARD-02 | Phase 84 | Complete |
-| CARD-03 | Phase 84 | Pending |
+| CARD-03 | Phase 84 | Complete |
 | CONF-01 | Phase 84 | Complete |
 | CONF-02 | Phase 84 | Complete |
 | CONF-03 | Phase 84 | Complete |

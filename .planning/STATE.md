@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 84-summary-cards-confidence-display/84-02-PLAN.md
-last_updated: "2026-03-10T09:09:35.376Z"
+stopped_at: Completed 84-summary-cards-confidence-display/84-03-PLAN.md
+last_updated: "2026-03-10T09:14:41.779Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 83-test-foundation-i18n-keys P01 | 10 | 3 tasks | 9 files |
 | Phase 84-summary-cards-confidence-display P01 | 2 | 2 tasks | 4 files |
 | Phase 84-summary-cards-confidence-display P02 | 1min | 1 tasks | 2 files |
+| Phase 84-summary-cards-confidence-display P03 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ Recent decisions for v5.0:
 - [Phase 84-01]: getConfidenceTooltipKey() is a pure function (no React): no-content > abstract-only > mixed > confidence priority chain
 - [Phase 84-02]: Radix tooltip mocked via vi.mock to expose portal content in jsdom for unit tests (TooltipContent wraps in data-testid div)
 - [Phase 84-02]: Badge uses className override with BADGE_COLOR_CLASSES to bypass default variant; HelpCircle uses aria-hidden=true since tooltip provides accessible mechanism
+- [Phase 84-summary-cards-confidence-display]: SummaryCards mocked in extraction-insights-overview.test.tsx to isolate wiring from Radix Tooltip portal issues in jsdom
+- [Phase 84-summary-cards-confidence-display]: totalPapers derived from questions[0].total when available, falls back to noContentCount + abstractOnlyCount
 
 ### Pending Todos
 
@@ -115,5 +118,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 84-summary-cards-confidence-display/84-02-PLAN.md
+Stopped at: Completed 84-summary-cards-confidence-display/84-03-PLAN.md
 Resume file: None
