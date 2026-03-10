@@ -322,5 +322,5 @@ Plans:
 | 83 | v5.0 | 2/2 | Complete | 2026-03-10 |
 | 84 | 3/3 | Complete    | 2026-03-10 | - |
 | 85 | 4/4 | Complete    | 2026-03-10 | - |
-| 86 | v5.0 | 0/TBD | Not started | - |
+| 86 | 1/2 | In Progress|  | - |
 | 87 | v5.0 | 0/TBD | Not started | - |

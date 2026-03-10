@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 85-bar-visualization/85-03-PLAN.md
-last_updated: "2026-03-10T10:01:18.176Z"
+stopped_at: Completed 86-question-list-progress-bars/86-01-PLAN.md
+last_updated: "2026-03-10T10:16:09.234Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 11
+  completed_plans: 10
   percent: 0
 ---
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 85-bar-visualization P02 | 1min | 2 tasks | 1 files |
 | Phase 85-bar-visualization P03 | 3min | 2 tasks | 4 files |
 | Phase 85-bar-visualization P03 | 3min | 3 tasks | 4 files |
+| Phase 86-question-list-progress-bars P01 | 1min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions for v5.0:
 - [Phase 85-02]: renderTooltipContent exported as pure function — avoids jsdom Tooltip event simulation; directly tests BAR-04 percentage/count formatting
 - [Phase 85-02]: isAnimationActive=false on all Recharts Bar components — prevents animation-related jsdom test issues
 - [Phase 85-bar-visualization]: bar-visualization.tsx uses named export BarVisualization; bar-chart-content.tsx default export for next/dynamic; test file .tsx for jsdom; rawAnswerDistribution and entityDistribution use BarVisualization; confidenceDistribution and citationStatusMix keep simple Bar
+- [Phase 86-question-list-progress-bars]: STATUS_DOT_COLORS.complete hardcoded to #10b981 explicitly matching CITATION_STATUS_COLORS.grounded — no indirect import to prevent tree-shaking fragility
+- [Phase 86-question-list-progress-bars]: getAnswerPercentage uses Math.max(total, 1) guard — returns 0 for (0,0) rather than NaN
+- [Phase 86-question-list-progress-bars]: statusFromCompletion checks total===0 first — total=0 always returns empty regardless of answered value
 
 ### Pending Todos
 
@@ -132,5 +136,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 85-bar-visualization/85-03-PLAN.md
+Stopped at: Completed 86-question-list-progress-bars/86-01-PLAN.md
 Resume file: None
