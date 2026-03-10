@@ -62,7 +62,7 @@ completed: 2026-03-10
 - **Duration:** 3 min
 - **Started:** 2026-03-10T09:49:11Z
 - **Completed:** 2026-03-10T09:53:00Z
-- **Tasks:** 2 automated (Task 3 is checkpoint:human-verify)
+- **Tasks:** 3 (2 automated + 1 human-verify checkpoint — approved)
 - **Files modified:** 4
 
 ## Accomplishments
@@ -79,7 +79,8 @@ Each task was committed atomically:
 1. **Task 1: Create lazy-loading infrastructure** - `c81abc6` (feat)
 2. **Task 2: Wire BarVisualization into InsightsQuestionPanel** - `7a0b1c1` (feat)
 
-**Plan metadata:** (docs commit follows after checkpoint approval)
+**Plan pre-checkpoint metadata:** `7ef939a` (docs: checkpoint reached)
+**Plan completion metadata:** (docs commit follows)
 
 ## Files Created/Modified
 - `components/extraction/bar-visualization.tsx` - Named export BarVisualization, next/dynamic lazy wrapper with loading skeleton (ssr=false)
@@ -118,9 +119,9 @@ None — both automated tasks executed cleanly.
 None - no external service configuration required.
 
 ## Next Phase Readiness
-- Awaiting Task 3 (human-verify): Chrome DevTools confirmation that recharts chunk is deferred
-- All code is complete — bundle split is verified by architectural review (no direct recharts import in bar-visualization.tsx)
-- After checkpoint approval, Phase 85 is complete and Phase 86 integration can proceed
+- Task 3 (human-verify): APPROVED — Chrome DevTools confirmed recharts chunk deferred from initial load and appears on insights tab click
+- Phase 85 (bar-visualization) is complete: all plans 00-03 delivered, INFRA-02 verified
+- Phase 86 integration can proceed
 
 ---
 *Phase: 85-bar-visualization*
