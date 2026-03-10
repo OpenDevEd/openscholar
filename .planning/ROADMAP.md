@@ -299,7 +299,12 @@ Plans:
   2. Each grouped row shows a disclosure control (e.g., "5 variants") that expands inline to reveal the individual raw answer strings and their individual counts
   3. The count shown on a grouped row is the sum of all variant counts — the aggregated total is accurate and matches the sum of expanded variant counts
   4. The disagreement detection logic treats grouped answers as equivalent — papers that gave semantically identical answers are not flagged as disagreements
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 87-01-PLAN.md — TDD: answer grouping pure utilities (buildSynonymMap, groupAnswersBySynonym, mergeDisagreementClusters)
+- [ ] 87-02-PLAN.md — TDD: GroupedAnswerRow component with expand/collapse disclosure UI
+- [ ] 87-03-PLAN.md — Wire grouping transforms into InsightsQuestionPanel + human verify
 
 ## Progress
 
@@ -323,4 +328,4 @@ Plans:
 | 84 | 3/3 | Complete    | 2026-03-10 | - |
 | 85 | 4/4 | Complete    | 2026-03-10 | - |
 | 86 | 2/2 | Complete    | 2026-03-10 | - |
-| 87 | v5.0 | 0/TBD | Not started | - |
+| 87 | v5.0 | 0/3 | Not started | - |
