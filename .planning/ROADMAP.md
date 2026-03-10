@@ -311,7 +311,7 @@ Plans:
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83 | v5.0 | 2/2 | Complete | 2026-03-10 |
-| 84 | 3/3 | Complete   | 2026-03-10 | - |
+| 84 | 3/3 | Complete    | 2026-03-10 | - |
 | 85 | v5.0 | 0/TBD | Not started | - |
 | 86 | v5.0 | 0/TBD | Not started | - |
 | 87 | v5.0 | 0/TBD | Not started | - |
