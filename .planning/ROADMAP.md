@@ -222,7 +222,7 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 - [x] **Phase 84: Summary Cards & Confidence Display** - Color-accented metric cards and contextual confidence badge (completed 2026-03-10)
 - [x] **Phase 85: Bar Visualization** - Relative-to-max scaling and stacked horizontal bars with Recharts (completed 2026-03-10)
 - [x] **Phase 86: Question List & Progress Bars** - Status dots and mini progress bars for scannability (completed 2026-03-10)
-- [ ] **Phase 87: Answer Semantic Grouping** - Merge synonym variants with expandable drill-down
+- [x] **Phase 87: Answer Semantic Grouping** - Merge synonym variants with expandable drill-down (completed 2026-03-10)
 
 ## Phase Details
 
@@ -328,4 +328,4 @@ Plans:
 | 84 | 3/3 | Complete    | 2026-03-10 | - |
 | 85 | 4/4 | Complete    | 2026-03-10 | - |
 | 86 | 2/2 | Complete    | 2026-03-10 | - |
-| 87 | 2/3 | In Progress|  | - |
+| 87 | 3/3 | Complete   | 2026-03-10 | - |

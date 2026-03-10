@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 87-01-PLAN.md
-last_updated: "2026-03-10T10:48:52.668Z"
+stopped_at: Completed 87-03-PLAN.md
+last_updated: "2026-03-10T10:55:42.016Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -70,6 +70,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 86-question-list-progress-bars P02 | 2min | 3 tasks | 4 files |
 | Phase 87-answer-semantic-grouping P02 | 2min | 1 tasks | 2 files |
 | Phase 87-answer-semantic-grouping P01 | 2min | 1 tasks | 2 files |
+| Phase 87 P03 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,8 @@ Recent decisions for v5.0:
 - [Phase 87-answer-semantic-grouping]: groupAnswersBySynonym uses normalized key for grouping (not display), matching CONTEXT.md locked decision
 - [Phase 87-answer-semantic-grouping]: mergeDisagreementClusters concatenates ALL examples from merged clusters (not capped at 5)
 - [Phase 87-answer-semantic-grouping]: AnswerBucketInput defined inline in answer-grouping.ts rather than importing AnswerBucket to avoid coupling to citationStatusMix absence
+- [Phase 87]: Grouping tests added to extraction-insights-question-panel.test.tsx (not overview test file) — existing InsightsQuestionPanel mock infrastructure present there
+- [Phase 87]: IIFE pattern in JSX ternary used for multi-statement grouping computation, synonymMap built once per render shared by both transforms
 
 ### Pending Todos
 
@@ -147,5 +150,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 87-01-PLAN.md
+Stopped at: Completed 87-03-PLAN.md
 Resume file: None
