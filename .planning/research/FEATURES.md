@@ -1,124 +1,359 @@
-# Feature Landscape
+# Extraction Insights UI — Feature Research
 
-**Domain:** Screening result export (CSV/JSON/XLSX download) for academic screening job history
-**Researched:** 2026-03-09
-**Milestone:** v4.1 Screening Export
+**Domain:** Data visualization and analytics UI for AI extraction results
+**Researched:** 2026-03-10
+**Confidence:** MEDIUM (industry patterns verified, context-specific tradeoffs need validation with actual data)
 
-## Table Stakes
+## Feature Landscape
 
-Features users expect. Missing = export feels broken or incomplete.
+### Table Stakes (Users Expect These)
 
-| Feature | Why Expected | Complexity | Dependencies | Notes |
-|---------|--------------|------------|--------------|-------|
-| CSV export with paper metadata + answers | Researchers need screening results in spreadsheets for PRISMA reporting, further analysis, and sharing with collaborators | Low | New `getJobResultsForExport` Convex query, `downloadFile` utility from `lib/extraction/export.ts` | Columns: title, authors, year, DOI, OpenAlex ID, per-question answers (Yes/No/Null), score, stars, qualified (Yes/No), status |
-| JSON export with full structured data | Machine-readable output for systematic review pipelines, meta-analysis tools, and reimport into other platforms | Low | Same query as CSV, existing `downloadFile` utility | Nested structure: job metadata envelope + results array with answers object, scoring, AI metadata |
-| XLSX export with multiple sheets | Excel is dominant in academic workflows; multi-sheet separates results from config/summary for cleaner analysis | Medium | Dynamic ExcelJS import (existing pattern in `lib/extraction/export.ts`) | Sheet 1: Results, Sheet 2: Summary stats, Sheet 3: Scoring config. Reuse exact same ExcelJS dynamic import pattern |
-| Per-question answer columns | Each screening question must be its own column so researchers can sort/filter per criterion in their spreadsheet | Low | Job `questions` array already stored on `screeningJobs` record | Iterate `job.questions` to generate headers; map `result.answers[key]` to "Yes"/"No"/"" cells. Same pattern as extraction export |
-| Score and star rating columns | Users configured scoring rules specifically to quantify relevance; scores must appear in the export | Low | `score`, `stars` already computed and stored on each `screeningResults` record | Two columns: "Score" (number) and "Rating" (0-5 stars). No recomputation needed |
-| Qualified/not-qualified column | The primary purpose of screening is inclusion decisions; qualification status is the most important output | Low | `qualified` boolean already on each `screeningResults` record | Render as "Yes"/"No". This is effectively the PRISMA include/exclude decision |
-| Export button on completed job cards | Users expect to download from the job they just ran without navigating to a separate page | Low | `ScreeningJobHistory` component (`components/screening/screening-job-history.tsx`) | Add download icon button on jobs with status: completed, cancelled, or creditsExhausted. Disable for pending/processing jobs |
-| Paper metadata columns (title, authors, year, DOI) | Papers must be identifiable; researchers cross-reference screening exports with reference managers and other review tools | Low | All fields already stored on `screeningResults` records: `title`, `authors`, `publicationYear`, `doi`, `openalexId` | Authors stored as `string[]` -- join with "; " for CSV/XLSX, keep array for JSON |
+Features essential for credible data visualization in analytics UIs. Missing these = product feels broken or misleading.
 
-## Differentiators
+| Feature | Why Expected | Complexity | Existing Support | Notes |
+|---------|--------------|-----------|------------------|-------|
+| **Bar scaling relative to max** | Users expect bars to fill container proportionally; 2–4% invisible bars are unreadable and break scanning | LOW | Partial — bars exist but scale to total, not max | Zero-baseline bar charts are standard in analytics; industry best practice starts axis at zero for accurate visual comparison |
+| **Summary metric cards** | Users scan numeric summaries first; missing = no quick answer | LOW | Yes — summary cards exist | Color accents on cards reduce cognitive load; 60-30-10 color principle for accent placement |
+| **Confidence display (contextual callout)** | Extraction quality is ambiguous; users need transparent signal of trustworthiness | MEDIUM | Partial — "effective conf" tooltip exists but confusing | Replaces confusing dual-display (raw + effective) with single, contextual indicator; color-coded (green ≥85%, yellow 60–84%, red <60%) per current UI patterns |
+| **Question/item lists with status + mini progress** | Users track which questions are done; missing = no sense of completion | MEDIUM | Partial — list exists, no status indicators | Status dots + progress mini-bar per item reduce clicks and improve scannability; icon indicators (checkmark/question mark) standard in modern UIs |
+| **Stacked horizontal bars for category distribution** | Showing part-to-whole relationships (e.g., answers per question); required for categorical comparisons | MEDIUM | No — currently answer bars are unscaled vertical distribution | Horizontal layout preferred when categories have long labels; excellent for ranking/comparing across many questions |
+| **Semantic answer grouping with drill-down** | Duplicate answers (synonyms, case variants, whitespace) appear as separate rows; users can't see true distribution | HIGH | No — basic lowercase/whitespace normalization only | Expandable accordion pattern; nested categories enable progressive disclosure; required for accurate aggregation |
 
-Features that set product apart. Not expected, but valued.
+### Differentiators (Competitive Advantage)
 
-| Feature | Value Proposition | Complexity | Dependencies | Notes |
-|---------|-------------------|------------|--------------|-------|
-| AI reasoning column (optional) | Transparency into why AI answered yes/no for each paper -- auditable screening trail for methodology sections in systematic reviews | Low | `aiMetadata.reasoning` already stored on `screeningResults` | Toggle via checkbox in export dialog. In CSV/XLSX: one "AI Reasoning" column. In JSON: nested in each result |
-| AI confidence column (optional) | Quantifies AI certainty per paper -- researchers can flag low-confidence screenings for manual review | Low | `aiMetadata.confidence` already stored on `screeningResults` | Render as percentage (0-100%). Optional checkbox in export dialog |
-| Format selection dialog with toggles | Consistent UX with existing extraction export dialog; lets users control what's included without overwhelming defaults | Low | Clone and simplify `components/extraction/export-dialog.tsx` | Fewer options than extraction (no citations). Checkboxes: "Include AI metadata" (reasoning + confidence), format radio (CSV/JSON/XLSX) |
-| Export from partial/cancelled jobs | Jobs that ran out of credits or were cancelled still produced useful partial results that should not be lost | Low | Query `screeningResults` with status "completed" for the job; partial data better than nothing | Show paper count in export dialog so user knows it is partial (e.g., "Export 47 of 200 screened papers") |
-| Summary statistics sheet (XLSX) | Quick overview: total papers, qualified/not-qualified counts, per-question yes/no/null distribution, average score | Medium | Computed from results array at export time | Matches extraction export Summary sheet pattern. Adds screening-specific stats: qualification rate, score distribution |
-| Scoring configuration sheet (XLSX) | Researchers documenting systematic review methods need to report exact scoring criteria used; self-documenting export | Low | `scoringConfig` already stored on `screeningJobs`: rules (points per answer), thresholds (score-to-star mapping), minimum score | Dedicated worksheet showing: per-question point values, star threshold ranges, minimum qualification score |
-| Job metadata envelope (JSON) | JSON export includes job creation date, questions, scoring config, total/qualified/failed counts -- self-documenting output file | Low | Pull from `screeningJobs` record alongside results | Makes JSON export reproducible and auditable without needing access to the app |
-| Result status column | Shows which papers completed, failed, or were skipped -- important for audit trail and PRISMA flow documentation | Low | `status` field on each `screeningResults` record | Rendered as "Completed"/"Failed"/"Skipped". Failed papers have no answers but are still listed |
+Features that set the product apart. Not required, but valuable for extraction insights.
 
-## Anti-Features
+| Feature | Value Proposition | Complexity | Existing Support | Notes |
+|---------|-------------------|-----------|------------------|-------|
+| **Semantic grouping with edit/ungroup actions** | Allow users to merge/unmerge synonyms interactively on the fly | HIGH | No | Goes beyond standard analytics; enables correction without re-running extraction |
+| **Confidence thresholds with filtering** | Hide low-confidence answers, show only confident extractions | MEDIUM | No — confidence display exists but no filtering | Lets users validate quality before exporting; differs from standard "display only" approach |
+| **Answer variant visualization (inline)** | Show grouped variants next to main answer in expandable detail | MEDIUM | No — would require accordions or popovers | Standard semantic drilldown pattern applied to answer variants |
+| **Progress by question type** | Segment progress by question category (MCQ vs text vs numeric) | MEDIUM | No | Adds dimension to progress view; requires question metadata |
 
-Features to explicitly NOT build.
+### Anti-Features (Commonly Requested, Often Problematic)
 
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Server-side file generation via Convex action | Convex actions have 10MB response limit and would require Convex file storage setup; client-side generation is simpler and matches existing patterns | Generate files client-side using the same `downloadFile` utility and dynamic ExcelJS import already used by extraction and library exports |
-| Bulk multi-job export (export all jobs at once) | Each job has different questions and scoring configs; merging them into one file is semantically incorrect and produces confusing spreadsheets | Export one job at a time. Users can combine exports manually in their own spreadsheets if needed |
-| PDF export | Entirely different rendering pipeline (needs headless browser or PDF library); no existing pattern in codebase; researchers prefer editable formats for analysis | Stick with CSV/JSON/XLSX -- covers all real academic workflows (spreadsheet analysis, programmatic processing, data archival) |
-| Custom column picker UI | Over-engineering for ~12 columns; the extraction export uses simple checkboxes for optional sections and it works well | Reuse checkbox toggle pattern: required columns always included, optional toggles for AI metadata (reasoning + confidence) |
-| Re-export with different scoring rules | Would require client-side scoring engine recomputation and creates confusion about which scores are "official" | Export shows scores as computed at screening time. Users wanting different rules should run a new screening job |
-| Abstract text in CSV export | Abstracts can be 300+ words, breaking CSV readability and making spreadsheets unwieldy. Most screening exports are for decision summaries, not full-text review | Include abstract in JSON export (it is structured data). Omit from CSV entirely. Optional column in XLSX |
-| Export during processing | Job data is incomplete and actively changing; creates confusing partial files that may differ from final results | Only enable export button when job status is `completed`, `cancelled`, or `creditsExhausted` |
-| BibTeX/RIS citation format export | Entire separate product category (reference management); users have Zotero for citation formatting; already out of scope per PROJECT.md | Papers include DOI and OpenAlex ID which users can use to import into any reference manager |
+Features that seem good but create problems for this specific context.
+
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Automatic synonym merging (AI-based)** | "Group answers automatically instead of showing variants" | Adds extraction re-dependency; risk of over-merging (false positives); breaks user trust if grouping is wrong | Manual grouping with UI helpers; provide high-confidence suggestions but let user decide |
+| **Real-time progress updates (WebSocket)** | "Show progress as extraction runs" | Extraction jobs are async/background; adds server complexity; polling/manual refresh sufficient for user patience window | Simple "refresh" button; lazy-load stats on page open; user initiates updates |
+| **Custom confidence formula (user-configurable)** | "Let users adjust confidence calculation" | Extraction confidence is model-dependent; custom formulas create support burden; different models have different confidence ranges | Provide **raw vs effective confidence** with clear tooltip; accept feedback for model tuning, not per-user customization |
+| **Multi-select filtering across dimensions** | "Filter by confidence AND answer AND question" | Combinatorial explosion of filters; extraction insights are typically single-job view; users don't need AND logic | Single dimension filters (confidence threshold) sufficient; full AND/OR logic deferred to future analytics layer |
 
 ## Feature Dependencies
 
 ```
-EXISTING infrastructure (no changes needed):
-  - screeningResults table: answers, score, stars, qualified, aiMetadata, status
-  - screeningJobs table: questions, scoringConfig, status, totalPapers, qualifiedPapers
-  - getScreeningJob query: auth-gated, returns full job record
-  - ExcelJS dynamic import pattern: lib/extraction/export.ts
-  - downloadFile utility: lib/extraction/export.ts
-  - ExportDialog component pattern: components/extraction/export-dialog.tsx
-  - formatAnswerForCSV/formatAnswerForExcel helpers: lib/extraction/export.ts
-  - ScreeningJobHistory component: components/screening/screening-job-history.tsx
-  - by_job index on screeningResults: efficient job-scoped queries
+Bar scaling (readability)
+    └──requires──> Answer distribution data (already have)
+                       └──requires──> Question metrics (already have)
 
-NEW components to build:
-  getJobResultsForExport query ──> screening export functions ──> ScreeningExportDialog ──> Export button
-  (Convex backend)                (lib/screening/export.ts)     (React component)         (in job history)
+Summary metric cards (overview)
+    ├──independent──> Bar scaling (both display concerns)
+    └──enhanced by──> Confidence contextual callout (quality signal)
 
-Build order (serial dependency chain):
-  1. getJobResultsForExport Convex query (loads all completed results for a job, auth-gated)
-  2. Export utility functions (CSV/JSON/XLSX formatters using existing helpers)
-  3. ScreeningExportDialog component (format picker + optional toggles)
-  4. Export button integration in ScreeningJobHistory cards
+Confidence contextual callout (trust)
+    └──requires──> Confidence calculation (already have; ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7)
+                       └──enhanced by──> Tooltip with raw confidence explanation
+
+Question/item list with status + mini progress (tracking)
+    ├──requires──> Per-question completion metrics (requires aggregation)
+    └──enhanced by──> Stacked bars (visual confirmation)
+
+Stacked horizontal bars (distribution visualization)
+    ├──requires──> Category grouping per question (need to define "category" — confidence, answer type, etc.)
+    └──requires──> Answer counts per category (requires aggregation)
+
+Semantic answer grouping + drill-down (data quality)
+    ├──requires──> Synonym detection/suggestion (phrase similarity, Levenshtein distance, model-based)
+    ├──requires──> User merge/ungroup mutations (backend support needed)
+    └──enables──> Accurate stacked bar visualization (can't show true distribution without grouping)
+    └──enables──> Confidence grouping (answers grouped → can aggregate confidence per group)
 ```
 
-## Existing Infrastructure to Reuse
+### Dependency Notes
 
-| Existing Component | Reuse Strategy |
-|--------------------|----------------|
-| `exportToCSV` / `exportToJSON` / `exportToExcel` in `lib/extraction/export.ts` | Adapt column structure; do NOT import directly (different data shape), but copy the patterns: header generation, row mapping, downloadFile call, ExcelJS dynamic import |
-| `ExportDialog` in `components/extraction/export-dialog.tsx` | Clone and simplify: same RadioGroup for format, fewer Checkbox options (just "Include AI metadata"), same DialogFooter pattern |
-| `formatAnswerForCSV` / `formatAnswerForExcel` helpers | Directly importable for formatting boolean answers as "Yes"/"No" |
-| `downloadFile` utility in `lib/extraction/export.ts` | Import directly -- format-agnostic file download trigger |
-| `by_job` index on `screeningResults` | Efficient query for all results of a job; already exists in schema |
-| `MAX_SCREENING_PAPERS_PER_JOB` from `queryBounds.ts` | Bound the results query to prevent unbounded `.collect()` |
-| `getCurrentUser` auth helper | Standard auth gate for the new query |
+- **Bar scaling + Summary cards:** Both display-only; no backend changes needed.
+- **Confidence callout depends on existing calculation:** Reframe existing "effective conf" data; no new backend work.
+- **Question/item lists require aggregation:** Need per-question completion counts; likely need new query or mutation.
+- **Stacked bars require answer grouping:** Can't show meaningful distribution without first merging synonyms.
+- **Semantic grouping is blocking:** Without this, all other visualization features are either incomplete (can't aggregate accurately) or misleading (synonyms count as separate answers).
 
-## MVP Recommendation
+## Complexity Breakdown
 
-Prioritize (in build order):
-1. **Convex query `getJobResultsForExport`** -- Auth-gated query returning all completed/failed/skipped results for a screening job, bounded by `MAX_SCREENING_PAPERS_PER_JOB`. Returns paper metadata + answers + score/stars/qualified + aiMetadata. This is the only backend addition needed.
-2. **Export functions in `lib/screening/export.ts`** -- Three functions: `exportScreeningToCSV`, `exportScreeningToJSON`, `exportScreeningToExcel`. Adapt extraction export column patterns for screening fields. Default columns: title, authors, year, DOI, OpenAlex ID, per-question answers, score, stars, qualified, status. Optional: AI reasoning, AI confidence.
-3. **`ScreeningExportDialog` component** -- Simplified clone of extraction ExportDialog. Format radio (CSV/JSON/XLSX) + single checkbox toggle for "Include AI metadata". Shows paper count for context.
-4. **Export button on job cards** -- Download icon button on completed/cancelled/creditsExhausted cards in `ScreeningJobHistory`. Opens `ScreeningExportDialog` with the selected job ID.
+### LOW complexity (no new queries/backend changes)
+1. **Bar scaling:** CSS/math-only; scale bars to max value instead of total width
+2. **Summary cards:** Reorder/reframe existing data; add color accents
+3. **Confidence callout:** Replace tooltip text; add color coding (green/yellow/red)
 
-Defer (low effort, add after core works):
-- XLSX Summary statistics sheet (per-question distributions, average score, qualification rate)
-- XLSX Scoring configuration sheet (rules + thresholds as reference)
-- Abstract column toggle for XLSX
-- i18n for export dialog labels (can use existing extraction i18n keys as starting point)
+### MEDIUM complexity (new queries or aggregation)
+4. **Question/item list with status + mini progress:** New per-question aggregation; requires query or computed field
+5. **Stacked horizontal bars:** Requires answer grouping first (see HIGH below); then group-by aggregation
 
-## Confidence Assessment
+### HIGH complexity (new backend features)
+6. **Semantic answer grouping + drill-down:** Synonym detection algorithm; user mutations for merge/ungroup; display component
 
-| Area | Confidence | Reason |
-|------|------------|--------|
-| CSV/JSON export | HIGH | Directly mirrors existing extraction + library export patterns; data shape is simpler (boolean answers vs mixed types) |
-| XLSX export | HIGH | ExcelJS dynamic import pattern proven in codebase; same multi-sheet approach as extraction |
-| Export dialog UX | HIGH | Direct simplification of existing ExportDialog; fewer options, same interaction pattern |
-| Backend query | HIGH | `by_job` index exists; auth pattern identical to `getScreeningJob`; bounded by existing MAX constant |
-| Data completeness | HIGH | All export-relevant fields (answers, score, stars, qualified, aiMetadata) already computed and stored at screening time; no recomputation needed |
-| Integration with job history UI | HIGH | Component structure is clear; adding a button with stopPropagation follows existing accordion pattern in the component |
+## MVP Definition
+
+### Prioritized for v5.0 (Extraction Insights Overhaul)
+
+All 6 features are in scope per milestone brief; prioritize by dependency order:
+
+1. **Phase 1: Foundation (display fixes)**
+   - [ ] Bar scaling relative to max (LOW complexity, unblocks visualization)
+   - [ ] Summary card reframing + color accents (LOW complexity, improves overview)
+   - [ ] Confidence contextual callout with color coding (LOW, improves trust)
+
+2. **Phase 2: Data aggregation (enables visualization)**
+   - [ ] Question/item list with status indicators + mini progress bars (MEDIUM, requires new aggregation)
+   - [ ] Stacked horizontal bars for distributions (MEDIUM, depends on grouping)
+
+3. **Phase 3: Data quality (semantic grouping)**
+   - [ ] Semantic answer grouping with expandable drill-down (HIGH, blocks accurate aggregation)
+   - [ ] Optional: Merge/ungroup mutations (if time permits)
+
+### Why This Order
+
+1. **Foundation phase** is low-risk display changes; unblock frontend work while backend research happens for grouping
+2. **Aggregation phase** assumes basic grouping (lowercase/whitespace only for now); visualize current data without perfect accuracy
+3. **Semantic grouping phase** addresses root cause of data duplication; enables re-aggregation with accurate numbers
+
+### Defer to v5.1+ (if blocked)
+
+- Automatic synonym merging (complexity spike; start with manual grouping)
+- Confidence thresholds with filtering (nice-to-have after grouping works)
+- Answer variant visualization with inline details (depends on grouping stability)
+
+## Feature Interaction Matrix
+
+| Feature | Works With | Conflicts | Enhances | Blocked By |
+|---------|------------|-----------|----------|-----------|
+| Bar scaling | All others | None | Summary cards, stacked bars | None |
+| Summary cards | All others | None | Confidence callout | None |
+| Confidence callout | Bar scaling, summary | None | Trust/credibility | None |
+| Status + progress | Question lists | None | Summary completion | Aggregation queries |
+| Stacked bars | Status + progress | None | Seeing full distribution | Semantic grouping |
+| Semantic grouping | Stacked bars, status | None (blocks mis-aggregation) | All aggregation | None (enables others) |
+
+## Pattern Reference: Expected Behaviors
+
+### 1. Bar Scaling Relative to Max
+
+**Standard behavior:**
+- Find max value across all bars in group (e.g., max count for answers to a question)
+- Scale each bar width to `(value / max) * 100%`
+- Axis label shows max value (e.g., "Max: 42 responses")
+- Zero baseline implicit (width 0 = no responses)
+
+**UI pattern:** Horizontal bars with no y-axis; category labels on left, numeric value on right (or hover tooltip)
+
+**Example:**
+```
+Question: "Is this open access?"
+  Yes:     42 responses  [████████████████████████] 100%
+  No:      15 responses  [████████                 ]  36%
+  Unknown:  8 responses  [████                     ]  19%
+```
+
+**Accessibility:** Include numeric labels (42/42) or aria-label for screen readers
+
+---
+
+### 2. Summary/Metric Cards with Color Accents
+
+**Standard behavior:**
+- Large number (36pt+ font), label below, optional sparkline
+- Color accent (left border, background tint, or badge) signals category or status
+- 60-30-10 color ratio: 60% neutral (white/gray), 30% accent (primary color), 10% dopamine (bold alert color)
+- Subtle shadow or elevation distinguishes from page background
+
+**UI pattern:** Card grid (1–4 columns depending on screen), each card self-contained
+
+**Example:**
+```
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│▐ 94 papers      │  │▐ 7.2/10         │  │▐ 2,341 answers  │
+│  Extracted      │  │  Avg confidence │  │  Total          │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+(green accent)      (yellow accent)      (blue accent)
+```
+
+**Color coding:**
+- Green (≥85% confidence, extracted/complete): Trust signal
+- Yellow (60–84%, warning, attention needed): Caution signal
+- Red (<60%, error, high uncertainty): Problem signal
+
+**Accessibility:** Each card is semantically a `<article>` or `<section>`; color not sole indicator (include icon + label)
+
+---
+
+### 3. Confidence Display (Contextual Callout)
+
+**Standard behavior:**
+- Replace confusing "effective confidence" tooltip with single, scannable number
+- Single metric: **Confidence: 85%** (not dual raw/effective)
+- Color-coded background or left border (green/yellow/red per threshold)
+- Optional tooltip on hover: "Confidence is X% because extraction was based on [abstract only] / [full text]"
+
+**UI pattern:** Inline badge or card callout near question or answer
+
+**Example:**
+```
+Question: "Funding source?"
+┌────────────────────────────────┐
+│ Confidence: 94% ✓              │  (green background, checkmark)
+│ Extracted from full text       │  (explanation in smaller text)
+└────────────────────────────────┘
+
+vs. High uncertainty answer:
+
+┌────────────────────────────────┐
+│ Confidence: 61% ⚠              │  (yellow background, warning icon)
+│ Extracted from abstract only   │
+└────────────────────────────────┘
+```
+
+**Accessibility:** Aria-label: "Confidence is 94%, indicated by green color and checkmark"
+
+---
+
+### 4. Question/Item List with Status Indicators + Mini Progress Bars
+
+**Standard behavior:**
+- Vertical list of questions; each row shows:
+  - Status dot (green checkmark = complete/high conf, yellow ? = uncertain, gray — = no data)
+  - Question title
+  - Mini progress bar (or percentage) showing answer distribution (e.g., "3/5 questions answered")
+  - Optional: count badge (e.g., "42 papers")
+
+**UI pattern:** Table row or list item; status dot left-aligned, bar right-aligned or below title
+
+**Example:**
+```
+✓ "Is this open access?"
+  Progress: ████████████░░░░░░ 60% (answered for 15/25 papers)
+
+⚠ "Funding source?"
+  Progress: ██████░░░░░░░░░░░░░ 20% (answered for 5/25 papers)
+
+— "Author affiliations?"
+  Progress: ░░░░░░░░░░░░░░░░░░░░  0% (no extractions)
+```
+
+**Color coding:**
+- ✓ green: 85%+ confidence or 80%+ papers answered
+- ⚠ yellow: 60–84% confidence or 50–79% papers answered
+- — gray: <60% confidence or <50% papers answered
+
+**Accessibility:** Aria-label: "Question: Is this open access? Complete. Progress: 60% answered."
+
+---
+
+### 5. Stacked Horizontal Bars for Distributions
+
+**Standard behavior:**
+- One bar per question
+- Bar divided into segments (each segment = one grouped answer)
+- Segment color = answer category (or confidence level if stacking by confidence)
+- Segment width = count or percentage
+- Labels on bar or in legend; totals shown (e.g., "25 papers")
+
+**UI pattern:** Left axis = question labels (long labels benefit from horizontal layout), bars extend right
+
+**Example:**
+```
+Is this open access?    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  25 papers
+                        [████████] [███████] [██]
+                        Yes: 13   No: 10   Unknown: 2
+
+Funding source?         ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  25 papers
+                        [████] [██] [███████████████████]
+                        Gov: 4  Priv: 2  No funding: 19
+```
+
+**Segment coloring:**
+- Option A: By answer (each grouped answer type gets a color)
+- Option B: By confidence (segments colored green/yellow/red by conf)
+- Recommended: By answer type; use consistent palette across questions
+
+**Accessibility:** Tooltip on hover shows exact count and percentage; legend identifies colors
+
+---
+
+### 6. Semantic Answer Grouping with Expandable Drill-Down
+
+**Standard behavior:**
+- Group similar answers (synonyms, case variants, whitespace variations)
+- Show main/canonical answer; click/toggle to expand and see variants
+- Display count per variant (e.g., "Open Access (3 papers)", "open access (2 papers)", "Open access (1 paper)")
+- Optional: Merge/ungroup buttons to reclassify
+
+**UI pattern:** Accordion rows or disclosure triangles; nested list of variants under main
+
+**Example:**
+```
+Question: "Open Access Status?"
+
+[▼] Open Access (6 papers) — canonical answer
+    └─ Open access (2 papers)
+    └─ open access (1 paper)
+    └─ OPEN ACCESS (1 paper)
+    └─ "open access" (1 paper) — variant with quotes
+    └─ OpenAccess (1 paper) — typo variant
+    [Merge all] [Ungroup]
+
+[▶] Subscription Required (12 papers)
+[▶] Unknown (7 papers)
+```
+
+**Interaction:**
+- Click "Merge all" → all variants count as main answer in aggregations and stacked bars
+- Click "Ungroup" → revert to showing variants separately (useful if wrong grouping)
+- Expandable shows variant count and optionally papers where each variant appeared
+
+**Accessibility:** Aria-expanded=true/false on accordion button; keyboard navigation (arrow keys expand/collapse)
+
+---
+
+## Implementation Notes
+
+### Technology Assumptions
+- Frontend: React components with Tailwind CSS or similar
+- Backend: Convex queries for aggregation (per-question summaries, answer grouping)
+- No new libraries required; use existing `<details>/<summary>` or Radix accordion
+
+### Validation Hooks
+- **Bar scaling:** Verify max value is non-zero (empty question = width 0, label "No extractions")
+- **Summary cards:** Verify confidence calculation accounts for ABSTRACT_ONLY_CONFIDENCE_CAP
+- **Confidence callout:** Test with very low conf (e.g., <50%) to ensure yellow/red prominence
+- **Status indicators:** Validate color contrast (4.5:1 min) for WCAG AA compliance
+- **Stacked bars:** Test with 5+ answer categories per question; ensure label readability
+- **Semantic grouping:** Test merge/ungroup with real extraction data; validate that counts update in stacked bars
+
+### Backward Compatibility
+- Existing queries must return grouping-agnostic data (raw answers) until semantic layer is added
+- Summary cards can reframe existing metrics (no schema change)
+- Confidence callout uses existing `confidence` field (no new field needed)
+
+---
 
 ## Sources
 
-- Existing extraction export: `lib/extraction/export.ts` (CSV/JSON/XLSX patterns, downloadFile utility, ExcelJS dynamic import)
-- Existing library export: `lib/library/export.ts` (simpler CSV/JSON pattern, formatForExport helper)
-- Existing export dialog: `components/extraction/export-dialog.tsx` (format selector, checkbox toggles, dialog structure)
-- Screening schema: `convex/schema.ts` lines 684-770 (screeningJobs + screeningResults table definitions with all field types)
-- Screening queries: `convex/screening/queries.ts` (auth patterns, user isolation, bounded queries, validator shapes)
-- Scoring engine: `convex/screening/scoring.ts` (score/stars/qualified already computed at screening time -- no export-time recomputation)
-- Job history UI: `components/screening/screening-job-history.tsx` (where export button integrates; status-aware rendering)
-- Query bounds: `convex/lib/queryBounds.ts` (MAX_SCREENING_PAPERS_PER_JOB constant for bounded .collect())
-- Search actions screening export test: `tests/search-actions-screening-export.test.ts` (contract tests for existing search-level screening export)
+- [Data Visualization Best Practices - Tilburg Science Hub](https://www.tilburgsciencehub.com/topics/visualization/data-visualization/graphs-charts/theory-best-practices/)
+- [A Complete Guide to Bar Charts | Atlassian](https://www.atlassian.com/data/charts/bar-chart-complete-guide)
+- [Stacked Bar Charts: A Detailed Breakdown | Atlassian](https://www.atlassian.com/data/charts/stacked-bar-chart-complete-guide)
+- [Curated Dashboard Design Examples for UI Inspiration (2026) | Muzli Blog](https://muz.li/blog/best-dashboard-design-examples-inspirations-for-2026/)
+- [Effective Dashboard Color Scheme for Analytics](https://insightsoftware.com/blog/effective-color-schemes-for-analytics-dashboards/)
+- [Confidence Visualization UI Patterns (CVP) - Agentic Design](https://agentic-design.ai/patterns/ui-ux-patterns/confidence-visualization-patterns)
+- [Confidence Visualization | AI Design Patterns](https://www.aiuxdesign.guide/patterns/confidence-visualization)
+- [Progress Trackers and Indicators – With 6 Examples To Do It Right](https://userguiding.com/blog/progress-trackers-and-indicators)
+- [Status indicators | Carbon Design System](https://carbondesignsystem.com/patterns/status-indicator-pattern/)
+- [The Ultimate Accordion Design Playbook | Muzli Blog](https://muz.li/blog/the-ultimate-accordion-design-playbook/)
+- [Accordion UI Examples: Best Practices & Real-World Designs](https://www.eleken.co/blog-posts/accordion-ui)
+- [Tooltip UI design: Practical tips and real examples](https://www.eleken.co/blog-posts/tooltip-ui)
+
+---
+
+*Feature research for: Extraction insights UI visualization and analytics patterns*
+*Researched: 2026-03-10*
+*Confidence: MEDIUM — Industry patterns verified; context-specific tradeoffs (semantic grouping complexity, aggregation scope) need phase-specific validation*
