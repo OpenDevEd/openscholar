@@ -1,32 +1,34 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.1
-milestone_name: Screening Export
-status: archived
-stopped_at: Milestone v4.1 archived
-last_updated: "2026-03-09T08:55:00.000Z"
-last_activity: 2026-03-09 — Milestone v4.1 archived
+milestone: v5.0
+milestone_name: Extraction Insights Overhaul
+status: active
+stopped_at: null
+last_updated: "2026-03-10T00:00:00.000Z"
+last_activity: 2026-03-10 — Milestone v5.0 started
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-09)
+See: .planning/PROJECT.md (updated 2026-03-10)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** v5.0 Extraction Insights Overhaul
 
 ## Current Position
 
-Milestone v4.1 Screening Export -- SHIPPED 2026-03-09
-All 82 phases complete across 14 milestones.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-10 — Milestone v5.0 started
 
 ## Performance Metrics
 

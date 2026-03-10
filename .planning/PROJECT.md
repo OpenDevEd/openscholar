@@ -134,7 +134,17 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(None — planning next milestone)
+## Current Milestone: v5.0 Extraction Insights Overhaul
+
+**Goal:** Overhaul the extraction insights page to fix data visualization issues, merge semantic duplicates, and improve overall UX/UI quality.
+
+**Target features:**
+- Bar scaling — relative to max value, not total (bars currently nearly invisible at 2-4%)
+- Summary cards — reframe/reorder with color accents
+- Confidence display — contextual callout replacing confusing "effective conf"
+- Question list — status dots + mini progress bars
+- Stacked horizontal bars for distributions
+- Answer semantic grouping — merge synonyms with expandable variants
 
 ### Out of Scope
 
@@ -277,4 +287,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | Cascade deletes left unbounded | Bounding would orphan data | ✓ Good — annotated with comments |
 
 ---
-*Last updated: 2026-03-09 after v4.1 milestone*
+*Last updated: 2026-03-10 after v5.0 milestone started*
