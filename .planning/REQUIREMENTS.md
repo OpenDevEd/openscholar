@@ -9,10 +9,10 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 
 ### Bar Visualization
 
-- [ ] **BAR-01**: Answer distribution bars scale relative to highest count, not total
-- [ ] **BAR-02**: Stacked horizontal bars show part-to-whole distribution per question
-- [ ] **BAR-03**: Bar scaling handles edge cases (all-zero, single dominant value, 1-answer questions)
-- [ ] **BAR-04**: Bars display count labels and percentage on hover/focus
+- [x] **BAR-01**: Answer distribution bars scale relative to highest count, not total
+- [x] **BAR-02**: Stacked horizontal bars show part-to-whole distribution per question
+- [x] **BAR-03**: Bar scaling handles edge cases (all-zero, single dominant value, 1-answer questions)
+- [x] **BAR-04**: Bars display count labels and percentage on hover/focus
 
 ### Summary Cards
 
@@ -66,10 +66,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BAR-01 | Phase 85 | Pending |
-| BAR-02 | Phase 85 | Pending |
-| BAR-03 | Phase 85 | Pending |
-| BAR-04 | Phase 85 | Pending |
+| BAR-01 | Phase 85 | Complete |
+| BAR-02 | Phase 85 | Complete |
+| BAR-03 | Phase 85 | Complete |
+| BAR-04 | Phase 85 | Complete |
 | CARD-01 | Phase 84 | Complete |
 | CARD-02 | Phase 84 | Complete |
 | CARD-03 | Phase 84 | Complete |

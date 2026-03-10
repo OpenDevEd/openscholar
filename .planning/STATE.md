@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 84-summary-cards-confidence-display/84-03-PLAN.md
-last_updated: "2026-03-10T09:17:17.743Z"
+stopped_at: Completed 85-bar-visualization/85-00-PLAN.md
+last_updated: "2026-03-10T09:43:56.125Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 9
+  completed_plans: 6
   percent: 0
 ---
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 84-summary-cards-confidence-display P01 | 2 | 2 tasks | 4 files |
 | Phase 84-summary-cards-confidence-display P02 | 1min | 1 tasks | 2 files |
 | Phase 84-summary-cards-confidence-display P03 | 2min | 2 tasks | 4 files |
+| Phase 85-bar-visualization P00 | 1 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,9 @@ Recent decisions for v5.0:
 - [Phase 84-02]: Badge uses className override with BADGE_COLOR_CLASSES to bypass default variant; HelpCircle uses aria-hidden=true since tooltip provides accessible mechanism
 - [Phase 84-summary-cards-confidence-display]: SummaryCards mocked in extraction-insights-overview.test.tsx to isolate wiring from Radix Tooltip portal issues in jsdom
 - [Phase 84-summary-cards-confidence-display]: totalPapers derived from questions[0].total when available, falls back to noContentCount + abstractOnlyCount
+- [Phase 85-bar-visualization]: recharts@^2.15.4 installed as production dependency (satisfies ^2.14.0 constraint)
+- [Phase 85-bar-visualization]: Wave 0 test stubs import from non-existent source files confirming RED state for TDD Plans 01 and 02
+- [Phase 85-bar-visualization]: Recharts vi.mock pattern established in jsdom stubs — BarChart/Bar/XAxis/YAxis/Tooltip/ResponsiveContainer all stubbed
 
 ### Pending Todos
 
@@ -118,5 +122,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 84-summary-cards-confidence-display/84-03-PLAN.md
+Stopped at: Completed 85-bar-visualization/85-00-PLAN.md
 Resume file: None
