@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Phase 87 context gathered
-last_updated: "2026-03-10T10:25:09.992Z"
+stopped_at: Completed 87-02-PLAN.md
+last_updated: "2026-03-10T10:48:43.594Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 14
+  completed_plans: 13
   percent: 0
 ---
 
@@ -68,6 +68,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 85-bar-visualization P03 | 3min | 3 tasks | 4 files |
 | Phase 86-question-list-progress-bars P01 | 1min | 2 tasks | 2 files |
 | Phase 86-question-list-progress-bars P02 | 2min | 3 tasks | 4 files |
+| Phase 87-answer-semantic-grouping P02 | 2min | 1 tasks | 2 files |
+| Phase 87-answer-semantic-grouping P01 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -106,6 +108,9 @@ Recent decisions for v5.0:
 - [Phase 86-question-list-progress-bars]: statusFromCompletion checks total===0 first — total=0 always returns empty regardless of answered value
 - [Phase 86-question-list-progress-bars]: QuestionListItem mock in InsightsOverview integration test renders data-testid=status-dot and progress-bar — isolates parent wiring from child rendering
 - [Phase 86-question-list-progress-bars]: Badge/pct()/tc removed from InsightsOverview — QuestionListItem now owns all per-question rendering
+- [Phase 87-answer-semantic-grouping]: GroupedAnswerRow uses local useState(false) for expansion — not lifted to parent
+- [Phase 87-answer-semantic-grouping]: Single-variant groups render no disclosure control (same as ungrouped rows visually)
+- [Phase 87-answer-semantic-grouping]: No animation for MVP (instant show/hide per CONTEXT.md locked decisions)
 
 ### Pending Todos
 
@@ -139,5 +144,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Phase 87 context gathered
-Resume file: .planning/phases/87-answer-semantic-grouping/87-CONTEXT.md
+Stopped at: Completed 87-02-PLAN.md
+Resume file: None

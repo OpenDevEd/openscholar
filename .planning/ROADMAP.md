@@ -328,4 +328,4 @@ Plans:
 | 84 | 3/3 | Complete    | 2026-03-10 | - |
 | 85 | 4/4 | Complete    | 2026-03-10 | - |
 | 86 | 2/2 | Complete    | 2026-03-10 | - |
-| 87 | v5.0 | 0/3 | Not started | - |
+| 87 | 2/3 | In Progress|  | - |
