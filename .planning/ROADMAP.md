@@ -235,7 +235,11 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
   2. All new extraction insights translation keys exist in all 6 locale JSON files (en, fr, de, es, ja, zh) before any UI component is written
   3. Edge-case tests exist for bar scaling (all-zero distribution, single-dominant value, one-answer question) with documented expected outputs
   4. Edge-case tests exist for confidence context mapping (abstract-only cap, no content, full-text) with documented expected outputs
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 83-01-PLAN.md — Seed i18n keys into all 6 locale files, create i18n coverage test and structural component test
+- [ ] 83-02-PLAN.md — Add bar scaling and confidence context edge-case tests to extraction-insights.test.ts
 
 ### Phase 84: Summary Cards & Confidence Display
 **Goal**: Users scanning the insights overview see reordered summary cards with color-coded health signals and a single contextual confidence badge that explains why the confidence value is what it is.
@@ -301,7 +305,7 @@ Full details: `.planning/milestones/v4.1-ROADMAP.md`
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
-| 83 | v5.0 | 0/TBD | Not started | - |
+| 83 | v5.0 | 0/2 | Not started | - |
 | 84 | v5.0 | 0/TBD | Not started | - |
 | 85 | v5.0 | 0/TBD | Not started | - |
 | 86 | v5.0 | 0/TBD | Not started | - |
