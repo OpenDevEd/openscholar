@@ -4,7 +4,7 @@ milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
 stopped_at: Completed 85-bar-visualization/85-03-PLAN.md
-last_updated: "2026-03-10T09:57:06.202Z"
+last_updated: "2026-03-10T10:01:18.176Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
