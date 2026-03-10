@@ -251,7 +251,12 @@ Plans:
   3. Metrics that are misleading in abstract-only jobs (e.g., "0% grounded") are contextualized or hidden rather than shown as alarming zeroes
   4. A single confidence badge replaces "effective confidence" and shows one clear percentage with a tooltip explaining its source (abstract cap, full-text, no content)
   5. The confidence badge color matches the value: green for >=85%, yellow for 60-84%, red for <60%
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 84-01-PLAN.md — Threshold utility functions and tooltip message logic (pure functions + tests)
+- [ ] 84-02-PLAN.md — ConfidenceBadge component with color-coded display and contextual tooltip
+- [ ] 84-03-PLAN.md — SummaryCards component with ordered cards, color accents, and InsightsOverview wiring
 
 ### Phase 85: Bar Visualization
 **Goal**: Users looking at answer distributions see bars that meaningfully fill the available space, with stacked horizontal bars showing the part-to-whole breakdown per question, rendered via Recharts loaded only on demand.
@@ -305,8 +310,8 @@ Plans:
 | 72-74 | v3.2 | 4/4 | Complete | 2026-03-06 |
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
-| 83 | 2/2 | Complete    | 2026-03-10 | - |
-| 84 | v5.0 | 0/TBD | Not started | - |
+| 83 | v5.0 | 2/2 | Complete | 2026-03-10 |
+| 84 | v5.0 | 0/3 | Not started | - |
 | 85 | v5.0 | 0/TBD | Not started | - |
 | 86 | v5.0 | 0/TBD | Not started | - |
 | 87 | v5.0 | 0/TBD | Not started | - |
