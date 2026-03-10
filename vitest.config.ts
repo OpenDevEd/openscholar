@@ -18,6 +18,8 @@ export default defineConfig({
       ["tests/hooks/**/*.test.ts", "jsdom"],
       ["tests/hooks/**/*.test.tsx", "jsdom"],
       ["tests/components/**/*.test.tsx", "jsdom"],
+      // tsx test files at tests root level use jsdom
+      ["tests/*.test.tsx", "jsdom"],
     ],
     server: {
       deps: {
@@ -25,7 +27,7 @@ export default defineConfig({
         inline: ["convex-test"],
       },
     },
-    include: ["tests/**/*.test.ts", "convex/**/*.test.ts"],
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx", "convex/**/*.test.ts"],
     exclude: ["tests/live-billing/**/*.test.ts"],
     setupFiles: ["./tests/setup.ts"],
   },
