@@ -691,6 +691,57 @@
 
 ---
 
+## Milestone: v5.0 — Extraction Insights Overhaul
+
+**Shipped:** 2026-03-10
+**Phases:** 5 | **Plans:** 14 | **Commits:** 65
+
+### What Was Built
+- Structural assertion test suite replacing snapshot tests for extraction insights components
+- 11 new i18n keys seeded across all 6 locale files before any UI component development
+- Color-coded summary cards with threshold-based green/yellow/red accents (CARD-01/02/03)
+- Contextual ConfidenceBadge with source tooltip replacing confusing "effective confidence" (CONF-01/02/03)
+- Recharts stacked horizontal bars with relative-to-max scaling, lazy-loaded via next/dynamic (BAR-01/02/03/04, INFRA-02)
+- Question list status dots (green/yellow/grey) and mini progress bars with completion percentages (QLIST-01/02/03)
+- Answer semantic grouping merging case/whitespace/synonym variants with expandable drill-down (GROUP-01/02/03/04)
+
+### What Worked
+- i18n keys seeded upfront in Phase 83 prevented missing-key placeholders across all subsequent UI phases
+- Structural tests established in Phase 83 allowed confident component iteration in Phases 84-87
+- TDD approach across all phases produced 211 new tests with zero regressions (1072+ total suite)
+- Pure utility extraction (card-thresholds, bar-scaling, bar-validation, question-status, answer-grouping) enabled isolated testing
+- Lazy-loading via next/dynamic successfully deferred ~65KB gzipped Recharts from initial page load
+- Zero backend changes — all 6 features consumed existing getJobInsights/getQuestionInsights queries
+- Recharts vi.mock pattern for jsdom testing worked reliably across all bar visualization tests
+
+### What Was Inefficient
+- SUMMARY.md one_liner fields still not populated by executor (recurring gap from v2.0 onwards)
+- Wave 0 test stubs in Phase 85 added an extra plan step — could be integrated into Plan 01 for fewer plans
+- Progress table in ROADMAP.md had formatting issues for v5.0 phases (missing milestone column alignment)
+
+### Patterns Established
+- i18n-first development: seed all translation keys before component work begins
+- Structural tests over snapshots: assert DOM structure and data attributes, not rendered HTML
+- Recharts jsdom mock pattern: vi.mock all chart components (BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer)
+- renderTooltipContent as pure function export — testable without Tooltip event simulation
+- IIFE pattern in JSX for multi-statement derived rendering (synonymMap shared computation)
+- next/dynamic with ssr=false for chart library bundle splitting
+- isAnimationActive=false on Recharts components for stable jsdom tests
+
+### Key Lessons
+1. Seeding i18n keys upfront prevents a class of bugs across all subsequent development phases
+2. Structural tests are strictly superior to snapshot tests for UI components that evolve incrementally
+3. Recharts lazy-loading via next/dynamic is straightforward and effective for bundle optimization
+4. Pure function extraction for all threshold/scaling/grouping logic enables isolated TDD and high test coverage
+5. Synonym grouping with MVP scope (case/whitespace/basic) covers common duplicates without NLP complexity
+
+### Cost Observations
+- Model mix: 100% budget profile (per config)
+- Sessions: 1
+- Notable: 14 plans completed in single day — ~4.5min average per plan, 211 new tests
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -711,6 +762,7 @@
 | v3.2 | 11 | 3 | 4 | ~4.5min | Internal debug endpoints, O(1) library count, query bounding |
 | v4.0 | 42 | 4 | 9 | ~3min | Bulk screening feature build, workflow+workpool reuse, TDD scoring engine |
 | v4.1 | 21 | 4 | 5 | ~2min | Screening export, pattern reuse, backward-compat schema evolution |
+| v5.0 | 65 | 5 | 14 | ~4.5min | Extraction insights overhaul, Recharts lazy-loading, TDD pure utilities, semantic grouping |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -748,3 +800,6 @@
 32. Cancel/abort UI must be an explicit phase deliverable — backend-only implementation leaves E2E gaps that milestone audit catches (v4.0)
 33. Backward-compat schema evolution (remove from write, keep optional in read) is a safe, zero-downtime pattern for field removal (v4.1)
 34. On-demand query (useConvex().query()) over reactive subscription (useQuery) for one-shot data fetches like export (v4.1)
+35. Seeding i18n keys before UI development prevents missing-key placeholders and enables parallel component development (v5.0)
+36. Structural tests over snapshots enable confident UI iteration — component refactors don't trigger test failures (v5.0)
+37. Lazy-loading chart libraries via next/dynamic with ssr=false is the standard pattern for bundle optimization (v5.0)
