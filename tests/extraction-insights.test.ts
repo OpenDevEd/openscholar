@@ -5,7 +5,7 @@ import {
   buildDisagreementClusters,
   buildRunDiff,
 } from "../lib/extraction/insights";
-import type { InsightEntry, RunDiffRecord } from "../lib/extraction/insights";
+import type { CitationStatus, InsightEntry, RunDiffRecord } from "../lib/extraction/insights";
 
 describe("aggregateQuestionInsights", () => {
   it("computes coverage, confidence, and citation status mix", () => {
@@ -592,5 +592,120 @@ describe("buildRunDiff edge cases", () => {
     expect(summary.newAnswers).toBe(2);
     expect(summary.removedAnswers).toBe(0);
     expect(summary.totalCompared).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 83: Bar scaling edge cases (documents expected behavior for Phase 85 UI)
+// ---------------------------------------------------------------------------
+
+describe("aggregateQuestionInsights bar scaling edge cases", () => {
+  it("all-zero distribution: answered=0, avgConfidence=0, no NaN values", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Paper 1",
+        openalexId: "oa:1",
+        questionKey: "q1",
+        answer: null,
+        confidence: 0,
+        citationStatus: "insufficient_evidence",
+      },
+      {
+        paperId: "p2",
+        title: "Paper 2",
+        openalexId: "oa:2",
+        questionKey: "q1",
+        answer: null,
+        confidence: 0,
+        citationStatus: "insufficient_evidence",
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.total).toBe(2);
+    expect(aggregate.answered).toBe(0);
+    // avgConfidence must be a number, not NaN — Phase 85 uses this for bar width calculation
+    expect(Number.isNaN(aggregate.avgConfidence)).toBe(false);
+    expect(aggregate.avgConfidence).toBe(0);
+    expect(aggregate.topAnswers).toEqual([]);
+  });
+
+  it("single-dominant value (98%): all 3 answer variants appear in topAnswers with accurate counts", () => {
+    const entries: InsightEntry[] = [
+      // 98 papers say GPT-4
+      ...Array.from({ length: 98 }, (_, i) => ({
+        paperId: `p${i}`,
+        title: `Paper ${i}`,
+        openalexId: `oa:${i}`,
+        questionKey: "model",
+        answer: "GPT-4",
+        confidence: 0.9,
+        citationStatus: "grounded" as CitationStatus,
+      })),
+      // 1 paper says Claude
+      {
+        paperId: "p98",
+        title: "Paper 98",
+        openalexId: "oa:98",
+        questionKey: "model",
+        answer: "Claude",
+        confidence: 0.85,
+        citationStatus: "grounded" as CitationStatus,
+      },
+      // 1 paper says Llama
+      {
+        paperId: "p99",
+        title: "Paper 99",
+        openalexId: "oa:99",
+        questionKey: "model",
+        answer: "Llama",
+        confidence: 0.8,
+        citationStatus: "best_effort" as CitationStatus,
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.total).toBe(100);
+    expect(aggregate.answered).toBe(100);
+
+    // All three variants must appear in topAnswers
+    // (normalizeAnswer lowercases, so check lowercase)
+    const gpt4 = aggregate.topAnswers.find((a) => a.normalized === "gpt-4");
+    const claude = aggregate.topAnswers.find((a) => a.normalized === "claude");
+    const llama = aggregate.topAnswers.find((a) => a.normalized === "llama");
+
+    expect(gpt4).toBeDefined();
+    expect(claude).toBeDefined();
+    expect(llama).toBeDefined();
+
+    // Counts must be accurate (minority answers not collapsed to zero)
+    expect(gpt4?.count).toBe(98);
+    expect(claude?.count).toBe(1);
+    expect(llama?.count).toBe(1);
+  });
+
+  it("one-answer question (single paper): answered=1, total=1, topAnswers has one entry", () => {
+    const entries: InsightEntry[] = [
+      {
+        paperId: "p1",
+        title: "Only Paper",
+        openalexId: "oa:1",
+        questionKey: "scope",
+        answer: "Global",
+        confidence: 0.88,
+        citationStatus: "grounded",
+      },
+    ];
+
+    const aggregate = aggregateQuestionInsights(entries, "string");
+
+    expect(aggregate.total).toBe(1);
+    expect(aggregate.answered).toBe(1);
+    expect(aggregate.topAnswers.length).toBe(1);
+    expect(aggregate.topAnswers[0]?.normalized).toBe("global");
+    expect(aggregate.topAnswers[0]?.count).toBe(1);
   });
 });
