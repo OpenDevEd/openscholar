@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Extraction Insights Overhaul
 status: planning
-stopped_at: Completed 84-summary-cards-confidence-display/84-01-PLAN.md
-last_updated: "2026-03-10T09:05:26.276Z"
+stopped_at: Completed 84-summary-cards-confidence-display/84-02-PLAN.md
+last_updated: "2026-03-10T09:09:35.376Z"
 last_activity: 2026-03-10 — Roadmap created (5 phases, 19/19 requirements mapped)
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 83 P02 | 2 | 2 tasks | 1 files |
 | Phase 83-test-foundation-i18n-keys P01 | 10 | 3 tasks | 9 files |
 | Phase 84-summary-cards-confidence-display P01 | 2 | 2 tasks | 4 files |
+| Phase 84-summary-cards-confidence-display P02 | 1min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Recent decisions for v5.0:
 - [Phase 83-01]: i18n keys appended after planGateProNote in all 6 locale files — clean, non-disruptive insertion point at end of extraction namespace
 - [Phase 84-01]: Threshold constants use named color keys (green/yellow) for readable boundary comparisons; BADGE_COLOR_CLASSES co-located with threshold logic for single-import component use
 - [Phase 84-01]: getConfidenceTooltipKey() is a pure function (no React): no-content > abstract-only > mixed > confidence priority chain
+- [Phase 84-02]: Radix tooltip mocked via vi.mock to expose portal content in jsdom for unit tests (TooltipContent wraps in data-testid div)
+- [Phase 84-02]: Badge uses className override with BADGE_COLOR_CLASSES to bypass default variant; HelpCircle uses aria-hidden=true since tooltip provides accessible mechanism
 
 ### Pending Todos
 
@@ -112,5 +115,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-03-10 -- v5.0 roadmap created (phases 83-87)
-Stopped at: Completed 84-summary-cards-confidence-display/84-01-PLAN.md
+Stopped at: Completed 84-summary-cards-confidence-display/84-02-PLAN.md
 Resume file: None

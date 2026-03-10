@@ -22,7 +22,7 @@ Requirements for Extraction Insights Overhaul. Each maps to roadmap phases.
 
 ### Confidence Display
 
-- [ ] **CONF-01**: "Effective confidence" replaced with single contextual confidence badge
+- [x] **CONF-01**: "Effective confidence" replaced with single contextual confidence badge
 - [x] **CONF-02**: Badge explains source (abstract-only cap, full-text, no content) via tooltip
 - [x] **CONF-03**: Color-coded thresholds: green (>=85%), yellow (60-84%), red (<60%)
 
@@ -73,7 +73,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CARD-01 | Phase 84 | Pending |
 | CARD-02 | Phase 84 | Complete |
 | CARD-03 | Phase 84 | Pending |
-| CONF-01 | Phase 84 | Pending |
+| CONF-01 | Phase 84 | Complete |
 | CONF-02 | Phase 84 | Complete |
 | CONF-03 | Phase 84 | Complete |
 | QLIST-01 | Phase 86 | Pending |
