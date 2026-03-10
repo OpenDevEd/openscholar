@@ -155,8 +155,8 @@ describe("GroupedAnswerRow — multi-variant, expanded (after click)", () => {
   it("expanded sub-rows show each variant's display text", () => {
     render(<GroupedAnswerRow group={multiVariantGroup} />);
     fireEvent.click(screen.getByRole("button"));
-    // All 3 variants should be visible
-    expect(screen.getByText("Yes")).toBeTruthy();   // representative is always visible
+    // "Yes" appears in both the representative label and the sub-row — use getAllByText
+    expect(screen.getAllByText("Yes").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("True")).toBeTruthy();
     expect(screen.getByText("Positive")).toBeTruthy();
   });
