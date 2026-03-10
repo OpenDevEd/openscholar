@@ -86,7 +86,7 @@ None.
 | 10 | Extract screening progress into standalone dialog | 2026-03-09 | 12d954f | | [10-extract-screening-progress-into-standalo](./quick/10-extract-screening-progress-into-standalo/) |
 | 11 | Move screening button to sidebar footer with progress ring | 2026-03-09 | 6a8dc0b | | [11-move-screening-button-to-sidebar-footer-](./quick/11-move-screening-button-to-sidebar-footer-/) |
 | 12 | Enhance screening jobs modal UI/UX | 2026-03-09 | 90e8dc7 | Verified | [12-enhance-screening-jobs-modal-ui-ux-with-](./quick/12-enhance-screening-jobs-modal-ui-ux-with-/) |
-| 13 | Disable Review Queue and Report Builder feature flags | 2026-03-10 | 6588d1b | | [13-disable-review-queue-and-report-builder](./quick/13-disable-review-queue-and-report-builder/) |
+| 13 | Disable Review Queue and Report Builder feature flags | 2026-03-10 | 6588d1b | Verified | [13-disable-review-queue-and-report-builder](./quick/13-disable-review-queue-and-report-builder/) |
 
 ## Session Continuity
 
