@@ -588,7 +588,18 @@
     "planGateCardMethodsDescription": "Extrayez les interventions, comparateurs et le design d'étude.",
     "planGateCardPopulationTitle": "Population et contexte",
     "planGateCardPopulationDescription": "Capturez taille d'échantillon, démographie et contexte de l'étude.",
-    "planGateProNote": "L'extraction de données est disponible avec les plans Pro et Enterprise."
+    "planGateProNote": "L'extraction de données est disponible avec les plans Pro et Enterprise.",
+    "confidenceAbstractOnly": "Extraction résumé uniquement",
+    "confidenceNoContent": "Aucun contenu disponible",
+    "confidenceCapExplained": "La confiance est limitée à 70 % pour les articles avec résumé uniquement — l'accès au texte intégral améliore la précision",
+    "barScalingWarning": "Petit échantillon",
+    "progressBarLabel": "Couverture des réponses",
+    "statusDotComplete": "Tous les articles ont répondu",
+    "statusDotPartial": "Réponses partielles",
+    "statusDotEmpty": "Aucune réponse",
+    "answerGrouping": "Réponses regroupées",
+    "answerGroupingExpand": "{count} variantes",
+    "answerGroupingVariants": "variantes"
   },
   "toast": {
     "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",

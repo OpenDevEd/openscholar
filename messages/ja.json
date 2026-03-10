@@ -588,7 +588,18 @@
     "planGateCardMethodsDescription": "介入内容、比較対象、研究デザインを抽出します。",
     "planGateCardPopulationTitle": "対象集団と実施状況",
     "planGateCardPopulationDescription": "サンプルサイズ、背景属性、研究コンテキストを取得します。",
-    "planGateProNote": "データ抽出はProおよびEnterpriseプランで利用できます。"
+    "planGateProNote": "データ抽出はProおよびEnterpriseプランで利用できます。",
+    "confidenceAbstractOnly": "抄録のみの抽出",
+    "confidenceNoContent": "コンテンツがありません",
+    "confidenceCapExplained": "抄録のみの論文の信頼度は70%に上限設定されています — 全文アクセスにより精度が向上します",
+    "barScalingWarning": "少ないサンプル",
+    "progressBarLabel": "回答カバレッジ",
+    "statusDotComplete": "すべての論文が回答済み",
+    "statusDotPartial": "部分的な回答",
+    "statusDotEmpty": "回答なし",
+    "answerGrouping": "グループ化された回答",
+    "answerGroupingExpand": "{count} バリアント",
+    "answerGroupingVariants": "バリアント"
   },
   "toast": {
     "unexpectedError": "予期しないエラーが発生しました。もう一度お試しください。",

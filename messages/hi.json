@@ -588,7 +588,18 @@
     "planGateCardMethodsDescription": "इंटरवेंशन डिटेल्स, कम्पेरेटर और स्टडी डिज़ाइन निकालें।",
     "planGateCardPopulationTitle": "पॉपुलेशन और सेटिंग",
     "planGateCardPopulationDescription": "सैंपल साइज़, डेमोग्राफिक्स और स्टडी संदर्भ कैप्चर करें।",
-    "planGateProNote": "डेटा एक्सट्रैक्शन Pro और Enterprise प्लान में उपलब्ध है।"
+    "planGateProNote": "डेटा एक्सट्रैक्शन Pro और Enterprise प्लान में उपलब्ध है।",
+    "confidenceAbstractOnly": "केवल सार निष्कर्षण",
+    "confidenceNoContent": "कोई सामग्री उपलब्ध नहीं",
+    "confidenceCapExplained": "केवल सार वाले पेपर के लिए विश्वास 70% तक सीमित है — पूर्ण-पाठ पहुँच सटीकता बढ़ाती है",
+    "barScalingWarning": "छोटा नमूना",
+    "progressBarLabel": "उत्तर कवरेज",
+    "statusDotComplete": "सभी पेपर का उत्तर दिया गया",
+    "statusDotPartial": "आंशिक उत्तर",
+    "statusDotEmpty": "कोई उत्तर नहीं",
+    "answerGrouping": "समूहीकृत उत्तर",
+    "answerGroupingExpand": "{count} प्रकार",
+    "answerGroupingVariants": "प्रकार"
   },
   "toast": {
     "unexpectedError": "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें।",

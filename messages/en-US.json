@@ -589,7 +589,18 @@
     "planGateCardMethodsDescription": "Extract intervention details, comparators, and study design.",
     "planGateCardPopulationTitle": "Population and setting",
     "planGateCardPopulationDescription": "Capture sample size, demographics, and study context.",
-    "planGateProNote": "Data extraction is available on Pro and Enterprise plans."
+    "planGateProNote": "Data extraction is available on Pro and Enterprise plans.",
+    "confidenceAbstractOnly": "Abstract-only extraction",
+    "confidenceNoContent": "No content available",
+    "confidenceCapExplained": "Confidence is capped at 70% for abstract-only papers — full-text access improves accuracy",
+    "barScalingWarning": "Small sample",
+    "progressBarLabel": "Answer coverage",
+    "statusDotComplete": "All papers answered",
+    "statusDotPartial": "Partial answers",
+    "statusDotEmpty": "No answers",
+    "answerGrouping": "Grouped answers",
+    "answerGroupingExpand": "{count} variants",
+    "answerGroupingVariants": "variants"
   },
   "toast": {
     "unexpectedError": "An unexpected error occurred. Please try again.",

@@ -588,7 +588,18 @@
     "planGateCardMethodsDescription": "提取干预细节、对照组和研究设计。",
     "planGateCardPopulationTitle": "人群与研究场景",
     "planGateCardPopulationDescription": "获取样本量、人口学特征和研究背景。",
-    "planGateProNote": "数据提取功能仅在 Pro 和 Enterprise 套餐可用。"
+    "planGateProNote": "数据提取功能仅在 Pro 和 Enterprise 套餐可用。",
+    "confidenceAbstractOnly": "仅摘要提取",
+    "confidenceNoContent": "无可用内容",
+    "confidenceCapExplained": "仅有摘要的论文置信度上限为70% — 获取全文可提高准确性",
+    "barScalingWarning": "样本量较小",
+    "progressBarLabel": "回答覆盖率",
+    "statusDotComplete": "所有论文已回答",
+    "statusDotPartial": "部分回答",
+    "statusDotEmpty": "无回答",
+    "answerGrouping": "分组回答",
+    "answerGroupingExpand": "{count} 个变体",
+    "answerGroupingVariants": "变体"
   },
   "toast": {
     "unexpectedError": "发生意外错误。请重试。",
