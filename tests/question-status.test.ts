@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   statusFromCompletion,
   getAnswerPercentage,
-  STATUS_DOT_COLORS,
+  STATUS_DOT_CLASSES,
   STATUS_DOT_LABELS,
 } from '../lib/extraction/question-status';
 
@@ -54,17 +54,17 @@ describe('getAnswerPercentage', () => {
   });
 });
 
-describe('STATUS_DOT_COLORS', () => {
-  it('complete matches CITATION_STATUS_COLORS.grounded (#10b981) — no color drift', () => {
-    expect(STATUS_DOT_COLORS.complete).toBe('#10b981');
+describe('STATUS_DOT_CLASSES', () => {
+  it('complete uses emerald (green) Tailwind class', () => {
+    expect(STATUS_DOT_CLASSES.complete).toBe('bg-emerald-500 dark:bg-emerald-400');
   });
 
-  it('partial matches CITATION_STATUS_COLORS.best_effort (#f59e0b)', () => {
-    expect(STATUS_DOT_COLORS.partial).toBe('#f59e0b');
+  it('partial uses amber (yellow) Tailwind class', () => {
+    expect(STATUS_DOT_CLASSES.partial).toBe('bg-amber-500 dark:bg-amber-400');
   });
 
-  it('empty is grey (#d1d5db)', () => {
-    expect(STATUS_DOT_COLORS.empty).toBe('#d1d5db');
+  it('empty uses gray Tailwind class', () => {
+    expect(STATUS_DOT_CLASSES.empty).toBe('bg-gray-300 dark:bg-gray-600');
   });
 });
 

@@ -6,6 +6,10 @@ export type ConfidenceTooltipKey =
   | "confidenceNoContent"
   | "confidence";
 
+function isPdfEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED !== "false";
+}
+
 export function getConfidenceTooltipKey(
   abstractOnlyCount: number,
   noContentCount: number,
@@ -14,6 +18,12 @@ export function getConfidenceTooltipKey(
   // No content for all papers → explain missing evidence
   if (totalPapers > 0 && noContentCount === totalPapers) {
     return "confidenceNoContent";
+  }
+
+  // When PDF extraction is disabled, abstract-only is the normal operating mode
+  // — not a degraded fallback. No need to warn about a cap that doesn't apply.
+  if (!isPdfEnabled()) {
+    return "confidence";
   }
 
   // All papers abstract-only → explain the 70% cap

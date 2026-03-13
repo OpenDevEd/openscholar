@@ -2,8 +2,18 @@
 
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { getCardColor, BORDER_COLOR_CLASSES } from "@/lib/extraction/card-thresholds";
+import { motion } from "motion/react";
+import {
+  getCardColor,
+  BORDER_COLOR_CLASSES,
+  CARD_TINT_CLASSES,
+  ICON_COLOR_CLASSES,
+  pct,
+} from "@/lib/extraction/card-thresholds";
+import { cardEntrance, cardEntranceTransition } from "@/lib/animation-config";
 import { ConfidenceBadge } from "@/components/extraction/confidence-badge";
+import { CheckCircle2, ShieldCheck, AlertTriangle, FileX, Gauge } from "lucide-react";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 
 export interface SummaryCardsProps {
   answeredRate: number;
@@ -13,10 +23,6 @@ export interface SummaryCardsProps {
   totalPapers: number;
   abstractOnlyCount: number;
   averageConfidence: number;
-}
-
-function pct(value: number) {
-  return `${Math.round(value * 100)}%`;
 }
 
 export function SummaryCards({
@@ -29,65 +35,114 @@ export function SummaryCards({
   averageConfidence,
 }: SummaryCardsProps) {
   const tc = useTranslations("common");
-  const te = useTranslations("extraction");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const te: any = useTranslations("extraction");
+
+  const answeredColor = getCardColor("completion", answeredRate);
+  const groundedColor = getCardColor("quality", groundedRate);
+  const pdfEnabled = extractionFeatureFlags.pdf;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {/* 1. Answered card — always visible */}
-      <div
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div
+        {...cardEntrance}
+        transition={cardEntranceTransition(0)}
         className={cn(
-          "rounded-lg border border-border/50 bg-card p-4",
-          BORDER_COLOR_CLASSES[getCardColor("completion", answeredRate)]
+          "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
+          BORDER_COLOR_CLASSES[answeredColor],
+          CARD_TINT_CLASSES[answeredColor],
         )}
       >
-        <div className="text-xs text-muted-foreground">{tc("answered")}</div>
-        <div className="text-xl font-semibold">{pct(answeredRate)}</div>
-      </div>
+        <div className="flex items-center gap-2 mb-2">
+          <CheckCircle2 className={cn("h-5 w-5", ICON_COLOR_CLASSES[answeredColor])} />
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {tc("answered")}
+          </span>
+        </div>
+        <div className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+          {pct(answeredRate)}
+        </div>
+      </motion.div>
 
-      {/* 2. Grounded card — always visible */}
-      <div
-        className={cn(
-          "rounded-lg border border-border/50 bg-card p-4",
-          BORDER_COLOR_CLASSES[getCardColor("quality", groundedRate)]
-        )}
-      >
-        <div className="text-xs text-muted-foreground">{tc("grounded")}</div>
-        <div className="text-xl font-semibold">{pct(groundedRate)}</div>
-      </div>
-
-      {/* 3. Best effort card — hidden when bestEffortRate=0 */}
-      {bestEffortRate > 0 ? (
-        <div
+      {pdfEnabled && (
+        <motion.div
+          {...cardEntrance}
+          transition={cardEntranceTransition(0.06)}
           className={cn(
-            "rounded-lg border border-border/50 bg-card p-4",
-            BORDER_COLOR_CLASSES["yellow"]
+            "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
+            BORDER_COLOR_CLASSES[groundedColor],
+            CARD_TINT_CLASSES[groundedColor],
           )}
         >
-          <div className="text-xs text-muted-foreground">{te("bestEffort")}</div>
-          <div className="text-xl font-semibold">{pct(bestEffortRate)}</div>
-        </div>
-      ) : null}
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className={cn("h-5 w-5", ICON_COLOR_CLASSES[groundedColor])} />
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {tc("grounded")}
+            </span>
+          </div>
+          <div className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+            {pct(groundedRate)}
+          </div>
+        </motion.div>
+      )}
 
-      {/* 4. No content card — hidden when noContentCount=0 */}
-      {noContentCount > 0 ? (
-        <div
+      {pdfEnabled && bestEffortRate > 0 ? (
+        <motion.div
+          {...cardEntrance}
+          transition={cardEntranceTransition(0.12)}
           className={cn(
-            "rounded-lg border border-border/50 bg-card p-4",
-            BORDER_COLOR_CLASSES["red"]
+            "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
+            BORDER_COLOR_CLASSES["yellow"],
+            CARD_TINT_CLASSES["yellow"],
           )}
         >
-          <div className="text-xs text-muted-foreground">{te("noContentPapers")}</div>
-          <div className="text-xl font-semibold">{noContentCount}</div>
-        </div>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className={cn("h-5 w-5", ICON_COLOR_CLASSES["yellow"])} />
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {te("bestEffort")}
+            </span>
+          </div>
+          <div className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+            {pct(bestEffortRate)}
+          </div>
+        </motion.div>
       ) : null}
 
-      {/* 5. Confidence badge area — always visible */}
-      <div
-        className="rounded-lg border border-border/50 bg-card p-4"
+      {pdfEnabled && noContentCount > 0 ? (
+        <motion.div
+          {...cardEntrance}
+          transition={cardEntranceTransition(0.18)}
+          className={cn(
+            "rounded-xl border border-border/60 p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md",
+            BORDER_COLOR_CLASSES["red"],
+            CARD_TINT_CLASSES["red"],
+          )}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <FileX className={cn("h-5 w-5", ICON_COLOR_CLASSES["red"])} />
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {te("noContentPapers")}
+            </span>
+          </div>
+          <div className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+            {noContentCount}
+          </div>
+        </motion.div>
+      ) : null}
+
+      <motion.div
+        {...cardEntrance}
+        transition={cardEntranceTransition(pdfEnabled ? 0.24 : 0.06)}
+        className="rounded-xl border border-border/60 bg-card p-5 shadow-sm motion-safe:transition-shadow hover:shadow-md"
         data-testid="confidence-area"
       >
-        <div className="text-xs text-muted-foreground">{te("confidence")}</div>
-        <div className="mt-2">
+        <div className="flex items-center gap-2 mb-2">
+          <Gauge className="h-5 w-5 text-muted-foreground" />
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {te("confidence")}
+          </span>
+        </div>
+        <div className="mt-1">
           <ConfidenceBadge
             value={averageConfidence}
             abstractOnlyCount={abstractOnlyCount}
@@ -95,7 +150,7 @@ export function SummaryCards({
             totalPapers={totalPapers}
           />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

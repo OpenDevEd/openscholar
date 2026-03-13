@@ -72,3 +72,22 @@ export const submitButtonTextVariants = {
   animate: { y: 0, opacity: 1 },
   exit: { y: -4, opacity: 0 },
 };
+
+/**
+ * Card entrance animation — slide-up fade for panels, cards, and sections.
+ * Used across extraction insights and anywhere cards enter the viewport.
+ */
+export const cardEntrance = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+} as const;
+
+/**
+ * Card entrance transition with optional stagger delay.
+ * Easing curve tuned for a natural deceleration feel.
+ */
+export const cardEntranceTransition = (delay = 0) => ({
+  duration: 0.35,
+  delay,
+  ease: [0.25, 0.46, 0.45, 0.94] as const,
+});

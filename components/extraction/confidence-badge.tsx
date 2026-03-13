@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/tooltip";
 import { BADGE_COLOR_CLASSES, getConfidenceColor } from "@/lib/extraction/card-thresholds";
 import { getConfidenceTooltipKey } from "@/lib/extraction/confidence-messages";
+import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
 
 export interface ConfidenceBadgeProps {
-  value: number; // 0–1
+  value: number;
   abstractOnlyCount: number;
   noContentCount: number;
   totalPapers: number;
@@ -24,9 +25,12 @@ export function ConfidenceBadge({
   noContentCount,
   totalPapers,
 }: ConfidenceBadgeProps) {
-  const t = useTranslations("extraction");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const t: any = useTranslations("extraction");
   const color = getConfidenceColor(value);
-  const tooltipKey = getConfidenceTooltipKey(abstractOnlyCount, noContentCount, totalPapers);
+  const tooltipKey = extractionFeatureFlags.pdf
+    ? getConfidenceTooltipKey(abstractOnlyCount, noContentCount, totalPapers)
+    : "confidence" as const;
   const colorClasses = BADGE_COLOR_CLASSES[color];
   const percentage = Math.round(value * 100);
 
@@ -34,10 +38,18 @@ export function ConfidenceBadge({
     <Tooltip>
       <TooltipTrigger asChild>
         <Badge
-          className={`${colorClasses} cursor-help inline-flex items-center gap-1.5 border px-2.5 py-1`}
+          tabIndex={0}
+          className={`${colorClasses} cursor-help inline-flex items-center gap-1.5 border px-3 py-1.5 rounded-lg`}
         >
-          <span className="text-sm font-semibold">{percentage}%</span>
-          <HelpCircle className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
+          <span className="text-sm font-bold tabular-nums">{percentage}%</span>
+          <HelpCircle className="h-3.5 w-3.5 opacity-60" aria-hidden="true" />
+          <span className="sr-only">
+            {tooltipKey === "confidenceAbstractOnly"
+              ? `${t("confidenceAbstractOnly")}. ${t("confidenceCapExplained")}`
+              : tooltipKey === "confidenceNoContent"
+                ? t("confidenceNoContent")
+                : t("confidenceCapExplained")}
+          </span>
         </Badge>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-xs">

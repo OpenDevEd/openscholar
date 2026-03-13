@@ -361,11 +361,17 @@ export function applyAbstractOnlyPolicy(params: {
   citationStatus: CitationStatus;
   strictNull: boolean;
 } {
+  const pdfDisabled = !isPdfExtractionEnabled();
+
   if (params.extracted.answer !== null) {
+    // When PDF is disabled, abstract IS the authoritative source — no penalty.
+    // When PDF is enabled but unavailable for this paper, cap as degraded mode.
     return {
       answer: params.extracted.answer,
-      confidence: Math.min(params.extracted.confidence, ABSTRACT_ONLY_CONFIDENCE_CAP),
-      citationStatus: "best_effort",
+      confidence: pdfDisabled
+        ? params.extracted.confidence
+        : Math.min(params.extracted.confidence, ABSTRACT_ONLY_CONFIDENCE_CAP),
+      citationStatus: pdfDisabled ? "grounded" : "best_effort",
       strictNull: false,
     };
   }
@@ -785,7 +791,6 @@ export const downloadAndIndexPdfAction = internalAction({
           return {
             success: true,
             chunksCount: 0,
-            error: "PDF processing disabled by feature flag; continuing in abstract-only mode.",
           };
         }
         return {

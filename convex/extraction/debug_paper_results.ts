@@ -16,7 +16,7 @@ export const debugPaperResults = internalQuery({
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", paperId))
       .collect();
-    
+
     return {
       paper: paper ? {
         id: paper._id,
@@ -36,3 +36,4 @@ export const debugPaperResults = internalQuery({
     };
   },
 });
+

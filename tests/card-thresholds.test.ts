@@ -136,11 +136,11 @@ describe("CARD_THRESHOLDS constants", () => {
 
 describe("BADGE_COLOR_CLASSES", () => {
   it("exports badge class for green", () => {
-    expect(BADGE_COLOR_CLASSES.green).toContain("green");
+    expect(BADGE_COLOR_CLASSES.green).toContain("emerald");
   });
 
   it("exports badge class for yellow", () => {
-    expect(BADGE_COLOR_CLASSES.yellow).toContain("yellow");
+    expect(BADGE_COLOR_CLASSES.yellow).toContain("amber");
   });
 
   it("exports badge class for red", () => {
@@ -150,11 +150,11 @@ describe("BADGE_COLOR_CLASSES", () => {
 
 describe("BORDER_COLOR_CLASSES", () => {
   it("exports border class for green", () => {
-    expect(BORDER_COLOR_CLASSES.green).toContain("green");
+    expect(BORDER_COLOR_CLASSES.green).toContain("emerald");
   });
 
   it("exports border class for yellow", () => {
-    expect(BORDER_COLOR_CLASSES.yellow).toContain("yellow");
+    expect(BORDER_COLOR_CLASSES.yellow).toContain("amber");
   });
 
   it("exports border class for red", () => {

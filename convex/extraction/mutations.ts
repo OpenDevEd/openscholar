@@ -1364,6 +1364,11 @@ export const createPaperRecords = internalMutation({
         storageId: sanitizedStorageId,
         abstract: paper.abstract,
       });
+
+      if (!pdfEnabled && !processable) {
+        continue;
+      }
+
       await ctx.db.insert("extractionPapers", {
         jobId: args.jobId,
         openalexId: paper.openalexId,

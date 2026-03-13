@@ -28,15 +28,11 @@ export function getAnswerPercentage(answered: number, total: number): number {
   return Math.round((answered / Math.max(total, 1)) * 100);
 }
 
-/**
- * Status dot colors matching CITATION_STATUS_COLORS in bar-scaling.ts.
- * Hex values kept in sync to prevent visual inconsistency between
- * status dots and bar chart segments.
- */
-export const STATUS_DOT_COLORS: Record<QuestionStatus, string> = {
-  complete: '#10b981',  // green — matches CITATION_STATUS_COLORS.grounded
-  partial: '#f59e0b',   // yellow — matches CITATION_STATUS_COLORS.best_effort
-  empty: '#d1d5db',     // grey — muted-foreground
+/** Tailwind class map for status dots — dark mode aware */
+export const STATUS_DOT_CLASSES: Record<QuestionStatus, string> = {
+  complete: "bg-emerald-500 dark:bg-emerald-400",
+  partial: "bg-amber-500 dark:bg-amber-400",
+  empty: "bg-gray-300 dark:bg-gray-600",
 } as const;
 
 /**

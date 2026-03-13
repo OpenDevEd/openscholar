@@ -22,16 +22,6 @@ vi.mock("../components/extraction/bar-visualization", () => ({
   ),
 }));
 
-// Mock GroupedAnswerRow (added in plan 03) — renders label with group count
-vi.mock("../components/extraction/grouped-answer-row", () => ({
-  GroupedAnswerRow: ({ group }: { group: { groupRepresentative: string; variants: unknown[] } }) => (
-    <div
-      data-testid="grouped-answer-row-mock"
-      data-representative={group.groupRepresentative}
-      data-variant-count={group.variants.length}
-    />
-  ),
-}));
 
 // ─── Mock data helpers ────────────────────────────────────────────────────────
 
@@ -269,7 +259,7 @@ describe("InsightsQuestionPanel — Grouping wiring (87-03)", () => {
     expect(answerCounts.some((c) => c === 1)).toBe(true);
   });
 
-  it("GroupedAnswerRow renders for each grouped answer in the distribution section", () => {
+  it("grouped answers are passed to BarVisualization (no duplicate GroupedAnswerRow)", () => {
     setInsightsMock(booleanInsights);
 
     render(
@@ -280,13 +270,14 @@ describe("InsightsQuestionPanel — Grouping wiring (87-03)", () => {
       />
     );
 
-    // 3 boolean synonyms merge into 1 group — 1 GroupedAnswerRow should render
-    const groupedRows = screen.getAllByTestId("grouped-answer-row-mock");
-    expect(groupedRows.length).toBe(1);
-    // Representative is "Yes" (highest count variant)
-    expect(groupedRows[0].getAttribute("data-representative")).toBe("Yes");
-    // 3 variants in the group
-    expect(groupedRows[0].getAttribute("data-variant-count")).toBe("3");
+    // 3 boolean synonyms merge into 1 group — BarVisualization receives 1 item
+    const barMocks = screen.getAllByTestId("bar-visualization-mock");
+    const answerCounts = barMocks.map((el) =>
+      Number(el.getAttribute("data-answer-count"))
+    );
+    expect(answerCounts.some((c) => c === 1)).toBe(true);
+    // No duplicate grouped-answer-row elements should exist
+    expect(screen.queryAllByTestId("grouped-answer-row-mock").length).toBe(0);
   });
 
   it("entityDistribution is NOT grouped — entity count unchanged in array mode (entities view)", () => {

@@ -51,9 +51,13 @@ export const runExtractionWorkflow = workflow.define({
     console.log(`[Workflow] Loaded ${questions.length} questions`);
 
     // Step 2: Fetch papers from sources
+    const pdfEnabledEarly = await step.runQuery(
+      internal.extraction.queries.getPdfExtractionEnabledInternal,
+      {}
+    );
     await step.runMutation(internal.extraction.mutations.updateJobStatus, {
       jobId,
-      status: "downloading_pdfs",
+      status: pdfEnabledEarly ? "downloading_pdfs" : "indexing",
       totalPapers: 0,
     });
 
@@ -171,17 +175,18 @@ export const runExtractionWorkflow = workflow.define({
       (paper) => paper.processable !== false
     ).length;
 
-    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
-      jobId,
-      status: "downloading_pdfs",
-      totalPapers: processableCount,
-    });
-
-    console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
     const pdfEnabled = await step.runQuery(
       internal.extraction.queries.getPdfExtractionEnabledInternal,
       {}
     );
+
+    await step.runMutation(internal.extraction.mutations.updateJobStatus, {
+      jobId,
+      status: pdfEnabled ? "downloading_pdfs" : "indexing",
+      totalPapers: processableCount,
+    });
+
+    console.log(`[Workflow] Enqueueing ${paperIds.length} papers for processing`);
 
     // Enqueue each paper for processing
     let enqueuedCount = 0;
@@ -195,15 +200,12 @@ export const runExtractionWorkflow = workflow.define({
       const isProcessable = paper.processable !== false && computedProcessable;
 
       if (!isProcessable) {
-        // Skip papers without any content - mark as failed
         await step.runMutation(
           internal.extraction.mutations.updatePaperStatus,
           {
             paperId: paper._id,
             status: "download_failed",
-            errorMessage: pdfEnabled
-              ? "No PDF URL or abstract available"
-              : "PDF processing is disabled and no usable abstract is available",
+            errorMessage: "No PDF URL or abstract available",
           }
         );
         await step.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
