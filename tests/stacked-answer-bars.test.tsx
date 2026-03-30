@@ -2,6 +2,19 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { StackedAnswerBars } from "../components/extraction/stacked-answer-bars";
 
+// Mock next-intl — return key as value (avoids NextIntlClientProvider setup)
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
+// Mock tooltip to render content in DOM (avoid Radix portals in unit tests)
+vi.mock("@/components/ui/tooltip", () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode; asChild?: boolean }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-content">{children}</div>,
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 // Mock Recharts to avoid jsdom canvas/SVG issues — same pattern as Phase 84
 vi.mock("recharts", () => ({
   BarChart: ({ children, data }: any) => (
@@ -40,15 +53,15 @@ describe("StackedAnswerBars", () => {
     expect(screen.getByText("No")).toBeDefined();
   });
 
-  it("renders a Recharts mock for each answer row", () => {
+  it("renders tooltip content for each citation status segment", () => {
     render(<StackedAnswerBars answers={sampleAnswers} maxCount={80} />);
-    const charts = screen.getAllByTestId("recharts-mock");
-    expect(charts.length).toBeGreaterThanOrEqual(1);
+    const tooltips = screen.getAllByTestId("tooltip-content");
+    expect(tooltips.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders empty state message when all answers have count=0", () => {
     const emptyAnswers = sampleAnswers.map(a => ({ ...a, count: 0 }));
     render(<StackedAnswerBars answers={emptyAnswers} maxCount={0} />);
-    expect(screen.getByText(/no answers/i)).toBeDefined();
+    expect(screen.getByText("noAnswerValues")).toBeDefined();
   });
 });

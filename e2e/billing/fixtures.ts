@@ -162,9 +162,9 @@ export const test = base.extend<BillingFixtures>({
     const waiter = new WebhookWaiter(parsedUserId);
     await use(waiter);
 
-    // Teardown: reset billing state in Convex
+    // Teardown: hard-delete the test user and all billing data from Convex
     try {
-      await waiter.resetBillingState();
+      await waiter.deleteTestUser();
     } catch {
       // Best-effort cleanup
     }

@@ -15,7 +15,7 @@ import {
   type MonthlyCreditGrantDecision,
 } from "./lib/invoiceGrantPolicy";
 import { requireCreditsEnabled } from "../lib/featureFlags";
-import { PLAN_CONFIG } from "../lib/constants";
+import { PLAN_CONFIG, FREE_SIGNUP_CREDIT_GRANT } from "../lib/constants";
 import { planValidator } from "../lib/validators";
 import {
   CREDIT_TOPUP_CURRENCY,
@@ -108,9 +108,14 @@ export function buildInitialCreditsRecord(args: {
   userId: Doc<"users">["_id"];
   now: number;
 }) {
+  const signupCredits = applyTierFreeCreditCap({
+    plan: "free",
+    currentFreeBalance: 0,
+    amountToAdd: FREE_SIGNUP_CREDIT_GRANT,
+  });
   return {
     userId: args.userId,
-    freeBalance: 0,
+    freeBalance: signupCredits.newFreeBalance,
     paidBalance: 0,
     lifetimeUsed: 0,
     lastUpdatedAt: args.now,

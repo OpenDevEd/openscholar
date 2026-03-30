@@ -2,7 +2,7 @@ import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";
-import { createUserWithDefaults } from "../lib/userCreation";
+import { createUserWithDefaults, repairUserBillingRecords } from "../lib/userCreation";
 
 export const getCurrentUser = internalQuery({
   args: {},
@@ -46,6 +46,7 @@ export const upsertUserFromClerk = internalMutation({
         state: "active",
         updatedAt: Date.now(),
       });
+      await repairUserBillingRecords(ctx, existing._id);
       return existing._id;
     }
 

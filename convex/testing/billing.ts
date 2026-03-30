@@ -296,35 +296,26 @@ export const getBillingSnapshotForUser = internalQuery({
   },
 });
 
-export const resetBillingStateForUser = internalMutation({
-  args: {
-    userId: v.id("users"),
-  },
-  returns: v.object({
-    creditsDeleted: v.number(),
-    creditTransactionsDeleted: v.number(),
-    subscriptionsDeleted: v.number(),
-    billingCustomersDeleted: v.number(),
-    stripeEventLogsDeleted: v.number(),
-    stripeObjectIdsSeen: v.number(),
-  }),
-  handler: async (ctx, args) => {
+async function deleteBillingStateForUser(
+  ctx: Pick<MutationCtx, "db">,
+  userId: Id<"users">,
+) {
     const creditsRows = await ctx.db
       .query("credits")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
     const subscriptions = await ctx.db
       .query("subscriptions")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
     const billingCustomers = await ctx.db
       .query("billingCustomers")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
-    const creditTransactions = await listCreditTransactionsForUser(ctx, args.userId, creditsRows);
+    const creditTransactions = await listCreditTransactionsForUser(ctx, userId, creditsRows);
 
     const objectIds = collectBillingStripeObjectIds({
       subscriptions,
@@ -381,5 +372,62 @@ export const resetBillingStateForUser = internalMutation({
       stripeEventLogsDeleted: stripeEventLogs.length,
       stripeObjectIdsSeen: stripeObjectIdSet.size,
     };
+}
+
+export const resetBillingStateForUser = internalMutation({
+  args: {
+    userId: v.id("users"),
+  },
+  returns: v.object({
+    creditsDeleted: v.number(),
+    creditTransactionsDeleted: v.number(),
+    subscriptionsDeleted: v.number(),
+    billingCustomersDeleted: v.number(),
+    stripeEventLogsDeleted: v.number(),
+    stripeObjectIdsSeen: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    return await deleteBillingStateForUser(ctx, args.userId);
+  },
+});
+
+/**
+ * Hard-delete a test user and all associated data.
+ * For e2e test teardown — removes the user record itself so test users
+ * don't linger in the database for 30 days waiting for the maintenance cron.
+ */
+export const deleteTestUser = internalMutation({
+  args: {
+    userId: v.id("users"),
+  },
+  returns: v.object({
+    billingDeleted: v.object({
+      creditsDeleted: v.number(),
+      creditTransactionsDeleted: v.number(),
+      subscriptionsDeleted: v.number(),
+      billingCustomersDeleted: v.number(),
+      stripeEventLogsDeleted: v.number(),
+      stripeObjectIdsSeen: v.number(),
+    }),
+    userDeleted: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const billingDeleted = await deleteBillingStateForUser(ctx, args.userId);
+
+    const user = await ctx.db.get(args.userId);
+    if (user) {
+      // Clean up non-billing user data
+      const apiKeys = await ctx.db
+        .query("apiKeys")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect();
+      for (const key of apiKeys) {
+        await ctx.db.delete(key._id);
+      }
+
+      await ctx.db.delete(args.userId);
+    }
+
+    return { billingDeleted, userDeleted: !!user };
   },
 });

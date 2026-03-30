@@ -137,6 +137,17 @@ export class WebhookWaiter {
   }
 
   /**
+   * Hard-delete the test user and all associated data from Convex.
+   * Called during fixture teardown to prevent test user accumulation.
+   */
+  async deleteTestUser(): Promise<void> {
+    await this.runConvexQuery(
+      "testing/billing:deleteTestUser",
+      { userId: this.convexUserId },
+    );
+  }
+
+  /**
    * Poll a condition until it returns a non-null value or times out.
    * Adapted from tests/live-billing/support.ts waitForCondition.
    */
