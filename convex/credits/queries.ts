@@ -4,6 +4,7 @@ import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
 import { components } from "../_generated/api";
 import { getCreditTopupCatalog, getCreditsPerUsd } from "../lib/creditTopups";
+import { getFlag } from "../featureFlags/guard";
 
 
 export const TRACKED_GRANT_EVENT_TYPES = [
@@ -130,7 +131,8 @@ export const getTopupCatalog = query({
   }),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    const topupsEnabled = process.env.NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED !== "false";
+    const topupsFlag = await getFlag(ctx, "credits.topups");
+    const topupsEnabled = topupsFlag?.enabled ?? true;
     const creditsPerUsd = getCreditsPerUsd();
 
     if (!user || !topupsEnabled) {

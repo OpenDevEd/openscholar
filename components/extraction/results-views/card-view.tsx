@@ -18,7 +18,7 @@ import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { getAvgConfidence } from "@/lib/extraction/filtering";
 import { ConfidenceRing } from "../confidence-ring";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import {
   getAllCitationLocations,
   getCitationStatus,
@@ -44,7 +44,7 @@ export const CardView = memo(function CardView({
 }: CardViewProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const pdfEnabled = extractionFeatureFlags.pdf;
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {

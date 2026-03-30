@@ -1,0 +1,117 @@
+import { internalMutation, internalQuery } from "../_generated/server";
+import { v } from "convex/values";
+import { resolveEffectivePlan } from "../../lib/billing/entitlements";
+import { getPlanTier } from "../lib/constants";
+import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
+
+/**
+ * Upsert a feature flag. Used for seeding and admin operations.
+ */
+export const upsert = internalMutation({
+  args: {
+    key: v.string(),
+    enabled: v.boolean(),
+    minimumTier: v.number(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("featureFlags")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        enabled: args.enabled,
+        minimumTier: args.minimumTier,
+        description: args.description,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("featureFlags", {
+        ...args,
+        updatedAt: Date.now(),
+      });
+    }
+  },
+});
+
+/**
+ * Seed all feature flags with defaults. Idempotent — only inserts flags
+ * that don't already exist.
+ */
+export const seed = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const defaults: Array<{ key: string; enabled: boolean; minimumTier: number; description: string }> = [
+      { key: "extraction.enabled", enabled: true, minimumTier: 0, description: "Master switch for the extraction feature" },
+      { key: "extraction.pdf", enabled: true, minimumTier: 0, description: "PDF processing in extraction pipelines" },
+      { key: "extraction.insights", enabled: true, minimumTier: 20, description: "AI-powered insights panel in extraction results" },
+      { key: "extraction.reviewQueue", enabled: false, minimumTier: 20, description: "Manual review queue for extraction results" },
+      { key: "extraction.reportBuilder", enabled: false, minimumTier: 20, description: "Report builder for extraction jobs" },
+      { key: "extraction.start", enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
+      { key: "extraction.templates", enabled: true, minimumTier: 20, description: "Workflow template management (Pro+)" },
+      { key: "credits.enabled", enabled: true, minimumTier: 0, description: "Credit system master switch" },
+      { key: "credits.topups", enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
+      { key: "subscriptions.enabled", enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
+      { key: "ai.serverMode", enabled: true, minimumTier: 10, description: "Server-side AI operations (Go+)" },
+    ];
+
+    for (const flag of defaults) {
+      const existing = await ctx.db
+        .query("featureFlags")
+        .withIndex("by_key", (q) => q.eq("key", flag.key))
+        .unique();
+
+      if (!existing) {
+        await ctx.db.insert("featureFlags", {
+          ...flag,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+  },
+});
+
+/**
+ * Internal query to check a feature flag. Used by actions via ctx.runQuery
+ * since actions don't have ctx.db access.
+ */
+export const checkFlag = internalQuery({
+  args: {
+    key: v.string(),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const flag = await ctx.db
+      .query("featureFlags")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+
+    if (!flag || !flag.enabled) {
+      return { allowed: false, reason: "disabled" as const };
+    }
+
+    if (flag.minimumTier > 0) {
+      if (!args.userId) {
+        return { allowed: false, reason: "unauthenticated" as const };
+      }
+
+      const subscriptions = await ctx.db
+        .query("subscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId!))
+        .order("desc")
+        .collect();
+
+      const canonical = selectCanonicalSubscription(subscriptions);
+      const plan = resolveEffectivePlan(canonical);
+      const tier = getPlanTier(plan);
+
+      if (tier < flag.minimumTier) {
+        return { allowed: false, reason: "insufficient_tier" as const };
+      }
+    }
+
+    return { allowed: true, reason: "ok" as const };
+  },
+});

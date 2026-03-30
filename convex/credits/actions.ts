@@ -16,7 +16,7 @@ import {
 import { stripeClient } from "../stripe";
 import { getOrCreateValidCustomer } from "../lib/stripeCustomer";
 import { requireActionAuth } from "../lib/auth";
-import { requireCreditsEnabled, requireCreditTopupsEnabled } from "../lib/featureFlags";
+import { requireFeatureInAction } from "../featureFlags/guard";
 import {
   CREDIT_TOPUP_CURRENCY,
   getCreditsPerUsd,
@@ -47,8 +47,8 @@ export const createTopupCheckoutSession = action({
     url: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args): Promise<{ url: string | null }> => {
-    requireCreditsEnabled();
-    requireCreditTopupsEnabled();
+    await requireFeatureInAction(ctx, "credits.enabled");
+    await requireFeatureInAction(ctx, "credits.topups");
     const identity = await requireActionAuth(ctx);
 
     // Rate limit check

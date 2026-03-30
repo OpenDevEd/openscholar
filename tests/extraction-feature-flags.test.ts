@@ -1,55 +1,18 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-const ORIGINAL_EXTRACTION_PDF_FLAG = process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
+import { describe, expect, it } from "vitest";
 
 async function loadExtractionContent() {
-  vi.resetModules();
   return import("../convex/extraction/content");
 }
 
-async function loadExtractionFeatureFlags() {
-  vi.resetModules();
-  return import("../lib/extraction/feature-flags");
-}
-
-afterEach(() => {
-  if (ORIGINAL_EXTRACTION_PDF_FLAG === undefined) {
-    delete process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
-  } else {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = ORIGINAL_EXTRACTION_PDF_FLAG;
-  }
-});
-
 describe("extraction PDF feature flag", () => {
-  it("defaults to enabled when env var is unset", async () => {
-    delete process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
-
-    const content = await loadExtractionContent();
-    const clientFlags = await loadExtractionFeatureFlags();
-
-    expect(content.isPdfExtractionEnabled()).toBe(true);
-    expect(clientFlags.extractionFeatureFlags.pdf).toBe(true);
-  });
-
-  it("disables PDF processing when env var is false", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
-
-    const content = await loadExtractionContent();
-    const clientFlags = await loadExtractionFeatureFlags();
-
-    expect(content.isPdfExtractionEnabled()).toBe(false);
-    expect(clientFlags.extractionFeatureFlags.pdf).toBe(false);
-  });
-
-  it("treats PDF-only papers as non-processable when PDF extraction is disabled", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
-
+  it("treats PDF-only papers as non-processable when pdfEnabled is false", async () => {
     const content = await loadExtractionContent();
 
     expect(
       content.getProcessableFlags({
         pdfUrl: "https://example.org/paper.pdf",
         abstract: undefined,
+        pdfEnabled: false,
       })
     ).toEqual({
       hasPdfUrl: false,
@@ -58,15 +21,14 @@ describe("extraction PDF feature flag", () => {
     });
   });
 
-  it("keeps abstract-only papers processable when PDF extraction is disabled", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
-
+  it("keeps abstract-only papers processable when pdfEnabled is false", async () => {
     const content = await loadExtractionContent();
 
     expect(
       content.getProcessableFlags({
         pdfUrl: "https://example.org/paper.pdf",
         abstract: "a".repeat(80),
+        pdfEnabled: false,
       })
     ).toEqual({
       hasPdfUrl: false,
@@ -75,9 +37,7 @@ describe("extraction PDF feature flag", () => {
     });
   });
 
-  it("allows overriding pdfEnabled to true even when env disables PDF extraction", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
-
+  it("allows PDF processing when pdfEnabled is true", async () => {
     const content = await loadExtractionContent();
 
     expect(
@@ -93,9 +53,7 @@ describe("extraction PDF feature flag", () => {
     });
   });
 
-  it("allows overriding pdfEnabled to false even when env enables PDF extraction", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "true";
-
+  it("disables PDF processing when pdfEnabled is false", async () => {
     const content = await loadExtractionContent();
 
     expect(

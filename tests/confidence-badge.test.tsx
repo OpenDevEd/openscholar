@@ -29,6 +29,11 @@ vi.mock("@/lib/extraction/card-thresholds", () => ({
   },
 }));
 
+// Mock feature flags hook
+vi.mock("@/lib/feature-flags/hook", () => ({
+  useFeatureFlag: () => true,
+}));
+
 // Mock confidence-messages: return deterministic key based on counts
 vi.mock("@/lib/extraction/confidence-messages", () => ({
   getConfidenceTooltipKey: (

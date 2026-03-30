@@ -22,8 +22,8 @@ vi.mock("lucide-react", () => ({
   Gauge: () => <span data-testid="icon-gauge" />,
 }));
 
-vi.mock("@/lib/extraction/feature-flags", () => ({
-  extractionFeatureFlags: { enabled: true, pdf: true, insights: true, reviewQueue: false, reportBuilder: false },
+vi.mock("@/lib/feature-flags/hook", () => ({
+  useFeatureFlag: () => true,
 }));
 
 vi.mock("@/lib/extraction/card-thresholds", () => ({

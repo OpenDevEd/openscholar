@@ -15,8 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { isEntitledStatus } from "@/lib/billing/entitlements";
-import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
-import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getToastMessageKeyForErrorCode } from "@/lib/toast/error-resolver";
 import { getFreeCreditCapForPlan } from "@/convex/lib/constants";
 
@@ -28,6 +27,9 @@ export default function BillingPage() {
   const format = useFormatter();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const creditsEnabled = useFeatureFlag("credits.enabled");
+  const topupsEnabled = useFeatureFlag("credits.topups");
+  const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
   const creditBalanceQuery = useProtectedQuery(api.credits.queries.getMyBalance, {});
@@ -186,14 +188,14 @@ export default function BillingPage() {
   useEffect(() => {
     if (
       !subscriptionState.isSettling &&
-      !subscriptionsFeatureFlags.enabled &&
+      !subscriptionsEnabled &&
       showUpgradeCta
     ) {
       router.replace("/settings");
     }
   }, [
     subscriptionState.isSettling,
-    subscriptionsFeatureFlags.enabled,
+    subscriptionsEnabled,
     showUpgradeCta,
     router,
   ]);
@@ -207,11 +209,11 @@ export default function BillingPage() {
     // Route truly free users to pricing. If a Stripe subscription/customer is linked,
     // always prefer portal management (including non-entitled states like unpaid).
     // When subscriptions disabled, do not route to pricing.
-    if (showUpgradeCta && subscriptionsFeatureFlags.enabled) {
+    if (showUpgradeCta && subscriptionsEnabled) {
       router.push("/pricing");
       return;
     }
-    if (showUpgradeCta && !subscriptionsFeatureFlags.enabled) {
+    if (showUpgradeCta && !subscriptionsEnabled) {
       toast.error(tc("somethingWentWrong"), t("upgradesUnavailable"));
       return;
     }
@@ -285,7 +287,7 @@ export default function BillingPage() {
     : 0;
 
   const freeCreditCap = getFreeCreditCapForPlan(effectivePlan);
-  const isFreeCapReached = creditsFeatureFlags.enabled &&
+  const isFreeCapReached = creditsEnabled &&
     creditBalance != null &&
     freeCreditCap > 0 &&
     creditBalance.free >= freeCreditCap;
@@ -336,7 +338,7 @@ export default function BillingPage() {
           onClick={handleManageSubscription}
           disabled={
             isLoading ||
-            (showUpgradeCta && !subscriptionsFeatureFlags.enabled)
+            (showUpgradeCta && !subscriptionsEnabled)
           }
           size="sm"
           // Prevent button from being re-rendered during loading state change
@@ -566,7 +568,7 @@ export default function BillingPage() {
           </div>
         )}
 
-        {creditsFeatureFlags.enabled && creditBalance && (
+        {creditsEnabled && creditBalance && (
           <CreditBalanceCard
             freeBalance={creditBalance.free}
             paidBalance={creditBalance.paid}
@@ -576,7 +578,7 @@ export default function BillingPage() {
           />
         )}
 
-        {creditsFeatureFlags.enabled && creditsFeatureFlags.topupsEnabled && creditBalance && (
+        {creditsEnabled && topupsEnabled && creditBalance && (
           <div className="flex justify-end -mt-2">
             <button
               onClick={() => {
@@ -592,8 +594,8 @@ export default function BillingPage() {
           </div>
         )}
 
-        {creditsFeatureFlags.enabled &&
-          creditsFeatureFlags.topupsEnabled &&
+        {creditsEnabled &&
+          topupsEnabled &&
           topupCatalog?.enabled &&
           topupCatalog.bundles.length > 0 && (
             <div id="topup-section">

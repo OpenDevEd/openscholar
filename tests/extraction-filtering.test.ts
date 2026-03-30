@@ -1,27 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { PaperWithResults, Question } from "../lib/extraction/filtering";
+import {
+  filterPapers,
+  preprocessPapers,
+} from "../lib/extraction/filtering";
+import { getStatusFilterOptionIds } from "../lib/extraction/status-filter-options";
 
-const ORIGINAL_EXTRACTION_PDF_FLAG = process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
-
-async function loadFilteringModule() {
-  vi.resetModules();
-  return import("../lib/extraction/filtering");
-}
-
-async function loadStatusFilterOptionsModule() {
-  vi.resetModules();
-  return import("../lib/extraction/status-filter-options");
-}
-
-afterEach(() => {
-  if (ORIGINAL_EXTRACTION_PDF_FLAG === undefined) {
-    delete process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED;
-  } else {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = ORIGINAL_EXTRACTION_PDF_FLAG;
-  }
-});
-
-describe("extraction result filtering with PDF flag", () => {
+describe("extraction result filtering with pdfEnabled parameter", () => {
   const paperWithoutPdf = {
     _id: "paper_1",
     title: "Abstract-only paper",
@@ -44,38 +29,48 @@ describe("extraction result filtering with PDF flag", () => {
     };
   }
 
-  it("applies has-pdf filter when PDF feature is enabled", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "true";
-    const filtering = await loadFilteringModule();
-    const preprocessed = filtering.preprocessPapers([paperWithoutPdf]);
+  it("applies has-pdf filter when pdfEnabled is true", () => {
+    const preprocessed = preprocessPapers([paperWithoutPdf]);
 
-    const filtered = filtering.filterPapers(
+    const filtered = filterPapers(
       [paperWithoutPdf],
       buildFilters(),
       questions,
-      preprocessed
+      preprocessed,
+      true,
     );
 
     expect(filtered).toHaveLength(0);
   });
 
-  it("ignores has-pdf filter when PDF feature is disabled", async () => {
-    process.env.NEXT_PUBLIC_EXTRACTION_PDF_ENABLED = "false";
-    const filtering = await loadFilteringModule();
-    const preprocessed = filtering.preprocessPapers([paperWithoutPdf]);
+  it("ignores has-pdf filter when pdfEnabled is false", () => {
+    const preprocessed = preprocessPapers([paperWithoutPdf]);
 
-    const filtered = filtering.filterPapers(
+    const filtered = filterPapers(
       [paperWithoutPdf],
       buildFilters(),
       questions,
-      preprocessed
+      preprocessed,
+      false,
     );
 
     expect(filtered).toHaveLength(1);
   });
 
-  it("removes has-pdf option from status filter options when PDF feature is disabled", async () => {
-    const { getStatusFilterOptionIds } = await loadStatusFilterOptionsModule();
+  it("defaults pdfEnabled to true when omitted", () => {
+    const preprocessed = preprocessPapers([paperWithoutPdf]);
+
+    const filtered = filterPapers(
+      [paperWithoutPdf],
+      buildFilters(),
+      questions,
+      preprocessed,
+    );
+
+    expect(filtered).toHaveLength(0);
+  });
+
+  it("removes has-pdf option from status filter options when PDF feature is disabled", () => {
     expect(getStatusFilterOptionIds(false)).not.toContain("has-pdf");
     expect(getStatusFilterOptionIds(true)).toContain("has-pdf");
   });

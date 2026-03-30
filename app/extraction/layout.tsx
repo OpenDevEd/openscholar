@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { ExtractionAccessGate } from "@/components/extraction/extraction-access-gate";
 
@@ -24,8 +23,5 @@ export default function ExtractionLayout({
 }: {
   children: React.ReactNode;
 }) {
-  if (process.env.NEXT_PUBLIC_EXTRACTION_ENABLED === "false") {
-    redirect("/");
-  }
   return <ExtractionAccessGate>{children}</ExtractionAccessGate>;
 }

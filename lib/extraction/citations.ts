@@ -1,5 +1,3 @@
-import { extractionFeatureFlags } from "./feature-flags";
-
 /** Minimal shape for extraction result fields used by citation helpers. */
 interface ExtractionResultLike {
   citations?: unknown[];
@@ -121,8 +119,8 @@ export function getCitationStatus(result: ExtractionResultLike | null | undefine
   return undefined;
 }
 
-export function getPrimaryCitation(result: ExtractionResultLike | null | undefined): CitationLocation | null {
-  if (!extractionFeatureFlags.pdf) return null;
+export function getPrimaryCitation(result: ExtractionResultLike | null | undefined, pdfEnabled = true): CitationLocation | null {
+  if (!pdfEnabled) return null;
   const citationStatus = getCitationStatus(result);
   const first = getStructuredCitations(result)[0];
   if (!first) return null;
@@ -138,8 +136,8 @@ export function getPrimaryCitation(result: ExtractionResultLike | null | undefin
   };
 }
 
-export function getAllCitationLocations(result: ExtractionResultLike | null | undefined): CitationLocation[] {
-  if (!extractionFeatureFlags.pdf) return [];
+export function getAllCitationLocations(result: ExtractionResultLike | null | undefined, pdfEnabled = true): CitationLocation[] {
+  if (!pdfEnabled) return [];
   const citationStatus = getCitationStatus(result);
   return getStructuredCitations(result).map((citation) => ({
     evidenceId: citation.evidenceId,

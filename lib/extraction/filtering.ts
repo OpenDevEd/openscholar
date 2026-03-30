@@ -1,7 +1,6 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { ExtractionResultWithReview } from "./types";
 import { getReviewState, isReviewed } from "./reviews";
-import { extractionFeatureFlags } from "./feature-flags";
 
 export interface FilterState {
   searchQuery: string;
@@ -72,7 +71,8 @@ export function filterPapers(
   papers: PaperWithResults[],
   filters: FilterState,
   questions: Question[],
-  preprocessedData: Map<string, PreprocessedPaperData>
+  preprocessedData: Map<string, PreprocessedPaperData>,
+  pdfEnabled = true,
 ): PaperWithResults[] {
   return papers.filter(paper => {
     const data = preprocessedData.get(paper._id);
@@ -93,7 +93,7 @@ export function filterPapers(
     }
 
     // Status filters - use preprocessed avgConfidence
-    const effectiveStatusFilters = extractionFeatureFlags.pdf
+    const effectiveStatusFilters = pdfEnabled
       ? filters.statusFilters
       : new Set([...filters.statusFilters].filter((filter) => filter !== "has-pdf"));
     if (effectiveStatusFilters.size > 0) {

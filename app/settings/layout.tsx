@@ -8,7 +8,7 @@ import { motion } from "motion/react";
 import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
 export default function SettingsLayout({
   children,
@@ -20,13 +20,14 @@ export default function SettingsLayout({
   const isSignedIn = phase === "authenticated";
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
+  const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
   const hasBillingLink = Boolean(
     subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
   );
   const effectivePlan = subscriptionState.resolvedPlan ?? "free";
   const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
   const hideBilling =
-    !subscriptionsFeatureFlags.enabled && showUpgradeCta && !subscriptionState.isSettling;
+    !subscriptionsEnabled && showUpgradeCta && !subscriptionState.isSettling;
 
   const baseSignedInItems = [
     { title: tc("general"), href: "/settings", icon: Settings2 },

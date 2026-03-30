@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import type { ExtractionResultWithReview } from "@/lib/extraction/types";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import {
   getAllCitationLocations,
   getCitationStatus,
@@ -52,7 +52,7 @@ export const TableView = memo(function TableView({
 }: TableViewProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const pdfEnabled = extractionFeatureFlags.pdf;
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const allSelected = papers.length > 0 && papers.every(p => selectedIds.has(p._id));
   const someSelected = papers.some(p => selectedIds.has(p._id)) && !allSelected;
 

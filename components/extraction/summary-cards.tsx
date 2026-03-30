@@ -13,7 +13,7 @@ import {
 import { cardEntrance, cardEntranceTransition } from "@/lib/animation-config";
 import { ConfidenceBadge } from "@/components/extraction/confidence-badge";
 import { CheckCircle2, ShieldCheck, AlertTriangle, FileX, Gauge } from "lucide-react";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
 export interface SummaryCardsProps {
   answeredRate: number;
@@ -40,7 +40,7 @@ export function SummaryCards({
 
   const answeredColor = getCardColor("completion", answeredRate);
   const groundedColor = getCardColor("quality", groundedRate);
-  const pdfEnabled = extractionFeatureFlags.pdf;
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

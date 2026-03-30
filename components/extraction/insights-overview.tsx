@@ -9,7 +9,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 import { SummaryCards } from "./summary-cards";
 import { QuestionListItem } from "./question-list-item";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { cardEntrance, cardEntranceTransition } from "@/lib/animation-config";
 
 interface InsightsOverviewProps {
@@ -29,6 +29,7 @@ export function InsightsOverview({
 }: InsightsOverviewProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t: any = useTranslations("extraction");
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const insightsQuery = useProtectedQuery(
     api.extraction.queries.getJobInsights,
     enabled ? { jobId } : "skip",
@@ -73,7 +74,7 @@ export function InsightsOverview({
         totalPapers={questions.length > 0 ? questions[0].total : summary.noContentCount + summary.abstractOnlyCount}
       />
 
-      {extractionFeatureFlags.pdf && (
+      {pdfEnabled && (
         <motion.div
           {...cardEntrance}
           transition={cardEntranceTransition(0.1)}

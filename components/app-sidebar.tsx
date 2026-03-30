@@ -32,7 +32,7 @@ import {
 } from "@/lib/store";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { SearchHistoryTab } from "./search-history-tab";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
@@ -368,6 +368,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const tc = useTranslations("common");
   const ts = useTranslations("sidebar");
   const pathname = usePathname();
+  const extractionEnabled = useFeatureFlag("extraction.enabled");
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -427,7 +428,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/library")) return "library";
     if (pathname.includes("/history")) return "history";
-    if (extractionFeatureFlags.enabled && pathname.includes("/extraction"))
+    if (extractionEnabled && pathname.includes("/extraction"))
       return "extraction";
     if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
@@ -512,7 +513,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             index={3}
           />
 
-          {extractionFeatureFlags.enabled && (
+          {extractionEnabled && (
             <NavItem
               href="/extraction"
               icon={Database}

@@ -31,7 +31,7 @@ import {
   type ScheduleLike,
 } from "./lib/schedulePlanning";
 import { isEntitledStatus } from "../../lib/billing/entitlements";
-import { requireSubscriptionsEnabled } from "../lib/featureFlags";
+import { requireFeatureInAction } from "../featureFlags/guard";
 import { createError, type ErrorCode } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 
@@ -213,7 +213,7 @@ export const createCheckoutSession = action({
     url: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args): Promise<{ url: string | null }> => {
-    requireSubscriptionsEnabled();
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     const identity = await requireActionAuth(ctx);
 
     // Rate limit check
@@ -937,7 +937,7 @@ export const getUpgradePreview = action({
     prorationDate: number;
     lineItems: Array<{ description: string; amountCents: number; currency: string }>;
   }> => {
-    requireSubscriptionsEnabled();
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     await requireActionAuth(ctx);
     assertPlanPriceConfig();
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);

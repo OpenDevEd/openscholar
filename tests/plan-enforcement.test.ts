@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import { selectCanonicalSubscription } from "../convex/subscriptions/lib/selectCanonicalSubscription";
-import { requirePlanTier } from "../convex/extraction/guard";
-import { createMockSubscription, createMockMutationCtx, mockId } from "./factories";
+import { requireFeature } from "../convex/featureFlags/guard";
+import { createMockSubscription, mockId } from "./factories";
 import type { Doc } from "../convex/_generated/dataModel";
+import type { MutationCtx } from "../convex/_generated/server";
 
 // --- Helpers ---
 
@@ -11,18 +12,58 @@ function makeSub(overrides?: Partial<Omit<Doc<"subscriptions">, "_id" | "_creati
   return createMockSubscription(overrides);
 }
 
-function createMockCtx(subscriptions: Doc<"subscriptions">[]) {
-  return createMockMutationCtx({
+/**
+ * Build a mock MutationCtx whose db.query returns the correct chain
+ * depending on the table name:
+ *   - "featureFlags" -> withIndex().unique() returns the given flag doc
+ *   - "subscriptions" -> withIndex().order().collect() returns the given subscriptions
+ */
+function createFeatureFlagCtx(
+  flag: { key: string; enabled: boolean; minimumTier: number; description?: string } | null,
+  subscriptions: Doc<"subscriptions">[] = [],
+): MutationCtx {
+  const flagDoc = flag
+    ? { _id: mockId("featureFlags" as never), _creationTime: Date.now(), ...flag }
+    : null;
+
+  return {
     db: {
-      query: vi.fn().mockReturnValue({
-        withIndex: vi.fn().mockReturnValue({
-          order: vi.fn().mockReturnValue({
-            collect: vi.fn().mockResolvedValue(subscriptions),
+      query: vi.fn().mockImplementation((table: string) => {
+        if (table === "featureFlags") {
+          return {
+            withIndex: vi.fn().mockReturnValue({
+              unique: vi.fn().mockResolvedValue(flagDoc),
+            }),
+          };
+        }
+        if (table === "subscriptions") {
+          return {
+            withIndex: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                collect: vi.fn().mockResolvedValue(subscriptions),
+              }),
+            }),
+          };
+        }
+        return {
+          withIndex: vi.fn().mockReturnValue({
+            unique: vi.fn().mockResolvedValue(null),
+            order: vi.fn().mockReturnValue({
+              collect: vi.fn().mockResolvedValue([]),
+            }),
           }),
-        }),
+        };
       }),
+      get: vi.fn().mockResolvedValue(null),
     },
-  });
+    auth: {
+      getUserIdentity: vi.fn().mockResolvedValue(null),
+    },
+    scheduler: {
+      runAfter: vi.fn(),
+      runAt: vi.fn(),
+    },
+  } as unknown as MutationCtx;
 }
 
 // --- selectCanonicalSubscription tests (PLAN-05) ---
@@ -102,120 +143,189 @@ describe("selectCanonicalSubscription", () => {
   });
 });
 
-// --- requirePlanTier tests (PLAN-03) ---
+// --- requireFeature tests ---
 
-describe("requirePlanTier", () => {
-  it("passes when user tier meets minimum", async () => {
-    const ctx = createMockCtx([
-      makeSub({
-        plan: "go",
-        status: "active",
-        stripeSubscriptionId: "sub_go",
-      }),
-    ]);
-    await expect(
-      requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction"),
-    ).resolves.toBeUndefined();
-  });
-
-  it("throws EXTRACTION_PLAN_REQUIRED when tier is below minimum", async () => {
-    const ctx = createMockCtx([
-      makeSub({ plan: "free", status: "active" }),
-    ]);
+describe("requireFeature", () => {
+  it("throws FEATURE_DISABLED when flag does not exist", async () => {
+    const ctx = createFeatureFlagCtx(null);
     try {
-      await requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction");
+      await requireFeature(ctx, "extraction.enabled");
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
       const convexErr = err as ConvexError<{ code: string; message: string }>;
-      expect(convexErr.data.code).toBe("EXTRACTION_PLAN_REQUIRED");
-      expect(convexErr.data.message).toContain(
-        "Extraction requires a higher plan",
-      );
+      expect(convexErr.data.code).toBe("FEATURE_DISABLED");
+    }
+  });
+
+  it("throws FEATURE_DISABLED when flag is disabled", async () => {
+    const ctx = createFeatureFlagCtx({
+      key: "extraction.enabled",
+      enabled: false,
+      minimumTier: 0,
+    });
+    try {
+      await requireFeature(ctx, "extraction.enabled");
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConvexError);
+      const convexErr = err as ConvexError<{ code: string; message: string }>;
+      expect(convexErr.data.code).toBe("FEATURE_DISABLED");
+    }
+  });
+
+  it("passes when flag is enabled with no tier requirement", async () => {
+    const ctx = createFeatureFlagCtx({
+      key: "credits.enabled",
+      enabled: true,
+      minimumTier: 0,
+    });
+    await expect(requireFeature(ctx, "credits.enabled")).resolves.toBeUndefined();
+  });
+
+  it("passes when user tier meets minimum", async () => {
+    const ctx = createFeatureFlagCtx(
+      {
+        key: "extraction.insights",
+        enabled: true,
+        minimumTier: 10,
+        description: "AI Insights",
+      },
+      [
+        makeSub({
+          plan: "go",
+          status: "active",
+          stripeSubscriptionId: "sub_go",
+        }),
+      ],
+    );
+    await expect(
+      requireFeature(ctx, "extraction.insights", mockId("users", "1")),
+    ).resolves.toBeUndefined();
+  });
+
+  it("throws FEATURE_PLAN_REQUIRED when tier is below minimum", async () => {
+    const ctx = createFeatureFlagCtx(
+      {
+        key: "extraction.insights",
+        enabled: true,
+        minimumTier: 10,
+        description: "AI Insights",
+      },
+      [makeSub({ plan: "free", status: "active" })],
+    );
+    try {
+      await requireFeature(ctx, "extraction.insights", mockId("users", "1"));
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConvexError);
+      const convexErr = err as ConvexError<{ code: string; message: string }>;
+      expect(convexErr.data.code).toBe("FEATURE_PLAN_REQUIRED");
+      expect(convexErr.data.message).toContain("requires a higher plan");
     }
   });
 
   it("passes when user tier exceeds minimum", async () => {
-    const ctx = createMockCtx([
-      makeSub({
-        plan: "pro",
-        status: "active",
-        stripeSubscriptionId: "sub_pro",
-      }),
-    ]);
+    const ctx = createFeatureFlagCtx(
+      {
+        key: "extraction.start",
+        enabled: true,
+        minimumTier: 20,
+        description: "Start Extraction",
+      },
+      [
+        makeSub({
+          plan: "enterprise",
+          status: "active",
+          stripeSubscriptionId: "sub_ent",
+        }),
+      ],
+    );
     await expect(
-      requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction"),
+      requireFeature(ctx, "extraction.start", mockId("users", "1")),
     ).resolves.toBeUndefined();
   });
 
   it("treats canceled subscription as free tier", async () => {
-    const ctx = createMockCtx([
-      makeSub({
-        plan: "go",
-        status: "canceled",
-        stripeSubscriptionId: "sub_go",
-      }),
-    ]);
+    const ctx = createFeatureFlagCtx(
+      {
+        key: "extraction.insights",
+        enabled: true,
+        minimumTier: 10,
+        description: "AI Insights",
+      },
+      [
+        makeSub({
+          plan: "go",
+          status: "canceled",
+          stripeSubscriptionId: "sub_go",
+        }),
+      ],
+    );
     try {
-      await requirePlanTier(ctx, mockId("users", "1"), 10, "Extraction");
+      await requireFeature(ctx, "extraction.insights", mockId("users", "1"));
       expect.fail("Should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(ConvexError);
       const convexErr = err as ConvexError<{ code: string; message: string }>;
-      expect(convexErr.data.code).toBe("EXTRACTION_PLAN_REQUIRED");
+      expect(convexErr.data.code).toBe("FEATURE_PLAN_REQUIRED");
+    }
+  });
+
+  it("throws UNAUTHENTICATED when tier-gated flag is checked without userId", async () => {
+    const ctx = createFeatureFlagCtx({
+      key: "extraction.insights",
+      enabled: true,
+      minimumTier: 10,
+    });
+    try {
+      await requireFeature(ctx, "extraction.insights");
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConvexError);
+      const convexErr = err as ConvexError<{ code: string; message: string }>;
+      expect(convexErr.data.code).toBe("UNAUTHENTICATED");
+    }
+  });
+
+  it("includes description in error message when available", async () => {
+    const ctx = createFeatureFlagCtx(
+      {
+        key: "extraction.start",
+        enabled: true,
+        minimumTier: 20,
+        description: "Start Extraction",
+      },
+      [makeSub({ plan: "free", status: "active" })],
+    );
+    try {
+      await requireFeature(ctx, "extraction.start", mockId("users", "1"));
+      expect.fail("Should have thrown");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConvexError);
+      const convexErr = err as ConvexError<{ code: string; message: string }>;
+      expect(convexErr.data.message).toContain("Start Extraction");
     }
   });
 
   it("passes for enterprise user at any tier check", async () => {
-    const ctx = createMockCtx([
-      makeSub({
-        plan: "enterprise",
-        status: "active",
-        stripeSubscriptionId: "sub_ent",
-      }),
-    ]);
+    const ctx = createFeatureFlagCtx(
+      {
+        key: "extraction.start",
+        enabled: true,
+        minimumTier: 20,
+        description: "Start Extraction",
+      },
+      [
+        makeSub({
+          plan: "enterprise",
+          status: "active",
+          stripeSubscriptionId: "sub_ent",
+        }),
+      ],
+    );
     await expect(
-      requirePlanTier(ctx, mockId("users", "1"), 30, "Premium Feature"),
+      requireFeature(ctx, "extraction.start", mockId("users", "1")),
     ).resolves.toBeUndefined();
-  });
-
-  it("throws for free user trying to access Go-tier feature", async () => {
-    const ctx = createMockCtx([
-      makeSub({ plan: "free", status: "active" }),
-    ]);
-    try {
-      await requirePlanTier(
-        ctx,
-        mockId("users", "1"),
-        10,
-        "PDF Processing",
-      );
-      expect.fail("Should have thrown");
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvexError);
-      const convexErr = err as ConvexError<{ code: string; message: string }>;
-      expect(convexErr.data.message).toContain(
-        "PDF Processing requires a higher plan",
-      );
-    }
-  });
-
-  it("includes feature name in error message", async () => {
-    const ctx = createMockCtx([
-      makeSub({ plan: "free", status: "active" }),
-    ]);
-    try {
-      await requirePlanTier(
-        ctx,
-        mockId("users", "1"),
-        10,
-        "Custom Feature",
-      );
-      expect.fail("Should have thrown");
-    } catch (err) {
-      expect(err).toBeInstanceOf(ConvexError);
-      const convexErr = err as ConvexError<{ code: string; message: string }>;
-      expect(convexErr.data.message).toContain("Custom Feature");
-    }
   });
 });

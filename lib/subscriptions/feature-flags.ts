@@ -1,3 +1,3 @@
-export const subscriptionsFeatureFlags = {
-  enabled: process.env.NEXT_PUBLIC_SUBSCRIPTIONS_ENABLED !== "false",
-};
+// Feature flags moved to database-driven system
+// Use: import { useFeatureFlag } from "@/lib/feature-flags/hook";
+export {};

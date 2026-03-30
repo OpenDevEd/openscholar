@@ -21,7 +21,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useTranslations } from "next-intl";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getStatusFilterOptionIds } from "@/lib/extraction/status-filter-options";
 
 interface StatusFilterProps {
@@ -32,7 +32,7 @@ interface StatusFilterProps {
 export function StatusFilter({ selected, onChange }: StatusFilterProps) {
   const t = useTranslations('filters');
   const tc = useTranslations('common');
-  const pdfEnabled = extractionFeatureFlags.pdf;
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const options = getStatusFilterOptionIds(pdfEnabled).map((id) => {
     if (id === "has-pdf") {
       return { id, label: t("hasPdf"), icon: FileText };

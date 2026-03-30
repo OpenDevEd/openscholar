@@ -22,9 +22,9 @@ import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
 import { captureAIGenerationServer } from "../../lib/posthog-server";
-import { AI_COST_MARKUP, getPlanTier } from "../lib/constants";
-import { resolveEffectivePlan } from "../../lib/billing/entitlements";
+import { AI_COST_MARKUP } from "../lib/constants";
 import { createError } from "../lib/errors";
+import { requireFeatureInAction } from "../featureFlags/guard";
 import {
   calculateCreditsToDeductFromUsage,
   convertUsdCostToCredits,
@@ -122,23 +122,6 @@ function throwStructuredAIError(error: unknown): never {
   throw createError("AI_PROVIDER_ERROR", String(error));
 }
 
-/** Asserts the user holds at least `minTier`. */
-async function assertPlanTier(
-  ctx: ActionCtx,
-  userId: Id<"users">,
-  minTier: number
-): Promise<void> {
-  const subscription = await ctx.runQuery(
-    internal.subscriptions.internal.getSubscriptionByUser,
-    { userId }
-  );
-  const plan = resolveEffectivePlan(subscription);
-  const tier = getPlanTier(plan);
-  if (tier < minTier) {
-    throw createError("AI_PLAN_ENTITLEMENT", "This feature requires the Go plan or higher");
-  }
-}
-
 export async function getModel() {
   const provider = SERVER_AI_CONFIG.provider;
   // Vercel AI SDK automatically handles API keys from environment variables
@@ -195,7 +178,7 @@ export async function withAuthAndCreditsBatch<T>(
     }
 
     if (options?.minPlanTier) {
-      await assertPlanTier(ctx, user._id, options.minPlanTier);
+      await requireFeatureInAction(ctx, "ai.serverMode", user._id);
     }
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
@@ -320,7 +303,7 @@ export async function withAuthAndCredits<T>(
     }
 
     if (options?.minPlanTier) {
-      await assertPlanTier(ctx, user._id, options.minPlanTier);
+      await requireFeatureInAction(ctx, "ai.serverMode", user._id);
     }
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);

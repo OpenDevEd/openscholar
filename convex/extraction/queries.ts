@@ -11,10 +11,9 @@ import { getCurrentUser } from "../lib/auth";
 import { noAccess, notFound, ok, unauthenticated } from "../lib/query_states";
 import {
   getProcessableFlags,
-  isPdfExtractionEnabled,
   MIN_ABSTRACT_LENGTH,
 } from "./content";
-import { requireExtractionEnabled } from "./guard";
+import { requireFeature, getFlag } from "../featureFlags/guard";
 import {
   aggregateQuestionInsights,
   buildArrayAnswerProfileClusters,
@@ -300,7 +299,7 @@ export const getMyJobs = query({
     })
   ),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     // Handle unauthenticated gracefully
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -347,7 +346,7 @@ export const getJobDetails = query({
     }),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -403,7 +402,7 @@ export const getPaperResults = query({
     results: v.array(extractionResultWithReviewValidator),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") {
       return access;
@@ -436,8 +435,9 @@ export const getPaperResultsInternal = internalQuery({
 export const getPdfExtractionEnabledInternal = internalQuery({
   args: {},
   returns: v.boolean(),
-  handler: async () => {
-    return isPdfExtractionEnabled();
+  handler: async (ctx) => {
+    const pdfFlag = await getFlag(ctx, "extraction.pdf");
+    return pdfFlag?.enabled ?? true;
   },
 });
 
@@ -452,13 +452,15 @@ export const getPaperPdfUrl = query({
     v.object({ status: v.literal("no_access") })
   ),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") {
       return access;
     }
 
-    if (!isPdfExtractionEnabled()) {
+    const pdfFlag = await getFlag(ctx, "extraction.pdf");
+    const pdfEnabled = pdfFlag?.enabled ?? true;
+    if (!pdfEnabled) {
       return ok({ pdfUrl: null });
     }
 
@@ -490,7 +492,7 @@ export const getJobResults = query({
     ),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -557,7 +559,7 @@ export const getJobResultsPaginated = query({
     })
   ),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return {
@@ -690,7 +692,7 @@ export const getJobInsights = query({
     }),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -925,7 +927,7 @@ export const getQuestionInsights = query({
     true // includeNotFound
   ),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1043,7 +1045,7 @@ export const getQuestionDisagreements = query({
     true // includeNotFound
   ),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1185,7 +1187,7 @@ export const getReviewQueue = query({
     ),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1289,7 +1291,7 @@ export const getSavedViews = query({
     views: v.array(extractionSavedViewValidator),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1336,7 +1338,7 @@ export const getWorkflowTemplates = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
@@ -1354,7 +1356,7 @@ export const getReportSnapshots = query({
     reports: v.array(extractionReportSnapshotValidator),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1379,7 +1381,7 @@ export const getRunDiff = query({
     diff: v.union(v.null(), extractionRunDiffValidator),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1513,6 +1515,9 @@ export const getPapersDebug = internalQuery({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(MAX_PAPERS_PER_JOB);
 
+    const pdfFlag = await getFlag(ctx, "extraction.pdf");
+    const pdfEnabled = pdfFlag?.enabled ?? true;
+
     const statusCounts: Record<string, number> = {};
     const contentCounts = {
       total: papers.length,
@@ -1532,6 +1537,7 @@ export const getPapersDebug = internalQuery({
         pdfUrl: paper.pdfUrl,
         storageId: paper.storageId,
         abstract: paper.abstract,
+        pdfEnabled,
       });
       const isProcessable = paper.processable !== false;
 
@@ -1589,7 +1595,7 @@ export const subscribeToJobProgress = query({
     recentPapers: v.array(extractionPaperValidator),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;

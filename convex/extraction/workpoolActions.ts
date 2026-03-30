@@ -17,7 +17,7 @@ import {
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
-import { MIN_ABSTRACT_LENGTH, isPdfExtractionEnabled } from "./content";
+import { MIN_ABSTRACT_LENGTH } from "./content";
 import { buildEnhancedExtractionPrompt, type ExtractionQuestion } from "./prompts";
 import {
   buildChunkedEvidenceUnitsFromPdfPages,
@@ -355,13 +355,14 @@ export function isUsableAbstract(abstract?: string | null) {
 
 export function applyAbstractOnlyPolicy(params: {
   extracted: StrictExtractionOutput;
+  pdfEnabled: boolean;
 }): {
   answer: string | boolean | number | string[] | null;
   confidence: number;
   citationStatus: CitationStatus;
   strictNull: boolean;
 } {
-  const pdfDisabled = !isPdfExtractionEnabled();
+  const pdfDisabled = !params.pdfEnabled;
 
   if (params.extracted.answer !== null) {
     // When PDF is disabled, abstract IS the authoritative source — no penalty.
@@ -581,6 +582,7 @@ async function extractQuestionAnswerFromAbstract(params: {
     description?: string;
   };
   abstract: string;
+  pdfEnabled: boolean;
 }): Promise<ExtractionWithUsage> {
   const { model, question, abstract } = params;
 
@@ -603,7 +605,7 @@ async function extractQuestionAnswerFromAbstract(params: {
       question.type,
       object as StrictExtractionOutput
     );
-    const policy = applyAbstractOnlyPolicy({ extracted });
+    const policy = applyAbstractOnlyPolicy({ extracted, pdfEnabled: params.pdfEnabled });
     const reasoningPrefix =
       policy.answer === null
         ? "Abstract-only mode: no direct support found in the abstract."
@@ -782,7 +784,8 @@ export const downloadAndIndexPdfAction = internalAction({
           error: "Job not found",
         };
       }
-      if (!isPdfExtractionEnabled()) {
+      const pdfEnabled = await ctx.runQuery(internal.extraction.queries.getPdfExtractionEnabledInternal, {});
+      if (!pdfEnabled) {
         if (args.abstract && args.abstract.length > MIN_ABSTRACT_LENGTH) {
           await ctx.runMutation(internal.extraction.mutations.replacePaperEvidenceUnits, {
             paperId: args.paperId,
@@ -944,6 +947,7 @@ export const waitAndExtractAction = internalAction({
       if (!job) {
         return { success: false, error: "Job not found" };
       }
+      const pdfEnabled = await ctx.runQuery(internal.extraction.queries.getPdfExtractionEnabledInternal, {});
       const unitsRaw = await ctx.runQuery(
         internal.extraction.queries.getEvidenceUnitsInternal,
         { paperId: args.paperId }
@@ -996,6 +1000,7 @@ export const waitAndExtractAction = internalAction({
                   model,
                   question,
                   abstract: abstractText,
+                  pdfEnabled,
                 });
                 results.push(result);
                 extractionUsages.push(usage);

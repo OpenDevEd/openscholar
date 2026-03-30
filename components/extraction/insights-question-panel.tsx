@@ -11,7 +11,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 import { BarVisualization } from "@/components/extraction/bar-visualization";
 import { buildSynonymMap, groupAnswersBySynonym, mergeDisagreementClusters } from "@/lib/extraction/answer-grouping";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import {
   pct,
   CONFIDENCE_BAR_COLORS,
@@ -51,6 +51,7 @@ export function InsightsQuestionPanel({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t: any = useTranslations("extraction");
   const tc = useTranslations("common");
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const questionInsightsQuery = useProtectedQuery(
     api.extraction.queries.getQuestionInsights,
     enabled && questionKey ? { jobId, questionKey } : "skip",
@@ -133,7 +134,7 @@ export function InsightsQuestionPanel({
 
         <div className="px-5 py-4 flex flex-wrap gap-2">
           <Badge variant="outline" className="font-mono tabular-nums">{pct(questionInsights.answered / total)} {tc("answered").toLowerCase()}</Badge>
-          {extractionFeatureFlags.pdf && (
+          {pdfEnabled && (
             <Badge variant="outline" className="font-mono tabular-nums">{pct(questionInsights.grounded / total)} {tc("grounded").toLowerCase()}</Badge>
           )}
           <Badge variant="secondary" className="font-mono tabular-nums" title={t("rawConfidenceTooltip", { confidence: t("confidence"), value: Math.round((questionInsights.avgConfidence || 0) * 100) })}>
@@ -142,7 +143,7 @@ export function InsightsQuestionPanel({
         </div>
 
         {/* Confidence & Citation Distribution */}
-        <div className={`grid gap-px ${extractionFeatureFlags.pdf ? "md:grid-cols-2" : "md:grid-cols-1"} border-t border-border/40 bg-border/30`}>
+        <div className={`grid gap-px ${pdfEnabled ? "md:grid-cols-2" : "md:grid-cols-1"} border-t border-border/40 bg-border/30`}>
           <div className="bg-card p-5">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{t("confidenceDistribution")}</h4>
             <div className="space-y-3">
@@ -161,7 +162,7 @@ export function InsightsQuestionPanel({
               })}
             </div>
           </div>
-          {extractionFeatureFlags.pdf && (
+          {pdfEnabled && (
             <div className="bg-card p-5">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">{t("citationStatusMix")}</h4>
               <div className="space-y-3">

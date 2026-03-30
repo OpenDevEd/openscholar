@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { cn } from "@/lib/utils";
 import { useAppToast } from "@/lib/toast";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { FileUp, Plus, Trash2 } from "lucide-react";
 
 const ACCEPTED_TYPES = ["application/pdf"];
@@ -25,7 +25,7 @@ export function ManualItems() {
   const { draftJob, addManualItem, updateManualItem, removeManualItem } = useExtractionStore();
   const generateUploadUrl = useMutation(api.extraction.uploads.generateUploadUrl);
   const [uploadingIds, setUploadingIds] = useState<string[]>([]);
-  const pdfEnabled = extractionFeatureFlags.pdf;
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
 
   const handleFileUpload = async (id: string, file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {

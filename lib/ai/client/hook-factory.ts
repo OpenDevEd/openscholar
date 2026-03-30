@@ -7,7 +7,7 @@ import { api } from '@/convex/_generated/api'
 import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
-import { creditsFeatureFlags } from '@/lib/credits/feature-flags'
+import { useFeatureFlag } from '@/lib/feature-flags/hook'
 import { useSubscriptionState } from '@/lib/auth/use-subscription-state'
 import {
   AIApiKeyRequiredError,
@@ -84,7 +84,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     const hasApiKey = Boolean(localConfig.apiKey)
     const { phase } = useAuthReadiness()
     const isAuthenticated = phase === 'authenticated'
-    const creditsEnabled = creditsFeatureFlags.enabled
+    const creditsEnabled = useFeatureFlag("credits.enabled")
     const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {})
     const creditsAvailability = useMemo(
       () =>

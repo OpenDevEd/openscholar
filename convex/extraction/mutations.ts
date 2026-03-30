@@ -11,10 +11,10 @@ import type { PaperData, ExtractionResult } from "./types";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { WorkflowId } from "@convex-dev/workflow";
 import { pdfProcessingPool } from "../workpool";
-import { getProcessableFlags, isPdfExtractionEnabled } from "./content";
+import { getProcessableFlags } from "./content";
 import { workflow } from "../workflow";
 import { requireAuth } from "../lib/auth";
-import { requireExtractionEnabled, requireProPlan } from "./guard";
+import { requireFeature, getFlag } from "../featureFlags/guard";
 import { rateLimit } from "../lib/rateLimit";
 import {
   aggregateQuestionInsights,
@@ -177,9 +177,9 @@ export const startExtraction = mutation({
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    await requireProPlan(ctx, user._id, "Data extraction");
+    await requireFeature(ctx, "extraction.start", user._id);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: user._id,
@@ -242,7 +242,7 @@ export const cancelExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args): Promise<{ success: boolean }> => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
@@ -290,9 +290,9 @@ export const duplicateExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    await requireProPlan(ctx, user._id, "Data extraction");
+    await requireFeature(ctx, "extraction.start", user._id);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: user._id,
@@ -389,7 +389,7 @@ export const setResultReviewState = mutation({
     })
   ),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     const result = await ctx.db.get(args.resultId);
     if (!result) throw createError("NOT_FOUND", "Result not found");
@@ -456,9 +456,9 @@ export const startExtractionFromTemplate = mutation({
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    await requireProPlan(ctx, user._id, "Data extraction");
+    await requireFeature(ctx, "extraction.start", user._id);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: user._id,
@@ -526,7 +526,7 @@ export const saveExtractionSavedView = mutation({
   },
   returns: v.object({ viewId: v.id("extractionSavedViews") }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     await assertJobOwnership(ctx, user._id, args.jobId);
 
@@ -569,7 +569,7 @@ export const deleteExtractionSavedView = mutation({
   args: { viewId: v.id("extractionSavedViews") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const view = await ctx.db.get(args.viewId);
@@ -590,9 +590,9 @@ export const saveWorkflowTemplateFromJob = mutation({
   },
   returns: v.object({ templateId: v.id("extractionWorkflowTemplates") }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    await requireProPlan(ctx, user._id, "Workflow templates");
+    await requireFeature(ctx, "extraction.templates", user._id);
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
 
     // Cardinality: ~5-20 questions per extraction job
@@ -707,9 +707,9 @@ export const saveWorkflowTemplate = mutation({
   },
   returns: v.object({ templateId: v.id("extractionWorkflowTemplates") }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    await requireProPlan(ctx, user._id, "Workflow templates");
+    await requireFeature(ctx, "extraction.templates", user._id);
 
     const existing = await ctx.db
       .query("extractionWorkflowTemplates")
@@ -753,7 +753,7 @@ export const deleteWorkflowTemplate = mutation({
   args: { templateId: v.id("extractionWorkflowTemplates") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const template = await ctx.db.get(args.templateId);
@@ -780,7 +780,7 @@ export const createExtractionReportSnapshot = mutation({
   },
   returns: v.object({ reportId: v.id("extractionReportSnapshots") }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
     const { questions, papers, resultsByPaper, reviewsByResult } =
@@ -988,7 +988,7 @@ export const createExtractionRunDiff = mutation({
     }),
   }),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     await assertJobOwnership(ctx, user._id, args.jobId);
     await assertJobOwnership(ctx, user._id, args.baselineJobId);
@@ -1045,7 +1045,7 @@ export const deleteExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    requireExtractionEnabled();
+    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
@@ -1355,7 +1355,8 @@ export const createPaperRecords = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    const pdfEnabled = isPdfExtractionEnabled();
+    const pdfFlag = await getFlag(ctx, "extraction.pdf");
+    const pdfEnabled = pdfFlag?.enabled ?? true;
     for (const paper of args.papers) {
       const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
       const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
@@ -1363,6 +1364,7 @@ export const createPaperRecords = internalMutation({
         pdfUrl: sanitizedPdfUrl,
         storageId: sanitizedStorageId,
         abstract: paper.abstract,
+        pdfEnabled,
       });
 
       if (!pdfEnabled && !processable) {
@@ -1485,10 +1487,13 @@ export const setPaperStorage = internalMutation({
     if (!paper) {
       return null;
     }
+    const pdfFlag = await getFlag(ctx, "extraction.pdf");
+    const pdfEnabled = pdfFlag?.enabled ?? true;
     const { processable } = getProcessableFlags({
       pdfUrl: paper.pdfUrl,
       storageId: args.storageId,
       abstract: paper.abstract,
+      pdfEnabled,
     });
     await ctx.db.patch(args.paperId, {
       storageId: args.storageId,

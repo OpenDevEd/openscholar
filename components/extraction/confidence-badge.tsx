@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { BADGE_COLOR_CLASSES, getConfidenceColor } from "@/lib/extraction/card-thresholds";
 import { getConfidenceTooltipKey } from "@/lib/extraction/confidence-messages";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
 export interface ConfidenceBadgeProps {
   value: number;
@@ -27,10 +27,9 @@ export function ConfidenceBadge({
 }: ConfidenceBadgeProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const t: any = useTranslations("extraction");
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
   const color = getConfidenceColor(value);
-  const tooltipKey = extractionFeatureFlags.pdf
-    ? getConfidenceTooltipKey(abstractOnlyCount, noContentCount, totalPapers)
-    : "confidence" as const;
+  const tooltipKey = getConfidenceTooltipKey(abstractOnlyCount, noContentCount, totalPapers, pdfEnabled);
   const colorClasses = BADGE_COLOR_CLASSES[color];
   const percentage = Math.round(value * 100);
 

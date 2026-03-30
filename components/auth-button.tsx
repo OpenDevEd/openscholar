@@ -34,8 +34,7 @@ import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations } from "next-intl";
-import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
-import { subscriptionsFeatureFlags } from "@/lib/subscriptions/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
@@ -61,6 +60,10 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
 
   const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {});
   const credits = creditsQuery.data;
+
+  const creditsEnabled = useFeatureFlag("credits.enabled");
+  const topupsEnabled = useFeatureFlag("credits.topups");
+  const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
 
   // Loading state
   if (isInitializing) {
@@ -134,7 +137,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             <LogIn className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
               <span className="font-medium">{tc("signIn")}</span>
-              {creditsFeatureFlags.enabled && (
+              {creditsEnabled && (
                 <span className="text-xs text-muted-foreground leading-snug">
                   {tc("signInCreditsDescription")}
                 </span>
@@ -199,14 +202,14 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     hasResolvedSubscription &&
     (resolvedPlan === "free" || resolvedPlan === "go");
 
-  const showPlanRow = subscriptionsFeatureFlags.enabled || !showUpgrade;
+  const showPlanRow = subscriptionsEnabled || !showUpgrade;
   const showCredits =
-    creditsFeatureFlags.enabled &&
+    creditsEnabled &&
     creditsQuery.settlement === "ready" &&
     credits &&
     credits.total > 0;
-  const showUpgradeButton = subscriptionsFeatureFlags.enabled && showUpgrade;
-  const showPlansItem = subscriptionsFeatureFlags.enabled;
+  const showUpgradeButton = subscriptionsEnabled && showUpgrade;
+  const showPlansItem = subscriptionsEnabled;
   const hasAccountInfo = showPlanRow || showCredits || showUpgradeButton;
 
   const trigger = (
@@ -293,7 +296,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                   </span>
                 </div>
               )}
-              {showCredits && creditsFeatureFlags.topupsEnabled && (
+              {showCredits && topupsEnabled && (
                 <button
                   onClick={() => {
                     setOpen(false);

@@ -131,6 +131,7 @@ describe("V3.2 evidence policy", () => {
         reasoning: "Abstract states the number of retained studies.",
         supportEvidenceIds: [],
       },
+      pdfEnabled: true,
     });
 
     expect(policy.citationStatus).toBe("best_effort");
@@ -147,6 +148,7 @@ describe("V3.2 evidence policy", () => {
         reasoning: "Abstract does not contain the requested metric.",
         supportEvidenceIds: [],
       },
+      pdfEnabled: true,
     });
 
     expect(policy.citationStatus).toBe("insufficient_evidence");

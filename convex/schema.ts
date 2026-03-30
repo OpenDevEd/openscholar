@@ -8,6 +8,17 @@ export default defineSchema({
   ...rateLimitTables,
 
   // ═══════════════════════════════════════════════════════════════
+  // FEATURE FLAGS - Database-driven feature gating
+  // ═══════════════════════════════════════════════════════════════
+  featureFlags: defineTable({
+    key: v.string(),
+    enabled: v.boolean(),
+    minimumTier: v.number(),
+    description: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // USERS - synced from Clerk, single source of truth in Convex
   // ═══════════════════════════════════════════════════════════════
   users: defineTable({

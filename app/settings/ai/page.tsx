@@ -33,7 +33,7 @@ import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
-import { creditsFeatureFlags } from "@/lib/credits/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 
 export default function AISettingsPage() {
@@ -178,7 +178,8 @@ export default function AISettingsPage() {
     },
   ];
 
-  const isCreditsModeLocked = !creditsFeatureFlags.enabled;
+  const creditsEnabled = useFeatureFlag("credits.enabled");
+  const isCreditsModeLocked = !creditsEnabled;
   const isDisabled = apiKeyMode === "credits";
 
   return (

@@ -48,7 +48,7 @@ import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { extractionFeatureFlags } from "@/lib/extraction/feature-flags";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import type { Infer } from "convex/values";
 import type { extractionSavedViewValidator } from "@/convex/extraction/validators";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
@@ -86,6 +86,12 @@ export default function JobDetailPage() {
   const router = useRouter();
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
+
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
+  const insightsEnabled = useFeatureFlag("extraction.insights");
+  const reviewQueueEnabled = useFeatureFlag("extraction.reviewQueue");
+  const reportBuilderEnabled = useFeatureFlag("extraction.reportBuilder");
+  const templatesEnabled = useFeatureFlag("extraction.templates");
 
   const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
   const viewModeDeserialize = useCallback((v: string) => v as 'table' | 'cards' | 'split', []);
@@ -136,9 +142,6 @@ export default function JobDetailPage() {
   const subscriptionQuery = useProtectedQuery(api.subscriptions.queries.getMy, {});
   const subscription = subscriptionQuery.data;
   const subscriptionSettlement = subscriptionQuery.settlement;
-  const isSubscriptionSettling =
-    subscriptionSettlement === "auth_loading" ||
-    subscriptionSettlement === "query_loading";
   const jobProgressQuery = useProtectedQuery(
     api.extraction.queries.subscribeToJobProgress,
     canReadJob ? { jobId } : "skip",
@@ -203,8 +206,8 @@ export default function JobDetailPage() {
   );
 
   const filteredPapers = useMemo(
-    () => filterPapers(papersWithResults, debouncedFilters, questions, preprocessedData),
-    [papersWithResults, debouncedFilters, questions, preprocessedData]
+    () => filterPapers(papersWithResults, debouncedFilters, questions, preprocessedData, pdfEnabled),
+    [papersWithResults, debouncedFilters, questions, preprocessedData, pdfEnabled]
   );
 
   const sortedPapers = useMemo(() => {
@@ -684,7 +687,7 @@ export default function JobDetailPage() {
               >
                 {tView('extractionResults')}
               </button>
-              {extractionFeatureFlags.insights && hasProFeatures ? (
+              {insightsEnabled && (
                 <button
                   onClick={() => setActiveTab("insights")}
                   className={cn(
@@ -696,12 +699,8 @@ export default function JobDetailPage() {
                 >
                   {tView('insights')}
                 </button>
-              ) : extractionFeatureFlags.insights && isSubscriptionSettling ? (
-                <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
-                  {tView('insights')}
-                </span>
-              ) : null}
-              {extractionFeatureFlags.reviewQueue && hasProFeatures ? (
+              )}
+              {reviewQueueEnabled && (
                 <button
                   onClick={() => setActiveTab("review")}
                   className={cn(
@@ -713,12 +712,8 @@ export default function JobDetailPage() {
                 >
                   {tView('reviewQueue')}
                 </button>
-              ) : extractionFeatureFlags.reviewQueue && isSubscriptionSettling ? (
-                <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
-                  {tView('reviewQueue')}
-                </span>
-              ) : null}
-              {extractionFeatureFlags.reportBuilder && hasProFeatures ? (
+              )}
+              {reportBuilderEnabled && (
                 <button
                   onClick={() => setActiveTab("report")}
                   className={cn(
@@ -730,11 +725,7 @@ export default function JobDetailPage() {
                 >
                   {tView('reportBuilder')}
                 </button>
-              ) : extractionFeatureFlags.reportBuilder && isSubscriptionSettling ? (
-                <span className="px-4 py-3 text-sm font-medium text-muted-foreground/55 animate-pulse">
-                  {tView('reportBuilder')}
-                </span>
-              ) : null}
+              )}
               <button
                 onClick={() => setActiveTab('overview')}
                 className={cn(
@@ -961,7 +952,7 @@ export default function JobDetailPage() {
                 viewMode={viewMode}
                 questions={questions}
                 onApplySavedView={handleApplySavedView}
-                canUseTemplates={hasProFeatures}
+                canUseTemplates={templatesEnabled}
                 canUseRunDiff={hasProFeatures}
               />
             </motion.div>

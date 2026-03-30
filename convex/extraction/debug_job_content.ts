@@ -1,6 +1,7 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { getProcessableFlags } from "./content";
+import { getFlag } from "../featureFlags/guard";
 
 /**
  * Internal query to inspect raw content extracted from papers in a job.
@@ -40,11 +41,15 @@ export const debugJobContent = internalQuery({
       }>,
     };
 
+    const pdfFlag = await getFlag(ctx, "extraction.pdf");
+    const pdfEnabled = pdfFlag?.enabled ?? true;
+
     for (const paper of papers) {
       const { hasPdfUrl, hasAbstract } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
         storageId: paper.storageId,
         abstract: paper.abstract,
+        pdfEnabled,
       });
       const isProcessable = paper.processable !== false;
 

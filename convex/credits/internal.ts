@@ -14,7 +14,7 @@ import {
   classifyMonthlyCreditInvoice,
   type MonthlyCreditGrantDecision,
 } from "./lib/invoiceGrantPolicy";
-import { requireCreditsEnabled } from "../lib/featureFlags";
+import { requireFeature } from "../featureFlags/guard";
 import { PLAN_CONFIG, FREE_SIGNUP_CREDIT_GRANT } from "../lib/constants";
 import { planValidator } from "../lib/validators";
 import {
@@ -1299,7 +1299,7 @@ export const deductCredits = internalMutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    requireCreditsEnabled();
+    await requireFeature(ctx, "credits.enabled");
     const credits = await ctx.db
       .query("credits")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
