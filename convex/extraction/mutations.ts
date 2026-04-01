@@ -782,6 +782,7 @@ export const createExtractionReportSnapshot = mutation({
   handler: async (ctx, args) => {
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
+    await requireFeature(ctx, "extraction.reportBuilder", user._id);
     const job = await assertJobOwnership(ctx, user._id, args.jobId);
     const { questions, papers, resultsByPaper, reviewsByResult } =
       await loadJobDataForReporting(ctx, args.jobId);

@@ -4,7 +4,7 @@ import { getCurrentUser } from "../lib/auth";
 import { creditBalanceValidator, creditTransactionValidator } from "../lib/validators";
 import { components } from "../_generated/api";
 import { getCreditTopupCatalog, getCreditsPerUsd } from "../lib/creditTopups";
-import { getFlag } from "../featureFlags/guard";
+import { getFlag, requireFeature } from "../featureFlags/guard";
 
 
 export const TRACKED_GRANT_EVENT_TYPES = [
@@ -30,6 +30,7 @@ export const getMyBalance = query({
   args: {},
   returns: v.union(creditBalanceValidator, v.null()),
   handler: async (ctx) => {
+    await requireFeature(ctx, "credits.enabled");
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
@@ -56,6 +57,7 @@ export const getTransactions = query({
   },
   returns: v.array(creditTransactionValidator),
   handler: async (ctx, args) => {
+    await requireFeature(ctx, "credits.enabled");
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
@@ -92,6 +94,7 @@ export const checkBalance = query({
     v.null()
   ),
   handler: async (ctx, args) => {
+    await requireFeature(ctx, "credits.enabled");
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
@@ -132,7 +135,7 @@ export const getTopupCatalog = query({
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     const topupsFlag = await getFlag(ctx, "credits.topups");
-    const topupsEnabled = topupsFlag?.enabled ?? true;
+    const topupsEnabled = topupsFlag?.enabled ?? false;
     const creditsPerUsd = getCreditsPerUsd();
 
     if (!user || !topupsEnabled) {
@@ -165,6 +168,7 @@ export const getLatestGrantStatus = query({
     }),
   ),
   handler: async (ctx) => {
+    await requireFeature(ctx, "credits.enabled");
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 

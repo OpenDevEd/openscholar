@@ -697,7 +697,8 @@ export const getJobInsights = query({
     if (access.status !== "ok") {
       return access;
     }
-    const { job } = access;
+    const { user, job } = access;
+    await requireFeature(ctx, "extraction.insights", user._id);
 
     // Cardinality: ~1 stat record per question per job
     const jobStats = await ctx.db
@@ -932,7 +933,8 @@ export const getQuestionInsights = query({
     if (access.status !== "ok") {
       return access;
     }
-    const { job } = access;
+    const { user, job } = access;
+    await requireFeature(ctx, "extraction.insights", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const question = questions.find(
@@ -1050,7 +1052,8 @@ export const getQuestionDisagreements = query({
     if (access.status !== "ok") {
       return access;
     }
-    const { job } = access;
+    const { user, job } = access;
+    await requireFeature(ctx, "extraction.insights", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const question = questions.find(
@@ -1192,6 +1195,8 @@ export const getReviewQueue = query({
     if (access.status !== "ok") {
       return access;
     }
+    const { user } = access;
+    await requireFeature(ctx, "extraction.reviewQueue", user._id);
 
     const { questions, papers, resultsByPaper } = await loadJobPapersAndResults(ctx, args.jobId);
     const questionByKey = buildQuestionInfoByKey(questions);
@@ -1361,6 +1366,8 @@ export const getReportSnapshots = query({
     if (access.status !== "ok") {
       return access;
     }
+    const { user } = access;
+    await requireFeature(ctx, "extraction.reportBuilder", user._id);
 
     // Cardinality: ~1-5 report snapshots per job
     const reports = await ctx.db

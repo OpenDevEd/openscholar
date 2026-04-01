@@ -237,6 +237,7 @@ export const createCheckoutSession = action({
         "Cannot create checkout session for free plan",
       );
     }
+    await requireFeatureInAction(ctx, `subscriptions.plan.${targetPlan}`);
 
     const existingSubscription = await ctx.runQuery(
       internal.subscriptions.internal.getSubscriptionByUser,
@@ -347,6 +348,7 @@ export const createPortalSession = action({
   }),
   handler: async (ctx): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const billingCustomer = await ctx.runQuery(
@@ -447,6 +449,7 @@ export const getSubscriptionDetails = action({
     errorCode?: SubscriptionDetailsErrorCode;
   }> => {
     await requireActionAuth(ctx);
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const subscription = await ctx.runQuery(
@@ -579,6 +582,7 @@ export const changePlan = action({
     creditsGranted: number;
   }> => {
     await requireActionAuth(ctx);
+    await requireFeatureInAction(ctx, "subscriptions.enabled");
     assertPlanPriceConfig();
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
@@ -593,6 +597,7 @@ export const changePlan = action({
         "Use billing portal to cancel to free plan",
       );
     }
+    await requireFeatureInAction(ctx, `subscriptions.plan.${targetPlan}`);
 
     try {
       const subscription = await ctx.runQuery(
