@@ -33,6 +33,7 @@ import {
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { SearchHistoryTab } from "./search-history-tab";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
@@ -369,6 +370,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const ts = useTranslations("sidebar");
   const pathname = usePathname();
   const extractionEnabled = useFeatureFlag("extraction.enabled");
+  const subscriptionState = useSubscriptionState();
+  const hasExtractionPlan = subscriptionState.resolvedPlan === "pro" || subscriptionState.resolvedPlan === "enterprise";
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -428,7 +431,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/library")) return "library";
     if (pathname.includes("/history")) return "history";
-    if (extractionEnabled && pathname.includes("/extraction"))
+    if ((extractionEnabled || hasExtractionPlan) && pathname.includes("/extraction"))
       return "extraction";
     if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
@@ -513,7 +516,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             index={3}
           />
 
-          {extractionEnabled && (
+          {(extractionEnabled || hasExtractionPlan) && (
             <NavItem
               href="/extraction"
               icon={Database}

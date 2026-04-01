@@ -4,7 +4,7 @@
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Loader2, CreditCard, Calendar, AlertCircle, Info } from "lucide-react";
+import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useAppToast } from "@/lib/toast";
@@ -184,11 +184,12 @@ export default function BillingPage() {
     subscriptionState.resolvedPlan ?? "free";
   const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
 
-  // Redirect non-subscribers away when subscriptions flag is disabled
+  // Redirect non-subscribers away only when both subscriptions AND credits are disabled
   useEffect(() => {
     if (
       !subscriptionState.isSettling &&
       !subscriptionsEnabled &&
+      !creditsEnabled &&
       showUpgradeCta
     ) {
       router.replace("/settings");
@@ -196,6 +197,7 @@ export default function BillingPage() {
   }, [
     subscriptionState.isSettling,
     subscriptionsEnabled,
+    creditsEnabled,
     showUpgradeCta,
     router,
   ]);
@@ -286,11 +288,6 @@ export default function BillingPage() {
     ? (subscription?.creditsPerMonth ?? 0)
     : 0;
 
-  const freeCreditCap = getFreeCreditCapForPlan(effectivePlan);
-  const isFreeCapReached = creditsEnabled &&
-    creditBalance != null &&
-    freeCreditCap > 0 &&
-    creditBalance.free >= freeCreditCap;
 
   const statusLabels: Record<string, string> = {
     active: tc("active"),
@@ -332,21 +329,20 @@ export default function BillingPage() {
             {t("manageSubscription")}
           </p>
         </div>
-        <Button
-          data-testid="billing-manage-button"
-          variant={showUpgradeCta ? "default" : "outline"}
-          onClick={handleManageSubscription}
-          disabled={
-            isLoading ||
-            (showUpgradeCta && !subscriptionsEnabled)
-          }
-          size="sm"
-          // Prevent button from being re-rendered during loading state change
-          style={{ transition: 'none' }}
-        >
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {showUpgradeCta ? t("upgradePlan") : t("manageSubscriptionBtn")}
-        </Button>
+        {(subscriptionsEnabled || !showUpgradeCta) && (
+          <Button
+            data-testid="billing-manage-button"
+            variant={showUpgradeCta ? "default" : "outline"}
+            onClick={handleManageSubscription}
+            disabled={isLoading}
+            size="sm"
+            // Prevent button from being re-rendered during loading state change
+            style={{ transition: 'none' }}
+          >
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {showUpgradeCta ? t("upgradePlan") : t("manageSubscriptionBtn")}
+          </Button>
+        )}
       </div>
 
       {/* Content - show skeleton when data is loading */}
@@ -367,7 +363,7 @@ export default function BillingPage() {
       ) : (
       <div className="p-6 space-y-8 max-w-2xl">
         {/* Plan Section */}
-        <div className="space-y-4">
+        {(subscriptionsEnabled || !showUpgradeCta) && <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
             <CreditCard className="w-4 h-4" />
             <span>{t("subscription")}</span>
@@ -551,16 +547,9 @@ export default function BillingPage() {
               </div>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Credits Section */}
-        {isFreeCapReached && (
-          <div data-testid="billing-credit-cap-banner" className="bg-amber-500/10 p-3 text-amber-700 text-sm flex items-center gap-2 rounded-lg">
-            <Info className="w-4 h-4 flex-shrink-0" />
-            <span>{t("creditCapBanner")}</span>
-          </div>
-        )}
-
         {isWaitingForCredits && (
           <div className="bg-blue-500/10 p-3 text-blue-700 text-sm flex items-center gap-2 rounded-lg">
             <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />

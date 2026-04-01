@@ -21,13 +21,14 @@ export default function SettingsLayout({
   const subscriptionState = useSubscriptionState();
   const subscription = subscriptionState.subscription;
   const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
+  const creditsEnabled = useFeatureFlag("credits.enabled");
   const hasBillingLink = Boolean(
     subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
   );
   const effectivePlan = subscriptionState.resolvedPlan ?? "free";
   const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
   const hideBilling =
-    !subscriptionsEnabled && showUpgradeCta && !subscriptionState.isSettling;
+    !subscriptionsEnabled && !creditsEnabled && showUpgradeCta && !subscriptionState.isSettling;
 
   const baseSignedInItems = [
     { title: tc("general"), href: "/settings", icon: Settings2 },

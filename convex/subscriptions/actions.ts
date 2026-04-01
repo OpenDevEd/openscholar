@@ -348,7 +348,6 @@ export const createPortalSession = action({
   }),
   handler: async (ctx): Promise<{ url: string }> => {
     await requireActionAuth(ctx);
-    await requireFeatureInAction(ctx, "subscriptions.enabled");
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const billingCustomer = await ctx.runQuery(
@@ -449,7 +448,6 @@ export const getSubscriptionDetails = action({
     errorCode?: SubscriptionDetailsErrorCode;
   }> => {
     await requireActionAuth(ctx);
-    await requireFeatureInAction(ctx, "subscriptions.enabled");
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
 
     const subscription = await ctx.runQuery(

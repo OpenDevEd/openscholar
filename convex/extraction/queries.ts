@@ -299,7 +299,7 @@ export const getMyJobs = query({
     })
   ),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     // Handle unauthenticated gracefully
     const user = await getCurrentUser(ctx);
     if (!user) {
@@ -346,7 +346,7 @@ export const getJobDetails = query({
     }),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -402,7 +402,7 @@ export const getPaperResults = query({
     results: v.array(extractionResultWithReviewValidator),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") {
       return access;
@@ -452,7 +452,7 @@ export const getPaperPdfUrl = query({
     v.object({ status: v.literal("no_access") })
   ),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedPaper(ctx, args.paperId);
     if (access.status !== "ok") {
       return access;
@@ -492,7 +492,7 @@ export const getJobResults = query({
     ),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -559,7 +559,7 @@ export const getJobResultsPaginated = query({
     })
   ),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return {
@@ -692,7 +692,7 @@ export const getJobInsights = query({
     }),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -928,7 +928,7 @@ export const getQuestionInsights = query({
     true // includeNotFound
   ),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1047,7 +1047,7 @@ export const getQuestionDisagreements = query({
     true // includeNotFound
   ),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1190,7 +1190,7 @@ export const getReviewQueue = query({
     ),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1296,7 +1296,7 @@ export const getSavedViews = query({
     views: v.array(extractionSavedViewValidator),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1343,7 +1343,7 @@ export const getWorkflowTemplates = query({
     updatedAt: v.number(),
   })),
   handler: async (ctx) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
@@ -1361,7 +1361,7 @@ export const getReportSnapshots = query({
     reports: v.array(extractionReportSnapshotValidator),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1388,7 +1388,7 @@ export const getRunDiff = query({
     diff: v.union(v.null(), extractionRunDiffValidator),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;
@@ -1602,7 +1602,7 @@ export const subscribeToJobProgress = query({
     recentPapers: v.array(extractionPaperValidator),
   }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
+
     const access = await resolveOwnedJob(ctx, args.jobId);
     if (access.status !== "ok") {
       return access;

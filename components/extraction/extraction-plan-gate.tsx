@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
 type Step = {
   title: string;
@@ -28,6 +29,7 @@ type ValueCard = {
 
 export function ExtractionPlanGate() {
   const t = useTranslations("extraction");
+  const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
 
   const steps: Step[] = [
     {
@@ -81,14 +83,16 @@ export function ExtractionPlanGate() {
           <p className="max-w-3xl text-sm md:text-base text-muted-foreground leading-relaxed">
             {t("planGateDescription")}
           </p>
-          <div className="flex flex-wrap gap-3 pt-1">
-            <Button asChild>
-              <Link href="/pricing" className="gap-2">
-                {t("planGatePrimaryCta")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+          {subscriptionsEnabled && (
+            <div className="flex flex-wrap gap-3 pt-1">
+              <Button asChild>
+                <Link href="/pricing" className="gap-2">
+                  {t("planGatePrimaryCta")}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </motion.section>
 

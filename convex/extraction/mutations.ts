@@ -242,7 +242,6 @@ export const cancelExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args): Promise<{ success: boolean }> => {
-    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);
@@ -389,7 +388,6 @@ export const setResultReviewState = mutation({
     })
   ),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     const result = await ctx.db.get(args.resultId);
     if (!result) throw createError("NOT_FOUND", "Result not found");
@@ -526,7 +524,6 @@ export const saveExtractionSavedView = mutation({
   },
   returns: v.object({ viewId: v.id("extractionSavedViews") }),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
     await assertJobOwnership(ctx, user._id, args.jobId);
 
@@ -569,7 +566,6 @@ export const deleteExtractionSavedView = mutation({
   args: { viewId: v.id("extractionSavedViews") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const view = await ctx.db.get(args.viewId);
@@ -753,7 +749,6 @@ export const deleteWorkflowTemplate = mutation({
   args: { templateId: v.id("extractionWorkflowTemplates") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const template = await ctx.db.get(args.templateId);
@@ -1046,7 +1041,6 @@ export const deleteExtraction = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get(args.jobId);

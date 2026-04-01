@@ -8,6 +8,7 @@ import {
   User,
   Crown,
   CreditCard,
+  Coins,
   Settings,
   Loader2,
   Bot,
@@ -209,7 +210,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     credits &&
     credits.total > 0;
   const showUpgradeButton = subscriptionsEnabled && showUpgrade;
-  const showPlansItem = subscriptionsEnabled;
+  const showPlansItem = subscriptionsEnabled || !showUpgrade;
   const hasAccountInfo = showPlanRow || showCredits || showUpgradeButton;
 
   const trigger = (
@@ -297,15 +298,18 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                 </div>
               )}
               {showCredits && topupsEnabled && (
-                <button
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-8 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
                   onClick={() => {
                     setOpen(false);
                     router.push("/settings/billing#topup-section");
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
                 >
+                  <Coins className="w-3.5 h-3.5 mr-1.5" />
                   {tc("buyCredits")}
-                </button>
+                </Button>
               )}
               {showUpgradeButton && (
                 <Button
