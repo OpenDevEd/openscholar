@@ -24,6 +24,9 @@ export const FLAG_REGISTRY = {
   "credits.enabled": { enabled: true, minimumTier: 0, description: "Credit system master switch" },
   "credits.topups": { enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
   "subscriptions.enabled": { enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
+  "subscriptions.plan.go": { enabled: true, minimumTier: 0, description: "Show the Go plan on the pricing page" },
+  "subscriptions.plan.pro": { enabled: true, minimumTier: 0, description: "Show the Pro plan on the pricing page" },
+  "subscriptions.plan.enterprise": { enabled: true, minimumTier: 0, description: "Show the Enterprise plan on the pricing page" },
   "ai.serverMode": { enabled: true, minimumTier: 10, description: "Server-side AI operations (Go+)" },
 } as const satisfies Record<string, FlagDefault>;
 

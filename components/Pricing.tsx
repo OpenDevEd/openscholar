@@ -30,6 +30,7 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations, useFormatter } from "next-intl";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
 type PlanPrice = {
   id: string;
@@ -82,12 +83,19 @@ export function Pricing() {
     enterprise: [t("enterpriseFeature1"), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
   }), [t]);
 
-  const PLANS: PlanConfig[] = useMemo(() => [
-    { id: "free", name: t("freePlanName"), icon: BookOpen, description: t("freeDescription"), features: FEATURES.free, tier: 0 },
-    { id: "go", name: t("goPlanName"), icon: Rocket, description: t("goDescription"), features: FEATURES.go, tier: 10 },
-    { id: "pro", name: t("proPlanName"), icon: Zap, description: t("proDescription"), features: FEATURES.pro, tier: 20, popular: true },
-    { id: "enterprise", name: t("enterprisePlanName"), icon: Building2, description: t("enterpriseDescription"), features: FEATURES.enterprise, tier: 30 },
-  ], [t, FEATURES]);
+  const showGo = useFeatureFlag("subscriptions.plan.go");
+  const showPro = useFeatureFlag("subscriptions.plan.pro");
+  const showEnterprise = useFeatureFlag("subscriptions.plan.enterprise");
+
+  const PLANS: PlanConfig[] = useMemo(() => {
+    const all: PlanConfig[] = [
+      { id: "free", name: t("freePlanName"), icon: BookOpen, description: t("freeDescription"), features: FEATURES.free, tier: 0 },
+      ...(showGo ? [{ id: "go" as const, name: t("goPlanName"), icon: Rocket, description: t("goDescription"), features: FEATURES.go, tier: 10 }] : []),
+      ...(showPro ? [{ id: "pro" as const, name: t("proPlanName"), icon: Zap, description: t("proDescription"), features: FEATURES.pro, tier: 20, popular: true }] : []),
+      ...(showEnterprise ? [{ id: "enterprise" as const, name: t("enterprisePlanName"), icon: Building2, description: t("enterpriseDescription"), features: FEATURES.enterprise, tier: 30 }] : []),
+    ];
+    return all;
+  }, [t, FEATURES, showGo, showPro, showEnterprise]);
 
   const getPlans = useAction(api.subscriptions.actions.getPlans);
   const createCheckoutSession = useAction(
@@ -181,12 +189,10 @@ export function Pricing() {
   // Reorder plans for mobile (PRO first)
   const orderedPlans = useMemo(() => {
     if (isMobile) {
-      return [
-        PLANS.find((p) => p.id === "pro")!,
-        PLANS.find((p) => p.id === "go")!,
-        PLANS.find((p) => p.id === "free")!,
-        PLANS.find((p) => p.id === "enterprise")!,
-      ];
+      const mobileOrder: PlanConfig["id"][] = ["pro", "go", "free", "enterprise"];
+      return mobileOrder
+        .map((id) => PLANS.find((p) => p.id === id))
+        .filter((p): p is PlanConfig => p !== undefined);
     }
     return PLANS;
   }, [isMobile, PLANS]);
