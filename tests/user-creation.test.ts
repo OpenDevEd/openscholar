@@ -71,7 +71,7 @@ describe("createUserWithDefaults", () => {
     expect(inserts[1].table).toBe("credits");
     expect(inserts[1].doc).toMatchObject({
       userId: "mock_users_id",
-      freeBalance: 2000,
+      freeBalance: FREE_SIGNUP_CREDIT_GRANT,
       paidBalance: 0,
       lifetimeUsed: 0,
     });
@@ -152,9 +152,9 @@ describe("createUserWithDefaults", () => {
       email: "test@example.com",
     });
 
-    // The free plan cap equals FREE_SIGNUP_CREDIT_GRANT (2000),
-    // so applyTierFreeCreditCap({ plan: "free", currentFreeBalance: 0, amountToAdd: 2000 })
-    // returns newFreeBalance = 2000
+    // The free plan cap equals FREE_SIGNUP_CREDIT_GRANT (500),
+    // so applyTierFreeCreditCap({ plan: "free", currentFreeBalance: 0, amountToAdd: 500 })
+    // returns newFreeBalance = 500
     expect(inserts[1].doc.freeBalance).toBe(FREE_SIGNUP_CREDIT_GRANT);
   });
 });

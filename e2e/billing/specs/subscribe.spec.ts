@@ -3,9 +3,10 @@ import {
   createSubscriptionBypass,
   cleanupStripeCustomer,
 } from "../stripe-helpers";
+import { FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "../../../convex/lib/constants";
 
 test.describe("Subscription: Free to Paid", () => {
-  test("subscribe to Go plan shows Go plan with 5,000 credits", async ({
+  test(`subscribe to Go plan shows Go plan with ${FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth} credits`, async ({
     clerkUser,
     stripeClient,
     webhookWaiter,
@@ -24,14 +25,14 @@ test.describe("Subscription: Free to Paid", () => {
 
     // 2. Wait for Convex webhook processing
     await webhookWaiter.waitForSubscriptionPlan("go");
-    await webhookWaiter.waitForCreditBalance((total) => total >= 5_000);
+    await webhookWaiter.waitForCreditBalance((total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth);
 
     // 3. Assert billing page
     await billingPage.goto();
     await expect(billingPage.planName).toContainText(/go/i);
     await expect(billingPage.statusBadge).toContainText(/active/i);
     const credits = await billingPage.getCreditBalance();
-    expect(credits).toBeGreaterThanOrEqual(5_000); // 2,000 free + 3,000 Go
+    expect(credits).toBeGreaterThanOrEqual(FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth); // FREE_SIGNUP_CREDIT_GRANT free + PLAN_CONFIG.go.creditsPerMonth Go
 
     // 4. Assert pricing page shows Current Plan badge on Go card
     await pricingPage.goto();
@@ -44,7 +45,7 @@ test.describe("Subscription: Free to Paid", () => {
     await cleanupStripeCustomer({ stripe: stripeClient, customerId });
   });
 
-  test("subscribe to Pro plan shows Pro plan with 17,000 credits", async ({
+  test(`subscribe to Pro plan shows Pro plan with ${FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.pro.creditsPerMonth} credits`, async ({
     clerkUser,
     stripeClient,
     webhookWaiter,
@@ -63,14 +64,14 @@ test.describe("Subscription: Free to Paid", () => {
 
     // 2. Wait for Convex webhook processing
     await webhookWaiter.waitForSubscriptionPlan("pro");
-    await webhookWaiter.waitForCreditBalance((total) => total >= 17_000);
+    await webhookWaiter.waitForCreditBalance((total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.pro.creditsPerMonth);
 
     // 3. Assert billing page
     await billingPage.goto();
     await expect(billingPage.planName).toContainText(/pro/i);
     await expect(billingPage.statusBadge).toContainText(/active/i);
     const credits = await billingPage.getCreditBalance();
-    expect(credits).toBeGreaterThanOrEqual(17_000); // 2,000 free + 15,000 Pro
+    expect(credits).toBeGreaterThanOrEqual(FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.pro.creditsPerMonth); // FREE_SIGNUP_CREDIT_GRANT free + PLAN_CONFIG.pro.creditsPerMonth Pro
 
     // 4. Assert pricing page shows Current Plan badge on Pro card
     await pricingPage.goto();

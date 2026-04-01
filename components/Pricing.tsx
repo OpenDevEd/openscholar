@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { getPlanTier } from "@/convex/lib/constants";
+import { getPlanTier, FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "@/convex/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -77,10 +77,10 @@ export function Pricing() {
   const format = useFormatter();
 
   const FEATURES = useMemo(() => ({
-    free: [t("freeFeature1"), t("freeFeature2"), t("freeFeature3")],
-    go: [t("goFeature1"), t("goFeature2"), t("goFeature3")],
-    pro: [t("proFeature1"), t("proFeature2"), t("proFeature3"), t("proFeature4")],
-    enterprise: [t("enterpriseFeature1"), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
+    free: [t("freeFeature1", { credits: FREE_SIGNUP_CREDIT_GRANT }), t("freeFeature2"), t("freeFeature3")],
+    go: [t("goFeature1", { credits: PLAN_CONFIG.go.creditsPerMonth }), t("goFeature2"), t("goFeature3")],
+    pro: [t("proFeature1", { credits: PLAN_CONFIG.pro.creditsPerMonth }), t("proFeature2"), t("proFeature3"), t("proFeature4")],
+    enterprise: [t("enterpriseFeature1", { credits: PLAN_CONFIG.enterprise.creditsPerMonth }), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
   }), [t]);
 
   const showGo = useFeatureFlag("subscriptions.plan.go");

@@ -4,16 +4,17 @@ import {
   cleanupStripeCustomer,
   createTopupBypass,
 } from "../stripe-helpers";
+import { FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "../../../convex/lib/constants";
 
 test.describe("Credits", () => {
-  test("free user sees 2,000 signup credits on billing page", async ({
+  test(`free user sees ${FREE_SIGNUP_CREDIT_GRANT} signup credits on billing page`, async ({
     clerkUser,
     billingPage,
   }) => {
-    // A fresh user created by the billing fixture has 2,000 free signup credits
+    // A fresh user created by the billing fixture has FREE_SIGNUP_CREDIT_GRANT free signup credits
     await billingPage.goto();
     const credits = await billingPage.getCreditBalance();
-    expect(credits).toBe(2_000);
+    expect(credits).toBe(FREE_SIGNUP_CREDIT_GRANT);
   });
 
   test("upgrade Go to Pro grants pro-rata credits", async ({
@@ -33,7 +34,7 @@ test.describe("Credits", () => {
       priceId: goPriceId,
     });
     await webhookWaiter.waitForSubscriptionPlan("go");
-    await webhookWaiter.waitForCreditBalance((total) => total >= 5_000);
+    await webhookWaiter.waitForCreditBalance((total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth);
 
     // 2. Read subscription timestamps for pro-rata calculation
     //    In Stripe API 2026-01-28 (clover), period fields moved to subscription items
@@ -60,11 +61,11 @@ test.describe("Credits", () => {
     // 5. Calculate expected pro-rata credits
     //    The server calculates: floor(remainingRatio * creditDelta)
     //    where remainingRatio = (periodEnd - now) / (periodEnd - periodStart)
-    //    and creditDelta = 15,000 - 3,000 = 12,000
+    //    and creditDelta = PLAN_CONFIG.pro.creditsPerMonth - PLAN_CONFIG.go.creditsPerMonth
     const now = Date.now();
     const remainingRatio = (periodEnd - now) / (periodEnd - periodStart);
-    const expectedProRata = Math.floor(remainingRatio * 12_000);
-    const expectedTotal = 2_000 + 3_000 + expectedProRata; // free + Go + proRata
+    const expectedProRata = Math.floor(remainingRatio * (PLAN_CONFIG.pro.creditsPerMonth - PLAN_CONFIG.go.creditsPerMonth));
+    const expectedTotal = FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth + expectedProRata; // free + Go + proRata
 
     // 6. Wait for credits to be updated (pro-rata grant may arrive after plan change)
     await webhookWaiter.waitForCreditBalance(
@@ -98,11 +99,11 @@ test.describe("Credits", () => {
       priceId: goPriceId,
     });
     await webhookWaiter.waitForSubscriptionPlan("go");
-    await webhookWaiter.waitForCreditBalance((total) => total >= 5_000);
+    await webhookWaiter.waitForCreditBalance((total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth);
 
     // 2. Record current balance
     const balanceBefore = await webhookWaiter.waitForCreditBalance(
-      (total) => total >= 5_000,
+      (total) => total >= FREE_SIGNUP_CREDIT_GRANT + PLAN_CONFIG.go.creditsPerMonth,
     );
 
     // 3. Purchase 10,000 credits via topup checkout-bypass
@@ -133,7 +134,7 @@ test.describe("Credits", () => {
     clerkUser,
     billingPage,
   }) => {
-    // A fresh free user has freeBalance = 2,000 and freeCreditCap = 2,000
+    // A fresh free user has freeBalance = FREE_SIGNUP_CREDIT_GRANT and freeCreditCap = FREE_SIGNUP_CREDIT_GRANT
     // The condition isFreeCapReached = freeBalance >= freeCreditCap is immediately true
     // No setup needed -- the cap banner should be visible for a new free user
     await billingPage.goto();

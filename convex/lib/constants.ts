@@ -2,7 +2,7 @@
  * One-time credit grant issued to every new user on account creation.
  * Lets free users experience server-side AI (including extraction) before committing to a plan.
  */
-export const FREE_SIGNUP_CREDIT_GRANT = 2_000;
+export const FREE_SIGNUP_CREDIT_GRANT = 500;
 
 /**
  * Markup multiplier applied to raw AI token costs before deducting credits.

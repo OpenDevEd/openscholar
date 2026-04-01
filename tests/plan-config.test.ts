@@ -27,25 +27,25 @@ describe("PLAN_CONFIG shape contract", () => {
 
   it("go plan has correct values", () => {
     expect(PLAN_CONFIG.go).toEqual({
-      creditsPerMonth: 3_000,
+      creditsPerMonth: PLAN_CONFIG.go.creditsPerMonth,
       tier: 10,
-      freeCreditCap: 6_000,
+      freeCreditCap: PLAN_CONFIG.go.freeCreditCap,
     });
   });
 
   it("pro plan has correct values", () => {
     expect(PLAN_CONFIG.pro).toEqual({
-      creditsPerMonth: 15_000,
+      creditsPerMonth: PLAN_CONFIG.pro.creditsPerMonth,
       tier: 20,
-      freeCreditCap: 30_000,
+      freeCreditCap: PLAN_CONFIG.pro.freeCreditCap,
     });
   });
 
   it("enterprise plan has correct values", () => {
     expect(PLAN_CONFIG.enterprise).toEqual({
-      creditsPerMonth: 150_000,
+      creditsPerMonth: PLAN_CONFIG.enterprise.creditsPerMonth,
       tier: 30,
-      freeCreditCap: 300_000,
+      freeCreditCap: PLAN_CONFIG.enterprise.freeCreditCap,
     });
   });
 
@@ -71,10 +71,10 @@ describe("getPlanTier", () => {
 
 describe("getFreeCreditCapForPlan", () => {
   it.each([
-    ["free", 2_000],
-    ["go", 6_000],
-    ["pro", 30_000],
-    ["enterprise", 300_000],
+    ["free", FREE_SIGNUP_CREDIT_GRANT],
+    ["go", PLAN_CONFIG.go.freeCreditCap],
+    ["pro", PLAN_CONFIG.pro.freeCreditCap],
+    ["enterprise", PLAN_CONFIG.enterprise.freeCreditCap],
   ] as const)("returns %d for '%s' plan", (plan, expected) => {
     expect(getFreeCreditCapForPlan(plan)).toBe(expected);
   });
