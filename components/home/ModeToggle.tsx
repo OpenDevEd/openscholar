@@ -1,10 +1,8 @@
 "use client";
 
-import { motion, LayoutGroup, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Search, Wand2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { modeToggleSpring } from "@/lib/animation-config";
 
 export type SearchMode = "search" | "research";
 
@@ -14,81 +12,74 @@ interface ModeToggleProps {
   disabled?: boolean;
 }
 
-const tapSpring = {
-  type: "spring" as const,
-  stiffness: 400,
-  damping: 25,
+const win2kTabStyle: React.CSSProperties = {
+  fontFamily: "Tahoma, 'MS Sans Serif', Arial, sans-serif",
+  fontSize: "11px",
+  padding: "4px 12px",
+  cursor: "default",
+  userSelect: "none",
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  border: "1px solid",
+  borderRadius: "4px 4px 0 0",
+  position: "relative",
+  top: "1px",
 };
 
 export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
   const t = useTranslations("home");
-  const shouldReduceMotion = useReducedMotion();
-
-  const indicatorTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : modeToggleSpring;
 
   return (
-    <LayoutGroup id="home-mode">
-      <motion.div
-        layout
-        className="relative flex flex-nowrap rounded-full border border-border/50 bg-muted/70 p-1"
-        transition={indicatorTransition}
-      >
-        <div className="absolute inset-0 bg-background/50 rounded-full shadow-inner pointer-events-none" />
-
-        <motion.button
-          type="button"
-          onClick={() => onModeChange("search")}
-          disabled={disabled}
-          whileHover={disabled ? undefined : { scale: 1.02 }}
-          whileTap={disabled ? undefined : { scale: 0.98 }}
-          transition={tapSpring}
-          className={cn(
-            "flex-1 shrink-0 relative z-20 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap",
-            "transition-colors duration-300 ease-out",
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-end",
+        gap: "2px",
+        fontFamily: "Tahoma, Arial, sans-serif",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => !disabled && onModeChange("search")}
+        disabled={disabled}
+        style={{
+          ...win2kTabStyle,
+          background: mode === "search" ? "#d4d0c8" : "#bfbbb0",
+          borderColor:
             mode === "search"
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground/80",
-          )}
-        >
-          {mode === "search" && (
-            <motion.div
-              layoutId="home-mode-indicator"
-              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border/50 z-10"
-              transition={indicatorTransition}
-            />
-          )}
-          <Search className="relative z-10 h-4 w-4" />
-          <span className="relative z-10">{t("searchMode")}</span>
-        </motion.button>
+              ? "#ffffff #808080 #d4d0c8 #ffffff"
+              : "#ffffff #808080 #808080 #ffffff",
+          fontWeight: mode === "search" ? "bold" : "normal",
+          color: disabled ? "#808080" : "#000",
+          zIndex: mode === "search" ? 2 : 1,
+          paddingTop: mode === "search" ? "6px" : "4px",
+        }}
+      >
+        <Search size={11} />
+        {t("searchMode")}
+      </button>
 
-        <motion.button
-          type="button"
-          onClick={() => onModeChange("research")}
-          disabled={disabled}
-          whileHover={disabled ? undefined : { scale: 1.02 }}
-          whileTap={disabled ? undefined : { scale: 0.98 }}
-          transition={tapSpring}
-          className={cn(
-            "flex-1 shrink-0 relative z-20 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap",
-            "transition-colors duration-300 ease-out",
+      <button
+        type="button"
+        onClick={() => !disabled && onModeChange("research")}
+        disabled={disabled}
+        style={{
+          ...win2kTabStyle,
+          background: mode === "research" ? "#d4d0c8" : "#bfbbb0",
+          borderColor:
             mode === "research"
-              ? "text-primary"
-              : "text-muted-foreground hover:text-foreground/80",
-          )}
-        >
-          {mode === "research" && (
-            <motion.div
-              layoutId="home-mode-indicator"
-              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border/50 z-10"
-              transition={indicatorTransition}
-            />
-          )}
-          <Wand2 className="relative z-10 h-4 w-4" />
-          <span className="relative z-10">{t("researchMode")}</span>
-        </motion.button>
-      </motion.div>
-    </LayoutGroup>
+              ? "#ffffff #808080 #d4d0c8 #ffffff"
+              : "#ffffff #808080 #808080 #ffffff",
+          fontWeight: mode === "research" ? "bold" : "normal",
+          color: disabled ? "#808080" : "#000000",
+          zIndex: mode === "research" ? 2 : 1,
+          paddingTop: mode === "research" ? "6px" : "4px",
+        }}
+      >
+        <Wand2 size={11} />
+        {t("researchMode")}
+      </button>
+    </div>
   );
 }

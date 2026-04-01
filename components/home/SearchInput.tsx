@@ -1,20 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import { Search, Loader2, Wand2 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle, SearchMode } from "./ModeToggle";
 import { useTranslations } from "next-intl";
-import {
-  hintVariants,
-  hintTransition,
-  submitButtonIconVariants,
-  submitButtonTextVariants,
-  submitButtonMorphTransition,
-} from "@/lib/animation-config";
 
 interface SearchInputProps {
   query: string;
@@ -24,6 +14,29 @@ interface SearchInputProps {
   disabled: boolean;
   className?: string;
 }
+
+const win2kBtn: React.CSSProperties = {
+  fontFamily: "Tahoma, 'MS Sans Serif', Arial, sans-serif",
+  fontSize: "11px",
+  padding: "3px 10px",
+  background: "#d4d0c8",
+  border: "2px solid",
+  borderColor: "#ffffff #808080 #808080 #ffffff",
+  cursor: "default",
+  color: "#000",
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  userSelect: "none",
+  minWidth: "80px",
+  justifyContent: "center",
+};
+
+const win2kBtnActive: React.CSSProperties = {
+  borderColor: "#808080 #ffffff #ffffff #808080",
+  paddingTop: "4px",
+  paddingLeft: "11px",
+};
 
 export function SearchInput({
   query,
@@ -35,14 +48,12 @@ export function SearchInput({
 }: SearchInputProps) {
   const t = useTranslations("home");
   const tc = useTranslations("common");
-  const shouldReduceMotion = useReducedMotion();
 
-  // Detect mode based on input ("?" at end) or manual toggle
   const [mode, setMode] = useState<SearchMode>("search");
   const effectiveMode = query.trim().endsWith("?") ? "research" : mode;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [searchPressed, setSearchPressed] = useState(false);
 
-  // Autofocus on desktop (avoid on mobile to prevent keyboard popup)
   useEffect(() => {
     const isDesktop =
       typeof window !== "undefined" &&
@@ -51,11 +62,6 @@ export function SearchInput({
       textareaRef.current.focus();
     }
   }, []);
-
-  const handleModeChange = (newMode: SearchMode) => {
-    setMode(newMode);
-    // Focus textarea on toggle? Maybe.
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,215 +79,235 @@ export function SearchInput({
     }
   };
 
-  const hintAnimTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : hintTransition;
-  const hintAnimVariants = shouldReduceMotion
-    ? { enter: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : hintVariants;
-  const submitMorphTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : submitButtonMorphTransition;
-  const submitIconVariants = shouldReduceMotion
-    ? { enter: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : submitButtonIconVariants;
-  const submitTextVariants = shouldReduceMotion
-    ? { enter: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : submitButtonTextVariants;
+  const isResearch = effectiveMode === "research";
 
   return (
-    <LayoutGroup id="home-search">
+    <div
+      className={cn("w-full max-w-2xl mx-auto relative z-10", className)}
+      style={{ fontFamily: "Tahoma, 'MS Sans Serif', Arial, sans-serif" }}
+    >
+      {/* Tabs */}
+      <div style={{ display: "flex", alignItems: "flex-end", paddingLeft: "4px" }}>
+        <ModeToggle
+          mode={effectiveMode}
+          onModeChange={setMode}
+          disabled={disabled}
+        />
+      </div>
+
+      {/* Win2000 group-box / panel */}
       <div
-        className={cn(
-          "w-full max-w-2xl mx-auto space-y-6 relative z-10",
-          className,
-        )}
+        style={{
+          background: "#d4d0c8",
+          border: "2px solid",
+          borderColor: "#ffffff #808080 #808080 #ffffff",
+          padding: "12px",
+          boxShadow: "inset 1px 1px 0 #dfdfdf",
+        }}
       >
-        {/* Mode Toggle */}
-        <div className="flex justify-center">
-          <ModeToggle
-            mode={effectiveMode}
-            onModeChange={handleModeChange}
+        {/* Inner sunken textarea */}
+        <div
+          style={{
+            background: "white",
+            border: "2px solid",
+            borderColor: "#808080 #dfdfdf #dfdfdf #808080",
+            marginBottom: "10px",
+          }}
+        >
+          <textarea
+            ref={textareaRef}
+            value={query}
+            placeholder={
+              isResearch ? t("researchPlaceholder") : t("searchPlaceholder")
+            }
             disabled={disabled}
+            onChange={(e) => onQueryChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            style={{
+              width: "100%",
+              minHeight: "80px",
+              resize: "none",
+              border: "none",
+              outline: "none",
+              padding: "6px 8px",
+              fontFamily: "Tahoma, Arial, sans-serif",
+              fontSize: "13px",
+              color: "#000",
+              background: "transparent",
+              boxSizing: "border-box",
+            }}
           />
         </div>
 
-        {/* Input Container */}
-        <motion.div
-          layout
-          className={cn(
-            "relative rounded-2xl p-1 transition-all duration-300",
-            effectiveMode === "research"
-              ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-[0_0_30px_-5px_oklch(0.7_0.17_54/0.2)]"
-              : "bg-background/40 shadow-xl border border-white/20 dark:border-white/5",
-          )}
+        {/* Action Row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "8px",
+          }}
         >
-          <div className="relative overflow-hidden rounded-xl bg-background/95 transition-shadow group focus-within:ring-1 focus-within:ring-primary/30 dark:bg-background/90">
-            <Textarea
-              ref={textareaRef}
-              name="query"
-              value={query}
-              placeholder={
-                effectiveMode === "research"
-                  ? t("researchPlaceholder")
-                  : t("searchPlaceholder")
-              }
-              className="w-full border-none bg-transparent resize-none min-h-[80px] sm:min-h-[100px] max-h-40 text-base sm:text-lg md:text-xl placeholder:text-muted-foreground/50 p-3 focus-visible:ring-0"
-              disabled={disabled}
-              onChange={(e) => onQueryChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-
-            {/* Bottom Action Bar */}
-            <div className="flex flex-wrap items-center justify-end md:justify-between p-3 gap-4">
-              <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0">
-                <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
-                  {t("enterKey")}
-                </span>
-                {t("toSubmit")}
-                <span className="mx-1 opacity-20">|</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
-                  {t("shiftEnterKey")}
-                </span>
-                {t("newLine")}
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={disabled || !query.trim()}
-                size="lg"
-                className={cn(
-                  "rounded-xl px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
-                  effectiveMode === "research"
-                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
-                    : "bg-foreground hover:bg-foreground/90 text-background",
-                )}
-              >
-                {isEnhancing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                    {tc("processing")}
-                  </>
-                ) : (
-                  <motion.div
-                    layout
-                    className="relative flex items-center justify-center"
-                    transition={{
-                      ...submitMorphTransition,
-                      layout: { ...submitMorphTransition },
-                    }}
-                  >
-                    <AnimatePresence mode="popLayout">
-                      {effectiveMode === "research" ? (
-                        <motion.span
-                          key="research"
-                          layout
-                          className="flex items-center justify-center gap-2"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={submitMorphTransition}
-                        >
-                          <motion.span
-                            variants={submitIconVariants}
-                            initial="enter"
-                            animate="animate"
-                            exit="exit"
-                            transition={submitMorphTransition}
-                            className="inline-flex shrink-0"
-                          >
-                            <Wand2 className="h-4 w-4" />
-                          </motion.span>
-                          <motion.span
-                            variants={submitTextVariants}
-                            initial="enter"
-                            animate="animate"
-                            exit="exit"
-                            transition={submitMorphTransition}
-                          >
-                            {t("researchButton")}
-                          </motion.span>
-                        </motion.span>
-                      ) : (
-                        <motion.span
-                          key="search"
-                          layout
-                          className="flex items-center justify-center gap-2"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={submitMorphTransition}
-                        >
-                          <motion.span
-                            variants={submitIconVariants}
-                            initial="enter"
-                            animate="animate"
-                            exit="exit"
-                            transition={submitMorphTransition}
-                            className="inline-flex shrink-0"
-                          >
-                            <Search className="h-4 w-4" />
-                          </motion.span>
-                          <motion.span
-                            variants={submitTextVariants}
-                            initial="enter"
-                            animate="animate"
-                            exit="exit"
-                            transition={submitMorphTransition}
-                          >
-                            {tc("search")}
-                          </motion.span>
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </Button>
-            </div>
+          {/* Keyboard hint */}
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#444",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "4px",
+              alignItems: "center",
+            }}
+          >
+            <kbd
+              style={{
+                background: "#d4d0c8",
+                border: "1px solid",
+                borderColor: "#ffffff #808080 #808080 #ffffff",
+                padding: "1px 4px",
+                fontFamily: "Tahoma, monospace",
+                fontSize: "10px",
+              }}
+            >
+              {t("enterKey")}
+            </kbd>
+            {t("toSubmit")}
+            <span style={{ opacity: 0.4 }}>|</span>
+            <kbd
+              style={{
+                background: "#d4d0c8",
+                border: "1px solid",
+                borderColor: "#ffffff #808080 #808080 #ffffff",
+                padding: "1px 4px",
+                fontFamily: "Tahoma, monospace",
+                fontSize: "10px",
+              }}
+            >
+              {t("shiftEnterKey")}
+            </kbd>
+            {t("newLine")}
           </div>
-        </motion.div>
 
-        {/* Unified hint area - single AnimatePresence, same height to prevent layout shift */}
-        <motion.div
-          layout
-          className="relative flex justify-center items-center h-11"
-          style={{ position: "relative" }}
-        >
-          <AnimatePresence mode="popLayout">
-            {effectiveMode === "search" ? (
-              <motion.button
-                key="search-hint"
-                type="button"
-                onClick={() => handleModeChange("research")}
-                variants={hintAnimVariants}
-                initial="enter"
-                animate="animate"
-                exit="exit"
-                transition={hintAnimTransition}
-                className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border/40 bg-muted/50 px-3 text-xs text-muted-foreground transition-all duration-200 hover:border-primary/25 hover:bg-muted/70 hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
-              >
-                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-muted/80 border border-border/50 font-mono font-medium text-foreground/80">
-                  ?
-                </span>
-                <span>{t("questionShortcutHint")}</span>
-              </motion.button>
+          {/* Search Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              if (disabled || !query.trim()) return;
+              setSearchPressed(true);
+              setTimeout(() => setSearchPressed(false), 150);
+              handleSubmit(e as unknown as React.FormEvent);
+            }}
+            disabled={disabled || !query.trim()}
+            style={{
+              ...win2kBtn,
+              ...(searchPressed ? win2kBtnActive : {}),
+              opacity: disabled || !query.trim() ? 0.5 : 1,
+              cursor: disabled || !query.trim() ? "default" : "default",
+              background: isResearch ? "#d4e8f5" : "#d4d0c8",
+            }}
+            onMouseDown={() => setSearchPressed(true)}
+            onMouseUp={() => setSearchPressed(false)}
+            onMouseLeave={() => setSearchPressed(false)}
+          >
+            {isEnhancing ? (
+              <>
+                <Loader2 size={12} className="animate-spin" />
+                {tc("processing")}
+              </>
+            ) : isResearch ? (
+              <>
+                <Wand2 size={12} />
+                {t("researchButton")}
+              </>
             ) : (
-              <motion.p
-                key="research-hint"
-                variants={hintAnimVariants}
-                initial="enter"
-                animate="animate"
-                exit="exit"
-                transition={hintAnimTransition}
-                className="h-9 flex items-center justify-center text-center text-sm text-primary/80 font-medium"
-              >
-                {t("researchModeDescription")}
-              </motion.p>
+              <>
+                <Search size={12} />
+                {tc("search")}
+              </>
             )}
-          </AnimatePresence>
-        </motion.div>
+          </button>
+        </div>
+
+        {/* Hint / research mode note */}
+        <div
+          style={{
+            marginTop: "10px",
+            borderTop: "1px solid #808080",
+            paddingTop: "6px",
+            minHeight: "20px",
+          }}
+        >
+          {isResearch ? (
+            <p style={{ fontSize: "11px", color: "#000080", margin: 0 }}>
+              {t("researchModeDescription")}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMode("research")}
+              style={{
+                fontSize: "11px",
+                color: "#0000cc",
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                textDecoration: "underline",
+                fontFamily: "Tahoma, Arial, sans-serif",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <span
+                style={{
+                  background: "#d4d0c8",
+                  border: "1px solid",
+                  borderColor: "#ffffff #808080 #808080 #ffffff",
+                  padding: "0 3px",
+                  fontFamily: "monospace",
+                  color: "#000",
+                  fontSize: "10px",
+                  textDecoration: "none",
+                }}
+              >
+                ?
+              </span>
+              {t("questionShortcutHint")}
+            </button>
+          )}
+        </div>
       </div>
-    </LayoutGroup>
+
+      {/* Win2000 status bar */}
+      <div
+        style={{
+          background: "#d4d0c8",
+          borderTop: "1px solid #808080",
+          padding: "2px 6px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: "11px",
+          color: "#000",
+        }}
+      >
+        <span>{isEnhancing ? "Processing search query..." : isResearch ? "Research mode enabled" : "Ready"}</span>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: isEnhancing ? "#ffc107" : "#4caf50",
+              border: "1px solid",
+              borderColor: isEnhancing ? "#e6a800 #c8920a #c8920a #e6a800" : "#3d8b40 #2e6b31 #2e6b31 #3d8b40",
+            }}
+          />
+          <span>OpenAlex</span>
+        </div>
+      </div>
+    </div>
   );
 }
