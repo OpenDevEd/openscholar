@@ -54,7 +54,6 @@ export const seed = internalMutation({
       { key: "credits.enabled", enabled: true, minimumTier: 0, description: "Credit system master switch" },
       { key: "credits.topups", enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
       { key: "subscriptions.enabled", enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
-      { key: "ai.serverMode", enabled: true, minimumTier: 10, description: "Server-side AI operations (Go+)" },
     ];
 
     for (const flag of defaults) {

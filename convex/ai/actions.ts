@@ -88,7 +88,6 @@ export const translateQuery = createAIAction(
   (output) => ({
     translatedQuery: output.translatedQuery,
   }),
-  { minPlanTier: 10 }
 );
 
 export const translatePaperContent = createAIAction(
@@ -109,7 +108,6 @@ export const translatePaperContent = createAIAction(
     translatedAbstract: output.translatedAbstract,
     noTranslationNeeded: false,
   }),
-  { minPlanTier: 10 }
 );
 
 export const generateScreeningResponses = createAIAction(
@@ -204,7 +202,6 @@ export const generateBatchTranslations = action({
           usageBreakdown,
         };
       },
-      { minPlanTier: 10 }
     );
   },
 });

@@ -59,7 +59,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
   // Use the new router hooks
   const { execute: enhanceQuery, isConfigured: isEnhanceConfigured } = useEnhanceSearchQuery();
-  const { execute: translateQueryFn, isConfigured: isTranslateConfigured, isPlanEntitled: isTranslatePlanEntitled } = useTranslateQuery();
+  const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
 
   const selectedLanguage = search?.params?.lang ?? "";
 
@@ -160,7 +160,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const performTranslation = useCallback(
     async (targetLanguage: string) => {
       if (!search || !targetLanguage || !localInputValue.trim()) return;
-      if (!isTranslatePlanEntitled) return; // silently blocked — UI already shows upgrade prompt
       if (!isTranslateConfigured) {
         toast.ai.configRequired(tValidation("aiConfigRequired"));
         return;
@@ -195,7 +194,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     [
       search,
       localInputValue,
-      isTranslatePlanEntitled,
       isTranslateConfigured,
       translateQueryFn,
       t,
@@ -294,7 +292,6 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 disabled={isLanguageSelectorDisabled}
                 translateDisabled={!localInputValue.trim()}
                 isTranslating={isTranslating}
-                isPlanEntitled={isTranslatePlanEntitled}
               />
               <Button
                 type="submit"

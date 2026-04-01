@@ -24,7 +24,7 @@ import { type PropertyValidators, type ObjectType, type GenericValidator } from 
 import { captureAIGenerationServer } from "../../lib/posthog-server";
 import { AI_COST_MARKUP } from "../lib/constants";
 import { createError } from "../lib/errors";
-import { requireFeatureInAction } from "../featureFlags/guard";
+
 import {
   calculateCreditsToDeductFromUsage,
   convertUsdCostToCredits,
@@ -169,16 +169,11 @@ export async function withAuthAndCreditsBatch<T>(
     totalUsage: Usage;
     usageBreakdown?: UsageBreakdownEntry[];
   }>,
-  options?: { minPlanTier?: number }
 ): Promise<T> {
   try {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
     if (!user) {
       throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
-    }
-
-    if (options?.minPlanTier) {
-      await requireFeatureInAction(ctx, "ai.serverMode", user._id);
     }
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
@@ -294,16 +289,11 @@ export async function withAuthAndCredits<T>(
   ctx: ActionCtx,
   operation: string,
   handler: (user: Doc<"users">) => Promise<{ result: T; usage: Usage }>,
-  options?: { minPlanTier?: number }
 ): Promise<T> {
   try {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
     if (!user) {
       throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
-    }
-
-    if (options?.minPlanTier) {
-      await requireFeatureInAction(ctx, "ai.serverMode", user._id);
     }
 
     const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
@@ -339,7 +329,6 @@ export function createAIAction<
     args: ObjectType<Args>,
   ) => OperationConfig<ObjectType<Args>, AIOutput>,
   formatOutput: (output: AIOutput, args: ObjectType<Args>) => Output,
-  options?: { minPlanTier?: number }
 ) {
   return action({
     args: argsValidator,
@@ -396,7 +385,7 @@ export function createAIAction<
           });
           throwStructuredAIError(error);
         }
-      }, options);
+      });
     },
   });
 }

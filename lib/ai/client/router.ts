@@ -55,15 +55,11 @@ export const useGenerateExtractionQuestions = createAIHook(
 export const useTranslateQuery = createAIHook(
   api.ai.actions.translateQuery,
   clientExecutor.translateQuery,
-  undefined,
-  { minPlanTier: 10 }
 )
 
 export const useTranslatePaperContent = createAIHook(
   api.ai.actions.translatePaperContent,
   clientExecutor.translatePaperContent,
-  undefined,
-  { minPlanTier: 10 }
 )
 
 export const useGenerateScreeningResponses = createAIHook(
@@ -95,6 +91,4 @@ export const useBatchScreeningResponses = createAIHook(
 export const useBatchTranslations = createAIHook(
   api.ai.actions.generateBatchTranslations,
   clientExecutor.generateBatchTranslations,
-  undefined,
-  { minPlanTier: 10 }
 )

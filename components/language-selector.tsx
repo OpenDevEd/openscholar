@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   Select,
@@ -10,12 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Languages, Lock } from "lucide-react";
+import { Languages } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -38,8 +32,6 @@ interface LanguageSelectorProps {
   placeholder?: string;
   /** When true, trigger shows only the flag (no text). Useful with a separate translate button. */
   flagOnly?: boolean;
-  /** When false, tooltip shows an upgrade prompt instead of the usual description. */
-  isPlanEntitled?: boolean;
 }
 
 export function LanguageSelector({
@@ -49,11 +41,9 @@ export function LanguageSelector({
   className,
   placeholder,
   flagOnly = false,
-  isPlanEntitled = true,
 }: LanguageSelectorProps) {
   const tl = useTranslations("languages");
   const tc = useTranslations("common");
-  const ts = useTranslations("searchCommand");
   const selectedLanguage = languageOptions.find((lang) => lang.code === value);
   const resolvedPlaceholder = placeholder ?? tc("language");
   const selectedLabel = selectedLanguage
@@ -75,7 +65,6 @@ export function LanguageSelector({
           "dark:hover:bg-ai-bg-hover dark:hover:border-ai-border-hover",
           "transition-all duration-200",
           "[&_svg:not([class*='text-'])]:text-ai",
-          !isPlanEntitled && "rounded-r-none border-r-0",
           className,
         )}
       >
@@ -129,32 +118,12 @@ export function LanguageSelector({
           <SelectValue placeholder={resolvedPlaceholder} />
         )}
       </SelectTrigger>
-      {!isPlanEntitled && (
-        <div className="flex items-center px-1.5 border-l border-current/20 bg-ai-bg text-ai">
-          <Lock className="h-3 w-3 opacity-70" />
-        </div>
-      )}
     </div>
   );
 
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      {isPlanEntitled ? (
-        trigger
-      ) : (
-        <Tooltip>
-          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-          <TooltipContent sideOffset={6} className="max-w-52 px-2.5 py-2 text-xs leading-relaxed">
-            <p className="text-background/80">{ts("translationPlanRequired")}</p>
-            <Link
-              href="/pricing"
-              className="mt-1 inline-flex items-center gap-1 font-semibold underline-offset-2 hover:underline"
-            >
-              {tc("upgradeTo", { plan: "Go" })} →
-            </Link>
-          </TooltipContent>
-        </Tooltip>
-      )}
+      {trigger}
       <SelectContent
         position="popper"
         align="start"

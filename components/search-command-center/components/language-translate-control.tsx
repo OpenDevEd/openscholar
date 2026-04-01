@@ -17,8 +17,6 @@ interface LanguageTranslateControlProps {
   /** When true, the translate button is disabled (e.g. no query to translate) */
   translateDisabled?: boolean;
   isTranslating?: boolean;
-  /** When false, translation feature is locked behind a plan upgrade */
-  isPlanEntitled?: boolean;
 }
 
 const ACTIONS_WIDTH = 56 + 8;
@@ -30,7 +28,6 @@ export function LanguageTranslateControl({
   disabled = false,
   translateDisabled = false,
   isTranslating = false,
-  isPlanEntitled = true,
 }: LanguageTranslateControlProps) {
   const t = useTranslations("searchCommand");
   const shouldReduceMotion = useReducedMotion();
@@ -61,7 +58,7 @@ export function LanguageTranslateControl({
             type="button"
             size="sm"
             variant="ghost"
-            disabled={disabled || translateDisabled || !hasValue || !isPlanEntitled}
+            disabled={disabled || translateDisabled || !hasValue}
             onClick={onTranslate}
             title={t("translate")}
             aria-label={t("translate")}
@@ -89,9 +86,8 @@ export function LanguageTranslateControl({
       </motion.div>
       <LanguageSelector
         value={value}
-        onValueChange={isPlanEntitled ? onValueChange : undefined}
-        disabled={disabled || !isPlanEntitled}
-        isPlanEntitled={isPlanEntitled}
+        onValueChange={onValueChange}
+        disabled={disabled}
         flagOnly
         className="border-0 rounded-none min-w-[2.5rem] shrink-0"
       />

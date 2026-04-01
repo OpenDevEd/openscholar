@@ -27,7 +27,6 @@ export const FLAG_REGISTRY = {
   "subscriptions.plan.go": { enabled: true, minimumTier: 0, description: "Show the Go plan on the pricing page" },
   "subscriptions.plan.pro": { enabled: true, minimumTier: 0, description: "Show the Pro plan on the pricing page" },
   "subscriptions.plan.enterprise": { enabled: true, minimumTier: 0, description: "Show the Enterprise plan on the pricing page" },
-  "ai.serverMode": { enabled: true, minimumTier: 10, description: "Server-side AI operations (Go+)" },
 } as const satisfies Record<string, FlagDefault>;
 
 export type FlagName = keyof typeof FLAG_REGISTRY;

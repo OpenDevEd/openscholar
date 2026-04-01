@@ -17,7 +17,6 @@ export interface TranslationContextValue {
   loadingPaperIds?: Set<string>;
   errors?: Array<{ paperId: string; error: string }>;
   isConfigured?: boolean;
-  isPlanEntitled?: boolean;
 }
 
 export const ScreeningContext = createContext<ScreeningContextValue>({});

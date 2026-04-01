@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useCallback, useContext, useId, useState } from "react";
-import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Globe2, Loader2, Lock, Sparkles } from "lucide-react";
+import { Check, Globe2, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -25,11 +24,6 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useAppToast } from "@/lib/toast";
 import { useResultsTranslationSettingsStore } from "@/lib/store";
@@ -81,7 +75,7 @@ export function ResultsTranslationControl({
     (state) => state.requestManualRun
   );
 
-  const { loadingPaperIds, isConfigured = false, isPlanEntitled = true } =
+  const { loadingPaperIds, isConfigured = false } =
     useContext(TranslationContext);
 
   const isTranslating = (loadingPaperIds?.size ?? 0) > 0;
@@ -91,13 +85,10 @@ export function ResultsTranslationControl({
   const effectiveTargetLabel =
     tl(effectiveTargetLanguage as never) || effectiveTargetLanguage;
   const targetBadgeLabel = effectiveTargetLanguage.toUpperCase();
-  const isLocked = !isPlanEntitled;
-  const isTriggerDisabled = disabled || isLocked;
-  const isRunDisabled = disabled || isLocked || isTranslating;
-  const showActiveTranslationState = !isLocked && autoTranslateResults;
-  const triggerAriaLabel = isLocked
-    ? `${t("translate")} - ${t("translationPlanRequired")}`
-    : `${t("translate")} - ${t("targetLanguageValue", { language: effectiveTargetLabel })}`;
+  const isTriggerDisabled = disabled;
+  const isRunDisabled = disabled || isTranslating;
+  const showActiveTranslationState = autoTranslateResults;
+  const triggerAriaLabel = `${t("translate")} - ${t("targetLanguageValue", { language: effectiveTargetLabel })}`;
 
   const handleTargetModeChange = useCallback(
     (value: string) => {
@@ -151,9 +142,7 @@ export function ResultsTranslationControl({
         <Globe2 className="h-4 w-4" />
       )}
       <span>{t("translate")}</span>
-      {isLocked ? (
-        <Lock className="h-3.5 w-3.5 opacity-70" />
-      ) : compactTrigger ? (
+      {compactTrigger ? (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {targetBadgeLabel}
         </span>
@@ -170,25 +159,6 @@ export function ResultsTranslationControl({
       )}
     </Button>
   );
-
-  if (!isPlanEntitled) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex">{trigger}</span>
-        </TooltipTrigger>
-        <TooltipContent sideOffset={6} className="max-w-52 px-2.5 py-2 text-xs leading-relaxed">
-          <p className="text-background/80">{t("translationPlanRequired")}</p>
-          <Link
-            href="/pricing"
-            className="mt-1 inline-flex items-center gap-1 font-semibold underline-offset-2 hover:underline"
-          >
-            {tc("upgradeTo", { plan: "Go" })} →
-          </Link>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
