@@ -280,6 +280,7 @@
     "credentials": "凭据",
     "apiKey": "API 密钥",
     "apiKeyPlaceholder": "输入您的 {provider} API 密钥",
+    "apiKeySaved": "API 密钥已保存",
     "getApiKey": "获取您的 {provider} API 密钥",
     "per1MTokens": "每 100 万令牌",
     "models300Plus": "300+ 模型",

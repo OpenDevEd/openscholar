@@ -280,6 +280,7 @@
     "credentials": "Identifiants",
     "apiKey": "Clé API",
     "apiKeyPlaceholder": "Entrez votre clé API {provider}",
+    "apiKeySaved": "Clé API enregistrée",
     "getApiKey": "Obtenez votre clé API {provider}",
     "per1MTokens": "par 1M de tokens",
     "models300Plus": "Plus de 300 modèles",

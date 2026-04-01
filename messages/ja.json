@@ -280,6 +280,7 @@
     "credentials": "認証情報",
     "apiKey": "APIキー",
     "apiKeyPlaceholder": "{provider} APIキーを入力",
+    "apiKeySaved": "APIキーを保存しました",
     "getApiKey": "{provider} APIキーを取得",
     "per1MTokens": "100万トークンあたり",
     "models300Plus": "300以上のモデル",

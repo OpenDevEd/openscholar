@@ -56,14 +56,11 @@ export default function BillingPage() {
   const [loadingTopupBundle, setLoadingTopupBundle] = useState<string | null>(null);
   const [navStartTime, setNavStartTime] = useState<number | null>(null);
   const topupStatusToastShown = useRef<string | null>(null);
-  const [isWaitingForCredits, setIsWaitingForCredits] = useState(false);
-  const previousCreditBalance = useRef<number | null>(null);
 
   // Reset isLoading if we've been in loading state for too long (handles back navigation from Stripe)
   useEffect(() => {
     if (isLoading && navStartTime) {
       const elapsed = Date.now() - navStartTime;
-      // If we've been loading for more than 5 seconds, something went wrong - reset
       if (elapsed > 5000) {
         setIsLoading(false);
         setNavStartTime(null);
@@ -71,58 +68,21 @@ export default function BillingPage() {
     }
   });
 
-  // Handle return from Stripe Checkout -- CRED-03, CRED-05
+  // Handle return from Stripe Checkout
   useEffect(() => {
     const topupStatus = searchParams.get("topup");
 
-    // Only trigger on fresh return from checkout with success status
     if (topupStatus === "success" && topupStatusToastShown.current !== "success") {
-      if (creditBalance != null && previousCreditBalance.current === null) {
-        // Capture balance at time of return
-        previousCreditBalance.current = creditBalance.total;
-        setIsWaitingForCredits(true);
-      }
+      topupStatusToastShown.current = "success";
+      sonnerToast.success(t("creditsAddedTitle"));
+      router.replace("/settings/billing");
     }
 
-    // Handle canceled/abandoned -- clean return, no stale state (CRED-03)
     if (topupStatus === "canceled" && topupStatusToastShown.current !== "canceled") {
       topupStatusToastShown.current = "canceled";
-      // Clean URL params silently -- no toast needed per locked decision
       router.replace("/settings/billing");
     }
-  }, [searchParams, creditBalance, router]);
-
-  // Watch for credit balance changes after checkout return -- CRED-05
-  useEffect(() => {
-    if (!isWaitingForCredits || creditBalance == null || previousCreditBalance.current === null) {
-      return;
-    }
-
-    if (creditBalance.total > previousCreditBalance.current) {
-      // Credits arrived via Convex subscription (webhook processed)
-      const added = creditBalance.total - previousCreditBalance.current;
-      sonnerToast.success(t("creditsAddedTitle"), {
-        description: t("creditsAddedDescription", { amount: added }),
-      });
-      topupStatusToastShown.current = "success";
-      setIsWaitingForCredits(false);
-      previousCreditBalance.current = null;
-      router.replace("/settings/billing");
-    }
-  }, [isWaitingForCredits, creditBalance, toast, t, router]);
-
-  // Timeout fallback for processing state -- CRED-03
-  useEffect(() => {
-    if (!isWaitingForCredits) return;
-    const timeout = setTimeout(() => {
-      setIsWaitingForCredits(false);
-      previousCreditBalance.current = null;
-      topupStatusToastShown.current = "success";
-      // Don't show error -- payment may still process, credits will appear reactively
-      router.replace("/settings/billing");
-    }, 30_000); // 30 second timeout
-    return () => clearTimeout(timeout);
-  }, [isWaitingForCredits, router]);
+  }, [searchParams, router, t]);
   const [details, setDetails] = useState<{
     amount: number;
     currency: string;
@@ -550,12 +510,6 @@ export default function BillingPage() {
         </div>}
 
         {/* Credits Section */}
-        {isWaitingForCredits && (
-          <div className="bg-blue-500/10 p-3 text-blue-700 text-sm flex items-center gap-2 rounded-lg">
-            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-            <span>{t("processingPurchase")}</span>
-          </div>
-        )}
 
         {creditsEnabled && creditBalance && (
           <CreditBalanceCard

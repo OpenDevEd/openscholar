@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Bot,
   ChevronDown,
@@ -15,6 +17,8 @@ import {
   Check,
   AlertCircle,
   Lock,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 import {
   OpenAIIcon,
@@ -31,6 +35,7 @@ import {
 import { fetchOpenRouterModels } from "@/app/actions/openrouter";
 import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
+import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -52,10 +57,15 @@ export default function AISettingsPage() {
   const isSignedIn = phase === "authenticated";
   const router = useRouter();
 
+  // Per-provider draft keys — only entries that differ from the store are present
+  const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
   const [models, setModels] = useState<AIModel[]>([]);
   const [modelSearch, setModelSearch] = useState("");
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelSectionExpanded, setModelSectionExpanded] = useState(false);
+
+  const pendingApiKey = provider in pendingKeys ? pendingKeys[provider] : apiKey;
+  const hasUnsavedKey = pendingApiKey !== apiKey;
 
   const toast = useAppToast();
   const t = useTranslations("aiSettings");
@@ -81,8 +91,14 @@ export default function AISettingsPage() {
     setModelSearch("");
   };
 
-  const handleApiKeyChange = (value: string) => {
-    setApiKey(value);
+  const handleSaveApiKey = () => {
+    setApiKey(pendingApiKey);
+    setPendingKeys((prev) => {
+      const next = { ...prev };
+      delete next[provider];
+      return next;
+    });
+    sonnerToast.success(t("apiKeySaved"));
   };
 
   useEffect(() => {
@@ -103,7 +119,7 @@ export default function AISettingsPage() {
     };
 
     loadModels();
-  }, [provider, apiKey]);
+  }, [provider]);
 
   const selectedModel = models.find((m) => m.id === model);
 
@@ -546,15 +562,45 @@ export default function AISettingsPage() {
               <Label htmlFor="api-key" className="text-sm font-medium">
                 {t("apiKey")}
               </Label>
-              <Input
-                id="api-key"
-                type="password"
-                placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
-                value={apiKey}
-                disabled={isDisabled}
-                onChange={(e) => handleApiKeyChange(e.target.value)}
-                className="font-mono text-sm"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="api-key"
+                  type="password"
+                  placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
+                  value={pendingApiKey}
+                  disabled={isDisabled}
+                  onChange={(e) => setPendingKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && hasUnsavedKey) {
+                      handleSaveApiKey();
+                    }
+                  }}
+                  className="font-mono text-sm"
+                />
+                {hasUnsavedKey && (
+                  <ButtonGroup>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      disabled={isDisabled}
+                      onClick={() => setPendingKeys((prev) => {
+                        const next = { ...prev };
+                        delete next[provider];
+                        return next;
+                      })}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      disabled={isDisabled}
+                      onClick={handleSaveApiKey}
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                    </Button>
+                  </ButtonGroup>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <a
                   href={providerConfig.apiKeyUrl}

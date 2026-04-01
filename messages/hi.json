@@ -280,6 +280,7 @@
     "credentials": "क्रेडेंशियल्स",
     "apiKey": "API की",
     "apiKeyPlaceholder": "अपना {provider} API की दर्ज करें",
+    "apiKeySaved": "API की सहेजी गई",
     "getApiKey": "अपना {provider} API की प्राप्त करें",
     "per1MTokens": "प्रति 1M टोकन",
     "models300Plus": "300+ मॉडल",

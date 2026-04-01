@@ -281,6 +281,7 @@
     "credentials": "Credentials",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "Enter your {provider} API key",
+    "apiKeySaved": "API key saved",
     "getApiKey": "Get your {provider} API key",
     "per1MTokens": "per 1M tokens",
     "models300Plus": "300+ Models",
