@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRatingsStore } from "@/lib/store";
+import { useEffectiveRating } from "@/components/results-contexts";
 import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
@@ -43,19 +44,20 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 interface RatingSelectorProps {
   paperId: string;
-  paperResult?: WorkInput;  // Full OpenAlex Work object for library save
+  paperResult?: WorkInput;
   variant?: "default" | "compact";
 }
 
 export function RatingSelector({ paperId, paperResult, variant = "default" }: RatingSelectorProps) {
   const t = useTranslations('rating');
-  const { ratings, setRating } = useRatingsStore();
+  const { setRating } = useRatingsStore();
+  const currentRating = useEffectiveRating(paperId);
   const { phase } = useAuthReadiness();
   const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
   const removeFromLibrary = useMutation(api.library.mutations.removeFromLibraryByOpenalexId);
 
   const handleRatingChange = (rating: string) => {
-    const previousRating = ratings[paperId];
+    const previousRating = currentRating;
     const newRating = rating === "no-rating" ? null : parseInt(rating);
 
     // 1. ALWAYS update Zustand (optimistic, localStorage) -- unconditional
@@ -72,6 +74,7 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
         saveToLibrary({
           ...trimmed,
           rating: newRating,
+          paperData: JSON.stringify(paperResult),
         }).catch((error) => {
           console.error("[Library] Failed to save to library:", error);
         });
@@ -82,7 +85,7 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
       }
     }
 
-    // 3. PostHog tracking (existing, unchanged)
+    // 3. PostHog tracking
     posthog.capture("paper_rated", {
       paper_id: paperId,
       rating: newRating,
@@ -91,8 +94,6 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
       variant: variant,
     });
   };
-
-  const currentRating = ratings[paperId];
   
   // Compact variant for mobile focus mode
   if (variant === "compact") {
@@ -121,7 +122,7 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
   return (
     <div className="flex items-center gap-3 mb-3">
       <Select
-        value={ratings[paperId]?.toString() || "no-rating"}
+        value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
         <SelectTrigger className="min-w-48">

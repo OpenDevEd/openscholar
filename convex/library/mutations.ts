@@ -49,6 +49,7 @@ export const saveToLibrary = mutation({
     citedByCount: v.optional(v.number()),
     isOpenAccess: v.optional(v.boolean()),
     oaStatus: v.optional(v.string()),
+    paperData: v.optional(v.string()),
   },
   returns: v.id("libraryItems"),
   handler: async (ctx, args) => {
@@ -67,10 +68,11 @@ export const saveToLibrary = mutation({
       .unique();
 
     if (existing) {
-      // Re-rate: only update rating and timestamps, preserve original metadata and savedAt
+      // Re-rate: update rating, paperData, and timestamps; preserve original metadata and savedAt
       await ctx.db.patch(existing._id, {
         rating: args.rating,
         searchableText,
+        ...(args.paperData !== undefined && { paperData: args.paperData }),
         updatedAt: Date.now(),
       });
       return existing._id;

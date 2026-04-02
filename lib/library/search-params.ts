@@ -22,7 +22,7 @@ export const librarySortValues = [
   "title",
 ] as const;
 export const librarySortOrderValues = ["asc", "desc"] as const;
-export const libraryViewModes = ["list", "grid"] as const;
+export const libraryViewModes = ["list-simple", "list-detail", "grid-2", "grid-3"] as const;
 
 // Type exports derived from const arrays
 
@@ -52,7 +52,7 @@ export const librarySearchParams = {
   st: parseAsString,
   yf: parseAsInteger,
   yt: parseAsInteger,
-  view: parseAsStringLiteral(libraryViewModes).withDefault("list"),
+  view: parseAsStringLiteral(libraryViewModes).withDefault("list-detail"),
   col: parseAsString, // Collection ID filter (null = all collections)
   p: parseAsInteger.withDefault(1), // Page number for pagination
 };

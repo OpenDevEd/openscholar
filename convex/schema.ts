@@ -795,6 +795,7 @@ export default defineSchema({
     citedByCount: v.optional(v.number()),
     isOpenAccess: v.optional(v.boolean()),
     oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
+    paperData: v.optional(v.string()), // Full PaperResult JSON for rich card rendering
     searchableText: v.string(), // title + abstract + authors (for Phase 23 search index)
     savedAt: v.number(),
     updatedAt: v.number(),

@@ -50,7 +50,7 @@ export function FocusMode({
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(
     null
   );
-  const { ratings, setRating } = useRatingsStore();
+  const { setRating } = useRatingsStore();
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
@@ -230,6 +230,7 @@ export function FocusMode({
           saveToLibraryMutation({
             ...trimmed,
             rating: newRating,
+            paperData: JSON.stringify(paper),
           }).catch((error) => {
             console.error("[Library] Failed to save to library:", error);
           });
@@ -452,7 +453,6 @@ export function FocusMode({
             currentPaper={currentPaper}
             currentIndex={currentIndex}
             totalPapers={papers.length}
-            ratings={ratings}
             showSettings={showSettings}
             showTranslated={showTranslated}
             translatedContent={translatedContent}

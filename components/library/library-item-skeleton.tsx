@@ -1,10 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { ViewMode } from "@/lib/types";
 
 interface LibraryItemSkeletonProps {
   count?: number;
-  viewMode?: "list" | "grid";
+  viewMode?: ViewMode;
 }
 
 function SkeletonBar({ className }: { className?: string }) {
@@ -30,17 +31,9 @@ function SkeletonRow() {
       <div className="flex items-start gap-4">
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-px shrink-0">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div
-                  key={i}
-                  className="h-3.5 w-3.5 rounded-sm bg-muted animate-pulse"
-                />
-              ))}
-            </div>
+            <SkeletonBar className="h-8 w-24" />
             <SkeletonBar className="h-6 w-28 rounded-full" />
             <SkeletonBar className="h-6 w-20 rounded-full" />
-            <SkeletonBar className="h-6 w-32 rounded-full" />
           </div>
           <div className="space-y-2">
             <SkeletonBar className="h-4 w-full max-w-xl" />
@@ -67,12 +60,11 @@ function SkeletonCard() {
       "border-border/40"
     )}>
       <div className="flex justify-between gap-3">
-        <div className="flex gap-px">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-3 w-3 rounded-sm bg-muted animate-pulse" />
-          ))}
+        <SkeletonBar className="h-6 w-14 rounded-md" />
+        <div className="flex gap-1">
+          <SkeletonBar className="h-7 w-7 rounded-md" />
+          <SkeletonBar className="h-7 w-7 rounded-md" />
         </div>
-        <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
       </div>
       <SkeletonBar className="h-4 w-full" />
       <SkeletonBar className="h-4 w-4/5" />
@@ -90,16 +82,46 @@ function SkeletonCard() {
   );
 }
 
-export function LibraryItemSkeleton({ count = 5, viewMode = "list" }: LibraryItemSkeletonProps) {
-  if (viewMode === "grid") {
+function SkeletonSimple() {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-4 py-3",
+        "bg-background/80 dark:bg-background/60",
+        "border-border/40",
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <SkeletonBar className="h-7 w-20" />
+        <SkeletonBar className="h-4 w-full max-w-md" />
+        <SkeletonBar className="h-6 w-14 rounded-full shrink-0" />
+      </div>
+    </div>
+  );
+}
+
+export function LibraryItemSkeleton({ count = 5, viewMode = "list-detail" }: LibraryItemSkeletonProps) {
+  if (viewMode === "grid-2" || viewMode === "grid-3") {
+    const cols = viewMode === "grid-2" ? "grid-cols-2" : "grid-cols-3";
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+      <div className={cn("grid gap-3", cols)}>
         {Array.from({ length: count }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
       </div>
     );
   }
+
+  if (viewMode === "list-simple") {
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: count }).map((_, i) => (
+          <SkeletonSimple key={i} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (

@@ -2,8 +2,10 @@
 
 import {
   Download,
+  Grid3X3,
   LayoutGrid,
   LayoutList,
+  List,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
@@ -47,14 +49,24 @@ export function LibraryCommandCenter({
   const t = useTranslations("libraryPage");
   const viewModeOptions = [
     {
-      value: "list" as const,
-      icon: <LayoutList className="h-4 w-4" />,
-      label: t("viewList"),
+      value: "list-simple" as const,
+      icon: <List className="h-4 w-4" />,
+      label: t("viewListSimple"),
     },
     {
-      value: "grid" as const,
+      value: "list-detail" as const,
+      icon: <LayoutList className="h-4 w-4" />,
+      label: t("viewListDetail"),
+    },
+    {
+      value: "grid-2" as const,
       icon: <LayoutGrid className="h-4 w-4" />,
-      label: t("viewGrid"),
+      label: t("viewGrid2"),
+    },
+    {
+      value: "grid-3" as const,
+      icon: <Grid3X3 className="h-4 w-4" />,
+      label: t("viewGrid3"),
     },
   ];
 

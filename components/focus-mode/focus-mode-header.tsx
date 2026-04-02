@@ -16,13 +16,13 @@ import {
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
 import { RatingSelector } from "@/components/rating-selector";
+import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
   currentIndex: number;
   totalPapers: number;
-  ratings: Record<string, number | null | undefined>;
   showSettings: boolean;
   showTranslated: boolean;
   translatedContent: { translatedTitle: string; translatedAbstract: string; noTranslationNeeded?: boolean } | null;
@@ -43,7 +43,6 @@ export function FocusModeHeader({
   currentPaper,
   currentIndex,
   totalPapers,
-  ratings,
   showSettings,
   showTranslated,
   translatedContent,
@@ -59,6 +58,8 @@ export function FocusModeHeader({
   tFocus,
   tAccessibility,
 }: FocusModeHeaderProps) {
+  const effectiveRating = useEffectiveRating(currentPaper.id);
+
   return (
     <SheetHeader className="flex-shrink-0 p-3 border-b">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2 md:gap-0">
@@ -82,7 +83,7 @@ export function FocusModeHeader({
                 <Star
                   className={cn(
                     "h-3 w-3",
-                    ratings[currentPaper.id] === undefined
+                    effectiveRating === undefined
                       ? "text-yellow-400 hover:text-yellow-400"
                       : "text-muted-foreground/40 hover:text-muted-foreground/60"
                   )}
@@ -103,7 +104,7 @@ export function FocusModeHeader({
                 <Star
                   className={cn(
                     "h-3 w-3",
-                    ratings[currentPaper.id] === 0
+                    effectiveRating === 0
                       ? "text-yellow-400 hover:text-yellow-400"
                       : "text-muted-foreground hover:text-yellow-400"
                   )}
@@ -117,12 +118,9 @@ export function FocusModeHeader({
               <div key={star} className="flex items-center gap-1">
                 <button
                   onClick={() => {
-                    const currentRating = ratings[currentPaper.id];
-                    if (currentRating === star) {
-                      // Remove rating if clicking the same star
+                    if (effectiveRating === star) {
                       onRatingChange(currentPaper.id, "no-rating");
                     } else {
-                      // Set new rating
                       onRatingChange(
                         currentPaper.id,
                         star.toString()
@@ -134,8 +132,8 @@ export function FocusModeHeader({
                   <Star
                     className={cn(
                       "h-3 w-3",
-                      ratings[currentPaper.id] &&
-                        ratings[currentPaper.id]! >= star
+                      effectiveRating !== undefined &&
+                        effectiveRating >= star
                         ? "fill-yellow-400 text-yellow-400"
                         : "fill-muted-foreground text-muted-foreground hover:fill-yellow-400 hover:text-yellow-400"
                     )}

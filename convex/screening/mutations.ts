@@ -278,6 +278,7 @@ export const saveQualifiedPaperToLibrary = internalMutation({
     doi: v.optional(v.string()),
     abstract: v.optional(v.string()),
     publicationYear: v.optional(v.number()),
+    paperData: v.optional(v.string()),
   },
   returns: v.id("libraryItems"),
   handler: async (ctx, args) => {
@@ -312,6 +313,7 @@ export const saveQualifiedPaperToLibrary = internalMutation({
       doi: args.doi,
       abstract: args.abstract,
       publicationYear: args.publicationYear,
+      ...(args.paperData !== undefined && { paperData: args.paperData }),
       searchableText,
       savedAt: Date.now(),
       updatedAt: Date.now(),

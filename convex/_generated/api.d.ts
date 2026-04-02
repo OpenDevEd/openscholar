@@ -75,6 +75,8 @@ import type * as lib_stripeWebhookHandlers from "../lib/stripeWebhookHandlers.js
 import type * as lib_stripeWebhookSecret from "../lib/stripeWebhookSecret.js";
 import type * as lib_userCreation from "../lib/userCreation.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as library_backfill from "../library/backfill.js";
+import type * as library_backfillMutations from "../library/backfillMutations.js";
 import type * as library_collections from "../library/collections.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
@@ -183,6 +185,8 @@ declare const fullApi: ApiFromModules<{
   "lib/stripeWebhookSecret": typeof lib_stripeWebhookSecret;
   "lib/userCreation": typeof lib_userCreation;
   "lib/validators": typeof lib_validators;
+  "library/backfill": typeof library_backfill;
+  "library/backfillMutations": typeof library_backfillMutations;
   "library/collections": typeof library_collections;
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
