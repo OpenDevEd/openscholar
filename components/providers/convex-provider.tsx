@@ -1,7 +1,7 @@
 "use client";
 "use no memo";
 
-import { ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
+import { ConvexReactClient, useConvexAuth, useMutation, type Preloaded } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { useLocale } from "next-intl";
@@ -22,6 +22,7 @@ import {
   resolveClerkAppearance,
   resolveClerkLocalization,
 } from "@/lib/auth/clerk-ui-config";
+import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const MAX_SYNC_RETRIES = 6;
@@ -45,7 +46,13 @@ const AuthReadinessContext = createContext<AuthReadinessContextValue | undefined
   undefined,
 );
 
-export function ConvexClientProvider({ children }: { children: ReactNode }) {
+export function ConvexClientProvider({
+  children,
+  preloadedFlags,
+}: {
+  children: ReactNode;
+  preloadedFlags: Preloaded<typeof api.featureFlags.queries.getAll>;
+}) {
   const locale = useLocale();
   const { resolvedTheme } = useTheme();
   const clerkLocalization = useMemo(
@@ -60,7 +67,11 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider localization={clerkLocalization} appearance={clerkAppearance}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <AuthReadinessProvider>{children}</AuthReadinessProvider>
+        <AuthReadinessProvider>
+          <FeatureFlagProvider preloadedFlags={preloadedFlags}>
+            {children}
+          </FeatureFlagProvider>
+        </AuthReadinessProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

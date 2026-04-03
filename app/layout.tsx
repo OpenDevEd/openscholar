@@ -16,6 +16,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { preloadQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -67,15 +69,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
-  const messages = await getMessages();
+  const [locale, messages, preloadedFlags] = await Promise.all([
+    getLocale(),
+    getMessages(),
+    preloadQuery(api.featureFlags.queries.getAll),
+  ]);
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
-            <ConvexClientProvider>
+            <ConvexClientProvider preloadedFlags={preloadedFlags}>
               <ConfigProvider>
                 <NuqsAdapter>
                   <QuerySyncProvider>

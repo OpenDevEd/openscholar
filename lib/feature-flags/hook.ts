@@ -1,29 +1,29 @@
 /**
  * React Hooks for Feature Flags
  * ==============================
- * Queries the featureFlags table via Convex reactive query.
- * During loading, falls back to static defaults from the registry.
+ * Reads pre-loaded flag rows from FeatureFlagProvider context.
+ * Flags are available on first render (no loading flash) because the
+ * root layout preloads them server-side via `preloadQuery`.
  */
 
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { resolveFlag, resolveFlagDefault, resolveAllFlags, type ResolvedFlags } from "./resolve";
+import { useDbFlags } from "./provider";
 import type { FlagName } from "./registry";
 
 /**
  * Resolve a single feature flag for the current user.
- * During loading, boolean flags (minimumTier=0) use their default;
- * tier-gated flags conservatively return false.
+ * DB rows are always available from the provider (preloaded server-side).
+ * Tier-gated flags still depend on the subscription loading client-side.
  */
 export function useFeatureFlag(name: FlagName): boolean {
   const { resolvedTier } = useSubscriptionState();
-  const dbFlags = useQuery(api.featureFlags.queries.getAll);
+  const dbFlags = useDbFlags();
 
-  if (dbFlags === undefined) {
+  if (!dbFlags) {
     return resolveFlagDefault(name, resolvedTier);
   }
 
@@ -38,7 +38,7 @@ export function useFeatureFlag(name: FlagName): boolean {
  */
 export function useFeatureFlags(): ResolvedFlags {
   const { resolvedTier } = useSubscriptionState();
-  const dbFlags = useQuery(api.featureFlags.queries.getAll);
+  const dbFlags = useDbFlags();
 
   return useMemo(
     () => resolveAllFlags(dbFlags, resolvedTier),
