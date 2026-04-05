@@ -28,6 +28,11 @@ type ToastAction = {
   label: string;
   onClick: () => void;
   icon?: "settings" | "arrow-right";
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+    icon?: "settings" | "arrow-right";
+  };
 };
 
 function CustomToast({
@@ -66,20 +71,41 @@ function CustomToast({
           <span className="text-xs leading-relaxed text-muted-foreground">{description}</span>
         ) : null}
         {action ? (
-          <button
-            onClick={() => {
-              action.onClick();
-              closeToast();
-            }}
-            className={cn(
-              "mt-1.5 inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md border-0 px-3 text-xs font-medium",
-              "bg-primary text-primary-foreground transition-all duration-150 hover:bg-[oklch(0.62_0.16_52)]",
-              "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            )}
-          >
-            <ActionIcon className="h-3 w-3" />
-            {action.label}
-          </button>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => {
+                action.onClick();
+                closeToast();
+              }}
+              className={cn(
+                "inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md border-0 px-3 text-xs font-medium",
+                "bg-primary text-primary-foreground transition-all duration-150 hover:bg-[oklch(0.62_0.16_52)]",
+                "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              )}
+            >
+              <ActionIcon className="h-3 w-3" />
+              {action.label}
+            </button>
+            {action.secondaryAction ? (() => {
+              const SecondaryIcon = action.secondaryAction!.icon === "settings" ? Settings : ArrowRight;
+              return (
+                <button
+                  onClick={() => {
+                    action.secondaryAction!.onClick();
+                    closeToast();
+                  }}
+                  className={cn(
+                    "inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md px-3 text-xs font-medium",
+                    "bg-transparent text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-accent-foreground",
+                    "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  )}
+                >
+                  <SecondaryIcon className="h-3 w-3" />
+                  {action.secondaryAction!.label}
+                </button>
+              );
+            })() : null}
+          </div>
         ) : null}
       </div>
 

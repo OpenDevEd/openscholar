@@ -14,6 +14,7 @@ import {
   Bot,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -49,6 +50,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const { signOut } = useClerk();
   const { phase } = useAuthReadiness();
   const router = useRouter();
+  const goToSignIn = useSignInRedirect();
   const [open, setOpen] = useState(false);
 
   const isInitializing = phase === "initializing";
@@ -131,7 +133,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           <DropdownMenuItem
             onClick={() => {
               setOpen(false);
-              router.push("/sign-in");
+              goToSignIn();
             }}
             className="cursor-pointer flex items-start gap-3 py-2.5"
           >

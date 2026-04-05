@@ -120,6 +120,7 @@
     "paperCount": "{count, plural, one {# article} other {# articles}}",
     "itemOfTotal": "Élément {current} sur {total}",
     "noContentPapers": "Articles sans contenu",
+    "dismiss": "Fermer",
     "generateWithAI": "Générer avec l'IA",
     "defaultSort": "Par défaut",
     "showMore": "Afficher plus",
@@ -267,6 +268,12 @@
     "generalSettings": "Paramètres généraux",
     "managePreferences": "Gérez vos préférences générales de l'application"
   },
+  "aiSetupGate": {
+    "title": "Configurer l'IA pour enrichir vos recherches",
+    "description": "OpenScholar utilise l'IA pour affiner les requêtes, filtrer les articles et traduire les résultats.",
+    "signInForCredits": "Se connecter pour des crédits gratuits",
+    "useOwnApiKey": "Utiliser votre propre clé API"
+  },
   "aiSettings": {
     "aiConfiguration": "Configuration IA",
     "configurePreferences": "Configurez votre fournisseur IA et vos préférences de modèle",
@@ -332,6 +339,13 @@
         "freeModels": "Options gratuites : Azure OpenAI n'offre pas d'accès API gratuit ; l'utilisation est facturée par token."
       }
     },
+    "getStartedTitle": "Démarrer avec l'IA",
+    "getStartedDescription": "Choisissez comment OpenScholar alimente vos fonctionnalités IA.",
+    "getStartedSignInTitle": "Se connecter pour des crédits gratuits",
+    "getStartedSignInDescription": "Aucune configuration nécessaire — connectez-vous et utilisez l'IA immédiatement.",
+    "getStartedApiKeyTitle": "Apporter votre propre clé API",
+    "getStartedApiKeyDescription": "Utilisez votre clé OpenAI, Google, Anthropic ou OpenRouter.",
+    "getStartedConfigureApiKey": "Configurer la clé API",
     "useSmartMode": "Utiliser le mode intelligent",
     "smartModeDescription": "Utilise les crédits s'ils sont disponibles, puis bascule vers votre clé API",
     "creditsModeDisabled": "Le mode crédits est désactivé",
@@ -394,8 +408,7 @@
     "creditCapBanner": "Vos credits gratuits sont au maximum. Utilisez des credits pour recevoir votre allocation mensuelle complete.",
     "processingPurchase": "Traitement de votre achat...",
     "creditsAddedTitle": "Credits ajoutes",
-    "creditsAddedDescription": "{amount} credits ont ete ajoutes a votre solde.",
-    "buyCreditsLink": "Acheter des credits"
+    "creditsAddedDescription": "{amount} credits ont ete ajoutes a votre solde."
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",
@@ -604,7 +617,7 @@
   },
   "toast": {
     "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
-    "openAISettings": "Paramètres Open AI",
+    "openAISettings": "Ouvrir les paramètres IA",
     "aiConfigRequired": "Configuration IA requise",
     "aiConfigRequiredDescription": "Veuillez configurer vos paramètres IA pour continuer.",
     "searchQueryTooLarge": "Requête de recherche trop grande",
@@ -664,7 +677,7 @@
     "aiUnauthenticated": "Veuillez vous connecter pour utiliser les fonctionnalités IA.",
     "aiInsufficientCredits": "Vous n'avez pas assez de crédits IA.",
     "aiPlanEntitlement": "Cette fonctionnalité IA nécessite un plan supérieur.",
-    "aiApiKeyRequired": "Ajoutez une clé API IA dans les paramètres pour continuer.",
+    "aiApiKeyRequired": "Connectez-vous pour des crédits gratuits, ou ajoutez une clé API dans les paramètres.",
     "aiProviderError": "Le fournisseur IA est indisponible pour le moment. Réessayez.",
     "aiValidationError": "La réponse IA n'a pas pu être validée. Réessayez.",
     "aiMaxRetriesExceeded": "La génération IA n'a pas pu aboutir. Réessayez.",

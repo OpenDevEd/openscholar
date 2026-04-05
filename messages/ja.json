@@ -120,6 +120,7 @@
     "paperCount": "{count, plural, one {# 論文} other {# 論文}}",
     "itemOfTotal": "{total} 件中 {current} 件目",
     "noContentPapers": "コンテンツなしの論文",
+    "dismiss": "閉じる",
     "generateWithAI": "AIで生成",
     "defaultSort": "デフォルト",
     "showMore": "もっと表示",
@@ -267,6 +268,12 @@
     "generalSettings": "一般設定",
     "managePreferences": "アプリケーションの一般設定を管理"
   },
+  "aiSetupGate": {
+    "title": "AIで検索を強化する",
+    "description": "OpenScholarはAIを使用してクエリの改善、論文のスクリーニング、結果の翻訳を行います。",
+    "signInForCredits": "サインインして無料クレジットを取得",
+    "useOwnApiKey": "自分のAPIキーを使用"
+  },
   "aiSettings": {
     "aiConfiguration": "AI設定",
     "configurePreferences": "AIプロバイダーとモデルの設定",
@@ -332,6 +339,13 @@
         "freeModels": "無料オプション：Azure OpenAIは無料ティアAPIアクセスを提供していません。使用量はトークンごとに請求されます。"
       }
     },
+    "getStartedTitle": "AIを始める",
+    "getStartedDescription": "OpenScholarのAI機能の利用方法を選択してください。",
+    "getStartedSignInTitle": "サインインして無料クレジットを取得",
+    "getStartedSignInDescription": "設定不要 — サインインしてすぐにAIを使い始められます。",
+    "getStartedApiKeyTitle": "自分のAPIキーを使用する",
+    "getStartedApiKeyDescription": "OpenAI、Google、Anthropic、またはOpenRouterのキーを使用できます。",
+    "getStartedConfigureApiKey": "APIキーを設定",
     "useSmartMode": "スマートモードを使用",
     "smartModeDescription": "利用可能ならクレジットを使い、なければAPIキーを使用します",
     "creditsModeDisabled": "クレジットモードは無効です",
@@ -394,8 +408,7 @@
     "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
     "processingPurchase": "Processing your purchase...",
     "creditsAddedTitle": "Credits added",
-    "creditsAddedDescription": "{amount} credits have been added to your balance.",
-    "buyCreditsLink": "Buy Credits"
+    "creditsAddedDescription": "{amount} credits have been added to your balance."
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -664,7 +677,7 @@
     "aiUnauthenticated": "AI機能を使うにはサインインしてください。",
     "aiInsufficientCredits": "AIクレジットが不足しています。",
     "aiPlanEntitlement": "このAI機能には上位プランが必要です。",
-    "aiApiKeyRequired": "続行するには設定でAI APIキーを追加してください。",
+    "aiApiKeyRequired": "サインインして無料クレジットを取得するか、設定でAPIキーを追加してください。",
     "aiProviderError": "AIプロバイダーは現在利用できません。再試行してください。",
     "aiValidationError": "AI応答を検証できませんでした。再試行してください。",
     "aiMaxRetriesExceeded": "AI生成を完了できませんでした。再試行してください。",

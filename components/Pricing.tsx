@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { getPlanTier, FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "@/convex/lib/constants";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { motion } from "motion/react";
 import {
   Check,
@@ -185,6 +186,7 @@ export function Pricing() {
   }, []);
 
   const router = useRouter();
+  const goToSignIn = useSignInRedirect();
 
   // Reorder plans for mobile (PRO first)
   const orderedPlans = useMemo(() => {
@@ -233,7 +235,7 @@ export function Pricing() {
 
   const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
     if (phase !== "authenticated") {
-      router.push("/sign-in");
+      goToSignIn();
       return;
     }
 
@@ -391,7 +393,7 @@ export function Pricing() {
         disabled: false,
         label: tc("signInToSubscribe"),
         variant: "default" as const,
-        onClick: () => router.push("/sign-in"),
+        onClick: goToSignIn,
       };
     }
 

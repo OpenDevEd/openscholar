@@ -22,6 +22,7 @@ import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
+import { AISetupGate } from "@/components/ai/ai-setup-gate";
 import posthog from "posthog-js";
 
 interface SearchModeProps {
@@ -230,8 +231,12 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     [selectedLanguage, performTranslation]
   );
 
+  const isFullyUnconfigured = !isEnhanceConfigured && !isTranslateConfigured;
+
   return (
     <div className="p-4 space-y-4">
+      {isFullyUnconfigured && <AISetupGate />}
+
       {/* Research Question Input */}
       <form onSubmit={handleQuestionSubmit}>
         <FloatingInput

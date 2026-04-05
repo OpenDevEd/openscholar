@@ -34,6 +34,7 @@ import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";
 import { useAppToast } from "@/lib/toast";
 import type { ExtractionQuestion, ExtractionQuestionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { AISetupGate } from "@/components/ai/ai-setup-gate";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 
@@ -514,6 +515,8 @@ export function QuestionBuilder() {
           </Reorder.Group>
         </div>
       )}
+
+      {!isConfigured && <AISetupGate />}
 
       {/* Add New Question */}
       <motion.div

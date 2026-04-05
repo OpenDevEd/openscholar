@@ -521,22 +521,6 @@ export default function BillingPage() {
           />
         )}
 
-        {creditsEnabled && topupsEnabled && creditBalance && (
-          <div className="flex justify-end -mt-2">
-            <button
-              onClick={() => {
-                const topupSection = document.getElementById("topup-section");
-                if (topupSection) {
-                  topupSection.scrollIntoView({ behavior: "smooth" });
-                }
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {t("buyCreditsLink")}
-            </button>
-          </div>
-        )}
-
         {creditsEnabled &&
           topupsEnabled &&
           topupCatalog?.enabled &&

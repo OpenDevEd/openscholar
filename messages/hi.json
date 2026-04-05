@@ -120,6 +120,7 @@
     "paperCount": "{count, plural, one {# पेपर} other {# पेपर}}",
     "itemOfTotal": "आइटम {current} / {total}",
     "noContentPapers": "बिना सामग्री वाले पेपर",
+    "dismiss": "बंद करें",
     "generateWithAI": "AI से जनरेट करें",
     "defaultSort": "डिफ़ॉल्ट",
     "showMore": "और दिखाएं",
@@ -267,6 +268,12 @@
     "generalSettings": "सामान्य सेटिंग्स",
     "managePreferences": "अपनी सामान्य एप्लिकेशन प्राथमिकताएं प्रबंधित करें"
   },
+  "aiSetupGate": {
+    "title": "अपनी खोज को बेहतर बनाने के लिए AI सेट करें",
+    "description": "OpenScholar क्वेरी को बेहतर बनाने, पेपर की स्क्रीनिंग और परिणामों का अनुवाद करने के लिए AI का उपयोग करता है।",
+    "signInForCredits": "मुफ्त क्रेडिट के लिए साइन इन करें",
+    "useOwnApiKey": "अपनी API कुंजी का उपयोग करें"
+  },
   "aiSettings": {
     "aiConfiguration": "AI कॉन्फ़िगरेशन",
     "configurePreferences": "अपने AI प्रोवाइडर और मॉडल प्राथमिकताएं कॉन्फ़िगर करें",
@@ -332,6 +339,13 @@
         "freeModels": "मुफ़्त विकल्प: Azure OpenAI मुफ़्त-टियर API एक्सेस प्रदान नहीं करता; उपयोग प्रति टोकन बिल किया जाता है।"
       }
     },
+    "getStartedTitle": "AI के साथ शुरू करें",
+    "getStartedDescription": "चुनें कि OpenScholar आपकी AI सुविधाओं को कैसे संचालित करे।",
+    "getStartedSignInTitle": "मुफ्त क्रेडिट के लिए साइन इन करें",
+    "getStartedSignInDescription": "कोई सेटअप आवश्यक नहीं — साइन इन करें और तुरंत AI का उपयोग शुरू करें।",
+    "getStartedApiKeyTitle": "अपनी API कुंजी लाएं",
+    "getStartedApiKeyDescription": "अपनी OpenAI, Google, Anthropic या OpenRouter कुंजी का उपयोग करें।",
+    "getStartedConfigureApiKey": "API कुंजी कॉन्फ़िगर करें",
     "useSmartMode": "स्मार्ट मोड का उपयोग करें",
     "smartModeDescription": "उपलब्ध होने पर क्रेडिट्स का उपयोग करें, नहीं तो आपकी API key का उपयोग करें",
     "creditsModeDisabled": "क्रेडिट्स मोड बंद है",
@@ -394,8 +408,7 @@
     "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
     "processingPurchase": "Processing your purchase...",
     "creditsAddedTitle": "Credits added",
-    "creditsAddedDescription": "{amount} credits have been added to your balance.",
-    "buyCreditsLink": "Buy Credits"
+    "creditsAddedDescription": "{amount} credits have been added to your balance."
   },
   "errors": {
     "unexpectedIssue": "हमें एक अप्रत्याशित समस्या का सामना करना पड़ा। कृपया पुनः प्रयास करें, या स्थिर पेज पर वापस जाएं।",
@@ -604,7 +617,7 @@
   },
   "toast": {
     "unexpectedError": "एक अप्रत्याशित त्रुटि हुई। कृपया पुनः प्रयास करें।",
-    "openAISettings": "Open AI सेटिंग्स",
+    "openAISettings": "AI सेटिंग्स खोलें",
     "aiConfigRequired": "AI कॉन्फ़िगरेशन आवश्यक",
     "aiConfigRequiredDescription": "जारी रखने के लिए कृपया अपनी AI सेटिंग्स कॉन्फ़िगर करें।",
     "searchQueryTooLarge": "खोज क्वेरी बहुत बड़ी है",
@@ -664,7 +677,7 @@
     "aiUnauthenticated": "AI सुविधाओं के लिए कृपया साइन इन करें।",
     "aiInsufficientCredits": "AI के लिए आपके पास पर्याप्त क्रेडिट नहीं हैं।",
     "aiPlanEntitlement": "इस AI सुविधा के लिए उच्च प्लान आवश्यक है।",
-    "aiApiKeyRequired": "जारी रखने के लिए सेटिंग्स में AI API कुंजी जोड़ें।",
+    "aiApiKeyRequired": "मुफ्त क्रेडिट के लिए साइन इन करें, या सेटिंग्स में API कुंजी जोड़ें।",
     "aiProviderError": "AI प्रदाता अभी उपलब्ध नहीं है। कृपया पुनः प्रयास करें।",
     "aiValidationError": "AI प्रतिक्रिया सत्यापित नहीं हो सकी। कृपया पुनः प्रयास करें।",
     "aiMaxRetriesExceeded": "AI जनरेशन पूरी नहीं हो सकी। कृपया पुनः प्रयास करें।",

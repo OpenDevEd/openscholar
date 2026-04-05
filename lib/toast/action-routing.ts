@@ -8,8 +8,9 @@ export type ToastActionRoute =
 
 const SIGN_IN_CODES = new Set<string>(["UNAUTHENTICATED", "AI_UNAUTHENTICATED"]);
 
+const SIGN_IN_OR_SETTINGS_CODES = new Set<string>(["AI_API_KEY_REQUIRED"]);
+
 const AI_SETTINGS_CODES = new Set<string>([
-  "AI_API_KEY_REQUIRED",
   "AI_CREDITS_DISABLED",
   "AI_PROVIDER_ERROR",
   "AI_VALIDATION_ERROR",
@@ -30,7 +31,7 @@ export function resolveToastActionRoute(code?: string): ToastActionRoute | undef
     return undefined;
   }
 
-  if (SIGN_IN_CODES.has(code)) {
+  if (SIGN_IN_CODES.has(code) || SIGN_IN_OR_SETTINGS_CODES.has(code)) {
     return "/sign-in";
   }
 

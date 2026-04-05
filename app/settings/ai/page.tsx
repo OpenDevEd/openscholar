@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
+  ArrowRight,
   Bot,
   ChevronDown,
   ChevronUp,
@@ -20,6 +21,7 @@ import {
   Save,
   RotateCcw,
 } from "lucide-react";
+import Image from "next/image";
 import {
   OpenAIIcon,
   GoogleIcon,
@@ -38,6 +40,7 @@ import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import type { AIModel, AIProvider } from "@/lib/types/ai.types";
 
@@ -56,6 +59,8 @@ export default function AISettingsPage() {
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
   const router = useRouter();
+  const goToSignIn = useSignInRedirect();
+  const [showApiKeyConfig, setShowApiKeyConfig] = useState(false);
 
   // Per-provider draft keys — only entries that differ from the store are present
   const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
@@ -198,20 +203,86 @@ export default function AISettingsPage() {
   const isCreditsModeLocked = !creditsEnabled;
   const isDisabled = apiKeyMode === "credits";
 
+  // For logged-out users: provider/model/credentials are hidden until they
+  // choose the BYOK path. For logged-in users in credits mode the sections
+  // are shown but dimmed (existing behaviour).
+  const showFullConfig = isSignedIn ? true : showApiKeyConfig;
+  const isConfigDisabled = isSignedIn ? isDisabled : false;
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-6 py-5 border-b border-border/40">
         <h2 className="text-lg font-semibold tracking-tight">
-          {t("aiConfiguration")}
+          {isSignedIn ? t("aiConfiguration") : t("getStartedTitle")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {t("configurePreferences")}
+          {isSignedIn ? t("configurePreferences") : t("getStartedDescription")}
         </p>
       </div>
 
       {/* Content */}
       <div className="p-6 space-y-8 max-w-2xl">
+
+        {/* ── Logged-out: two-path cards ── */}
+        {!isSignedIn && (
+          <div className="space-y-4">
+            {/* Option A: Sign in for free credits */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="rounded-xl border-2 border-primary/30 bg-primary/[0.04] p-5 space-y-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center">
+                  <Image src="/icon.svg" alt="" width={36} height={36} className="w-9 h-9" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">{t("getStartedSignInTitle")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("getStartedSignInDescription")}</p>
+                </div>
+              </div>
+              <Button onClick={goToSignIn} className="gap-1.5">
+                <ArrowRight className="h-4 w-4" />
+                {tc("signIn")}
+              </Button>
+            </motion.div>
+
+            {/* Option B: Bring your own API key */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="rounded-xl border-2 border-border/50 p-5 space-y-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50">
+                  <Bot className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">{t("getStartedApiKeyTitle")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("getStartedApiKeyDescription")}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setApiKeyMode("local");
+                  setShowApiKeyConfig((prev) => !prev);
+                }}
+                className="gap-1.5"
+              >
+                <ChevronDown className={cn("h-4 w-4 transition-transform", showApiKeyConfig && "rotate-180")} />
+                {t("getStartedConfigureApiKey")}
+              </Button>
+            </motion.div>
+          </div>
+        )}
+
+        {/* ── Logged-in: mode selector ── */}
+        {isSignedIn && (
+          <>
         {/* Mode Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -297,7 +368,7 @@ export default function AISettingsPage() {
                 if (!isSignedIn) {
                   toast.error(t("signInToUseCredits"), undefined, {
                     label: tc("signIn"),
-                    onClick: () => router.push("/sign-in"),
+                    onClick: goToSignIn,
                     icon: "arrow-right",
                   });
                   return;
@@ -342,7 +413,7 @@ export default function AISettingsPage() {
 
         {/* Disabled Info Banner */}
         <AnimatePresence>
-          {isDisabled && (
+          {isSignedIn && isDisabled && (
             <motion.div
               initial={{ opacity: 0, height: 0, marginBottom: 0 }}
               animate={{ opacity: 1, height: "auto", marginBottom: 32 }}
@@ -365,12 +436,15 @@ export default function AISettingsPage() {
             </motion.div>
           )}
         </AnimatePresence>
+          </>
+        )}
 
         {/* Provider Section */}
+        {showFullConfig && (
         <div
           className={cn(
             "space-y-4 transition-opacity duration-300",
-            isDisabled && "opacity-50 pointer-events-none",
+            isConfigDisabled && "opacity-50 pointer-events-none",
           )}
         >
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -414,11 +488,14 @@ export default function AISettingsPage() {
           </div>
         </div>
 
+        )}
+
         {/* Model Section */}
+        {showFullConfig && (
         <div
           className={cn(
             "space-y-4 transition-opacity duration-300",
-            isDisabled && "opacity-50 pointer-events-none",
+            isConfigDisabled && "opacity-50 pointer-events-none",
           )}
         >
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -545,11 +622,14 @@ export default function AISettingsPage() {
           </div>
         </div>
 
+        )}
+
         {/* Credentials Section */}
+        {showFullConfig && (
         <div
           className={cn(
             "space-y-4 transition-opacity duration-300",
-            isDisabled && "opacity-50 pointer-events-none",
+            isConfigDisabled && "opacity-50 pointer-events-none",
           )}
         >
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
@@ -568,7 +648,7 @@ export default function AISettingsPage() {
                   type="password"
                   placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
                   value={pendingApiKey}
-                  disabled={isDisabled}
+                  disabled={isConfigDisabled}
                   onChange={(e) => setPendingKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && hasUnsavedKey) {
@@ -582,7 +662,7 @@ export default function AISettingsPage() {
                     <Button
                       size="icon"
                       variant="outline"
-                      disabled={isDisabled}
+                      disabled={isConfigDisabled}
                       onClick={() => setPendingKeys((prev) => {
                         const next = { ...prev };
                         delete next[provider];
@@ -593,7 +673,7 @@ export default function AISettingsPage() {
                     </Button>
                     <Button
                       size="icon"
-                      disabled={isDisabled}
+                      disabled={isConfigDisabled}
                       onClick={handleSaveApiKey}
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -620,6 +700,7 @@ export default function AISettingsPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

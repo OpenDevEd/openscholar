@@ -15,6 +15,7 @@ import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { cn } from "@/lib/utils";
+import { AISetupGate } from "@/components/ai/ai-setup-gate";
 
 interface AdjustModeProps {
   searchId: string;
@@ -126,6 +127,8 @@ Please enhance this academic search query according to the user's specific instr
 
   return (
     <div className="p-4 space-y-4">
+      {!isConfigured && <AISetupGate />}
+
       {/* AI Enhancement Input */}
       <form onSubmit={handleAiEnhancement}>
         <FloatingInput

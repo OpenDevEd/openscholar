@@ -121,6 +121,7 @@
     "paperCount": "{count, plural, one {# paper} other {# papers}}",
     "itemOfTotal": "Item {current} of {total}",
     "noContentPapers": "No-content papers",
+    "dismiss": "Dismiss",
     "generateWithAI": "Generate with AI",
     "defaultSort": "Default",
     "showMore": "Show More",
@@ -268,6 +269,12 @@
     "generalSettings": "General Settings",
     "managePreferences": "Manage your general application preferences"
   },
+  "aiSetupGate": {
+    "title": "Set up AI to enhance your search",
+    "description": "OpenScholar uses AI to refine queries, screen papers, and translate results.",
+    "signInForCredits": "Sign in for free credits",
+    "useOwnApiKey": "Use your own API key"
+  },
   "aiSettings": {
     "aiConfiguration": "AI Configuration",
     "configurePreferences": "Configure your AI provider and model preferences",
@@ -333,6 +340,13 @@
         "freeModels": "Free options: Azure OpenAI does not offer free-tier API access; usage is billed per token."
       }
     },
+    "getStartedTitle": "Get started with AI",
+    "getStartedDescription": "Choose how OpenScholar powers your AI features.",
+    "getStartedSignInTitle": "Sign in for free credits",
+    "getStartedSignInDescription": "No setup needed — sign in and start using AI immediately.",
+    "getStartedApiKeyTitle": "Bring your own API key",
+    "getStartedApiKeyDescription": "Use your OpenAI, Google, Anthropic, or OpenRouter key.",
+    "getStartedConfigureApiKey": "Configure API key",
     "useSmartMode": "Use Smart Mode",
     "smartModeDescription": "Use credits when available, then fall back to your API key",
     "creditsModeDisabled": "Credits mode is disabled",
@@ -395,8 +409,7 @@
     "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
     "processingPurchase": "Processing your purchase...",
     "creditsAddedTitle": "Credits added",
-    "creditsAddedDescription": "{amount} credits have been added to your balance.",
-    "buyCreditsLink": "Buy Credits"
+    "creditsAddedDescription": "{amount} credits have been added to your balance."
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -665,7 +678,7 @@
     "aiUnauthenticated": "Please sign in to use AI features.",
     "aiInsufficientCredits": "You do not have enough AI credits.",
     "aiPlanEntitlement": "This AI feature requires a higher plan.",
-    "aiApiKeyRequired": "Add an AI API key in settings to continue.",
+    "aiApiKeyRequired": "Sign in for free credits, or add an API key in settings.",
     "aiProviderError": "The AI provider is unavailable right now. Please try again.",
     "aiValidationError": "The AI response could not be validated. Please retry.",
     "aiMaxRetriesExceeded": "AI generation could not be completed. Please retry.",

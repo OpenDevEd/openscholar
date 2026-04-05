@@ -24,6 +24,7 @@ import { subtleSpring } from "@/lib/animation-config";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
+import { AISetupGate } from "@/components/ai/ai-setup-gate";
 
 function PageContent() {
   const t = useTranslations("home");
@@ -106,6 +107,13 @@ function PageContent() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-[80vh] px-4 sm:px-6 overflow-hidden relative">
       <AmbientBackground />
+
+      {/* AI setup gate — top-right on desktop, top-center on mobile */}
+      {!isAIConfigured && (
+        <div className="absolute top-4 right-4 z-20 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md">
+          <AISetupGate />
+        </div>
+      )}
 
       <div className="w-full max-w-4xl flex flex-col items-center gap-6 sm:gap-8 relative z-10">
         <HomeHero />

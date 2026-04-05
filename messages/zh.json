@@ -120,6 +120,7 @@
     "paperCount": "{count, plural, other {# 篇论文}}",
     "itemOfTotal": "第 {current} 项，共 {total} 项",
     "noContentPapers": "无内容论文",
+    "dismiss": "关闭",
     "generateWithAI": "使用 AI 生成",
     "defaultSort": "默认",
     "showMore": "显示更多",
@@ -267,6 +268,12 @@
     "generalSettings": "常规设置",
     "managePreferences": "管理您的常规应用偏好"
   },
+  "aiSetupGate": {
+    "title": "设置 AI 以增强搜索",
+    "description": "OpenScholar 使用 AI 优化查询、筛选论文和翻译结果。",
+    "signInForCredits": "登录获取免费积分",
+    "useOwnApiKey": "使用自己的 API 密钥"
+  },
   "aiSettings": {
     "aiConfiguration": "AI 配置",
     "configurePreferences": "配置您的 AI 提供商和模型偏好",
@@ -332,6 +339,13 @@
         "freeModels": "免费选项：Azure OpenAI 不提供免费层级 API 访问；使用按令牌计费。"
       }
     },
+    "getStartedTitle": "开始使用 AI",
+    "getStartedDescription": "选择 OpenScholar 如何驱动您的 AI 功能。",
+    "getStartedSignInTitle": "登录获取免费积分",
+    "getStartedSignInDescription": "无需设置 — 登录后即可立即使用 AI。",
+    "getStartedApiKeyTitle": "使用自己的 API 密钥",
+    "getStartedApiKeyDescription": "使用您的 OpenAI、Google、Anthropic 或 OpenRouter 密钥。",
+    "getStartedConfigureApiKey": "配置 API 密钥",
     "useSmartMode": "使用智能模式",
     "smartModeDescription": "优先使用可用积分，否则使用你的 API 密钥",
     "creditsModeDisabled": "积分模式已禁用",
@@ -394,8 +408,7 @@
     "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
     "processingPurchase": "Processing your purchase...",
     "creditsAddedTitle": "Credits added",
-    "creditsAddedDescription": "{amount} credits have been added to your balance.",
-    "buyCreditsLink": "Buy Credits"
+    "creditsAddedDescription": "{amount} credits have been added to your balance."
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",
@@ -664,7 +677,7 @@
     "aiUnauthenticated": "使用 AI 功能前请先登录。",
     "aiInsufficientCredits": "AI 积分不足。",
     "aiPlanEntitlement": "此 AI 功能需要更高套餐。",
-    "aiApiKeyRequired": "请在设置中添加 AI API 密钥后继续。",
+    "aiApiKeyRequired": "登录获取免费积分，或在设置中添加 API 密钥。",
     "aiProviderError": "AI 提供商暂时不可用，请稍后重试。",
     "aiValidationError": "AI 响应校验失败，请重试。",
     "aiMaxRetriesExceeded": "AI 生成未完成，请重试。",

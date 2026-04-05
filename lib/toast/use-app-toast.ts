@@ -12,6 +12,11 @@ import type { ToastAction } from "./core";
 function navigateTo(
   path: "/settings/ai" | "/settings/billing" | "/pricing" | "/sign-in"
 ) {
+  if (path === "/sign-in") {
+    const redirectUrl = encodeURIComponent(window.location.pathname);
+    window.location.href = `/sign-in?redirect_url=${redirectUrl}`;
+    return;
+  }
   window.location.href = path;
 }
 
@@ -119,7 +124,18 @@ export function useAppToast(): AppToastApi {
       return undefined;
     }
 
-    return buildActionFromRoute(route, t, tc);
+    const action = buildActionFromRoute(route, t, tc);
+
+    // AI_API_KEY_REQUIRED: primary = sign in, secondary = AI settings
+    if (code === "AI_API_KEY_REQUIRED") {
+      action.secondaryAction = {
+        label: t("openAISettings"),
+        onClick: () => navigateTo("/settings/ai"),
+        icon: "settings",
+      };
+    }
+
+    return action;
   };
 
   return {
