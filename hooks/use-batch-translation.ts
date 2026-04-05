@@ -7,6 +7,10 @@ import { useBatchOperation } from "./use-batch-operation";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useLocale } from "next-intl";
 
+function translationKey(paperId: string, targetLanguage: string): string {
+  return `${paperId}:${targetLanguage}`;
+}
+
 interface Paper {
   id: string;
   title?: string;
@@ -133,6 +137,18 @@ export function useBatchTranslation({
     }
   }, [autoTranslateResults, manualRunRequestId]);
 
+  // Reactive count of papers already translated for the current target language.
+  // Uses a store selector so it re-renders when new translations land.
+  const translatedPaperCount = useTranslationStore(
+    useCallback(
+      (state) =>
+        papers.filter(
+          (p) => state.translations[translationKey(p.id, targetLanguage)] != null
+        ).length,
+      [papers, targetLanguage]
+    )
+  );
+
   const { loadingState, errors } = useBatchOperation<
     { papers: { id: string; title: string; abstract: string }[]; targetLanguage?: string },
     TranslationData,
@@ -158,5 +174,7 @@ export function useBatchTranslation({
     loadingPaperIds: loadingState,
     errors: errors as TranslationError[],
     isConfigured,
+    translatedPaperCount,
+    totalPaperCount: papers.length,
   };
 }

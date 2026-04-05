@@ -400,6 +400,8 @@ export function ResultsList({
     loadingPaperIds: translationLoadingPaperIds,
     errors: translationErrors,
     isConfigured: isTranslationConfigured,
+    translatedPaperCount,
+    totalPaperCount,
   } = useBatchTranslation({
     searchId: searchId || "",
     papers: papersForBatchTranslation,
@@ -436,6 +438,8 @@ export function ResultsList({
         loadingPaperIds: translationLoadingPaperIds,
         errors: translationErrors,
         isConfigured: isTranslationConfigured,
+        translatedPaperCount,
+        totalPaperCount,
       }}
     >
     <ScreeningContext.Provider

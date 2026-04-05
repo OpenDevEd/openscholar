@@ -1119,6 +1119,8 @@
     "useCurrentLocaleTarget": "लक्ष्य के रूप में वर्तमान लोकेल का उपयोग करें",
     "runResultsTranslation": "अनुवाद चलाएँ",
     "translatingResults": "परिणामों का अनुवाद हो रहा है...",
+    "resultsTranslated": "अनुवादित",
+    "translated": "अनुवादित",
     "targetLanguageValue": "लक्ष्य: {language}",
     "enhanceWithAI": "AI से बढ़ाएं",
     "enhance": "बढ़ाएं",

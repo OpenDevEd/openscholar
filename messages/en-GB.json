@@ -1126,6 +1126,8 @@
     "useCurrentLocaleTarget": "Use current locale target",
     "runResultsTranslation": "Run translation",
     "translatingResults": "Translating results...",
+    "resultsTranslated": "Translated",
+    "translated": "Translated",
     "targetLanguageValue": "Target: {language}",
     "enhanceWithAI": "Enhance with AI",
     "enhance": "Enhance",

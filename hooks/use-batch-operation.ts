@@ -120,6 +120,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     setLoadingState(clearLoadingState());
     setErrors([]);
     contextIdAtFetchRef.current = null;
+    isFetchingRef.current = false;
   }, [contextId, clearLoadingState]);
 
   // Main effect to trigger batch operation
@@ -175,8 +176,13 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
         setErrors([{ paperId: "batch", error: error.message || String(error) }]);
       })
       .finally(() => {
-        isFetchingRef.current = false;
-        setLoadingState(clearLoadingState());
+        // Only clean up if this fetch's context is still current.
+        // If context changed, the reset effect already handled cleanup
+        // and a new fetch may be in progress — don't disturb it.
+        if (contextIdAtFetchRef.current === contextIdAtFetch) {
+          isFetchingRef.current = false;
+          setLoadingState(clearLoadingState());
+        }
       });
   }, [
     batchKey,

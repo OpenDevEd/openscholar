@@ -75,10 +75,16 @@ export function ResultsTranslationControl({
     (state) => state.requestManualRun
   );
 
-  const { loadingPaperIds, isConfigured = false } =
-    useContext(TranslationContext);
+  const {
+    loadingPaperIds,
+    isConfigured = false,
+    translatedPaperCount = 0,
+    totalPaperCount = 0,
+  } = useContext(TranslationContext);
 
   const isTranslating = (loadingPaperIds?.size ?? 0) > 0;
+  const allTranslated =
+    !isTranslating && totalPaperCount > 0 && translatedPaperCount === totalPaperCount;
   const isUsingLocaleTarget = targetLanguageOverride === null;
   const targetMode = isUsingLocaleTarget ? "locale" : "manual";
   const effectiveTargetLanguage = targetLanguageOverride ?? localeTargetLanguage;
@@ -86,8 +92,8 @@ export function ResultsTranslationControl({
     tl(effectiveTargetLanguage as never) || effectiveTargetLanguage;
   const targetBadgeLabel = effectiveTargetLanguage.toUpperCase();
   const isTriggerDisabled = disabled;
-  const isRunDisabled = disabled || isTranslating;
-  const showActiveTranslationState = autoTranslateResults;
+  const isRunDisabled = disabled || isTranslating || allTranslated;
+  const showActiveTranslationState = autoTranslateResults || allTranslated;
   const triggerAriaLabel = `${t("translate")} - ${t("targetLanguageValue", { language: effectiveTargetLabel })}`;
 
   const handleTargetModeChange = useCallback(
@@ -128,8 +134,12 @@ export function ResultsTranslationControl({
           ? "h-8 gap-1.5 px-2.5"
           : "h-8 rounded-full gap-1.5 pl-2.5 pr-2 border-border/70 bg-background/90 hover:bg-accent/50",
         compactTrigger
-          ? showActiveTranslationState && "bg-background text-foreground shadow-xs"
-          : showActiveTranslationState && "border-primary/40 text-primary",
+          ? allTranslated
+            ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-xs"
+            : showActiveTranslationState && "bg-background text-foreground shadow-xs"
+          : allTranslated
+            ? "border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+            : showActiveTranslationState && "border-primary/40 text-primary",
         compactTrigger
           ? isOpen && "bg-background text-foreground shadow-xs"
           : isOpen && "border-primary/50 shadow-[0_0_0_3px] shadow-primary/10",
@@ -138,10 +148,12 @@ export function ResultsTranslationControl({
     >
       {isTranslating ? (
         <Loader2 className="h-4 w-4 animate-spin" />
+      ) : allTranslated ? (
+        <Check className="h-4 w-4 text-emerald-500" />
       ) : (
         <Globe2 className="h-4 w-4" />
       )}
-      <span>{t("translate")}</span>
+      <span>{allTranslated ? t("translated") : t("translate")}</span>
       {compactTrigger ? (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {targetBadgeLabel}
@@ -149,12 +161,15 @@ export function ResultsTranslationControl({
       ) : (
         <Badge
           variant="outline"
-          className="h-5 rounded-full px-1.5 text-[10px] font-semibold tracking-wide"
+          className={cn(
+            "h-5 rounded-full px-1.5 text-[10px] font-semibold tracking-wide",
+            allTranslated && "border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+          )}
         >
           {targetBadgeLabel}
         </Badge>
       )}
-      {showActiveTranslationState && !isTranslating && !compactTrigger && (
+      {showActiveTranslationState && !isTranslating && !allTranslated && !compactTrigger && (
         <Sparkles className="h-3.5 w-3.5 text-primary/80" />
       )}
     </Button>
@@ -265,8 +280,12 @@ export function ResultsTranslationControl({
           <Button
             type="button"
             size="sm"
-            className="w-full"
-            variant={autoTranslateResults ? "outline" : "default"}
+            className={cn(
+              "w-full",
+              allTranslated &&
+                "border-emerald-500/40 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+            )}
+            variant={allTranslated || autoTranslateResults ? "outline" : "default"}
             onClick={handleRunTranslation}
             disabled={isRunDisabled}
           >
@@ -274,6 +293,11 @@ export function ResultsTranslationControl({
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {t("translatingResults")}
+              </>
+            ) : allTranslated ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                {t("resultsTranslated")}
               </>
             ) : (
               t("runResultsTranslation")

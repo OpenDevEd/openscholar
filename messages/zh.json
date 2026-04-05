@@ -1119,6 +1119,8 @@
     "useCurrentLocaleTarget": "使用当前语言环境作为目标语言",
     "runResultsTranslation": "运行翻译",
     "translatingResults": "正在翻译结果...",
+    "resultsTranslated": "已翻译",
+    "translated": "已翻译",
     "targetLanguageValue": "目标语言：{language}",
     "enhanceWithAI": "使用 AI 增强",
     "enhance": "增强",
