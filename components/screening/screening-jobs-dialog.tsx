@@ -8,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListChecks } from "lucide-react";
 import { ScreeningJobHistory } from "@/components/screening/screening-job-history";
 
@@ -25,8 +24,8 @@ export function ScreeningJobsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl max-h-[80vh] flex flex-col gap-0">
-        <DialogHeader className="pb-4">
+      <DialogContent className="sm:max-w-xl max-h-[80vh] flex flex-col gap-0 overflow-hidden">
+        <DialogHeader className="shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2 text-base">
             <ListChecks className="h-4 w-4" />
             {t("jobsDialogTitle")}
@@ -36,11 +35,11 @@ export function ScreeningJobsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
           <ScreeningJobHistory
             onClose={() => onOpenChange(false)}
           />
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
