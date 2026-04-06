@@ -267,10 +267,7 @@ export default function AISettingsPage() {
               </div>
               <Button
                 variant="outline"
-                onClick={() => {
-                  setApiKeyMode("local");
-                  setShowApiKeyConfig((prev) => !prev);
-                }}
+                onClick={() => setShowApiKeyConfig((prev) => !prev)}
                 className="gap-1.5"
               >
                 <ChevronDown className={cn("h-4 w-4 transition-transform", showApiKeyConfig && "rotate-180")} />
