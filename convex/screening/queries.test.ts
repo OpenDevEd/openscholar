@@ -261,7 +261,7 @@ describe("getScreeningProgress", () => {
     expect(result!.processedPapers).toBe(3);
     expect(result!.failedPapers).toBe(1);
     expect(result!.qualifiedPapers).toBe(2);
-    expect(result!.percentComplete).toBe(30); // 3/10 * 100 = 30
+    expect(result!.percentComplete).toBe(40); // floor((3+1)/10 * 100) = 40 (includes failedPapers)
   });
 
   it("percentComplete is 0 when totalPapers is 0", async () => {
@@ -281,7 +281,7 @@ describe("getScreeningProgress", () => {
     expect(result!.percentComplete).toBe(0);
   });
 
-  it("percentComplete rounds correctly (e.g., 3/7 papers -> 43%)", async () => {
+  it("percentComplete floors correctly (e.g., 3/7 papers -> 42%)", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_prog7", "prog7@test.com");
     const jobId = await seedScreeningJob(t, user._id, {
@@ -295,7 +295,45 @@ describe("getScreeningProgress", () => {
     const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId });
 
     expect(result).not.toBeNull();
-    expect(result!.percentComplete).toBe(43); // Math.round(3/7 * 100) = 43
+    expect(result!.percentComplete).toBe(42); // Math.floor(3/7 * 100) = 42
+  });
+
+  it("percentComplete capped at 99% while job is still processing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_prog8", "prog8@test.com");
+    // 199/200 = 99.5% — old Math.round would show 100%
+    const jobId = await seedScreeningJob(t, user._id, {
+      status: "processing",
+      totalPapers: 200,
+      processedPapers: 199,
+      failedPapers: 0,
+      qualifiedPapers: 100,
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_prog8" });
+    const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId });
+
+    expect(result).not.toBeNull();
+    expect(result!.percentComplete).toBe(99); // Capped — never 100% while processing
+  });
+
+  it("percentComplete is 100% when job is in a terminal state", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_prog9", "prog9@test.com");
+    const jobId = await seedScreeningJob(t, user._id, {
+      status: "completed",
+      totalPapers: 10,
+      processedPapers: 8,
+      failedPapers: 2,
+      qualifiedPapers: 5,
+    });
+
+    const asUser = t.withIdentity({ subject: "clerk_prog9" });
+    const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId });
+
+    expect(result).not.toBeNull();
+    expect(result!.percentComplete).toBe(100); // Terminal → always 100%
+    expect(result!.status).toBe("completed");
   });
 });
 

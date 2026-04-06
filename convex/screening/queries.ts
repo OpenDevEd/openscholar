@@ -37,10 +37,19 @@ export const getScreeningProgress = query({
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
 
-    const percentComplete =
+    const TERMINAL_STATUSES = ["completed", "cancelled", "failed", "creditsExhausted"];
+    const isTerminal = TERMINAL_STATUSES.includes(job.status);
+    const handled = job.processedPapers + job.failedPapers;
+
+    const rawPercent =
       job.totalPapers === 0
         ? 0
-        : Math.round((job.processedPapers / job.totalPapers) * 100);
+        : Math.floor((handled / job.totalPapers) * 100);
+
+    // Never show 100% while the job is still active — avoids the
+    // Math.round(99.5)→100 rounding bug and the transaction-gap
+    // window between counter increment and status finalization.
+    const percentComplete = isTerminal ? 100 : Math.min(rawPercent, 99);
 
     return {
       status: job.status,
