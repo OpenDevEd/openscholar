@@ -1159,6 +1159,7 @@
     "enhancement": "強化",
     "questionGeneration": "質問生成",
     "screenAll": "すべてスクリーニング",
+    "screenAllCredits": "クレジット",
     "placeholder": {
       "researchQuestion": "マインドフルネスが不安に与える影響は？",
       "keywords": "mindfulness AND (anxiety OR stress)",

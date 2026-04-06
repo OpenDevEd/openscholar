@@ -113,7 +113,7 @@ registerRoutes(http, components.stripe, {
       await runAuditedStripeHandler(ctx, event, async () => {
         const session = event.data.object as Stripe.Checkout.Session;
         console.log(
-          `[StripeWebhook] checkout.session.completed - id=${session.id} mode=${session.mode}`,
+          `[StripeWebhook] checkout.session.completed - id=${session.id} mode=${session.mode} payment_status=${session.payment_status}`,
         );
 
         if (session.mode === "subscription") {
@@ -135,6 +135,30 @@ registerRoutes(http, components.stripe, {
               );
             }
           }
+        }
+
+        // Fulfillment for one-time payments (credit top-ups).
+        // Per Stripe docs, checkout.session.completed is the recommended
+        // fulfillment event — it fires for all payment scenarios including
+        // 100% discount / no-cost orders where payment_intent.succeeded
+        // never fires. See: https://docs.stripe.com/checkout/fulfillment
+        if (session.mode === "payment" && session.payment_status !== "unpaid") {
+          const stripeCustomerId =
+            typeof session.customer === "string" ? session.customer : session.customer?.id;
+          const stripePaymentIntentId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent?.id ?? undefined;
+
+          await ctx.runMutation(internal.credits.internal.grantPurchasedCreditsFromCheckout, {
+            stripeCheckoutSessionId: session.id,
+            stripePaymentIntentId,
+            stripeCustomerId: stripeCustomerId ?? undefined,
+            amountTotal: session.amount_total ?? 0,
+            currency: session.currency ?? undefined,
+            paymentStatus: session.payment_status ?? "unknown",
+            metadata: (session.metadata ?? {}) as Record<string, string>,
+          });
         }
       });
     },

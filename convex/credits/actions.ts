@@ -104,6 +104,7 @@ export const createTopupCheckoutSession = action({
       mode: "payment",
       success_url: `${domain}/settings/billing?topup=success`,
       cancel_url: `${domain}/settings/billing?topup=canceled`,
+      allow_promotion_codes: true,
       customer_update: {
         address: "auto",
       },

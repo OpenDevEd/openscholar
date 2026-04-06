@@ -1166,6 +1166,7 @@
     "enhancement": "Enhancement",
     "questionGeneration": "Question generation",
     "screenAll": "Screen All",
+    "screenAllCredits": "Credits",
     "placeholder": {
       "researchQuestion": "What are the effects of mindfulness on anxiety?",
       "keywords": "mindfulness AND (anxiety OR stress)",

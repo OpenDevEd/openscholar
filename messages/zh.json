@@ -1159,6 +1159,7 @@
     "enhancement": "增强",
     "questionGeneration": "问题生成",
     "screenAll": "全部筛选",
+    "screenAllCredits": "积分",
     "placeholder": {
       "researchQuestion": "冥想对焦虑有什么影响？",
       "keywords": "mindfulness AND (anxiety OR stress)",

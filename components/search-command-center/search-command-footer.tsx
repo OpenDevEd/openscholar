@@ -6,7 +6,7 @@ import { useTranslations, useLocale, useFormatter } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import posthog from "posthog-js";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Expand, Minimize2, Loader2, Eye, ChevronDown, ListChecks } from "lucide-react";
+import { Expand, Minimize2, Loader2, Eye, ChevronDown, ListChecks, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AnimatedCount } from "./components/animated-count";
@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
 import { ScreeningDialog } from "@/components/screening/screening-dialog";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -51,6 +53,9 @@ export function SearchCommandFooter({
   const shouldReduceMotion = useReducedMotion();
   const search = useSearchOptional();
   const { currentQuestion } = useCurrentQuestionStore();
+
+  const { phase } = useAuthReadiness();
+  const goToSignIn = useSignInRedirect();
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
@@ -287,7 +292,7 @@ Return a more targeted version of this query.`;
             variant="ghost"
             size="sm"
             type="button"
-            onClick={() => setIsScreeningDialogOpen(true)}
+            onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
             disabled={Boolean(isLoading)}
             title={tsc("screenAll")}
             aria-label={tsc("screenAll")}
@@ -296,6 +301,10 @@ Return a more targeted version of this query.`;
             <ListChecks className="h-3.5 w-3.5" />
             <span className="hidden text-sm font-medium sm:inline">
               {tsc("screenAll")}
+            </span>
+            <span className="hidden items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary sm:inline-flex">
+              <Coins className="h-2.5 w-2.5" />
+              {tsc("screenAllCredits")}
             </span>
           </Button>
 

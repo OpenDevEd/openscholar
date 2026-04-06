@@ -54,6 +54,8 @@ import { useTranslations } from "next-intl";
 import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -372,6 +374,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const extractionEnabled = useFeatureFlag("extraction.enabled");
   const subscriptionState = useSubscriptionState();
   const hasExtractionPlan = subscriptionState.resolvedPlan === "pro" || subscriptionState.resolvedPlan === "enterprise";
+  const { phase } = useAuthReadiness();
+  const goToSignIn = useSignInRedirect();
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -749,7 +753,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           >
             <div className="flex items-center gap-1">
               <ScreeningFooterButton
-                onClick={() => setIsScreeningJobsOpen(true)}
+                onClick={() => phase === "authenticated" ? setIsScreeningJobsOpen(true) : goToSignIn()}
                 isCollapsed={false}
                 progressPercent={progressPercent}
                 label={tc("screening")}
@@ -762,7 +766,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         ) : (
           <>
             <ScreeningFooterButton
-              onClick={() => setIsScreeningJobsOpen(true)}
+              onClick={() => phase === "authenticated" ? setIsScreeningJobsOpen(true) : goToSignIn()}
               isCollapsed={true}
               progressPercent={progressPercent}
               label={tc("screening")}

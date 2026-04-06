@@ -1159,6 +1159,7 @@
     "enhancement": "Amélioration",
     "questionGeneration": "Génération de questions",
     "screenAll": "Cribler tout",
+    "screenAllCredits": "Crédits",
     "placeholder": {
       "researchQuestion": " Quels sont les effets de la pleine conscience sur l'anxiété ?",
       "keywords": "mindfulness AND (anxiety OR stress)",

@@ -1138,6 +1138,151 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
 
 /**
  * IDEMPOTENCY CONTRACT (INFRA-03):
+ *
+ * Grant credits from a completed Checkout Session. Handles ALL payment scenarios:
+ * - Normal paid checkout (payment_status="paid", payment_intent present)
+ * - 100% coupon/free checkout (payment_status="no_payment_required", no payment_intent)
+ *
+ * Dedup gate: by stripeCheckoutSessionId. If a purchase transaction already exists
+ * for this session, returns "already_granted".
+ *
+ * This is the Stripe-recommended fulfillment path per:
+ * https://docs.stripe.com/checkout/fulfillment
+ * https://docs.stripe.com/payments/checkout/no-cost-orders
+ */
+export const grantPurchasedCreditsFromCheckout = internalMutation({
+  args: {
+    stripeCheckoutSessionId: v.string(),
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeCustomerId: v.optional(v.string()),
+    amountTotal: v.number(),
+    currency: v.optional(v.string()),
+    paymentStatus: v.string(),
+    metadata: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.object({
+    outcome: v.string(),
+    grantedCredits: v.number(),
+    userId: v.optional(v.id("users")),
+  }),
+  handler: async (ctx, args) => {
+    const metadata = args.metadata ?? {};
+    const billingType = metadata.billingType;
+
+    if (billingType !== "credit_topup") {
+      return { outcome: "ignored_non_topup", grantedCredits: 0 };
+    }
+
+    // Dedup by checkout session ID
+    const existingBySession = await ctx.db
+      .query("creditTransactions")
+      .withIndex("by_stripe_checkout_session", (q) =>
+        q.eq("stripeCheckoutSessionId", args.stripeCheckoutSessionId))
+      .collect();
+
+    const existingPurchase = existingBySession.find((t) => t.type === "purchase");
+    if (existingPurchase) {
+      return {
+        outcome: "already_granted",
+        grantedCredits: 0,
+        userId: existingPurchase.userId,
+      };
+    }
+
+    // Also dedup by payment intent if present (covers double-fire from
+    // both checkout.session.completed and payment_intent.succeeded)
+    if (args.stripePaymentIntentId) {
+      const existingByPI = await ctx.db
+        .query("creditTransactions")
+        .withIndex("by_stripe_payment_intent", (q) =>
+          q.eq("stripePaymentIntentId", args.stripePaymentIntentId!))
+        .collect();
+
+      const existingPIPurchase = existingByPI.find((t) => t.type === "purchase");
+      if (existingPIPurchase) {
+        return {
+          outcome: "already_granted",
+          grantedCredits: 0,
+          userId: existingPIPurchase.userId,
+        };
+      }
+    }
+
+    const creditsToGrant = parsePositiveInteger(metadata.credits);
+    if (creditsToGrant === null) {
+      throw new ConvexError("Missing or invalid credits metadata for checkout session");
+    }
+
+    const userId = await resolveTopupUserId(ctx, {
+      metadata,
+      stripeCustomerId: args.stripeCustomerId,
+    });
+    if (!userId) {
+      throw new ConvexError(
+        `Unable to resolve user for checkout session ${args.stripeCheckoutSessionId}`,
+      );
+    }
+
+    let credits = await getLatestCreditsByUser(ctx, userId);
+    if (!credits) {
+      const now = Date.now();
+      const creditsId = await ctx.db.insert(
+        "credits",
+        buildInitialCreditsRecord({ userId, now }),
+      );
+      credits = await ctx.db.get("credits", creditsId);
+    }
+
+    if (!credits) {
+      throw new ConvexError(`Unable to create credits record for user ${userId}`);
+    }
+
+    const now = Date.now();
+    const newPaidBalance = credits.paidBalance + creditsToGrant;
+
+    await ctx.db.patch("credits", credits._id, {
+      paidBalance: newPaidBalance,
+      lastUpdatedAt: now,
+    });
+
+    const isNoCost = args.paymentStatus === "no_payment_required";
+    const metadataCreditsPerUsd =
+      parsePositiveInteger(metadata.creditsPerUsd) ?? getCreditsPerUsd();
+
+    const transactionMetadata: Record<string, string> = {
+      ...metadata,
+      chargedAmountCents: String(args.amountTotal),
+      paymentStatus: args.paymentStatus,
+      appliedCreditsPerUsd: String(metadataCreditsPerUsd),
+      ...(isNoCost ? { noCostOrder: "true" } : {}),
+    };
+
+    await ctx.db.insert("creditTransactions", {
+      creditsId: credits._id,
+      userId,
+      type: "purchase",
+      creditType: "paid",
+      amount: creditsToGrant,
+      balanceAfter: newPaidBalance,
+      description: isNoCost
+        ? `Credit top-up (${creditsToGrant} credits, no-cost order)`
+        : `Credit top-up purchase (${creditsToGrant} credits)`,
+      metadata: transactionMetadata,
+      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      createdAt: now,
+    });
+
+    return {
+      outcome: "granted",
+      grantedCredits: creditsToGrant,
+      userId,
+    };
+  },
+});
+
+/**
+ * IDEMPOTENCY CONTRACT (INFRA-03):
  * Refund reversals are deduplicated via cumulative delta calculation.
  * Stripe's charge.amount_refunded is cumulative (not incremental), so
  * targetReversedCredits is always the same for the same refund state.
