@@ -152,14 +152,14 @@ export function LibraryFilterContent({
         isActive={isRatingActive}
         onClear={
           isRatingActive
-            ? () => onRatingRangeChange([1, 5])
+            ? () => onRatingRangeChange([0, 5])
             : undefined
         }
       >
         <RatingRangePicker
           ratingRange={ratingRange}
           onRatingRangeChange={onRatingRangeChange}
-          minValue={1}
+          minValue={0}
         />
       </FilterSection>
 

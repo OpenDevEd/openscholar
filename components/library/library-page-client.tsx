@@ -441,9 +441,9 @@ export function LibraryPageClient() {
         <SidebarLayout
           sidebar={
             <LibraryFilterSidebar
-              ratingRange={[params.rmin ?? 1, params.rmax ?? 5]}
+              ratingRange={[params.rmin ?? 0, params.rmax ?? 5]}
               onRatingRangeChange={(range) => {
-                const isDefault = range[0] <= 1 && range[1] >= 5;
+                const isDefault = range[0] <= 0 && range[1] >= 5;
                 setParams({ rmin: isDefault ? null : range[0], rmax: isDefault ? null : range[1], p: 1 });
               }}
               isRatingActive={params.rmin !== null || params.rmax !== null}
