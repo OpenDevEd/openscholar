@@ -14,6 +14,7 @@ import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
@@ -100,6 +101,7 @@ export default async function RootLayout({
                       <Toaster />
                       <ConfirmationHost />
                       <CookieConsentBanner />
+                      <ConsentAwareGoogleAnalytics />
                     </TooltipProvider>
                   </QuerySyncProvider>
                 </NuqsAdapter>
