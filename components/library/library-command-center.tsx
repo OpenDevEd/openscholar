@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
+import { AnimatedCount } from "@/components/search-command-center/components/animated-count";
 import { LibrarySearchBar } from "./library-search-bar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -47,6 +47,7 @@ export function LibraryCommandCenter({
   hasExportableResults,
 }: LibraryCommandCenterProps) {
   const t = useTranslations("libraryPage");
+  const tc = useTranslations("common");
   const viewModeOptions = [
     {
       value: "list-simple" as const,
@@ -74,43 +75,36 @@ export function LibraryCommandCenter({
     <CommandCenterContainer className="overflow-hidden">
       <div className="relative space-y-5 p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-3 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                {t("title")}
-              </h1>
-              {totalCount !== undefined && (
-                <Badge
-                  variant="secondary"
-                  className="rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs font-medium"
-                >
-                  {t("paperCount", { count: totalCount })}
-                </Badge>
-              )}
-              {filteredCount !== undefined &&
-                totalCount !== undefined &&
-                filteredCount !== totalCount && (
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-border/60 bg-background/70 px-3 py-1 text-xs font-medium"
-                  >
-                    {filteredCount}/{totalCount}
-                  </Badge>
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            {totalCount !== undefined && (
+              <div className="flex items-center gap-1.5">
+                {filteredCount !== undefined && filteredCount !== totalCount ? (
+                  <>
+                    <AnimatedCount
+                      value={filteredCount}
+                      className="text-lg font-semibold text-foreground"
+                    />
+                    <span className="text-muted-foreground">/ {totalCount} {tc("results")}</span>
+                  </>
+                ) : (
+                  <>
+                    <AnimatedCount
+                      value={totalCount}
+                      className="text-lg font-semibold text-foreground"
+                    />
+                    <span className="text-muted-foreground">{tc("results")}</span>
+                  </>
                 )}
-            </div>
-
-            {activeFilterLabels.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {activeFilterLabels.map((label) => (
-                  <span
-                    key={label}
-                    className="inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground"
-                  >
-                    {label}
-                  </span>
-                ))}
               </div>
             )}
+            {activeFilterLabels.map((label) => (
+              <span
+                key={label}
+                className="inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground"
+              >
+                {label}
+              </span>
+            ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
