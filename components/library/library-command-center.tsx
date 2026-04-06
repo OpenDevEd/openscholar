@@ -107,7 +107,7 @@ export function LibraryCommandCenter({
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <CompactIconToggleGroup
               value={viewMode}
               onChange={onViewModeChange}
