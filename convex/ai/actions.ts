@@ -174,7 +174,7 @@ export const generateBatchTranslations = action({
       `Batch translation (${papers.length} papers)`,
       async () => {
         const model = await getModel();
-        
+
         const { results, errors, usages, usageByItemId } = await processTranslationBatch({
           model,
           papers,
@@ -202,6 +202,7 @@ export const generateBatchTranslations = action({
           usageBreakdown,
         };
       },
+      papers.length, // pre-flight: at least 1 credit per paper
     );
   },
 });
@@ -249,7 +250,7 @@ export const generateBatchScreeningResponses = action({
       `Batch screening (${papers.length} papers)`,
       async () => {
         const model = await getModel();
-        
+
         const { results, errors, usages, usageByItemId } = await processScreeningBatch({
           model,
           papers,
@@ -287,7 +288,8 @@ export const generateBatchScreeningResponses = action({
           totalUsage: aggregateUsage(usages),
           usageBreakdown,
         };
-      }
+      },
+      papers.length, // pre-flight: at least 1 credit per paper
     );
   },
 });
