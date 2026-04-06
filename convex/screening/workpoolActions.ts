@@ -80,6 +80,14 @@ export const screenPaperAction = internalAction({
       return emptyResult;
     }
 
+    // 4. Idempotency guard: skip if already completed (prevents double-billing on retry)
+    if (result.status === "completed") {
+      console.log(
+        `[screenPaperAction] Result ${args.resultId} already completed, skipping (workpool retry)`
+      );
+      return emptyResult;
+    }
+
     // 4. Extract questions as string array
     const questionTexts: string[] = job.questions.map(
       (q: { key: string; question: string }) => q.question

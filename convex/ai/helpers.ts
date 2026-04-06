@@ -60,7 +60,14 @@ function isApiKeyMissingMessage(message: string): boolean {
 }
 
 function throwStructuredAIError(error: unknown): never {
+  // Normalize bare INSUFFICIENT_CREDITS from deductCredits into the AI-prefixed
+  // code so the entire upstream chain (hook fallback, screening catch, toast system)
+  // only ever sees one code: AI_INSUFFICIENT_CREDITS.
   if (hasStructuredConvexCode(error)) {
+    const code = (error as { data: { code: string } }).data.code;
+    if (code === "INSUFFICIENT_CREDITS") {
+      throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
+    }
     throw error;
   }
 
