@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ModeToggle, SearchMode } from "./ModeToggle";
-import { useTranslations } from "next-intl";
+import { detectSearchMode } from "@/lib/search/detect-mode";
+import { useTranslations, useLocale } from "next-intl";
 import {
   hintVariants,
   hintTransition,
@@ -35,11 +36,18 @@ export function SearchInput({
 }: SearchInputProps) {
   const t = useTranslations("home");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const shouldReduceMotion = useReducedMotion();
 
-  // Detect mode based on input ("?" at end) or manual toggle
-  const [mode, setMode] = useState<SearchMode>("search");
-  const effectiveMode = query.trim().endsWith("?") ? "research" : mode;
+  // Manual override: undefined = let auto-detect drive, defined = user's explicit choice
+  const [manualMode, setManualMode] = useState<SearchMode | undefined>(undefined);
+  const detectedMode = detectSearchMode(query, locale);
+  const effectiveMode = manualMode ?? detectedMode;
+
+  // Reset manual override when input is cleared (fresh start)
+  useEffect(() => {
+    if (!query.trim()) setManualMode(undefined);
+  }, [query]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Autofocus on desktop (avoid on mobile to prevent keyboard popup)
@@ -53,8 +61,7 @@ export function SearchInput({
   }, []);
 
   const handleModeChange = (newMode: SearchMode) => {
-    setMode(newMode);
-    // Focus textarea on toggle? Maybe.
+    setManualMode(newMode);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -66,10 +73,6 @@ export function SearchInput({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
-    }
-    if (e.key === "?" && !e.shiftKey && effectiveMode === "search") {
-      e.preventDefault();
-      setMode("research");
     }
   };
 
@@ -261,9 +264,7 @@ export function SearchInput({
                 transition={hintAnimTransition}
                 className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border/40 bg-muted/50 px-3 text-xs text-muted-foreground transition-all duration-200 hover:border-primary/25 hover:bg-muted/70 hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
               >
-                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-muted/80 border border-border/50 font-mono font-medium text-foreground/80">
-                  ?
-                </span>
+                <Wand2 className="h-3.5 w-3.5 text-foreground/70" />
                 <span>{t("questionShortcutHint")}</span>
               </motion.button>
             ) : (

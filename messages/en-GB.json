@@ -200,7 +200,7 @@
     "enterKey": "Enter",
     "shiftEnterKey": "Shift + Enter",
     "researchButton": "Research",
-    "questionShortcutHint": "End your query with ? for question mode"
+    "questionShortcutHint": "Ask a question to enter research mode"
   },
   "search": {
     "nothingMatched": "Nothing matched \"{query}\"",

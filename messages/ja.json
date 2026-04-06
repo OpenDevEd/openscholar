@@ -200,7 +200,7 @@
     "enterKey": "Enter",
     "shiftEnterKey": "Shift + Enter",
     "researchButton": "研究",
-    "questionShortcutHint": "クエリの末尾に ? を付けると質問モードになります"
+    "questionShortcutHint": "質問を入力すると研究モードに切り替わります"
   },
   "search": {
     "nothingMatched": "\"{query}\" に一致するものはありません",

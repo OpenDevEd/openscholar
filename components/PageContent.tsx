@@ -15,6 +15,7 @@ import { AmbientBackground } from "@/components/home/AmbientBackground";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SearchInput } from "@/components/home/SearchInput";
 import { SearchMode } from "@/components/home/ModeToggle";
+import { detectSearchMode } from "@/lib/search/detect-mode";
 
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -65,9 +66,9 @@ function PageContent() {
     let originalQuery = currentQuery;
 
     // Check if we need to do AI enhancement (Research Mode)
-    // Research mode is triggered if manually selected OR if query ends with '?'
+    // Research mode is triggered if manually selected OR if query is detected as a question
     const isResearchMode =
-      mode === "research" || currentQuery.trim().endsWith("?");
+      mode === "research" || detectSearchMode(currentQuery, locale) === "research";
 
     if (isResearchMode) {
       try {

@@ -35,6 +35,9 @@ export { SearchInitializer } from './initializer';
 // Actions
 export { submitNewSearch, restoreFromHistory, createCitationSearch } from './actions';
 
+// Question detection
+export { detectSearchMode } from './detect-mode';
+
 // Types (interfaces only - no duplicate constants/functions)
 export type { SearchParams, SearchContextValue, SearchResultData } from './types';
 

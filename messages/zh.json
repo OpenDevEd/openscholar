@@ -200,7 +200,7 @@
     "enterKey": "Enter",
     "shiftEnterKey": "Shift + Enter",
     "researchButton": "研究",
-    "questionShortcutHint": "在查询末尾加 ? 可切换提问模式"
+    "questionShortcutHint": "输入问题即可进入研究模式"
   },
   "search": {
     "nothingMatched": "未找到与 \"{query}\" 匹配的内容",
