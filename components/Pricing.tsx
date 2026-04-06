@@ -504,6 +504,12 @@ export function Pricing() {
     };
   };
 
+  if (phase === "initializing") {
+    return (
+      <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
+    );
+  }
+
   if (phase === "sync_error") {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
