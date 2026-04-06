@@ -12,40 +12,54 @@ import {
   parseAsStringLiteral,
 } from "nuqs";
 
-// Const arrays (used by parseAsStringLiteral and exported for downstream use)
-
-export const librarySortValues = [
-  "savedAt",
-  "rating",
-  "publicationYear",
-  "citedByCount",
-  "title",
+// Combined sort values: "field:direction"
+export const librarySortCombinedValues = [
+  "savedAt:desc",
+  "savedAt:asc",
+  "rating:desc",
+  "rating:asc",
+  "publicationYear:desc",
+  "publicationYear:asc",
+  "citedByCount:desc",
+  "citedByCount:asc",
+  "title:asc",
+  "title:desc",
 ] as const;
-export const librarySortOrderValues = ["asc", "desc"] as const;
+export type LibrarySortCombined = (typeof librarySortCombinedValues)[number];
+
 export const libraryViewModes = ["list-simple", "list-detail", "grid-2", "grid-3"] as const;
-
-// Type exports derived from const arrays
-
-export type LibrarySortBy = (typeof librarySortValues)[number];
-export type LibrarySortOrder = (typeof librarySortOrderValues)[number];
 export type LibraryViewMode = (typeof libraryViewModes)[number];
+
+/**
+ * Parse a combined sort param into separate sortBy and sortOrder for the Convex API.
+ */
+export function parseLibrarySort(combined: LibrarySortCombined): {
+  sortBy: "savedAt" | "rating" | "publicationYear" | "citedByCount" | "title";
+  sortOrder: "asc" | "desc";
+} {
+  const [sortBy, sortOrder] = combined.split(":") as [
+    "savedAt" | "rating" | "publicationYear" | "citedByCount" | "title",
+    "asc" | "desc",
+  ];
+  return { sortBy, sortOrder };
+}
 
 /**
  * Parser map for all library URL state parameters.
  *
  * Short param names for compact URLs:
  * - q: search text
- * - sort: sort field
- * - order: sort direction
+ * - sort: combined sort field:direction (e.g. "savedAt:desc")
  * - rmin/rmax: rating range
  * - sf/st: saved-from / saved-to local dates (YYYY-MM-DD)
  * - yf/yt: year from/to
  * - view: view mode
+ * - col: collection ID
+ * - p: page number
  */
 export const librarySearchParams = {
   q: parseAsString.withDefault(""),
-  sort: parseAsStringLiteral(librarySortValues).withDefault("savedAt"),
-  order: parseAsStringLiteral(librarySortOrderValues).withDefault("desc"),
+  sort: parseAsStringLiteral(librarySortCombinedValues).withDefault("savedAt:desc"),
   rmin: parseAsInteger,
   rmax: parseAsInteger,
   sf: parseAsString,

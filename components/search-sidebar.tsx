@@ -2,12 +2,6 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   CalendarIcon,
   SortAsc,
@@ -36,8 +30,8 @@ import type { SearchField } from "@/lib/types";
 import { SEARCH_FIELDS } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
+import { DateRangePicker } from "./shared/date-range-picker";
 import { YearRangePicker } from "./year-range-picker";
-import { useDateRangePickerStore } from "@/lib/store";
 import { RatingRangePicker } from "./rating-range-picker";
 import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
@@ -49,9 +43,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRange } from "react-day-picker";
 import { ReviewFilter } from "./review-filter";
-import { useTranslations, useFormatter } from "next-intl";
+import { useTranslations } from "next-intl";
 import { FilterSection } from "@/components/shared/filter-section";
 
 interface SearchSidebarProps {
@@ -62,61 +55,35 @@ interface SearchSidebarProps {
 // Date Filter Component
 const DateFilterPanel = React.memo(function DateFilterPanel() {
   const tf = useTranslations("searchFilters");
-  const format = useFormatter();
   const { dateRange, filterType, isYearRangeEnabled, yearRange } =
     useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
-
-  // Global popover open state so it persists across parent rerenders
-  const { isOpen: isDatePickerOpen, setIsOpen: setIsDatePickerOpen } =
-    useDateRangePickerStore();
-
-  // Local (uncommitted) state while the popover is open. This avoids triggering
-  // global store updates – and thus parent re-renders – on every date click.
-  const [tempDateRange, setTempDateRange] = React.useState<
-    DateRange | undefined
-  >(dateRange);
 
   const isDateActive = isDateFilterActive(
     dateRange,
     yearRange,
     filterType,
-    isYearRangeEnabled
+    isYearRangeEnabled,
   );
 
-  const handleFilterTypeChange = React.useCallback(async (type: "date" | "year") => {
-    updateFilter({ filterType: type });
+  const handleFilterTypeChange = React.useCallback(
+    (type: "date" | "year") => {
+      updateFilter({ filterType: type });
+    },
+    [updateFilter],
+  );
+
+  const handleClearDateRange = React.useCallback(() => {
+    updateFilter({ dateRange: undefined });
   }, [updateFilter]);
 
-  // Commit the selected range to the global store (and server) only once – when
-  // the popover closes or the user explicitly clears the filter.
-  const commitDateRange = React.useCallback(async (range: DateRange | undefined) => {
-    updateFilter({ dateRange: range });
-  }, [updateFilter]);
-
-  const handleClearDateRange = React.useCallback(async () => {
-    setTempDateRange(undefined);
-    await commitDateRange(undefined);
-  }, [commitDateRange]);
-
-  const handleClearYearRange = React.useCallback(async () => {
+  const handleClearYearRange = React.useCallback(() => {
     const defaultRange = DEFAULT_FILTERS.yearRange();
     updateFilter({
       yearRange: defaultRange,
       isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
     });
   }, [updateFilter]);
-
-  const handlePopoverOpenChange = React.useCallback(async (open: boolean) => {
-    if (open) {
-      // Reset local state to reflect current global value whenever the popover opens
-      setTempDateRange(dateRange);
-    } else {
-      // When closing, persist the selection if it changed
-      await commitDateRange(tempDateRange);
-    }
-    setIsDatePickerOpen(open);
-  }, [dateRange, tempDateRange, commitDateRange, setIsDatePickerOpen]);
 
   const handleClearFilter = React.useCallback(() => {
     if (filterType === "date") {
@@ -142,7 +109,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
               "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
               filterType === "year"
                 ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {tf("yearRange")}
@@ -153,7 +120,7 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
               "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
               filterType === "date"
                 ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {tf("dateRange")}
@@ -162,55 +129,21 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
 
         {/* Filter Content */}
         {filterType === "date" ? (
-          <Popover
-            open={isDatePickerOpen}
-            onOpenChange={handlePopoverOpenChange}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full h-10 justify-start text-left font-normal",
-                  isDateActive && dateRange?.from
-                    ? "border-sidebar-primary/50"
-                    : "border-dashed border-muted-foreground/30"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                {isDateActive && dateRange?.from ? (
-                  dateRange.to ? (
-                    <span className="truncate text-sm">
-                      {format.dateTime(dateRange.from, { year: "numeric", month: "short", day: "numeric" })} →{" "}
-                      {format.dateTime(dateRange.to, { year: "numeric", month: "short", day: "numeric" })}
-                    </span>
-                  ) : (
-                    <span className="truncate text-sm">
-                      From {format.dateTime(dateRange.from, { year: "numeric", month: "short", day: "numeric" })}
-                    </span>
-                  )
-                ) : (
-                  <span className="text-muted-foreground text-sm">
-                    {tf("chooseDateRange")}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={tempDateRange}
-                onSelect={(range) => {
-                  setTempDateRange(range);
-                }}
-                numberOfMonths={2}
-                captionLayout="dropdown"
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePicker
+            value={dateRange}
+            onValueChange={(range) => updateFilter({ dateRange: range })}
+          />
         ) : (
-          <YearRangePicker />
+          <YearRangePicker
+            yearRange={yearRange}
+            onYearRangeChange={(range) => updateFilter({ yearRange: range })}
+            isEnabled={isYearRangeEnabled}
+            onToggleEnabled={(enabled) =>
+              updateFilter({ isYearRangeEnabled: enabled })
+            }
+            showToggle
+            isActive={isDateActive}
+          />
         )}
       </div>
     </FilterSection>
@@ -238,58 +171,74 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
       isActive={isRatingActive}
       onClear={isRatingActive ? handleClearRatingFilter : undefined}
     >
-      <RatingRangePicker />
+      <RatingRangePicker
+        ratingRange={ratingRange}
+        onRatingRangeChange={(range) => updateFilter({ ratingRange: range })}
+        minValue={0}
+        onlyRatedPapers={onlyRatedPapers}
+        onOnlyRatedChange={(checked) =>
+          updateFilter({ onlyRatedPapers: checked })
+        }
+        showOnlyRatedToggle
+        showActiveIndicator
+      />
     </FilterSection>
   );
 });
 
 // Institution Location Filter Component
-const InstitutionLocationFilterPanel = React.memo(function InstitutionLocationFilterPanel() {
-  const tf = useTranslations("searchFilters");
-  const { selectedRegions } = useCurrentSearchFormState();
-  const updateFilter = useUpdateSearchFilter();
-  const isCountryActive = isCountryFilterActive(selectedRegions);
+const InstitutionLocationFilterPanel = React.memo(
+  function InstitutionLocationFilterPanel() {
+    const tf = useTranslations("searchFilters");
+    const { selectedRegions } = useCurrentSearchFormState();
+    const updateFilter = useUpdateSearchFilter();
+    const isCountryActive = isCountryFilterActive(selectedRegions);
 
-  const handleClearFilter = React.useCallback(() => {
-    updateFilter({ selectedRegions: DEFAULT_FILTERS.selectedRegions });
-  }, [updateFilter]);
+    const handleClearFilter = React.useCallback(() => {
+      updateFilter({ selectedRegions: DEFAULT_FILTERS.selectedRegions });
+    }, [updateFilter]);
 
-  return (
-    <FilterSection
-      title={tf("institutionLocation")}
-      icon={Globe}
-      isActive={isCountryActive}
-      onClear={isCountryActive ? handleClearFilter : undefined}
-    >
-      <CountryRegionPicker />
-    </FilterSection>
-  );
-});
+    return (
+      <FilterSection
+        title={tf("institutionLocation")}
+        icon={Globe}
+        isActive={isCountryActive}
+        onClear={isCountryActive ? handleClearFilter : undefined}
+      >
+        <CountryRegionPicker />
+      </FilterSection>
+    );
+  },
+);
 
 // Country Focus Filter Component
-const CountryFocusFilterPanel = React.memo(function CountryFocusFilterPanel() {
-  const tf = useTranslations("searchFilters");
-  const { selectedCountryFocus } = useCurrentSearchFormState();
-  const updateFilter = useUpdateSearchFilter();
-  
-  // Check if country focus is active (using the same utility pattern)
-  const isCountryFocusFilterActive = selectedCountryFocus && selectedCountryFocus.length > 0;
+const CountryFocusFilterPanel = React.memo(
+  function CountryFocusFilterPanel() {
+    const tf = useTranslations("searchFilters");
+    const { selectedCountryFocus } = useCurrentSearchFormState();
+    const updateFilter = useUpdateSearchFilter();
 
-  const handleClearFilter = React.useCallback(() => {
-    updateFilter({ selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus });
-  }, [updateFilter]);
+    const isCountryFocusFilterActive =
+      selectedCountryFocus && selectedCountryFocus.length > 0;
 
-  return (
-    <FilterSection
-      title={tf("countryFocus")}
-      icon={Focus}
-      isActive={isCountryFocusFilterActive}
-      onClear={isCountryFocusFilterActive ? handleClearFilter : undefined}
-    >
-      <CountryFocusPicker />
-    </FilterSection>
-  );
-});
+    const handleClearFilter = React.useCallback(() => {
+      updateFilter({
+        selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
+      });
+    }, [updateFilter]);
+
+    return (
+      <FilterSection
+        title={tf("countryFocus")}
+        icon={Focus}
+        isActive={isCountryFocusFilterActive}
+        onClear={isCountryFocusFilterActive ? handleClearFilter : undefined}
+      >
+        <CountryFocusPicker />
+      </FilterSection>
+    );
+  },
+);
 
 // Search Field Component - now a dropdown select
 const SearchFieldPanel = React.memo(function SearchFieldPanel() {
@@ -298,15 +247,17 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   const { currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
-  const handleSearchFieldChange = React.useCallback((field: string) => {
-    updateFilter({ currentSearchField: field as SearchField });
-  }, [updateFilter]);
+  const handleSearchFieldChange = React.useCallback(
+    (field: string) => {
+      updateFilter({ currentSearchField: field as SearchField });
+    },
+    [updateFilter],
+  );
 
   const handleClearFilter = React.useCallback(() => {
     updateFilter({ currentSearchField: DEFAULT_FILTERS.field });
   }, [updateFilter]);
 
-  // Map field value to translation key (reuse keys, avoid duplicate strings)
   const FIELD_KEY_MAP: Record<string, string> = {
     title_and_abstract: "searchFieldTitleAndAbstract",
     title: "searchFieldTitle",
@@ -319,7 +270,6 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
       ? tf(FIELD_KEY_MAP[currentSearchField] as never)
       : null) || tf("titleAndAbstract");
 
-  // Check if search field is not at default
   const isSearchFieldActive = currentSearchField !== DEFAULT_FILTERS.field;
 
   return (
@@ -329,7 +279,10 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
       isActive={isSearchFieldActive}
       onClear={isSearchFieldActive ? handleClearFilter : undefined}
     >
-      <Select value={currentSearchField} onValueChange={handleSearchFieldChange}>
+      <Select
+        value={currentSearchField}
+        onValueChange={handleSearchFieldChange}
+      >
         <SelectTrigger className="w-full">
           <SelectValue placeholder={ta("selectSearchScope")}>
             {currentFieldLabel}
@@ -338,7 +291,9 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
         <SelectContent>
           {SEARCH_FIELDS.map((field) => (
             <SelectItem key={field.value} value={field.value}>
-              {FIELD_KEY_MAP[field.value] ? tf(FIELD_KEY_MAP[field.value] as never) : field.label}
+              {FIELD_KEY_MAP[field.value]
+                ? tf(FIELD_KEY_MAP[field.value] as never)
+                : field.label}
             </SelectItem>
           ))}
         </SelectContent>
@@ -354,15 +309,17 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const { sortBy } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
-  const handleSortChange = React.useCallback((sort: string) => {
-    updateFilter({ sortBy: sort });
-  }, [updateFilter]);
+  const handleSortChange = React.useCallback(
+    (sort: string) => {
+      updateFilter({ sortBy: sort });
+    },
+    [updateFilter],
+  );
 
   const handleClearFilter = React.useCallback(() => {
     updateFilter({ sortBy: DEFAULT_FILTERS.sortBy });
   }, [updateFilter]);
 
-  // Map sort value to translation key (reuse keys, avoid duplicate strings)
   const SORT_KEY_MAP: Record<string, string> = {
     "relevance_score:desc": "sortRelevance",
     "cited_by_count:desc": "sortCitationsDesc",
@@ -373,10 +330,10 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
     "display_name:asc": "sortTitleAsc",
   };
   const currentSortLabel =
-    (sortBy && SORT_KEY_MAP[sortBy] ? tf(SORT_KEY_MAP[sortBy] as never) : null) ||
-    tf("sortRelevanceDefault");
+    (sortBy && SORT_KEY_MAP[sortBy]
+      ? tf(SORT_KEY_MAP[sortBy] as never)
+      : null) || tf("sortRelevanceDefault");
 
-  // Check if sort is not at default
   const isSortActive = sortBy !== DEFAULT_FILTERS.sortBy;
 
   return (
@@ -395,7 +352,9 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
         <SelectContent>
           {sortOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              {SORT_KEY_MAP[option.value] ? tf(SORT_KEY_MAP[option.value] as never) : option.label}
+              {SORT_KEY_MAP[option.value]
+                ? tf(SORT_KEY_MAP[option.value] as never)
+                : option.label}
             </SelectItem>
           ))}
         </SelectContent>
@@ -523,7 +482,9 @@ export const SidebarContent = React.memo(function SidebarContent({
       {/* Simple Header - hidden when using panel mode with external header */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">{tc("filters")}</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            {tc("filters")}
+          </h2>
           {activeFiltersCount > 0 && (
             <Button
               variant="ghost"
@@ -598,7 +559,6 @@ export function SearchSidebar({
 
   const updateFilter = useUpdateSearchFilter();
 
-  // Only compute filter states needed for conditional UI rendering
   const isCitesActive = isCitesFilterActive(citesItemId);
   const isCitedByActive = isCitedByFilterActive(citedByItemId);
   const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
@@ -622,7 +582,6 @@ export function SearchSidebar({
     });
   }, [updateFilter]);
 
-  // Use shared filter counting logic (single source of truth)
   const activeFiltersCount = countActiveFilters({
     field: currentSearchField,
     sortBy,
@@ -656,14 +615,13 @@ export function SearchSidebar({
     );
   }
 
-  // Default fallback (mode="sidebar")
   return (
     <div
       className={cn(
         "w-80 rounded-2xl overflow-hidden",
         "bg-background/95 dark:bg-background/90",
         "border border-border/50",
-        "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
+        "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
       )}
     >
       <SidebarContent

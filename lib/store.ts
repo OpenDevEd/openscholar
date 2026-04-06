@@ -907,10 +907,6 @@ interface AIConfigDialogState {
   setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
 }
 
-interface YearRangePickerState {
-  isOpen: boolean
-  setIsOpen: (open: boolean) => void
-}
 
 export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
   mounted: false,
@@ -951,17 +947,6 @@ export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
   enhancedPreview: null,
   setIsEnhancing: (enhancing) => set({ isEnhancing: enhancing }),
   setEnhancedPreview: (preview) => set({ enhancedPreview: preview }),
-}))
-
-export const useYearRangePickerStore = create<YearRangePickerState>((set) => ({
-  isOpen: false,
-  setIsOpen: (open) => set({ isOpen: open }),
-})) 
-
-// Add a global store to persist the DateRangePicker popover state across rerenders
-export const useDateRangePickerStore = create<{ isOpen: boolean; setIsOpen: (open: boolean) => void }>((set) => ({
-  isOpen: false,
-  setIsOpen: (open) => set({ isOpen: open }),
 }))
 
 // Translation Store - for storing translation data by paper ID

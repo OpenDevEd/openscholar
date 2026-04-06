@@ -14,12 +14,16 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
 import {
   endOfDayTimestampFromParam,
+  dateToParam,
   librarySearchParams,
   parseDateParam,
+  parseLibrarySort,
   startOfDayTimestampFromParam,
-  type LibrarySortBy,
+  type LibrarySortCombined,
   type LibraryViewMode,
 } from "@/lib/library/search-params";
+import { MIN_YEAR } from "@/lib/constants";
+import type { DateRange } from "react-day-picker";
 import { exportLibraryAsCSV, exportLibraryAsJSON } from "@/lib/library/export";
 import { libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
 import {
@@ -101,11 +105,16 @@ export function LibraryPageClient() {
     [params.st],
   );
 
+  const { sortBy: resolvedSortBy, sortOrder: resolvedSortOrder } = useMemo(
+    () => parseLibrarySort(params.sort),
+    [params.sort],
+  );
+
   const { data: filteredItems } = useProtectedQuery(
     api.library.queries.listLibrary,
     {
-      sortBy: params.sort,
-      sortOrder: params.order,
+      sortBy: resolvedSortBy,
+      sortOrder: resolvedSortOrder,
       minRating: params.rmin ?? undefined,
       maxRating: params.rmax ?? undefined,
       savedAfter,
@@ -213,8 +222,7 @@ export function LibraryPageClient() {
       yf: null,
       yt: null,
       col: null,
-      sort: "savedAt",
-      order: "desc",
+      sort: "savedAt:desc",
       p: 1,
     });
   }, [setParams]);
@@ -230,8 +238,7 @@ export function LibraryPageClient() {
       yf: null,
       yt: null,
       col: null,
-      sort: "savedAt",
-      order: "desc",
+      sort: "savedAt:desc",
       p: 1,
     });
   }, [setParams]);
@@ -278,15 +285,20 @@ export function LibraryPageClient() {
     [collectionsWithCounts, params.col],
   );
 
-  const sortLabels = useMemo<Record<LibrarySortBy, string>>(
+  const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(
     () => ({
-      savedAt: t("sortDateSaved"),
-      rating: t("sortRating"),
-      publicationYear: t("sortPublicationYear"),
-      citedByCount: tf("filterCitedBy"),
-      title: t("sortTitle"),
+      "savedAt:desc": t("sortSavedAtDesc"),
+      "savedAt:asc": t("sortSavedAtAsc"),
+      "rating:desc": t("sortRatingDesc"),
+      "rating:asc": t("sortRatingAsc"),
+      "publicationYear:desc": t("sortPublicationYearDesc"),
+      "publicationYear:asc": t("sortPublicationYearAsc"),
+      "citedByCount:desc": t("sortCitationsDesc"),
+      "citedByCount:asc": t("sortCitationsAsc"),
+      "title:asc": t("sortTitleAsc"),
+      "title:desc": t("sortTitleDesc"),
     }),
-    [t, tf],
+    [t],
   );
 
   const activeFilterLabels = useMemo(() => {
@@ -340,16 +352,13 @@ export function LibraryPageClient() {
       labels.push(`${t("filterCollection")}: ${selectedCollection.name}`);
     }
 
-    if (params.sort !== "savedAt" || params.order !== "desc") {
-      labels.push(
-        `${t("sortBy")}: ${sortLabels[params.sort]} ${params.order === "asc" ? "↑" : "↓"}`,
-      );
+    if (params.sort !== "savedAt:desc") {
+      labels.push(`${t("sortBy")}: ${sortLabelMap[params.sort]}`);
     }
 
     return labels;
   }, [
     format,
-    params.order,
     params.rmax,
     params.rmin,
     params.sf,
@@ -358,7 +367,7 @@ export function LibraryPageClient() {
     params.yf,
     params.yt,
     selectedCollection,
-    sortLabels,
+    sortLabelMap,
     t,
     tf,
   ]);
@@ -369,11 +378,10 @@ export function LibraryPageClient() {
     if (params.sf !== null || params.st !== null) count += 1;
     if (params.yf !== null || params.yt !== null) count += 1;
     if (params.col !== null) count += 1;
-    if (params.sort !== "savedAt" || params.order !== "desc") count += 1;
+    if (params.sort !== "savedAt:desc") count += 1;
     return count;
   }, [
     params.col,
-    params.order,
     params.rmax,
     params.rmin,
     params.sf,
@@ -418,29 +426,39 @@ export function LibraryPageClient() {
         <SidebarLayout
           sidebar={
             <LibraryFilterSidebar
-              minRating={params.rmin ?? undefined}
-              maxRating={params.rmax ?? undefined}
-              onRatingChange={(min, max) =>
-                setParams({ rmin: min ?? null, rmax: max ?? null, p: 1 })
+              ratingRange={[params.rmin ?? 1, params.rmax ?? 5]}
+              onRatingRangeChange={(range) => {
+                const isDefault = range[0] <= 1 && range[1] >= 5;
+                setParams({ rmin: isDefault ? null : range[0], rmax: isDefault ? null : range[1], p: 1 });
+              }}
+              isRatingActive={params.rmin !== null || params.rmax !== null}
+              savedDateRange={(() => {
+                const from = parseDateParam(params.sf);
+                const to = parseDateParam(params.st);
+                if (!from && !to) return undefined;
+                return { from, to } as DateRange;
+              })()}
+              onSavedDateRangeChange={(range) =>
+                setParams({
+                  sf: range?.from ? dateToParam(range.from) : null,
+                  st: range?.to ? dateToParam(range.to) : null,
+                  p: 1,
+                })
               }
-              savedFrom={params.sf}
-              savedTo={params.st}
-              onSavedRangeChange={(from, to) =>
-                setParams({ sf: from, st: to, p: 1 })
-              }
-              yearFrom={params.yf}
-              yearTo={params.yt}
-              onYearRangeChange={(from, to) =>
-                setParams({ yf: from, yt: to, p: 1 })
-              }
+              isSavedDateActive={params.sf !== null || params.st !== null}
+              yearRange={[params.yf ?? MIN_YEAR, params.yt ?? new Date().getFullYear()]}
+              onYearRangeChange={(range) => {
+                const currentYear = new Date().getFullYear();
+                const isDefault = range[0] === MIN_YEAR && range[1] === currentYear;
+                setParams({ yf: isDefault ? null : range[0], yt: isDefault ? null : range[1], p: 1 });
+              }}
+              isYearActive={params.yf !== null || params.yt !== null}
               collectionId={params.col}
               onCollectionChange={(id) => setParams({ col: id, p: 1 })}
               collections={collectionsWithCounts}
               onManageCollections={() => setCollectionManagerOpen(true)}
-              sortBy={params.sort}
-              sortOrder={params.order}
-              onSortByChange={(value) => setParams({ sort: value, p: 1 })}
-              onSortOrderChange={(value) => setParams({ order: value, p: 1 })}
+              sort={params.sort}
+              onSortChange={(value) => setParams({ sort: value, p: 1 })}
               activeFilterCount={activeFilterCount}
               onClearAll={clearSidebarFilters}
             />
