@@ -13,6 +13,8 @@ export interface FilterSectionProps {
   isActive: boolean;
   children: React.ReactNode;
   onClear?: () => void;
+  /** Optional action element rendered in the header (e.g. a settings button) */
+  headerAction?: React.ReactNode;
 }
 
 export const FilterSection = React.memo(function FilterSection({
@@ -21,6 +23,7 @@ export const FilterSection = React.memo(function FilterSection({
   isActive,
   children,
   onClear,
+  headerAction,
 }: FilterSectionProps) {
   const tc = useTranslations("common");
   return (
@@ -62,23 +65,26 @@ export const FilterSection = React.memo(function FilterSection({
             {title}
           </span>
         </div>
-        {isActive && onClear && (
-          <motion.div
-            initial={false}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClear}
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80"
+        <div className="flex items-center gap-1">
+          {headerAction}
+          {isActive && onClear && (
+            <motion.div
+              initial={false}
+              animate={{ opacity: 1, scale: 1 }}
             >
-              <X className="h-3 w-3 mr-1" />
-              {tc("clear")}
-            </Button>
-          </motion.div>
-        )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClear}
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80"
+              >
+                <X className="h-3 w-3 mr-1" />
+                {tc("clear")}
+              </Button>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Content */}

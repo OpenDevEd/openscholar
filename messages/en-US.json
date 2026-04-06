@@ -1537,6 +1537,9 @@
     "addToCollection": "Add to collection",
     "removeFromCollection": "Remove from collection",
     "noCollections": "No collections yet",
+    "searchCollections": "Search collections...",
+    "showAllCollections": "Show all ({count})",
+    "showLess": "Show less",
     "collectionCreated": "Collection created",
     "collectionRenamed": "Collection renamed",
     "collectionDeleted": "Collection deleted",
@@ -1553,7 +1556,12 @@
     "removeFromLibraryError": "Failed to remove item",
     "deleteCollectionError": "Failed to delete collection",
     "removeFromCollectionError": "Failed to remove from collection",
-    "addToCollectionError": "Failed to add to collection"
+    "addToCollectionError": "Failed to add to collection",
+    "undoDelete": "Undo",
+    "noCollectionsMatchSearch": "No collections match your search",
+    "emptyCollectionsTitle": "No collections yet",
+    "emptyCollectionsDescription": "Create your first collection to organize your saved papers into groups.",
+    "newCollectionPlaceholder": "New collection name..."
   },
   "sidebarLayout": {
     "expandFilters": "Expand filters (Ctrl+Shift+F)",

@@ -1535,6 +1535,9 @@
     "addToCollection": "Ajouter à une collection",
     "removeFromCollection": "Retirer de la collection",
     "noCollections": "Aucune collection",
+    "searchCollections": "Rechercher des collections...",
+    "showAllCollections": "Afficher tout ({count})",
+    "showLess": "Afficher moins",
     "collectionCreated": "Collection créée",
     "collectionRenamed": "Collection renommée",
     "collectionDeleted": "Collection supprimée",
@@ -1551,7 +1554,12 @@
     "removeFromLibraryError": "Échec de la suppression",
     "deleteCollectionError": "Échec de la suppression de la collection",
     "removeFromCollectionError": "Échec du retrait de la collection",
-    "addToCollectionError": "Échec de l'ajout à la collection"
+    "addToCollectionError": "Échec de l'ajout à la collection",
+    "undoDelete": "Annuler",
+    "noCollectionsMatchSearch": "Aucune collection ne correspond a votre recherche",
+    "emptyCollectionsTitle": "Aucune collection",
+    "emptyCollectionsDescription": "Creez votre premiere collection pour organiser vos articles sauvegardes.",
+    "newCollectionPlaceholder": "Nom de la nouvelle collection..."
   },
   "sidebarLayout": {
     "expandFilters": "Afficher les filtres (Ctrl+Shift+F)",

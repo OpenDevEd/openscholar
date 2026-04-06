@@ -21,6 +21,9 @@ interface LibraryFilterSidebarProps {
   yearRange: [number, number];
   onYearRangeChange: (range: [number, number]) => void;
   isYearActive: boolean;
+  publicationDateRange: DateRange | undefined;
+  onPublicationDateRangeChange: (range: DateRange | undefined) => void;
+  isPublicationDateActive: boolean;
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   collections:
@@ -47,6 +50,9 @@ export function LibraryFilterSidebar(props: LibraryFilterSidebarProps) {
       yearRange={props.yearRange}
       onYearRangeChange={props.onYearRangeChange}
       isYearActive={props.isYearActive}
+      publicationDateRange={props.publicationDateRange}
+      onPublicationDateRangeChange={props.onPublicationDateRangeChange}
+      isPublicationDateActive={props.isPublicationDateActive}
       collectionId={props.collectionId}
       onCollectionChange={props.onCollectionChange}
       collections={props.collections}

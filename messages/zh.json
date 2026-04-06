@@ -1535,6 +1535,9 @@
     "addToCollection": "添加到合集",
     "removeFromCollection": "从合集中移除",
     "noCollections": "暂无合集",
+    "searchCollections": "Search collections...",
+    "showAllCollections": "Show all ({count})",
+    "showLess": "Show less",
     "collectionCreated": "合集已创建",
     "collectionRenamed": "合集已重命名",
     "collectionDeleted": "合集已删除",
@@ -1551,7 +1554,12 @@
     "removeFromLibraryError": "移除项目失败",
     "deleteCollectionError": "删除收藏夹失败",
     "removeFromCollectionError": "从收藏夹移除失败",
-    "addToCollectionError": "添加到收藏夹失败"
+    "addToCollectionError": "添加到收藏夹失败",
+    "undoDelete": "Undo",
+    "noCollectionsMatchSearch": "No collections match your search",
+    "emptyCollectionsTitle": "No collections yet",
+    "emptyCollectionsDescription": "Create your first collection to organize your saved papers into groups.",
+    "newCollectionPlaceholder": "New collection name..."
   },
   "sidebarLayout": {
     "expandFilters": "展开筛选器 (Ctrl+Shift+F)",

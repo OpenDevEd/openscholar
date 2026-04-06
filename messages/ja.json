@@ -1535,6 +1535,9 @@
     "addToCollection": "コレクションに追加",
     "removeFromCollection": "コレクションから削除",
     "noCollections": "コレクションはまだありません",
+    "searchCollections": "Search collections...",
+    "showAllCollections": "Show all ({count})",
+    "showLess": "Show less",
     "collectionCreated": "コレクションを作成しました",
     "collectionRenamed": "コレクション名を変更しました",
     "collectionDeleted": "コレクションを削除しました",
@@ -1551,7 +1554,12 @@
     "removeFromLibraryError": "アイテムの削除に失敗しました",
     "deleteCollectionError": "コレクションの削除に失敗しました",
     "removeFromCollectionError": "コレクションからの削除に失敗しました",
-    "addToCollectionError": "コレクションへの追加に失敗しました"
+    "addToCollectionError": "コレクションへの追加に失敗しました",
+    "undoDelete": "Undo",
+    "noCollectionsMatchSearch": "No collections match your search",
+    "emptyCollectionsTitle": "No collections yet",
+    "emptyCollectionsDescription": "Create your first collection to organize your saved papers into groups.",
+    "newCollectionPlaceholder": "New collection name..."
   },
   "sidebarLayout": {
     "expandFilters": "フィルターを展開 (Ctrl+Shift+F)",

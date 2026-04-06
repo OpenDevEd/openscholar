@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { subMonths, subWeeks, subYears } from "date-fns";
-import { Clock, FolderOpen, LibraryBig, SlidersHorizontal, Star } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { FilterSection } from "@/components/shared/filter-section";
 import { DateRangePicker, type DatePreset } from "@/components/shared/date-range-picker";
-import { YearRangePicker } from "@/components/year-range-picker";
+import { PublicationTimeframeFilter } from "@/components/shared/publication-timeframe-filter";
 import { RatingRangePicker } from "@/components/rating-range-picker";
 import { MIN_YEAR } from "@/lib/constants";
 import type { LibrarySortCombined } from "@/lib/library/search-params";
@@ -51,6 +52,9 @@ interface LibraryFilterContentProps {
   yearRange: [number, number];
   onYearRangeChange: (range: [number, number]) => void;
   isYearActive: boolean;
+  publicationDateRange: DateRange | undefined;
+  onPublicationDateRangeChange: (range: DateRange | undefined) => void;
+  isPublicationDateActive: boolean;
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   collections:
@@ -72,6 +76,9 @@ export function LibraryFilterContent({
   yearRange,
   onYearRangeChange,
   isYearActive,
+  publicationDateRange,
+  onPublicationDateRangeChange,
+  isPublicationDateActive,
   collectionId,
   onCollectionChange,
   collections,
@@ -128,23 +135,15 @@ export function LibraryFilterContent({
         />
       </FilterSection>
 
-      {/* Publication Timeframe */}
-      <FilterSection
-        title={tf("publicationTimeframe")}
-        icon={Clock}
-        isActive={isYearActive}
-        onClear={
-          isYearActive
-            ? () => onYearRangeChange([MIN_YEAR, new Date().getFullYear()])
-            : undefined
-        }
-      >
-        <YearRangePicker
-          yearRange={yearRange}
-          onYearRangeChange={onYearRangeChange}
-          isActive={isYearActive}
-        />
-      </FilterSection>
+      {/* Publication Timeframe — same component as search */}
+      <PublicationTimeframeSection
+        yearRange={yearRange}
+        onYearRangeChange={onYearRangeChange}
+        isYearActive={isYearActive}
+        publicationDateRange={publicationDateRange}
+        onPublicationDateRangeChange={onPublicationDateRangeChange}
+        isPublicationDateActive={isPublicationDateActive}
+      />
 
       {/* Rating */}
       <FilterSection
@@ -165,71 +164,13 @@ export function LibraryFilterContent({
       </FilterSection>
 
       {/* Collection */}
-      <FilterSection
-        title={t("filterCollection")}
-        icon={FolderOpen}
-        isActive={isCollectionActive}
-        onClear={
-          isCollectionActive ? () => onCollectionChange(null) : undefined
-        }
-      >
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onCollectionChange(null)}
-              className={cn(
-                "inline-flex items-center rounded-xl border px-3 py-2 text-sm transition-colors",
-                collectionId === null
-                  ? "border-primary/30 bg-primary/10 text-foreground"
-                  : "border-border/60 bg-background/70 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t("allCollections")}
-            </button>
-
-            {collections?.map((collection) => {
-              const active = collectionId === collection._id;
-              return (
-                <button
-                  key={collection._id}
-                  type="button"
-                  onClick={() => onCollectionChange(collection._id)}
-                  className={cn(
-                    "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "border-primary/30 bg-primary/10 text-foreground"
-                      : "border-border/60 bg-background/70 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <span className="max-w-[150px] truncate">
-                    {collection.name}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                    {collection.itemCount}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {!collections?.length && (
-            <p className="text-sm text-muted-foreground">
-              {t("noCollections")}
-            </p>
-          )}
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onManageCollections}
-            className="w-full"
-          >
-            {t("manageCollections")}
-          </Button>
-        </div>
-      </FilterSection>
+      <CollectionFilterSection
+        collectionId={collectionId}
+        onCollectionChange={onCollectionChange}
+        collections={collections}
+        onManageCollections={onManageCollections}
+        isCollectionActive={isCollectionActive}
+      />
 
       {/* Sort */}
       <FilterSection
@@ -261,5 +202,255 @@ export function LibraryFilterContent({
         </Select>
       </FilterSection>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collection filter — vertical scrollable list with inline search
+// ---------------------------------------------------------------------------
+// Publication Timeframe — wraps the shared component with local filter type state
+// ---------------------------------------------------------------------------
+
+function PublicationTimeframeSection({
+  yearRange,
+  onYearRangeChange,
+  isYearActive,
+  publicationDateRange,
+  onPublicationDateRangeChange,
+  isPublicationDateActive,
+}: {
+  yearRange: [number, number];
+  onYearRangeChange: (range: [number, number]) => void;
+  isYearActive: boolean;
+  publicationDateRange: DateRange | undefined;
+  onPublicationDateRangeChange: (range: DateRange | undefined) => void;
+  isPublicationDateActive: boolean;
+}) {
+  const tf = useTranslations("searchFilters");
+  const [filterType, setFilterType] = useState<"year" | "date">("year");
+
+  const isActive = isYearActive || isPublicationDateActive;
+
+  const handleClear = () => {
+    if (filterType === "date") {
+      onPublicationDateRangeChange(undefined);
+    } else {
+      onYearRangeChange([MIN_YEAR, new Date().getFullYear()]);
+    }
+  };
+
+  return (
+    <FilterSection
+      title={tf("publicationTimeframe")}
+      icon={Clock}
+      isActive={isActive}
+      onClear={isActive ? handleClear : undefined}
+    >
+      <PublicationTimeframeFilter
+        filterType={filterType}
+        onFilterTypeChange={setFilterType}
+        yearRange={yearRange}
+        onYearRangeChange={onYearRangeChange}
+        isYearEnabled={isYearActive}
+        onYearToggleEnabled={(enabled) => {
+          if (!enabled) {
+            onYearRangeChange([MIN_YEAR, new Date().getFullYear()]);
+          }
+        }}
+        dateRange={publicationDateRange}
+        onDateRangeChange={onPublicationDateRangeChange}
+        isActive={isActive}
+      />
+    </FilterSection>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collection filter — paginated vertical list with inline search
+// ---------------------------------------------------------------------------
+
+const PAGE_SIZE = 6;
+const SEARCH_THRESHOLD = 8;
+
+function CollectionFilterSection({
+  collectionId,
+  onCollectionChange,
+  collections,
+  onManageCollections,
+  isCollectionActive,
+}: {
+  collectionId: string | null;
+  onCollectionChange: (id: string | null) => void;
+  collections:
+    | Array<{ _id: string; name: string; itemCount: number }>
+    | undefined;
+  onManageCollections: () => void;
+  isCollectionActive: boolean;
+}) {
+  const t = useTranslations("libraryPage");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(0);
+
+  const totalCollections = collections?.length ?? 0;
+  const showSearch = totalCollections >= SEARCH_THRESHOLD;
+  const hasSearch = searchQuery.trim().length > 0;
+
+  const filteredCollections = useMemo(() => {
+    if (!collections) return [];
+    if (!hasSearch) return collections;
+    const q = searchQuery.toLowerCase().trim();
+    return collections.filter((c) => c.name.toLowerCase().includes(q));
+  }, [collections, searchQuery, hasSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCollections.length / PAGE_SIZE));
+  const effectivePage = Math.min(page, totalPages - 1);
+  const pageCollections = filteredCollections.slice(
+    effectivePage * PAGE_SIZE,
+    (effectivePage + 1) * PAGE_SIZE,
+  );
+  const showPagination = !hasSearch && filteredCollections.length > PAGE_SIZE;
+
+  return (
+    <FilterSection
+      title={t("filterCollection")}
+      icon={FolderOpen}
+      isActive={isCollectionActive}
+      onClear={
+        isCollectionActive ? () => onCollectionChange(null) : undefined
+      }
+      headerAction={
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={onManageCollections}
+          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </Button>
+      }
+    >
+      <div className="space-y-2">
+        {/* Inline search (only when 8+ collections) */}
+        {showSearch && (
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(0);
+              }}
+              placeholder={t("searchCollections")}
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+        )}
+
+        {/* Vertical list */}
+        <div className="space-y-0.5">
+          {/* "All" row — first on page 0, hidden when searching */}
+          {!hasSearch && effectivePage === 0 && (
+            <CollectionRow
+              name={t("allCollections")}
+              isActive={collectionId === null}
+              onClick={() => onCollectionChange(null)}
+            />
+          )}
+
+          {(hasSearch ? filteredCollections : pageCollections).map(
+            (collection) => (
+              <CollectionRow
+                key={collection._id}
+                name={collection.name}
+                count={collection.itemCount}
+                isActive={collectionId === collection._id}
+                onClick={() => onCollectionChange(collection._id)}
+              />
+            ),
+          )}
+
+          {/* No search results */}
+          {hasSearch && filteredCollections.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-3">
+              {t("noCollections")}
+            </p>
+          )}
+        </div>
+
+        {/* Pagination */}
+        {showPagination && (
+          <div className="flex items-center justify-between pt-1">
+            <button
+              type="button"
+              disabled={effectivePage === 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[11px] tabular-nums text-muted-foreground">
+              {effectivePage + 1} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={effectivePage >= totalPages - 1}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!collections?.length && !hasSearch && (
+          <div className="text-center py-3">
+            <FolderOpen className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
+            <p className="text-xs text-muted-foreground">
+              {t("noCollections")}
+            </p>
+          </div>
+        )}
+      </div>
+    </FilterSection>
+  );
+}
+
+/** Single row in the collection list */
+function CollectionRow({
+  name,
+  count,
+  isActive,
+  onClick,
+}: {
+  name: string;
+  count?: number;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-sm transition-colors text-left",
+        isActive
+          ? "bg-primary/10 text-foreground"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+      )}
+    >
+      {isActive ? (
+        <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+      ) : (
+        <FolderOpen className="h-3.5 w-3.5 shrink-0 opacity-50" />
+      )}
+      <span className="truncate flex-1">{name}</span>
+      {count !== undefined && (
+        <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
+          {count}
+        </span>
+      )}
+    </button>
   );
 }

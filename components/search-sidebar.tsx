@@ -30,9 +30,8 @@ import type { SearchField } from "@/lib/types";
 import { SEARCH_FIELDS } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
-import { DateRangePicker } from "./shared/date-range-picker";
-import { YearRangePicker } from "./year-range-picker";
 import { RatingRangePicker } from "./rating-range-picker";
+import { PublicationTimeframeFilter } from "./shared/publication-timeframe-filter";
 import { CountryRegionPicker } from "./country-region-picker";
 import { CountryFocusPicker } from "./country-focus-picker";
 import { WorkIdFilter } from "./work-id-filter";
@@ -100,52 +99,19 @@ const DateFilterPanel = React.memo(function DateFilterPanel() {
       isActive={isDateActive}
       onClear={isDateActive ? handleClearFilter : undefined}
     >
-      <div className="space-y-3">
-        {/* Filter Type Toggle */}
-        <div className="flex rounded-lg bg-muted p-1">
-          <button
-            onClick={() => handleFilterTypeChange("year")}
-            className={cn(
-              "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
-              filterType === "year"
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tf("yearRange")}
-          </button>
-          <button
-            onClick={() => handleFilterTypeChange("date")}
-            className={cn(
-              "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
-              filterType === "date"
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tf("dateRange")}
-          </button>
-        </div>
-
-        {/* Filter Content */}
-        {filterType === "date" ? (
-          <DateRangePicker
-            value={dateRange}
-            onValueChange={(range) => updateFilter({ dateRange: range })}
-          />
-        ) : (
-          <YearRangePicker
-            yearRange={yearRange}
-            onYearRangeChange={(range) => updateFilter({ yearRange: range })}
-            isEnabled={isYearRangeEnabled}
-            onToggleEnabled={(enabled) =>
-              updateFilter({ isYearRangeEnabled: enabled })
-            }
-            showToggle
-            isActive={isDateActive}
-          />
-        )}
-      </div>
+      <PublicationTimeframeFilter
+        filterType={filterType}
+        onFilterTypeChange={handleFilterTypeChange}
+        yearRange={yearRange}
+        onYearRangeChange={(range) => updateFilter({ yearRange: range })}
+        isYearEnabled={isYearRangeEnabled}
+        onYearToggleEnabled={(enabled) =>
+          updateFilter({ isYearRangeEnabled: enabled })
+        }
+        dateRange={dateRange}
+        onDateRangeChange={(range) => updateFilter({ dateRange: range })}
+        isActive={isDateActive}
+      />
     </FilterSection>
   );
 });

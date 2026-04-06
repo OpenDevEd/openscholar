@@ -1535,6 +1535,9 @@
     "addToCollection": "संग्रह में जोड़ें",
     "removeFromCollection": "संग्रह से हटाएँ",
     "noCollections": "अभी कोई संग्रह नहीं",
+    "searchCollections": "Search collections...",
+    "showAllCollections": "Show all ({count})",
+    "showLess": "Show less",
     "collectionCreated": "संग्रह बनाया गया",
     "collectionRenamed": "संग्रह का नाम बदला गया",
     "collectionDeleted": "संग्रह हटाया गया",
@@ -1551,7 +1554,12 @@
     "removeFromLibraryError": "आइटम हटाने में विफल",
     "deleteCollectionError": "संग्रह हटाने में विफल",
     "removeFromCollectionError": "संग्रह से हटाने में विफल",
-    "addToCollectionError": "संग्रह में जोड़ने में विफल"
+    "addToCollectionError": "संग्रह में जोड़ने में विफल",
+    "undoDelete": "Undo",
+    "noCollectionsMatchSearch": "No collections match your search",
+    "emptyCollectionsTitle": "No collections yet",
+    "emptyCollectionsDescription": "Create your first collection to organize your saved papers into groups.",
+    "newCollectionPlaceholder": "New collection name..."
   },
   "sidebarLayout": {
     "expandFilters": "फ़िल्टर दिखाएं (Ctrl+Shift+F)",

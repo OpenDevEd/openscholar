@@ -80,6 +80,21 @@ export function LibraryPageClient() {
     }
   }, [debouncedSearch, params.q, rawSearch, setParams]);
 
+  // Publication date range (date tab in the publication timeframe filter).
+  // When a date range is selected, we convert to year params for the backend query.
+  const [publicationDateRange, setPublicationDateRange] = useState<DateRange | undefined>(undefined);
+
+  const handlePublicationDateRangeChange = useCallback((range: DateRange | undefined) => {
+    setPublicationDateRange(range);
+    if (range?.from || range?.to) {
+      const yf = range.from ? range.from.getFullYear() : null;
+      const yt = range.to ? range.to.getFullYear() : null;
+      setParams({ yf, yt, p: 1 });
+    } else {
+      setParams({ yf: null, yt: null, p: 1 });
+    }
+  }, [setParams]);
+
   const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
   const [collectionPickerItemId, setCollectionPickerItemId] = useState<
     string | null
@@ -453,6 +468,9 @@ export function LibraryPageClient() {
                 setParams({ yf: isDefault ? null : range[0], yt: isDefault ? null : range[1], p: 1 });
               }}
               isYearActive={params.yf !== null || params.yt !== null}
+              publicationDateRange={publicationDateRange}
+              onPublicationDateRangeChange={handlePublicationDateRangeChange}
+              isPublicationDateActive={publicationDateRange !== undefined && (publicationDateRange.from !== undefined || publicationDateRange.to !== undefined)}
               collectionId={params.col}
               onCollectionChange={(id) => setParams({ col: id, p: 1 })}
               collections={collectionsWithCounts}
