@@ -9,6 +9,7 @@ import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 export default function SettingsLayout({
   children,
@@ -38,6 +39,14 @@ export default function SettingsLayout({
   const sidebarNavItems = isSignedIn
     ? baseSignedInItems
     : [{ title: tc("ai"), href: "/settings/ai", icon: Bot }];
+
+  if (phase === "initializing") {
+    return (
+      <PageWrapper>
+        <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper>
