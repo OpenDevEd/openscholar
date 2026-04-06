@@ -209,8 +209,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const showCredits =
     creditsEnabled &&
     creditsQuery.settlement === "ready" &&
-    credits &&
-    credits.total > 0;
+    credits;
   const showUpgradeButton = subscriptionsEnabled && showUpgrade;
   const showPlansItem = subscriptionsEnabled || !showUpgrade;
   const hasAccountInfo = showPlanRow || showCredits || showUpgradeButton;

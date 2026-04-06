@@ -31,3 +31,11 @@ The interface should simultaneously deliver:
 4. **Warmth at scale** — The interface handles 250M+ papers but should feel personal. Friendly copy, approachable colors, subtle animations — these humanize a massive dataset.
 
 5. **Accessibility as a first-class feature** — Target WCAG AAA (7:1 contrast, enhanced focus indicators, full reduced-motion support, extensive alt text, screen reader excellence). Academic tools serve diverse global users; no one gets left behind.
+
+<!-- convex-ai-start -->
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read `convex/_generated/ai/guidelines.md` first** for important guidelines on how to correctly use Convex APIs and patterns. The file contains rules that override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
+<!-- convex-ai-end -->
