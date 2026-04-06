@@ -25,7 +25,7 @@ export const save = internalMutation({
       .unique();
 
     if (existing) {
-      await ctx.db.delete(existing._id);
+      await ctx.db.delete("apiKeys", existing._id);
     }
 
     return await ctx.db.insert("apiKeys", {
@@ -57,7 +57,7 @@ export const remove = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.delete(existing._id);
+      await ctx.db.delete("apiKeys", existing._id);
     }
 
     return null;
@@ -83,7 +83,7 @@ export const markUsed = mutation({
       .unique();
 
     if (key) {
-      await ctx.db.patch(key._id, { lastUsedAt: Date.now() });
+      await ctx.db.patch("apiKeys", key._id, { lastUsedAt: Date.now() });
     }
 
     return null;

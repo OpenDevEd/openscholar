@@ -22,7 +22,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    return await ctx.db.get(userId);
+    return await ctx.db.get("users", userId);
   });
 }
 
@@ -72,7 +72,7 @@ async function seedLibraryItem(
       savedAt: overrides.savedAt ?? now,
       updatedAt: overrides.updatedAt ?? now,
     });
-    return await ctx.db.get(id);
+    return await ctx.db.get("libraryItems", id);
   });
 }
 
@@ -763,7 +763,7 @@ describe("removeFromLibrary", () => {
 
     // Verify item is actually deleted
     const deleted = await t.run(async (ctx) => {
-      return await ctx.db.get(item!._id);
+      return await ctx.db.get("libraryItems", item!._id);
     });
     expect(deleted).toBeNull();
   });
@@ -778,7 +778,7 @@ describe("removeFromLibrary", () => {
       openalexId: "https://openalex.org/Wtemp",
     });
     await t.run(async (ctx) => {
-      await ctx.db.delete(item!._id);
+      await ctx.db.delete("libraryItems", item!._id);
     });
 
     await expect(

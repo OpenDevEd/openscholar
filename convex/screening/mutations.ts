@@ -143,7 +143,7 @@ export const createScreeningJob = mutation({
         internal.screening.workflow.runScreeningWorkflow,
         { jobId }
       );
-      await ctx.db.patch(jobId, { workflowId: String(workflowId) });
+      await ctx.db.patch("screeningJobs", jobId, { workflowId: String(workflowId) });
     } catch (e) {
       // Workflow component may not be available in test environments.
       // In production, the component is always registered.
@@ -170,7 +170,7 @@ export const cancelScreeningJob = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("screeningJobs", args.jobId);
 
     if (!job || job.userId !== user._id) {
       throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
@@ -186,7 +186,7 @@ export const cancelScreeningJob = mutation({
     }
 
     // Update job status to cancelled
-    await ctx.db.patch(args.jobId, {
+    await ctx.db.patch("screeningJobs", args.jobId, {
       status: "cancelled",
       updatedAt: Date.now(),
     });
@@ -225,7 +225,7 @@ export const updateJobStatus = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.jobId, {
+    await ctx.db.patch("screeningJobs", args.jobId, {
       status: args.status,
       updatedAt: Date.now(),
     });
@@ -246,7 +246,7 @@ export const enqueueScreeningPaper = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.resultId, { status: "processing" });
+    await ctx.db.patch("screeningResults", args.resultId, { status: "processing" });
 
     await screeningPool.enqueueAction(
       ctx,
@@ -295,7 +295,7 @@ export const saveQualifiedPaperToLibrary = internalMutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("libraryItems", existing._id, {
         rating: args.rating,
         searchableText,
         updatedAt: Date.now(),
@@ -320,10 +320,10 @@ export const saveQualifiedPaperToLibrary = internalMutation({
     });
 
     // Increment denormalized counter
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (user) {
       const currentCount = user.libraryItemCount ?? 0;
-      await ctx.db.patch(args.userId, { libraryItemCount: currentCount + 1 });
+      await ctx.db.patch("users", args.userId, { libraryItemCount: currentCount + 1 });
     }
 
     return id;
@@ -364,10 +364,10 @@ export const addToCollectionInternal = internalMutation({
     });
 
     // Increment denormalized collection counter
-    const collection = await ctx.db.get(args.collectionId);
+    const collection = await ctx.db.get("collections", args.collectionId);
     if (collection) {
       const currentCount = collection.itemCount ?? 0;
-      await ctx.db.patch(args.collectionId, { itemCount: currentCount + 1 });
+      await ctx.db.patch("collections", args.collectionId, { itemCount: currentCount + 1 });
     }
 
     return null;
@@ -384,7 +384,7 @@ export const finalizeScreeningJobIfDone = internalMutation({
   args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job) return null;
 
     // Terminal states are no-ops
@@ -398,7 +398,7 @@ export const finalizeScreeningJobIfDone = internalMutation({
 
     // Check if all papers are processed
     if (job.processedPapers + job.failedPapers >= job.totalPapers) {
-      await ctx.db.patch(args.jobId, {
+      await ctx.db.patch("screeningJobs", args.jobId, {
         status: "completed",
         completedAt: Date.now(),
         updatedAt: Date.now(),
@@ -419,7 +419,7 @@ export const setJobWorkflowId = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.jobId, { workflowId: args.workflowId });
+    await ctx.db.patch("screeningJobs", args.jobId, { workflowId: args.workflowId });
     return null;
   },
 });
@@ -447,7 +447,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
 
       // Load job fresh for current counters (OCC will retry on conflict)
       // Cast needed: defineOnComplete ctx.db.get returns generic Value types
-      const job = await ctx.db.get(context.jobId) as Doc<"screeningJobs"> | null;
+      const job = await ctx.db.get("screeningJobs", context.jobId) as Doc<"screeningJobs"> | null;
       if (!job) return;
 
       // Skip if job is in a terminal state
@@ -473,7 +473,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
 
       // Update the screening result
-      await ctx.db.patch(context.resultId, {
+      await ctx.db.patch("screeningResults", context.resultId, {
         status: "completed",
         answers,
         score,
@@ -485,7 +485,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
 
       if (qualified) {
         // Load the screening result for paper metadata
-        const screeningResult = await ctx.db.get(context.resultId) as Doc<"screeningResults"> | null;
+        const screeningResult = await ctx.db.get("screeningResults", context.resultId) as Doc<"screeningResults"> | null;
         if (screeningResult) {
           const libraryItemId = await ctx.runMutation(
             internal.screening.mutations.saveQualifiedPaperToLibrary,
@@ -514,36 +514,36 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           }
 
           // Also record the library item ID on the screening result
-          await ctx.db.patch(context.resultId, {
+          await ctx.db.patch("screeningResults", context.resultId, {
             savedToLibrary: true,
             libraryItemId,
           });
         }
 
         // Increment qualified + processed counters
-        await ctx.db.patch(context.jobId, {
+        await ctx.db.patch("screeningJobs", context.jobId, {
           qualifiedPapers: (job.qualifiedPapers ?? 0) + 1,
           processedPapers: (job.processedPapers ?? 0) + 1,
           updatedAt: Date.now(),
         });
       } else {
         // Not qualified: just increment processedPapers
-        await ctx.db.patch(context.jobId, {
+        await ctx.db.patch("screeningJobs", context.jobId, {
           processedPapers: (job.processedPapers ?? 0) + 1,
           updatedAt: Date.now(),
         });
       }
     } else {
       // Error or canceled
-      await ctx.db.patch(context.resultId, {
+      await ctx.db.patch("screeningResults", context.resultId, {
         status: "failed",
         completedAt: Date.now(),
       });
 
       // Load job fresh for current counters
-      const job = await ctx.db.get(context.jobId) as Doc<"screeningJobs"> | null;
+      const job = await ctx.db.get("screeningJobs", context.jobId) as Doc<"screeningJobs"> | null;
       if (job) {
-        await ctx.db.patch(context.jobId, {
+        await ctx.db.patch("screeningJobs", context.jobId, {
           failedPapers: (job.failedPapers ?? 0) + 1,
           updatedAt: Date.now(),
         });

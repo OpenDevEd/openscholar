@@ -105,7 +105,7 @@ describe("checkSubscriptionStatus", () => {
 
     // Verify the subscription was updated (syncSubscription was called)
     // The sync should have updated the plan from "go" to "pro"
-    const sub = await t.run(async (ctx) => ctx.db.get(subscriptionId));
+    const sub = await t.run(async (ctx) => ctx.db.get("subscriptions", subscriptionId));
     expect(sub!.plan).toBe("pro");
   });
 
@@ -147,7 +147,7 @@ describe("checkSubscriptionStatus", () => {
     expect(mockRetrieve).toHaveBeenCalledWith("sub_exp_test");
 
     // Verify the subscription was updated with expanded customer ID
-    const sub = await t.run(async (ctx) => ctx.db.get(subscriptionId));
+    const sub = await t.run(async (ctx) => ctx.db.get("subscriptions", subscriptionId));
     expect(sub!.plan).toBe("pro");
   });
 

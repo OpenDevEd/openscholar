@@ -22,7 +22,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    return await ctx.db.get(userId);
+    return await ctx.db.get("users", userId);
   });
 }
 
@@ -72,7 +72,7 @@ async function seedLibraryItem(
       savedAt: overrides.savedAt ?? now,
       updatedAt: overrides.updatedAt ?? now,
     });
-    return await ctx.db.get(id);
+    return await ctx.db.get("libraryItems", id);
   });
 }
 
@@ -91,7 +91,7 @@ async function seedCollection(
       createdAt: now,
       updatedAt: now,
     });
-    return await ctx.db.get(id);
+    return await ctx.db.get("collections", id);
   });
 }
 
@@ -110,13 +110,13 @@ async function seedJunctionRow(
       assignedAt: Date.now(),
     });
     // Increment denormalized counter
-    const collection = await ctx.db.get(collectionId);
+    const collection = await ctx.db.get("collections", collectionId);
     if (collection) {
-      await ctx.db.patch(collectionId, {
+      await ctx.db.patch("collections", collectionId, {
         itemCount: (collection.itemCount ?? 0) + 1,
       });
     }
-    return await ctx.db.get(id);
+    return await ctx.db.get("libraryItemCollections", id);
   });
 }
 
@@ -135,7 +135,7 @@ describe("createCollection", () => {
 
     // Verify the collection in the DB
     const collection = await t.run(async (ctx) => {
-      return await ctx.db.get(collectionId);
+      return await ctx.db.get("collections", collectionId);
     });
 
     expect(collection).not.toBeNull();
@@ -186,7 +186,7 @@ describe("renameCollection", () => {
     });
 
     const updated = await t.run(async (ctx) => {
-      return await ctx.db.get(collection!._id) as Doc<"collections"> | null;
+      return await ctx.db.get("collections", collection!._id) as Doc<"collections"> | null;
     });
 
     expect(updated!.name).toBe("New Name");
@@ -217,7 +217,7 @@ describe("renameCollection", () => {
     // Create and delete a collection to get a valid-format but non-existent ID
     const collection = await seedCollection(t, user!._id, "Temp");
     await t.run(async (ctx) => {
-      await ctx.db.delete(collection!._id);
+      await ctx.db.delete("collections", collection!._id);
     });
 
     await expect(
@@ -242,7 +242,7 @@ describe("deleteCollection", () => {
     });
 
     const deleted = await t.run(async (ctx) => {
-      return await ctx.db.get(collection!._id);
+      return await ctx.db.get("collections", collection!._id);
     });
 
     expect(deleted).toBeNull();
@@ -299,7 +299,7 @@ describe("deleteCollection", () => {
 
     // Library item should still exist
     const existingItem = await t.run(async (ctx) => {
-      return await ctx.db.get(item!._id) as Doc<"libraryItems"> | null;
+      return await ctx.db.get("libraryItems", item!._id) as Doc<"libraryItems"> | null;
     });
 
     expect(existingItem).not.toBeNull();
@@ -425,7 +425,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Collection should still exist
     const existingCollection = await t.run(async (ctx) => {
-      return await ctx.db.get(collection!._id) as Doc<"collections"> | null;
+      return await ctx.db.get("collections", collection!._id) as Doc<"collections"> | null;
     });
 
     expect(existingCollection).not.toBeNull();
@@ -599,7 +599,7 @@ describe("removeFromCollection", () => {
     expect(junctionRows).toHaveLength(0);
 
     const stillExists = await t.run(async (ctx) => {
-      return await ctx.db.get(item!._id);
+      return await ctx.db.get("libraryItems", item!._id);
     });
     expect(stillExists).not.toBeNull();
   });

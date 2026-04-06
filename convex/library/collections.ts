@@ -31,7 +31,7 @@ export const renameCollection = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-    const collection = await ctx.db.get(args.collectionId);
+    const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection) {
       throw createError("NOT_FOUND", "Collection not found");
     }
@@ -42,7 +42,7 @@ export const renameCollection = mutation({
     if (!trimmed) {
       throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
     }
-    await ctx.db.patch(args.collectionId, {
+    await ctx.db.patch("collections", args.collectionId, {
       name: trimmed,
       updatedAt: Date.now(),
     });
@@ -55,7 +55,7 @@ export const deleteCollection = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-    const collection = await ctx.db.get(args.collectionId);
+    const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection) {
       throw createError("NOT_FOUND", "Collection not found");
     }
@@ -68,9 +68,9 @@ export const deleteCollection = mutation({
       .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
       .take(MAX_COLLECTION_MEMBERS);
     for (const m of memberships) {
-      await ctx.db.delete(m._id);
+      await ctx.db.delete("libraryItemCollections", m._id);
     }
-    await ctx.db.delete(args.collectionId);
+    await ctx.db.delete("collections", args.collectionId);
     return null;
   },
 });
@@ -90,7 +90,7 @@ export const backfillCollectionCounts = internalMutation({
         .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
         .collect();
 
-      await ctx.db.patch(collection._id, { itemCount: memberships.length });
+      await ctx.db.patch("collections", collection._id, { itemCount: memberships.length });
       backfilled++;
     }
 
@@ -125,13 +125,13 @@ export const addToCollection = mutation({
     const user = await requireAuth(ctx);
 
     // Verify collection ownership
-    const collection = await ctx.db.get(args.collectionId);
+    const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection || collection.userId !== user._id) {
       throw createError("FORBIDDEN", "Not your collection");
     }
 
     // Verify library item ownership
-    const item = await ctx.db.get(args.libraryItemId);
+    const item = await ctx.db.get("libraryItems", args.libraryItemId);
     if (!item || item.userId !== user._id) {
       throw createError("FORBIDDEN", "Not your library item");
     }
@@ -157,7 +157,7 @@ export const addToCollection = mutation({
 
     // Increment denormalized collection counter
     const currentCount = collection.itemCount ?? 0;
-    await ctx.db.patch(args.collectionId, { itemCount: currentCount + 1 });
+    await ctx.db.patch("collections", args.collectionId, { itemCount: currentCount + 1 });
 
     return null;
   },
@@ -173,7 +173,7 @@ export const removeFromCollection = mutation({
     const user = await requireAuth(ctx);
 
     // Verify collection ownership
-    const collection = await ctx.db.get(args.collectionId);
+    const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection || collection.userId !== user._id) {
       throw createError("FORBIDDEN", "Not your collection");
     }
@@ -189,11 +189,11 @@ export const removeFromCollection = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.delete(existing._id);
+      await ctx.db.delete("libraryItemCollections", existing._id);
 
       // Decrement denormalized collection counter
       const currentCount = collection.itemCount ?? 0;
-      await ctx.db.patch(args.collectionId, { itemCount: Math.max(0, currentCount - 1) });
+      await ctx.db.patch("collections", args.collectionId, { itemCount: Math.max(0, currentCount - 1) });
     }
     return null;
   },

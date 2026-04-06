@@ -32,7 +32,7 @@ export async function getOrCreateTestUser(ctx: MutationCtx): Promise<Doc<"users"
     updatedAt: Date.now(),
   });
   
-  const user = await ctx.db.get(userId);
+  const user = await ctx.db.get("users", userId);
   if (!user) {
     throw new Error("Failed to create test user");
   }
@@ -58,10 +58,10 @@ export async function cleanupTestData(ctx: MutationCtx, jobId: Id<"extractionJob
       .collect();
     
     for (const result of results) {
-      await ctx.db.delete(result._id);
+      await ctx.db.delete("extractionResults", result._id);
     }
     
-    await ctx.db.delete(paper._id);
+    await ctx.db.delete("extractionPapers", paper._id);
   }
   
   // Delete questions
@@ -71,9 +71,9 @@ export async function cleanupTestData(ctx: MutationCtx, jobId: Id<"extractionJob
     .collect();
   
   for (const question of questions) {
-    await ctx.db.delete(question._id);
+    await ctx.db.delete("extractionQuestions", question._id);
   }
   
   // Delete job
-  await ctx.db.delete(jobId);
+  await ctx.db.delete("extractionJobs", jobId);
 }

@@ -91,7 +91,7 @@ export const createAndRunTestJob = internalMutation({
       );
       
       // Update job with workflow ID
-      await ctx.db.patch(jobId, { 
+      await ctx.db.patch("extractionJobs", jobId, { 
         workflowId,
         updatedAt: Date.now(),
       });
@@ -139,7 +139,7 @@ export const getTestJobStatus = internalMutation({
     })),
   }),
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
       throw new Error("Job not found");
     }

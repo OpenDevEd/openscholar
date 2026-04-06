@@ -66,7 +66,7 @@ async function upsertStripeEventLog(
       ? existing.attemptCount + 1
       : existing.attemptCount;
 
-  await ctx.db.patch(existing._id, {
+  await ctx.db.patch("stripeEventLogs", existing._id, {
     eventType: args.eventType,
     stripeObjectId: args.stripeObjectId ?? existing.stripeObjectId,
     stripeApiVersion: args.stripeApiVersion ?? existing.stripeApiVersion,
@@ -125,7 +125,7 @@ async function upsertBillingCustomerLinkRecord(
     return;
   }
 
-  await ctx.db.patch(base._id, {
+  await ctx.db.patch("billingCustomers", base._id, {
     userId: args.userId,
     stripeCustomerId: args.stripeCustomerId,
     linkedFrom: args.linkedFrom,
@@ -141,7 +141,7 @@ async function upsertBillingCustomerLinkRecord(
   }
 
   for (const duplicateId of duplicateIds) {
-    await ctx.db.delete(duplicateId as Doc<"billingCustomers">["_id"]);
+    await ctx.db.delete("billingCustomers", duplicateId as Doc<"billingCustomers">["_id"]);
   }
 }
 
@@ -521,7 +521,7 @@ export const syncSubscription = internalMutation({
       return null;
     }
 
-    await ctx.db.patch(subscription._id, {
+    await ctx.db.patch("subscriptions", subscription._id, {
       userId,
       stripeSubscriptionId: args.stripeSubscriptionId,
       stripeCustomerId: args.stripeCustomerId,
@@ -573,7 +573,7 @@ export const handleSubscriptionCanceled = internalMutation({
 
     // Update in place -- no orphan record (SUB-03)
     // stripeSubscriptionId PRESERVED for audit trail (per locked decision)
-    await ctx.db.patch(subscription._id, {
+    await ctx.db.patch("subscriptions", subscription._id, {
       status: "canceled",
       plan: "free",
       canceledAt: now,
@@ -611,7 +611,7 @@ export const handlePaymentFailed = internalMutation({
 
     // Set pastDueSince only on the FIRST past_due transition
     // (not overwritten by subsequent payment failure events)
-    await ctx.db.patch(subscription._id, {
+    await ctx.db.patch("subscriptions", subscription._id, {
       status: "past_due" satisfies SubscriptionStatus,
       updatedAt: now,
       ...(!subscription.pastDueSince ? { pastDueSince: now } : {}),
@@ -766,7 +766,7 @@ export const setPendingPlanChange = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.subscriptionId, {
+    await ctx.db.patch("subscriptions", args.subscriptionId, {
       pendingFromPlan: args.fromPlan,
       pendingToPlan: args.toPlan,
       pendingChangeTimestamp: Date.now(),
@@ -782,7 +782,7 @@ export const clearPendingPlanChange = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.subscriptionId, {
+    await ctx.db.patch("subscriptions", args.subscriptionId, {
       pendingFromPlan: undefined,
       pendingToPlan: undefined,
       pendingChangeTimestamp: undefined,

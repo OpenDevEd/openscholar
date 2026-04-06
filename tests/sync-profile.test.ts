@@ -76,6 +76,7 @@ describe("syncProfileFromSession", () => {
     await syncHandler(ctx, { email: "new@example.com" });
 
     expect(ctx.db.patch).toHaveBeenCalledWith(
+      "users",
       "mock_users_123",
       expect.objectContaining({ email: "new@example.com" })
     );
@@ -97,7 +98,7 @@ describe("syncProfileFromSession", () => {
 
     await syncHandler(ctx, { firstName: "Test", lastName: "User" });
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = ctx.db.patch.mock.calls[0][2];
     expect(patchArg.firstName).toBe("Test");
     expect(patchArg.lastName).toBe("User");
   });
@@ -109,7 +110,7 @@ describe("syncProfileFromSession", () => {
 
     await syncHandler(ctx, { firstName: "New", lastName: "User" });
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = ctx.db.patch.mock.calls[0][2];
     expect(patchArg.lastName).toBe("User");
     expect(patchArg).not.toHaveProperty("firstName");
   });
@@ -120,7 +121,7 @@ describe("syncProfileFromSession", () => {
 
     await syncHandler(ctx, { avatarUrl: "https://new-avatar.jpg" });
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = ctx.db.patch.mock.calls[0][2];
     expect(patchArg.avatarUrl).toBe("https://new-avatar.jpg");
   });
 
@@ -159,7 +160,7 @@ describe("syncProfileFromSession", () => {
 
     await syncHandler(ctx, { firstName: "Test" });
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = ctx.db.patch.mock.calls[0][2];
     expect(patchArg.updatedAt).toBe(new Date("2026-01-15T12:00:00Z").getTime());
   });
 
@@ -198,7 +199,7 @@ describe("syncProfileFromSession", () => {
       avatarUrl: "https://new-avatar.jpg",
     });
 
-    const patchArg = ctx.db.patch.mock.calls[0][1];
+    const patchArg = ctx.db.patch.mock.calls[0][2];
     expect(patchArg.email).toBe("new@example.com");
     expect(patchArg.firstName).toBe("New");
     expect(patchArg.lastName).toBe("User");

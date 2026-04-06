@@ -73,7 +73,7 @@ export async function getOrCreateUserFromIdentity(
 
   if (existing) {
     assertActiveUser(existing);
-    await ctx.db.patch(existing._id, { lastLoginAt: Date.now() });
+    await ctx.db.patch("users", existing._id, { lastLoginAt: Date.now() });
     return existing;
   }
 
@@ -85,7 +85,7 @@ export async function getOrCreateUserFromIdentity(
     avatarUrl: identity.pictureUrl,
   });
 
-  return (await ctx.db.get(userId))!;
+  return (await ctx.db.get("users", userId))!;
 }
 
 export async function getUserCredits(

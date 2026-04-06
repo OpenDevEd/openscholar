@@ -22,7 +22,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    return (await ctx.db.get(userId))!;
+    return (await ctx.db.get("users", userId))!;
   });
 }
 
@@ -110,7 +110,7 @@ describe("cancelScreeningJob", () => {
     // Create and delete a job to get a valid-shaped but non-existent ID
     const jobId = await seedScreeningJob(t, user._id);
     await t.run(async (ctx) => {
-      await ctx.db.delete(jobId);
+      await ctx.db.delete("screeningJobs", jobId);
     });
 
     await expect(
@@ -139,7 +139,7 @@ describe("cancelScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_cancel5" });
     await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
 
-    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
     expect(job!.status).toBe("cancelled");
     expect(job!.updatedAt).toBeGreaterThan(0);
   });
@@ -152,7 +152,7 @@ describe("cancelScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_cancel6" });
     await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
 
-    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
     expect(job!.status).toBe("cancelled");
   });
 
@@ -161,13 +161,13 @@ describe("cancelScreeningJob", () => {
     const user = await seedUser(t, "clerk_cancel7", "cancel7@test.com");
     const jobId = await seedScreeningJob(t, user._id, { status: "cancelled" });
 
-    const originalJob = await t.run(async (ctx) => ctx.db.get(jobId));
+    const originalJob = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
 
     const asUser = t.withIdentity({ subject: "clerk_cancel7" });
     // Should not throw
     await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
 
-    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
     expect(job!.status).toBe("cancelled");
     // updatedAt should NOT change (idempotent no-op)
     expect(job!.updatedAt).toBe(originalJob!.updatedAt);
@@ -181,7 +181,7 @@ describe("cancelScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_cancel8" });
     await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
 
-    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
     expect(job!.status).toBe("completed");
   });
 
@@ -193,7 +193,7 @@ describe("cancelScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_cancel9" });
     await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
 
-    const job = await t.run(async (ctx) => ctx.db.get(jobId));
+    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", jobId));
     expect(job!.status).toBe("failed");
   });
 

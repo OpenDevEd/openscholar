@@ -22,7 +22,7 @@ export const storeRequestToken = internalMutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
 
-    await Promise.all(existing.map((t) => ctx.db.delete(t._id)));
+    await Promise.all(existing.map((t) => ctx.db.delete("zoteroOAuthTokens", t._id)));
 
     // Store new token with 10 minute expiry
     await ctx.db.insert("zoteroOAuthTokens", {
@@ -58,12 +58,12 @@ export const getRequestToken = internalMutation({
 
     if (!stored) return null;
     if (stored.expiresAt < Date.now()) {
-      await ctx.db.delete(stored._id);
+      await ctx.db.delete("zoteroOAuthTokens", stored._id);
       return null;
     }
 
     // Delete the token after retrieval (one-time use)
-    await ctx.db.delete(stored._id);
+    await ctx.db.delete("zoteroOAuthTokens", stored._id);
 
     return {
       tokenSecret: stored.tokenSecret,
@@ -93,7 +93,7 @@ export const saveConnection = internalMutation({
       .first();
 
     if (existing) {
-      await ctx.db.delete(existing._id);
+      await ctx.db.delete("zoteroConnections", existing._id);
     }
 
     return await ctx.db.insert("zoteroConnections", {
@@ -118,7 +118,7 @@ export const patchEncryptedKey = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { connectionId, encryptedApiKey, keyPrefix }) => {
-    await ctx.db.patch(connectionId, { encryptedApiKey, keyPrefix });
+    await ctx.db.patch("zoteroConnections", connectionId, { encryptedApiKey, keyPrefix });
     return null;
   },
 });
@@ -138,7 +138,7 @@ export const disconnect = mutation({
       .first();
 
     if (connection) {
-      await ctx.db.delete(connection._id);
+      await ctx.db.delete("zoteroConnections", connection._id);
     }
 
     return null;
@@ -164,7 +164,7 @@ export const cleanupExpiredOAuthTokens = internalMutation({
     let deletedCount = 0;
     for (const token of expiredTokens) {
       try {
-        await ctx.db.delete(token._id);
+        await ctx.db.delete("zoteroOAuthTokens", token._id);
         deletedCount++;
       } catch {
         // Token may have been deleted by getRequestToken or concurrent process.

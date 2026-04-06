@@ -154,6 +154,14 @@ vi.mock("@/lib/auth/use-auth-query", () => {
         return { data: baseDisagreements, isDeferred: false };
       }
     }),
+    useOptionalAuthQuery: () => ({
+      data: undefined,
+      isDeferred: false,
+      settlement: "ready",
+      isAnonymous: false,
+      phase: "authenticated",
+      isReady: true,
+    }),
   };
 });
 

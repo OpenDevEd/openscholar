@@ -21,7 +21,7 @@ export const upsert = internalMutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("featureFlags", existing._id, {
         enabled: args.enabled,
         minimumTier: args.minimumTier,
         description: args.description,

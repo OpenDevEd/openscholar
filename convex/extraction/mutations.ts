@@ -39,7 +39,7 @@ async function assertJobOwnership(
   userId: Id<"users">,
   jobId: Id<"extractionJobs">
 ) {
-  const job = await ctx.db.get(jobId);
+  const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || job.userId !== userId) {
     throw createError("NOT_FOUND", "Job not found");
   }
@@ -228,7 +228,7 @@ export const startExtraction = mutation({
     );
 
     // Update job with workflow ID
-    await ctx.db.patch(jobId, { 
+    await ctx.db.patch("extractionJobs", jobId, { 
       workflowId,
       updatedAt: Date.now(),
     });
@@ -244,7 +244,7 @@ export const cancelExtraction = mutation({
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     const user = await requireAuth(ctx);
 
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
 
     if (!job || job.userId !== user._id) {
       throw createError("NOT_FOUND", "Job not found");
@@ -256,7 +256,7 @@ export const cancelExtraction = mutation({
        return { success: true };
     }
 
-    await ctx.db.patch(args.jobId, {
+    await ctx.db.patch("extractionJobs", args.jobId, {
       status: "cancelled",
       updatedAt: Date.now(),
     });
@@ -298,7 +298,7 @@ export const duplicateExtraction = mutation({
       throws: true,
     });
 
-    const oldJob = await ctx.db.get(args.jobId);
+    const oldJob = await ctx.db.get("extractionJobs", args.jobId);
     if (!oldJob || oldJob.userId !== user._id) {
       throw createError("NOT_FOUND", "Job not found");
     }
@@ -349,7 +349,7 @@ export const duplicateExtraction = mutation({
       { jobId: newJobId }
     );
 
-    await ctx.db.patch(newJobId, { 
+    await ctx.db.patch("extractionJobs", newJobId, { 
       workflowId,
       updatedAt: Date.now(),
     });
@@ -389,10 +389,10 @@ export const setResultReviewState = mutation({
   ),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-    const result = await ctx.db.get(args.resultId);
+    const result = await ctx.db.get("extractionResults", args.resultId);
     if (!result) throw createError("NOT_FOUND", "Result not found");
 
-    const paper = await ctx.db.get(result.paperId);
+    const paper = await ctx.db.get("extractionPapers", result.paperId);
     if (!paper) throw createError("NOT_FOUND", "Paper not found");
 
     const job = await assertJobOwnership(ctx, user._id, paper.jobId);
@@ -406,7 +406,7 @@ export const setResultReviewState = mutation({
 
     if (args.state === "unreviewed" && !note && !hasCorrection) {
       if (existing) {
-        await ctx.db.delete(existing._id);
+        await ctx.db.delete("extractionResultReviews", existing._id);
       }
       return {
         cleared: true,
@@ -424,7 +424,7 @@ export const setResultReviewState = mutation({
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, patchData);
+      await ctx.db.patch("extractionResultReviews", existing._id, patchData);
       return {
         reviewId: existing._id,
         state: args.state,
@@ -462,7 +462,7 @@ export const startExtractionFromTemplate = mutation({
       key: user._id,
       throws: true,
     });
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get("extractionWorkflowTemplates", args.templateId);
     if (!template || template.userId !== user._id) {
       throw createError("NOT_FOUND", "Template not found");
     }
@@ -500,7 +500,7 @@ export const startExtractionFromTemplate = mutation({
       internal.extraction.workflow.runExtractionWorkflow,
       { jobId }
     );
-    await ctx.db.patch(jobId, {
+    await ctx.db.patch("extractionJobs", jobId, {
       workflowId,
       updatedAt: Date.now(),
     });
@@ -537,7 +537,7 @@ export const saveExtractionSavedView = mutation({
     const now = Date.now();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("extractionSavedViews", existing._id, {
         filters: args.filters,
         sortBy: args.sortBy,
         viewMode: args.viewMode,
@@ -568,12 +568,12 @@ export const deleteExtractionSavedView = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
-    const view = await ctx.db.get(args.viewId);
+    const view = await ctx.db.get("extractionSavedViews", args.viewId);
     if (!view) throw createError("NOT_FOUND", "Saved view not found");
 
     await assertJobOwnership(ctx, user._id, view.jobId);
 
-    await ctx.db.delete(args.viewId);
+    await ctx.db.delete("extractionSavedViews", args.viewId);
     return null;
   },
 });
@@ -622,7 +622,7 @@ export const saveWorkflowTemplateFromJob = mutation({
     };
 
     if (existing) {
-      await ctx.db.patch(existing._id, templateFields);
+      await ctx.db.patch("extractionWorkflowTemplates", existing._id, templateFields);
       return { templateId: existing._id };
     }
 
@@ -717,7 +717,7 @@ export const saveWorkflowTemplate = mutation({
     const now = Date.now();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("extractionWorkflowTemplates", existing._id, {
         description: args.description,
         sourceType: args.sourceType,
         sourceHistoryEntries: args.sourceHistoryEntries,
@@ -751,12 +751,12 @@ export const deleteWorkflowTemplate = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
-    const template = await ctx.db.get(args.templateId);
+    const template = await ctx.db.get("extractionWorkflowTemplates", args.templateId);
     if (!template || template.userId !== user._id) {
       throw createError("NOT_FOUND", "Template not found");
     }
 
-    await ctx.db.delete(args.templateId);
+    await ctx.db.delete("extractionWorkflowTemplates", args.templateId);
     return null;
   },
 });
@@ -1043,7 +1043,7 @@ export const deleteExtraction = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job || job.userId !== user._id) throw createError("NOT_FOUND", "Job not found");
 
     // Schedule the cascade delete as an independent mutation to avoid transaction limits
@@ -1072,7 +1072,7 @@ export const deleteExtractionInternal = internalMutation({
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .take(BATCH_SIZE);
       if (units.length > 0) {
-        for (const u of units) await ctx.db.delete(u._id);
+        for (const u of units) await ctx.db.delete("extractionEvidenceUnits", u._id);
         await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
         return null;
       }
@@ -1085,7 +1085,7 @@ export const deleteExtractionInternal = internalMutation({
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .take(BATCH_SIZE);
       if (reviews.length > 0) {
-        for (const r of reviews) await ctx.db.delete(r._id);
+        for (const r of reviews) await ctx.db.delete("extractionResultReviews", r._id);
         await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
         return null;
       }
@@ -1098,7 +1098,7 @@ export const deleteExtractionInternal = internalMutation({
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
         .take(BATCH_SIZE);
       if (results.length > 0) {
-        for (const r of results) await ctx.db.delete(r._id);
+        for (const r of results) await ctx.db.delete("extractionResults", r._id);
         await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
         return null;
       }
@@ -1118,7 +1118,7 @@ export const deleteExtractionInternal = internalMutation({
             console.error(`Failed to delete PDF storage for paper ${paper._id}:`, e);
           }
         }
-        await ctx.db.delete(paper._id);
+        await ctx.db.delete("extractionPapers", paper._id);
       }
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
@@ -1130,7 +1130,7 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(BATCH_SIZE);
     if (questions.length > 0) {
-      for (const q of questions) await ctx.db.delete(q._id);
+      for (const q of questions) await ctx.db.delete("extractionQuestions", q._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
@@ -1141,7 +1141,7 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(BATCH_SIZE);
     if (savedViews.length > 0) {
-      for (const sv of savedViews) await ctx.db.delete(sv._id);
+      for (const sv of savedViews) await ctx.db.delete("extractionSavedViews", sv._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
@@ -1152,7 +1152,7 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(BATCH_SIZE);
     if (snapshots.length > 0) {
-      for (const s of snapshots) await ctx.db.delete(s._id);
+      for (const s of snapshots) await ctx.db.delete("extractionReportSnapshots", s._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
@@ -1163,7 +1163,7 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(BATCH_SIZE);
     if (jobStats.length > 0) {
-      for (const s of jobStats) await ctx.db.delete(s._id);
+      for (const s of jobStats) await ctx.db.delete("extractionJobStats", s._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
@@ -1175,7 +1175,7 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(BATCH_SIZE);
     if (runDiffs.length > 0) {
-      for (const d of runDiffs) await ctx.db.delete(d._id);
+      for (const d of runDiffs) await ctx.db.delete("extractionRunDiffs", d._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
@@ -1187,14 +1187,14 @@ export const deleteExtractionInternal = internalMutation({
       .withIndex("by_baseline", (q) => q.eq("baselineJobId", args.jobId))
       .take(BATCH_SIZE);
     if (baselineDiffs.length > 0) {
-      for (const d of baselineDiffs) await ctx.db.delete(d._id);
+      for (const d of baselineDiffs) await ctx.db.delete("extractionRunDiffs", d._id);
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, { jobId: args.jobId });
       return null;
     }
 
     // Step 9: Delete the job itself
-    const job = await ctx.db.get(args.jobId);
-    if (job) await ctx.db.delete(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
+    if (job) await ctx.db.delete("extractionJobs", args.jobId);
 
     return null;
   },
@@ -1215,7 +1215,7 @@ export const cleanupFailedPaperStorage = internalMutation({
       if (!paper.storageId) continue;
       try {
         await ctx.storage.delete(paper.storageId);
-        await ctx.db.patch(paper._id, { storageId: undefined });
+        await ctx.db.patch("extractionPapers", paper._id, { storageId: undefined });
         cleaned++;
       } catch (e) {
         console.error(`Failed to delete storage for paper ${paper._id}:`, e);
@@ -1412,7 +1412,7 @@ export const updateJobStatus = internalMutation({
       updates.totalPapers = args.totalPapers;
     }
 
-    await ctx.db.patch(args.jobId, updates);
+    await ctx.db.patch("extractionJobs", args.jobId, updates);
     return null;
   },
 });
@@ -1452,7 +1452,7 @@ export const updatePaperStatus = internalMutation({
       updates.creditsUsed = args.creditsUsed;
     }
 
-    await ctx.db.patch(args.paperId, updates);
+    await ctx.db.patch("extractionPapers", args.paperId, updates);
     return null;
   },
 });
@@ -1464,7 +1464,7 @@ export const updatePaperProcessable = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    await ctx.db.patch(args.paperId, {
+    await ctx.db.patch("extractionPapers", args.paperId, {
       processable: args.processable,
     });
     return null;
@@ -1478,7 +1478,7 @@ export const setPaperStorage = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    const paper = await ctx.db.get(args.paperId);
+    const paper = await ctx.db.get("extractionPapers", args.paperId);
     if (!paper) {
       return null;
     }
@@ -1490,7 +1490,7 @@ export const setPaperStorage = internalMutation({
       abstract: paper.abstract,
       pdfEnabled,
     });
-    await ctx.db.patch(args.paperId, {
+    await ctx.db.patch("extractionPapers", args.paperId, {
       storageId: args.storageId,
       processable,
     });
@@ -1505,7 +1505,7 @@ export const setPaperWorkId = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    await ctx.db.patch(args.paperId, {
+    await ctx.db.patch("extractionPapers", args.paperId, {
       workId: args.workId,
     });
     return null;
@@ -1528,7 +1528,7 @@ export const markPaperIndexed = internalMutation({
       updates.ragEntryId = args.ragEntryId;
     }
 
-    await ctx.db.patch(args.paperId, updates);
+    await ctx.db.patch("extractionPapers", args.paperId, updates);
     return null;
   },
 });
@@ -1539,7 +1539,7 @@ export const finalizeJob = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
 
     // Count final stats
@@ -1563,7 +1563,7 @@ export const finalizeJob = internalMutation({
         ? "completed"
         : job.status;
 
-    await ctx.db.patch(args.jobId, {
+    await ctx.db.patch("extractionJobs", args.jobId, {
       status,
       processedPapers: completedCount,
       failedPapers: failedCount,
@@ -1595,7 +1595,7 @@ export const cleanupOldPdfs = internalMutation({
       if (paper.storageId) {
         try {
           await ctx.storage.delete(paper.storageId);
-          await ctx.db.patch(paper._id, {
+          await ctx.db.patch("extractionPapers", paper._id, {
             storageId: undefined,
           });
         } catch (error) {
@@ -1622,7 +1622,7 @@ export const finalizeJobIfDone = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) return null;
 
     const papers = await ctx.db
@@ -1634,7 +1634,7 @@ export const finalizeJobIfDone = internalMutation({
 
     const processablePapers = papers.filter((p) => p.processable !== false);
     if (processablePapers.length === 0) {
-      await ctx.db.patch(args.jobId, {
+      await ctx.db.patch("extractionJobs", args.jobId, {
         status: "failed",
         processedPapers: 0,
         failedPapers: 0,
@@ -1653,7 +1653,7 @@ export const finalizeJobIfDone = internalMutation({
     ).length;
 
     if (completedCount + failedCount < processablePapers.length) {
-      await ctx.db.patch(args.jobId, {
+      await ctx.db.patch("extractionJobs", args.jobId, {
         updatedAt: Date.now(),
       });
       return null;
@@ -1662,7 +1662,7 @@ export const finalizeJobIfDone = internalMutation({
     const status =
       failedCount === processablePapers.length ? "failed" : "completed";
 
-    await ctx.db.patch(args.jobId, {
+    await ctx.db.patch("extractionJobs", args.jobId, {
       status,
       processedPapers: completedCount,
       failedPapers: failedCount,
@@ -1777,7 +1777,7 @@ export const setJobWorkflowId = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.jobId, { workflowId: args.workflowId });
+    await ctx.db.patch("extractionJobs", args.jobId, { workflowId: args.workflowId });
     return null;
   },
 });
@@ -1811,7 +1811,7 @@ export const enqueuePaperProcessing = internalMutation({
     console.log(`[enqueuePaperProcessing] START - Paper ${args.paperId}, PDF URL: ${args.pdfUrl ? "YES" : "NO"}`);
     
     // Update status to downloading before enqueuing
-    await ctx.db.patch(args.paperId, {
+    await ctx.db.patch("extractionPapers", args.paperId, {
       status: "downloading",
     });
     console.log(`[enqueuePaperProcessing] Status updated to 'downloading' for ${args.paperId}`);
@@ -1884,12 +1884,12 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
         console.log(`[handleDownloadAndIndexComplete] Download/index success for ${paperId}, chunks: ${data.chunksCount}`);
         
         // Update status to indexing
-        await ctx.db.patch(paperId, {
+        await ctx.db.patch("extractionPapers", paperId, {
           status: "indexing",
         });
 
         if ((data.chunksCount ?? 0) === 0) {
-          await ctx.db.patch(paperId, {
+          await ctx.db.patch("extractionPapers", paperId, {
             isIndexed: false,
           });
         }
@@ -1916,7 +1916,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
       } else {
         // Download failed - mark as failed
         console.log(`[handleDownloadAndIndexComplete] Download failed for ${paperId}: ${data.error}`);
-        await ctx.db.patch(paperId, {
+        await ctx.db.patch("extractionPapers", paperId, {
           status: "download_failed",
           errorMessage: data.error || "Download failed",
           completedAt: Date.now(),
@@ -1926,7 +1926,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
         });
       }
     } else if (result.kind === "failed") {
-      await ctx.db.patch(paperId, {
+      await ctx.db.patch("extractionPapers", paperId, {
         status: "failed",
         errorMessage: result.error || "Download/index action failed",
         completedAt: Date.now(),
@@ -1935,7 +1935,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
         jobId,
       });
     } else if (result.kind === "canceled") {
-      await ctx.db.patch(paperId, {
+      await ctx.db.patch("extractionPapers", paperId, {
         status: "failed",
         errorMessage: "Download/index was canceled",
         completedAt: Date.now(),
@@ -1981,7 +1981,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         });
         console.log(`[handleExtractionComplete] Paper ${paperId} completed successfully`);
       } else {
-        await ctx.db.patch(paperId, {
+        await ctx.db.patch("extractionPapers", paperId, {
           status: "failed",
           errorMessage: data.error || "Extraction failed",
           completedAt: Date.now(),
@@ -1991,7 +1991,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         });
       }
     } else if (result.kind === "failed") {
-      await ctx.db.patch(paperId, {
+      await ctx.db.patch("extractionPapers", paperId, {
         status: "failed",
         errorMessage: result.error || "Extraction action failed",
         completedAt: Date.now(),
@@ -2000,7 +2000,7 @@ export const handleExtractionComplete = pdfProcessingPool.defineOnComplete({
         jobId,
       });
     } else if (result.kind === "canceled") {
-      await ctx.db.patch(paperId, {
+      await ctx.db.patch("extractionPapers", paperId, {
         status: "failed",
         errorMessage: "Extraction was canceled",
         completedAt: Date.now(),
@@ -2019,7 +2019,7 @@ export const getUserIdFromJob = internalMutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
       throw createError("NOT_FOUND", "Job not found");
     }
@@ -2062,7 +2062,7 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
         );
 
         // Update job with total papers
-        await ctx.db.patch(jobId, {
+        await ctx.db.patch("extractionJobs", jobId, {
           totalPapers: data.papers.length,
           updatedAt: Date.now(),
         });
@@ -2070,7 +2070,7 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
         console.log(`[handlePaperFetchComplete] Created ${data.papers.length} papers for job ${jobId}`);
       } else {
         // No papers found
-        await ctx.db.patch(jobId, {
+        await ctx.db.patch("extractionJobs", jobId, {
           status: "failed",
           updatedAt: Date.now(),
         });
@@ -2078,14 +2078,14 @@ export const handlePaperFetchComplete = pdfProcessingPool.defineOnComplete({
       }
     } else if (result.kind === "failed") {
       // Action failed
-      await ctx.db.patch(jobId, {
+      await ctx.db.patch("extractionJobs", jobId, {
         status: "failed",
         updatedAt: Date.now(),
       });
       console.error(`[handlePaperFetchComplete] Failed to fetch papers for job ${jobId}:`, result.error);
     } else if (result.kind === "canceled") {
       // Action was canceled
-      await ctx.db.patch(jobId, {
+      await ctx.db.patch("extractionJobs", jobId, {
         status: "failed",
         updatedAt: Date.now(),
       });
@@ -2174,7 +2174,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       patchData.pdfContentUsed = true;
     }
 
-    const paper = await ctx.db.get(args.paperId);
+    const paper = await ctx.db.get("extractionPapers", args.paperId);
     if (!paper) return;
 
     // Upsert extractionJobStats for each question result
@@ -2208,7 +2208,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       };
 
       if (existingStat) {
-        await ctx.db.patch(existingStat._id, {
+        await ctx.db.patch("extractionJobStats", existingStat._id, {
           totalPapers: existingStat.totalPapers + delta.totalPapers,
           totalAnswered: existingStat.totalAnswered + delta.totalAnswered,
           groundedCount: existingStat.groundedCount + delta.groundedCount,
@@ -2233,7 +2233,7 @@ export const saveExtractionResultsAndComplete = internalMutation({
       }
     }
 
-    await ctx.db.patch(args.paperId, patchData);
+    await ctx.db.patch("extractionPapers", args.paperId, patchData);
     await ctx.runMutation(internal.extraction.mutations.finalizeJobIfDone, {
       jobId: paper.jobId,
     });
@@ -2265,7 +2265,7 @@ export const replacePaperEvidenceUnits = internalMutation({
       .take(MAX_EVIDENCE_UNITS_PER_PAPER);
 
     for (const row of existing) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("extractionEvidenceUnits", row._id);
     }
 
     for (const unit of args.units) {

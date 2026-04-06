@@ -84,6 +84,14 @@ const mockInsights = {
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: () => ({ data: mockInsights, isDeferred: false }),
+  useOptionalAuthQuery: () => ({
+    data: undefined,
+    isDeferred: false,
+    settlement: "ready",
+    isAnonymous: false,
+    phase: "authenticated",
+    isReady: true,
+  }),
 }));
 
 const mockJobId = "mock-job-id" as unknown as Id<"extractionJobs">;

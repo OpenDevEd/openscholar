@@ -71,7 +71,7 @@ export const createTestJob = internalMutation({
 export const getJobStatus = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, { jobId }) => {
-    const job = await ctx.db.get(jobId);
+    const job = await ctx.db.get("extractionJobs", jobId);
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))

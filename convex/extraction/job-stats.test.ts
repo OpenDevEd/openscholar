@@ -333,7 +333,7 @@ describe("extractionJobStats cascade delete", () => {
       expect(stats).toHaveLength(0);
 
       // Job itself should be gone
-      const job = await ctx.db.get(jobId);
+      const job = await ctx.db.get("extractionJobs", jobId);
       expect(job).toBeNull();
     });
   });

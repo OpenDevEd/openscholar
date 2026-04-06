@@ -21,7 +21,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    return (await ctx.db.get(userId))!;
+    return (await ctx.db.get("users", userId))!;
   });
 }
 
@@ -223,7 +223,7 @@ describe("getScreeningProgress", () => {
     // Create and delete a job to get a valid-shaped but non-existent ID
     const jobId = await seedScreeningJob(t, user._id);
     await t.run(async (ctx) => {
-      await ctx.db.delete(jobId);
+      await ctx.db.delete("screeningJobs", jobId);
     });
 
     const result = await asUser.query(api.screening.queries.getScreeningProgress, { jobId });

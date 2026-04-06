@@ -42,7 +42,7 @@ export const patchPaperData = internalMutation({
     paperData: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.itemId, {
+    await ctx.db.patch("libraryItems", args.itemId, {
       paperData: args.paperData,
       updatedAt: Date.now(),
     });

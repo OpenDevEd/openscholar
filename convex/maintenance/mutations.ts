@@ -32,7 +32,7 @@ export const cleanupDeletedUsers = internalMutation({
           .collect();
 
         for (const key of apiKeys) {
-          await ctx.db.delete(key._id);
+          await ctx.db.delete("apiKeys", key._id);
         }
 
         // Delete extraction jobs (cascade to papers, results, evidence units, etc.)
@@ -59,7 +59,7 @@ export const cleanupDeletedUsers = internalMutation({
           .withIndex("by_user", (q) => q.eq("userId", user._id))
           .collect();
         for (const conn of zoteroConns) {
-          await ctx.db.delete(conn._id);
+          await ctx.db.delete("zoteroConnections", conn._id);
         }
 
         // NOTE: Deliberately preserving these tables for financial audit:
@@ -68,7 +68,7 @@ export const cleanupDeletedUsers = internalMutation({
         // - subscriptions (billing history)
 
         // Hard delete the user to prevent re-processing
-        await ctx.db.delete(user._id);
+        await ctx.db.delete("users", user._id);
 
         cleanedCount++;
       }
@@ -113,7 +113,7 @@ export const expirePastDueSubscriptions = internalMutation({
       if (now - pastDueSince > GRACE_PERIOD_MS) {
         // Grace period expired -- downgrade to free plan
         // Per locked decision: automatically downgrade to free plan after grace period
-        await ctx.db.patch(sub._id, {
+        await ctx.db.patch("subscriptions", sub._id, {
           status: "canceled",
           plan: "free",
           canceledAt: now,

@@ -58,7 +58,7 @@ export const createTestJob = internalMutation({
     );
     
     // Update job with workflow ID
-    await ctx.db.patch(jobId, { workflowId });
+    await ctx.db.patch("extractionJobs", jobId, { workflowId });
     
     return { jobId: jobId.toString() };
   }

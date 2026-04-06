@@ -172,7 +172,7 @@ async function resolveTopupUserId(
   const metadataUserId = args.metadata?.userId;
 
   if (metadataUserId) {
-    const user = await ctx.db.get(metadataUserId as Id<"users">);
+    const user = await ctx.db.get("users", metadataUserId as Id<"users">);
     if (user) {
       return user._id;
     }
@@ -738,7 +738,7 @@ export const grantMonthlyCredits = internalMutation({
           now,
         }),
       );
-      credits = await ctx.db.get(creditsId);
+      credits = await ctx.db.get("credits", creditsId);
     }
 
     if (!credits) {
@@ -783,7 +783,7 @@ export const grantMonthlyCredits = internalMutation({
       });
     }
 
-    await ctx.db.patch(credits._id, {
+    await ctx.db.patch("credits", credits._id, {
       freeBalance: newFreeBalance,
       lastUpdatedAt: now,
     });
@@ -908,7 +908,7 @@ export const grantUpgradeProRataCredits = internalMutation({
         "credits",
         buildInitialCreditsRecord({ userId: args.userId, now }),
       );
-      credits = await ctx.db.get(creditsId);
+      credits = await ctx.db.get("credits", creditsId);
     }
 
     if (!credits) {
@@ -931,7 +931,7 @@ export const grantUpgradeProRataCredits = internalMutation({
       };
     }
 
-    await ctx.db.patch(credits._id, {
+    await ctx.db.patch("credits", credits._id, {
       freeBalance: cappedGrant.newFreeBalance,
       lastUpdatedAt: now,
     });
@@ -1092,7 +1092,7 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
           now,
         }),
       );
-      credits = await ctx.db.get(creditsId);
+      credits = await ctx.db.get("credits", creditsId);
     }
 
     if (!credits) {
@@ -1102,7 +1102,7 @@ export const grantPurchasedCreditsFromPaymentIntent = internalMutation({
     const now = Date.now();
     const newPaidBalance = credits.paidBalance + creditsToGrant;
 
-    await ctx.db.patch(credits._id, {
+    await ctx.db.patch("credits", credits._id, {
       paidBalance: newPaidBalance,
       lastUpdatedAt: now,
     });
@@ -1205,7 +1205,7 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
       return { outcome: "already_reversed", reversedCredits: 0 };
     }
 
-    const credits = await ctx.db.get(purchase.creditsId);
+    const credits = await ctx.db.get("credits", purchase.creditsId);
     if (!credits) {
       throw new ConvexError(
         `Credits record missing for purchase transaction ${purchase._id}`,
@@ -1215,7 +1215,7 @@ export const reversePurchasedCreditsFromRefund = internalMutation({
     const now = Date.now();
     const newPaidBalance = credits.paidBalance - reversalDelta;
 
-    await ctx.db.patch(credits._id, {
+    await ctx.db.patch("credits", credits._id, {
       paidBalance: newPaidBalance,
       lastUpdatedAt: now,
     });
@@ -1366,7 +1366,7 @@ export const deductCredits = internalMutation({
       });
     }
 
-    await ctx.db.patch(credits._id, {
+    await ctx.db.patch("credits", credits._id, {
       freeBalance: newFreeBalance,
       paidBalance: newPaidBalance,
       lifetimeUsed: credits.lifetimeUsed + args.amount,
@@ -1423,7 +1423,7 @@ export const addCredits = internalMutation({
       newPaidBalance += args.amount;
     }
 
-    await ctx.db.patch(credits._id, {
+    await ctx.db.patch("credits", credits._id, {
       freeBalance: newFreeBalance,
       paidBalance: newPaidBalance,
       lastUpdatedAt: now,

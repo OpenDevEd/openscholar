@@ -16,7 +16,7 @@ export const getUserById = internalQuery({
   args: { userId: v.id("users") },
   returns: v.union(v.null(), userValidator),
   handler: async (ctx, { userId }) => {
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) return null;
     return user;
   },
@@ -38,7 +38,7 @@ export const upsertUserFromClerk = internalMutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("users", existing._id, {
         email: args.email,
         firstName: args.firstName,
         lastName: args.lastName,
@@ -71,7 +71,7 @@ export const markUserDeletedFromClerk = internalMutation({
 
     if (!user) return null;
 
-    await ctx.db.patch(user._id, {
+    await ctx.db.patch("users", user._id, {
       state: "deleted",
       updatedAt: Date.now(),
     });
@@ -91,7 +91,7 @@ export const updateLastLogin = internalMutation({
 
     if (!user) return null;
 
-    await ctx.db.patch(user._id, {
+    await ctx.db.patch("users", user._id, {
       lastLoginAt: Date.now(),
     });
 

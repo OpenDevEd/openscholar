@@ -11,7 +11,7 @@ export const debugPaperResults = internalQuery({
     paperId: v.id("extractionPapers"),
   },
   handler: async (ctx, { paperId }) => {
-    const paper = await ctx.db.get(paperId);
+    const paper = await ctx.db.get("extractionPapers", paperId);
     const results = await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", paperId))

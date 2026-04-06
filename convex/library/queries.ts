@@ -45,7 +45,7 @@ async function loadCollectionItemIds(
 ): Promise<Set<string> | null> {
   if (!collectionId) return null;
 
-  const collection = await ctx.db.get(collectionId);
+  const collection = await ctx.db.get("collections", collectionId);
   if (!collection || collection.userId !== userId) {
     return null;
   }

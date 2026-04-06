@@ -53,7 +53,7 @@ describe("deductCredits", () => {
       expect(newBalance).toBe(120); // 100 + 50 - 30 = 120
 
       // Verify credits record was updated
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(70); // 100 - 30
       expect(credits!.paidBalance).toBe(50); // unchanged
       expect(credits!.lifetimeUsed).toBe(30);
@@ -83,7 +83,7 @@ describe("deductCredits", () => {
 
       expect(newBalance).toBe(50); // 20 + 80 - 50 = 50
 
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(0); // all free used
       expect(credits!.paidBalance).toBe(50); // 80 - 30 remaining paid
       expect(credits!.lifetimeUsed).toBe(50);
@@ -133,7 +133,7 @@ describe("deductCredits", () => {
 
       expect(newBalance).toBe(0);
 
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(0);
       expect(credits!.paidBalance).toBe(0);
       expect(credits!.lifetimeUsed).toBe(100);
@@ -165,7 +165,7 @@ describe("deductCredits", () => {
       expect(balance2).toBe(10);
 
       // Verify final state
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(10);
       expect(credits!.paidBalance).toBe(0);
       expect(credits!.lifetimeUsed).toBe(90); // 60 + 30
@@ -192,7 +192,7 @@ describe("deductCredits", () => {
       ).rejects.toThrow("INSUFFICIENT_CREDITS");
 
       // Verify balance unchanged after failed deduction
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(0);
       expect(credits!.paidBalance).toBe(0);
       expect(credits!.lifetimeUsed).toBe(50);
@@ -234,7 +234,7 @@ describe("deductCredits", () => {
       }
 
       // CRITICAL INVARIANT: balance is NEVER negative
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBeGreaterThanOrEqual(0);
       expect(credits!.paidBalance).toBeGreaterThanOrEqual(0);
 
@@ -261,7 +261,7 @@ describe("deductCredits", () => {
       expect(successes.length).toBe(0);
 
       // Balance unchanged
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(50);
       expect(credits!.paidBalance).toBe(0);
       expect(credits!.lifetimeUsed).toBe(0);
@@ -286,7 +286,7 @@ describe("deductCredits", () => {
       expect(successes.length).toBe(10);
 
       // Balance is exactly 0
-      const credits = await t.run(async (ctx) => ctx.db.get(creditsId));
+      const credits = await t.run(async (ctx) => ctx.db.get("credits", creditsId));
       expect(credits!.freeBalance).toBe(0);
       expect(credits!.paidBalance).toBe(0);
       expect(credits!.lifetimeUsed).toBe(100);

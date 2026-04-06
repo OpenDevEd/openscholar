@@ -175,7 +175,7 @@ export const getBillingSnapshotForUser = internalQuery({
     })),
   }),
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
 
     const creditsRows = await ctx.db
       .query("credits")
@@ -345,23 +345,23 @@ async function deleteBillingStateForUser(
     );
 
     for (const row of stripeEventLogs) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("stripeEventLogs", row._id);
     }
 
     for (const row of creditTransactions) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("creditTransactions", row._id);
     }
 
     for (const row of subscriptions) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("subscriptions", row._id);
     }
 
     for (const row of billingCustomers) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("billingCustomers", row._id);
     }
 
     for (const row of creditsRows) {
-      await ctx.db.delete(row._id);
+      await ctx.db.delete("credits", row._id);
     }
 
     return {
@@ -414,7 +414,7 @@ export const deleteTestUser = internalMutation({
   handler: async (ctx, args) => {
     const billingDeleted = await deleteBillingStateForUser(ctx, args.userId);
 
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (user) {
       // Clean up non-billing user data
       const apiKeys = await ctx.db
@@ -422,10 +422,10 @@ export const deleteTestUser = internalMutation({
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .collect();
       for (const key of apiKeys) {
-        await ctx.db.delete(key._id);
+        await ctx.db.delete("apiKeys", key._id);
       }
 
-      await ctx.db.delete(args.userId);
+      await ctx.db.delete("users", args.userId);
     }
 
     return { billingDeleted, userDeleted: !!user };

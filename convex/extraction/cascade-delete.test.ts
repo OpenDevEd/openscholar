@@ -258,15 +258,15 @@ describe("deleteExtractionInternal cascade", () => {
       expect(runDiffs).toHaveLength(0);
 
       // 9. The job itself
-      const job = await ctx.db.get(ids.jobId);
+      const job = await ctx.db.get("extractionJobs", ids.jobId);
       expect(job).toBeNull();
 
       // Baseline job should NOT be deleted
-      const baselineJob = await ctx.db.get(ids.baselineJobId);
+      const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
       expect(baselineJob).not.toBeNull();
 
       // User should NOT be deleted
-      const user = await ctx.db.get(ids.userId);
+      const user = await ctx.db.get("users", ids.userId);
       expect(user).not.toBeNull();
     });
   });
@@ -311,15 +311,15 @@ describe("deleteExtractionInternal cascade", () => {
 
     await t.run(async (ctx) => {
       // The original diff (jobId: ids.jobId) should be deleted (Step 8)
-      const originalDiff = await ctx.db.get(ids.runDiffId);
+      const originalDiff = await ctx.db.get("extractionRunDiffs", ids.runDiffId);
       expect(originalDiff).toBeNull();
 
       // The reverse diff (baselineJobId: ids.jobId) should ALSO be deleted (Step 8b)
-      const reverseDiff = await ctx.db.get(reverseDiffId);
+      const reverseDiff = await ctx.db.get("extractionRunDiffs", reverseDiffId);
       expect(reverseDiff).toBeNull();
 
       // The baseline job should still exist (we only deleted ids.jobId)
-      const baselineJob = await ctx.db.get(ids.baselineJobId);
+      const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
       expect(baselineJob).not.toBeNull();
     });
   });
@@ -371,11 +371,11 @@ describe("deleteExtractionInternal cascade", () => {
 
     // Verify the job is deleted
     await t.run(async (ctx) => {
-      const job = await ctx.db.get(jobId);
+      const job = await ctx.db.get("extractionJobs", jobId);
       expect(job).toBeNull();
 
       // User should NOT be deleted
-      const user = await ctx.db.get(userId);
+      const user = await ctx.db.get("users", userId);
       expect(user).not.toBeNull();
     });
   });
@@ -393,7 +393,7 @@ describe("deleteExtractionInternal cascade", () => {
           .withIndex("by_paper", (q) => q.eq("paperId", ids.paperId))
           .collect();
         for (const unit of units) {
-          await ctx.db.delete(unit._id);
+          await ctx.db.delete("extractionEvidenceUnits", unit._id);
         }
       });
 
@@ -467,11 +467,11 @@ describe("deleteExtractionInternal cascade", () => {
           .collect();
         expect(runDiffs).toHaveLength(0);
 
-        const job = await ctx.db.get(ids.jobId);
+        const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();
 
         // Baseline job should survive
-        const baselineJob = await ctx.db.get(ids.baselineJobId);
+        const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
         expect(baselineJob).not.toBeNull();
       });
     });
@@ -541,15 +541,15 @@ describe("deleteExtractionInternal cascade", () => {
         expect(runDiffs).toHaveLength(0);
 
         // Job itself
-        const job = await ctx.db.get(ids.jobId);
+        const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();
 
         // Baseline job survives
-        const baselineJob = await ctx.db.get(ids.baselineJobId);
+        const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
         expect(baselineJob).not.toBeNull();
 
         // User survives
-        const user = await ctx.db.get(ids.userId);
+        const user = await ctx.db.get("users", ids.userId);
         expect(user).not.toBeNull();
       });
     });
@@ -569,7 +569,7 @@ describe("deleteExtractionInternal cascade", () => {
 
       // Verify job is gone
       await t.run(async (ctx) => {
-        const job = await ctx.db.get(ids.jobId);
+        const job = await ctx.db.get("extractionJobs", ids.jobId);
         expect(job).toBeNull();
       });
 
@@ -586,10 +586,10 @@ describe("deleteExtractionInternal cascade", () => {
 
       // Verify nothing crashed and baseline is still intact
       await t.run(async (ctx) => {
-        const baselineJob = await ctx.db.get(ids.baselineJobId);
+        const baselineJob = await ctx.db.get("extractionJobs", ids.baselineJobId);
         expect(baselineJob).not.toBeNull();
 
-        const user = await ctx.db.get(ids.userId);
+        const user = await ctx.db.get("users", ids.userId);
         expect(user).not.toBeNull();
       });
     });

@@ -73,7 +73,7 @@ async function resolveOwnedJob(
   const user = await getCurrentUser(ctx);
   if (!user) return unauthenticated();
 
-  const job = await ctx.db.get(jobId);
+  const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || job.userId !== user._id) return noAccess();
 
   return ok({ user, job });
@@ -91,10 +91,10 @@ async function resolveOwnedPaper(
   const user = await getCurrentUser(ctx);
   if (!user) return unauthenticated();
 
-  const paper = await ctx.db.get(paperId);
+  const paper = await ctx.db.get("extractionPapers", paperId);
   if (!paper) return noAccess();
 
-  const job = await ctx.db.get(paper.jobId);
+  const job = await ctx.db.get("extractionJobs", paper.jobId);
   if (!job || job.userId !== user._id) return noAccess();
 
   return ok({ user, job, paper });
@@ -1395,7 +1395,7 @@ export const getRunDiff = query({
     }
 
     if (args.diffId) {
-      const diff = await ctx.db.get(args.diffId);
+      const diff = await ctx.db.get("extractionRunDiffs", args.diffId);
       if (!diff || diff.jobId !== args.jobId) return ok({ diff: null });
       return ok({ diff });
     }
@@ -1415,7 +1415,7 @@ export const getRunDiff = query({
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.jobId);
+    return await ctx.db.get("extractionJobs", args.jobId);
   },
 });
 
@@ -1470,7 +1470,7 @@ export const getPapersByOpenAlexIds = internalQuery({
 export const getPaperInternal = internalQuery({
   args: { paperId: v.id("extractionPapers") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.paperId);
+    return await ctx.db.get("extractionPapers", args.paperId);
   },
 });
 
@@ -1487,7 +1487,7 @@ export const getEvidenceUnitsInternal = internalQuery({
 export const getJobProgressInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
       return { totalPapers: 0, processedPapers: 0, failedPapers: 0 };
     }

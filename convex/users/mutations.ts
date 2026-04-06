@@ -13,7 +13,7 @@ export const updateProfile = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 
-    await ctx.db.patch(user._id, {
+    await ctx.db.patch("users", user._id, {
       ...args,
       updatedAt: Date.now(),
     });
@@ -60,7 +60,7 @@ export const ensureUser = mutation({
         patch.updatedAt = Date.now();
       }
 
-      await ctx.db.patch(existing._id, patch);
+      await ctx.db.patch("users", existing._id, patch);
       await repairUserBillingRecords(ctx, existing._id);
       return existing._id;
     }
@@ -92,7 +92,7 @@ export const syncProfileFromSession = mutation({
     if (args.avatarUrl !== undefined && !user.avatarUrl) patch.avatarUrl = args.avatarUrl;
     if (Object.keys(patch).length > 0) {
       patch.updatedAt = Date.now();
-      await ctx.db.patch(user._id, patch);
+      await ctx.db.patch("users", user._id, patch);
     }
     return null;
   },

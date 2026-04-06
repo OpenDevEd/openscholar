@@ -25,7 +25,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    return (await ctx.db.get(userId))!;
+    return (await ctx.db.get("users", userId))!;
   });
 }
 
@@ -43,7 +43,7 @@ async function seedCredits(
       lifetimeUsed: 0,
       lastUpdatedAt: Date.now(),
     });
-    return (await ctx.db.get(id))!;
+    return (await ctx.db.get("credits", id))!;
   });
 }
 
@@ -68,7 +68,7 @@ async function seedScreeningJob(
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    return (await ctx.db.get(id))!;
+    return (await ctx.db.get("screeningJobs", id))!;
   });
 }
 
@@ -273,7 +273,7 @@ describe("createScreeningJob", () => {
 
     // Verify job record
     const job = await t.run(async (ctx) => {
-      return await ctx.db.get(result.jobId);
+      return await ctx.db.get("screeningJobs", result.jobId);
     });
 
     expect(job).not.toBeNull();
@@ -342,7 +342,7 @@ describe("createScreeningJob", () => {
     );
 
     expect(result).toHaveProperty("jobId");
-    const job = await t.run(async (ctx) => ctx.db.get(result.jobId));
+    const job = await t.run(async (ctx) => ctx.db.get("screeningJobs", result.jobId));
     expect(job).not.toBeNull();
   });
 

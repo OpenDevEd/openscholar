@@ -37,7 +37,7 @@ export const diagnoseJob = internalQuery({
     })),
   }),
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("extractionJobs", args.jobId);
     if (!job) {
       throw new Error("Job not found");
     }

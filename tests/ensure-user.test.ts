@@ -92,7 +92,7 @@ describe("ensureUser", () => {
 
     const result = await ensureUserHandler(ctx, {});
 
-    expect(ctx.db.patch).toHaveBeenCalledWith("existing_user_id", expect.objectContaining({
+    expect(ctx.db.patch).toHaveBeenCalledWith("users", "existing_user_id", expect.objectContaining({
       lastLoginAt: expect.any(Number),
     }));
     expect(mockCreateUserWithDefaults).not.toHaveBeenCalled();
@@ -113,7 +113,8 @@ describe("ensureUser", () => {
 
     await ensureUserHandler(ctx, {});
 
-    const patchArg = vi.mocked(ctx.db.patch).mock.calls[0][1];
+    const patchCalls = vi.mocked(ctx.db.patch).mock.calls[0] as unknown[];
+    const patchArg = patchCalls[2];
     expect(patchArg).not.toHaveProperty("email");
     expect(patchArg).not.toHaveProperty("firstName");
     expect(patchArg).not.toHaveProperty("lastName");
@@ -134,7 +135,8 @@ describe("ensureUser", () => {
 
     await ensureUserHandler(ctx, {});
 
-    const patchArg = vi.mocked(ctx.db.patch).mock.calls[0][1] as Record<string, unknown>;
+    const patchCalls = vi.mocked(ctx.db.patch).mock.calls[0] as unknown[];
+    const patchArg = patchCalls[2] as Record<string, unknown>;
     expect(patchArg.email).toBe("new@example.com");
     expect(patchArg.firstName).toBe("New");
     expect(patchArg.lastName).toBe("User");
@@ -154,7 +156,8 @@ describe("ensureUser", () => {
     };
     const ctx1 = createMockCtx(mockIdentity, userWithBlanks);
     await ensureUserHandler(ctx1, {});
-    const patch1 = vi.mocked(ctx1.db.patch).mock.calls[0][1];
+    const patch1Calls = vi.mocked(ctx1.db.patch).mock.calls[0] as unknown[];
+    const patch1 = patch1Calls[2];
     expect(patch1).toHaveProperty("updatedAt");
 
     // Case 2: all filled -> updatedAt should NOT be set
@@ -169,7 +172,8 @@ describe("ensureUser", () => {
     };
     const ctx2 = createMockCtx(mockIdentity, userAllFilled);
     await ensureUserHandler(ctx2, {});
-    const patch2 = vi.mocked(ctx2.db.patch).mock.calls[0][1];
+    const patch2Calls = vi.mocked(ctx2.db.patch).mock.calls[0] as unknown[];
+    const patch2 = patch2Calls[2];
     expect(patch2).not.toHaveProperty("updatedAt");
   });
 

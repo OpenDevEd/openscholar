@@ -7,9 +7,9 @@ import { MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 export const backfillLibraryCount = internalMutation({
   args: { userId: v.id("users"), count: v.number() },
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user || user.libraryItemCount !== undefined) return;
-    await ctx.db.patch(args.userId, { libraryItemCount: args.count });
+    await ctx.db.patch("users", args.userId, { libraryItemCount: args.count });
   },
 });
 
@@ -28,7 +28,7 @@ export const backfillAllLibraryCounts = internalMutation({
         .withIndex("by_user", (q) => q.eq("userId", user._id))
         .take(MAX_LIBRARY_BROWSE);
 
-      await ctx.db.patch(user._id, { libraryItemCount: items.length });
+      await ctx.db.patch("users", user._id, { libraryItemCount: items.length });
       backfilled++;
     }
 
@@ -69,7 +69,7 @@ export const saveToLibrary = mutation({
 
     if (existing) {
       // Re-rate: update rating, paperData, and timestamps; preserve original metadata and savedAt
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("libraryItems", existing._id, {
         rating: args.rating,
         searchableText,
         ...(args.paperData !== undefined && { paperData: args.paperData }),
@@ -89,7 +89,7 @@ export const saveToLibrary = mutation({
 
     // Increment denormalized counter
     const currentCount = user.libraryItemCount ?? 0;
-    await ctx.db.patch(user._id, { libraryItemCount: currentCount + 1 });
+    await ctx.db.patch("users", user._id, { libraryItemCount: currentCount + 1 });
 
     return id;
   },
@@ -116,18 +116,18 @@ export const removeFromLibraryByOpenalexId = mutation({
         .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
         .collect();
       for (const m of memberships) {
-        const col = await ctx.db.get(m.collectionId);
+        const col = await ctx.db.get("collections", m.collectionId);
         if (col) {
           const currentColCount = col.itemCount ?? 0;
-          await ctx.db.patch(m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
+          await ctx.db.patch("collections", m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
         }
-        await ctx.db.delete(m._id);
+        await ctx.db.delete("libraryItemCollections", m._id);
       }
-      await ctx.db.delete(item._id);
+      await ctx.db.delete("libraryItems", item._id);
 
       // Decrement denormalized counter
       const currentCount = user.libraryItemCount ?? 0;
-      await ctx.db.patch(user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
+      await ctx.db.patch("users", user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
     }
     return null;
   },
@@ -140,7 +140,7 @@ export const removeFromLibrary = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-    const item = await ctx.db.get(args.itemId);
+    const item = await ctx.db.get("libraryItems", args.itemId);
 
     if (!item) {
       throw createError("NOT_FOUND", "Library item not found");
@@ -155,19 +155,19 @@ export const removeFromLibrary = mutation({
       .withIndex("by_item", (q) => q.eq("libraryItemId", args.itemId))
       .collect();
     for (const m of memberships) {
-      const col = await ctx.db.get(m.collectionId);
+      const col = await ctx.db.get("collections", m.collectionId);
       if (col) {
         const currentColCount = col.itemCount ?? 0;
-        await ctx.db.patch(m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
+        await ctx.db.patch("collections", m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
       }
-      await ctx.db.delete(m._id);
+      await ctx.db.delete("libraryItemCollections", m._id);
     }
 
-    await ctx.db.delete(args.itemId);
+    await ctx.db.delete("libraryItems", args.itemId);
 
     // Decrement denormalized counter
     const currentCount = user.libraryItemCount ?? 0;
-    await ctx.db.patch(user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
+    await ctx.db.patch("users", user._id, { libraryItemCount: Math.max(0, currentCount - 1) });
 
     return null;
   },

@@ -34,7 +34,7 @@ export const getScreeningProgress = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
 
     const percentComplete =
@@ -102,7 +102,7 @@ export const getScreeningJob = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
 
     return {
@@ -171,7 +171,7 @@ export const listUserScreeningJobs = query({
         questions: j.questions,
         targetCollectionId: j.targetCollectionId,
         targetCollectionName: j.targetCollectionId
-          ? (await ctx.db.get(j.targetCollectionId))?.name
+          ? (await ctx.db.get("collections", j.targetCollectionId))?.name
           : undefined,
       }))
     );
@@ -223,7 +223,7 @@ export const getScreeningResultsForExport = query({
     const user = await getCurrentUser(ctx);
     if (!user) return null;
 
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
 
     const results = await ctx.db
@@ -289,7 +289,7 @@ export const getJobInternal = internalQuery({
     })
   ),
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId);
+    const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job) return null;
 
     return {
@@ -373,7 +373,7 @@ export const getResultInternal = internalQuery({
     })
   ),
   handler: async (ctx, args) => {
-    const result = await ctx.db.get(args.resultId);
+    const result = await ctx.db.get("screeningResults", args.resultId);
     if (!result) return null;
 
     return {
