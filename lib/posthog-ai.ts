@@ -7,7 +7,8 @@ import {
 import type { AIProvider } from "./types";
 
 export function captureAIGeneration(params: AIGenerationParams): void {
-  posthog.capture("$ai_generation", buildAIGenerationProperties(params));
+  const sessionId = params.sessionId ?? posthog.get_session_id() ?? undefined;
+  posthog.capture("$ai_generation", buildAIGenerationProperties({ ...params, sessionId }));
 }
 
 /**
@@ -22,6 +23,7 @@ export function captureAIGenerationBatch(
   if (entries.length === 0) return;
 
   const traceId = crypto.randomUUID();
+  const sessionId = posthog.get_session_id() ?? undefined;
 
   for (const entry of entries) {
     posthog.capture(
@@ -30,6 +32,7 @@ export function captureAIGenerationBatch(
         provider,
         modelId,
         traceId,
+        sessionId,
         ...entry,
       }),
     );

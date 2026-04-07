@@ -340,6 +340,32 @@ describe("buildAIGenerationProperties", () => {
     });
   });
 
+  // ── Session ID ───────────────────────────────────────────
+
+  describe("$ai_session_id", () => {
+
+    it("omits $ai_session_id when not provided", () => {
+      const props = buildAIGenerationProperties(baseParams);
+      expect(props).not.toHaveProperty("$ai_session_id");
+    });
+
+    it("includes $ai_session_id when provided", () => {
+      const props = buildAIGenerationProperties({
+        ...baseParams,
+        sessionId: "session-abc-123",
+      });
+      expect(props.$ai_session_id).toBe("session-abc-123");
+    });
+
+    it("omits $ai_session_id for empty string", () => {
+      const props = buildAIGenerationProperties({
+        ...baseParams,
+        sessionId: "",
+      });
+      expect(props).not.toHaveProperty("$ai_session_id");
+    });
+  });
+
   // ── Fix 3: Trace ID ──────────────────────────────────────
 
   describe("$ai_trace_id (Fix 3)", () => {
@@ -583,6 +609,7 @@ describe("buildAIGenerationProperties", () => {
         input: "screen this paper",
         output: '{"responses": {}}',
         traceId,
+        sessionId: "session-xyz",
         temperature: 0.1,
         maxTokens: 2048,
         creditsDeducted: 3,
@@ -594,6 +621,7 @@ describe("buildAIGenerationProperties", () => {
 
       expect(props).toEqual({
         $ai_trace_id: traceId,
+        $ai_session_id: "session-xyz",
         $ai_provider: "openai",
         $ai_model: "gpt-4o",
         $ai_input_tokens: 500,

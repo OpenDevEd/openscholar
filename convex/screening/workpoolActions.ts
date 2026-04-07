@@ -17,6 +17,7 @@ import { withUserCreditsBatch, getModel } from "../ai/helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
+import { captureServerEvent } from "../../lib/posthog-server";
 
 type ScreeningActionResult = {
   responses: Record<string, boolean | null>;
@@ -183,6 +184,16 @@ export const screenPaperAction = internalAction({
           internal.screening.mutations.updateJobStatus,
           { jobId: args.jobId, status: "creditsExhausted" }
         );
+
+        // Track credits exhaustion for screening job
+        const user = await ctx.runQuery(internal.users.internal.getUserById, { userId: job.userId as Id<"users"> });
+        if (user?.clerkId) {
+          await captureServerEvent(user.clerkId, "screening_job_failed", {
+            reason: "credits_exhausted",
+            job_id: args.jobId,
+            total_papers: job.totalPapers,
+          });
+        }
       }
 
       throw error;

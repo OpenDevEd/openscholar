@@ -400,11 +400,29 @@ export const finalizeScreeningJobIfDone = internalMutation({
 
     // Check if all papers are processed
     if (job.processedPapers + job.failedPapers >= job.totalPapers) {
+      const now = Date.now();
       await ctx.db.patch("screeningJobs", args.jobId, {
         status: "completed",
-        completedAt: Date.now(),
-        updatedAt: Date.now(),
+        completedAt: now,
+        updatedAt: now,
       });
+
+      // Fire screening_job_completed event (async, fire-and-forget)
+      const user = await ctx.db.get("users", job.userId);
+      if (user?.clerkId) {
+        await ctx.scheduler.runAfter(0, internal.lib.analytics.captureEvent, {
+          distinctId: user.clerkId,
+          event: "screening_job_completed",
+          properties: {
+            total_papers: job.totalPapers,
+            processed_papers: job.processedPapers,
+            failed_papers: job.failedPapers,
+            qualified_papers: job.qualifiedPapers ?? 0,
+            question_count: job.questions.length,
+            duration_ms: job.createdAt ? now - job.createdAt : 0,
+          },
+        });
+      }
     }
 
     return null;

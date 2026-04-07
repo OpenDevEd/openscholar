@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation } from "convex/react";
+import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useState, useCallback } from "react";
@@ -37,6 +38,10 @@ export default function ConnectionsPage() {
 
   const handleRevoke = useCallback(
     async (walletKeyId: Id<"walletKeys">) => {
+      const key = keys?.find((k) => k._id === walletKeyId);
+      posthog.capture("api_key_revoked", {
+        app_name: key?.appName,
+      });
       setRevoking(walletKeyId);
       try {
         await revokeKey({ walletKeyId });
@@ -45,7 +50,7 @@ export default function ConnectionsPage() {
         setConfirmRevoke(null);
       }
     },
-    [revokeKey],
+    [revokeKey, keys],
   );
 
   if (phase === "initializing") {

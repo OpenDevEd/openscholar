@@ -60,6 +60,34 @@ export async function captureAIGenerationServer(
 }
 
 /**
+ * Captures a custom event via PostHog HTTP API.
+ * Fire-and-forget; does not block or throw.
+ */
+export async function captureServerEvent(
+  distinctId: string,
+  event: string,
+  properties: Record<string, unknown> = {},
+): Promise<void> {
+  const config = getPostHogConfig();
+  if (!config) return;
+
+  try {
+    await fetch(`${config.host}/i/v0/e/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: config.key,
+        event,
+        distinct_id: distinctId,
+        properties,
+      }),
+    });
+  } catch {
+    // Fire-and-forget
+  }
+}
+
+/**
  * Captures per-item $ai_generation events for batch operations.
  * All entries share a single trace ID for correlation in PostHog traces view.
  * Fire-and-forget; does not block or throw.

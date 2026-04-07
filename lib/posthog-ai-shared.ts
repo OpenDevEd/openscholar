@@ -36,6 +36,8 @@ export interface AIGenerationParams {
   temperature?: number;
   /** Max tokens setting used for this generation. */
   maxTokens?: number;
+  /** PostHog AI session ID for grouping related traces (e.g. same browser session). */
+  sessionId?: string;
   /** Credits deducted for this operation. */
   creditsDeducted?: number;
   /** Credits remaining after this operation. */
@@ -59,6 +61,7 @@ export interface AITrackingEntry {
   httpStatus?: number;
   temperature?: number;
   maxTokens?: number;
+  sessionId?: string;
   creditsDeducted?: number;
   creditsRemaining?: number;
   lifetimeCreditsUsed?: number;
@@ -125,6 +128,7 @@ export function buildAIGenerationProperties(params: AIGenerationParams): Record<
 
   return {
     $ai_trace_id: params.traceId ?? crypto.randomUUID(),
+    ...(params.sessionId && { $ai_session_id: params.sessionId }),
     $ai_provider: params.provider,
     $ai_model: params.modelId,
     $ai_input_tokens: promptTokens,

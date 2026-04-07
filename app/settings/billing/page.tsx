@@ -2,6 +2,7 @@
 "use no memo"; // try/finally in handlers
 
 import { useAction } from "convex/react";
+import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Calendar, AlertCircle } from "lucide-react";
@@ -71,16 +72,28 @@ export default function BillingPage() {
   // Handle return from Stripe Checkout
   useEffect(() => {
     const topupStatus = searchParams.get("topup");
+    const checkoutSuccess = searchParams.get("success");
+    const checkoutCanceled = searchParams.get("canceled");
 
     if (topupStatus === "success" && topupStatusToastShown.current !== "success") {
       topupStatusToastShown.current = "success";
+      posthog.capture("credit_topup_completed");
       sonnerToast.success(t("creditsAddedTitle"));
       router.replace("/settings/billing");
     }
 
     if (topupStatus === "canceled" && topupStatusToastShown.current !== "canceled") {
       topupStatusToastShown.current = "canceled";
+      posthog.capture("credit_topup_abandoned");
       router.replace("/settings/billing");
+    }
+
+    if (checkoutSuccess === "true") {
+      posthog.capture("checkout_completed");
+    }
+
+    if (checkoutCanceled === "true") {
+      posthog.capture("checkout_abandoned");
     }
   }, [searchParams, router, t]);
   const [details, setDetails] = useState<{
@@ -144,6 +157,19 @@ export default function BillingPage() {
     subscriptionState.resolvedPlan ?? "free";
   const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
 
+  // Track billing page view once data is loaded
+  const billingViewTracked = useRef(false);
+  useEffect(() => {
+    if (!subscriptionState.isSettling && creditBalance !== undefined && !billingViewTracked.current) {
+      billingViewTracked.current = true;
+      posthog.capture("billing_page_viewed", {
+        current_plan: effectivePlan,
+        credit_balance: creditBalance?.total ?? 0,
+        is_entitled: subscriptionState.isEntitled,
+      });
+    }
+  }, [subscriptionState.isSettling, creditBalance, effectivePlan, subscriptionState.isEntitled]);
+
   // Redirect non-subscribers away only when both subscriptions AND credits are disabled
   useEffect(() => {
     if (
@@ -184,6 +210,10 @@ export default function BillingPage() {
     try {
       setNavStartTime(Date.now());
       setIsLoading(true);
+      posthog.capture("billing_portal_opened", {
+        current_plan: effectivePlan,
+        context: "billing_page",
+      });
       const { url } = await createPortalSession({});
       if (url) {
         window.location.href = url;
@@ -202,6 +232,10 @@ export default function BillingPage() {
 
     try {
       setIsLoading(true);
+      posthog.capture("pending_change_canceled", {
+        current_plan: effectivePlan,
+        context: "billing_page",
+      });
       const result = await changePlan({ targetPriceId: details.currentPriceId });
 
       const refreshed = await getSubscriptionDetails({});
@@ -220,10 +254,22 @@ export default function BillingPage() {
   const handleTopupPurchase = async (bundleKey: string) => {
     if (loadingTopupBundle) return;
 
+    const bundle = topupCatalog?.bundles.find((b) => b.key === bundleKey);
+    posthog.capture("credit_topup_clicked", {
+      bundle_key: bundleKey,
+      credits: bundle?.credits,
+      amount_cents: bundle?.amountCents,
+    });
+
     try {
       setLoadingTopupBundle(bundleKey);
       const { url } = await createTopupCheckoutSession({ bundleKey });
       if (url) {
+        posthog.capture("credit_topup_checkout_created", {
+          bundle_key: bundleKey,
+          credits: bundle?.credits,
+          amount_cents: bundle?.amountCents,
+        });
         window.location.href = url;
         return;
       }

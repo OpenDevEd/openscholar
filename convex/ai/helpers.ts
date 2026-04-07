@@ -21,7 +21,7 @@ import { getProviderModel } from "../../lib/ai/server/providers";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
-import { captureAIGenerationServer, captureAIGenerationBatchServer } from "../../lib/posthog-server";
+import { captureAIGenerationServer, captureAIGenerationBatchServer, captureServerEvent } from "../../lib/posthog-server";
 import {
   type AITrackingEntry,
   truncateForTracking,
@@ -229,6 +229,11 @@ export async function withAuthAndCreditsBatch<T>(
       { userId: user._id },
     );
     if (!balance || balance.total < minimumRequired) {
+      await captureServerEvent(user.clerkId, "credits_insufficient", {
+        required_credits: minimumRequired,
+        available_credits: balance?.total ?? 0,
+        feature: operation,
+      });
       throw createError(
         "AI_INSUFFICIENT_CREDITS",
         `Insufficient credits: need at least ${minimumRequired} but have ${balance?.total ?? 0}`,
@@ -334,6 +339,11 @@ export async function withUserCreditsBatch<T>(
       { userId },
     );
     if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
+      await captureServerEvent(user.clerkId, "credits_insufficient", {
+        required_credits: ESTIMATED_CREDITS_PER_QUERY,
+        available_credits: balance?.total ?? 0,
+        feature: operation,
+      });
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 
@@ -428,6 +438,11 @@ export async function withAuthAndCredits<T>(
       { userId: user._id },
     );
     if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
+      await captureServerEvent(user.clerkId, "credits_insufficient", {
+        required_credits: ESTIMATED_CREDITS_PER_QUERY,
+        available_credits: balance?.total ?? 0,
+        feature: operation,
+      });
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 

@@ -57,6 +57,7 @@ import type * as featureFlags_guard from "../featureFlags/guard.js";
 import type * as featureFlags_internal from "../featureFlags/internal.js";
 import type * as featureFlags_queries from "../featureFlags/queries.js";
 import type * as http from "../http.js";
+import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_constants from "../lib/constants.js";
@@ -178,6 +179,7 @@ declare const fullApi: ApiFromModules<{
   "featureFlags/internal": typeof featureFlags_internal;
   "featureFlags/queries": typeof featureFlags_queries;
   http: typeof http;
+  "lib/analytics": typeof lib_analytics;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
   "lib/constants": typeof lib_constants;

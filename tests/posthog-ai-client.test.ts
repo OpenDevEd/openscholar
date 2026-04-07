@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock posthog-js — factory must not reference outer variables (vi.mock is hoisted)
+const MOCK_SESSION_ID = "mock-posthog-session-id";
 vi.mock("posthog-js", () => ({
-  default: { capture: vi.fn() },
+  default: { capture: vi.fn(), get_session_id: vi.fn(() => MOCK_SESSION_ID) },
 }));
 
 // Mock ai-models
@@ -55,6 +56,37 @@ describe("captureAIGeneration", () => {
         $ai_latency: 1.0,
       })
     );
+  });
+
+  it("injects PostHog session ID as $ai_session_id", () => {
+    captureAIGeneration({
+      provider: "openai",
+      modelId: "gpt-4o",
+      feature: "test",
+      usage: { inputTokens: 10, outputTokens: 5 },
+      latencyMs: 100,
+      input: "i",
+      output: "o",
+    });
+
+    const props = propsAt(0);
+    expect(props.$ai_session_id).toBe(MOCK_SESSION_ID);
+  });
+
+  it("uses explicit sessionId over PostHog session", () => {
+    captureAIGeneration({
+      provider: "openai",
+      modelId: "gpt-4o",
+      feature: "test",
+      usage: { inputTokens: 10, outputTokens: 5 },
+      latencyMs: 100,
+      input: "i",
+      output: "o",
+      sessionId: "explicit-session",
+    });
+
+    const props = propsAt(0);
+    expect(props.$ai_session_id).toBe("explicit-session");
   });
 
   it("passes temperature and httpStatus through to properties", () => {
@@ -111,6 +143,16 @@ describe("captureAIGenerationBatch", () => {
     expect(mockCapture).toHaveBeenCalledTimes(2);
     expect(mockCapture).toHaveBeenNthCalledWith(1, "$ai_generation", expect.any(Object));
     expect(mockCapture).toHaveBeenNthCalledWith(2, "$ai_generation", expect.any(Object));
+  });
+
+  it("all entries share the same session ID from PostHog", () => {
+    captureAIGenerationBatch("openai", "gpt-4o", [
+      { feature: "a", usage: { inputTokens: 1, outputTokens: 1 }, latencyMs: 10, input: "i1", output: "o1" },
+      { feature: "b", usage: { inputTokens: 2, outputTokens: 2 }, latencyMs: 20, input: "i2", output: "o2" },
+    ]);
+
+    expect(propsAt(0).$ai_session_id).toBe(MOCK_SESSION_ID);
+    expect(propsAt(1).$ai_session_id).toBe(MOCK_SESSION_ID);
   });
 
   it("all entries share the same trace ID", () => {

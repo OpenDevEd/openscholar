@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useAction } from "convex/react";
+import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import { getPlanTier, FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "@/convex/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -177,6 +178,21 @@ export function Pricing() {
     };
   }, [phase, subscriptionState.subscription?.stripeSubscriptionId, getSubscriptionDetails]);
 
+  // Track pricing page view
+  useEffect(() => {
+    if (phase === "authenticated" && hasResolvedSubscription) {
+      posthog.capture("pricing_page_viewed", {
+        current_plan: resolvedPlan ?? "free",
+        is_entitled: isEntitled,
+      });
+    } else if (phase === "anonymous") {
+      posthog.capture("pricing_page_viewed", {
+        current_plan: "anonymous",
+        is_entitled: false,
+      });
+    }
+  }, [phase, hasResolvedSubscription, resolvedPlan, isEntitled]);
+
   // Mobile detection
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -219,6 +235,10 @@ export function Pricing() {
 
     try {
       setLoadingPriceId("keep-current");
+      posthog.capture("pending_change_canceled", {
+        current_plan: resolvedPlan ?? "free",
+        context: "pricing_page",
+      });
       const result = await changePlan({ targetPriceId: subscriptionDetails.currentPriceId });
 
       const refreshed = await getSubscriptionDetails({});
@@ -251,6 +271,13 @@ export function Pricing() {
       return;
     }
 
+    posthog.capture("pricing_plan_clicked", {
+      target_plan: planType,
+      current_plan: resolvedPlan ?? "free",
+      is_upgrade: resolvedTier !== null && getPlanTier(planType) > resolvedTier,
+      price_id: priceId,
+    });
+
     try {
       setLoadingPriceId(priceId);
       const hasLinkedStripeSubscription = Boolean(
@@ -266,8 +293,18 @@ export function Pricing() {
           const preview = await getUpgradePreview({ targetPriceId: priceId });
           setUpgradePreview({ ...preview, targetPriceId: priceId });
           setIsUpgradeDialogOpen(true);
+          posthog.capture("upgrade_preview_viewed", {
+            current_plan: resolvedPlan,
+            target_plan: planType,
+            proration_amount_cents: preview.immediateChargeCents,
+            pro_rata_credits: preview.proRataCredits,
+          });
         } else {
           // Downgrade: keep existing behavior (no dialog)
+          posthog.capture("downgrade_initiated", {
+            current_plan: resolvedPlan,
+            target_plan: planType,
+          });
           await changePlan({ targetPriceId: priceId });
           const refreshed = await getSubscriptionDetails({});
           if (refreshed.status === "success" && refreshed.data) {
@@ -289,6 +326,10 @@ export function Pricing() {
         });
 
         if (url) {
+          posthog.capture("checkout_session_created", {
+            plan: planType,
+            price_id: priceId,
+          });
           window.location.href = url;
         } else {
           toast.billing.checkoutFailed();
@@ -305,6 +346,10 @@ export function Pricing() {
   const handleOpenPortal = async () => {
     try {
       setLoadingPriceId("portal");
+      posthog.capture("billing_portal_opened", {
+        current_plan: resolvedPlan ?? "free",
+        context: "pricing_page",
+      });
       const { url } = await createPortalSession({});
       if (url) {
         window.location.href = url;
@@ -323,6 +368,12 @@ export function Pricing() {
     if (!upgradePreview) return;
     try {
       setIsConfirmingUpgrade(true);
+      posthog.capture("upgrade_confirmed", {
+        current_plan: upgradePreview.currentPlan,
+        target_plan: upgradePreview.targetPlan,
+        proration_amount_cents: upgradePreview.immediateChargeCents,
+        pro_rata_credits: upgradePreview.proRataCredits,
+      });
       const result = await changePlan({
         targetPriceId: upgradePreview.targetPriceId,
         prorationDate: upgradePreview.prorationDate,
@@ -338,6 +389,12 @@ export function Pricing() {
 
       setIsUpgradeDialogOpen(false);
       setUpgradePreview(null);
+
+      posthog.capture("upgrade_completed", {
+        current_plan: upgradePreview.currentPlan,
+        target_plan: targetPlan,
+        credits_granted: result.creditsGranted,
+      });
 
       if (result.creditsGranted > 0) {
         // Happy path: credits granted immediately — show actual count from server
