@@ -241,6 +241,50 @@ export const handleGenerate = httpAction(async (ctx, request) => {
   }
 });
 
+// ─── GET /api/wallet/balance ──────────────────────────────────
+
+export const handleBalance = httpAction(async (ctx, request) => {
+  // 1. Extract API key
+  const rawKey = extractBearerToken(request);
+  if (!rawKey) {
+    return corsError("Missing Authorization: Bearer <api_key> header", 401);
+  }
+
+  // 2. Validate key
+  const keyResult: {
+    userId: Id<"users">;
+    walletKeyId: Id<"walletKeys">;
+    appName: string;
+    redirectOrigin: string;
+  } | null = await ctx.runAction(internal.wallet.nodeActions.validateKey, {
+    rawKey,
+  });
+  if (!keyResult) {
+    return corsError("Invalid or revoked API key", 401);
+  }
+
+  // 3. Get balance
+  const balance: {
+    free: number;
+    paid: number;
+    total: number;
+    lifetimeUsed: number;
+  } | null = await ctx.runQuery(
+    internal.credits.internal.getBalanceByUserId,
+    { userId: keyResult.userId },
+  );
+
+  if (!balance) {
+    return corsJson({ free: 0, paid: 0, total: 0 });
+  }
+
+  return corsJson({
+    free: balance.free,
+    paid: balance.paid,
+    total: balance.total,
+  });
+});
+
 // ─── OPTIONS preflight ───────────────────────────────────────
 
 export const handleCors = httpAction(async () => {

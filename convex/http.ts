@@ -15,6 +15,7 @@ import type Stripe from "stripe";
 import {
   handleGenerate,
   handleModels,
+  handleBalance,
   handleCors,
 } from "./wallet/httpHandlers";
 
@@ -368,6 +369,18 @@ http.route({
 
 http.route({
   path: "/api/wallet/models",
+  method: "OPTIONS",
+  handler: handleCors,
+});
+
+http.route({
+  path: "/api/wallet/balance",
+  method: "GET",
+  handler: handleBalance,
+});
+
+http.route({
+  path: "/api/wallet/balance",
   method: "OPTIONS",
   handler: handleCors,
 });
