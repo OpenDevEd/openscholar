@@ -8,7 +8,9 @@
 import {
   buildAIGenerationProperties,
   type AIGenerationParams,
+  type AITrackingEntry,
 } from "./posthog-ai-shared";
+import type { AIProvider } from "./types";
 
 function getPostHogConfig(): { key: string; host: string } | null {
   const key =
@@ -55,4 +57,46 @@ export async function captureAIGenerationServer(
   } catch {
     // Fire-and-forget; avoid breaking the main flow
   }
+}
+
+/**
+ * Captures per-item $ai_generation events for batch operations.
+ * All entries share a single trace ID for correlation in PostHog traces view.
+ * Fire-and-forget; does not block or throw.
+ */
+export async function captureAIGenerationBatchServer(
+  distinctId: string,
+  provider: AIProvider,
+  modelId: string,
+  entries: AITrackingEntry[],
+): Promise<void> {
+  const config = getPostHogConfig();
+  if (!config || entries.length === 0) return;
+
+  const traceId = crypto.randomUUID();
+
+  await Promise.allSettled(
+    entries.map(async (entry) => {
+      const properties = buildAIGenerationProperties({
+        provider,
+        modelId,
+        traceId,
+        ...entry,
+      });
+      try {
+        await fetch(`${config.host}/i/v0/e/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: config.key,
+            event: "$ai_generation",
+            distinct_id: distinctId,
+            properties,
+          }),
+        });
+      } catch {
+        // Fire-and-forget
+      }
+    })
+  );
 }

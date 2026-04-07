@@ -33,11 +33,19 @@ export interface BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult> {
   getItemId: (item: TItem) => string
 }
 
+export interface ItemTrackingData {
+  latencyMs: number
+  input: string
+  output: string
+  temperature: number
+}
+
 export interface BatchProcessorResult<TResult> {
   results: Record<string, TResult>
   errors: BatchError[]
   usages: Usage[]
   usageByItemId: Record<string, Usage>
+  trackingByItemId: Record<string, ItemTrackingData>
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -58,21 +66,31 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
   const errors: BatchError[] = []
   const usages: Usage[] = []
   const usageByItemId: Record<string, Usage> = {}
+  const trackingByItemId: Record<string, ItemTrackingData> = {}
 
-  // Process all items in parallel
+  // Process all items in parallel, capturing per-item timing and prompts
   const promises = items.map(async (item) => {
     const configInput = toConfigInput(item)
     const operationConfig = getOperationConfig(configInput)
-    
+    const prompts = operationConfig.buildPrompts(operationConfig.input, 0)
+
+    const start = Date.now()
     const { output, usage } = await executeAIOperation({
       model,
       ...operationConfig,
     })
+    const latencyMs = Date.now() - start
 
     return {
       itemId: getItemId(item),
       result: formatResult(output, item),
       usage,
+      tracking: {
+        latencyMs,
+        input: `[system] ${prompts.system}\n[user] ${prompts.prompt}`,
+        output: JSON.stringify(output),
+        temperature: operationConfig.temperature,
+      },
     }
   })
 
@@ -80,12 +98,13 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
 
   for (let i = 0; i < settledResults.length; i++) {
     const settled = settledResults[i]
-    
+
     if (settled.status === 'fulfilled') {
-      const { itemId, result, usage } = settled.value
+      const { itemId, result, usage, tracking } = settled.value
       results[itemId] = result
       usages.push(usage)
       usageByItemId[itemId] = usage
+      trackingByItemId[itemId] = tracking
     } else {
       const itemId = getItemId(items[i]) || 'unknown'
       const errorMessage = settled.reason instanceof Error
@@ -95,7 +114,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
     }
   }
 
-  return { results, errors, usages, usageByItemId }
+  return { results, errors, usages, usageByItemId, trackingByItemId }
 }
 
 // ═══════════════════════════════════════════════════════════════

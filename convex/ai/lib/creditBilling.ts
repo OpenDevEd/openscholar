@@ -1,6 +1,6 @@
 import { calculateCostInDollars, type Usage } from "../../../lib/ai/core";
 import type { AIProvider } from "../../../lib/types/ai.types";
-import { convertDollarsToCredits } from "../../lib/creditTopups";
+import { convertDollarsToCredits, getCreditsPerUsd } from "../../lib/creditTopups";
 import { AI_COST_MARKUP } from "../../lib/constants";
 
 function hasTokenUsage(usage: Usage): boolean {
@@ -44,4 +44,25 @@ export function calculateCreditsToDeductFromUsage(args: {
   if (pricedCredits > 0) return pricedCredits;
 
   return hasTokenUsage(args.usage) ? 1 : 0;
+}
+
+/**
+ * Raw fractional credit cost without ceiling or minimum.
+ * Use this for analytics; the actual deducted amount uses
+ * `calculateCreditsToDeductFromUsage` which applies Math.ceil + min(1).
+ */
+export function calculateRawCreditCost(args: {
+  usage: Usage;
+  provider: AIProvider;
+  modelId: string;
+  markupMultiplier?: number;
+}): number {
+  const costDollars = calculateCostInDollars(
+    args.usage,
+    args.provider,
+    args.modelId,
+  );
+  if (!Number.isFinite(costDollars) || costDollars <= 0) return 0;
+  const markup = args.markupMultiplier ?? AI_COST_MARKUP;
+  return costDollars * markup * getCreditsPerUsd();
 }

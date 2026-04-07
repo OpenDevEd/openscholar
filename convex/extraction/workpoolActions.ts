@@ -15,6 +15,7 @@ import {
   withUserCreditsBatch,
 } from "../ai/helpers";
 import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
+import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
 import { decryptApiKey } from "../lib/crypto";
 import { MIN_ABSTRACT_LENGTH } from "./content";
@@ -484,6 +485,7 @@ function toEvidenceContext(candidates: RetrievalCandidate[]) {
 type ExtractionWithUsage = {
   result: ExtractionQuestionResult;
   usage: { inputTokens: number; outputTokens: number };
+  prompt: string;
 };
 
 async function extractQuestionAnswer(params: {
@@ -551,6 +553,7 @@ async function extractQuestionAnswer(params: {
     return {
       result,
       usage: { inputTokens, outputTokens },
+      prompt,
     };
   } catch (error) {
     return {
@@ -569,6 +572,7 @@ async function extractQuestionAnswer(params: {
         pdfContentUsed: false,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
+      prompt: "",
     };
   }
 }
@@ -633,6 +637,7 @@ async function extractQuestionAnswerFromAbstract(params: {
         pdfContentUsed: false,
       },
       usage: { inputTokens, outputTokens },
+      prompt,
     };
   } catch (error) {
     return {
@@ -654,6 +659,7 @@ async function extractQuestionAnswerFromAbstract(params: {
         pdfContentUsed: false,
       },
       usage: { inputTokens: 0, outputTokens: 0 },
+      prompt: "",
     };
   }
 }
@@ -989,6 +995,7 @@ export const waitAndExtractAction = internalAction({
           const model = await getModel();
           const results: ExtractionQuestionResult[] = [];
           const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
+          const trackingEntries: AITrackingEntry[] = [];
           let anyPdfEvidenceUsed = false;
           const abstractPresent = isUsableAbstract(paper.abstract);
           const abstractText = abstractPresent ? paper.abstract!.trim() : undefined;
@@ -996,14 +1003,24 @@ export const waitAndExtractAction = internalAction({
           for (const question of args.questions) {
             if (units.length === 0) {
               if (abstractText) {
-                const { result, usage } = await extractQuestionAnswerFromAbstract({
+                const qStart = Date.now();
+                const { result, usage, prompt } = await extractQuestionAnswerFromAbstract({
                   model,
                   question,
                   abstract: abstractText,
                   pdfEnabled,
                 });
+                const qLatency = Date.now() - qStart;
                 results.push(result);
                 extractionUsages.push(usage);
+                trackingEntries.push({
+                  feature: "extraction_question_abstract",
+                  usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+                  latencyMs: qLatency,
+                  input: truncateForTracking(prompt),
+                  output: truncateForTracking(JSON.stringify(result)),
+                  temperature: 0,
+                });
                 console.info(
                   "[waitAndExtractAction] question diagnostics",
                   JSON.stringify({
@@ -1090,19 +1107,29 @@ export const waitAndExtractAction = internalAction({
               rerankedCandidates: evidencePool.length,
             };
 
-            const { result: extracted, usage } = await extractQuestionAnswer({
+            const qStart = Date.now();
+            const { result: extracted, usage, prompt: qPrompt } = await extractQuestionAnswer({
               model,
               question,
               abstract: paper.abstract,
               evidencePool,
               diagnosticsSeed,
             });
+            const qLatency = Date.now() - qStart;
 
             if (extracted.citations.length > 0) {
               anyPdfEvidenceUsed = true;
             }
 
             extractionUsages.push(usage);
+            trackingEntries.push({
+              feature: "extraction_question_pdf",
+              usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens },
+              latencyMs: qLatency,
+              input: truncateForTracking(qPrompt),
+              output: truncateForTracking(JSON.stringify(extracted)),
+              temperature: 0,
+            });
 
             console.info(
               "[waitAndExtractAction] question diagnostics",
@@ -1143,6 +1170,7 @@ export const waitAndExtractAction = internalAction({
               pdfContentUsed: anyPdfEvidenceUsed,
             },
             totalUsage,
+            trackingEntries,
           };
         },
       );

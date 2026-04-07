@@ -46,8 +46,12 @@ describe("processBatch", () => {
       title: paper.title,
       abstract: paper.abstract,
     }),
-    getOperationConfig: (_input: { title: string; abstract: string }) =>
-      ({}) as unknown as OperationConfig<{ title: string; abstract: string }, { value: string }>,
+    getOperationConfig: (input: { title: string; abstract: string }) =>
+      ({
+        input,
+        temperature: 0.1,
+        buildPrompts: () => ({ system: "test system", prompt: "test prompt" }),
+      }) as unknown as OperationConfig<{ title: string; abstract: string }, { value: string }>,
     formatResult: (output: { value: string }) => output,
     getItemId: (paper: BatchPaper) => paper.id,
   });

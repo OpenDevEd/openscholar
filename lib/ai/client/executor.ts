@@ -15,14 +15,13 @@ import {
   type OperationConfig
 } from '../core/configs'
 import type { AIProvider } from '@/lib/types'
-import { captureAIGeneration } from '@/lib/posthog-ai'
-
-const MAX_TRACKING_CONTENT_LENGTH = 2000
-
-function truncateForTracking(s: string): string {
-  if (s.length <= MAX_TRACKING_CONTENT_LENGTH) return s
-  return s.slice(0, MAX_TRACKING_CONTENT_LENGTH) + '...[truncated]'
-}
+import { captureAIGeneration, captureAIGenerationBatch } from '@/lib/posthog-ai'
+import {
+  truncateForTracking,
+  extractHttpStatus,
+  extractErrorCode,
+  type AITrackingEntry,
+} from '@/lib/posthog-ai-shared'
 import type {
   EnhanceSearchQueryInput,
   GenerateScreeningQuestionsInput,
@@ -68,33 +67,47 @@ export function createClientExecutor<TParams, TOutput, TResult>(
       const latencyMs = performance.now() - start
       const outputForTracking = truncateForTracking(JSON.stringify(output))
 
-      captureAIGeneration({
-        provider: config.provider,
-        modelId: config.model,
-        feature,
-        usage: {
-          inputTokens: usage.inputTokens ?? usage.promptTokens,
-          outputTokens: usage.outputTokens ?? usage.completionTokens,
-        },
-        latencyMs,
-        input: inputForTracking,
-        output: outputForTracking,
-      })
+      // Tracking is fire-and-forget: never let a PostHog failure crash a
+      // successful AI operation (e.g., consent denied, SDK not initialized).
+      try {
+        captureAIGeneration({
+          provider: config.provider,
+          modelId: config.model,
+          feature,
+          usage: {
+            inputTokens: usage.inputTokens ?? usage.promptTokens,
+            outputTokens: usage.outputTokens ?? usage.completionTokens,
+          },
+          latencyMs,
+          input: inputForTracking,
+          output: outputForTracking,
+          temperature: operationConfig.temperature,
+        })
+      } catch {
+        // Fire-and-forget — tracking must never block the happy path
+      }
 
       return formatOutput(output, params)
     } catch (error) {
       const latencyMs = performance.now() - start
-      captureAIGeneration({
-        provider: config.provider,
-        modelId: config.model,
-        feature,
-        usage: { inputTokens: 0, outputTokens: 0 },
-        latencyMs,
-        input: inputForTracking,
-        output: '',
-        isError: true,
-        errorMessage: error instanceof Error ? error.message : String(error),
-      })
+      try {
+        captureAIGeneration({
+          provider: config.provider,
+          modelId: config.model,
+          feature,
+          usage: { inputTokens: 0, outputTokens: 0 },
+          latencyMs,
+          input: inputForTracking,
+          output: '',
+          isError: true,
+          errorMessage: error instanceof Error ? error.message : String(error),
+          httpStatus: extractHttpStatus(error),
+          errorCode: extractErrorCode(error),
+          temperature: operationConfig.temperature,
+        })
+      } catch {
+        // Fire-and-forget
+      }
       throw error
     }
   }
@@ -177,46 +190,49 @@ export async function generateBatchScreeningResponses(
   const start = performance.now()
 
   try {
-    const { results, errors, usages } = await processScreeningBatch({
+    const { results, errors, usageByItemId, trackingByItemId } = await processScreeningBatch({
       model,
       papers,
       questions,
     })
 
-    const latencyMs = performance.now() - start
-    const totalInput = usages.reduce(
-      (acc, u) => acc + (u.inputTokens ?? u.promptTokens ?? 0),
-      0
-    )
-    const totalOutput = usages.reduce(
-      (acc, u) => acc + (u.outputTokens ?? u.completionTokens ?? 0),
-      0
+    const entries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+      ([itemId, tracking]) => {
+        const usage = usageByItemId[itemId]
+        return {
+          feature: 'batch_screening_responses',
+          usage: {
+            inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+            outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+          },
+          latencyMs: tracking.latencyMs,
+          input: truncateForTracking(tracking.input),
+          output: truncateForTracking(tracking.output),
+          temperature: tracking.temperature,
+        }
+      }
     )
 
-    captureAIGeneration({
-      provider: config.provider,
-      modelId: config.model,
-      feature: 'batch_screening_responses',
-      usage: { inputTokens: totalInput, outputTokens: totalOutput },
-      latencyMs,
-      input: `Batch screening: ${papers.length} papers, ${questions.length} questions`,
-      output: `Processed ${Object.keys(results).length} papers`,
-    })
+    try { captureAIGenerationBatch(config.provider, config.model, entries) } catch { /* fire-and-forget */ }
 
     return { results, errors }
   } catch (error) {
     const latencyMs = performance.now() - start
-    captureAIGeneration({
-      provider: config.provider,
-      modelId: config.model,
-      feature: 'batch_screening_responses',
-      usage: { inputTokens: 0, outputTokens: 0 },
-      latencyMs,
-      input: `Batch screening: ${papers.length} papers, ${questions.length} questions`,
-      output: '',
-      isError: true,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    })
+    try {
+      captureAIGeneration({
+        provider: config.provider,
+        modelId: config.model,
+        feature: 'batch_screening_responses',
+        usage: { inputTokens: 0, outputTokens: 0 },
+        latencyMs,
+        input: `Batch screening: ${papers.length} papers, ${questions.length} questions`,
+        output: '',
+        isError: true,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        httpStatus: extractHttpStatus(error),
+        errorCode: extractErrorCode(error),
+      })
+    } catch { /* fire-and-forget */ }
     throw error
   }
 }
@@ -244,46 +260,49 @@ export async function generateBatchTranslations(
   const start = performance.now()
 
   try {
-    const { results, errors, usages } = await processTranslationBatch({
+    const { results, errors, usageByItemId, trackingByItemId } = await processTranslationBatch({
       model,
       papers,
       targetLanguage,
     })
 
-    const latencyMs = performance.now() - start
-    const totalInput = usages.reduce(
-      (acc, u) => acc + (u.inputTokens ?? u.promptTokens ?? 0),
-      0
-    )
-    const totalOutput = usages.reduce(
-      (acc, u) => acc + (u.outputTokens ?? u.completionTokens ?? 0),
-      0
+    const entries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+      ([itemId, tracking]) => {
+        const usage = usageByItemId[itemId]
+        return {
+          feature: 'batch_translations',
+          usage: {
+            inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+            outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+          },
+          latencyMs: tracking.latencyMs,
+          input: truncateForTracking(tracking.input),
+          output: truncateForTracking(tracking.output),
+          temperature: tracking.temperature,
+        }
+      }
     )
 
-    captureAIGeneration({
-      provider: config.provider,
-      modelId: config.model,
-      feature: 'batch_translations',
-      usage: { inputTokens: totalInput, outputTokens: totalOutput },
-      latencyMs,
-      input: `Batch translation: ${papers.length} papers -> ${targetLanguage ?? 'auto'}`,
-      output: `Processed ${Object.keys(results).length} papers`,
-    })
+    try { captureAIGenerationBatch(config.provider, config.model, entries) } catch { /* fire-and-forget */ }
 
     return { results, errors }
   } catch (error) {
     const latencyMs = performance.now() - start
-    captureAIGeneration({
-      provider: config.provider,
-      modelId: config.model,
-      feature: 'batch_translations',
-      usage: { inputTokens: 0, outputTokens: 0 },
-      latencyMs,
-      input: `Batch translation: ${papers.length} papers -> ${targetLanguage ?? 'auto'}`,
-      output: '',
-      isError: true,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    })
+    try {
+      captureAIGeneration({
+        provider: config.provider,
+        modelId: config.model,
+        feature: 'batch_translations',
+        usage: { inputTokens: 0, outputTokens: 0 },
+        latencyMs,
+        input: `Batch translation: ${papers.length} papers -> ${targetLanguage ?? 'auto'}`,
+        output: '',
+        isError: true,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        httpStatus: extractHttpStatus(error),
+        errorCode: extractErrorCode(error),
+      })
+    } catch { /* fire-and-forget */ }
     throw error
   }
 }

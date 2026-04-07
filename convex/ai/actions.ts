@@ -10,8 +10,8 @@ import {
   getTranslatePaperContentConfig,
   getScreeningResponsesConfig,
 } from "../../lib/ai/core/configs";
-import { 
-  processScreeningBatch, 
+import {
+  processScreeningBatch,
   processTranslationBatch,
   aggregateUsage,
 } from "../../lib/ai/core";
@@ -22,6 +22,7 @@ import {
   withAuthAndCreditsBatch,
 } from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
+import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -175,7 +176,7 @@ export const generateBatchTranslations = action({
       async () => {
         const model = await getModel();
 
-        const { results, errors, usages, usageByItemId } = await processTranslationBatch({
+        const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
           model,
           papers,
           targetLanguage,
@@ -196,10 +197,28 @@ export const generateBatchTranslations = action({
           },
         );
 
+        const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+          ([itemId, tracking]) => {
+            const usage = usageByItemId[itemId];
+            return {
+              feature: `batch_translation`,
+              usage: {
+                inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+                outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+              },
+              latencyMs: tracking.latencyMs,
+              input: truncateForTracking(tracking.input),
+              output: truncateForTracking(tracking.output),
+              temperature: tracking.temperature,
+            };
+          },
+        );
+
         return {
           result: { results, errors },
           totalUsage: aggregateUsage(usages),
           usageBreakdown,
+          trackingEntries,
         };
       },
       papers.length, // pre-flight: at least 1 credit per paper
@@ -251,7 +270,7 @@ export const generateBatchScreeningResponses = action({
       async () => {
         const model = await getModel();
 
-        const { results, errors, usages, usageByItemId } = await processScreeningBatch({
+        const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
           model,
           papers,
           questions,
@@ -283,10 +302,28 @@ export const generateBatchScreeningResponses = action({
           },
         );
 
+        const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
+          ([itemId, tracking]) => {
+            const usage = usageByItemId[itemId];
+            return {
+              feature: `batch_screening`,
+              usage: {
+                inputTokens: usage?.inputTokens ?? usage?.promptTokens ?? 0,
+                outputTokens: usage?.outputTokens ?? usage?.completionTokens ?? 0,
+              },
+              latencyMs: tracking.latencyMs,
+              input: truncateForTracking(tracking.input),
+              output: truncateForTracking(tracking.output),
+              temperature: tracking.temperature,
+            };
+          },
+        );
+
         return {
           result: { results: encodedResults, errors },
           totalUsage: aggregateUsage(usages),
           usageBreakdown,
+          trackingEntries,
         };
       },
       papers.length, // pre-flight: at least 1 credit per paper

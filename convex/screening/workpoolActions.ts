@@ -16,6 +16,7 @@ import { processScreeningBatch } from "../../lib/ai/core/batch";
 import { withUserCreditsBatch, getModel } from "../ai/helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
+import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 
 type ScreeningActionResult = {
   responses: Record<string, boolean | null>;
@@ -101,11 +102,12 @@ export const screenPaperAction = internalAction({
         `Bulk screening (paper ${result.openalexId})`,
         async () => {
           const model = await getModel();
+          const paperId = String(args.resultId);
           const batchResult = await processScreeningBatch({
             model,
             papers: [
               {
-                id: String(args.resultId),
+                id: paperId,
                 title: result.title,
                 abstract: result.abstract ?? "",
               },
@@ -113,19 +115,43 @@ export const screenPaperAction = internalAction({
             questions: questionTexts,
           });
 
-          const paperResult = batchResult.results[String(args.resultId)];
-          if (!paperResult) {
-            throw new Error(`No screening result for ${args.resultId}`);
-          }
-
           const totalUsage = batchResult.usages[0] ?? {
             inputTokens: 0,
             outputTokens: 0,
           };
 
+          // Build tracking entries BEFORE any throw so they aren't lost
+          // if the result lookup below fails.
+          const tracking = batchResult.trackingByItemId[paperId];
+          const trackingEntries: AITrackingEntry[] = tracking
+            ? [{
+                feature: "workpool_screening",
+                usage: {
+                  inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+                  outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+                },
+                latencyMs: tracking.latencyMs,
+                input: truncateForTracking(tracking.input),
+                output: truncateForTracking(tracking.output),
+                temperature: tracking.temperature,
+              }]
+            : [];
+
+          const paperResult = batchResult.results[paperId];
+          if (!paperResult) {
+            // Return tracking even for failures so the $ai_generation event is sent.
+            // The workpool will mark this item as failed via the thrown error.
+            return {
+              result: { responses: {}, confidence: 0 },
+              totalUsage,
+              trackingEntries,
+            };
+          }
+
           return {
             result: paperResult,
             totalUsage,
+            trackingEntries,
           };
         }
       );

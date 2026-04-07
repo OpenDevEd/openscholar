@@ -2,7 +2,7 @@
 
 import { action } from "../_generated/server";
 import type { ActionCtx } from "../_generated/server";
-import { internal, api } from "../_generated/api";
+import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   AIError,
@@ -21,21 +21,21 @@ import { getProviderModel } from "../../lib/ai/server/providers";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
-import { captureAIGenerationServer } from "../../lib/posthog-server";
+import { captureAIGenerationServer, captureAIGenerationBatchServer } from "../../lib/posthog-server";
+import {
+  type AITrackingEntry,
+  truncateForTracking,
+  extractHttpStatus,
+  extractErrorCode,
+} from "../../lib/posthog-ai-shared";
 import { AI_COST_MARKUP } from "../lib/constants";
 import { createError } from "../lib/errors";
 
 import {
   calculateCreditsToDeductFromUsage,
+  calculateRawCreditCost,
   convertUsdCostToCredits,
 } from "./lib/creditBilling";
-
-const MAX_TRACKING_CONTENT_LENGTH = 2000;
-
-function truncateForTracking(s: string): string {
-  if (s.length <= MAX_TRACKING_CONTENT_LENGTH) return s;
-  return s.slice(0, MAX_TRACKING_CONTENT_LENGTH) + "...[truncated]";
-}
 
 function hasStructuredConvexCode(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -158,6 +158,16 @@ export function calculateServerCreditsToDeduct(usage: Usage): number {
   });
 }
 
+/** Raw fractional credit cost (no ceiling/min). For PostHog analytics only. */
+export function calculateServerRawCreditCost(usage: Usage): number {
+  return calculateRawCreditCost({
+    usage,
+    provider: SERVER_AI_CONFIG.provider as AIProvider,
+    modelId: SERVER_AI_CONFIG.model,
+    markupMultiplier: AI_COST_MARKUP,
+  });
+}
+
 export type UsageBreakdownEntry = {
   usage: Usage;
   description?: string;
@@ -178,6 +188,7 @@ export async function withAuthAndCreditsBatch<T>(
     result: T;
     totalUsage: Usage;
     usageBreakdown?: UsageBreakdownEntry[];
+    trackingEntries?: AITrackingEntry[];
   }>,
   minimumRequired = 1,
 ): Promise<T> {
@@ -187,7 +198,10 @@ export async function withAuthAndCreditsBatch<T>(
       throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
     }
 
-    const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
+    const balance = await ctx.runQuery(
+      internal.credits.internal.getBalanceByUserId,
+      { userId: user._id },
+    );
     if (!balance || balance.total < minimumRequired) {
       throw createError(
         "AI_INSUFFICIENT_CREDITS",
@@ -196,22 +210,50 @@ export async function withAuthAndCreditsBatch<T>(
     }
 
     const start = Date.now();
-    const { result, totalUsage, usageBreakdown } = await handler(user);
+    const { result, totalUsage, usageBreakdown, trackingEntries } = await handler(user);
     const latencyMs = Date.now() - start;
 
-    await captureAIGenerationServer({
-      distinctId: user.clerkId,
-      provider: SERVER_AI_CONFIG.provider as AIProvider,
-      modelId: SERVER_AI_CONFIG.model,
-      feature: operation,
-      usage: {
-        inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
-        outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
-      },
-      latencyMs,
-      input: `Batch: ${operation}`,
-      output: "Completed",
-    });
+    const totalCreditsDeducted = usageBreakdown && usageBreakdown.length > 0
+      ? usageBreakdown.reduce((sum, e) => sum + calculateServerCreditsToDeduct(e.usage), 0)
+      : calculateServerCreditsToDeduct(totalUsage);
+    const totalRawCost = usageBreakdown && usageBreakdown.length > 0
+      ? usageBreakdown.reduce((sum, e) => sum + calculateServerRawCreditCost(e.usage), 0)
+      : calculateServerRawCreditCost(totalUsage);
+    const creditContext = {
+      creditsDeducted: totalCreditsDeducted,
+      creditsRawCost: totalRawCost,
+      creditsRemaining: Math.max(0, balance.total - totalCreditsDeducted),
+      lifetimeCreditsUsed: balance.lifetimeUsed + totalCreditsDeducted,
+    };
+
+    // Per-item tracking when entries provided; single aggregated event otherwise
+    if (trackingEntries && trackingEntries.length > 0) {
+      const enriched = trackingEntries.map((e) => ({ ...e, ...creditContext }));
+      await captureAIGenerationBatchServer(
+        user.clerkId,
+        SERVER_AI_CONFIG.provider as AIProvider,
+        SERVER_AI_CONFIG.model,
+        enriched,
+      );
+    } else {
+      const hasTokens = (totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0) > 0
+        || (totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0) > 0;
+      await captureAIGenerationServer({
+        distinctId: user.clerkId,
+        provider: SERVER_AI_CONFIG.provider as AIProvider,
+        modelId: SERVER_AI_CONFIG.model,
+        feature: operation,
+        usage: {
+          inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+          outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+        },
+        latencyMs,
+        input: `Batch: ${operation}`,
+        output: hasTokens ? "Completed (aggregated)" : "No items succeeded",
+        isError: !hasTokens,
+        ...creditContext,
+      });
+    }
 
     if (usageBreakdown && usageBreakdown.length > 0) {
       for (const entry of usageBreakdown) {
@@ -247,7 +289,7 @@ export async function withUserCreditsBatch<T>(
   ctx: ActionCtx,
   userId: Id<"users">,
   operation: string,
-  handler: () => Promise<{ result: T; totalUsage: Usage }>,
+  handler: () => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
 ): Promise<T> {
   try {
     // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
@@ -268,24 +310,45 @@ export async function withUserCreditsBatch<T>(
     }
 
     const start = Date.now();
-    const { result, totalUsage } = await handler();
+    const { result, totalUsage, trackingEntries } = await handler();
     const latencyMs = Date.now() - start;
 
     const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
+    const creditContext = {
+      creditsDeducted: creditsToDeduct,
+      creditsRawCost: calculateServerRawCreditCost(totalUsage),
+      creditsRemaining: Math.max(0, balance.total - creditsToDeduct),
+      lifetimeCreditsUsed: balance.lifetimeUsed + creditsToDeduct,
+    };
 
-    await captureAIGenerationServer({
-      distinctId: user.clerkId,
-      provider: SERVER_AI_CONFIG.provider as AIProvider,
-      modelId: SERVER_AI_CONFIG.model,
-      feature: operation,
-      usage: {
-        inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
-        outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
-      },
-      latencyMs,
-      input: `Batch: ${operation}`,
-      output: "Completed",
-    });
+    // Per-item tracking when entries provided; single aggregated event otherwise
+    if (trackingEntries && trackingEntries.length > 0) {
+      const enriched = trackingEntries.map((e) => ({ ...e, ...creditContext }));
+      await captureAIGenerationBatchServer(
+        user.clerkId,
+        SERVER_AI_CONFIG.provider as AIProvider,
+        SERVER_AI_CONFIG.model,
+        enriched,
+      );
+    } else {
+      const hasTokens = (totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0) > 0
+        || (totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0) > 0;
+      await captureAIGenerationServer({
+        distinctId: user.clerkId,
+        provider: SERVER_AI_CONFIG.provider as AIProvider,
+        modelId: SERVER_AI_CONFIG.model,
+        feature: operation,
+        usage: {
+          inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
+          outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
+        },
+        latencyMs,
+        input: `Batch: ${operation}`,
+        output: hasTokens ? "Completed (aggregated)" : "No items succeeded",
+        isError: !hasTokens,
+        ...creditContext,
+      });
+    }
 
     await ctx.runMutation(internal.credits.internal.deductCredits, {
       userId,
@@ -299,10 +362,30 @@ export async function withUserCreditsBatch<T>(
   }
 }
 
+/**
+ * Auth + credits wrapper for single AI operations.
+ *
+ * **IMPORTANT: This function does NOT send PostHog tracking events.**
+ * The caller is responsible for calling `captureAIGenerationServer` themselves.
+ * Currently only used by `createAIAction` which handles tracking internally.
+ *
+ * For batch operations, prefer `withAuthAndCreditsBatch` or `withUserCreditsBatch`
+ * which have built-in tracking via `trackingEntries`.
+ */
+export type CreditContext = {
+  creditsDeducted: number;
+  creditsRawCost: number;
+  creditsRemaining: number;
+  lifetimeCreditsUsed: number;
+};
+
 export async function withAuthAndCredits<T>(
   ctx: ActionCtx,
   operation: string,
-  handler: (user: Doc<"users">) => Promise<{ result: T; usage: Usage }>,
+  handler: (
+    user: Doc<"users">,
+    buildCreditContext: (usage: Usage) => CreditContext,
+  ) => Promise<{ result: T; usage: Usage }>,
 ): Promise<T> {
   try {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -310,12 +393,25 @@ export async function withAuthAndCredits<T>(
       throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
     }
 
-    const balance = await ctx.runQuery(api.credits.queries.getMyBalance);
+    const balance = await ctx.runQuery(
+      internal.credits.internal.getBalanceByUserId,
+      { userId: user._id },
+    );
     if (!balance || balance.total <= 0) {
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 
-    const { result, usage } = await handler(user);
+    const buildCreditContext = (usage: Usage): CreditContext => {
+      const deducted = calculateServerCreditsToDeduct(usage);
+      return {
+        creditsDeducted: deducted,
+        creditsRawCost: calculateServerRawCreditCost(usage),
+        creditsRemaining: Math.max(0, balance.total - deducted),
+        lifetimeCreditsUsed: balance.lifetimeUsed + deducted,
+      };
+    };
+
+    const { result, usage } = await handler(user, buildCreditContext);
 
     const creditsToDeduct = calculateServerCreditsToDeduct(usage);
 
@@ -348,7 +444,7 @@ export function createAIAction<
     args: argsValidator,
     returns: returnsValidator,
     handler: async (ctx, args: ObjectType<Args>) => {
-      return withAuthAndCredits(ctx, description, async (user) => {
+      return withAuthAndCredits(ctx, description, async (user, buildCreditContext) => {
         const model = await getModel();
         const config = configFactory(args);
         const prompts = config.buildPrompts(config.input, 0);
@@ -377,6 +473,8 @@ export function createAIAction<
             latencyMs,
             input: inputForTracking,
             output: outputForTracking,
+            temperature: config.temperature,
+            ...buildCreditContext(usage),
           });
 
           return {
@@ -396,6 +494,9 @@ export function createAIAction<
             output: "",
             isError: true,
             errorMessage: error instanceof Error ? error.message : String(error),
+            httpStatus: extractHttpStatus(error),
+            errorCode: extractErrorCode(error),
+            temperature: config.temperature,
           });
           throwStructuredAIError(error);
         }
