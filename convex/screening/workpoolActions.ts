@@ -101,7 +101,7 @@ export const screenPaperAction = internalAction({
         ctx,
         job.userId as Id<"users">,
         `Bulk screening (paper ${result.openalexId})`,
-        async () => {
+        async (_pricing) => {
           const model = await getModel();
           const paperId = String(args.resultId);
           const batchResult = await processScreeningBatch({

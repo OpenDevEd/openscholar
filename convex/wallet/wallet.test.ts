@@ -412,73 +412,73 @@ describe("wallet + credits integration", () => {
   });
 });
 
-// ─── Wallet models (DB-based) ────────────────────────────────
+// ─── Models table (unified) ─────────────────────────────────
 
-async function seedWalletModel(
+async function seedModel(
   t: ReturnType<typeof convexTest>,
   overrides?: Partial<{
     modelId: string;
     name: string;
-    provider: "openai" | "anthropic" | "google" | "deepseek" | "azure" | "openrouter";
+    provider: string;
     inputPricePerMillion: number;
     outputPricePerMillion: number;
-    isActive: boolean;
+    isServed: boolean;
     sortOrder: number;
   }>,
 ) {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    return await ctx.db.insert("walletModels", {
-      modelId: overrides?.modelId ?? "test-model",
+    return await ctx.db.insert("models", {
+      modelId: overrides?.modelId ?? "openai/test-model",
       name: overrides?.name ?? "Test Model",
       provider: overrides?.provider ?? "openai",
       inputPricePerMillion: overrides?.inputPricePerMillion ?? 1.0,
       outputPricePerMillion: overrides?.outputPricePerMillion ?? 5.0,
       costMarkup: 1.3,
-      capabilities: ["function-calling"],
-      isActive: overrides?.isActive ?? true,
+      isServed: overrides?.isServed ?? true,
       sortOrder: overrides?.sortOrder ?? 1,
+      syncedAt: now,
       createdAt: now,
       updatedAt: now,
     });
   });
 }
 
-describe("wallet models (DB)", () => {
-  describe("listActive", () => {
-    it("returns only active models", async () => {
+describe("models (unified table)", () => {
+  describe("listServed", () => {
+    it("returns only served models", async () => {
       const t = convexTest(schema);
-      await seedWalletModel(t, { modelId: "active-1", isActive: true });
-      await seedWalletModel(t, { modelId: "active-2", isActive: true });
-      await seedWalletModel(t, { modelId: "inactive-1", isActive: false });
+      await seedModel(t, { modelId: "openai/active-1", isServed: true });
+      await seedModel(t, { modelId: "openai/active-2", isServed: true });
+      await seedModel(t, { modelId: "openai/inactive-1", isServed: false });
 
-      const models = await t.query(internal.wallet.models.listActive);
+      const models = await t.query(internal.models.queries.listServed);
       const ids = models.map((m) => m.modelId);
-      expect(ids).toContain("active-1");
-      expect(ids).toContain("active-2");
-      expect(ids).not.toContain("inactive-1");
+      expect(ids).toContain("openai/active-1");
+      expect(ids).toContain("openai/active-2");
+      expect(ids).not.toContain("openai/inactive-1");
     });
 
     it("returns empty array when no models exist", async () => {
       const t = convexTest(schema);
-      const models = await t.query(internal.wallet.models.listActive);
+      const models = await t.query(internal.models.queries.listServed);
       expect(models).toHaveLength(0);
     });
   });
 
-  describe("getByModelId", () => {
-    it("returns active model by modelId", async () => {
+  describe("getServedByModelId", () => {
+    it("returns served model by modelId", async () => {
       const t = convexTest(schema);
-      await seedWalletModel(t, {
-        modelId: "gpt-4o",
+      await seedModel(t, {
+        modelId: "openai/gpt-4o",
         name: "GPT-4o",
         provider: "openai",
         inputPricePerMillion: 2.5,
         outputPricePerMillion: 10.0,
       });
 
-      const model = await t.query(internal.wallet.models.getByModelId, {
-        modelId: "gpt-4o",
+      const model = await t.query(internal.models.queries.getServedByModelId, {
+        modelId: "openai/gpt-4o",
       });
 
       expect(model).not.toBeNull();
@@ -489,12 +489,12 @@ describe("wallet models (DB)", () => {
       expect(model!.costMarkup).toBe(1.3);
     });
 
-    it("returns null for inactive model", async () => {
+    it("returns null for non-served model", async () => {
       const t = convexTest(schema);
-      await seedWalletModel(t, { modelId: "disabled-model", isActive: false });
+      await seedModel(t, { modelId: "openai/disabled-model", isServed: false });
 
-      const model = await t.query(internal.wallet.models.getByModelId, {
-        modelId: "disabled-model",
+      const model = await t.query(internal.models.queries.getServedByModelId, {
+        modelId: "openai/disabled-model",
       });
       expect(model).toBeNull();
     });
@@ -502,98 +502,60 @@ describe("wallet models (DB)", () => {
     it("returns null for non-existent model", async () => {
       const t = convexTest(schema);
 
-      const model = await t.query(internal.wallet.models.getByModelId, {
-        modelId: "does-not-exist",
+      const model = await t.query(internal.models.queries.getServedByModelId, {
+        modelId: "openai/does-not-exist",
       });
       expect(model).toBeNull();
     });
   });
 
-  describe("add mutation", () => {
-    it("creates a new model with defaults", async () => {
+  describe("getPricing", () => {
+    it("returns pricing for a model", async () => {
       const t = convexTest(schema);
-
-      const id = await t.mutation(internal.wallet.models.add, {
-        modelId: "new-model",
-        name: "New Model",
-        provider: "anthropic",
+      await seedModel(t, {
+        modelId: "anthropic/claude-sonnet-4-5",
         inputPricePerMillion: 3.0,
         outputPricePerMillion: 15.0,
       });
 
-      const record = await t.run(async (ctx) => ctx.db.get(id));
-      expect(record).not.toBeNull();
-      expect(record!.modelId).toBe("new-model");
-      expect(record!.costMarkup).toBe(1.3); // default
-      expect(record!.isActive).toBe(true);
-      expect(record!.sortOrder).toBe(100); // default
-      expect(record!.capabilities).toEqual([]);
+      const pricing = await t.query(internal.models.queries.getPricing, {
+        modelId: "anthropic/claude-sonnet-4-5",
+      });
+
+      expect(pricing).toEqual({ input: 3.0, output: 15.0 });
     });
 
-    it("rejects duplicate modelId", async () => {
+    it("returns null for non-existent model", async () => {
       const t = convexTest(schema);
-      await seedWalletModel(t, { modelId: "duplicate-test" });
 
-      await expect(
-        t.mutation(internal.wallet.models.add, {
-          modelId: "duplicate-test",
-          name: "Dupe",
-          provider: "openai",
-          inputPricePerMillion: 1.0,
-          outputPricePerMillion: 5.0,
-        }),
-      ).rejects.toThrow("already exists");
+      const pricing = await t.query(internal.models.queries.getPricing, {
+        modelId: "openai/nonexistent",
+      });
+      expect(pricing).toBeNull();
     });
   });
 
-  describe("update mutation", () => {
-    it("patches fields without overwriting others", async () => {
+  describe("setServed mutation", () => {
+    it("toggles isServed and updates overrides", async () => {
       const t = convexTest(schema);
-      const id = await seedWalletModel(t, {
-        modelId: "patch-test",
-        name: "Original",
-        inputPricePerMillion: 1.0,
+      await seedModel(t, { modelId: "openai/toggle-test", isServed: false });
+
+      await t.mutation(internal.models.mutations.setServed, {
+        modelId: "openai/toggle-test",
+        isServed: true,
+        costMarkup: 1.5,
+        sortOrder: 5,
+        category: "flagship",
       });
 
-      await t.mutation(internal.wallet.models.update, {
-        id,
-        name: "Updated",
-        inputPricePerMillion: 2.0,
+      const served = await t.query(internal.models.queries.getServedByModelId, {
+        modelId: "openai/toggle-test",
       });
-
-      const record = await t.run(async (ctx) => ctx.db.get(id));
-      expect(record!.name).toBe("Updated");
-      expect(record!.inputPricePerMillion).toBe(2.0);
-      expect(record!.outputPricePerMillion).toBe(5.0); // unchanged
-      expect(record!.modelId).toBe("patch-test"); // unchanged
-    });
-
-    it("can deactivate a model", async () => {
-      const t = convexTest(schema);
-      const id = await seedWalletModel(t, { modelId: "deactivate-test" });
-
-      await t.mutation(internal.wallet.models.update, { id, isActive: false });
-
-      const record = await t.run(async (ctx) => ctx.db.get(id));
-      expect(record!.isActive).toBe(false);
-
-      // Should no longer appear in getByModelId
-      const lookup = await t.query(internal.wallet.models.getByModelId, {
-        modelId: "deactivate-test",
-      });
-      expect(lookup).toBeNull();
-    });
-  });
-
-  describe("remove mutation", () => {
-    it("deletes the model", async () => {
-      const t = convexTest(schema);
-      const id = await seedWalletModel(t, { modelId: "remove-test" });
-
-      await t.mutation(internal.wallet.models.remove, { id });
-
-      const record = await t.run(async (ctx) => ctx.db.get(id));
-      expect(record).toBeNull();
+      expect(served).not.toBeNull();
+      expect(served!.isServed).toBe(true);
+      expect(served!.costMarkup).toBe(1.5);
+      expect(served!.sortOrder).toBe(5);
+      expect(served!.category).toBe("flagship");
     });
   });
 });

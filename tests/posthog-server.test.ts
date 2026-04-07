@@ -2,7 +2,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 // Mock dependencies
 vi.mock("../lib/ai-models", () => ({
-  getModelPricing: vi.fn().mockReturnValue({ input: 0, output: 0 }),
+  getProviderConfig: vi.fn().mockReturnValue({ id: "openai", name: "OpenAI", apiKeyUrl: "", apiKeyPlaceholder: "" }),
+  getDefaultModelForProvider: vi.fn().mockReturnValue("gpt-4o"),
 }));
 
 const MOCK_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";

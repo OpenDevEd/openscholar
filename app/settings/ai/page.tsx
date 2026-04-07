@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Input } from "@/components/ui/input";
@@ -32,9 +32,9 @@ import { useAIConfigStore } from "@/lib/store";
 import {
   getProviderConfig,
   getDefaultModelForProvider,
-  getModelsForProvider,
 } from "@/lib/ai-models";
-import { fetchOpenRouterModels } from "@/app/actions/openrouter";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import type { AIModel, AIProvider } from "@/lib/types/ai.types";
+import type { AIProvider } from "@/lib/types/ai.types";
 
 export default function AISettingsPage() {
   const {
@@ -64,9 +64,7 @@ export default function AISettingsPage() {
 
   // Per-provider draft keys — only entries that differ from the store are present
   const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
-  const [models, setModels] = useState<AIModel[]>([]);
   const [modelSearch, setModelSearch] = useState("");
-  const [loadingModels, setLoadingModels] = useState(false);
   const [modelSectionExpanded, setModelSectionExpanded] = useState(false);
 
   const pendingApiKey = provider in pendingKeys ? pendingKeys[provider] : apiKey;
@@ -78,6 +76,32 @@ export default function AISettingsPage() {
 
   const providerConfig = getProviderConfig(provider);
 
+  // Models from Convex — for OpenRouter show all, otherwise filter by provider
+  const queryProvider = provider === "openrouter" ? undefined : provider;
+  const rawModels = useQuery(api.models.queries.list, { provider: queryProvider });
+  const loadingModels = rawModels === undefined;
+
+  // Map DB models to the shape the UI expects
+  const models = useMemo(() => {
+    if (!rawModels) return [];
+    return rawModels.map((m) => ({
+      id: provider === "openrouter"
+        ? m.modelId
+        : (m.modelId.includes("/") ? m.modelId.split("/").slice(1).join("/") : m.modelId),
+      fullId: m.modelId,
+      name: m.name,
+      provider: m.provider,
+      description: m.description,
+      contextWindow: m.contextLength,
+      pricing: {
+        input: m.inputPricePerMillion,
+        output: m.outputPricePerMillion,
+      },
+      category: m.category ?? m.tokenizer,
+      modality: m.modality,
+    }));
+  }, [rawModels, provider]);
+
   const handleProviderChange = (newProvider: AIProvider) => {
     if (newProvider === provider) {
       return;
@@ -86,7 +110,6 @@ export default function AISettingsPage() {
     setProvider(newProvider);
     const defaultModel = getDefaultModelForProvider(newProvider);
     setModel(defaultModel);
-    setModels([]);
     setModelSectionExpanded(false);
   };
 
@@ -106,36 +129,16 @@ export default function AISettingsPage() {
     sonnerToast.success(t("apiKeySaved"));
   };
 
-  useEffect(() => {
-    const loadModels = async () => {
-      if (provider === "openrouter") {
-        setLoadingModels(true);
-        try {
-          const openRouterModels = await fetchOpenRouterModels();
-          setModels(openRouterModels);
-        } catch (error) {
-          toast.ai.failed(t("loadingOpenRouterModels"), error);
-        } finally {
-          setLoadingModels(false);
-        }
-      } else {
-        setModels(getModelsForProvider(provider));
-      }
-    };
-
-    loadModels();
-  }, [provider]);
-
   const selectedModel = models.find((m) => m.id === model);
 
   const filteredModels = models.filter(
-    (model) =>
-      model.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
-      model.id.toLowerCase().includes(modelSearch.toLowerCase()),
+    (m) =>
+      m.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+      m.id.toLowerCase().includes(modelSearch.toLowerCase()),
   );
 
   // Group filtered models by category
-  const filteredGroupedModels: Record<string, AIModel[]> = {};
+  const filteredGroupedModels: Record<string, typeof models> = {};
   filteredModels.forEach((m) => {
     if (provider === "openrouter") {
       const category = m.category || tc("other");

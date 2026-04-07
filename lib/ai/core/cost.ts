@@ -1,19 +1,13 @@
-import type { Pricing, Usage } from './types'
-import { getModelPricing } from '../../ai-models'
-import { AIProvider } from '../../types/ai.types'
+import type { Usage } from './types'
 
 export function calculateCostInDollars(
   usage: Usage,
-  provider: AIProvider,
-  modelId: string,
-  pricingOverride?: { input: number; output: number },
+  pricing: { input: number; output: number },
 ): number {
   const promptTokens = usage.promptTokens ?? usage.inputTokens ?? 0
   const completionTokens = usage.completionTokens ?? usage.outputTokens ?? 0
 
   if (!promptTokens && !completionTokens) return 0
-
-  const pricing = pricingOverride ?? getModelPricing(provider, modelId)
 
   return ((promptTokens / 1_000_000) * pricing.input) +
          ((completionTokens / 1_000_000) * pricing.output)

@@ -14,30 +14,12 @@ export type AIProvider = 'openai' | 'google' | 'anthropic' | 'openrouter' | 'dee
 export type AIKeyMode = 'smart' | 'local' | 'credits';
 
 /**
- * AI model definition
- */
-export interface AIModel {
-  id: string;
-  name: string;
-  provider: AIProvider;
-  description?: string;
-  contextWindow?: number;
-  pricing: {
-    input: number;
-    output: number;
-  };
-  capabilities?: string[];
-  category?: string;
-}
-
-/**
- * AI provider configuration
+ * AI provider configuration — static metadata for UI display.
  */
 export interface AIProviderConfig {
   id: AIProvider;
   name: string;
   description: string;
-  models: AIModel[];
   apiKeyPlaceholder: string;
   apiKeyUrl: string;
 }

@@ -8,52 +8,47 @@ describe("AI credit billing helpers", () => {
   it("returns zero credits for zero usage", () => {
     const credits = calculateCreditsToDeductFromUsage({
       usage: { inputTokens: 0, outputTokens: 0 },
-      provider: "openai",
-      modelId: "gpt-5-mini",
+      pricing: { input: 0.25, output: 2.0 },
     });
 
     expect(credits).toBe(0);
   });
 
-  it("returns non-zero credits for non-zero usage when model pricing is unknown", () => {
+  it("returns 1 credit for non-zero usage with zero pricing", () => {
     const credits = calculateCreditsToDeductFromUsage({
       usage: { inputTokens: 12_000, outputTokens: 8_000 },
-      provider: "openrouter",
-      modelId: "google/gemini-3-flash-preview",
+      pricing: { input: 0, output: 0 },
     });
 
-    expect(credits).toBeGreaterThan(0);
+    expect(credits).toBe(1);
   });
 
-  it("matches direct USD conversion when pricing data is available", () => {
+  it("matches direct USD conversion when pricing is provided", () => {
     const usage = { inputTokens: 1_000_000, outputTokens: 500_000 };
-    // gpt-5-mini pricing in this codebase is $0.25 / 1M input and $2.00 / 1M output.
+    const pricing = { input: 0.25, output: 2.0 };
+    // $0.25 + $1.00 = $1.25
     const expectedCostDollars = 0.25 + 1.0;
     const expectedCredits = convertUsdCostToCredits(expectedCostDollars);
 
     const actualCredits = calculateCreditsToDeductFromUsage({
       usage,
-      provider: "openai",
-      modelId: "gpt-5-mini",
+      pricing,
     });
 
     expect(actualCredits).toBe(expectedCredits);
   });
 
-  it("uses pricingOverride instead of model lookup", () => {
+  it("computes credits from explicit pricing", () => {
     const usage = { inputTokens: 1_000_000, outputTokens: 1_000_000 };
-    const override = { input: 10.0, output: 20.0 };
+    const pricing = { input: 10.0, output: 20.0 };
 
-    const withOverride = calculateCreditsToDeductFromUsage({
+    const credits = calculateCreditsToDeductFromUsage({
       usage,
-      provider: "openrouter",
-      modelId: "unknown/model",
-      pricingOverride: override,
+      pricing,
     });
 
-    // Override provides real pricing → should compute actual credits, not fall back to 1
     const expectedCost = 10.0 + 20.0;
     const expectedCredits = convertUsdCostToCredits(expectedCost);
-    expect(withOverride).toBe(expectedCredits);
+    expect(credits).toBe(expectedCredits);
   });
 });

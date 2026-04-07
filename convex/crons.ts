@@ -39,11 +39,11 @@ crons.interval(
   internal.zotero.mutations.cleanupExpiredOAuthTokens
 );
 
-// Daily refresh of OpenRouter model pricing into pricingCache table
+// Daily sync of OpenRouter model catalog into models table
 crons.interval(
-  "refresh openrouter pricing",
+  "sync openrouter models",
   { hours: 24 },
-  internal.pricing.actions.refreshOpenRouterPricing
+  internal.models.sync.syncFromOpenRouter
 );
 
 // Daily env var validation -- detects misconfiguration within 24h

@@ -42,7 +42,7 @@ function creditsFromCost(
 function calculateModelCost(
   inputTokens: number,
   outputTokens: number,
-  model: Doc<"walletModels">,
+  model: Doc<"models">,
 ): number {
   const inputCost = (inputTokens / 1_000_000) * model.inputPricePerMillion;
   const outputCost = (outputTokens / 1_000_000) * model.outputPricePerMillion;
@@ -60,15 +60,17 @@ function extractBearerToken(request: Request): string | null {
 // ─── GET /api/wallet/models ──────────────────────────────────
 
 export const handleModels = httpAction(async (ctx) => {
-  const models = await ctx.runQuery(internal.wallet.models.listActive);
+  const models = await ctx.runQuery(internal.models.queries.listServed);
 
   const response = models.map((m) => ({
     id: m.modelId,
     name: m.name,
     provider: m.provider,
     description: m.description,
-    contextWindow: m.contextWindow,
-    capabilities: m.capabilities,
+    contextWindow: m.contextLength,
+    capabilities: m.supportedParameters?.filter((p) =>
+      ["tools", "reasoning", "structured_outputs", "web_search_options"].includes(p),
+    ) ?? [],
     category: m.category,
     pricing: {
       inputPerMillionTokens: m.inputPricePerMillion * m.costMarkup,
@@ -169,7 +171,7 @@ export const handleGenerate = httpAction(async (ctx, request) => {
   }
 
   // 6. Validate model against DB catalog
-  const walletModel = await ctx.runQuery(internal.wallet.models.getByModelId, {
+  const walletModel = await ctx.runQuery(internal.models.queries.getServedByModelId, {
     modelId: body.model,
   });
   if (!walletModel) {
@@ -182,10 +184,15 @@ export const handleGenerate = httpAction(async (ctx, request) => {
 
   // 7. Create AI model and stream
   try {
+    // Extract short model ID for native provider SDKs (e.g. "openai/gpt-4o" → "gpt-4o")
+    const shortModelId = walletModel.modelId.includes("/")
+      ? walletModel.modelId.split("/").slice(1).join("/")
+      : walletModel.modelId;
+
     const model = await getProviderModel(
       walletModel.provider as AIProvider,
       undefined,
-      walletModel.modelId,
+      shortModelId,
     );
 
     const { readable, writable } = new TransformStream();

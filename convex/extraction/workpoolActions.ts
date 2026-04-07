@@ -991,7 +991,7 @@ export const waitAndExtractAction = internalAction({
         ctx,
         job.userId,
         `Extraction (${args.questions.length} questions)`,
-        async () => {
+        async (pricing) => {
           const model = await getModel();
           const results: ExtractionQuestionResult[] = [];
           const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
@@ -1161,7 +1161,7 @@ export const waitAndExtractAction = internalAction({
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
           };
-          const billedCredits = calculateServerCreditsToDeduct(totalUsage);
+          const billedCredits = calculateServerCreditsToDeduct(totalUsage, pricing);
 
           return {
             result: {
