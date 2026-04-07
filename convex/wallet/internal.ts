@@ -31,6 +31,7 @@ export const lookupKey = internalQuery({
       userId: v.id("users"),
       walletKeyId: v.id("walletKeys"),
       appName: v.string(),
+      redirectOrigin: v.string(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -45,6 +46,7 @@ export const lookupKey = internalQuery({
       userId: key.userId,
       walletKeyId: key._id,
       appName: key.appName,
+      redirectOrigin: key.redirectOrigin,
     };
   },
 });

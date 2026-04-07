@@ -218,6 +218,15 @@ export default defineSchema({
     .index("by_active_sort", ["isActive", "sortOrder"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // WALLET ALLOWED ORIGINS - registered origins for /connect flow
+  // ═══════════════════════════════════════════════════════════════
+  walletAllowedOrigins: defineTable({
+    origin: v.string(),
+    appName: v.string(),
+    createdAt: v.number(),
+  }).index("by_origin", ["origin"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // WALLET KEYS - API keys for external site AI gateway access
   // ═══════════════════════════════════════════════════════════════
   walletKeys: defineTable({

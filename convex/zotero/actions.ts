@@ -1070,6 +1070,10 @@ export const downloadFile = internalAction({
     contentType?: string;
     error?: string;
   }> => {
+    if (!downloadUrl.startsWith(ZOTERO_API_URL)) {
+      return { success: false, error: "Invalid download URL: must be a Zotero API URL" };
+    }
+
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });

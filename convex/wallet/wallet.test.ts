@@ -513,7 +513,7 @@ describe("wallet models (DB)", () => {
     it("creates a new model with defaults", async () => {
       const t = convexTest(schema);
 
-      const id = await t.mutation(api.wallet.models.add, {
+      const id = await t.mutation(internal.wallet.models.add, {
         modelId: "new-model",
         name: "New Model",
         provider: "anthropic",
@@ -535,7 +535,7 @@ describe("wallet models (DB)", () => {
       await seedWalletModel(t, { modelId: "duplicate-test" });
 
       await expect(
-        t.mutation(api.wallet.models.add, {
+        t.mutation(internal.wallet.models.add, {
           modelId: "duplicate-test",
           name: "Dupe",
           provider: "openai",
@@ -555,7 +555,7 @@ describe("wallet models (DB)", () => {
         inputPricePerMillion: 1.0,
       });
 
-      await t.mutation(api.wallet.models.update, {
+      await t.mutation(internal.wallet.models.update, {
         id,
         name: "Updated",
         inputPricePerMillion: 2.0,
@@ -572,7 +572,7 @@ describe("wallet models (DB)", () => {
       const t = convexTest(schema);
       const id = await seedWalletModel(t, { modelId: "deactivate-test" });
 
-      await t.mutation(api.wallet.models.update, { id, isActive: false });
+      await t.mutation(internal.wallet.models.update, { id, isActive: false });
 
       const record = await t.run(async (ctx) => ctx.db.get(id));
       expect(record!.isActive).toBe(false);
@@ -590,7 +590,7 @@ describe("wallet models (DB)", () => {
       const t = convexTest(schema);
       const id = await seedWalletModel(t, { modelId: "remove-test" });
 
-      await t.mutation(api.wallet.models.remove, { id });
+      await t.mutation(internal.wallet.models.remove, { id });
 
       const record = await t.run(async (ctx) => ctx.db.get(id));
       expect(record).toBeNull();

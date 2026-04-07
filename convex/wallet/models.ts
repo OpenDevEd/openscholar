@@ -1,4 +1,4 @@
-import { query, mutation, internalQuery } from "../_generated/server";
+import { query, internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 
@@ -56,7 +56,7 @@ export const listAll = query({
 /**
  * Add a new model to the wallet catalog.
  */
-export const add = mutation({
+export const add = internalMutation({
   args: {
     modelId: v.string(),
     name: v.string(),
@@ -101,7 +101,7 @@ export const add = mutation({
 /**
  * Update an existing model.
  */
-export const update = mutation({
+export const update = internalMutation({
   args: {
     id: v.id("walletModels"),
     name: v.optional(v.string()),
@@ -132,7 +132,7 @@ export const update = mutation({
 /**
  * Remove a model from the catalog.
  */
-export const remove = mutation({
+export const remove = internalMutation({
   args: { id: v.id("walletModels") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);

@@ -3,6 +3,22 @@ import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
 
 /**
+ * Check if a redirect origin is registered in the allowlist.
+ * Used by the /connect page before showing the consent screen.
+ */
+export const isOriginAllowed = query({
+  args: { origin: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const allowed = await ctx.db
+      .query("walletAllowedOrigins")
+      .withIndex("by_origin", (q) => q.eq("origin", args.origin))
+      .unique();
+    return !!allowed;
+  },
+});
+
+/**
  * List all wallet keys for the current user (for settings/key management).
  */
 export const listMyKeys = query({

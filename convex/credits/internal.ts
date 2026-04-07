@@ -1443,6 +1443,10 @@ export const deductCredits = internalMutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
+    if (args.amount <= 0) {
+      throw new ConvexError({ code: "INVALID_AMOUNT", message: "Deduction amount must be positive" });
+    }
+
     const credits = await ctx.db
       .query("credits")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -1535,6 +1539,10 @@ export const addCredits = internalMutation({
   },
   returns: v.number(),
   handler: async (ctx, args) => {
+    if (args.amount <= 0) {
+      throw new ConvexError({ code: "INVALID_AMOUNT", message: "Credit amount must be positive" });
+    }
+
     const credits = await ctx.db
       .query("credits")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))

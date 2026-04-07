@@ -20,6 +20,17 @@ export const approveConnection = mutation({
     const user = await getCurrentUser(ctx);
     if (!user) throw createError("UNAUTHENTICATED", "Sign in required");
 
+    // Validate redirect origin against the registered allowlist
+    if (args.redirectOrigin !== "manual") {
+      const allowed = await ctx.db
+        .query("walletAllowedOrigins")
+        .withIndex("by_origin", (q) => q.eq("origin", args.redirectOrigin))
+        .unique();
+      if (!allowed) {
+        throw createError("VALIDATION_ERROR", "Unregistered redirect origin");
+      }
+    }
+
     await rateLimit(ctx, {
       name: "wallet-connect",
       key: user._id,
