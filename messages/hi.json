@@ -1593,6 +1593,7 @@
     "description": "स्कोरिंग नियम कॉन्फ़िगर करें और अपने खोज परिणामों से अधिकतम {max} लेखों की स्क्रीनिंग करें।",
     "paperCount": "{count} लेखों की स्क्रीनिंग होगी",
     "paperCountCapped": "{total} परिणामों में से पहले {max} की स्क्रीनिंग",
+    "ofTotal": "{total} में से",
     "creditCost": "{count} क्रेडिट आवश्यक",
     "creditsRequired": "क्रेडिट आवश्यक",
     "estCredits": "अनुमानित क्रेडिट",

@@ -29,7 +29,7 @@ import {
   extractErrorCode,
 } from "../../lib/posthog-ai-shared";
 import { getModelPricing } from "../../lib/ai-models";
-import { AI_COST_MARKUP } from "../lib/constants";
+import { AI_COST_MARKUP, ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 
 import {
@@ -204,9 +204,8 @@ export type UsageBreakdownEntry = {
 /**
  * Batch-aware auth and credits wrapper.
  * Checks auth/credits once, runs the batch handler, then deducts credits based on total usage.
- * @param minimumRequired - Minimum credits required before starting (e.g. papers.length).
- *                          Each AI call costs at least 1 credit, so this prevents burning
- *                          provider cost when the user clearly can't afford the batch.
+ * @param minimumRequired - Minimum credits required before starting.
+ *                          Use `papers.length * ESTIMATED_CREDITS_PER_PAPER` for batch operations.
  */
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
@@ -217,7 +216,7 @@ export async function withAuthAndCreditsBatch<T>(
     usageBreakdown?: UsageBreakdownEntry[];
     trackingEntries?: AITrackingEntry[];
   }>,
-  minimumRequired = 1,
+  minimumRequired = ESTIMATED_CREDITS_PER_QUERY,
 ): Promise<T> {
   try {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -334,7 +333,7 @@ export async function withUserCreditsBatch<T>(
       internal.credits.internal.getBalanceByUserId,
       { userId },
     );
-    if (!balance || balance.total <= 0) {
+    if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 
@@ -428,7 +427,7 @@ export async function withAuthAndCredits<T>(
       internal.credits.internal.getBalanceByUserId,
       { userId: user._id },
     );
-    if (!balance || balance.total <= 0) {
+    if (!balance || balance.total < ESTIMATED_CREDITS_PER_QUERY) {
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 

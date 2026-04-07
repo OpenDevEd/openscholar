@@ -349,7 +349,8 @@ describe("createScreeningJob", () => {
   it("accepts exactly 200 papers (boundary test)", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 200, 0);
+    // 200 papers * ESTIMATED_CREDITS_PER_PAPER (4.5) = 900 credits needed
+    await seedCredits(t, user._id, 900, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     const result = await asUser.mutation(
@@ -363,10 +364,11 @@ describe("createScreeningJob", () => {
     expect(result.jobId).toBeDefined();
   });
 
-  it("credit check uses freeBalance + paidBalance (30 free + 20 paid = 50 total)", async () => {
+  it("credit check uses freeBalance + paidBalance (125 free + 100 paid = 225 total)", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 30, 20); // 50 total
+    // 50 papers * ESTIMATED_CREDITS_PER_PAPER (4.5) = 225 credits needed
+    await seedCredits(t, user._id, 125, 100); // 225 total
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     const result = await asUser.mutation(

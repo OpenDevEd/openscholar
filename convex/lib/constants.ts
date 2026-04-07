@@ -10,6 +10,20 @@ export const FREE_SIGNUP_CREDIT_GRANT = 500;
  */
 export const AI_COST_MARKUP = 1.3;
 
+/**
+ * Estimated credit cost per paper for batch AI operations (screening, translation, extraction).
+ * Used for pre-flight balance checks before starting expensive batch jobs.
+ * Derived from typical token usage (~900 in / ~50 out) with the server model.
+ */
+export const ESTIMATED_CREDITS_PER_PAPER = 4.5;
+
+/**
+ * Estimated credit cost for single AI query operations
+ * (enhance query, generate questions, translate query, etc.).
+ * Used for pre-flight balance checks on non-batch operations.
+ */
+export const ESTIMATED_CREDITS_PER_QUERY = 2;
+
 export const PLAN_CONFIG = {
   free: { creditsPerMonth: 0, tier: 0, freeCreditCap: FREE_SIGNUP_CREDIT_GRANT },
   go: { creditsPerMonth: 3_000, tier: 10, freeCreditCap: 6_000 },

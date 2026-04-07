@@ -12,6 +12,7 @@ import {
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { workflow } from "../workflow";
 import { screeningPool } from "../workpool";
 import { scorePaper } from "./scoring";
@@ -98,10 +99,11 @@ export const createScreeningJob = mutation({
     const totalAvailable =
       (credits?.freeBalance ?? 0) + (credits?.paidBalance ?? 0);
 
-    if (totalAvailable < args.papers.length) {
+    const estimatedCost = Math.ceil(args.papers.length * ESTIMATED_CREDITS_PER_PAPER);
+    if (totalAvailable < estimatedCost) {
       throw createError(
         "INSUFFICIENT_CREDITS",
-        `Need ${args.papers.length} credits but only have ${totalAvailable}`
+        `Need ~${estimatedCost} credits for ${args.papers.length} papers but only have ${totalAvailable}`
       );
     }
 

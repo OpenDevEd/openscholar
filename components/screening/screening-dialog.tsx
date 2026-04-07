@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, AlertCircle, Import } from "lucide-react";
+import { Loader2, AlertCircle, Import, Coins } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Slider } from "@/components/ui/slider";
 import { useSearchOptional } from "@/lib/search";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -24,6 +26,7 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { reconstructAbstract } from "@/lib/openalex/reconstruct-abstract";
 import { api } from "@/convex/_generated/api";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
+import { ESTIMATED_CREDITS_PER_PAPER } from "@/convex/lib/constants";
 import type { ScoringRule, StarThreshold } from "@/convex/screening/scoring";
 import { ScoringRulesEditor } from "@/components/screening/scoring-rules-editor";
 import { StarThresholdEditor } from "@/components/screening/star-threshold-editor";
@@ -69,6 +72,8 @@ export function ScreeningDialog({
   searchId,
 }: ScreeningDialogProps) {
   const t = useTranslations("screeningDialog");
+  const tc = useTranslations("common");
+  const router = useRouter();
 
   // Footer screening questions (from store) — read-only, used for import
   const footerQuestions = useSearchHistoryStore(
@@ -197,14 +202,37 @@ export function ScreeningDialog({
   // Paper count from search context
   const search = useSearchOptional();
   const totalCount = search?.totalCount ?? 0;
-  const paperCount = Math.min(totalCount, MAX_SCREENING_PAPERS_PER_JOB);
+  const maxPapers = Math.min(totalCount, MAX_SCREENING_PAPERS_PER_JOB);
   const isCapped = totalCount > MAX_SCREENING_PAPERS_PER_JOB;
+  const [paperRange, setPaperRange] = useState<[number, number]>([1, maxPapers]);
+  const paperCount = paperRange[1] - paperRange[0] + 1;
 
   // Credit cost check
+  const estimatedCredits = Math.ceil(paperCount * ESTIMATED_CREDITS_PER_PAPER);
   const { data: balanceCheck } = useProtectedQuery(
     api.credits.queries.checkBalance,
-    open ? { requiredAmount: paperCount } : "skip"
+    open ? { requiredAmount: estimatedCredits } : "skip"
   );
+
+  // Set initial range to the max affordable paper count
+  const rangeInitialized = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      rangeInitialized.current = false;
+      return;
+    }
+    if (rangeInitialized.current || !balanceCheck || maxPapers < 1) return;
+    rangeInitialized.current = true;
+
+    const affordable = Math.floor(balanceCheck.total / ESTIMATED_CREDITS_PER_PAPER);
+    const end = Math.max(1, Math.min(affordable, maxPapers));
+    setPaperRange([1, end]);
+  }, [open, balanceCheck, maxPapers]);
+
+  // Also sync when maxPapers changes (new search) while dialog is closed
+  useEffect(() => {
+    if (!open) setPaperRange([1, maxPapers]);
+  }, [maxPapers, open]);
 
   // Convex mutation
   const createScreeningJob = useMutation(
@@ -226,16 +254,17 @@ export function ScreeningDialog({
     if (!search?.apiUrl) return;
     setIsSubmitting(true);
     try {
-      // 1. Fetch up to 200 papers from OpenAlex
+      // 1. Fetch papers from OpenAlex and slice to user-selected range
+      const [rangeStart, rangeEnd] = paperRange;
       const url = new URL(search.apiUrl);
-      url.searchParams.set("per_page", String(MAX_SCREENING_PAPERS_PER_JOB));
+      url.searchParams.set("per_page", String(rangeEnd));
       url.searchParams.set("page", "1");
       const response = await fetch(url.toString());
       if (!response.ok) {
         throw new Error(`OpenAlex API error: ${response.status}`);
       }
       const data = await response.json();
-      const works: Array<Record<string, unknown>> = data.results ?? [];
+      const works: Array<Record<string, unknown>> = (data.results ?? []).slice(rangeStart - 1, rangeEnd);
 
       // 2. Map to screening paper input shape
       const papers = works.map((w) => {
@@ -350,51 +379,64 @@ export function ScreeningDialog({
           <div className="space-y-4 py-2">
             {/* Credit usage card */}
             <div className="rounded-lg border border-border/50 bg-card px-4 py-3 space-y-3">
-              {/* Paper count context */}
-              <p className="text-xs text-muted-foreground">
-                {isCapped
-                  ? t("paperCountCapped", {
-                      max: MAX_SCREENING_PAPERS_PER_JOB,
-                      total: totalCount,
-                    })
-                  : t("paperCount", { count: paperCount })}
-              </p>
-
-              {/* Usage gauge */}
-              {balanceCheck && (
-                <div className="space-y-1.5">
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        balanceCheck.hasEnough
-                          ? "bg-primary"
-                          : "bg-destructive"
-                      }`}
-                      style={{
-                        width: `${Math.min((paperCount / balanceCheck.total) * 100, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs tabular-nums">
-                      <span className="font-semibold">~{paperCount.toLocaleString()}</span>
-                      <span className="text-muted-foreground"> {t("estCredits")}</span>
-                    </span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {balanceCheck.total.toLocaleString()} {t("balanceLabel")}
-                    </span>
-                  </div>
+              {/* Paper count selector */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {isCapped
+                      ? t("paperCountCapped", {
+                          max: MAX_SCREENING_PAPERS_PER_JOB,
+                          total: totalCount,
+                        })
+                      : t("paperCount", { count: paperCount })}
+                  </p>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {paperRange[0]}–{paperRange[1]} {t("ofTotal", { total: maxPapers })}
+                  </span>
                 </div>
-              )}
+                {maxPapers > 1 && (
+                  <Slider
+                    min={1}
+                    max={maxPapers}
+                    step={1}
+                    value={paperRange}
+                    onValueChange={([start, end]) => setPaperRange([start, end])}
+                    disabled={isSubmitting}
+                    className="w-full"
+                  />
+                )}
+              </div>
 
-              {/* Insufficient credits warning */}
-              {balanceCheck && !balanceCheck.hasEnough && (
-                <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  {t("insufficientCredits", {
-                    deficit: balanceCheck.deficit,
-                  })}
-                </p>
+              {/* Credit summary */}
+              {balanceCheck && (
+                <div className={`flex items-center justify-between rounded-md px-3 py-2 text-xs ${
+                  balanceCheck.hasEnough
+                    ? "bg-muted/50"
+                    : "bg-destructive/10"
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <Coins className={`h-3.5 w-3.5 ${
+                      balanceCheck.hasEnough ? "text-muted-foreground" : "text-destructive"
+                    }`} />
+                    <span className="tabular-nums">
+                      <span className="font-semibold">~{estimatedCredits.toLocaleString()}</span>
+                      <span className="text-muted-foreground"> / {balanceCheck.total.toLocaleString()}</span>
+                    </span>
+                  </div>
+                  {!balanceCheck.hasEnough && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 shrink-0 gap-1.5 px-2 text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
+                      onClick={() => {
+                        onOpenChange(false);
+                        router.push("/settings/billing#topup-section");
+                      }}
+                    >
+                      {tc("buyCredits")}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 

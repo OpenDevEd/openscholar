@@ -23,6 +23,7 @@ import {
 } from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
+import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 
 export const enhanceSearchQuery = createAIAction(
   {
@@ -221,7 +222,7 @@ export const generateBatchTranslations = action({
           trackingEntries,
         };
       },
-      papers.length, // pre-flight: at least 1 credit per paper
+      Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
     );
   },
 });
@@ -326,7 +327,7 @@ export const generateBatchScreeningResponses = action({
           trackingEntries,
         };
       },
-      papers.length, // pre-flight: at least 1 credit per paper
+      Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
     );
   },
 });

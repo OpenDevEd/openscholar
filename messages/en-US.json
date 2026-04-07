@@ -1577,6 +1577,7 @@
     "description": "Configure scoring rules and screen up to {max} papers from your search results.",
     "paperCount": "{count} papers will be screened",
     "paperCountCapped": "Screening first {max} of {total} results",
+    "ofTotal": "of {total}",
     "creditCost": "{count} credits required",
     "creditsRequired": "credits required",
     "estCredits": "est. credits",

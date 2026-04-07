@@ -1593,6 +1593,7 @@
     "description": "Configurez les règles de notation et criblez jusqu'à {max} articles parmi vos résultats de recherche.",
     "paperCount": "{count} articles seront criblés",
     "paperCountCapped": "Criblage des {max} premiers résultats sur {total}",
+    "ofTotal": "sur {total}",
     "creditCost": "{count} crédits requis",
     "creditsRequired": "crédits requis",
     "estCredits": "crédits est.",

@@ -1593,6 +1593,7 @@
     "description": "スコアリングルールを設定し、検索結果から最大 {max} 件の論文をスクリーニングします。",
     "paperCount": "{count} 件の論文がスクリーニングされます",
     "paperCountCapped": "{total} 件中、最初の {max} 件をスクリーニング",
+    "ofTotal": "{total} 件中",
     "creditCost": "{count} クレジットが必要です",
     "creditsRequired": "クレジットが必要",
     "estCredits": "推定クレジット",
