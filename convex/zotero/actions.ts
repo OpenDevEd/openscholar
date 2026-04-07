@@ -518,7 +518,7 @@ export const startOAuth = action({
 /**
  * Complete OAuth flow - exchange request token for access token.
  */
-export const completeOAuth = action({
+export const completeOAuth = internalAction({
   args: {
     oauthToken: v.string(),
     oauthVerifier: v.string(),

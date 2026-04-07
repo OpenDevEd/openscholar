@@ -228,7 +228,13 @@ export const getCollectionsWithCounts = query({
 export const getItemCollections = query({
   args: { libraryItemId: v.id("libraryItems") },
   handler: async (ctx, args) => {
-    await requireAuth(ctx);
+    const user = await requireAuth(ctx);
+
+    // Verify library item ownership to prevent cross-user data access
+    const item = await ctx.db.get("libraryItems", args.libraryItemId);
+    if (!item || item.userId !== user._id) {
+      return [];
+    }
 
     // Cardinality: ~1-50 collections per library item (user-created)
     const memberships = await ctx.db

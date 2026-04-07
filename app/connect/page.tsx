@@ -78,14 +78,14 @@ export default function ConnectPage() {
   }, [redirectUri, redirectOrigin, appName, isManualMode, isOriginAllowed, approveConnection, finalizeConnection]);
 
   const handleReject = useCallback(() => {
-    if (isManualMode) {
+    if (isManualMode || isOriginAllowed !== true) {
       window.close();
       return;
     }
     const url = new URL(redirectUri!);
     url.searchParams.set("error", "access_denied");
     window.location.href = url.toString();
-  }, [redirectUri, isManualMode]);
+  }, [redirectUri, isManualMode, isOriginAllowed]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedKey) return;
@@ -165,6 +165,39 @@ export default function ConnectPage() {
     );
   }
 
+  // ── Origin not allowed ──────────────────────────────────────
+  if (!isManualMode && isOriginAllowed === false) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-md w-full space-y-6 text-center">
+          <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <span className="text-2xl">&#x26D4;</span>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold">Origin Not Registered</h1>
+            <p className="text-muted-foreground">
+              The application at <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{redirectOrigin}</code> is
+              not registered to connect to OpenScholar.
+            </p>
+          </div>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-muted-foreground text-left space-y-2">
+            <p className="font-medium text-foreground">What does this mean?</p>
+            <p>
+              Only pre-approved origins can create wallet connections. If you are the developer of <strong>{appName}</strong>,
+              contact the OpenScholar team to register your origin.
+            </p>
+          </div>
+          <button
+            onClick={() => window.close()}
+            className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
+          >
+            Close this window
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Consent screen ─────────────────────────────────────────
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
@@ -188,10 +221,6 @@ export default function ConnectPage() {
                 <span className="font-mono text-xs">{redirectOrigin}</span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Mode</span>
-              <span className="text-xs">{isManualMode ? "Manual (copy key)" : "Redirect"}</span>
-            </div>
           </div>
           <div className="text-xs text-muted-foreground border-t pt-3">
             This app will be able to make AI generation requests using your credits.

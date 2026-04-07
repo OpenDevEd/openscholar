@@ -786,12 +786,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
+/** Routes where the sidebar should not render (fullscreen flows). */
+const CHROMELESS_ROUTES = ["/connect", "/sign-in", "/sign-up"];
+
 export function AppSidebar() {
   const ts = useTranslations("sidebar");
   const isMobile = useIsMobile();
+  const pathname = usePathname();
   const { isOpen, setOpen, isCollapsed, toggle, setCollapsed, _hasHydrated } =
     useSidebarStore();
   const { currentWidth } = getSidebarDimensions(isCollapsed);
+
+  // Hide sidebar on chromeless routes (consent flow, auth)
+  if (CHROMELESS_ROUTES.some((r) => pathname?.startsWith(r))) {
+    return null;
+  }
 
   // Keyboard shortcut: Cmd/Ctrl + B to toggle sidebar
   useEffect(() => {

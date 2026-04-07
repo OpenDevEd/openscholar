@@ -73,7 +73,7 @@ http.route({
 
     const frontendUrl = requireAppUrl();
     try {
-      const result = await ctx.runAction(api.zotero.actions.completeOAuth, {
+      const result = await ctx.runAction(internal.zotero.actions.completeOAuth, {
         oauthToken,
         oauthVerifier,
       });
