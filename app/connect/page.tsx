@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMutation, useAction } from "convex/react";
+import { useMutation, useAction, useQuery } from "convex/react";
 import { useState, useCallback } from "react";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -32,9 +32,20 @@ export default function ConnectPage() {
     }
   })();
 
+  const isOriginAllowed = useQuery(
+    api.wallet.queries.isOriginAllowed,
+    !isManualMode && redirectOrigin ? { origin: redirectOrigin } : "skip",
+  );
+
   const handleApprove = useCallback(async () => {
     if (!isManualMode && (!redirectUri || !redirectOrigin)) {
       setError("Invalid redirect_uri");
+      setState("error");
+      return;
+    }
+
+    if (!isManualMode && isOriginAllowed === false) {
+      setError("This application's origin is not registered");
       setState("error");
       return;
     }
@@ -64,7 +75,7 @@ export default function ConnectPage() {
       setError(e instanceof Error ? e.message : "Failed to create connection");
       setState("error");
     }
-  }, [redirectUri, redirectOrigin, appName, isManualMode, approveConnection, finalizeConnection]);
+  }, [redirectUri, redirectOrigin, appName, isManualMode, isOriginAllowed, approveConnection, finalizeConnection]);
 
   const handleReject = useCallback(() => {
     if (isManualMode) {
@@ -204,7 +215,7 @@ export default function ConnectPage() {
           </button>
           <button
             onClick={handleApprove}
-            disabled={state === "creating" || state === "done" || !canRunProtectedQueries}
+            disabled={state === "creating" || state === "done" || !canRunProtectedQueries || (!isManualMode && isOriginAllowed !== true)}
             className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {state === "creating"

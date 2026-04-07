@@ -62,13 +62,14 @@ export const validateKey = internalAction({
       userId: v.id("users"),
       walletKeyId: v.id("walletKeys"),
       appName: v.string(),
+      redirectOrigin: v.string(),
     }),
   ),
-  handler: async (ctx, args): Promise<{ userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string } | null> => {
+  handler: async (ctx, args): Promise<{ userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null> => {
     if (!args.rawKey.startsWith(WALLET_KEY_PREFIX)) return null;
 
     const hashedKey = hashKey(args.rawKey);
-    const result: { userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string } | null = await ctx.runQuery(internal.wallet.internal.lookupKey, { hashedKey });
+    const result: { userId: Id<"users">; walletKeyId: Id<"walletKeys">; appName: string; redirectOrigin: string } | null = await ctx.runQuery(internal.wallet.internal.lookupKey, { hashedKey });
     if (!result) return null;
 
     // Touch lastUsedAt (fire-and-forget)

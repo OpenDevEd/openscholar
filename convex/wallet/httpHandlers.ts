@@ -92,11 +92,20 @@ export const handleGenerate = httpAction(async (ctx, request) => {
     userId: Id<"users">;
     walletKeyId: Id<"walletKeys">;
     appName: string;
+    redirectOrigin: string;
   } | null = await ctx.runAction(internal.wallet.nodeActions.validateKey, {
     rawKey,
   });
   if (!keyResult) {
     return corsError("Invalid or revoked API key", 401);
+  }
+
+  // 2b. Enforce origin — key can only be used from its registered origin
+  if (keyResult.redirectOrigin !== "manual") {
+    const requestOrigin = request.headers.get("origin");
+    if (requestOrigin && requestOrigin !== keyResult.redirectOrigin) {
+      return corsError("Origin mismatch: this key is not authorized for this origin", 403);
+    }
   }
 
   // 3. Rate limit (internal mutation)
