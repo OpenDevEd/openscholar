@@ -1,11 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-// Mock getModelPricing before importing the module under test
-vi.mock("../lib/ai-models", () => ({
-  getModelPricing: vi.fn(),
-}));
-
-import { getModelPricing } from "../lib/ai-models";
 import {
   buildAIGenerationProperties,
   truncateForTracking,
@@ -15,13 +9,10 @@ import {
   type AIGenerationParams,
 } from "../lib/posthog-ai-shared";
 
-const mockGetModelPricing = vi.mocked(getModelPricing);
-
 // Stable UUID for deterministic tests
 const MOCK_UUID = "00000000-1111-2222-3333-444444444444";
 
 beforeEach(() => {
-  mockGetModelPricing.mockReset();
   vi.spyOn(crypto, "randomUUID").mockReturnValue(MOCK_UUID as `${string}-${string}-${string}-${string}-${string}`);
 });
 
@@ -223,9 +214,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Required fields ──────────────────────────────────────
 
   describe("required fields", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("always includes $ai_trace_id", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -267,9 +255,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Latency conversion ───────────────────────────────────
 
   describe("latency", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("converts milliseconds to seconds", () => {
       const props = buildAIGenerationProperties({ ...baseParams, latencyMs: 2500 });
@@ -290,9 +275,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Token defaults ───────────────────────────────────────
 
   describe("token defaults", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("defaults missing inputTokens to 0", () => {
       const props = buildAIGenerationProperties({
@@ -320,57 +302,9 @@ describe("buildAIGenerationProperties", () => {
     });
   });
 
-  // ── Cost calculation ─────────────────────────────────────
-
-  describe("cost calculation", () => {
-    it("includes cost props when pricing is known", () => {
-      mockGetModelPricing.mockReturnValue({ input: 2.5, output: 10.0 });
-      const props = buildAIGenerationProperties({
-        ...baseParams,
-        usage: { inputTokens: 1_000_000, outputTokens: 500_000 },
-      });
-      expect(props.$ai_input_cost_usd).toBe(2.5);
-      expect(props.$ai_output_cost_usd).toBe(5.0);
-      expect(props.$ai_total_cost_usd).toBe(7.5);
-    });
-
-    it("calculates cost correctly for small token counts", () => {
-      mockGetModelPricing.mockReturnValue({ input: 3.0, output: 15.0 });
-      const props = buildAIGenerationProperties({
-        ...baseParams,
-        usage: { inputTokens: 1000, outputTokens: 500 },
-      });
-      // 1000 / 1M * 3.0 = 0.003, 500 / 1M * 15.0 = 0.0075
-      expect(props.$ai_input_cost_usd).toBeCloseTo(0.003, 6);
-      expect(props.$ai_output_cost_usd).toBeCloseTo(0.0075, 6);
-      expect(props.$ai_total_cost_usd).toBeCloseTo(0.0105, 6);
-    });
-
-    it("omits cost props when pricing is unknown (both zero)", () => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-      const props = buildAIGenerationProperties(baseParams);
-      expect(props).not.toHaveProperty("$ai_input_cost_usd");
-      expect(props).not.toHaveProperty("$ai_output_cost_usd");
-      expect(props).not.toHaveProperty("$ai_total_cost_usd");
-    });
-
-    it("includes cost when only input pricing is known", () => {
-      mockGetModelPricing.mockReturnValue({ input: 5.0, output: 0 });
-      const props = buildAIGenerationProperties({
-        ...baseParams,
-        usage: { inputTokens: 100, outputTokens: 100 },
-      });
-      expect(props).toHaveProperty("$ai_input_cost_usd");
-      expect(props.$ai_output_cost_usd).toBe(0);
-    });
-  });
-
   // ── Fix 1: HTTP status ───────────────────────────────────
 
   describe("$ai_http_status (Fix 1)", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("defaults to 200 for successful operations", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -409,9 +343,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Fix 3: Trace ID ──────────────────────────────────────
 
   describe("$ai_trace_id (Fix 3)", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("auto-generates UUID when traceId not provided", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -431,9 +362,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Fix 5: Temperature & maxTokens ───────────────────────
 
   describe("$ai_temperature and $ai_max_tokens (Fix 5)", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("omits $ai_temperature when not provided", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -464,9 +392,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Fix 6: Error code ────────────────────────────────────
 
   describe("$ai_error_code (Fix 6)", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("omits $ai_error_code when not provided", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -495,9 +420,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Error state ──────────────────────────────────────────
 
   describe("error state", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("defaults $ai_is_error to false", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -550,9 +472,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Metadata ─────────────────────────────────────────────
 
   describe("metadata", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("spreads metadata into properties", () => {
       const props = buildAIGenerationProperties({
@@ -581,9 +500,6 @@ describe("buildAIGenerationProperties", () => {
   // ── Credit tracking ───────────────────────────────────────
 
   describe("credit tracking", () => {
-    beforeEach(() => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-    });
 
     it("omits credit fields when not provided", () => {
       const props = buildAIGenerationProperties(baseParams);
@@ -656,7 +572,6 @@ describe("buildAIGenerationProperties", () => {
 
   describe("integration", () => {
     it("produces complete event for a successful generation with all fields", () => {
-      mockGetModelPricing.mockReturnValue({ input: 2.5, output: 10.0 });
       const traceId = "shared-trace-abc";
 
       const props = buildAIGenerationProperties({
@@ -683,9 +598,6 @@ describe("buildAIGenerationProperties", () => {
         $ai_model: "gpt-4o",
         $ai_input_tokens: 500,
         $ai_output_tokens: 200,
-        $ai_input_cost_usd: expect.closeTo(0.00125, 6),
-        $ai_output_cost_usd: expect.closeTo(0.002, 6),
-        $ai_total_cost_usd: expect.closeTo(0.00325, 6),
         $ai_latency: 1.234,
         $ai_is_error: false,
         $ai_http_status: 200,
@@ -703,8 +615,6 @@ describe("buildAIGenerationProperties", () => {
     });
 
     it("produces complete event for a failed generation with all error fields", () => {
-      mockGetModelPricing.mockReturnValue({ input: 0, output: 0 });
-
       const props = buildAIGenerationProperties({
         provider: "anthropic",
         modelId: "claude-sonnet-4-20250514",
@@ -725,7 +635,6 @@ describe("buildAIGenerationProperties", () => {
       expect(props.$ai_error_code).toBe("AI_PROVIDER_ERROR");
       expect(props.$ai_error).toBe("Rate limit exceeded");
       expect(props.$ai_temperature).toBe(0);
-      expect(props).not.toHaveProperty("$ai_input_cost_usd");
     });
   });
 });

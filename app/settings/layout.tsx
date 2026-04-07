@@ -5,7 +5,7 @@ import { SidebarNav } from "@/components/settings/sidebar-nav";
 import { PageWrapper } from "@/components/PageWrapper";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
-import { Settings, Bot, CreditCard, Settings2 } from "lucide-react";
+import { Settings, Bot, CreditCard, Settings2, Plug } from "lucide-react";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -35,6 +35,7 @@ export default function SettingsLayout({
     { title: tc("general"), href: "/settings", icon: Settings2 },
     { title: tc("ai"), href: "/settings/ai", icon: Bot },
     ...(hideBilling ? [] : [{ title: tc("billing"), href: "/settings/billing", icon: CreditCard }]),
+    { title: "Connections", href: "/settings/connections", icon: Plug },
   ];
   const sidebarNavItems = isSignedIn
     ? baseSignedInItems

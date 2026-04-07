@@ -30,11 +30,13 @@ export function calculateCreditsToDeductFromUsage(args: {
   provider: AIProvider;
   modelId: string;
   markupMultiplier?: number;
+  pricingOverride?: { input: number; output: number };
 }): number {
   const costDollars = calculateCostInDollars(
     args.usage,
     args.provider,
     args.modelId,
+    args.pricingOverride,
   );
 
   const pricedCredits = convertUsdCostToCredits(
@@ -56,11 +58,13 @@ export function calculateRawCreditCost(args: {
   provider: AIProvider;
   modelId: string;
   markupMultiplier?: number;
+  pricingOverride?: { input: number; output: number };
 }): number {
   const costDollars = calculateCostInDollars(
     args.usage,
     args.provider,
     args.modelId,
+    args.pricingOverride,
   );
   if (!Number.isFinite(costDollars) || costDollars <= 0) return 0;
   const markup = args.markupMultiplier ?? AI_COST_MARKUP;

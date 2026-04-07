@@ -39,4 +39,21 @@ describe("AI credit billing helpers", () => {
 
     expect(actualCredits).toBe(expectedCredits);
   });
+
+  it("uses pricingOverride instead of model lookup", () => {
+    const usage = { inputTokens: 1_000_000, outputTokens: 1_000_000 };
+    const override = { input: 10.0, output: 20.0 };
+
+    const withOverride = calculateCreditsToDeductFromUsage({
+      usage,
+      provider: "openrouter",
+      modelId: "unknown/model",
+      pricingOverride: override,
+    });
+
+    // Override provides real pricing → should compute actual credits, not fall back to 1
+    const expectedCost = 10.0 + 20.0;
+    const expectedCredits = convertUsdCostToCredits(expectedCost);
+    expect(withOverride).toBe(expectedCredits);
+  });
 });

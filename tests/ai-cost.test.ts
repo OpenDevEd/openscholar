@@ -94,11 +94,40 @@ describe("calculateCostInDollars", () => {
     expect(cost).toBeCloseTo(0.05, 6);
   });
 
-  it("returns zero cost for openrouter", () => {
+  it("resolves openrouter model to underlying provider pricing", () => {
     const cost = calculateCostInDollars(
       { promptTokens: 1_000_000, completionTokens: 1_000_000 },
       "openrouter",
-      "any-model"
+      "google/gemini-3.1-flash-lite-preview"
+    );
+    // Should resolve to gemini-3.1-flash-lite-preview: $0.25 input, $1.50 output
+    expect(cost).toBeCloseTo(0.25 + 1.50, 6);
+  });
+
+  it("resolves openrouter model via prefix match", () => {
+    const cost = calculateCostInDollars(
+      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
+      "openrouter",
+      "openai/gpt-5-mini-some-variant"
+    );
+    // Should prefix-match to gpt-5-mini: $0.25 input, $2.00 output
+    expect(cost).toBeCloseTo(0.25 + 2.00, 6);
+  });
+
+  it("returns zero cost for unresolvable openrouter model", () => {
+    const cost = calculateCostInDollars(
+      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
+      "openrouter",
+      "unknown-provider/any-model"
+    );
+    expect(cost).toBe(0);
+  });
+
+  it("returns zero cost for openrouter model without slash", () => {
+    const cost = calculateCostInDollars(
+      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
+      "openrouter",
+      "some-model-no-slash"
     );
     expect(cost).toBe(0);
   });
@@ -110,6 +139,27 @@ describe("calculateCostInDollars", () => {
       "nonexistent-model"
     );
     expect(cost).toBe(0);
+  });
+
+  it("uses pricingOverride when provided", () => {
+    const cost = calculateCostInDollars(
+      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
+      "openai",
+      "gpt-5-nano",
+      { input: 99.0, output: 199.0 }
+    );
+    // Should use override (99 + 199), not gpt-5-nano's real pricing (0.05 + 0.40)
+    expect(cost).toBeCloseTo(99.0 + 199.0, 6);
+  });
+
+  it("falls back to model lookup when pricingOverride is undefined", () => {
+    const cost = calculateCostInDollars(
+      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
+      "openai",
+      "gpt-5-nano",
+      undefined
+    );
+    expect(cost).toBeCloseTo(0.05 + 0.40, 6);
   });
 });
 

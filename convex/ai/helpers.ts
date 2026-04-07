@@ -28,6 +28,7 @@ import {
   extractHttpStatus,
   extractErrorCode,
 } from "../../lib/posthog-ai-shared";
+import { getModelPricing } from "../../lib/ai-models";
 import { AI_COST_MARKUP } from "../lib/constants";
 import { createError } from "../lib/errors";
 
@@ -36,6 +37,8 @@ import {
   calculateRawCreditCost,
   convertUsdCostToCredits,
 } from "./lib/creditBilling";
+
+type Pricing = { input: number; output: number };
 
 function hasStructuredConvexCode(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -149,22 +152,46 @@ export function convertServerCostDollarsToCredits(costDollars: number): number {
   return convertUsdCostToCredits(costDollars, AI_COST_MARKUP);
 }
 
-export function calculateServerCreditsToDeduct(usage: Usage): number {
+/**
+ * Fetch live pricing for the server model from the pricingCache table.
+ * Falls back to hardcoded pricing if the table has no entry.
+ */
+export async function fetchServerPricing(ctx: ActionCtx): Promise<Pricing> {
+  const cached = await ctx.runQuery(
+    internal.pricing.queries.getCachedPricing,
+    { modelId: SERVER_AI_CONFIG.model },
+  );
+  if (cached) return cached;
+  return getModelPricing(
+    SERVER_AI_CONFIG.provider as AIProvider,
+    SERVER_AI_CONFIG.model,
+  );
+}
+
+export function calculateServerCreditsToDeduct(
+  usage: Usage,
+  pricing?: Pricing,
+): number {
   return calculateCreditsToDeductFromUsage({
     usage,
     provider: SERVER_AI_CONFIG.provider as AIProvider,
     modelId: SERVER_AI_CONFIG.model,
     markupMultiplier: AI_COST_MARKUP,
+    pricingOverride: pricing,
   });
 }
 
 /** Raw fractional credit cost (no ceiling/min). For PostHog analytics only. */
-export function calculateServerRawCreditCost(usage: Usage): number {
+export function calculateServerRawCreditCost(
+  usage: Usage,
+  pricing?: Pricing,
+): number {
   return calculateRawCreditCost({
     usage,
     provider: SERVER_AI_CONFIG.provider as AIProvider,
     modelId: SERVER_AI_CONFIG.model,
     markupMultiplier: AI_COST_MARKUP,
+    pricingOverride: pricing,
   });
 }
 
@@ -209,16 +236,18 @@ export async function withAuthAndCreditsBatch<T>(
       );
     }
 
+    const pricing = await fetchServerPricing(ctx);
+
     const start = Date.now();
     const { result, totalUsage, usageBreakdown, trackingEntries } = await handler(user);
     const latencyMs = Date.now() - start;
 
     const totalCreditsDeducted = usageBreakdown && usageBreakdown.length > 0
-      ? usageBreakdown.reduce((sum, e) => sum + calculateServerCreditsToDeduct(e.usage), 0)
-      : calculateServerCreditsToDeduct(totalUsage);
+      ? usageBreakdown.reduce((sum, e) => sum + calculateServerCreditsToDeduct(e.usage, pricing), 0)
+      : calculateServerCreditsToDeduct(totalUsage, pricing);
     const totalRawCost = usageBreakdown && usageBreakdown.length > 0
-      ? usageBreakdown.reduce((sum, e) => sum + calculateServerRawCreditCost(e.usage), 0)
-      : calculateServerRawCreditCost(totalUsage);
+      ? usageBreakdown.reduce((sum, e) => sum + calculateServerRawCreditCost(e.usage, pricing), 0)
+      : calculateServerRawCreditCost(totalUsage, pricing);
     const creditContext = {
       creditsDeducted: totalCreditsDeducted,
       creditsRawCost: totalRawCost,
@@ -257,7 +286,7 @@ export async function withAuthAndCreditsBatch<T>(
 
     if (usageBreakdown && usageBreakdown.length > 0) {
       for (const entry of usageBreakdown) {
-        const amount = calculateServerCreditsToDeduct(entry.usage);
+        const amount = calculateServerCreditsToDeduct(entry.usage, pricing);
         if (amount <= 0) continue;
         await ctx.runMutation(internal.credits.internal.deductCredits, {
           userId: user._id,
@@ -267,7 +296,7 @@ export async function withAuthAndCreditsBatch<T>(
         });
       }
     } else {
-      const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
+      const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
       await ctx.runMutation(internal.credits.internal.deductCredits, {
         userId: user._id,
         amount: creditsToDeduct,
@@ -309,14 +338,16 @@ export async function withUserCreditsBatch<T>(
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 
+    const pricing = await fetchServerPricing(ctx);
+
     const start = Date.now();
     const { result, totalUsage, trackingEntries } = await handler();
     const latencyMs = Date.now() - start;
 
-    const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage);
+    const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
     const creditContext = {
       creditsDeducted: creditsToDeduct,
-      creditsRawCost: calculateServerRawCreditCost(totalUsage),
+      creditsRawCost: calculateServerRawCreditCost(totalUsage, pricing),
       creditsRemaining: Math.max(0, balance.total - creditsToDeduct),
       lifetimeCreditsUsed: balance.lifetimeUsed + creditsToDeduct,
     };
@@ -401,11 +432,13 @@ export async function withAuthAndCredits<T>(
       throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
     }
 
+    const pricing = await fetchServerPricing(ctx);
+
     const buildCreditContext = (usage: Usage): CreditContext => {
-      const deducted = calculateServerCreditsToDeduct(usage);
+      const deducted = calculateServerCreditsToDeduct(usage, pricing);
       return {
         creditsDeducted: deducted,
-        creditsRawCost: calculateServerRawCreditCost(usage),
+        creditsRawCost: calculateServerRawCreditCost(usage, pricing),
         creditsRemaining: Math.max(0, balance.total - deducted),
         lifetimeCreditsUsed: balance.lifetimeUsed + deducted,
       };
@@ -413,7 +446,7 @@ export async function withAuthAndCredits<T>(
 
     const { result, usage } = await handler(user, buildCreditContext);
 
-    const creditsToDeduct = calculateServerCreditsToDeduct(usage);
+    const creditsToDeduct = calculateServerCreditsToDeduct(usage, pricing);
 
     await ctx.runMutation(internal.credits.internal.deductCredits, {
       userId: user._id,

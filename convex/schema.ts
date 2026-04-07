@@ -8,6 +8,16 @@ export default defineSchema({
   ...rateLimitTables,
 
   // ═══════════════════════════════════════════════════════════════
+  // PRICING CACHE - OpenRouter model pricing, refreshed daily
+  // ═══════════════════════════════════════════════════════════════
+  pricingCache: defineTable({
+    modelId: v.string(),
+    inputPerMillion: v.number(),
+    outputPerMillion: v.number(),
+    updatedAt: v.number(),
+  }).index("by_model", ["modelId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // FEATURE FLAGS - Database-driven feature gating
   // ═══════════════════════════════════════════════════════════════
   featureFlags: defineTable({
@@ -176,6 +186,53 @@ export default defineSchema({
     .index("by_action", ["action"])
     .index("by_action_timestamp", ["action", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // WALLET MODELS - Dynamic AI model catalog for the wallet gateway
+  // ═══════════════════════════════════════════════════════════════
+  walletModels: defineTable({
+    modelId: v.string(),
+    name: v.string(),
+    provider: v.union(
+      v.literal("openai"),
+      v.literal("anthropic"),
+      v.literal("google"),
+      v.literal("deepseek"),
+      v.literal("azure"),
+      v.literal("openrouter"),
+    ),
+    description: v.optional(v.string()),
+    contextWindow: v.optional(v.number()),
+    inputPricePerMillion: v.number(),
+    outputPricePerMillion: v.number(),
+    costMarkup: v.number(),
+    capabilities: v.array(v.string()),
+    category: v.optional(v.string()),
+    isActive: v.boolean(),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_model_id", ["modelId"])
+    .index("by_provider", ["provider"])
+    .index("by_active_sort", ["isActive", "sortOrder"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // WALLET KEYS - API keys for external site AI gateway access
+  // ═══════════════════════════════════════════════════════════════
+  walletKeys: defineTable({
+    userId: v.id("users"),
+    hashedKey: v.string(),
+    keyPrefix: v.string(),
+    appName: v.string(),
+    redirectOrigin: v.string(),
+    isActive: v.boolean(),
+    lastUsedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_hashed_key", ["hashedKey"])
+    .index("by_user", ["userId"])
+    .index("by_user_active", ["userId", "isActive"]),
 
   // ═══════════════════════════════════════════════════════════════
   // API KEYS - BYOK (Bring Your Own Key) storage

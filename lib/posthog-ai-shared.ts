@@ -4,7 +4,6 @@
  */
 
 import type { AIProvider } from "./types";
-import { getModelPricing } from "./ai-models";
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -123,20 +122,6 @@ export function extractErrorCode(error: unknown): string | undefined {
 export function buildAIGenerationProperties(params: AIGenerationParams): Record<string, unknown> {
   const promptTokens = params.usage.inputTokens ?? 0;
   const completionTokens = params.usage.outputTokens ?? 0;
-  const pricing = getModelPricing(params.provider, params.modelId);
-  const hasPricing = pricing.input > 0 || pricing.output > 0;
-
-  // Only send cost properties when we have known pricing.
-  // When omitted, PostHog auto-calculates costs from its own pricing database.
-  const costProps = hasPricing
-    ? {
-        $ai_input_cost_usd: (promptTokens / 1_000_000) * pricing.input,
-        $ai_output_cost_usd: (completionTokens / 1_000_000) * pricing.output,
-        $ai_total_cost_usd:
-          (promptTokens / 1_000_000) * pricing.input +
-          (completionTokens / 1_000_000) * pricing.output,
-      }
-    : {};
 
   return {
     $ai_trace_id: params.traceId ?? crypto.randomUUID(),
@@ -144,7 +129,6 @@ export function buildAIGenerationProperties(params: AIGenerationParams): Record<
     $ai_model: params.modelId,
     $ai_input_tokens: promptTokens,
     $ai_output_tokens: completionTokens,
-    ...costProps,
     $ai_latency: params.latencyMs / 1000,
     $ai_is_error: params.isError ?? false,
     $ai_http_status: params.httpStatus ?? (params.isError ? 500 : 200),

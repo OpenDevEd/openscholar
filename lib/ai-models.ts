@@ -190,6 +190,16 @@ const OPENAI_MODELS: AIModel[] = [
 ]
 
 const GOOGLE_MODELS: AIModel[] = [
+  // Gemini 3.1 Family (Preview)
+  {
+    id: 'gemini-3.1-flash-lite-preview',
+    name: 'Gemini 3.1 Flash Lite Preview',
+    provider: 'google',
+    description: 'Ultra-fast lightweight Gemini 3.1 model',
+    contextWindow: 1048576,
+    pricing: { input: 0.25, output: 1.50 },
+    capabilities: ['vision', 'function-calling'],
+  },
   // Gemini 3 Family (Preview)
   {
     id: 'gemini-3-pro-preview',
@@ -440,13 +450,61 @@ export function getDefaultModelForProvider(provider: AIProvider): string {
   return DEFAULT_MODELS[provider]
 }
 
+/**
+ * Map of OpenRouter provider prefixes to our AIProvider type.
+ * OpenRouter model IDs follow the format `provider/model-name`.
+ */
+const OPENROUTER_PROVIDER_MAP: Record<string, AIProvider> = {
+  openai: 'openai',
+  google: 'google',
+  anthropic: 'anthropic',
+  deepseek: 'deepseek',
+}
+
 export function getModelPricing(provider: AIProvider, modelId: string): { input: number; output: number } {
   if (provider === 'openrouter') {
-    return { input: 0, output: 0 }
+    return resolveOpenRouterPricing(modelId)
   }
   const model = getModelById(provider, modelId)
   if (!model) {
     return { input: 0, output: 0 }
   }
   return model.pricing
+}
+
+/**
+ * Resolves pricing for an OpenRouter model ID (e.g. `google/gemini-3.1-flash-lite-preview`).
+ * 1. Exact match against the underlying provider's model list.
+ * 2. Prefix match: finds the model whose ID is the longest prefix of the OpenRouter model name
+ *    (handles versioned/preview suffixes like `-preview`, `-latest`).
+ * 3. Falls back to { input: 0, output: 0 } if nothing matches.
+ */
+function resolveOpenRouterPricing(modelId: string): { input: number; output: number } {
+  const slashIdx = modelId.indexOf('/')
+  if (slashIdx === -1) return { input: 0, output: 0 }
+
+  const providerPrefix = modelId.slice(0, slashIdx)
+  const baseModelId = modelId.slice(slashIdx + 1)
+
+  const mappedProvider = OPENROUTER_PROVIDER_MAP[providerPrefix]
+  if (!mappedProvider) return { input: 0, output: 0 }
+
+  // 1. Exact match
+  const exact = getModelById(mappedProvider, baseModelId)
+  if (exact) return exact.pricing
+
+  // 2. Prefix match — find the model whose ID is the longest prefix of the
+  //    OpenRouter model name (e.g. "gemini-2.5-flash" matches "gemini-2.5-flash-lite").
+  const models = getModelsForProvider(mappedProvider)
+  let bestMatch: AIModel | undefined
+  let bestLen = 0
+  for (const m of models) {
+    if (baseModelId.startsWith(m.id) && m.id.length > bestLen) {
+      bestMatch = m
+      bestLen = m.id.length
+    }
+  }
+  if (bestMatch) return bestMatch.pricing
+
+  return { input: 0, output: 0 }
 }

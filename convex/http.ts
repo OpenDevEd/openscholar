@@ -12,6 +12,11 @@ import {
   processInvoiceForGrantNonBlocking as _processInvoiceForGrantNonBlocking,
 } from "./lib/stripeWebhookHandlers";
 import type Stripe from "stripe";
+import {
+  handleGenerate,
+  handleModels,
+  handleCors,
+} from "./wallet/httpHandlers";
 
 const http = httpRouter();
 const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
@@ -339,6 +344,32 @@ registerRoutes(http, components.stripe, {
       classification: "received",
     });
   },
+});
+
+// ─── Wallet AI Gateway ───────────────────────────────────────
+
+http.route({
+  path: "/api/wallet/generate",
+  method: "POST",
+  handler: handleGenerate,
+});
+
+http.route({
+  path: "/api/wallet/generate",
+  method: "OPTIONS",
+  handler: handleCors,
+});
+
+http.route({
+  path: "/api/wallet/models",
+  method: "GET",
+  handler: handleModels,
+});
+
+http.route({
+  path: "/api/wallet/models",
+  method: "OPTIONS",
+  handler: handleCors,
 });
 
 export default http;
