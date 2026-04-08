@@ -174,6 +174,7 @@
     "buyCredits": "Buy Credits",
     "anotherPlan": "another plan",
     "onDate": "on {date}",
+    "connections": "Connections",
     "localeLabels": {
       "enUS": "English (US)",
       "enGB": "English (UK)",
@@ -1643,5 +1644,24 @@
     "newCollectionName": "Collection name",
     "closeDialog": "Close",
     "newScreening": "New Screening"
+  },
+  "connectionsPage": {
+    "connectedApps": "Connected Apps",
+    "manageExternalApps": "Manage external apps that use AI generation through your credits.",
+    "loadingConnections": "Loading connections...",
+    "noConnectedApps": "No connected apps",
+    "noConnectedAppsDescription": "When external apps connect to your wallet, they will appear here.",
+    "activeCount": "Active ({count})",
+    "revokedCount": "Revoked ({count})",
+    "revoking": "Revoking...",
+    "confirm": "Confirm",
+    "revoke": "Revoke",
+    "revokedBadge": "Revoked",
+    "created": "Created {time}",
+    "lastUsed": "Last used {time}",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago"
   }
 }

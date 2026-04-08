@@ -10,20 +10,7 @@ import { Plug, Trash2, Clock, Globe, ShieldCheck, ShieldOff } from "lucide-react
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
-
-function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diff = now - timestamp;
-  const minutes = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days = Math.floor(diff / 86_400_000);
-
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 30) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString();
-}
+import { useTranslations, useFormatter } from "next-intl";
 
 export default function ConnectionsPage() {
   const { phase, canRunProtectedQueries } = useAuthReadiness();
@@ -35,6 +22,28 @@ export default function ConnectionsPage() {
 
   const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<Id<"walletKeys"> | null>(null);
+
+  const t = useTranslations("connectionsPage");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+
+  const formatRelativeTime = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60_000);
+    const hours = Math.floor(diff / 3_600_000);
+    const days = Math.floor(diff / 86_400_000);
+
+    if (minutes < 1) return t("justNow");
+    if (minutes < 60) return t("minutesAgo", { count: minutes });
+    if (hours < 24) return t("hoursAgo", { count: hours });
+    if (days < 30) return t("daysAgo", { count: days });
+    return format.dateTime(new Date(timestamp), {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   const handleRevoke = useCallback(
     async (walletKeyId: Id<"walletKeys">) => {
@@ -76,9 +85,9 @@ export default function ConnectionsPage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-6 py-5 border-b border-border/40">
-        <h2 className="text-lg font-semibold tracking-tight">Connected Apps</h2>
+        <h2 className="text-lg font-semibold tracking-tight">{t("connectedApps")}</h2>
         <p className="text-sm text-muted-foreground">
-          Manage external apps that use AI generation through your credits.
+          {t("manageExternalApps")}
         </p>
       </div>
 
@@ -88,7 +97,7 @@ export default function ConnectionsPage() {
         {!keys && (
           <div className="py-12 text-center text-sm text-muted-foreground">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-2" />
-            Loading connections...
+            {t("loadingConnections")}
           </div>
         )}
 
@@ -103,9 +112,9 @@ export default function ConnectionsPage() {
               <Plug className="w-6 h-6 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium">No connected apps</p>
+              <p className="font-medium">{t("noConnectedApps")}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                When external apps connect to your wallet, they will appear here.
+                {t("noConnectedAppsDescription")}
               </p>
             </div>
           </motion.div>
@@ -116,7 +125,7 @@ export default function ConnectionsPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
               <ShieldCheck className="w-4 h-4" />
-              <span>Active ({activeKeys.length})</span>
+              <span>{t("activeCount", { count: activeKeys.length })}</span>
             </div>
 
             <div className="space-y-2">
@@ -148,7 +157,7 @@ export default function ConnectionsPage() {
                             onClick={() => setConfirmRevoke(null)}
                             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            Cancel
+                            {tc("cancel")}
                           </button>
                           <button
                             onClick={() => handleRevoke(key._id)}
@@ -156,7 +165,7 @@ export default function ConnectionsPage() {
                             className="flex items-center gap-1.5 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
                           >
                             <Trash2 className="w-3 h-3" />
-                            {revoking === key._id ? "Revoking..." : "Confirm"}
+                            {revoking === key._id ? t("revoking") : t("confirm")}
                           </button>
                         </div>
                       ) : (
@@ -165,7 +174,7 @@ export default function ConnectionsPage() {
                           className="flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
                         >
                           <Trash2 className="w-3 h-3" />
-                          Revoke
+                          {t("revoke")}
                         </button>
                       )}
                     </div>
@@ -179,12 +188,12 @@ export default function ConnectionsPage() {
                       )}
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Created {formatRelativeTime(key.createdAt)}
+                        {t("created", { time: formatRelativeTime(key.createdAt) })}
                       </span>
                       {key.lastUsedAt && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          Last used {formatRelativeTime(key.lastUsedAt)}
+                          {t("lastUsed", { time: formatRelativeTime(key.lastUsedAt) })}
                         </span>
                       )}
                     </div>
@@ -200,7 +209,7 @@ export default function ConnectionsPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
               <ShieldOff className="w-4 h-4" />
-              <span>Revoked ({revokedKeys.length})</span>
+              <span>{t("revokedCount", { count: revokedKeys.length })}</span>
             </div>
 
             <div className="space-y-2">
@@ -219,14 +228,14 @@ export default function ConnectionsPage() {
                       </code>
                     </div>
                     <span className="text-xs text-muted-foreground border border-border/50 rounded-md px-2 py-0.5">
-                      Revoked
+                      {t("revokedBadge")}
                     </span>
                   </div>
 
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      Created {formatRelativeTime(key.createdAt)}
+                      {t("created", { time: formatRelativeTime(key.createdAt) })}
                     </span>
                   </div>
                 </div>
