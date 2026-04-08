@@ -13,11 +13,11 @@ import {
 } from "./lib/stripeWebhookHandlers";
 import type Stripe from "stripe";
 import {
-  handleGenerate,
-  handleModels,
+  handleChatCompletions,
+  handleModelsV1,
   handleBalance,
   handleCors,
-} from "./wallet/httpHandlers";
+} from "./wallet/gateway/handler";
 
 const http = httpRouter();
 const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
@@ -347,28 +347,28 @@ registerRoutes(http, components.stripe, {
   },
 });
 
-// ─── Wallet AI Gateway ───────────────────────────────────────
+// ─── Wallet AI Gateway (OpenAI-compatible) ──────────────────
 
 http.route({
-  path: "/api/wallet/generate",
+  path: "/api/wallet/v1/chat/completions",
   method: "POST",
-  handler: handleGenerate,
+  handler: handleChatCompletions,
 });
 
 http.route({
-  path: "/api/wallet/generate",
+  path: "/api/wallet/v1/chat/completions",
   method: "OPTIONS",
   handler: handleCors,
 });
 
 http.route({
-  path: "/api/wallet/models",
+  path: "/api/wallet/v1/models",
   method: "GET",
-  handler: handleModels,
+  handler: handleModelsV1,
 });
 
 http.route({
-  path: "/api/wallet/models",
+  path: "/api/wallet/v1/models",
   method: "OPTIONS",
   handler: handleCors,
 });
