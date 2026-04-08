@@ -447,14 +447,38 @@ export const handleModelsV1 = httpAction(async (ctx) => {
       max_completion_tokens: m.maxCompletionTokens,
       capabilities,
       category: m.category,
+
+      // Architecture
+      modality: m.modality,
+      input_modalities: m.inputModalities,
+      output_modalities: m.outputModalities,
+      tokenizer: m.tokenizer,
+
+      // Lifecycle
+      knowledge_cutoff: m.knowledgeCutoff,
+      is_moderated: m.isModerated,
+
+      // Pricing
       pricing: {
         input_per_million_tokens: m.inputPricePerMillion * m.costMarkup,
         output_per_million_tokens: m.outputPricePerMillion * m.costMarkup,
         reasoning_per_million_tokens: m.reasoningPricePerMillion
           ? m.reasoningPricePerMillion * m.costMarkup
           : undefined,
+        cache_read_per_million_tokens: m.cacheReadPricePerMillion
+          ? m.cacheReadPricePerMillion * m.costMarkup
+          : undefined,
+        cache_write_per_million_tokens: m.cacheWritePricePerMillion
+          ? m.cacheWritePricePerMillion * m.costMarkup
+          : undefined,
+        web_search_per_request: m.webSearchPrice
+          ? m.webSearchPrice * m.costMarkup
+          : undefined,
         currency: "credits",
       },
+
+      // Defaults
+      default_temperature: m.defaultTemperature,
     };
   });
 
