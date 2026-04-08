@@ -6,7 +6,7 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { z } from "zod";
 import {
   calculateServerCreditsToDeduct,
@@ -509,12 +509,12 @@ async function extractQuestionAnswer(params: {
       toEvidenceContext(evidencePool)
     );
 
-    const { object, usage } = await generateObject({
+    const { output: object, usage } = await generateText({
       model,
-      schema: buildAnswerSchema(question.type),
+      output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: STANDARD_PROVIDER_OPTIONS,
+      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<typeof generateText>[0]["providerOptions"],
     });
 
     const extracted = normalizeExtractionOutputForQuestion(
@@ -597,12 +597,12 @@ async function extractQuestionAnswerFromAbstract(params: {
       []
     );
 
-    const { object, usage } = await generateObject({
+    const { output: object, usage } = await generateText({
       model,
-      schema: buildAnswerSchema(question.type),
+      output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: STANDARD_PROVIDER_OPTIONS,
+      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<typeof generateText>[0]["providerOptions"],
     });
 
     const extracted = normalizeExtractionOutputForQuestion(
@@ -991,7 +991,7 @@ export const waitAndExtractAction = internalAction({
         ctx,
         job.userId,
         `Extraction (${args.questions.length} questions)`,
-        async () => {
+        async (pricing) => {
           const model = await getModel();
           const results: ExtractionQuestionResult[] = [];
           const extractionUsages: { inputTokens: number; outputTokens: number }[] = [];
@@ -1161,7 +1161,7 @@ export const waitAndExtractAction = internalAction({
             inputTokens: totalInputTokens,
             outputTokens: totalOutputTokens,
           };
-          const billedCredits = calculateServerCreditsToDeduct(totalUsage);
+          const billedCredits = calculateServerCreditsToDeduct(totalUsage, pricing);
 
           return {
             result: {

@@ -176,6 +176,7 @@
     "buyCredits": "クレジットを購入",
     "anotherPlan": "別のプラン",
     "onDate": "{date}に",
+    "connections": "接続",
     "localeLabels": {
       "enUS": "英語（米国）",
       "enGB": "英語（英国）",
@@ -1641,5 +1642,24 @@
     "newCollectionName": "コレクション名",
     "closeDialog": "閉じる",
     "newScreening": "新しいスクリーニング"
+  },
+  "connectionsPage": {
+    "connectedApps": "接続済みアプリ",
+    "manageExternalApps": "クレジットを使用してAI生成を行う外部アプリを管理します。",
+    "loadingConnections": "接続を読み込み中...",
+    "noConnectedApps": "接続済みアプリはありません",
+    "noConnectedAppsDescription": "外部アプリがウォレットに接続すると、ここに表示されます。",
+    "activeCount": "アクティブ ({count})",
+    "revokedCount": "取り消し済み ({count})",
+    "revoking": "取り消し中...",
+    "confirm": "確認",
+    "revoke": "取り消す",
+    "revokedBadge": "取り消し済み",
+    "created": "作成 {time}",
+    "lastUsed": "最終使用 {time}",
+    "justNow": "たった今",
+    "minutesAgo": "{count}分前",
+    "hoursAgo": "{count}時間前",
+    "daysAgo": "{count}日前"
   }
 }

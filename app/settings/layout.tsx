@@ -35,7 +35,7 @@ export default function SettingsLayout({
     { title: tc("general"), href: "/settings", icon: Settings2 },
     { title: tc("ai"), href: "/settings/ai", icon: Bot },
     ...(hideBilling ? [] : [{ title: tc("billing"), href: "/settings/billing", icon: CreditCard }]),
-    { title: "Connections", href: "/settings/connections", icon: Plug },
+    { title: tc("connections"), href: "/settings/connections", icon: Plug },
   ];
   const sidebarNavItems = isSignedIn
     ? baseSignedInItems

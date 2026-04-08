@@ -1,53 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { calculateCostInDollars, aggregateUsage } from "../lib/ai/core/cost";
 import type { Usage } from "../lib/ai/core/types";
-import type { AIProvider } from "../lib/types/ai.types";
 
 describe("calculateCostInDollars", () => {
-  const providerCases = [
-    {
-      provider: "openai" as AIProvider,
-      modelId: "gpt-5-nano",
-      inputPrice: 0.05,
-      outputPrice: 0.4,
-    },
-    {
-      provider: "anthropic" as AIProvider,
-      modelId: "claude-3-haiku",
-      inputPrice: 0.25,
-      outputPrice: 1.25,
-    },
-    {
-      provider: "google" as AIProvider,
-      modelId: "gemini-2.0-flash",
-      inputPrice: 0.1,
-      outputPrice: 0.4,
-    },
-    {
-      provider: "deepseek" as AIProvider,
-      modelId: "deepseek-chat",
-      inputPrice: 0.14,
-      outputPrice: 0.28,
-    },
+  const pricingCases = [
+    { label: "cheap model", pricing: { input: 0.05, output: 0.4 } },
+    { label: "mid-range model", pricing: { input: 0.25, output: 1.25 } },
+    { label: "flash model", pricing: { input: 0.1, output: 0.4 } },
+    { label: "budget model", pricing: { input: 0.14, output: 0.28 } },
   ];
 
-  it.each(providerCases)(
-    "returns correct cost for $provider / $modelId",
-    ({ provider, modelId, inputPrice, outputPrice }) => {
+  it.each(pricingCases)(
+    "returns correct cost for $label",
+    ({ pricing }) => {
       const usage: Usage = {
         promptTokens: 1_000_000,
         completionTokens: 1_000_000,
       };
-      const cost = calculateCostInDollars(usage, provider, modelId);
-      expect(cost).toBeCloseTo(inputPrice + outputPrice, 6);
+      const cost = calculateCostInDollars(usage, pricing);
+      expect(cost).toBeCloseTo(pricing.input + pricing.output, 6);
     }
   );
 
   it("returns zero when both token counts are zero", () => {
     const cost = calculateCostInDollars(
       { promptTokens: 0, completionTokens: 0 },
-      "openai",
-      "gpt-5-nano"
+      { input: 0.05, output: 0.4 },
     );
     expect(cost).toBe(0);
   });
@@ -55,8 +33,7 @@ describe("calculateCostInDollars", () => {
   it("calculates cost for prompt-only usage", () => {
     const cost = calculateCostInDollars(
       { promptTokens: 1_000_000, completionTokens: 0 },
-      "openai",
-      "gpt-5-nano"
+      { input: 0.05, output: 0.4 },
     );
     expect(cost).toBeCloseTo(0.05, 6);
   });
@@ -64,22 +41,20 @@ describe("calculateCostInDollars", () => {
   it("calculates cost for completion-only usage", () => {
     const cost = calculateCostInDollars(
       { promptTokens: 0, completionTokens: 1_000_000 },
-      "openai",
-      "gpt-5-nano"
+      { input: 0.05, output: 0.4 },
     );
     expect(cost).toBeCloseTo(0.4, 6);
   });
 
   it("falls back from promptTokens to inputTokens", () => {
+    const pricing = { input: 0.05, output: 0.4 };
     const costWithInput = calculateCostInDollars(
       { inputTokens: 1_000_000, outputTokens: 1_000_000 },
-      "openai",
-      "gpt-5-nano"
+      pricing,
     );
     const costWithPrompt = calculateCostInDollars(
       { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openai",
-      "gpt-5-nano"
+      pricing,
     );
     expect(costWithInput).toBeCloseTo(costWithPrompt, 6);
   });
@@ -87,79 +62,18 @@ describe("calculateCostInDollars", () => {
   it("promptTokens takes priority over inputTokens", () => {
     const cost = calculateCostInDollars(
       { promptTokens: 1_000_000, inputTokens: 2_000_000, completionTokens: 0 },
-      "openai",
-      "gpt-5-nano"
+      { input: 0.05, output: 0.4 },
     );
     // Should use promptTokens (1M * $0.05/1M = $0.05), not inputTokens (2M)
     expect(cost).toBeCloseTo(0.05, 6);
   });
 
-  it("resolves openrouter model to underlying provider pricing", () => {
+  it("returns zero cost for zero pricing", () => {
     const cost = calculateCostInDollars(
       { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openrouter",
-      "google/gemini-3.1-flash-lite-preview"
-    );
-    // Should resolve to gemini-3.1-flash-lite-preview: $0.25 input, $1.50 output
-    expect(cost).toBeCloseTo(0.25 + 1.50, 6);
-  });
-
-  it("resolves openrouter model via prefix match", () => {
-    const cost = calculateCostInDollars(
-      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openrouter",
-      "openai/gpt-5-mini-some-variant"
-    );
-    // Should prefix-match to gpt-5-mini: $0.25 input, $2.00 output
-    expect(cost).toBeCloseTo(0.25 + 2.00, 6);
-  });
-
-  it("returns zero cost for unresolvable openrouter model", () => {
-    const cost = calculateCostInDollars(
-      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openrouter",
-      "unknown-provider/any-model"
+      { input: 0, output: 0 },
     );
     expect(cost).toBe(0);
-  });
-
-  it("returns zero cost for openrouter model without slash", () => {
-    const cost = calculateCostInDollars(
-      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openrouter",
-      "some-model-no-slash"
-    );
-    expect(cost).toBe(0);
-  });
-
-  it("returns zero cost for unknown model", () => {
-    const cost = calculateCostInDollars(
-      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openai",
-      "nonexistent-model"
-    );
-    expect(cost).toBe(0);
-  });
-
-  it("uses pricingOverride when provided", () => {
-    const cost = calculateCostInDollars(
-      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openai",
-      "gpt-5-nano",
-      { input: 99.0, output: 199.0 }
-    );
-    // Should use override (99 + 199), not gpt-5-nano's real pricing (0.05 + 0.40)
-    expect(cost).toBeCloseTo(99.0 + 199.0, 6);
-  });
-
-  it("falls back to model lookup when pricingOverride is undefined", () => {
-    const cost = calculateCostInDollars(
-      { promptTokens: 1_000_000, completionTokens: 1_000_000 },
-      "openai",
-      "gpt-5-nano",
-      undefined
-    );
-    expect(cost).toBeCloseTo(0.05 + 0.40, 6);
   });
 });
 

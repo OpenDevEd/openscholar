@@ -6,9 +6,10 @@ vi.mock("posthog-js", () => ({
   default: { capture: vi.fn(), get_session_id: vi.fn(() => MOCK_SESSION_ID) },
 }));
 
-// Mock ai-models
+// Mock ai-models (no longer exports model pricing — just provider configs)
 vi.mock("../lib/ai-models", () => ({
-  getModelPricing: vi.fn().mockReturnValue({ input: 0, output: 0 }),
+  getProviderConfig: vi.fn().mockReturnValue({ id: "openai", name: "OpenAI", apiKeyUrl: "", apiKeyPlaceholder: "" }),
+  getDefaultModelForProvider: vi.fn().mockReturnValue("gpt-4o"),
 }));
 
 const MOCK_UUID = "11111111-2222-3333-4444-555555555555";

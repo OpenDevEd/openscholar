@@ -8,14 +8,67 @@ export default defineSchema({
   ...rateLimitTables,
 
   // ═══════════════════════════════════════════════════════════════
-  // PRICING CACHE - OpenRouter model pricing, refreshed daily
+  // MODELS - Unified AI model catalog, auto-synced from OpenRouter
   // ═══════════════════════════════════════════════════════════════
-  pricingCache: defineTable({
+  models: defineTable({
+    // ── Identity ──
     modelId: v.string(),
-    inputPerMillion: v.number(),
-    outputPerMillion: v.number(),
+    name: v.string(),
+    provider: v.string(),
+    description: v.optional(v.string()),
+    canonicalSlug: v.optional(v.string()),
+    huggingFaceId: v.optional(v.string()),
+
+    // ── Architecture ──
+    modality: v.optional(v.string()),
+    inputModalities: v.optional(v.array(v.string())),
+    outputModalities: v.optional(v.array(v.string())),
+    tokenizer: v.optional(v.string()),
+    instructType: v.optional(v.string()),
+
+    // ── Pricing (USD per million tokens) ──
+    inputPricePerMillion: v.number(),
+    outputPricePerMillion: v.number(),
+    cacheReadPricePerMillion: v.optional(v.number()),
+    cacheWritePricePerMillion: v.optional(v.number()),
+    reasoningPricePerMillion: v.optional(v.number()),
+    webSearchPrice: v.optional(v.number()),
+    imagePricePerMillion: v.optional(v.number()),
+    audioPricePerMillion: v.optional(v.number()),
+
+    // ── Context & Limits ──
+    contextLength: v.optional(v.number()),
+    maxCompletionTokens: v.optional(v.number()),
+    isModerated: v.optional(v.boolean()),
+
+    // ── Capabilities ──
+    supportedParameters: v.optional(v.array(v.string())),
+
+    // ── Lifecycle ──
+    knowledgeCutoff: v.optional(v.string()),
+    expirationDate: v.optional(v.string()),
+    createdOnOpenRouter: v.optional(v.number()),
+
+    // ── Defaults ──
+    defaultTemperature: v.optional(v.number()),
+    defaultTopP: v.optional(v.number()),
+    defaultTopK: v.optional(v.number()),
+
+    // ── Business layer (our overrides) ──
+    isServed: v.boolean(),
+    costMarkup: v.number(),
+    sortOrder: v.number(),
+    category: v.optional(v.string()),
+
+    // ── Timestamps ──
+    syncedAt: v.number(),
+    createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_model", ["modelId"]),
+  })
+    .index("by_model_id", ["modelId"])
+    .index("by_provider", ["provider"])
+    .index("by_served_sort", ["isServed", "sortOrder"])
+    .index("by_synced", ["syncedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // FEATURE FLAGS - Database-driven feature gating
@@ -186,36 +239,6 @@ export default defineSchema({
     .index("by_action", ["action"])
     .index("by_action_timestamp", ["action", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
-
-  // ═══════════════════════════════════════════════════════════════
-  // WALLET MODELS - Dynamic AI model catalog for the wallet gateway
-  // ═══════════════════════════════════════════════════════════════
-  walletModels: defineTable({
-    modelId: v.string(),
-    name: v.string(),
-    provider: v.union(
-      v.literal("openai"),
-      v.literal("anthropic"),
-      v.literal("google"),
-      v.literal("deepseek"),
-      v.literal("azure"),
-      v.literal("openrouter"),
-    ),
-    description: v.optional(v.string()),
-    contextWindow: v.optional(v.number()),
-    inputPricePerMillion: v.number(),
-    outputPricePerMillion: v.number(),
-    costMarkup: v.number(),
-    capabilities: v.array(v.string()),
-    category: v.optional(v.string()),
-    isActive: v.boolean(),
-    sortOrder: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_model_id", ["modelId"])
-    .index("by_provider", ["provider"])
-    .index("by_active_sort", ["isActive", "sortOrder"]),
 
   // ═══════════════════════════════════════════════════════════════
   // WALLET ALLOWED ORIGINS - registered origins for /connect flow

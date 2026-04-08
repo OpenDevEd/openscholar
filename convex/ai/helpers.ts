@@ -28,7 +28,6 @@ import {
   extractHttpStatus,
   extractErrorCode,
 } from "../../lib/posthog-ai-shared";
-import { getModelPricing } from "../../lib/ai-models";
 import { AI_COST_MARKUP, ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 
@@ -153,19 +152,23 @@ export function convertServerCostDollarsToCredits(costDollars: number): number {
 }
 
 /**
- * Fetch live pricing for the server model from the pricingCache table.
- * Falls back to hardcoded pricing if the table has no entry.
+ * Fetch live pricing for the server model from the models table.
+ * Constructs the full OpenRouter-format model ID for lookup.
  */
 export async function fetchServerPricing(ctx: ActionCtx): Promise<Pricing> {
-  const cached = await ctx.runQuery(
-    internal.pricing.queries.getCachedPricing,
-    { modelId: SERVER_AI_CONFIG.model },
+  const provider = SERVER_AI_CONFIG.provider;
+  const model = SERVER_AI_CONFIG.model;
+
+  // The models table uses OpenRouter-format IDs (e.g. "deepseek/deepseek-chat")
+  const fullModelId = model.includes("/") ? model : `${provider}/${model}`;
+
+  const pricing = await ctx.runQuery(
+    internal.models.queries.getPricing,
+    { modelId: fullModelId },
   );
-  if (cached) return cached;
-  return getModelPricing(
-    SERVER_AI_CONFIG.provider as AIProvider,
-    SERVER_AI_CONFIG.model,
-  );
+
+  // Fallback to zero pricing if model not yet synced
+  return pricing ?? { input: 0, output: 0 };
 }
 
 export function calculateServerCreditsToDeduct(
@@ -174,10 +177,8 @@ export function calculateServerCreditsToDeduct(
 ): number {
   return calculateCreditsToDeductFromUsage({
     usage,
-    provider: SERVER_AI_CONFIG.provider as AIProvider,
-    modelId: SERVER_AI_CONFIG.model,
+    pricing: pricing ?? { input: 0, output: 0 },
     markupMultiplier: AI_COST_MARKUP,
-    pricingOverride: pricing,
   });
 }
 
@@ -188,10 +189,8 @@ export function calculateServerRawCreditCost(
 ): number {
   return calculateRawCreditCost({
     usage,
-    provider: SERVER_AI_CONFIG.provider as AIProvider,
-    modelId: SERVER_AI_CONFIG.model,
+    pricing: pricing ?? { input: 0, output: 0 },
     markupMultiplier: AI_COST_MARKUP,
-    pricingOverride: pricing,
   });
 }
 
@@ -210,7 +209,7 @@ export type UsageBreakdownEntry = {
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
   operation: string,
-  handler: (user: Doc<"users">) => Promise<{
+  handler: (user: Doc<"users">, pricing: Pricing) => Promise<{
     result: T;
     totalUsage: Usage;
     usageBreakdown?: UsageBreakdownEntry[];
@@ -243,7 +242,7 @@ export async function withAuthAndCreditsBatch<T>(
     const pricing = await fetchServerPricing(ctx);
 
     const start = Date.now();
-    const { result, totalUsage, usageBreakdown, trackingEntries } = await handler(user);
+    const { result, totalUsage, usageBreakdown, trackingEntries } = await handler(user, pricing);
     const latencyMs = Date.now() - start;
 
     const totalCreditsDeducted = usageBreakdown && usageBreakdown.length > 0
@@ -322,7 +321,7 @@ export async function withUserCreditsBatch<T>(
   ctx: ActionCtx,
   userId: Id<"users">,
   operation: string,
-  handler: () => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
+  handler: (pricing: Pricing) => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
 ): Promise<T> {
   try {
     // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
@@ -350,7 +349,7 @@ export async function withUserCreditsBatch<T>(
     const pricing = await fetchServerPricing(ctx);
 
     const start = Date.now();
-    const { result, totalUsage, trackingEntries } = await handler();
+    const { result, totalUsage, trackingEntries } = await handler(pricing);
     const latencyMs = Date.now() - start;
 
     const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);

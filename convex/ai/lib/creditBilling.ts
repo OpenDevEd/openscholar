@@ -1,5 +1,4 @@
 import { calculateCostInDollars, type Usage } from "../../../lib/ai/core";
-import type { AIProvider } from "../../../lib/types/ai.types";
 import { convertDollarsToCredits, getCreditsPerUsd } from "../../lib/creditTopups";
 import { AI_COST_MARKUP } from "../../lib/constants";
 
@@ -23,21 +22,14 @@ export function convertUsdCostToCredits(
 /**
  * Compute credits for an AI usage payload.
  * Falls back to a minimum 1-credit charge when usage is non-zero but
- * provider/model pricing resolves to $0 (for example dynamic OpenRouter IDs).
+ * pricing resolves to $0 (for example models not yet synced).
  */
 export function calculateCreditsToDeductFromUsage(args: {
   usage: Usage;
-  provider: AIProvider;
-  modelId: string;
+  pricing: { input: number; output: number };
   markupMultiplier?: number;
-  pricingOverride?: { input: number; output: number };
 }): number {
-  const costDollars = calculateCostInDollars(
-    args.usage,
-    args.provider,
-    args.modelId,
-    args.pricingOverride,
-  );
+  const costDollars = calculateCostInDollars(args.usage, args.pricing);
 
   const pricedCredits = convertUsdCostToCredits(
     costDollars,
@@ -55,17 +47,10 @@ export function calculateCreditsToDeductFromUsage(args: {
  */
 export function calculateRawCreditCost(args: {
   usage: Usage;
-  provider: AIProvider;
-  modelId: string;
+  pricing: { input: number; output: number };
   markupMultiplier?: number;
-  pricingOverride?: { input: number; output: number };
 }): number {
-  const costDollars = calculateCostInDollars(
-    args.usage,
-    args.provider,
-    args.modelId,
-    args.pricingOverride,
-  );
+  const costDollars = calculateCostInDollars(args.usage, args.pricing);
   if (!Number.isFinite(costDollars) || costDollars <= 0) return 0;
   const markup = args.markupMultiplier ?? AI_COST_MARKUP;
   return costDollars * markup * getCreditsPerUsd();

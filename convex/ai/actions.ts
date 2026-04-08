@@ -174,7 +174,7 @@ export const generateBatchTranslations = action({
     return withAuthAndCreditsBatch(
       ctx,
       `Batch translation (${papers.length} papers)`,
-      async () => {
+      async (_user, pricing) => {
         const model = await getModel();
 
         const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
@@ -185,7 +185,7 @@ export const generateBatchTranslations = action({
 
         const usageBreakdown = Object.entries(usageByItemId).map(
           ([paperId, usage]) => {
-            const amount = calculateServerCreditsToDeduct(usage);
+            const amount = calculateServerCreditsToDeduct(usage, pricing);
             return {
               usage,
               description: `AI: Batch translation (${paperId})`,
@@ -268,7 +268,7 @@ export const generateBatchScreeningResponses = action({
     return withAuthAndCreditsBatch(
       ctx,
       `Batch screening (${papers.length} papers)`,
-      async () => {
+      async (_user, pricing) => {
         const model = await getModel();
 
         const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
@@ -289,7 +289,7 @@ export const generateBatchScreeningResponses = action({
 
         const usageBreakdown = Object.entries(usageByItemId).map(
           ([paperId, usage]) => {
-            const amount = calculateServerCreditsToDeduct(usage);
+            const amount = calculateServerCreditsToDeduct(usage, pricing);
             return {
               usage,
               // Preserve itemized ledger visibility per screened paper.

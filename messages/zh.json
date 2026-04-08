@@ -176,6 +176,7 @@
     "buyCredits": "购买积分",
     "anotherPlan": "其他计划",
     "onDate": "于{date}",
+    "connections": "连接",
     "localeLabels": {
       "enUS": "英语（美国）",
       "enGB": "英语（英国）",
@@ -1641,5 +1642,24 @@
     "newCollectionName": "收藏夹名称",
     "closeDialog": "关闭",
     "newScreening": "新建筛选"
+  },
+  "connectionsPage": {
+    "connectedApps": "已连接的应用",
+    "manageExternalApps": "管理通过您的积分使用 AI 生成的外部应用。",
+    "loadingConnections": "加载连接中...",
+    "noConnectedApps": "没有已连接的应用",
+    "noConnectedAppsDescription": "当外部应用连接到您的钱包时，它们将显示在此处。",
+    "activeCount": "活跃 ({count})",
+    "revokedCount": "已撤销 ({count})",
+    "revoking": "撤销中...",
+    "confirm": "确认",
+    "revoke": "撤销",
+    "revokedBadge": "已撤销",
+    "created": "创建于 {time}",
+    "lastUsed": "最后使用 {time}",
+    "justNow": "刚刚",
+    "minutesAgo": "{count}分钟前",
+    "hoursAgo": "{count}小时前",
+    "daysAgo": "{count}天前"
   }
 }

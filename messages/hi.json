@@ -176,6 +176,7 @@
     "buyCredits": "क्रेडिट खरीदें",
     "anotherPlan": "दूसरा प्लान",
     "onDate": "{date} को",
+    "connections": "कनेक्शन्स",
     "localeLabels": {
       "enUS": "अंग्रेज़ी (US)",
       "enGB": "अंग्रेज़ी (UK)",
@@ -1641,5 +1642,24 @@
     "newCollectionName": "संग्रह का नाम",
     "closeDialog": "बंद करें",
     "newScreening": "नई स्क्रीनिंग"
+  },
+  "connectionsPage": {
+    "connectedApps": "कनेक्टेड ऐप्स",
+    "manageExternalApps": "अपने क्रेडिट्स के माध्यम से AI जनरेशन का उपयोग करने वाले बाहरी ऐप्स प्रबंधित करें।",
+    "loadingConnections": "कनेक्शन लोड हो रहे हैं...",
+    "noConnectedApps": "कोई कनेक्टेड ऐप नहीं",
+    "noConnectedAppsDescription": "जब बाहरी ऐप्स आपके वॉलेट से कनेक्ट होंगे, तो वे यहां दिखाई देंगे।",
+    "activeCount": "सक्रिय ({count})",
+    "revokedCount": "रद्द ({count})",
+    "revoking": "रद्द किया जा रहा है...",
+    "confirm": "पुष्टि करें",
+    "revoke": "रद्द करें",
+    "revokedBadge": "रद्द",
+    "created": "बनाया गया {time}",
+    "lastUsed": "अंतिम उपयोग {time}",
+    "justNow": "अभी",
+    "minutesAgo": "{count} मिनट पहले",
+    "hoursAgo": "{count} घंटे पहले",
+    "daysAgo": "{count} दिन पहले"
   }
 }

@@ -176,6 +176,7 @@
     "buyCredits": "Acheter des crédits",
     "anotherPlan": "un autre abonnement",
     "onDate": "le {date}",
+    "connections": "Connexions",
     "localeLabels": {
       "enUS": "Anglais (US)",
       "enGB": "Anglais (UK)",
@@ -1641,5 +1642,24 @@
     "newCollectionName": "Nom de la collection",
     "closeDialog": "Fermer",
     "newScreening": "Nouveau criblage"
+  },
+  "connectionsPage": {
+    "connectedApps": "Applications connectées",
+    "manageExternalApps": "Gérez les applications externes qui utilisent la génération IA via vos crédits.",
+    "loadingConnections": "Chargement des connexions...",
+    "noConnectedApps": "Aucune application connectée",
+    "noConnectedAppsDescription": "Lorsque des applications externes se connectent à votre portefeuille, elles apparaîtront ici.",
+    "activeCount": "Actives ({count})",
+    "revokedCount": "Révoquées ({count})",
+    "revoking": "Révocation...",
+    "confirm": "Confirmer",
+    "revoke": "Révoquer",
+    "revokedBadge": "Révoquée",
+    "created": "Créée {time}",
+    "lastUsed": "Dernière utilisation {time}",
+    "justNow": "à l'instant",
+    "minutesAgo": "il y a {count}min",
+    "hoursAgo": "il y a {count}h",
+    "daysAgo": "il y a {count}j"
   }
 }

@@ -1,4 +1,4 @@
-import { generateObject, type LanguageModel } from 'ai'
+import { generateText, Output, type LanguageModel } from 'ai'
 import { z } from 'zod'
 import { STANDARD_PROVIDER_OPTIONS } from './schemas'
 import { repairJSON, repairSingleField } from './validate'
@@ -51,25 +51,34 @@ export async function executeAIOperation<TInput, TOutput>(
     try {
       const prompts = buildPrompts(input, retryCount)
 
-      const repairText = async ({ text, error }: { text: string; error: string }) => {
-        if (repairStrategy.type === 'single-field' && repairStrategy.fieldName) {
-          return repairSingleField(text, error, repairStrategy.fieldName)
-        }
-        return repairJSON(text, error)
-      }
+      const repairToolCall: Parameters<typeof generateText>[0]['experimental_repairToolCall'] =
+        async ({ toolCall, error }) => {
+          // v6: toolCall.input is already a stringified JSON string
+          const rawInput = toolCall.input
+          const errorMsg = error instanceof Error ? error.message : String(error)
 
-      // Widen to satisfy generateObject's complex generic constraints
-      const result = await generateObject({
+          let repaired: string | null
+          if (repairStrategy.type === 'single-field' && repairStrategy.fieldName) {
+            repaired = await repairSingleField(rawInput, errorMsg, repairStrategy.fieldName)
+          } else {
+            repaired = await repairJSON(rawInput, errorMsg)
+          }
+
+          if (repaired === null) return null
+          return { ...toolCall, input: repaired }
+        }
+
+      const result = await generateText({
         model,
-        schema,
-        experimental_repairText: repairText,
-        providerOptions: STANDARD_PROVIDER_OPTIONS as Record<string, Record<string, unknown>>,
+        output: Output.object({ schema }),
+        experimental_repairToolCall: repairToolCall,
+        providerOptions: STANDARD_PROVIDER_OPTIONS as unknown as Parameters<typeof generateText>[0]['providerOptions'],
         temperature,
         system: prompts.system,
         prompt: prompts.prompt,
-      } as unknown as Parameters<typeof generateObject>[0])
-      
-      const { object, usage } = result
+      })
+
+      const { output: object, usage } = result
 
       let finalOutput = object as TOutput
 

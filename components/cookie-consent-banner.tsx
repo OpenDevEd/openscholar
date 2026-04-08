@@ -67,7 +67,11 @@ function ConsentDialogContent({
 
 export function CookieConsentBanner() {
   const t = useTranslations("cookieConsent");
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const [showBanner, setShowBanner] = useState(false);
+
+  // Hide on chromeless routes
+  if (pathname.startsWith("/connect")) return null;
   const [showPreferencesDialog, setShowPreferencesDialog] = useState(false);
   const [mounted, setMounted] = useState(false);
 
