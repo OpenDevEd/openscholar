@@ -4,7 +4,7 @@ import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 
-import { parseAndValidateRequest, convertToAISdkParams } from "./parseRequest";
+import { parseAndValidateRequest, convertToAISdkParams, normalizeSchemaForStrictMode } from "./parseRequest";
 import {
   generateResponseId,
   formatNonStreamingResponse,
@@ -571,6 +571,198 @@ describe("convertToAISdkParams", () => {
     expect(params.output).toBeDefined();
   });
 
+  it("normalizes json_schema through the full pipeline (the original bug)", async () => {
+    // This is the exact request shape that caused the 502 error.
+    // "venue" is in properties but NOT in required.
+    const params = convertToAISdkParams({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Extract metadata" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "PaperMetadata",
+          schema: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              authors: { type: "array", items: { type: "string" } },
+              venue: { type: "string" },
+              year: { type: "number" },
+            },
+            required: ["title", "authors", "year"],
+          },
+        },
+      },
+    });
+
+    expect(params.output).toBeDefined();
+
+    // Resolve the responseFormat promise to inspect the schema sent to the provider
+    const rf = await (params.output as { responseFormat: PromiseLike<{ type: string; schema: Record<string, unknown>; name?: string }> }).responseFormat;
+    expect(rf.type).toBe("json");
+    expect(rf.name).toBe("PaperMetadata");
+
+    const schema = rf.schema as {
+      type: string;
+      required: string[];
+      additionalProperties: boolean;
+      properties: Record<string, { type: string | string[] }>;
+    };
+
+    // All properties are now required
+    expect(schema.required).toEqual(["title", "authors", "venue", "year"]);
+    expect(schema.additionalProperties).toBe(false);
+
+    // Originally-required fields are untouched
+    expect(schema.properties.title.type).toBe("string");
+    expect(schema.properties.year.type).toBe("number");
+
+    // "venue" was optional → widened to ["string", "null"]
+    expect(schema.properties.venue.type).toEqual(["string", "null"]);
+
+    // "authors" was required → array type untouched
+    expect(schema.properties.authors.type).toBe("array");
+  });
+
+  it("normalizes nested objects inside json_schema through the pipeline", async () => {
+    const params = convertToAISdkParams({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "NestedTest",
+          schema: {
+            type: "object",
+            properties: {
+              author: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  affiliation: { type: "string" },
+                },
+                required: ["name"],
+              },
+            },
+            required: ["author"],
+          },
+        },
+      },
+    });
+
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+    const author = (schema.properties as Record<string, Record<string, unknown>>).author;
+
+    // Nested object also gets normalized
+    expect(author.required).toEqual(["name", "affiliation"]);
+    expect(author.additionalProperties).toBe(false);
+
+    // Nested optional field gets widened
+    const authorProps = author.properties as Record<string, Record<string, unknown>>;
+    expect(authorProps.name.type).toBe("string"); // was required
+    expect(authorProps.affiliation.type).toEqual(["string", "null"]); // was optional
+  });
+
+  it("normalizes json_schema with no required array through the pipeline", async () => {
+    const params = convertToAISdkParams({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "AllOptional",
+          schema: {
+            type: "object",
+            properties: {
+              a: { type: "string" },
+              b: { type: "number" },
+            },
+            // no required array at all
+          },
+        },
+      },
+    });
+
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+
+    expect(schema.required).toEqual(["a", "b"]);
+    expect(schema.additionalProperties).toBe(false);
+
+    // Both widened to nullable since neither was required
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+    expect(props.a.type).toEqual(["string", "null"]);
+    expect(props.b.type).toEqual(["number", "null"]);
+  });
+
+  it("leaves already-compliant json_schema unchanged through the pipeline", async () => {
+    const params = convertToAISdkParams({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "Compliant",
+          schema: {
+            type: "object",
+            properties: {
+              x: { type: "string" },
+              y: { type: "number" },
+            },
+            required: ["x", "y"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+
+    expect(schema.required).toEqual(["x", "y"]);
+    expect(schema.additionalProperties).toBe(false);
+
+    // No widening — both were required
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+    expect(props.x.type).toBe("string");
+    expect(props.y.type).toBe("number");
+  });
+
+  it("json_schema normalization does not mutate the original request", () => {
+    const originalSchema = {
+      type: "object",
+      properties: {
+        a: { type: "string" },
+        b: { type: "string" },
+      },
+      required: ["a"],
+    };
+
+    // Deep copy to compare after
+    const snapshotRequired = [...originalSchema.required];
+    const snapshotAType = originalSchema.properties.a.type;
+    const snapshotBType = originalSchema.properties.b.type;
+
+    convertToAISdkParams({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "ImmutabilityTest",
+          schema: originalSchema,
+        },
+      },
+    });
+
+    // Original is unchanged
+    expect(originalSchema.required).toEqual(snapshotRequired);
+    expect(originalSchema.properties.a.type).toBe(snapshotAType);
+    expect(originalSchema.properties.b.type).toBe(snapshotBType);
+    expect((originalSchema as Record<string, unknown>).additionalProperties).toBeUndefined();
+  });
+
   it("converts response_format json_object to Output.json", () => {
     const params = convertToAISdkParams({
       model: "gpt-4o",
@@ -603,6 +795,271 @@ describe("convertToAISdkParams", () => {
     expect(params.stopSequences).toBeUndefined();
     expect(params.tools).toBeUndefined();
     expect(params.toolChoice).toBeUndefined();
+    expect(params.output).toBeUndefined();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// E2E: parseAndValidateRequest → convertToAISdkParams (strict-mode normalization)
+// ═══════════════════════════════════════════════════════════════
+
+describe("strict-mode normalization E2E (parse → convert)", () => {
+  it("reproduces the original bug: optional property in json_schema no longer causes 502", async () => {
+    // This is the exact raw JSON body that a user would POST to the gateway.
+    // Previously this caused a 502 because "venue" was not in required.
+    const rawBody = {
+      model: "openai/gpt-4o",
+      stream: false,
+      messages: [
+        { role: "user", content: "Extract metadata: \"Deep Learning for NLP by Smith & Jones, NeurIPS 2023\"" },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "PaperMetadata",
+          schema: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              authors: { type: "array", items: { type: "string" } },
+              venue: { type: "string" },
+              year: { type: "number" },
+            },
+            required: ["title", "authors", "year"],
+          },
+        },
+      },
+    };
+
+    // Step 1: Validation passes
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    // Step 2: Conversion produces valid output
+    const params = convertToAISdkParams(parsed.request);
+    expect(params.output).toBeDefined();
+
+    // Step 3: The resolved schema is strict-mode compliant
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+
+    // All 4 properties are now required
+    expect(schema.required).toEqual(["title", "authors", "venue", "year"]);
+    expect(schema.additionalProperties).toBe(false);
+
+    // Originally-required fields: types untouched
+    expect(props.title.type).toBe("string");
+    expect(props.authors.type).toBe("array");
+    expect(props.year.type).toBe("number");
+
+    // "venue" was optional → widened to nullable
+    expect(props.venue.type).toEqual(["string", "null"]);
+  });
+
+  it("handles user sending schema with zero required fields", async () => {
+    const rawBody = {
+      model: "openai/gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "Loose",
+          schema: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: "string" },
+              phone: { type: "string" },
+            },
+          },
+        },
+      },
+    };
+
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const params = convertToAISdkParams(parsed.request);
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+
+    // All fields promoted to required, all nullable
+    expect(schema.required).toEqual(["name", "email", "phone"]);
+    expect(schema.additionalProperties).toBe(false);
+    expect(props.name.type).toEqual(["string", "null"]);
+    expect(props.email.type).toEqual(["string", "null"]);
+    expect(props.phone.type).toEqual(["string", "null"]);
+  });
+
+  it("handles user sending already-compliant strict-mode schema", async () => {
+    const rawBody = {
+      model: "openai/gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "StrictCompliant",
+          schema: {
+            type: "object",
+            properties: {
+              x: { type: "string" },
+              y: { type: "number" },
+            },
+            required: ["x", "y"],
+            additionalProperties: false,
+          },
+        },
+      },
+    };
+
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const params = convertToAISdkParams(parsed.request);
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+
+    // No widening — schema was already valid
+    expect(props.x.type).toBe("string");
+    expect(props.y.type).toBe("number");
+    expect(schema.required).toEqual(["x", "y"]);
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it("normalizes nested objects in user-provided schema", async () => {
+    const rawBody = {
+      model: "openai/gpt-4o",
+      messages: [{ role: "user", content: "extract" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "Citation",
+          schema: {
+            type: "object",
+            properties: {
+              paper: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  doi: { type: "string" },
+                  abstract: { type: "string" },
+                },
+                required: ["title"],
+              },
+              relevance_score: { type: "number" },
+            },
+            required: ["paper"],
+          },
+        },
+      },
+    };
+
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const params = convertToAISdkParams(parsed.request);
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+
+    // Top-level normalization
+    expect(schema.required).toEqual(["paper", "relevance_score"]);
+    expect(schema.additionalProperties).toBe(false);
+    expect(props.relevance_score.type).toEqual(["number", "null"]);
+
+    // Nested "paper" object normalization
+    const paper = props.paper;
+    expect(paper.required).toEqual(["title", "doi", "abstract"]);
+    expect(paper.additionalProperties).toBe(false);
+    const paperProps = paper.properties as Record<string, Record<string, unknown>>;
+    expect(paperProps.title.type).toBe("string");
+    expect(paperProps.doi.type).toEqual(["string", "null"]);
+    expect(paperProps.abstract.type).toEqual(["string", "null"]);
+  });
+
+  it("normalizes array items with object schemas", async () => {
+    const rawBody = {
+      model: "openai/gpt-4o",
+      messages: [{ role: "user", content: "list papers" }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "PaperList",
+          schema: {
+            type: "object",
+            properties: {
+              papers: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    year: { type: "number" },
+                    doi: { type: "string" },
+                  },
+                  required: ["title"],
+                },
+              },
+            },
+            required: ["papers"],
+          },
+        },
+      },
+    };
+
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const params = convertToAISdkParams(parsed.request);
+    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const schema = rf.schema as Record<string, unknown>;
+    const props = schema.properties as Record<string, Record<string, unknown>>;
+    const items = props.papers.items as Record<string, unknown>;
+
+    // Array items object gets normalized too
+    expect(items.required).toEqual(["title", "year", "doi"]);
+    expect(items.additionalProperties).toBe(false);
+    const itemProps = items.properties as Record<string, Record<string, unknown>>;
+    expect(itemProps.title.type).toBe("string");
+    expect(itemProps.year.type).toEqual(["number", "null"]);
+    expect(itemProps.doi.type).toEqual(["string", "null"]);
+  });
+
+  it("does not affect json_object response format", () => {
+    const rawBody = {
+      model: "openai/gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: { type: "json_object" },
+    };
+
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const params = convertToAISdkParams(parsed.request);
+    expect(params.output).toBeDefined();
+  });
+
+  it("does not affect text response format", () => {
+    const rawBody = {
+      model: "openai/gpt-4o",
+      messages: [{ role: "user", content: "hi" }],
+      response_format: { type: "text" },
+    };
+
+    const parsed = parseAndValidateRequest(rawBody);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const params = convertToAISdkParams(parsed.request);
     expect(params.output).toBeUndefined();
   });
 });
@@ -1751,5 +2208,279 @@ describe("web search cost calculation", () => {
 
     const cost = calculateEnhancedModelCost(usage, model);
     expect(cost).toBeCloseTo(0.75, 5);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// normalizeSchemaForStrictMode
+// ═══════════════════════════════════════════════════════════════
+
+describe("normalizeSchemaForStrictMode", () => {
+  it("adds all properties to required and sets additionalProperties: false", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        year: { type: "number" },
+      },
+      required: ["title"],
+    });
+
+    expect(result.required).toEqual(["title", "year"]);
+    expect(result.additionalProperties).toBe(false);
+  });
+
+  it("widens originally-optional properties to nullable", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        venue: { type: "string" },
+      },
+      required: ["title"],
+    });
+
+    // title stays as-is (was already required)
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    expect(props.title.type).toBe("string");
+
+    // venue was optional → widened to ["string", "null"]
+    expect(props.venue.type).toEqual(["string", "null"]);
+
+    // Both are now required
+    expect(result.required).toEqual(["title", "venue"]);
+  });
+
+  it("does not double-add null to already-nullable type arrays", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        value: { type: ["string", "null"] },
+      },
+      required: [],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    expect(props.value.type).toEqual(["string", "null"]);
+  });
+
+  it("handles anyOf by adding { type: null } variant", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        field: { anyOf: [{ type: "string" }, { type: "number" }] },
+      },
+      required: [],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const anyOf = props.field.anyOf as Array<Record<string, unknown>>;
+    expect(anyOf).toHaveLength(3);
+    expect(anyOf[2]).toEqual({ type: "null" });
+  });
+
+  it("does not double-add null to anyOf that already has it", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        field: { anyOf: [{ type: "string" }, { type: "null" }] },
+      },
+      required: [],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const anyOf = props.field.anyOf as Array<Record<string, unknown>>;
+    expect(anyOf).toHaveLength(2);
+  });
+
+  it("handles oneOf by adding { type: null } variant", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        field: { oneOf: [{ type: "string" }, { type: "number" }] },
+      },
+      required: [],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const oneOf = props.field.oneOf as Array<Record<string, unknown>>;
+    expect(oneOf).toHaveLength(3);
+    expect(oneOf[2]).toEqual({ type: "null" });
+  });
+
+  it("recursively normalizes nested objects", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        author: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            email: { type: "string" },
+          },
+          required: ["name"],
+        },
+      },
+      required: ["author"],
+    });
+
+    const author = (result.properties as Record<string, Record<string, unknown>>).author;
+    expect(author.required).toEqual(["name", "email"]);
+    expect(author.additionalProperties).toBe(false);
+
+    const authorProps = author.properties as Record<string, Record<string, unknown>>;
+    expect(authorProps.name.type).toBe("string");
+    expect(authorProps.email.type).toEqual(["string", "null"]);
+  });
+
+  it("recursively normalizes array items that are objects", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        papers: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              doi: { type: "string" },
+            },
+            required: ["title"],
+          },
+        },
+      },
+      required: ["papers"],
+    });
+
+    const papers = (result.properties as Record<string, Record<string, unknown>>).papers;
+    const items = papers.items as Record<string, unknown>;
+    expect(items.required).toEqual(["title", "doi"]);
+    expect(items.additionalProperties).toBe(false);
+
+    const itemProps = items.properties as Record<string, Record<string, unknown>>;
+    expect(itemProps.doi.type).toEqual(["string", "null"]);
+  });
+
+  it("handles the exact bug case: properties not all in required", () => {
+    // This was the original failing request
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        authors: { type: "array", items: { type: "string" } },
+        venue: { type: "string" },
+        year: { type: "number" },
+      },
+      required: ["title", "authors", "year"],
+    });
+
+    expect(result.required).toEqual(["title", "authors", "venue", "year"]);
+    expect(result.additionalProperties).toBe(false);
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    // Originally required fields stay untouched
+    expect(props.title.type).toBe("string");
+    expect(props.year.type).toBe("number");
+    // venue was optional → now nullable
+    expect(props.venue.type).toEqual(["string", "null"]);
+  });
+
+  it("handles schema with no required array", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        a: { type: "string" },
+        b: { type: "number" },
+      },
+    });
+
+    expect(result.required).toEqual(["a", "b"]);
+    expect(result.additionalProperties).toBe(false);
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    expect(props.a.type).toEqual(["string", "null"]);
+    expect(props.b.type).toEqual(["number", "null"]);
+  });
+
+  it("handles schema where all properties are already required", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        a: { type: "string" },
+        b: { type: "number" },
+      },
+      required: ["a", "b"],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    // No widening — both were already required
+    expect(props.a.type).toBe("string");
+    expect(props.b.type).toBe("number");
+    expect(result.additionalProperties).toBe(false);
+  });
+
+  it("does not mutate the original schema", () => {
+    const original = {
+      type: "object",
+      properties: {
+        a: { type: "string" },
+      },
+      required: [] as string[],
+    };
+
+    normalizeSchemaForStrictMode(original);
+
+    // Original unchanged
+    expect(original.required).toEqual([]);
+    expect((original as Record<string, unknown>).additionalProperties).toBeUndefined();
+    expect((original.properties as Record<string, Record<string, unknown>>).a.type).toBe("string");
+  });
+
+  it("passes through non-object schemas unchanged", () => {
+    const result = normalizeSchemaForStrictMode({ type: "string" });
+    expect(result).toEqual({ type: "string" });
+  });
+
+  it("handles deeply nested composition keywords", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        data: {
+          anyOf: [
+            {
+              type: "object",
+              properties: {
+                x: { type: "number" },
+                y: { type: "number" },
+              },
+              required: ["x"],
+            },
+            { type: "null" },
+          ],
+        },
+      },
+      required: ["data"],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    const anyOf = props.data.anyOf as Array<Record<string, unknown>>;
+    const objVariant = anyOf[0];
+    expect(objVariant.required).toEqual(["x", "y"]);
+    expect(objVariant.additionalProperties).toBe(false);
+  });
+
+  it("wraps typeless optional properties in anyOf with null", () => {
+    const result = normalizeSchemaForStrictMode({
+      type: "object",
+      properties: {
+        meta: { description: "some metadata" },
+      },
+      required: [],
+    });
+
+    const props = result.properties as Record<string, Record<string, unknown>>;
+    expect(props.meta.anyOf).toEqual([
+      { description: "some metadata" },
+      { type: "null" },
+    ]);
   });
 });

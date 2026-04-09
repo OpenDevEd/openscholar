@@ -317,17 +317,18 @@ function convertResponseFormat(
   format: OpenAIResponseFormat,
 ): ReturnType<typeof Output.object> | ReturnType<typeof Output.json> | undefined {
   switch (format.type) {
-    case "json_schema":
+    case "json_schema": {
+      const rawSchema =
+        (format.json_schema.schema as Record<string, unknown>) ?? {
+          type: "object",
+          properties: {},
+        };
       return Output.object({
-        schema: jsonSchema(
-          (format.json_schema.schema as Record<string, unknown>) ?? {
-            type: "object",
-            properties: {},
-          },
-        ),
+        schema: jsonSchema(normalizeSchemaForStrictMode(rawSchema)),
         name: format.json_schema.name,
         description: format.json_schema.description,
       });
+    }
 
     case "json_object":
       return Output.json();
@@ -336,4 +337,95 @@ function convertResponseFormat(
     default:
       return undefined;
   }
+}
+
+// ─── Strict-mode schema normalization ──────────────────────
+//
+// OpenAI's Structured Outputs (strict: true) requires:
+//   1. All properties listed in `required`
+//   2. `additionalProperties: false` on every object
+//
+// Properties that were originally optional get their type
+// widened to include "null" so the model can still omit values.
+
+export function normalizeSchemaForStrictMode(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  return normalizeNode(structuredClone(schema));
+}
+
+function normalizeNode(node: Record<string, unknown>): Record<string, unknown> {
+  // Recurse into composition keywords
+  for (const keyword of ["anyOf", "oneOf", "allOf"] as const) {
+    if (Array.isArray(node[keyword])) {
+      node[keyword] = (node[keyword] as Record<string, unknown>[]).map(normalizeNode);
+    }
+  }
+
+  // Recurse into array items
+  if (node.items && typeof node.items === "object" && !Array.isArray(node.items)) {
+    node.items = normalizeNode(node.items as Record<string, unknown>);
+  }
+
+  // Only object nodes with properties need normalization
+  if (node.type !== "object" || !node.properties) return node;
+
+  const properties = node.properties as Record<string, Record<string, unknown>>;
+  const originalRequired = new Set(
+    Array.isArray(node.required) ? (node.required as string[]) : [],
+  );
+  const allKeys = Object.keys(properties);
+
+  // Widen originally-optional properties to accept null
+  for (const key of allKeys) {
+    if (!originalRequired.has(key)) {
+      properties[key] = widenToNullable(properties[key]);
+    }
+  }
+
+  // Recurse into each property
+  for (const key of allKeys) {
+    properties[key] = normalizeNode(properties[key]);
+  }
+
+  node.required = allKeys;
+  node.additionalProperties = false;
+
+  return node;
+}
+
+function widenToNullable(
+  prop: Record<string, unknown>,
+): Record<string, unknown> {
+  // Already nullable via anyOf/oneOf containing { type: "null" }
+  for (const keyword of ["anyOf", "oneOf"] as const) {
+    if (Array.isArray(prop[keyword])) {
+      const variants = prop[keyword] as Record<string, unknown>[];
+      const hasNull = variants.some(
+        (v) => v.type === "null" || (Array.isArray(v.type) && (v.type as string[]).includes("null")),
+      );
+      if (!hasNull) {
+        variants.push({ type: "null" });
+      }
+      return prop;
+    }
+  }
+
+  // Type is an array — add "null" if not present
+  if (Array.isArray(prop.type)) {
+    if (!(prop.type as string[]).includes("null")) {
+      (prop.type as string[]).push("null");
+    }
+    return prop;
+  }
+
+  // Type is a string — widen to [type, "null"]
+  if (typeof prop.type === "string") {
+    if (prop.type === "null") return prop;
+    prop.type = [prop.type, "null"];
+    return prop;
+  }
+
+  // No type info (e.g. $ref, const) — wrap in anyOf with null
+  return { anyOf: [prop, { type: "null" }] };
 }
