@@ -598,7 +598,7 @@ describe("convertToAISdkParams", () => {
     expect(params.output).toBeDefined();
 
     // Resolve the responseFormat promise to inspect the schema sent to the provider
-    const rf = await (params.output as { responseFormat: PromiseLike<{ type: string; schema: Record<string, unknown>; name?: string }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ type: string; schema: Record<string, unknown>; name?: string }> }).responseFormat;
     expect(rf.type).toBe("json");
     expect(rf.name).toBe("PaperMetadata");
 
@@ -650,7 +650,7 @@ describe("convertToAISdkParams", () => {
       },
     });
 
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
     const author = (schema.properties as Record<string, Record<string, unknown>>).author;
 
@@ -684,7 +684,7 @@ describe("convertToAISdkParams", () => {
       },
     });
 
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
 
     expect(schema.required).toEqual(["a", "b"]);
@@ -717,7 +717,7 @@ describe("convertToAISdkParams", () => {
       },
     });
 
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
 
     expect(schema.required).toEqual(["x", "y"]);
@@ -841,7 +841,7 @@ describe("strict-mode normalization E2E (parse → convert)", () => {
     expect(params.output).toBeDefined();
 
     // Step 3: The resolved schema is strict-mode compliant
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
     const props = schema.properties as Record<string, Record<string, unknown>>;
 
@@ -883,7 +883,7 @@ describe("strict-mode normalization E2E (parse → convert)", () => {
     if (!parsed.ok) return;
 
     const params = convertToAISdkParams(parsed.request);
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
     const props = schema.properties as Record<string, Record<string, unknown>>;
 
@@ -921,7 +921,7 @@ describe("strict-mode normalization E2E (parse → convert)", () => {
     if (!parsed.ok) return;
 
     const params = convertToAISdkParams(parsed.request);
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
     const props = schema.properties as Record<string, Record<string, unknown>>;
 
@@ -965,7 +965,7 @@ describe("strict-mode normalization E2E (parse → convert)", () => {
     if (!parsed.ok) return;
 
     const params = convertToAISdkParams(parsed.request);
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
     const props = schema.properties as Record<string, Record<string, unknown>>;
 
@@ -1019,7 +1019,7 @@ describe("strict-mode normalization E2E (parse → convert)", () => {
     if (!parsed.ok) return;
 
     const params = convertToAISdkParams(parsed.request);
-    const rf = await (params.output as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
+    const rf = await (params.output as unknown as { responseFormat: PromiseLike<{ schema: Record<string, unknown> }> }).responseFormat;
     const schema = rf.schema as Record<string, unknown>;
     const props = schema.properties as Record<string, Record<string, unknown>>;
     const items = props.papers.items as Record<string, unknown>;
