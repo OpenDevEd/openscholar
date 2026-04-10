@@ -67,13 +67,20 @@ function ConsentDialogContent({
 
 export function CookieConsentBanner() {
   const t = useTranslations("cookieConsent");
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const [showBanner, setShowBanner] = useState(false);
-
-  // Hide on chromeless routes
-  if (pathname.startsWith("/connect")) return null;
   const [showPreferencesDialog, setShowPreferencesDialog] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const isChromeless = (() => {
+    if (typeof window === "undefined") return false;
+    const pathname = window.location.pathname;
+    if (pathname.startsWith("/connect")) return true;
+    if (pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up")) {
+      const redirect = new URLSearchParams(window.location.search).get("redirect_url") ?? "";
+      return redirect.startsWith("/connect");
+    }
+    return false;
+  })();
 
   const shouldShowBanner = useCallback(() => {
     if (typeof window === "undefined") return false;
@@ -118,6 +125,9 @@ export function CookieConsentBanner() {
     window.addEventListener(COOKIE_PREFERENCES_EVENT, handler);
     return () => window.removeEventListener(COOKIE_PREFERENCES_EVENT, handler);
   }, []);
+
+  // Hide on chromeless routes
+  if (isChromeless) return null;
 
   return (
     <>
