@@ -786,8 +786,23 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
-/** Routes where the sidebar should not render (fullscreen flows). */
-const CHROMELESS_ROUTES = ["/connect", "/sign-in", "/sign-up"];
+/** Check if the current route should be chromeless (no sidebar).
+ *  - /connect is always chromeless
+ *  - /sign-in and /sign-up are only chromeless when redirecting to /connect
+ */
+function useIsChromeless() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  if (pathname?.startsWith("/connect")) return true;
+
+  if (pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up")) {
+    const redirect = searchParams.get("redirect_url") ?? "";
+    return redirect.startsWith("/connect");
+  }
+
+  return false;
+}
 
 export function AppSidebar() {
   const ts = useTranslations("sidebar");
@@ -797,13 +812,12 @@ export function AppSidebar() {
     useSidebarStore();
   const { currentWidth } = getSidebarDimensions(isCollapsed);
 
-  // Hide sidebar on chromeless routes (consent flow, auth)
-  if (CHROMELESS_ROUTES.some((r) => pathname?.startsWith(r))) {
-    return null;
-  }
+  const isChromeless = useIsChromeless();
 
   // Keyboard shortcut: Cmd/Ctrl + B to toggle sidebar
   useEffect(() => {
+    if (isChromeless) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "b") {
         e.preventDefault();
@@ -813,7 +827,7 @@ export function AppSidebar() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggle, isMobile]);
+  }, [toggle, isMobile, isChromeless]);
 
   // Close mobile sheet when resizing to desktop
   useEffect(() => {
@@ -831,6 +845,11 @@ export function AppSidebar() {
       setCollapsed(true);
     }
   }, [_hasHydrated, setCollapsed]);
+
+  // Hide sidebar on chromeless routes (consent flow, auth)
+  if (isChromeless) {
+    return null;
+  }
 
   // Don't render until hydrated to prevent flash
   if (!_hasHydrated) {
