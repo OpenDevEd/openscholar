@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: planning
 stopped_at: Phase 88 context gathered
-last_updated: "2026-04-14T22:25:09.241Z"
-last_activity: 2026-04-14 — Roadmap created, 63 v6.0 requirements mapped across 10 phases
+last_updated: "2026-04-14T23:57:55.627Z"
+last_activity: 2026-04-14
 progress:
   total_phases: 10
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 ## Current Position
 
-Phase: 88 of 97 (Scorched-Earth Teardown)
-Plan: — (not yet planned)
+Phase: 89 of 97 (core schema & workflow skeleton)
+Plan: Not started
 Status: Ready to plan
-Last activity: 2026-04-14 — Roadmap created, 63 v6.0 requirements mapped across 10 phases
+Last activity: 2026-04-14
 
 Progress: [          ] 0%
 
@@ -36,7 +36,7 @@ Progress: [          ] 0%
 
 **Velocity:**
 
-- Total plans completed: 179 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, v5.0: 14, cleanup: 2, quick: 15)
+- Total plans completed: 183 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, v5.0: 14, cleanup: 2, quick: 15)
 - Total milestones shipped: 15
 
 **By Milestone:**
