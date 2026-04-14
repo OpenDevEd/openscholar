@@ -255,9 +255,9 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
   3. `@convex-dev/rag` is absent from `convex/convex.config.ts` and uninstalled from `package.json`
   4. `tsc --noEmit` returns zero errors with no dangling imports or dead exports referencing deleted modules
   5. All six locale files (`messages/{en,fr,es,de,ar,zh}.json`) contain zero `extraction.*` keys left over from the legacy UI
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 Plans:
-- [ ] 88-01-PLAN.md — Wholesale deletion of extraction directories, standalone files, and test files
+- [x] 88-01-PLAN.md — Wholesale deletion of extraction directories, standalone files, and test files
 - [ ] 88-02-PLAN.md — Surgical removal of extraction from shared frontend files (store, types, sidebar, AI modules)
 - [ ] 88-03-PLAN.md — Delete convex/extraction/, edit shared Convex modules, remove schema tables
 - [ ] 88-04-PLAN.md — Config/package cleanup, i18n key removal, final compilation and test verification
@@ -391,7 +391,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
-| 88. Scorched-Earth Teardown | v6.0 | 0/4 | Not started | - |
+| 88. Scorched-Earth Teardown | v6.0 | 1/4 | In Progress|  |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 0/TBD | Not started | - |
 | 90. Free-First Parsing Waterfall | v6.0 | 0/TBD | Not started | - |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
