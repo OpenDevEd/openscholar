@@ -5,7 +5,6 @@ import {
   createScreeningResponsesSchema,
   translateQuerySchema,
   translatePaperContentSchema,
-  extractionQuestionsSchema,
 } from "../lib/ai/core/schemas";
 
 describe("ai schemas", () => {
@@ -144,58 +143,6 @@ describe("ai schemas", () => {
     it("rejects missing translatedTitle", () => {
       const result = translatePaperContentSchema.safeParse({
         translatedAbstract: "A",
-      });
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe("extractionQuestionsSchema", () => {
-    it("accepts question with description", () => {
-      const result = extractionQuestionsSchema.parse({
-        questions: [
-          {
-            question: "Sample size?",
-            type: "number",
-            description: "Total N",
-          },
-        ],
-      });
-      expect(result.questions).toHaveLength(1);
-      expect(result.questions[0].description).toBe("Total N");
-    });
-
-    it("accepts question without description", () => {
-      const result = extractionQuestionsSchema.parse({
-        questions: [{ question: "RCT?", type: "boolean" }],
-      });
-      expect(result.questions[0].description).toBeUndefined();
-    });
-
-    it.each(["string", "boolean", "number", "array"] as const)(
-      "accepts type value: %s",
-      (typeValue) => {
-        const result = extractionQuestionsSchema.parse({
-          questions: [{ question: "Q", type: typeValue }],
-        });
-        expect(result.questions[0].type).toBe(typeValue);
-      },
-    );
-
-    it("rejects invalid type enum value", () => {
-      const result = extractionQuestionsSchema.safeParse({
-        questions: [{ question: "Q", type: "invalid" }],
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects empty array (min 1)", () => {
-      const result = extractionQuestionsSchema.safeParse({ questions: [] });
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects too many questions (max 10)", () => {
-      const result = extractionQuestionsSchema.safeParse({
-        questions: Array(11).fill({ question: "Q", type: "string" }),
       });
       expect(result.success).toBe(false);
     });

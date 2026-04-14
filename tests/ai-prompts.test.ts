@@ -5,7 +5,6 @@ import {
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
-  buildExtractionQuestionsPrompts,
 } from "../lib/ai/core/prompts";
 
 describe("buildEnhanceQueryPrompts", () => {
@@ -147,41 +146,5 @@ describe("buildScreeningResponsesPrompts", () => {
       questions: ["Q?"],
     });
     expect(result.prompt).toContain("No abstract available");
-  });
-});
-
-describe("buildExtractionQuestionsPrompts", () => {
-  it("returns system and prompt with expected markers for base case", () => {
-    const result = buildExtractionQuestionsPrompts({
-      jobName: "Systematic Review",
-      sourceContext: "",
-      existingQuestions: [],
-    });
-    expect(result).toHaveProperty("system");
-    expect(result).toHaveProperty("prompt");
-    expect(result.system).toBeTruthy();
-    expect(result.prompt).toBeTruthy();
-    expect(result.system).toContain("JSON");
-    expect(result.system).toContain("questions");
-    expect(result.system).toContain("type");
-    expect(result.prompt).toContain("Systematic Review");
-  });
-
-  it("includes source context in prompt when provided", () => {
-    const result = buildExtractionQuestionsPrompts({
-      jobName: "J",
-      sourceContext: "Context here",
-      existingQuestions: [],
-    });
-    expect(result.prompt).toContain("Context here");
-  });
-
-  it("includes existing questions in prompt when provided", () => {
-    const result = buildExtractionQuestionsPrompts({
-      jobName: "J",
-      sourceContext: "",
-      existingQuestions: ["Existing Q"],
-    });
-    expect(result.prompt).toContain("Existing Q");
   });
 });
