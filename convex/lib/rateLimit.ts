@@ -15,12 +15,6 @@ const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
-  "start-extraction": {
-    kind: "token bucket",
-    rate: 5,
-    period: HOUR,
-    capacity: 3,
-  },
   "api-key-save": {
     kind: "token bucket",
     rate: 5,
@@ -55,7 +49,6 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
 export const consume = internalMutation({
   args: {
     name: v.union(
-      v.literal("start-extraction"),
       v.literal("api-key-save"),
       v.literal("checkout-session"),
       v.literal("wallet-generate"),

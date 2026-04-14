@@ -1,6 +1,6 @@
 /**
  * One-time credit grant issued to every new user on account creation.
- * Lets free users experience server-side AI (including extraction) before committing to a plan.
+ * Lets free users experience server-side AI before committing to a plan.
  */
 export const FREE_SIGNUP_CREDIT_GRANT = 500;
 
@@ -11,7 +11,7 @@ export const FREE_SIGNUP_CREDIT_GRANT = 500;
 export const AI_COST_MARKUP = 1.3;
 
 /**
- * Estimated credit cost per paper for batch AI operations (screening, translation, extraction).
+ * Estimated credit cost per paper for batch AI operations (screening, translation).
  * Used for pre-flight balance checks before starting expensive batch jobs.
  * Derived from typical token usage (~900 in / ~50 out) with the server model.
  */

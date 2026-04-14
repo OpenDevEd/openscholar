@@ -44,13 +44,6 @@ export const seed = internalMutation({
   args: {},
   handler: async (ctx) => {
     const defaults: Array<{ key: string; enabled: boolean; minimumTier: number; description: string }> = [
-      { key: "extraction.enabled", enabled: true, minimumTier: 0, description: "Master switch for the extraction feature" },
-      { key: "extraction.pdf", enabled: true, minimumTier: 0, description: "PDF processing in extraction pipelines" },
-      { key: "extraction.insights", enabled: true, minimumTier: 20, description: "AI-powered insights panel in extraction results" },
-      { key: "extraction.reviewQueue", enabled: false, minimumTier: 20, description: "Manual review queue for extraction results" },
-      { key: "extraction.reportBuilder", enabled: false, minimumTier: 20, description: "Report builder for extraction jobs" },
-      { key: "extraction.start", enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
-      { key: "extraction.templates", enabled: true, minimumTier: 20, description: "Workflow template management (Pro+)" },
       { key: "credits.enabled", enabled: true, minimumTier: 0, description: "Credit system master switch" },
       { key: "credits.topups", enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
       { key: "subscriptions.enabled", enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
