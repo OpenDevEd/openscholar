@@ -1017,7 +1017,6 @@
     "papersCount": "{count} पेपर",
     "statusPending": "लंबित",
     "statusDownloadingPdfs": "पेपर प्रोसेस हो रहे हैं",
-    "statusExtracting": "निकाल रहे हैं",
     "statusCompleted": "पूर्ण",
     "statusFailed": "विफल",
     "statusCancelled": "रद्द",

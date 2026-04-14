@@ -26,7 +26,6 @@ describe("toast action routing", () => {
 
   it("routes plan entitlement codes to /pricing", () => {
     expect(resolveToastActionRoute("AI_PLAN_ENTITLEMENT")).toBe("/pricing");
-    expect(resolveToastActionRoute("EXTRACTION_PLAN_REQUIRED")).toBe("/pricing");
   });
 
   it("returns undefined when no route applies", () => {

@@ -1017,7 +1017,6 @@
     "papersCount": "{count} 論文",
     "statusPending": "保留中",
     "statusDownloadingPdfs": "論文を処理中",
-    "statusExtracting": "抽出中",
     "statusCompleted": "完了",
     "statusFailed": "失敗",
     "statusCancelled": "キャンセル済み",

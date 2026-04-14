@@ -233,7 +233,7 @@ export function buildBillingIdentity(env: BillingLiveEnv): BillingIdentity {
 
 export function createStripeClient(env: BillingLiveEnv): Stripe {
   return new Stripe(env.stripeSecretKey, {
-    apiVersion: "2026-01-28.clover",
+    apiVersion: "2026-02-25.clover",
   });
 }
 

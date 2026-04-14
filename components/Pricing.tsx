@@ -81,7 +81,7 @@ export function Pricing() {
   const FEATURES = useMemo(() => ({
     free: [t("freeFeature1", { credits: FREE_SIGNUP_CREDIT_GRANT }), t("freeFeature2"), t("freeFeature3")],
     go: [t("goFeature1", { credits: PLAN_CONFIG.go.creditsPerMonth }), t("goFeature2"), t("goFeature3")],
-    pro: [t("proFeature1", { credits: PLAN_CONFIG.pro.creditsPerMonth }), t("proFeature2"), t("proFeature3"), t("proFeature4")],
+    pro: [t("proFeature1", { credits: PLAN_CONFIG.pro.creditsPerMonth }), t("proFeature3"), t("proFeature4")],
     enterprise: [t("enterpriseFeature1", { credits: PLAN_CONFIG.enterprise.creditsPerMonth }), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
   }), [t]);
 

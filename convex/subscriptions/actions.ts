@@ -44,7 +44,7 @@ function getStripe(): Stripe {
         "STRIPE_SECRET_KEY is not set. Stripe operations are unavailable.",
       );
     }
-    _stripe = new Stripe(key, { apiVersion: "2026-01-28.clover" });
+    _stripe = new Stripe(key, { apiVersion: "2026-02-25.clover" });
   }
   return _stripe;
 }

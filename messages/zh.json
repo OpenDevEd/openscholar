@@ -1017,7 +1017,6 @@
     "papersCount": "{count} 篇论文",
     "statusPending": "待处理",
     "statusDownloadingPdfs": "正在处理论文",
-    "statusExtracting": "提取中",
     "statusCompleted": "已完成",
     "statusFailed": "失败",
     "statusCancelled": "已取消",
