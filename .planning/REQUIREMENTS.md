@@ -1,53 +1,233 @@
-# Requirements: OpenAlex Count
+# Requirements: OpenAlex Count — v6.0 Extraction MVP Rebuild
 
-**Defined:** 2026-03-12
-**Core Value:** Reliable, well-tested academic search and AI extraction
+**Defined:** 2026-04-14
+**Core Value:** Reliable, well-tested academic search and AI extraction — every major code path has tests, and every new feature is built test-first.
 
-## v5.1 Requirements
+## v6.0 Milestone Context
 
-Requirements for Smart Grouping & PDF-Disabled Cleanup milestone.
+Hot-swap the extraction pipeline with a clean, MVP-grade implementation. Delete all legacy extraction code and data. Cheap OpenRouter models, free upstream full-text sources, deterministic citation grounding, zero crash surfaces. No chunking, no RAG, no vector DB. Target cost <$50/month for MVP volume.
 
-### Answer Clustering
+**Legacy is DEAD.** Destructive rebuild. No backward compat, no migration, no dual-read fallbacks.
 
-- [ ] **GROUP-01**: After extraction completes, system runs one LLM call per question to cluster unique answers into canonical semantic groups
-- [ ] **GROUP-02**: Clustered groups stored in DB and used by frontend instead of static synonym map
-- [ ] **GROUP-03**: Existing completed jobs can be re-clustered on demand (backfill)
+## v6.0 Requirements
 
-### PDF-Disabled Cleanup
+### Teardown
 
-- [ ] **PDF-01**: Papers without abstracts silently excluded when PDF disabled — never inserted into DB
-- [ ] **PDF-02**: No confidence cap (0.7) or citation penalty (best_effort) in abstract-only mode when PDF feature disabled
-- [ ] **PDF-03**: PDF-specific UI elements (citation status bars, grounded rate, indexed/PDF badges) hidden when feature flag off
-- [ ] **PDF-04**: Neutral i18n messages replacing PDF-specific text across all 6 locales
-- [ ] **PDF-05**: All PDF cleanup changes verified with passing test suite (1077+ tests)
+- [ ] **TEAR-01**: Developer deletes all legacy extraction tables from `convex/schema.ts` (extractionJobs, extractionPapers, extractionQuestions, extractionEvidenceUnits, extractionResults, extractionResultReviews, extractionSavedViews, extractionWorkflowTemplates, extractionReportSnapshots, extractionJobStats, extractionRunDiffs)
+- [ ] **TEAR-02**: Developer deletes `convex/extraction/` directory entirely (~9.6K LoC across 30+ files including mutations.ts, queries.ts, workpoolActions.ts, workflow.ts, evidence_units.ts, chunking.ts, guard.ts, prompts.ts, pdfjs_extract.ts, validators.ts, 8 debug_*.ts files, test_*.ts files, uploads.ts, cascade-delete.test.ts, job-stats.test.ts)
+- [ ] **TEAR-03**: Developer deletes `lib/extraction/` directory entirely (answer-grouping, card-thresholds, citation-panel, citations, confidence-messages, export, feature-flags, filtering, insights, pdf-highlight, pdfjs-text, question-status, reviews, status-filter-options, types)
+- [ ] **TEAR-04**: Developer removes `@convex-dev/rag` component from `convex/convex.config.ts` and uninstalls from `package.json`
+- [ ] **TEAR-05**: Developer removes `pdfProcessingPool` and `screeningPool` workpool registrations in favor of new slim workpool setup
+- [ ] **TEAR-06**: Developer removes all extraction-related entries from `lib/pdf/download.ts`, keeping only what the new pipeline needs, or deletes the file entirely
+- [ ] **TEAR-07**: Developer removes all extraction UI routes, pages, and components from `app/extraction/` and `components/extraction/`
+- [ ] **TEAR-08**: Developer removes all extraction-related i18n keys from all 6 locale files (`messages/en.json`, `messages/fr.json`, etc.)
+- [ ] **TEAR-09**: Developer removes `uploadedPdfs` Convex file storage entries from legacy extraction flow (no users to migrate)
+- [ ] **TEAR-10**: TypeScript compiles (`tsc --noEmit` zero errors) after teardown with only new extraction code referenced — no dangling imports, no dead exports
+
+### Parsing Waterfall
+
+- [ ] **PARSE-01**: User's screening job fetches OpenAlex metadata for each paper (DOI, abstract inverted index, `best_oa_location.pdf_url`, `ids.pmcid`, arXiv ID extraction)
+- [ ] **PARSE-02**: User's screening job retrieves full body text from Europe PMC `fullTextXML` endpoint when `ids.pmcid` is present, parsing JATS XML via `fast-xml-parser`
+- [ ] **PARSE-03**: User's screening job retrieves full body text from arXiv HTML (`arxiv.org/html/{id}`) when an arXiv ID is detected, parsing via `linkedom`
+- [ ] **PARSE-04**: User's screening job downloads and parses PDFs via `unpdf` (serverless-bundled PDF.js v5) when an OA PDF URL exists and upstream sources did not resolve
+- [ ] **PARSE-05**: User's screening job falls back to Gemini-as-PDF-parser via Vercel AI SDK `filePart` with `media_resolution: 'low'` when `unpdf` returns fewer than 1500 characters or throws
+- [ ] **PARSE-06**: User's screening job marks a paper as `abstract_only` when all parsing tiers fail, surfacing the limitation in the UI
+- [ ] **PARSE-07**: User sees per-paper parsing source (`pmc` / `arxiv` / `unpdf` / `gemini` / `abstract_only`) on the results card
+- [ ] **PARSE-08**: Node.js runtime is pinned to version 22 via `convex.json` so `unpdf` runs without polyfills
+- [ ] **PARSE-09**: Each parsing tier has an `AbortSignal.timeout` ceiling (20s fetch, 30s XML parse, 60s unpdf, 120s Gemini) with graceful fallthrough on timeout
+- [ ] **PARSE-10**: Parsing pipeline rejects PDFs with more than 200 pages to prevent action-timeout starvation
+
+### Extraction
+
+- [ ] **EXTR-01**: User's screening job sends whole-paper text (not chunks) to Gemini 3 Flash via OpenRouter for extraction — no RAG, no vector DB, no Reciprocal Rank Fusion
+- [ ] **EXTR-02**: User's extraction call uses a flat 7-field Zod schema: `{answer, confidence, evidence_quote, evidence_source_id, evidence_start_char, evidence_end_char, reasoning}` with `propertyOrdering` forcing `reasoning` before `answer`
+- [ ] **EXTR-03**: User's extraction enforces deterministic quoting via Zod `.superRefine()` + `fastest-levenshtein` — rejects any answer whose `evidence_quote` doesn't substring-match the source at ≥0.85 similarity
+- [ ] **EXTR-04**: UI always renders the verbatim quote from `source.text.slice(start_char, end_char)` — never the LLM's `evidence_quote` field
+- [ ] **EXTR-05**: User's screening job runs a critic pass (same cheap model, T=0) asking "Does this quote appear verbatim and support this answer?" — rejects answers where the critic returns `unsupported`
+- [ ] **EXTR-06**: User's screening pipeline uses a three-tier OpenRouter cascade via `@openrouter/ai-sdk-provider` with `plugins: [{id: 'response-healing'}]`: Gemini 2.5 Flash Lite pre-screen → Gemini 3 Flash default → Claude Haiku 4.5 on schema failure or low confidence
+- [ ] **EXTR-07**: User's cost per run is minimized via Gemini automatic caching, OpenRouter `provider.order` + `allow_fallbacks`, and `temperature: 0`
+- [ ] **EXTR-08**: User sees `insufficient_evidence` as a first-class answer state when retrieval/critic can't support a decision — confidence capped, UI surfaces reason
+- [ ] **EXTR-09**: Extraction results include `{answer, confidence: "high"|"medium"|"low", evidence: {quote, source_id, start, end}, reasoning, model_used, critic_verdict, parsing_source}` shape returned to the UI
+- [ ] **EXTR-10**: Per-question extraction is parallelized via `Promise.allSettled` with concurrency cap 5 and per-question `AbortSignal.timeout(60000)` — one question's failure does not kill siblings
+
+### Workflow & Orchestration
+
+- [ ] **WORK-01**: Developer creates a slim durable workflow via `@convex-dev/workflow` that orchestrates per-paper stages (parse → extract → critic → persist) with one journaled step per stage, not per paper
+- [ ] **WORK-02**: Developer registers a single `extractionPool` workpool with conservative `maxParallelism` (3-5) for MVP scale
+- [ ] **WORK-03**: Each paper's workpoolId is persisted on the paper row so `cancelExtraction` can iterate and cancel targeted items (no `cancelAll` cross-user blast)
+- [ ] **WORK-04**: User can cancel a running job via a button; cancellation stops the workflow, cancels each paper's workpool item, and marks remaining papers as `cancelled`
+- [ ] **WORK-05**: Workflow steps classify errors as retryable (network, 5xx, 429, timeout) vs permanent (404, 400, validation) — retryable errors throw so workpool retry fires, permanent errors return `{success: false}` and are not retried
+- [ ] **WORK-06**: Workflow enqueues all paper jobs via a single batched mutation (`enqueueAllPapers`) — not 500 sequential journaled steps
+- [ ] **WORK-07**: Results save is idempotent — uses the `by_paper_question` index to skip inserts if a result row already exists, preventing `onComplete` double-fire corruption
+- [ ] **WORK-08**: All workflow-facing actions early-return when `job.status === "cancelled" | "failed"` — no wasted LLM tokens on cancelled jobs
+- [ ] **WORK-09**: Workflow emits real-time progress updates visible to the user via Convex reactive subscriptions (papers processed / failed / remaining)
+
+### Crash Prevention
+
+- [ ] **CRASH-01**: User clicking anywhere in the app never crashes the full UI — every route segment has an `error.tsx` boundary (`app/extraction/[jobId]/error.tsx`, `app/results/[searchId]/error.tsx`, `app/settings/error.tsx` at minimum)
+- [ ] **CRASH-02**: Every `useQuery` call site in extraction UI handles `undefined` (loading) and `null` (not found) states before destructuring — no bare `const { foo } = useQuery(...)` patterns
+- [ ] **CRASH-03**: Clerk authentication sync retries once on browser tab visibility change, recovering from the "came back and app is broken" stranding pattern
+- [ ] **CRASH-04**: Every user-facing `useMutation` call-site catches rejections and routes them to a toast, so an uncaught rejection can never bubble to the error boundary
+- [ ] **CRASH-05**: Prompt injection via PDF text is blocked via per-request random UUID delimiters around evidence blocks, with the system prompt instructing the model to trust only delimiter-wrapped content
+- [ ] **CRASH-06**: Every external `fetch` (OpenRouter, PMC, arXiv, OA PDF hosts) has `AbortSignal.timeout` and is wrapped so a single stuck request cannot lock a Convex action to timeout
+- [ ] **CRASH-07**: Zustand persist migration ladder in `lib/store.ts` is collapsed to version 1 so a malformed localStorage payload cannot crash the sidebar tree
+
+### Evaluation & Quality
+
+- [ ] **EVAL-01**: Developer maintains a 20-case hand-labeled golden set in `tests/evals/screening-golden.ts` (paper + question + expected answer + expected source span), covering include/exclude/insufficient cases and at least 3 parsing sources (PMC, arXiv, PDF fallback)
+- [ ] **EVAL-02**: Developer runs the golden set via `vitest-evals` + `autoevals` with a Factuality scorer and citation-substring-match scorer, gated by `RUN_EVALS=1`, on every PR touching `convex/extraction/**` or `lib/extraction/**`
+- [ ] **EVAL-03**: CI blocks merges when recall-on-include drops below 95% or citation-validity-rate drops below 98% on the golden set
+- [ ] **EVAL-04**: A Convex cron runs hourly, samples 1 production screening answer, runs the critic pass against it, and writes `{answerId, verdict, judgeModel, timestamp}` to a `qualityChecks` table
+- [ ] **EVAL-05**: User can see a 7-day rolling pass-rate dashboard query (`getQualityTrend`) returning `{supported, unsupported, partial}` counts
+- [ ] **EVAL-06**: Production samples flagged `unsupported` automatically land in a human-review queue that doubles as the golden-set growth pipeline
+
+### Observability
+
+- [ ] **OBS-01**: Every extraction stage emits a single structured `console.info` JSON line with `{traceId, jobId, paperId, stage, model, tokensIn, tokensOut, costUsd, latencyMs, status}` — no ad-hoc `console.log` strings
+- [ ] **OBS-02**: `traceId` (ULID) generated in the top-level `startExtraction` mutation is propagated through every workflow step, workpool enqueue context, and LLM call
+- [ ] **OBS-03**: Failures are logged via `console.error` with the same JSON shape plus `{errorMessage, errorCategory, retryable}` — grep-friendly for incident triage before Sentry is wired up
+- [ ] **OBS-04**: User sees per-job metrics in the UI (papers processed, average latency, estimated cost, errors) fed by a typed Convex query
+- [ ] **OBS-05**: Two SLO metrics are tracked and persisted per run: recall-on-include (from golden set) and citation-validity-rate (from Levenshtein verification)
+
+### UI Polish
+
+- [ ] **UI-01**: User sees a clean extraction job creation flow with question builder, model tier selector (auto/cheap/accurate), estimated cost preview, and start button
+- [ ] **UI-02**: User sees a live job progress view with per-paper status badges (parsing/extracting/done/failed), real-time counters, and a cancel button
+- [ ] **UI-03**: User sees results on a per-paper card with the clickable verbatim quote highlighted at the source character range
+- [ ] **UI-04**: User can export results as CSV, JSON, or XLSX via the existing download helper (reuse from library export — no new infrastructure)
+- [ ] **UI-05**: All new extraction UI strings are seeded in 6 locale files upfront (en, fr, es, de, ar, zh) before component development, per v5.0 discipline
+- [ ] **UI-06**: New extraction pages match the Clean/Friendly/Approachable design personality — OKLCH color tokens, Outfit variable font, spring-based Framer Motion, WCAG AAA contrast
+
+## Future Requirements
+
+Deferred to later milestones. Tracked but not in current roadmap.
+
+### Scale Hardening (v6.1+)
+
+- **SCALE-01**: Hot/cold split of `extractionJobs` table with sharded progress counters to raise `maxParallelism` beyond 5
+- **SCALE-02**: `@convex-dev/rate-limiter` component applied to every user-facing extraction surface with token-bucket per-provider limits
+- **SCALE-03**: Per-provider circuit breaker backed by a Convex table, failing fast during OpenRouter / Gemini outages
+- **SCALE-04**: Dead-letter table with admin replay UI for papers that exceed retry budget
+- **SCALE-05**: Provider failover to Claude / DeepSeek when Gemini is over quota, beyond the cascade already in EXTR-06
+
+### Advanced Retrieval (v7+)
+
+- **RETR-01**: Anthropic Contextual Retrieval on chunk pipeline for 49–67% retrieval recall improvement
+- **RETR-02**: Chunk-aware evidence extraction with dense + BM25 hybrid search and reranker for papers exceeding 200k token context
+- **RETR-03**: Multi-paper synthesis queries for literature reviews spanning corpora
+
+### Production Observability (v6.1+)
+
+- **OBS-FUT-01**: Sentry integration for exception capture in extraction actions
+- **OBS-FUT-02**: Langfuse or self-hosted equivalent for LLM trace aggregation via Vercel AI SDK `experimental_telemetry`
+- **OBS-FUT-03**: PostHog funnel dashboards for extraction job lifecycle
+- **OBS-FUT-04**: Promptfoo CLI integration alongside `vitest-evals` for heavier regression testing
+
+### Advanced Parsing (v6.1+)
+
+- **PARSE-FUT-01**: Docling / MinerU / olmOCR Python sidecar for math-heavy and scanned PDFs beyond Gemini's capability
+- **PARSE-FUT-02**: GROBID sidecar for bibliographic reference graph extraction
+- **PARSE-FUT-03**: Tesseract.js or Gemini-vision OCR fallback integrated into the parsing waterfall
 
 ## Out of Scope
 
+Explicitly excluded. Documented to prevent scope creep.
+
 | Feature | Reason |
 |---------|--------|
-| Fuzzy string matching (Levenshtein) | LLM clustering supersedes; string similarity can't link "banking" → "finance" |
-| User-driven manual merge/unmerge UI | Deferred to v5.2+; LLM clustering handles 80% case |
-| Re-extraction with controlled vocabulary | Requires prompt changes and re-running all jobs; clustering is non-destructive |
-| PDF re-enablement testing | PDF is disabled for the foreseeable future |
+| Backward compatibility with legacy extraction data | User explicitly said legacy is DEAD — destructive rebuild, no migration |
+| Chunking + vector retrieval for MVP scope | 1M-context Flash models + free upstream full-text make chunking unnecessary at MVP scale |
+| Docling / MinerU / olmOCR Python sidecars | Premature for MVP — Gemini-as-parser covers 95%+ of papers at ~$0.0005 each |
+| Anthropic Contextual Retrieval | Adds ~$1/M tokens and a new chunk preprocessing pipeline — premature for MVP |
+| Langfuse / Braintrust / Phoenix / Promptfoo | `vitest-evals` + `autoevals` + 20-case golden set is enough for MVP — add observability services when paying customers exist |
+| `@convex-dev/rate-limiter` saturation coverage | Current extraction surfaces are low-traffic — apply only to the new `startExtraction` mutation |
+| Circuit breaker component | Single LLM provider (OpenRouter) at MVP — add when there are two providers and failover logic |
+| Dead-letter replay UI | A `failed` paper IS the dead-letter at this scale — user retries manually |
+| Idempotency holds with provider idempotency-key headers | Credit misbilling happens rarely at MVP scale — handle manually if it fires |
+| Sharded progress counters / hot-cold schema split | OCC contention is not observed at `maxParallelism: 3-5` — defer until it fires |
+| `@convex-dev/workflow` restart/cleanup machinery | Current workflows run once and complete — restart matters for multi-day workflows |
+| Grok 4.1 Fast in the hot path | 92.89% baseline JSON validity → 5% schema-break rate is a dealbreaker for `Output.object` under strict Zod schemas |
+| Two-stage workpool chain with onComplete handoff | New pipeline uses a single-stage workflow step per paper — simpler, fewer race conditions |
+| Legacy `pdfjs-dist/legacy/build/pdf.mjs` | Replaced by `unpdf` (serverless-bundled PDF.js v5) |
+| OpenAlex `/ngrams` endpoint or body-text fields | Endpoint retired by OpenAlex, no body text returned — metadata-only usage |
+| Prompt versioning service | Prompts live in TypeScript consts in-repo — sufficient for MVP |
+| Multi-tenant fairness / per-user pool isolation | Single shared pool is fine until user base grows |
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GROUP-01 | TBD | Pending |
-| GROUP-02 | TBD | Pending |
-| GROUP-03 | TBD | Pending |
-| PDF-01 | TBD | Complete (implemented) |
-| PDF-02 | TBD | Complete (implemented) |
-| PDF-03 | TBD | Complete (implemented) |
-| PDF-04 | TBD | Complete (implemented) |
-| PDF-05 | TBD | Pending (needs deploy verification) |
+| TEAR-01 | TBD | Pending |
+| TEAR-02 | TBD | Pending |
+| TEAR-03 | TBD | Pending |
+| TEAR-04 | TBD | Pending |
+| TEAR-05 | TBD | Pending |
+| TEAR-06 | TBD | Pending |
+| TEAR-07 | TBD | Pending |
+| TEAR-08 | TBD | Pending |
+| TEAR-09 | TBD | Pending |
+| TEAR-10 | TBD | Pending |
+| PARSE-01 | TBD | Pending |
+| PARSE-02 | TBD | Pending |
+| PARSE-03 | TBD | Pending |
+| PARSE-04 | TBD | Pending |
+| PARSE-05 | TBD | Pending |
+| PARSE-06 | TBD | Pending |
+| PARSE-07 | TBD | Pending |
+| PARSE-08 | TBD | Pending |
+| PARSE-09 | TBD | Pending |
+| PARSE-10 | TBD | Pending |
+| EXTR-01 | TBD | Pending |
+| EXTR-02 | TBD | Pending |
+| EXTR-03 | TBD | Pending |
+| EXTR-04 | TBD | Pending |
+| EXTR-05 | TBD | Pending |
+| EXTR-06 | TBD | Pending |
+| EXTR-07 | TBD | Pending |
+| EXTR-08 | TBD | Pending |
+| EXTR-09 | TBD | Pending |
+| EXTR-10 | TBD | Pending |
+| WORK-01 | TBD | Pending |
+| WORK-02 | TBD | Pending |
+| WORK-03 | TBD | Pending |
+| WORK-04 | TBD | Pending |
+| WORK-05 | TBD | Pending |
+| WORK-06 | TBD | Pending |
+| WORK-07 | TBD | Pending |
+| WORK-08 | TBD | Pending |
+| WORK-09 | TBD | Pending |
+| CRASH-01 | TBD | Pending |
+| CRASH-02 | TBD | Pending |
+| CRASH-03 | TBD | Pending |
+| CRASH-04 | TBD | Pending |
+| CRASH-05 | TBD | Pending |
+| CRASH-06 | TBD | Pending |
+| CRASH-07 | TBD | Pending |
+| EVAL-01 | TBD | Pending |
+| EVAL-02 | TBD | Pending |
+| EVAL-03 | TBD | Pending |
+| EVAL-04 | TBD | Pending |
+| EVAL-05 | TBD | Pending |
+| EVAL-06 | TBD | Pending |
+| OBS-01 | TBD | Pending |
+| OBS-02 | TBD | Pending |
+| OBS-03 | TBD | Pending |
+| OBS-04 | TBD | Pending |
+| OBS-05 | TBD | Pending |
+| UI-01 | TBD | Pending |
+| UI-02 | TBD | Pending |
+| UI-03 | TBD | Pending |
+| UI-04 | TBD | Pending |
+| UI-05 | TBD | Pending |
+| UI-06 | TBD | Pending |
 
 **Coverage:**
-- v5.1 requirements: 8 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 8
+- v6.0 requirements: 59 total
+- Mapped to phases: 0 (populated by roadmapper)
+- Unmapped: 59 ⚠️
 
 ---
-*Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after milestone v5.1 definition*
+*Requirements defined: 2026-04-14*
+*Last updated: 2026-04-14 after v6.0 milestone initial definition*
