@@ -232,7 +232,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 
 **Milestone Goal:** Hot-swap the extraction pipeline with a clean, MVP-grade implementation — cheap OpenRouter models, free upstream full-text sources, deterministic citation grounding, and zero crash surfaces. Delete all legacy extraction code, tables, and data.
 
-- [ ] **Phase 88: Scorched-Earth Teardown** - Delete all legacy extraction code, tables, UI, and RAG component so nothing dangles after
+- [x] **Phase 88: Scorched-Earth Teardown** - Delete all legacy extraction code, tables, UI, and RAG component so nothing dangles after (completed 2026-04-14)
 - [ ] **Phase 89: Core Schema & Workflow Skeleton** - Stand up the new slim schema, durable workflow, and batched enqueue so downstream phases have rails to build on
 - [ ] **Phase 90: Free-First Parsing Waterfall** - Resolve full-text via OpenAlex metadata, Europe PMC, arXiv HTML, unpdf, and Gemini-as-PDF-parser with abort-signal ceilings and a 200-page cap
 - [ ] **Phase 91: Extraction Cascade Core** - Send whole-paper text to the three-tier OpenRouter cascade with flat 7-field Zod schema, Gemini caching, and per-question parallelism
@@ -255,12 +255,12 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
   3. `@convex-dev/rag` is absent from `convex/convex.config.ts` and uninstalled from `package.json`
   4. `tsc --noEmit` returns zero errors with no dangling imports or dead exports referencing deleted modules
   5. All six locale files (`messages/{en,fr,es,de,ar,zh}.json`) contain zero `extraction.*` keys left over from the legacy UI
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [x] 88-01-PLAN.md — Wholesale deletion of extraction directories, standalone files, and test files
 - [x] 88-02-PLAN.md — Surgical removal of extraction from shared frontend files (store, types, sidebar, AI modules)
 - [x] 88-03-PLAN.md — Delete convex/extraction/, edit shared Convex modules, remove schema tables
-- [ ] 88-04-PLAN.md — Config/package cleanup, i18n key removal, final compilation and test verification
+- [x] 88-04-PLAN.md — Config/package cleanup, i18n key removal, final compilation and test verification
 
 ### Phase 89: Core Schema & Workflow Skeleton
 **Goal**: Define the new slim extraction schema (job, paper, question, result tables with `by_paper_question` unique index), register the single `extractionPool` workpool, and stand up a durable `@convex-dev/workflow` whose stages enqueue all papers in one batched mutation and save results idempotently — the rails downstream phases run on.
@@ -391,7 +391,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 75-78 | v4.0 | 9/9 | Complete | 2026-03-09 |
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
-| 88. Scorched-Earth Teardown | v6.0 | 3/4 | In Progress|  |
+| 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete   | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 0/TBD | Not started | - |
 | 90. Free-First Parsing Waterfall | v6.0 | 0/TBD | Not started | - |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
