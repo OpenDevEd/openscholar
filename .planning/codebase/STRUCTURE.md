@@ -1,344 +1,417 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-03-06
+**Analysis Date:** 2026-04-14
 
 ## Directory Layout
 
 ```
 openalex-count/
-├── app/                        # Next.js App Router pages and API routes
-│   ├── layout.tsx              # Root layout with provider tree
-│   ├── page.tsx                # Home / search entry page
-│   ├── globals.css             # Global styles (Tailwind)
-│   ├── actions/                # Next.js server actions
-│   ├── api/openalex/search/    # OpenAlex search proxy API route
-│   ├── auth/                   # Auth flow pages (signin, signout, callback, access-token)
-│   ├── sign-in/[[...sign-in]]/ # Clerk sign-in page
-│   ├── sign-up/[[...sign-up]]/ # Clerk sign-up page
-│   ├── results/                # Search results page
-│   │   └── [searchId]/         # Dynamic search result with history
-│   ├── library/                # User paper library
-│   ├── bookmarks/              # Saved bookmarks page
-│   ├── history/                # Search history page
-│   ├── extraction/             # Extraction jobs list and detail
-│   │   ├── new/                # Create new extraction job
-│   │   └── [jobId]/            # Extraction job detail
-│   ├── settings/               # User settings
-│   │   ├── ai/                 # AI provider settings (BYOK)
-│   │   └── billing/            # Billing/subscription settings
-│   ├── pricing/                # Pricing page
-│   ├── admin/cleanup/          # Admin cleanup tools
-│   ├── privacy/                # Privacy policy
-│   └── cookie-policy/          # Cookie policy
-├── components/                 # React components
-│   ├── ui/                     # Shadcn/ui primitives (button, dialog, etc.)
-│   ├── shared/                 # Shared components across features
-│   ├── layout/                 # Layout components
-│   ├── providers/              # Context providers (Convex, etc.)
-│   ├── auth/                   # Auth-related components
-│   ├── home/                   # Home page components
-│   ├── library/                # Library feature components
-│   ├── extraction/             # Extraction feature components
-│   ├── settings/               # Settings page components
-│   ├── billing/                # Billing/subscription components
-│   ├── command-center/         # Command palette
-│   ├── search-command-center/  # Search-specific command palette
-│   ├── bookmarks-command-center/ # Bookmarks command palette
-│   ├── paper-card/             # Paper card display components
-│   ├── focus-mode/             # Focus mode components
-│   ├── icons/                  # Custom icon components
-│   └── *.tsx                   # Feature-level components (sidebar, navbar, filters, etc.)
-├── convex/                     # Convex backend (all server-side logic)
-│   ├── schema.ts               # Database schema (all tables)
-│   ├── convex.config.ts        # Convex app config (Stripe, RAG, workflow, workpool components)
-│   ├── auth.config.ts          # Clerk JWT auth config
-│   ├── http.ts                 # HTTP router (webhooks: Clerk, Stripe, Zotero OAuth)
-│   ├── crons.ts                # Scheduled cron jobs
-│   ├── workflow.ts             # WorkflowManager instance
-│   ├── workpool.ts             # Workpool instance for PDF processing
-│   ├── stripe.ts               # Stripe client config
-│   ├── _generated/             # Auto-generated Convex types and API refs
-│   ├── lib/                    # Shared backend utilities
-│   │   ├── auth.ts             # Auth helpers (requireUser, etc.)
-│   │   ├── errors.ts           # Structured error factory
-│   │   ├── crypto.ts           # Encryption for API keys
-│   │   ├── env.ts              # Environment variable helpers
-│   │   ├── envValidation.ts    # Env var validation (cron-checked)
-│   │   ├── featureFlags.ts     # Feature flag system
-│   │   ├── rateLimit.ts        # Rate limiting config
-│   │   ├── audit.ts            # Audit logging
-│   │   ├── constants.ts        # Backend constants
-│   │   ├── validators.ts       # Shared validators
-│   │   ├── freeCredits.ts      # Free credit grant logic
-│   │   ├── creditTopups.ts     # Credit top-up pricing
-│   │   ├── userCreation.ts     # User creation helper
-│   │   └── stripeWebhook*.ts   # Stripe webhook utilities
-│   ├── users/                  # User domain (queries, mutations, internal)
-│   ├── subscriptions/          # Subscription domain (queries, actions, internal, lib/)
-│   ├── credits/                # Credits domain (queries, actions, internal, lib/)
-│   ├── extraction/             # Extraction domain (workflow, actions, mutations, queries, prompts, etc.)
-│   ├── ai/                     # AI config and actions (server-side)
-│   ├── library/                # Library domain (queries, mutations, collections)
-│   ├── apiKeys/                # BYOK API key management
-│   ├── zotero/                 # Zotero integration (OAuth, queries, mutations)
-│   ├── webhooks/               # Webhook handlers (Clerk user sync)
-│   ├── maintenance/            # Maintenance cron handlers
-│   └── testing/                # Test helpers for Convex
-├── lib/                        # Shared frontend utilities and business logic
-│   ├── types/                  # TypeScript type definitions
-│   │   ├── index.ts            # Re-exports
-│   │   ├── search.types.ts     # Search-related types
-│   │   ├── ai.types.ts         # AI provider types
-│   │   ├── extraction.types.ts # Extraction types
-│   │   ├── library.types.ts    # Library types
-│   │   └── screening.types.ts  # Screening types
-│   ├── search/                 # Search system
-│   │   ├── provider.tsx        # SearchProvider context (core search state)
-│   │   ├── types.ts            # Search context types
-│   │   ├── actions.ts          # Search action helpers
-│   │   ├── index.ts            # Re-exports
-│   │   └── initializer.tsx     # Search state initializer
-│   ├── search-params/          # URL param parsing (nuqs)
-│   ├── ai/                     # AI integration
-│   │   ├── client/             # Client-side AI (executor, router, mode routing)
-│   │   ├── core/               # Core AI logic (prompts, schemas, batch, cost, types)
-│   │   └── server/             # Server-side AI providers
-│   ├── store/                  # Zustand store modules
-│   │   └── extraction.ts       # Extraction-specific store
-│   ├── store.ts                # Main Zustand stores (ratings, search history, bookmarks, AI, etc.)
-│   ├── extraction/             # Extraction feature utilities
-│   ├── filters/                # Filter utilities
-│   ├── auth/                   # Auth utilities (Clerk UI config, public routes, hooks)
-│   ├── billing/                # Billing entitlements
-│   ├── credits/                # Credit feature flags
-│   ├── subscriptions/          # Subscription feature flags
-│   ├── library/                # Library utilities
-│   ├── toast/                  # Toast notification helpers
-│   ├── hooks/                  # Custom React hooks
-│   ├── constants/              # Constants
-│   ├── pdf/                    # PDF utilities
-│   ├── i18n/                   # i18n utilities
-│   ├── ui/                     # UI utilities
-│   ├── utils.ts                # General utilities (cn, createSearchParameters, etc.)
-│   ├── openalex.ts             # OpenAlex SDK client
-│   ├── constants.ts            # App-wide constants
-│   ├── format.ts               # Formatting utilities
-│   └── posthog-*.ts            # PostHog analytics helpers
-├── hooks/                      # Top-level React hooks
-│   ├── use-batch-operation.ts  # Batch operation hook
-│   ├── use-batch-screening.ts  # Batch screening hook
-│   ├── use-batch-translation.ts# Batch translation hook
-│   ├── use-country-filter.ts   # Country filter hook
-│   └── use-mobile.tsx          # Mobile detection hook
-├── i18n/                       # Internationalization config
-│   ├── config.ts               # i18n configuration
-│   ├── locale.ts               # Locale utilities
-│   ├── locale-detection.ts     # Browser locale detection
-│   └── request.ts              # next-intl request config
-├── messages/                   # Translation files
-│   ├── en-US.json              # English (US)
-│   ├── en-GB.json              # English (GB)
-│   ├── fr.json                 # French
-│   ├── hi.json                 # Hindi
-│   ├── ja.json                 # Japanese
-│   └── zh.json                 # Chinese
-├── content/                    # Static content (legal pages)
-│   ├── cookie-policy/          # Cookie policy markdown
-│   └── privacy-policy/         # Privacy policy markdown
-├── tests/                      # Test files
-│   ├── factories/              # Test data factories
-│   ├── extraction/             # Extraction feature tests
-│   ├── library/                # Library feature tests
-│   └── live-billing/           # Live billing integration tests
-├── e2e/                        # Playwright E2E tests
-│   ├── auth.spec.ts            # Auth flow E2E tests
-│   ├── billing/                # Billing E2E tests
-│   └── global.setup.ts         # Global E2E setup
-├── scripts/                    # Build/CI scripts
-│   ├── billing-preflight.mjs   # Billing test preflight checks
+├── app/                     # Next.js 16 App Router (pages, route handlers, server actions)
+│   ├── actions/             # `"use server"` server actions (OpenAlex proxy)
+│   ├── api/                 # Route handlers (currently only /api/openalex/search)
+│   ├── bookmarks/           # /bookmarks page
+│   ├── connect/             # Wallet OAuth-style consent page
+│   ├── cookie-policy/       # /cookie-policy legal page
+│   ├── extraction/          # /extraction list, /extraction/new creator, /extraction/[jobId] detail
+│   ├── history/             # /history page
+│   ├── library/             # /library page
+│   ├── pricing/             # /pricing page
+│   ├── privacy/             # /privacy legal page
+│   ├── results/             # /results/[searchId] + nested /history
+│   ├── settings/            # /settings (ai, billing, connections, root)
+│   ├── sign-in/             # Clerk sign-in catch-all
+│   ├── sign-up/             # Clerk sign-up catch-all
+│   ├── layout.tsx           # Root layout — providers + gates
+│   ├── page.tsx             # Home
+│   ├── globals.css          # Tailwind v4 tokens, OKLCH palette
+│   ├── error.tsx            # Route error boundary
+│   ├── global-error.tsx     # Root error boundary
+│   └── not-found.tsx        # 404
+│
+├── components/              # All React components (UI + feature folders)
+│   ├── ai/                  # AI setup gate
+│   ├── auth/                # Auth route gate + panels
+│   ├── billing/             # Credit balance, top-up, upgrade dialog
+│   ├── bookmarks-command-center/
+│   ├── command-center/      # Shared command center layout primitives
+│   ├── extraction/          # Extraction feature UI (viewer, results, builders)
+│   ├── focus-mode/          # Focus mode reader
+│   ├── history-command-center/
+│   ├── home/                # Hero, ambient background, search input, mode toggle
+│   ├── icons/               # Custom SVG icons
+│   ├── layout/              # Two-column layout
+│   ├── library/             # Library command center + filters
+│   ├── paper-card/          # Paper result card
+│   ├── providers/           # Convex + Clerk provider wrapper
+│   ├── screening/           # Screening dialogs, jobs, scoring UI
+│   ├── search-command-center/
+│   ├── settings/            # Settings sub-pages UI
+│   ├── shared/              # Shared building blocks (sidebar-layout, etc.)
+│   ├── ui/                  # shadcn/ui primitives (button, dialog, sonner, table, …)
+│   ├── app-sidebar.tsx      # Left nav with Motion animations
+│   ├── auth-button.tsx      # Auth control in sidebar
+│   ├── cookie-consent-banner.tsx
+│   ├── mobile-navbar.tsx
+│   ├── PageContent.tsx      # Home page client content
+│   ├── PageWrapper.tsx
+│   ├── Pricing.tsx
+│   ├── results-list.tsx
+│   ├── results-page-content.tsx
+│   ├── search-filter-sidebar.tsx
+│   ├── search-history*.tsx  # History command center siblings
+│   └── theme-provider.tsx / theme-toggle.tsx
+│
+├── convex/                  # Convex backend
+│   ├── _generated/          # Generated API + data model (DO NOT EDIT)
+│   ├── ai/                  # Credit-billed AI helpers (actions, config, helpers, lib/creditBilling)
+│   ├── apiKeys/             # BYOK key management (actions, mutations, queries)
+│   ├── credits/             # Credit ledger (actions, internal, queries, lib policies)
+│   ├── extraction/          # Extraction pipeline (queries, mutations, actions, workflow, workpoolActions, prompts, evidence_units, pdfjs_extract, validators, types, etc.)
+│   ├── featureFlags/        # Flag reads + guard + internal setters
+│   ├── lib/                 # Shared backend utilities (auth, errors, crypto, rateLimit, env, envValidation, stripeWebhookHandlers, audit, validators, …)
+│   ├── library/             # User library collections + backfill
+│   ├── maintenance/         # Cron-driven maintenance mutations
+│   ├── models/              # Model catalog sync from OpenRouter
+│   ├── screening/           # Screening workflow + mutations/queries/scoring/validators
+│   ├── subscriptions/       # Stripe-backed subscription logic + lib policies
+│   ├── testing/             # Test-only helpers
+│   ├── users/               # ensureUser, mutations, queries, internal helpers
+│   ├── wallet/              # Wallet keys, nodeActions, gateway/* (OpenAI-compatible HTTP)
+│   ├── webhooks/            # Clerk webhook + mappers
+│   ├── zotero/              # Zotero OAuth + actions/mutations/queries
+│   ├── schema.ts            # Every table + index in one file
+│   ├── convex.config.ts     # Components: stripe, rag, workflow, workpool × 2
+│   ├── http.ts              # HTTP router (webhooks + wallet API)
+│   ├── crons.ts             # Scheduled jobs
+│   ├── workflow.ts          # WorkflowManager config
+│   ├── workpool.ts          # pdfProcessingPool + screeningPool
+│   ├── stripe.ts            # Stripe client factory
+│   ├── auth.config.ts       # Clerk issuer for Convex auth
+│   └── tsconfig.json
+│
+├── lib/                     # Shared TS lib (client-safe + server-neutral)
+│   ├── ai/
+│   │   ├── client/          # Router hook, executor, mode-routing, hook-factory
+│   │   ├── core/            # Provider-neutral schemas, prompts, types, validate, batch, cost, configs, execute
+│   │   └── server/          # `getProviderModel` factory for @ai-sdk providers
+│   ├── auth/                # Public routes, proxy policy, Clerk UI config, auth query hooks
+│   ├── billing/             # Entitlements
+│   ├── constants/           # View mode constants
+│   ├── credits/             # Feature flags for credits
+│   ├── extraction/          # UI helpers: filtering, grouping, citations, thresholds, insights, reviews, export, pdfjs-text, pdf-highlight
+│   ├── feature-flags/       # Registry, provider, hook, resolve
+│   ├── filters/             # Filter builder/config/types
+│   ├── hooks/               # use-cooldown, use-debounced-value, use-selection, use-url-state
+│   ├── i18n/                # Locale map helpers
+│   ├── library/             # Library export, download handlers, param codecs
+│   ├── openalex/            # Abstract reconstruction
+│   ├── pdf/                 # PDF download helper
+│   ├── screening/           # Export helper
+│   ├── search/              # SearchProvider, actions, detect-mode, initializer, types
+│   ├── search-params/       # nuqs parsers + serializers + converters + regions
+│   ├── store/               # extraction store slice
+│   ├── subscriptions/       # Subscription feature flags
+│   ├── toast/               # Styled toast system (core, error-resolver, action-routing, use-app-toast)
+│   ├── types/               # Central type re-exports (ai, extraction, library, screening, search)
+│   ├── ui/                  # sidebar-motion config
+│   ├── ai-models.ts         # Client AI model catalog
+│   ├── animation-config.ts  # Motion spring presets
+│   ├── confirmation.tsx     # Global confirmation host
+│   ├── consent-storage.ts
+│   ├── constants.ts         # Large constants (21KB)
+│   ├── convex-site.ts
+│   ├── format.ts
+│   ├── hooks.ts             # Large cross-cutting hooks file (14KB)
+│   ├── keyword-validation.ts
+│   ├── legal-content.ts
+│   ├── openalex.ts          # OpenAlex SDK singleton
+│   ├── posthog-*.ts         # PostHog wrappers (ai, server, search, shared)
+│   ├── search-actions.ts    # Download/export search result handlers
+│   ├── search-utils.ts
+│   ├── store.ts             # Zustand root store (42KB)
+│   ├── utils.ts             # Tailwind cn, createSearchParameters, etc. (20KB)
+│   └── zotero-utils.ts
+│
+├── hooks/                   # App-level hooks not under lib/
+│   ├── use-batch-operation.ts
+│   ├── use-batch-screening.ts
+│   ├── use-batch-translation.ts
+│   ├── use-country-filter.ts
+│   └── use-mobile.tsx
+│
+├── i18n/                    # next-intl config
+│   ├── config.ts            # Locale list
+│   ├── locale.ts
+│   ├── locale-detection.ts
+│   └── request.ts           # getRequestConfig
+│
+├── messages/                # next-intl translation bundles
+│   ├── en-US.json
+│   ├── en-GB.json
+│   ├── zh.json
+│   ├── fr.json
+│   ├── hi.json
+│   └── ja.json
+│
+├── content/                 # Markdown legal content
+│   ├── cookie-policy/
+│   └── privacy-policy/
+│
+├── tests/                   # Vitest unit + component tests
+│   ├── components/          # Component test helpers
+│   ├── extraction/          # Extraction-specific tests
+│   ├── factories/           # Test data factories
+│   ├── library/             # Library feature tests
+│   ├── live-billing/        # Live Stripe billing tests (separate config)
+│   ├── setup.ts             # Vitest setup
+│   └── *.test.ts(x)         # Unit/integration tests
+│
+├── e2e/                     # Playwright tests
+│   ├── auth.spec.ts
+│   ├── billing/             # Billing e2e specs
+│   └── global.setup.ts
+│
+├── scripts/                 # Operational scripts
+│   ├── billing-preflight.mjs
 │   ├── verify-legal-markdown-parity.mjs
-│   └── verify-no-any.sh        # TypeScript `any` usage check
-├── public/                     # Static assets
-├── docs/                       # Documentation
-│   └── plans/                  # Planning documents
-├── .github/                    # GitHub Actions
-├── package.json                # Dependencies and scripts
-├── next.config.ts              # Next.js config (react compiler, PostHog proxy, next-intl)
-├── tsconfig.json               # TypeScript config
-├── vitest.config.ts            # Vitest config (unit tests)
-├── vitest.live.config.ts       # Vitest config (live billing tests)
-├── playwright.config.ts        # Playwright config (E2E tests)
-├── postcss.config.mjs          # PostCSS (Tailwind)
-├── components.json             # Shadcn/ui config
-├── ecosystem.config.js         # PM2 config (dev:all runs next + convex)
-├── proxy.ts                    # Dev proxy script
-├── knip.json                   # Dead code detection config
-└── global.d.ts                 # Global type declarations
+│   ├── verify-no-any.sh
+│   └── wallet-cli.ts
+│
+├── skills/                  # GSD skill definitions
+├── docs/                    # Internal docs + plans
+├── public/                  # Static assets
+│
+├── proxy.ts                 # Next.js edge middleware (renamed from middleware.ts)
+├── next.config.ts           # Next.js config (React Compiler, headers, rewrites, next-intl plugin)
+├── tsconfig.json            # TS config (paths: "@/*" → "./*")
+├── vitest.config.ts         # Default Vitest config
+├── vitest.live.config.ts    # Live-billing Vitest config
+├── playwright.config.ts
+├── knip.json                # knip dead-code config
+├── postcss.config.mjs       # Tailwind v4 via @tailwindcss/postcss
+├── components.json          # shadcn/ui config
+├── instrumentation-client.ts# PostHog instrumentation
+├── ecosystem.config.js      # pm2 config (`npm run dev:all`)
+├── global.d.ts
+├── next-env.d.ts
+├── AGENTS.md                # Agent instructions
+├── CLAUDE.md                # Design context + conventions
+├── package.json
+└── README.md
 ```
 
 ## Directory Purposes
 
 **`app/`:**
-- Purpose: Next.js App Router pages and API routes
-- Contains: Page components (`page.tsx`), layouts (`layout.tsx`), route handlers (`route.ts`), server actions
-- Key files: `app/layout.tsx` (root layout + provider tree), `app/page.tsx` (home), `app/results/[searchId]/page.tsx` (search results)
+- Purpose: Next.js 16 App Router — pages, layouts, route handlers, server actions, error boundaries.
+- Contains: `layout.tsx` + `page.tsx` per route, a single route handler under `app/api/openalex/search/route.ts`, and one server action file `app/actions/openalex.ts`.
+- Key files: `app/layout.tsx` (all providers), `app/page.tsx` (home), `app/results/[searchId]/page.tsx`, `app/extraction/[jobId]/page.tsx`, `app/settings/layout.tsx`.
 
 **`components/`:**
-- Purpose: All React components organized by feature
-- Contains: UI primitives (shadcn), feature components, layout components, providers
-- Key files: `components/ui/` (shadcn primitives), `components/providers/convex-provider.tsx` (auth + Convex)
+- Purpose: All React components. No nested route-scoped component folders inside `app/`.
+- Contains: Feature folders (`extraction/`, `library/`, `screening/`, `home/`, `billing/`, `ai/`, `auth/`, `search-command-center/`, `bookmarks-command-center/`, `history-command-center/`, `command-center/`, `layout/`, `paper-card/`, `focus-mode/`, `shared/`), `ui/` (shadcn primitives), `providers/`, `icons/`, and many top-level `.tsx` feature components.
+- Key files: `components/app-sidebar.tsx` (32KB nav), `components/results-list.tsx` (18KB), `components/Pricing.tsx` (27KB), `components/search-sidebar.tsx` (18KB), `components/providers/convex-provider.tsx`.
 
 **`convex/`:**
-- Purpose: Entire backend - database schema, server functions, webhooks, cron jobs
-- Contains: Domain modules (users, credits, subscriptions, extraction, library, zotero, apiKeys), shared libs
-- Key files: `convex/schema.ts` (database), `convex/http.ts` (HTTP routes), `convex/crons.ts` (scheduled jobs)
+- Purpose: Authoritative backend — schema, queries, mutations, actions, workflows, HTTP routes, crons.
+- Contains: One folder per domain plus shared `lib/`. Root files hold cross-domain config.
+- Key files: `convex/schema.ts` (all tables/indexes), `convex/http.ts` (webhooks + wallet API), `convex/convex.config.ts` (components), `convex/workflow.ts`, `convex/workpool.ts`, `convex/crons.ts`, `convex/lib/auth.ts`, `convex/lib/errors.ts`, `convex/lib/stripeWebhookHandlers.ts`.
 
 **`lib/`:**
-- Purpose: Shared utilities, business logic, type definitions used by both pages and components
-- Contains: Search system, AI integration, stores, types, utilities, feature flags
-- Key files: `lib/store.ts` (Zustand stores), `lib/search/provider.tsx` (search context), `lib/utils.ts` (utilities)
+- Purpose: Client/server neutral TypeScript shared by `app/`, `components/`, and some `convex/` files.
+- Contains: Subfolders per domain/concern plus top-level helper files.
+- Key files: `lib/store.ts` (Zustand root, 42KB), `lib/search/provider.tsx`, `lib/search-params/parsers.ts`, `lib/types/index.ts`, `lib/ai/server/providers.ts`, `lib/auth/public-routes.ts`, `lib/openalex.ts`, `lib/utils.ts`.
 
 **`hooks/`:**
-- Purpose: Top-level custom React hooks for cross-cutting concerns
-- Contains: Batch operations, mobile detection, country filtering
-- Key files: `hooks/use-batch-operation.ts`, `hooks/use-mobile.tsx`
+- Purpose: App-level hooks that don't fit inside `lib/hooks/`. Historical / batch hooks.
+- Contains: `use-batch-*.ts`, `use-country-filter.ts`, `use-mobile.tsx`.
+- Note: New shared hooks should go in `lib/hooks/` (co-located with their domain).
+
+**`i18n/`:**
+- Purpose: `next-intl` setup — locale list, request config, detection, locale helpers.
+- Key files: `i18n/config.ts`, `i18n/request.ts`, `i18n/locale-detection.ts`.
+
+**`messages/`:**
+- Purpose: One JSON file per locale consumed by `next-intl`.
+
+**`content/`:**
+- Purpose: Markdown source for legal pages.
+
+**`convex/_generated/`:**
+- Purpose: Code generated by `convex dev`. Contains `api.d.ts`, `dataModel.d.ts`, `server.d.ts`, `api.js`, `server.js`.
+- Generated: Yes (by Convex CLI).
+- Committed: Yes.
 
 **`tests/`:**
-- Purpose: Unit and integration tests (Vitest)
-- Contains: Feature-specific test suites, test factories, live billing tests
-- Key files: `tests/factories/` (test data), `tests/live-billing/` (Stripe integration tests)
+- Purpose: Vitest unit and component tests with jsdom. `tests/setup.ts` wires Testing Library.
+- Contains: Flat `*.test.ts(x)` files + domain subfolders (`extraction/`, `library/`, `components/`, `factories/`, `live-billing/`).
 
 **`e2e/`:**
-- Purpose: End-to-end tests (Playwright)
-- Contains: Auth flow tests, billing E2E tests
-- Key files: `e2e/auth.spec.ts`, `e2e/billing/`
+- Purpose: Playwright end-to-end tests.
+- Key files: `e2e/auth.spec.ts`, `e2e/billing/*`, `e2e/global.setup.ts`.
+
+**`scripts/`:**
+- Purpose: Node/TSX CLI utilities — billing preflight, legal parity check, wallet CLI.
+
+**`docs/`:**
+- Purpose: Internal documentation and planning notes (`docs/plans/`).
+
+**`public/`:**
+- Purpose: Static assets served by Next.js.
 
 ## Key File Locations
 
 **Entry Points:**
-- `app/layout.tsx`: Root layout, provider tree, global UI shell
-- `app/page.tsx`: Home page / search entry
-- `convex/http.ts`: All HTTP endpoints (webhooks)
-- `convex/crons.ts`: Scheduled background jobs
+- `app/layout.tsx`: Root layout; sets up Clerk + Convex + next-intl + theme + nuqs + feature flags + sidebar + toasts.
+- `app/page.tsx`: Home route; wraps `components/PageContent.tsx`.
+- `proxy.ts`: Edge middleware (referred to as "proxy"); runs Clerk route protection and locale cookie detection.
+- `convex/http.ts`: Convex HTTP router — webhooks + wallet gateway.
+- `convex/crons.ts`: Scheduled tasks.
+- `instrumentation-client.ts`: PostHog instrumentation entry.
 
 **Configuration:**
-- `next.config.ts`: Next.js config (React Compiler, PostHog rewrites, next-intl)
-- `convex/convex.config.ts`: Convex component registration (Stripe, RAG, Workflow, Workpool)
-- `convex/auth.config.ts`: Clerk JWT auth for Convex
-- `convex/schema.ts`: Complete database schema
-- `tsconfig.json`: TypeScript config with `@/*` path alias
-- `vitest.config.ts`: Unit test config
-- `playwright.config.ts`: E2E test config
+- `next.config.ts`: React Compiler on, security headers, PostHog rewrites, wraps with `next-intl` plugin.
+- `tsconfig.json`: Path alias `@/*` → `./*`, strict mode.
+- `convex/convex.config.ts`: Registers `@convex-dev/stripe`, `@convex-dev/rag`, `@convex-dev/workflow`, two `@convex-dev/workpool` instances.
+- `convex/auth.config.ts`: Clerk JWT issuer for Convex.
+- `vitest.config.ts`: Default Vitest.
+- `vitest.live.config.ts`: Live-billing test config.
+- `playwright.config.ts`: Playwright.
+- `knip.json`: Dead code analysis.
+- `components.json`: shadcn/ui config.
+- `postcss.config.mjs`: Tailwind v4 plugin.
+- `ecosystem.config.js`: pm2 (`npm run dev:all` starts Next + Convex).
+- `i18n/config.ts`, `i18n/request.ts`: Locale config + request binding.
 
 **Core Logic:**
-- `lib/search/provider.tsx`: Search state management (URL -> SWR -> context)
-- `lib/store.ts`: All Zustand stores (ratings, search history, bookmarks, AI settings, screening)
-- `convex/extraction/workflow.ts`: Extraction pipeline orchestration
-- `convex/extraction/prompts.ts`: AI extraction prompt templates
-- `convex/credits/internal.ts`: Credit grant/deduct/reverse logic
-- `convex/subscriptions/actions.ts`: Subscription lifecycle management
-- `lib/ai/client/router.ts`: AI provider routing (BYOK vs platform)
-- `lib/ai/core/execute.ts`: AI execution engine
+- `convex/schema.ts`: All Convex tables + indexes (source of truth for data model).
+- `lib/search/provider.tsx`: URL-driven search state (single SWR instance).
+- `lib/search-params/parsers.ts`: nuqs parsers and serializers.
+- `lib/store.ts`: Zustand root (history, UI, focus, keywords, AI config, sidebar).
+- `lib/ai/core/schemas.ts`, `lib/ai/core/prompts.ts`, `lib/ai/core/validate.ts`: Shared AI contracts.
+- `lib/ai/server/providers.ts`: `getProviderModel` factory for `@ai-sdk/*`.
+- `convex/extraction/workflow.ts` + `convex/extraction/workpoolActions.ts`: Extraction pipeline.
+- `convex/wallet/gateway/handler.ts`: OpenAI-compatible HTTP wallet gateway.
+- `convex/lib/auth.ts`: `requireAuth`, `getCurrentUser`, etc.
+- `convex/lib/errors.ts`: Typed `ErrorCode` union + `createError` helper.
+- `convex/lib/stripeWebhookHandlers.ts`: Audited Stripe webhook wrapper.
 
 **Testing:**
-- `tests/`: Vitest unit/integration tests
-- `e2e/`: Playwright E2E tests
-- `convex/testing/`: Convex test utilities
-- `convex/extraction/*.test.ts`: Co-located Convex tests
+- `tests/setup.ts`: Vitest + Testing Library setup.
+- `tests/factories/`: Reusable test data builders.
+- `tests/live-billing/`: Live-billing suite (runs under `vitest.live.config.ts`).
+- `e2e/global.setup.ts`: Playwright global setup (Clerk test harness).
 
 ## Naming Conventions
 
 **Files:**
-- React components: `PascalCase.tsx` (e.g., `PageContent.tsx`, `Pricing.tsx`)
-- Non-component modules: `kebab-case.ts` (e.g., `search-utils.ts`, `feature-flags.ts`)
-- Convex domain files: `camelCase.ts` following Convex convention (e.g., `queries.ts`, `mutations.ts`, `actions.ts`)
-- Test files: `*.test.ts` (e.g., `deduct-credits.test.ts`, `collections.test.ts`)
-- E2E test files: `*.spec.ts` (e.g., `auth.spec.ts`)
-- Type definition files: `*.types.ts` (e.g., `search.types.ts`, `ai.types.ts`)
+- Components: `kebab-case.tsx` (e.g., `components/search-filter-sidebar.tsx`, `components/results-list.tsx`).
+  - Exceptions: a few PascalCase legacy files — `components/PageContent.tsx`, `components/PageWrapper.tsx`, `components/Pricing.tsx`, and `components/home/HomeHero.tsx`/`AmbientBackground.tsx`/`SearchInput.tsx`/`ModeToggle.tsx`.
+- shadcn primitives: lowercase, dash-separated (`components/ui/dropdown-menu.tsx`, `components/ui/alert-dialog.tsx`).
+- Hooks: `use-*.ts` / `use-*.tsx` (e.g., `hooks/use-batch-screening.ts`, `lib/hooks/use-debounced-value.ts`).
+- Convex functions: `queries.ts`, `mutations.ts`, `actions.ts`, `workflow.ts`, `workpoolActions.ts`, `validators.ts`, `internal.ts` per domain folder.
+- Tests: `*.test.ts` / `*.test.tsx` colocated under `tests/` (not next to source), live-billing under `tests/live-billing/`.
+- Playwright: `*.spec.ts` under `e2e/`.
 
 **Directories:**
-- Feature domains: `kebab-case` (e.g., `command-center/`, `paper-card/`)
-- Convex domains: `camelCase` (e.g., `apiKeys/`, `library/`)
+- Feature folders under `components/` and `convex/` use `kebab-case` (`search-command-center/`) or `camelCase` in Convex (`featureFlags/`, `apiKeys/`). Matching folder names between `lib/<domain>/`, `convex/<domain>/`, and `components/<domain>/` is preferred.
+- Route segments: Next.js `[searchId]`, `[[...sign-in]]` conventions.
 
-**Convex Module Pattern:**
-- Each domain has: `queries.ts`, `mutations.ts`, `actions.ts`, optionally `internal.ts`, `lib/`
-- Internal functions use `internalQuery`/`internalMutation`/`internalAction`
-- Public functions use `query`/`mutation`/`action`
+**Code:**
+- Functions/hooks/variables: `camelCase`.
+- Types/interfaces/React components: `PascalCase`.
+- Constants: `UPPER_SNAKE_CASE` (e.g., `PUBLIC_UNAUTHENTICATED_PATHS`, `DEFAULT_SEARCH_PARAMS`).
+- Convex error codes: `UPPER_SNAKE_CASE` string union in `convex/lib/errors.ts`.
+- Zustand stores: `useXxxStore` (e.g., `useSearchHistoryStore`, `useUIStore`, `useKeywordExpansionStore`, `useAIConfigStore`, `useCurrentQueryStore`).
 
 ## Where to Add New Code
 
-**New Page/Route:**
-- Create directory under `app/` following App Router conventions
-- Add `page.tsx` for the page component
-- Use `layout.tsx` if the page needs a custom layout
-- Dynamic routes: `app/[paramName]/page.tsx`
+**New App Page:**
+- Folder: `app/<route>/page.tsx` (+ optional `layout.tsx`, `error.tsx`, `loading.tsx`).
+- Client content: extract into `components/<route>/<route>-page-client.tsx` or a feature folder under `components/`.
+- Register in `lib/auth/public-routes.ts` if unauthenticated access is needed.
+- Add translations under `messages/*.json`.
 
-**New Feature (full-stack):**
-- Backend: Create new directory under `convex/` with `queries.ts`, `mutations.ts`, `actions.ts`
-- Frontend components: Create new directory under `components/`
-- Shared types: Add to `lib/types/` as `feature.types.ts`
-- Feature utilities: Create directory under `lib/`
-- Tests: Add to `tests/` or co-locate in `convex/` for backend tests
-
-**New Component:**
-- UI primitive (reusable): `components/ui/` (use `npx shadcn add`)
-- Feature-specific: `components/{feature-name}/`
-- Shared across features: `components/shared/`
-
-**New Convex Function:**
-- Public query/mutation: Add to existing `queries.ts`/`mutations.ts` in the relevant domain directory
-- Internal function: Add to `internal.ts` in the domain directory
-- Shared backend utility: Add to `convex/lib/`
-
-**New Hook:**
-- Feature-specific: `lib/hooks/` or inline in feature directory
-- Cross-cutting: `hooks/` (top-level)
-
-**New Store:**
-- Add to `lib/store.ts` (main stores file) or create a module in `lib/store/`
-
-**New API Route:**
-- Create `app/api/{path}/route.ts`
+**New UI Component:**
+- Feature-specific: `components/<feature>/<component>.tsx`.
+- Shared primitive: `components/ui/<component>.tsx` (run `shadcn` CLI; config in `components.json`).
+- Shared feature-agnostic: `components/shared/<component>.tsx`.
 
 **New Server Action:**
-- Add to `app/actions/`
+- Create a file under `app/actions/<domain>.ts` with `"use server"` at the top.
+- Prefer Convex mutations/actions for authenticated work. Use Next.js server actions only for public/unauthenticated work like OpenAlex proxying.
+
+**New Next.js Route Handler:**
+- `app/api/<path>/route.ts` with HTTP method exports. Currently used only for `app/api/openalex/search/route.ts`.
+
+**New Convex Domain:**
+- Add `convex/<domain>/queries.ts`, `mutations.ts`, `actions.ts` (and `internal.ts` for internal-only helpers).
+- Long-running work: add `workflow.ts` + `workpoolActions.ts` and wire a new workpool if needed in `convex/workpool.ts`.
+- Shared helpers: `convex/<domain>/lib/*.ts`.
+- Add tables to `convex/schema.ts` — all tables live in one file.
+- Add validators in `convex/<domain>/validators.ts` if shared.
+- If HTTP-exposed: register route in `convex/http.ts`.
+- If scheduled: register in `convex/crons.ts`.
+
+**New Convex Helper (cross-domain):**
+- `convex/lib/<name>.ts`.
+
+**New Shared Lib Module:**
+- Folder `lib/<domain>/` with `index.ts` and named files.
+- If types only: add to `lib/types/<domain>.types.ts` and re-export from `lib/types/index.ts`.
+- AI additions: `lib/ai/core/` for provider-neutral contracts, `lib/ai/client/` for React hooks, `lib/ai/server/` for server-only factories.
+
+**New Hook:**
+- Domain-specific: `lib/hooks/<hook>.ts` or `lib/<domain>/hooks/*`.
+- App-level batch hooks (historical): `hooks/*.ts` (prefer `lib/hooks/` for new code).
 
 **New Test:**
-- Unit test: `tests/{feature}/` with `*.test.ts` extension
-- Live billing test: `tests/live-billing/`
-- E2E test: `e2e/` with `*.spec.ts` extension
-- Convex backend test: Co-locate as `*.test.ts` in `convex/{domain}/`
+- Unit/integration (Vitest): `tests/<name>.test.ts(x)`. Use `tests/factories/` for builders and `tests/setup.ts` for global setup.
+- Live-billing: `tests/live-billing/*` (runs under `vitest.live.config.ts`).
+- E2E (Playwright): `e2e/*.spec.ts`.
 
-**Translations:**
-- Add keys to all files in `messages/` (en-US.json, fr.json, etc.)
+**New Locale Key:**
+- Add to all `messages/<locale>.json` files (coverage is enforced by tests in `tests/extraction-i18n-coverage.test.ts`).
+
+**New Feature Flag:**
+- Register in `lib/feature-flags/registry.ts`; consume with `useFeatureFlag` from `lib/feature-flags/hook.ts`; seed via `convex/featureFlags/internal.ts`; enforce server-side with `convex/featureFlags/guard.ts`.
+
+**New Stripe Webhook Handler:**
+- Add the event inside `registerRoutes` in `convex/http.ts`, wrap with `runAuditedStripeHandler`, document an idempotency contract in a JSDoc block, and route real work into `convex/credits/` or `convex/subscriptions/`.
+
+**New Wallet Gateway Endpoint:**
+- Add handler in `convex/wallet/gateway/handler.ts`, register with `http.route` in `convex/http.ts`, add a matching `OPTIONS` CORS route.
 
 ## Special Directories
 
 **`convex/_generated/`:**
-- Purpose: Auto-generated Convex types, API references, data model types
-- Generated: Yes (by `convex dev` or `convex deploy`)
-- Committed: Yes
+- Purpose: Convex CLI output (`api`, `internal`, `dataModel`, `components`).
+- Generated: Yes (by `convex dev` / `convex deploy`).
+- Committed: Yes.
 
-**`.next/`:**
-- Purpose: Next.js build output
-- Generated: Yes
-- Committed: No
-
-**`node_modules/`:**
-- Purpose: NPM dependencies
-- Generated: Yes
-- Committed: No
+**`messages/`:**
+- Purpose: next-intl translation JSON.
+- Generated: No.
+- Committed: Yes. All locales must stay in sync.
 
 **`.planning/`:**
-- Purpose: GSD planning documents and codebase analysis
-- Generated: By tooling
-- Committed: Yes
+- Purpose: GSD planning artifacts (phases, research, codebase maps, milestones, state).
+- Generated: Partly (by GSD commands).
+- Committed: Yes.
 
-**`content/`:**
-- Purpose: Static legal content (privacy policy, cookie policy) in markdown
-- Generated: No
-- Committed: Yes
+**`public/`:**
+- Purpose: Static assets.
+- Generated: No.
+- Committed: Yes.
+
+**`.next/`, `node_modules/`, `test-results/`, `tsconfig.tsbuildinfo`:**
+- Generated: Yes.
+- Committed: No.
+
+**`skills/`:**
+- Purpose: GSD/agent skill definitions referenced by `skills-lock.json`.
+- Committed: Yes.
 
 ---
 
-*Structure analysis: 2026-03-06*
+*Structure analysis: 2026-04-14*
