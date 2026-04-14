@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
-status: active
-stopped_at: Roadmap approved, ready to plan Phase 88
-last_updated: "2026-04-14T00:00:00.000Z"
-last_activity: 2026-04-14 — Roadmap created for v6.0 (10 phases, 63 requirements mapped)
+status: planning
+stopped_at: Phase 88 context gathered
+last_updated: "2026-04-14T22:25:09.241Z"
+last_activity: 2026-04-14 — Roadmap created, 63 v6.0 requirements mapped across 10 phases
 progress:
   total_phases: 10
   completed_phases: 0
@@ -35,6 +35,7 @@ Progress: [          ] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 179 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, v5.0: 14, cleanup: 2, quick: 15)
 - Total milestones shipped: 15
 
@@ -65,6 +66,7 @@ Progress: [          ] 0%
 See PROJECT.md Key Decisions table for full log.
 
 **v6.0-specific direction (locked):**
+
 - Legacy extraction code and data are DEAD — wipe tables, delete files, no migration, no backward compat
 - OpenRouter via Vercel AI SDK 6 is the only LLM surface
 - Gemini 3 Flash / 2.5 Flash Lite / Haiku 4.5 — NO Grok 4.1 Fast (92.89% JSON validity dealbreaker)
@@ -109,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Roadmap approved, ready to plan Phase 88 (Scorched-Earth Teardown)
-Resume file: None
+Stopped at: Phase 88 context gathered
+Resume file: .planning/phases/88-scorched-earth-teardown/88-CONTEXT.md
