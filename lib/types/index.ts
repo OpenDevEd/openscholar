@@ -11,7 +11,6 @@ export type {
   ScreeningQuestionType,
   ScreeningQuestion,
   ScreeningQuestionEntry,
-  DataExtractionQuestion,
   ScreeningDocument,
   ScreeningResult,
   ScreeningResponses,
