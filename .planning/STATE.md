@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: Extraction Insights Overhaul
-status: completed
-stopped_at: Milestone v5.0 completed and archived
-last_updated: "2026-03-10T11:15:00.000Z"
-last_activity: 2026-03-10 — v5.0 milestone completed and archived
+milestone: v6.0
+milestone_name: Extraction MVP Rebuild
+status: active
+stopped_at: Defining requirements
+last_updated: "2026-04-14T00:00:00.000Z"
+last_activity: 2026-04-14 — Milestone v6.0 started
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-10)
+See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** v6.0 Extraction MVP Rebuild — hot-swap the extraction pipeline with a clean, MVP-grade implementation
 
 ## Current Position
 
-Phase: -- (milestone complete)
-Plan: --
-Status: Milestone v5.0 shipped
-Last activity: 2026-03-10 — v5.0 Extraction Insights Overhaul completed and archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-14 — Milestone v6.0 started
 
-Progress: [##########] 100%
+Progress: [          ] 0%
 
 ## Performance Metrics
 
@@ -64,6 +64,15 @@ Progress: [##########] 100%
 
 See PROJECT.md Key Decisions table for full log.
 
+**v6.0-specific direction (locked):**
+- Legacy extraction code and data are DEAD — wipe tables, delete files, no migration, no backward compat
+- OpenRouter via Vercel AI SDK 6 is the only LLM surface
+- Gemini 3 Flash / 2.5 Flash Lite / Haiku 4.5 — NO Grok 4.1 Fast (92.89% JSON validity dealbreaker)
+- No chunking, no RAG, no vector DB — 1M-context whole-paper extraction
+- Deterministic quoting via `fastest-levenshtein` 85% threshold is the hallucination defense
+- Europe PMC + arXiv HTML + Gemini-as-PDF-parser replaces Docling/MinerU/olmOCR (free tier, MVP-appropriate)
+- `vitest-evals` + `autoevals` + 20-case golden set is the MVP eval loop — no Langfuse, no Braintrust
+
 ### Pending Todos
 
 None.
@@ -95,6 +104,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-03-10 -- v5.0 milestone completed and archived
-Stopped at: Milestone v5.0 completed
+Last activity: 2026-04-14 — Milestone v6.0 Extraction MVP Rebuild started
+Stopped at: Defining requirements
 Resume file: None

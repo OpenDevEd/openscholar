@@ -143,7 +143,28 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(None yet — define in next milestone)
+## Current Milestone: v6.0 Extraction MVP Rebuild
+
+**Goal:** Hot-swap the extraction pipeline with a clean, MVP-grade implementation — cheap OpenRouter models, free upstream full-text sources, deterministic citation grounding, and zero crash surfaces. Delete all legacy extraction code, tables, and data.
+
+**Target features:**
+- Scorched-earth teardown of all legacy extraction code and data (~9.6K LoC, 9 tables, RAG component, 8 debug modules)
+- Free-first parsing waterfall: OpenAlex metadata → Europe PMC `fullTextXML` → arXiv HTML → `unpdf` → Gemini-as-PDF-parser → abstract-only fallback
+- Cheap cascade via OpenRouter + AI SDK 6: Gemini 2.5 Flash Lite pre-screen → Gemini 3 Flash default → Claude Haiku 4.5 escalation; `response-healing` plugin, provider-order fallback
+- Whole-paper extraction in 1M context (no chunking, no RAG, no vector DB)
+- Deterministic citation grounding: flat 7-field Zod schema, `propertyOrdering` (reasoning-before-answer), `superRefine` + `fastest-levenshtein` 85% verification, UI always renders `chunk.text.slice()`
+- Critic-pass hallucination gate reused for online quality sampling
+- New durable workflow/workpool with per-job workpoolId tracking, targeted cancel, retryable/permanent error taxonomy, idempotent result save
+- Crash-prevention sweep: segment error boundaries, `useQuery` null/undefined audit, Clerk visibility-change retry, `AbortSignal.timeout` on all LLM calls, prompt-injection delimiters, PDF page cap
+- MVP eval loop: `vitest-evals` + `autoevals`, 20-case hand-labeled golden set, hourly Convex cron production sampling with auto-flag → human-review queue
+- Structured JSON logging + two metrics only: recall-on-include + citation-validity-rate
+
+**Key constraints:**
+- Legacy is DEAD. Destructive rebuild. No backward compat, no data migration — wipe tables and delete code.
+- Convex backend only; Vercel hosts frontend only.
+- Small user base — skip hot/cold split, sharded counters, circuit breaker, dead-letter table, Langfuse, Docling/MinerU/olmOCR, Contextual Retrieval, idempotency holds.
+- Models: Gemini 3 Flash / 2.5 Flash Lite / 3.1 Flash Lite / Haiku 4.5 via OpenRouter. Grok 4.1 Fast excluded (92.89% JSON validity is a dealbreaker for strict schemas).
+- Target cost: <$50/month total for MVP volume.
 
 ### Out of Scope
 
@@ -295,4 +316,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | IIFE pattern for grouping computation in JSX | synonymMap built once, shared by answer and disagreement transforms | ✓ Good — avoids double computation |
 
 ---
-*Last updated: 2026-03-10 after v5.0 milestone completed*
+*Last updated: 2026-04-14 after v6.0 Extraction MVP Rebuild milestone started*
