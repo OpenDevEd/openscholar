@@ -15,7 +15,7 @@ describe("OpenAlex contact email validation", () => {
   it("throws when OPENALEX_CONTACT_EMAIL is not set", () => {
     delete process.env.OPENALEX_CONTACT_EMAIL;
 
-    // Replicate the validation logic from convex/extraction/actions.ts
+    // Replicate the validation logic for OPENALEX_CONTACT_EMAIL
     const contactEmail = process.env.OPENALEX_CONTACT_EMAIL;
     expect(contactEmail).toBeUndefined();
 
