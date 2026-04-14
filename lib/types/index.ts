@@ -31,30 +31,7 @@ export type {
   ViewMode,
   HistorySortBy,
   BookmarkSortBy,
-  ExtractionSortBy,
   BookmarkData,
 } from './search.types';
 
 export { SEARCH_FIELDS } from './search.types';
-
-// Extraction Types
-export type {
-  ExtractionQuestionType,
-  ExtractionQuestion,
-  ExtractionSourceType,
-  ExtractionHistorySource,
-  ExtractionZoteroItem,
-  ExtractionZoteroSelection,
-  ExtractionManualItem,
-  ExtractionJob,
-  ExtractionJobStatus,
-  ExtractionPaper,
-  ExtractionPaperStatus,
-  ExtractionResult,
-  ExtractionJobDetails,
-  CreateExtractionJobInput,
-  ExtractionSavedView,
-  ExtractionWorkflowTemplate,
-  ExtractionReportSnapshot,
-  ExtractionRunDiff,
-} from './extraction.types';

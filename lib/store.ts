@@ -12,7 +12,6 @@ import type {
   ViewMode,
   HistorySortBy,
   BookmarkSortBy,
-  ExtractionSortBy,
   BookmarkData,
 } from './types';
 import { MIN_YEAR } from './constants';
@@ -83,8 +82,6 @@ interface UIState {
   historySortBy: HistorySortBy
   bookmarkViewMode: ViewMode
   bookmarkSortBy: BookmarkSortBy
-  extractionViewMode: ViewMode
-  extractionSortBy: ExtractionSortBy
   expandedScreeningDetails: Record<string, boolean>
   screeningPanelOpenBySearchId: Record<string, boolean>
   setIsDialogOpen: (open: boolean) => void
@@ -96,8 +93,6 @@ interface UIState {
   setHistorySortBy: (sort: HistorySortBy) => void
   setBookmarkViewMode: (mode: ViewMode) => void
   setBookmarkSortBy: (sort: BookmarkSortBy) => void
-  setExtractionViewMode: (mode: ViewMode) => void
-  setExtractionSortBy: (sort: ExtractionSortBy) => void
   setScreeningDetailExpanded: (paperId: string, expanded: boolean) => void
   getScreeningDetailExpanded: (paperId: string) => boolean
   getScreeningPanelOpen: (searchId: string) => boolean
@@ -592,8 +587,6 @@ export const useUIStore = create<UIState>()(
       historySortBy: 'recent',
       bookmarkViewMode: 'list-detail',
       bookmarkSortBy: 'recent',
-      extractionViewMode: 'list-detail',
-      extractionSortBy: 'recent',
       expandedScreeningDetails: {},
       screeningPanelOpenBySearchId: {},
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
@@ -611,8 +604,6 @@ export const useUIStore = create<UIState>()(
       setHistorySortBy: (sort) => set({ historySortBy: sort }),
       setBookmarkViewMode: (mode) => set({ bookmarkViewMode: mode }),
       setBookmarkSortBy: (sort) => set({ bookmarkSortBy: sort }),
-      setExtractionViewMode: (mode) => set({ extractionViewMode: mode }),
-      setExtractionSortBy: (sort) => set({ extractionSortBy: sort }),
       setScreeningDetailExpanded: (paperId, expanded) => set((state) => ({
         expandedScreeningDetails: {
           ...state.expandedScreeningDetails,
@@ -651,8 +642,6 @@ export const useUIStore = create<UIState>()(
         historySortBy: state.historySortBy,
         bookmarkViewMode: state.bookmarkViewMode,
         bookmarkSortBy: state.bookmarkSortBy,
-        extractionViewMode: state.extractionViewMode,
-        extractionSortBy: state.extractionSortBy,
         expandedScreeningDetails: state.expandedScreeningDetails,
         screeningPanelOpenBySearchId: state.screeningPanelOpenBySearchId,
       }),
@@ -1190,48 +1179,6 @@ export function createSidebarDimensions(expandedWidth: number, collapsedWidth: n
 // Library filter sidebar store (independent collapse state from search sidebar)
 export const useLibrarySidebarStore = createSidebarStore('openalex-library-sidebar');
 export const getLibrarySidebarDimensions = createSidebarDimensions(320, 48);
-
-// Extraction citation panel store
-const EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED = 460;
-const EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED = 48;
-
-interface ExtractionCitationPanelState {
-  isCollapsed: boolean;
-  _hasHydrated: boolean;
-  setCollapsed: (collapsed: boolean) => void;
-  toggle: () => void;
-  expand: () => void;
-  setHasHydrated: (state: boolean) => void;
-}
-
-export const useExtractionCitationPanelStore = create<ExtractionCitationPanelState>()(
-  persist(
-    (set) => ({
-      isCollapsed: false,
-      _hasHydrated: false,
-      setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
-      toggle: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
-      expand: () => set({ isCollapsed: false }),
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
-    }),
-    {
-      name: "openalex-extraction-citation-panel",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ isCollapsed: state.isCollapsed }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-      },
-    },
-  ),
-);
-
-export const getExtractionCitationPanelDimensions = (isCollapsed: boolean) => ({
-  expandedWidth: EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED,
-  collapsedWidth: EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED,
-  currentWidth: isCollapsed
-    ? EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED
-    : EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED,
-});
 
 export const useTransientScreeningStore = create<{
   testIndexPerQuestion: Record<string, number>;
