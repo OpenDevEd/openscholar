@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: active
-stopped_at: Defining requirements
+stopped_at: Roadmap approved, ready to plan Phase 88
 last_updated: "2026-04-14T00:00:00.000Z"
-last_activity: 2026-04-14 — Milestone v6.0 started
+last_activity: 2026-04-14 — Roadmap created for v6.0 (10 phases, 63 requirements mapped)
 progress:
-  total_phases: 0
+  total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v6.0 Extraction MVP Rebuild — hot-swap the extraction pipeline with a clean, MVP-grade implementation
+**Current focus:** v6.0 Extraction MVP Rebuild — Phase 88 Scorched-Earth Teardown
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-04-14 — Milestone v6.0 started
+Phase: 88 of 97 (Scorched-Earth Teardown)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-04-14 — Roadmap created, 63 v6.0 requirements mapped across 10 phases
 
 Progress: [          ] 0%
 
@@ -72,6 +72,10 @@ See PROJECT.md Key Decisions table for full log.
 - Deterministic quoting via `fastest-levenshtein` 85% threshold is the hallucination defense
 - Europe PMC + arXiv HTML + Gemini-as-PDF-parser replaces Docling/MinerU/olmOCR (free tier, MVP-appropriate)
 - `vitest-evals` + `autoevals` + 20-case golden set is the MVP eval loop — no Langfuse, no Braintrust
+- Target cost <$50/month total for MVP volume
+- Phase 88 MUST be first (teardown) — all subsequent phases depend on a clean slate
+- Parsing (Phase 90) must land before extraction (Phase 91) — extraction reads parsed text
+- UI polish (Phase 97) is last — built against stable backend
 
 ### Pending Todos
 
@@ -79,7 +83,7 @@ None.
 
 ### Roadmap Evolution
 
-None yet.
+2026-04-14 — v6.0 roadmap created with 10 phases (88-97) mapping all 63 v6.0 requirements.
 
 ### Blockers/Concerns
 
@@ -104,6 +108,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-04-14 — Milestone v6.0 Extraction MVP Rebuild started
-Stopped at: Defining requirements
+Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
+Stopped at: Roadmap approved, ready to plan Phase 88 (Scorched-Earth Teardown)
 Resume file: None

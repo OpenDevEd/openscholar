@@ -159,75 +159,87 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEAR-01 | TBD | Pending |
-| TEAR-02 | TBD | Pending |
-| TEAR-03 | TBD | Pending |
-| TEAR-04 | TBD | Pending |
-| TEAR-05 | TBD | Pending |
-| TEAR-06 | TBD | Pending |
-| TEAR-07 | TBD | Pending |
-| TEAR-08 | TBD | Pending |
-| TEAR-09 | TBD | Pending |
-| TEAR-10 | TBD | Pending |
-| PARSE-01 | TBD | Pending |
-| PARSE-02 | TBD | Pending |
-| PARSE-03 | TBD | Pending |
-| PARSE-04 | TBD | Pending |
-| PARSE-05 | TBD | Pending |
-| PARSE-06 | TBD | Pending |
-| PARSE-07 | TBD | Pending |
-| PARSE-08 | TBD | Pending |
-| PARSE-09 | TBD | Pending |
-| PARSE-10 | TBD | Pending |
-| EXTR-01 | TBD | Pending |
-| EXTR-02 | TBD | Pending |
-| EXTR-03 | TBD | Pending |
-| EXTR-04 | TBD | Pending |
-| EXTR-05 | TBD | Pending |
-| EXTR-06 | TBD | Pending |
-| EXTR-07 | TBD | Pending |
-| EXTR-08 | TBD | Pending |
-| EXTR-09 | TBD | Pending |
-| EXTR-10 | TBD | Pending |
-| WORK-01 | TBD | Pending |
-| WORK-02 | TBD | Pending |
-| WORK-03 | TBD | Pending |
-| WORK-04 | TBD | Pending |
-| WORK-05 | TBD | Pending |
-| WORK-06 | TBD | Pending |
-| WORK-07 | TBD | Pending |
-| WORK-08 | TBD | Pending |
-| WORK-09 | TBD | Pending |
-| CRASH-01 | TBD | Pending |
-| CRASH-02 | TBD | Pending |
-| CRASH-03 | TBD | Pending |
-| CRASH-04 | TBD | Pending |
-| CRASH-05 | TBD | Pending |
-| CRASH-06 | TBD | Pending |
-| CRASH-07 | TBD | Pending |
-| EVAL-01 | TBD | Pending |
-| EVAL-02 | TBD | Pending |
-| EVAL-03 | TBD | Pending |
-| EVAL-04 | TBD | Pending |
-| EVAL-05 | TBD | Pending |
-| EVAL-06 | TBD | Pending |
-| OBS-01 | TBD | Pending |
-| OBS-02 | TBD | Pending |
-| OBS-03 | TBD | Pending |
-| OBS-04 | TBD | Pending |
-| OBS-05 | TBD | Pending |
-| UI-01 | TBD | Pending |
-| UI-02 | TBD | Pending |
-| UI-03 | TBD | Pending |
-| UI-04 | TBD | Pending |
-| UI-05 | TBD | Pending |
-| UI-06 | TBD | Pending |
+| TEAR-01 | Phase 88 | Pending |
+| TEAR-02 | Phase 88 | Pending |
+| TEAR-03 | Phase 88 | Pending |
+| TEAR-04 | Phase 88 | Pending |
+| TEAR-05 | Phase 88 | Pending |
+| TEAR-06 | Phase 88 | Pending |
+| TEAR-07 | Phase 88 | Pending |
+| TEAR-08 | Phase 88 | Pending |
+| TEAR-09 | Phase 88 | Pending |
+| TEAR-10 | Phase 88 | Pending |
+| PARSE-01 | Phase 90 | Pending |
+| PARSE-02 | Phase 90 | Pending |
+| PARSE-03 | Phase 90 | Pending |
+| PARSE-04 | Phase 90 | Pending |
+| PARSE-05 | Phase 90 | Pending |
+| PARSE-06 | Phase 90 | Pending |
+| PARSE-07 | Phase 90 | Pending |
+| PARSE-08 | Phase 90 | Pending |
+| PARSE-09 | Phase 90 | Pending |
+| PARSE-10 | Phase 90 | Pending |
+| EXTR-01 | Phase 91 | Pending |
+| EXTR-02 | Phase 91 | Pending |
+| EXTR-03 | Phase 92 | Pending |
+| EXTR-04 | Phase 92 | Pending |
+| EXTR-05 | Phase 92 | Pending |
+| EXTR-06 | Phase 91 | Pending |
+| EXTR-07 | Phase 91 | Pending |
+| EXTR-08 | Phase 92 | Pending |
+| EXTR-09 | Phase 91 | Pending |
+| EXTR-10 | Phase 91 | Pending |
+| WORK-01 | Phase 89 | Pending |
+| WORK-02 | Phase 89 | Pending |
+| WORK-03 | Phase 93 | Pending |
+| WORK-04 | Phase 93 | Pending |
+| WORK-05 | Phase 93 | Pending |
+| WORK-06 | Phase 89 | Pending |
+| WORK-07 | Phase 89 | Pending |
+| WORK-08 | Phase 93 | Pending |
+| WORK-09 | Phase 93 | Pending |
+| CRASH-01 | Phase 94 | Pending |
+| CRASH-02 | Phase 94 | Pending |
+| CRASH-03 | Phase 94 | Pending |
+| CRASH-04 | Phase 94 | Pending |
+| CRASH-05 | Phase 94 | Pending |
+| CRASH-06 | Phase 94 | Pending |
+| CRASH-07 | Phase 94 | Pending |
+| EVAL-01 | Phase 96 | Pending |
+| EVAL-02 | Phase 96 | Pending |
+| EVAL-03 | Phase 96 | Pending |
+| EVAL-04 | Phase 96 | Pending |
+| EVAL-05 | Phase 96 | Pending |
+| EVAL-06 | Phase 96 | Pending |
+| OBS-01 | Phase 95 | Pending |
+| OBS-02 | Phase 95 | Pending |
+| OBS-03 | Phase 95 | Pending |
+| OBS-04 | Phase 95 | Pending |
+| OBS-05 | Phase 95 | Pending |
+| UI-01 | Phase 97 | Pending |
+| UI-02 | Phase 97 | Pending |
+| UI-03 | Phase 97 | Pending |
+| UI-04 | Phase 97 | Pending |
+| UI-05 | Phase 97 | Pending |
+| UI-06 | Phase 97 | Pending |
 
 **Coverage:**
-- v6.0 requirements: 59 total
-- Mapped to phases: 0 (populated by roadmapper)
-- Unmapped: 59 ⚠️
+- v6.0 requirements: 63 total (10 TEAR + 10 PARSE + 10 EXTR + 9 WORK + 7 CRASH + 6 EVAL + 5 OBS + 6 UI)
+- Mapped to phases: 63 ✓
+- Unmapped: 0 ✓
+
+**Phase distribution:**
+- Phase 88 (Teardown): 10 requirements
+- Phase 89 (Core Schema & Workflow Skeleton): 4 requirements
+- Phase 90 (Parsing Waterfall): 10 requirements
+- Phase 91 (Extraction Cascade Core): 6 requirements
+- Phase 92 (Deterministic Citation Grounding): 4 requirements
+- Phase 93 (Workflow Cancel, Retry, Progress): 5 requirements
+- Phase 94 (Crash Prevention): 7 requirements
+- Phase 95 (Observability & SLO Metrics): 5 requirements
+- Phase 96 (Eval Loop & Quality Sampling): 6 requirements
+- Phase 97 (UI Polish): 6 requirements
 
 ---
 *Requirements defined: 2026-04-14*
-*Last updated: 2026-04-14 after v6.0 milestone initial definition*
+*Last updated: 2026-04-14 after v6.0 roadmap created (63 requirements mapped across phases 88-97)*
