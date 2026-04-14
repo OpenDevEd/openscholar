@@ -8,7 +8,6 @@ import {
 import {
   getEnhanceQueryConfig,
   getScreeningQuestionsConfig,
-  getExtractionQuestionsConfig,
   getTranslateQueryConfig,
   getTranslatePaperContentConfig,
   getScreeningResponsesConfig,
@@ -25,7 +24,6 @@ import {
 import type {
   EnhanceSearchQueryInput,
   GenerateScreeningQuestionsInput,
-  GenerateExtractionQuestionsInput,
   TranslateQueryInput,
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
@@ -128,12 +126,6 @@ export const generateScreeningQuestions = createClientExecutor(
     questions: output.questions,
   }),
   'generate_screening_questions'
-)
-
-export const generateExtractionQuestions = createClientExecutor(
-  getExtractionQuestionsConfig,
-  (output) => ({ questions: output.questions }),
-  'generate_extraction_questions'
 )
 
 export const translateQuery = createClientExecutor(

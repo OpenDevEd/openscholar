@@ -9,7 +9,6 @@ import { decodeQuestionResponseMap } from '../core/question-key-codec'
 import type {
   EnhanceSearchQueryInput,
   GenerateScreeningQuestionsInput,
-  GenerateExtractionQuestionsInput,
   TranslateQueryInput,
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
@@ -27,7 +26,6 @@ import type { AIKeyMode } from '@/lib/types'
 // Export types for external consumers
 export type EnhanceSearchQueryParams = EnhanceSearchQueryInput
 export type GenerateScreeningQuestionsParams = GenerateScreeningQuestionsInput
-export type GenerateExtractionQuestionsParams = GenerateExtractionQuestionsInput
 export type TranslateQueryParams = TranslateQueryInput
 export type TranslatePaperContentParams = TranslatePaperContentInput
 export type GenerateScreeningResponsesParams = GenerateScreeningResponsesInput
@@ -45,11 +43,6 @@ export const useEnhanceSearchQuery = createAIHook(
 export const useGenerateScreeningQuestions = createAIHook(
   api.ai.actions.generateScreeningQuestions,
   clientExecutor.generateScreeningQuestions
-)
-
-export const useGenerateExtractionQuestions = createAIHook(
-  api.ai.actions.generateExtractionQuestions,
-  clientExecutor.generateExtractionQuestions
 )
 
 export const useTranslateQuery = createAIHook(

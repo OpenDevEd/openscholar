@@ -57,5 +57,3 @@ export interface TranslationResultData {
 }
 
 export type BatchTranslationResult = BatchResult<TranslationResultData>
-
-// Extraction batch types removed

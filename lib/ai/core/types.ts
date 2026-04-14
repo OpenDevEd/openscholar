@@ -1,7 +1,6 @@
 export type AIOperationType =
   | 'enhanceSearchQuery'
   | 'generateScreeningQuestions'
-  | 'generateExtractionQuestions'
   | 'translateQuery'
   | 'translatePaperContent'
   | 'generateScreeningResponses'
@@ -76,19 +75,3 @@ export interface Usage {
   outputTokens?: number
 }
 
-export interface GenerateExtractionQuestionsInput {
-  jobName: string;
-  sourceContext: string;
-  existingQuestions: string[];
-  responseLanguage?: string;
-}
-
-export interface GenerateExtractionQuestionsOutput {
-  questions: Array<{
-    question: string;
-    type: "string" | "boolean" | "number" | "array";
-    description?: string;
-  }>;
-}
-
-// AI types only - extraction removed

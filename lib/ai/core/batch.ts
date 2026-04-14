@@ -203,5 +203,3 @@ export async function processTranslationBatch(
     }
   )
 }
-
-// Extraction batch processor removed

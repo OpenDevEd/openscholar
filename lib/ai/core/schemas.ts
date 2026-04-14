@@ -49,20 +49,6 @@ export const translatePaperContentSchema = z.object({
   translatedAbstract: z.string().describe('The paper abstract translated to the target language'),
 })
 
-export const extractionQuestionsSchema = z.object({
-  questions: z
-    .array(
-      z.object({
-        question: z.string().describe("The data extraction question"),
-        type: z.enum(["string", "boolean", "number", "array"]).describe("Expected answer type"),
-        description: z.string().optional().describe("Optional context/instructions for the AI extractor"),
-      })
-    )
-    .min(1)
-    .max(10)
-    .describe("3-7 data extraction questions with their expected types"),
-})
-
 export const STANDARD_PROVIDER_OPTIONS = {
   google: {
     thinkingConfig: {

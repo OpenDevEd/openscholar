@@ -1,4 +1,4 @@
-import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, GenerateExtractionQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
+import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
 import { getLanguageName } from './languages'
 
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
@@ -221,58 +221,5 @@ INSTRUCTIONS:
 - If the information needed to answer a question is not present, use null
 
 Provide your screening decisions:`,
-  }
-}
-
-export function buildExtractionQuestionsPrompts(input: GenerateExtractionQuestionsInput) {
-  const responseLanguage = input.responseLanguage;
-  const languageName = responseLanguage ? getLanguageName(responseLanguage) : null;
-
-  return {
-    system: `You are a systematic review data extraction expert. Generate structured questions for extracting data from research papers.
-
-${languageName ? `MANDATORY: Generate all questions in ${languageName} only. All output must be in this language.` : ""}
-
-CRITICAL: You MUST respond with valid JSON in the following format:
-{
-  "questions": [
-    { "question": "...", "type": "string", "description": "..." },
-    { "question": "...", "type": "boolean" }
-  ]
-}
-
-Each question needs a type:
-- "string" for free text answers (e.g., study design, main findings)
-- "boolean" for yes/no answers (e.g., was blinding used?)
-- "number" for numeric values (e.g., sample size, effect size)
-- "array" for lists (e.g., list of outcomes measured, list of interventions)
-
-Focus on key elements for systematic review data extraction:
-- PICO elements (Population, Intervention, Comparator, Outcome)
-- Study characteristics (design, setting, duration, sample size)
-- Methodology (randomization, blinding, allocation concealment)
-- Results and outcomes (primary outcomes, effect sizes, statistical significance)
-- Quality and bias assessment
-
-Guidelines:
-- Generate 3-7 questions that are most critical for the research topic
-- Questions should be clear and specific
-- Each question should target a single data point
-- Include a brief description when the question needs clarification
-- Do not duplicate existing questions`,
-    prompt: `Generate data extraction questions for this systematic review:
-
-Job Name: "${input.jobName}"
-
-${input.sourceContext ? `Source Context:\n${input.sourceContext}\n` : ''}${input.existingQuestions.length > 0 ? `Existing questions (DO NOT duplicate these):
-${input.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
-
-` : ''}Please generate 3-7 data extraction questions that:
-1. Are specific and target a single data point each
-2. Have appropriate types (string, boolean, number, or array)
-3. Cover key aspects of the research topic
-4. Are not duplicates of existing questions
-5. Include optional descriptions for complex questions
-${languageName ? `\n\nMANDATORY: Generate all questions in ${languageName} only.` : ""}`,
   }
 }
