@@ -316,4 +316,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | IIFE pattern for grouping computation in JSX | synonymMap built once, shared by answer and disagreement transforms | ✓ Good — avoids double computation |
 
 ---
-*Last updated: 2026-04-14 after v6.0 Extraction MVP Rebuild milestone started*
+*Last updated: 2026-04-14 — Phase 88 (Scorched-Earth Teardown) complete. All legacy extraction code, schema tables, UI surfaces, RAG component, and dead dependencies deleted. Repo compiles cleanly against empty extraction namespace.*
