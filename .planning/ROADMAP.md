@@ -271,9 +271,9 @@ Plans:
   2. `extractionPool` workpool is registered with `maxParallelism` between 3 and 5 and is the only extraction-related pool in `convex.config.ts`
   3. Enqueueing 200 papers fires exactly one batched `enqueueAllPapers` mutation, verified by a test asserting a single Convex write
   4. Persisting the same `(paperId, questionId)` twice is a no-op — a convex-test asserts only one row exists after a double-save, backed by the `by_paper_question` index
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 89-01-PLAN.md — Schema foundation: extraction tables, workpool registration, validators, error codes
+- [x] 89-01-PLAN.md — Schema foundation: extraction tables, workpool registration, validators, error codes
 - [ ] 89-02-PLAN.md — Workflow skeleton: durable workflow, mutations, queries, workpool action stub, tests
 
 ### Phase 90: Free-First Parsing Waterfall
@@ -395,7 +395,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
-| 89. Core Schema & Workflow Skeleton | v6.0 | 0/2 | Not started | - |
+| 89. Core Schema & Workflow Skeleton | v6.0 | 1/2 | In Progress|  |
 | 90. Free-First Parsing Waterfall | v6.0 | 0/TBD | Not started | - |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |

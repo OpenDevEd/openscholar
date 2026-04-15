@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
-status: planning
+status: executing
 stopped_at: Phase 89 context gathered
-last_updated: "2026-04-15T00:03:46.886Z"
-last_activity: 2026-04-14
+last_updated: "2026-04-15T00:31:44.653Z"
+last_activity: 2026-04-15 -- Phase 89 execution started
 progress:
   total_phases: 10
   completed_phases: 1
-  total_plans: 4
+  total_plans: 6
   completed_plans: 4
-  percent: 100
+  percent: 67
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v6.0 Extraction MVP Rebuild — Phase 88 Scorched-Earth Teardown
+**Current focus:** Phase 89 — core-schema-workflow-skeleton
 
 ## Current Position
 
-Phase: 89 of 97 (core schema & workflow skeleton)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-04-14
+Phase: 89 (core-schema-workflow-skeleton) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 89
+Last activity: 2026-04-15 -- Phase 89 execution started
 
 Progress: [          ] 0%
 
