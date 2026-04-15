@@ -360,10 +360,12 @@ Plans:
   3. Failures log via `console.error` with the same JSON shape plus `{errorMessage, errorCategory, retryable}` — verified by a failure-path test
   4. The UI shows per-job papers-processed, average latency, estimated cost, and error counts fed by a typed Convex query (not `v.any()`)
   5. Each run persists `recall-on-include` and `citation-validity-rate` SLO metrics queryable via a typed Convex query
-**Plans**: 2 plans
+**Plans:** 4 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [ ] 95-01-PLAN.md — Schema extension + ULID traceId + logging module with TDD
+- [ ] 95-02-PLAN.md — traceId propagation + structured log replacement + timing instrumentation
+- [ ] 95-03-PLAN.md — Per-job metrics query + SLO persistence in finalizer
+- [ ] 95-04-PLAN.md — JobMetricsPanel UI component + i18n seed
 
 ### Phase 96: Eval Loop & Quality Sampling
 **Goal**: Prevent model regressions and surface production quality drift by maintaining a 20-case hand-labeled golden set, running `vitest-evals` + `autoevals` with CI gating at 95% recall / 98% citation validity, and sampling one production answer per hour into a human-review queue that doubles as the golden-set growth pipeline.
