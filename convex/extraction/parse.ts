@@ -282,11 +282,9 @@ async function parseArxiv(
     document.querySelector(".ltx_page_main") ??
     document.querySelector("main");
   if (!article) throw new Error("No article element found in arXiv HTML");
-  for (const el of article.querySelectorAll(
-    "script, style, nav, .ltx_bibliography"
-  )) {
-    el.remove();
-  }
+  article
+    .querySelectorAll("script, style, nav, .ltx_bibliography")
+    .forEach((el) => el.remove());
   const text = article.textContent?.trim() ?? "";
   if (text.length === 0) throw new Error("Empty text content from arXiv HTML");
   return text;

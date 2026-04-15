@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import schema from "../schema";
 
 // ---------------------------------------------------------------------------
@@ -32,8 +32,8 @@ async function seedExtractionJob(
     processedPapers: number;
     failedPapers: number;
   }> = {}
-) {
-  return await t.run(async (ctx) => {
+): Promise<Doc<"extractionJobs">> {
+  return await t.run(async (ctx): Promise<Doc<"extractionJobs">> => {
     const id = await ctx.db.insert("extractionJobs", {
       userId,
       status: overrides.status ?? "pending",

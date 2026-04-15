@@ -495,17 +495,16 @@ export const finalizeJobIfDone = internalMutation({
       const supported = withVerdict.filter(
         (r) => r.criticVerdict === "supported"
       );
-      const citationValidityRate =
+      const citationValidityRate: number | undefined =
         withVerdict.length > 0
           ? supported.length / withVerdict.length
-          : null;
+          : undefined;
 
       await ctx.db.patch(args.jobId, {
         status: "completed",
         completedAt: now,
         updatedAt: now,
         citationValidityRate,
-        recallOnInclude: null, // Phase 96 populates this via eval loop (D-20)
       });
     }
 
