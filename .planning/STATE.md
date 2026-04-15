@@ -93,9 +93,10 @@ None.
 | 11 | Move screening button to sidebar footer with progress ring | 2026-03-09 | 6a8dc0b | | [11-move-screening-button-to-sidebar-footer-](./quick/11-move-screening-button-to-sidebar-footer-/) |
 | 12 | Enhance screening jobs modal UI/UX | 2026-03-09 | 90e8dc7 | Verified | [12-enhance-screening-jobs-modal-ui-ux-with-](./quick/12-enhance-screening-jobs-modal-ui-ux-with-/) |
 | 13 | Disable Review Queue and Report Builder feature flags | 2026-03-10 | 6588d1b | Verified | [13-disable-review-queue-and-report-builder](./quick/13-disable-review-queue-and-report-builder/) |
+| 14 | Fix convex dev typecheck failures from v6.0 milestone (parse.ts, mutations.ts, mutations.test.ts) | 2026-04-15 | bdde32d | Verified | [20260415-fix-convex-v6-typecheck](./quick/20260415-fix-convex-v6-typecheck/) |
 
 ## Session Continuity
 
-Last activity: 2026-04-15 — v6.0 milestone archived
+Last activity: 2026-04-15 — convex dev unblocked (quick #14)
 Stopped at: Milestone complete
 Next step: `/gsd-new-milestone` to start next milestone
