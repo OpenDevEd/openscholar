@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
 stopped_at: Phase 96 context gathered
-last_updated: "2026-04-15T09:01:14.184Z"
-last_activity: 2026-04-15
+last_updated: "2026-04-15T09:22:03.696Z"
+last_activity: 2026-04-15 -- Phase 96 planning complete
 progress:
   total_phases: 10
   completed_phases: 8
-  total_plans: 22
+  total_plans: 24
   completed_plans: 22
-  percent: 100
+  percent: 92
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 Phase: 96
 Plan: Not started
-Status: Executing Phase 95
-Last activity: 2026-04-15
+Status: Ready to execute
+Last activity: 2026-04-15 -- Phase 96 planning complete
 
 Progress: [          ] 0%
 
