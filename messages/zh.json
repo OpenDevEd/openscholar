@@ -800,7 +800,10 @@
     "cookiePolicyTitle": "Cookie 政策 | OpenScholar",
     "cookiePolicyDescription": "了解 OpenScholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。",
     "libraryTitle": "文献库 - OpenScholar",
-    "libraryDescription": "浏览和管理您保存的学术论文"
+    "libraryDescription": "浏览和管理您保存的学术论文",
+    "extractionTitle": "Extraction | OpenScholar",
+    "extractionDescription": "AI-powered extraction of structured data from research papers",
+    "extractionResultsTitle": "Extraction Results | OpenScholar"
   },
   "validation": {
     "bookmarkNameRequired": "书签名称是必需的",
@@ -1489,6 +1492,64 @@
       "costTooltip": "Estimated from token usage at current OpenRouter rates",
       "errorsTooltip": "{count} papers failed during extraction",
       "pending": "Pending"
+    },
+    "jobsDialogTitle": "Extraction Jobs",
+    "jobsDialogDescription": "Track active and completed extraction jobs",
+    "jobCreation": {
+      "title": "New Extraction Job",
+      "description": "Define questions to extract answers from your papers using AI.",
+      "questionPlaceholder": "e.g., What sample size was used?",
+      "addQuestion": "Add question",
+      "modelTierLabel": "Processing tier",
+      "tierAuto": "Auto (recommended)",
+      "tierAutoDesc": "System picks the best model per question",
+      "tierCheap": "Fast",
+      "tierCheapDesc": "Lower cost, good for simple questions",
+      "tierAccurate": "Thorough",
+      "tierAccurateDesc": "Full cascade for maximum accuracy",
+      "costPreview": "Estimated: ~{credits} credits",
+      "insufficientBalance": "Not enough credits for this job",
+      "submit": "Start Extraction",
+      "submitting": "Starting...",
+      "dismiss": "Discard Draft",
+      "success": "Extraction job started",
+      "error": "Failed to start extraction. Please try again.",
+      "activeJobWarning": "An extraction job is already running",
+      "noQuestions": "Add at least one question"
+    },
+    "progress": {
+      "sidebarLabel": "Extraction",
+      "dialogTitle": "Extraction Jobs",
+      "statusPending": "Pending",
+      "statusProcessing": "Processing",
+      "statusCompleted": "Completed",
+      "statusCancelled": "Cancelled",
+      "statusFailed": "Failed",
+      "papersCounter": "{processed} of {total} papers",
+      "failedCounter": "{count} failed",
+      "cancelButton": "Cancel Job",
+      "cancelConfirmTitle": "Cancel extraction?",
+      "cancelConfirmBody": "Papers already processed will keep their results. Remaining papers will not be extracted.",
+      "cancelConfirmAction": "Yes, cancel",
+      "viewResults": "View results"
+    },
+    "results": {
+      "title": "Extraction Results",
+      "emptyHeading": "No results yet",
+      "emptyBody": "This job hasn't produced any results yet. Check back when processing completes.",
+      "parsingSource": "Source: {source}",
+      "answerLabel": "Answer",
+      "evidenceHeading": "Evidence",
+      "reasoningHeading": "Reasoning",
+      "noPapers": "No papers found for this job",
+      "jobNotFound": "Extraction job not found",
+      "errorState": "Something went wrong loading results. Refresh the page or return to your extraction jobs."
+    },
+    "export": {
+      "csv": "Download CSV",
+      "json": "Download JSON",
+      "xlsx": "Download Excel",
+      "incompleteWarning": "Job not complete -- export may be partial"
     }
   }
 }
