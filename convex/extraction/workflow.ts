@@ -20,7 +20,7 @@ export const runExtractionWorkflow = workflow.define({
     jobId: v.id("extractionJobs"),
   },
   handler: async (step, { jobId }) => {
-    console.log(`[ExtractionWorkflow] Starting extraction for job ${jobId}`);
+    console.info(JSON.stringify({ event: "workflow_start", jobId: String(jobId) }));
 
     // Step 1: Load and validate job
     const job = await step.runQuery(
@@ -42,9 +42,7 @@ export const runExtractionWorkflow = workflow.define({
         job.status as (typeof TERMINAL_STATUSES)[number]
       )
     ) {
-      console.log(
-        `[ExtractionWorkflow] Job ${jobId} is ${job.status}, skipping`
-      );
+      console.info(JSON.stringify({ event: "workflow_terminal_skip", jobId: String(jobId), status: job.status }));
       return;
     }
 
@@ -54,9 +52,7 @@ export const runExtractionWorkflow = workflow.define({
       { jobId }
     );
 
-    console.log(
-      `[ExtractionWorkflow] Batched enqueue complete for job ${jobId}`
-    );
+    console.info(JSON.stringify({ event: "workflow_enqueue_complete", jobId: String(jobId) }));
 
     // Step 3: Workflow done -- finalization handled by onComplete handler (D-10)
     // No explicit finalization step needed; handleExtractionComplete calls

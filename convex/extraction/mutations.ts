@@ -136,7 +136,7 @@ export const createExtractionJob = mutation({
     } catch (e) {
       // Workflow component may not be available in test environments.
       // In production, the component is always registered.
-      console.error(`[createExtractionJob] Failed to start workflow: ${e}`);
+      console.error(JSON.stringify({ event: "workflow_start_failed", jobId: String(jobId), error: String(e) }));
     }
 
     // 9. Return job ID
@@ -290,6 +290,9 @@ export const enqueueAllPapers = internalMutation({
       updatedAt: Date.now(),
     });
 
+    // Read traceId from job row for structured logging (OBS-01)
+    const traceId = job.traceId ?? "";
+
     // Enqueue each paper in this single mutation (WORK-06)
     for (const paper of pendingPapers) {
       await ctx.db.patch(paper._id, {
@@ -300,7 +303,7 @@ export const enqueueAllPapers = internalMutation({
       const workId = await extractionPool.enqueueAction(
         ctx,
         internal.extraction.workpoolActions.processExtractionPaper,
-        { paperId: paper._id, jobId: args.jobId },
+        { paperId: paper._id, jobId: args.jobId, traceId },
         {
           onComplete: internal.extraction.mutations.handleExtractionComplete,
           context: { paperId: paper._id, jobId: args.jobId },
