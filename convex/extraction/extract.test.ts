@@ -89,6 +89,30 @@ function makeSuccessResponse(overrides: Partial<{
   };
 }
 
+function makeCriticResponse(
+  verdict: "supported" | "unsupported" | "partial",
+  reason: string,
+  inputTokens = 200,
+  outputTokens = 30,
+) {
+  return {
+    output: { verdict, reason },
+    usage: { inputTokens, outputTokens },
+    text: "",
+    finishReason: "stop",
+    response: { id: "critic-test", timestamp: new Date(), modelId: "test" },
+    reasoning: undefined,
+    sources: [],
+    files: [],
+    toolCalls: [],
+    toolResults: [],
+    request: { body: "" },
+    warnings: [],
+    providerMetadata: undefined,
+    steps: [],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -172,13 +196,16 @@ describe("cascade escalation (EXTR-06)", () => {
     mockGenerateText.mockImplementation(async () => {
       callCount++;
 
-      if (callCount === 1) {
-        // Tier 1 failure
+      // Tier 1 first two attempts fail (2 attempts per tier)
+      if (callCount <= 2) {
         throw new Error("Schema validation failed");
       }
 
-      // Tier 2 success
-      return makeSuccessResponse();
+      // Tier 2 extraction succeeds (call 3), critic succeeds (call 4)
+      if (callCount === 3) {
+        return makeSuccessResponse();
+      }
+      return makeCriticResponse("supported", "OK");
     });
 
     const results = await extractAnswers(
@@ -190,11 +217,11 @@ describe("cascade escalation (EXTR-06)", () => {
     expect(results[0].answer).toBe("42 participants");
     expect(results[0].confidence).toBe("high");
     expect(results[0].modelUsed).toBeDefined();
-    // Should have called generateText at least twice (tier 1 failed, tier 2 succeeded)
-    expect(callCount).toBeGreaterThanOrEqual(2);
+    // Should have called generateText at least 3 times (2 tier-1 failures + tier-2 extraction)
+    expect(callCount).toBeGreaterThanOrEqual(3);
   });
 
-  it("returns null answer when all three tiers fail", async () => {
+  it("returns insufficient_evidence when all three tiers fail", async () => {
     const { extractAnswers } = await import("./extract");
 
     mockGenerateText.mockRejectedValue(new Error("Provider unavailable"));
@@ -204,8 +231,9 @@ describe("cascade escalation (EXTR-06)", () => {
     ]);
 
     expect(results).toHaveLength(1);
-    expect(results[0].answer).toBeNull();
-    expect(results[0].errorMessage).toContain("All cascade tiers failed");
+    expect(results[0].answer).toBe("insufficient_evidence");
+    expect(results[0].confidence).toBe("low");
+    expect(results[0].reasoning).toContain("All extraction tiers exhausted");
   });
 });
 
@@ -219,17 +247,23 @@ describe("per-question parallelism (EXTR-10)", () => {
 
     let maxConcurrent = 0;
     let currentConcurrent = 0;
+    // Track calls per-question to alternate extraction/critic
+    const callsByQuestion = new Map<string, number>();
 
-    mockGenerateText.mockImplementation(async () => {
-      currentConcurrent++;
-      maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
+    mockGenerateText.mockImplementation(async (opts: Record<string, unknown>) => {
+      const prompt = String(opts.prompt ?? "");
+      // Determine if this is an extraction or critic call
+      const isCritic = prompt.includes("Verify this extraction result");
 
-      // Simulate some async work
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      currentConcurrent--;
-
-      return makeSuccessResponse({ answer: "test answer" });
+      if (!isCritic) {
+        currentConcurrent++;
+        maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
+        // Simulate some async work
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        currentConcurrent--;
+        return makeSuccessResponse({ answer: "test answer" });
+      }
+      return makeCriticResponse("supported", "OK");
     });
 
     // Create 8 questions to test concurrency cap
@@ -250,11 +284,16 @@ describe("per-question parallelism (EXTR-10)", () => {
     const { extractAnswers } = await import("./extract");
 
     mockGenerateText.mockImplementation(async (opts: Record<string, unknown>) => {
-      // Identify which question is being asked by checking the prompt content
       const prompt = String(opts.prompt ?? "");
+      const isCritic = prompt.includes("Verify this extraction result");
+
       if (prompt.includes("Q2?")) {
         // Fail ALL tiers for question 2 -- cascade will exhaust all 3 tiers
         throw new Error("Simulated failure for q2");
+      }
+
+      if (isCritic) {
+        return makeCriticResponse("supported", "OK");
       }
 
       return makeSuccessResponse({ answer: "success" });
@@ -270,10 +309,10 @@ describe("per-question parallelism (EXTR-10)", () => {
     // q1 and q3 should succeed
     expect(results.find((r) => r.questionId === "q1")?.answer).toBe("success");
     expect(results.find((r) => r.questionId === "q3")?.answer).toBe("success");
-    // q2 should have null answer with error
+    // q2 should have insufficient_evidence (not null) since Phase 92
     const q2 = results.find((r) => r.questionId === "q2");
-    expect(q2?.answer).toBeNull();
-    expect(q2?.errorMessage).toBeDefined();
+    expect(q2?.answer).toBe("insufficient_evidence");
+    expect(q2?.confidence).toBe("low");
   });
 });
 
@@ -282,22 +321,30 @@ describe("token usage capture (D-18)", () => {
     mockGenerateText.mockReset();
   });
 
-  it("captures tokensIn and tokensOut from AI SDK response", async () => {
+  it("captures aggregated tokensIn and tokensOut from extraction + critic", async () => {
     const { extractAnswers } = await import("./extract");
 
+    let callCount = 0;
     mockGenerateText.mockImplementation(async () => {
-      return makeSuccessResponse({
-        inputTokens: 5432,
-        outputTokens: 234,
-      });
+      callCount++;
+      if (callCount % 2 === 1) {
+        // Extraction call
+        return makeSuccessResponse({
+          inputTokens: 5432,
+          outputTokens: 234,
+        });
+      }
+      // Critic call
+      return makeCriticResponse("supported", "OK", 100, 20);
     });
 
     const results = await extractAnswers("Paper text", [
       { key: "q1", question: "Q?" },
     ]);
 
-    expect(results[0].tokensIn).toBe(5432);
-    expect(results[0].tokensOut).toBe(234);
+    // Tokens are aggregated: extraction + critic
+    expect(results[0].tokensIn).toBe(5532);   // 5432 + 100
+    expect(results[0].tokensOut).toBe(254);    // 234 + 20
   });
 });
 
@@ -318,8 +365,9 @@ describe("Levenshtein verification (EXTR-03)", () => {
 
     const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
 
-    // First call: extraction with high-similarity quote
-    // Second call: critic returns supported
+    // Since the mock bypasses Zod superRefine, we test that when
+    // extraction succeeds (mock returns valid output), the critic is called
+    // and the result passes through correctly.
     let callCount = 0;
     mockGenerateText.mockImplementation(async () => {
       callCount++;
@@ -332,10 +380,7 @@ describe("Levenshtein verification (EXTR-03)", () => {
         });
       }
       // Critic call
-      return {
-        ...makeSuccessResponse(),
-        output: { verdict: "supported", reason: "Quote matches source" },
-      };
+      return makeCriticResponse("supported", "Quote matches source");
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
@@ -347,18 +392,17 @@ describe("Levenshtein verification (EXTR-03)", () => {
     expect(results[0].criticVerdict).toBe("supported");
   });
 
-  it("rejects extraction when evidence_quote has <85% similarity, retries same tier then escalates", async () => {
+  it("rejects extraction when Levenshtein superRefine fails (simulated via schema error), retries then escalates", async () => {
     const { extractAnswers } = await import("./extract");
 
+    // When the real AI SDK runs superRefine and it fails, generateText throws
+    // a schema validation error. We simulate this by throwing on all calls.
     let callCount = 0;
     mockGenerateText.mockImplementation(async () => {
       callCount++;
-      // All extraction calls return a bad quote (very different from source)
-      return makeSuccessResponse({
-        evidence_quote: "Completely different text that has no similarity to the source at all whatsoever",
-        evidence_start_char: 0,
-        evidence_end_char: 50,
-      });
+      // Simulate Levenshtein superRefine failure: the AI SDK throws when
+      // Output.object's Zod schema validation fails
+      throw new Error("Evidence quote failed Levenshtein verification: 45.2% similarity (threshold: 85%)");
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
@@ -366,18 +410,16 @@ describe("Levenshtein verification (EXTR-03)", () => {
     ]);
 
     expect(results).toHaveLength(1);
-    // Should eventually return insufficient_evidence after all tiers exhaust
+    // All tiers exhausted -> insufficient_evidence
     expect(results[0].answer).toBe("insufficient_evidence");
     expect(results[0].confidence).toBe("low");
-    // Should have retried (2 attempts per tier x 3 tiers = 6 calls)
+    // 2 attempts per tier x 3 tiers = 6 calls
     expect(callCount).toBe(6);
   });
 
-  it("adds Zod issue when bodyText is empty", async () => {
+  it("succeeds when bodyText is empty (superRefine early-returns)", async () => {
     const { extractAnswers } = await import("./extract");
 
-    // With empty bodyText, superRefine should early-return (no validation)
-    // so the extraction should succeed (empty bodyText is a no-op for validation)
     let callCount = 0;
     mockGenerateText.mockImplementation(async () => {
       callCount++;
@@ -388,10 +430,7 @@ describe("Levenshtein verification (EXTR-03)", () => {
           evidence_end_char: 10,
         });
       }
-      return {
-        ...makeSuccessResponse(),
-        output: { verdict: "supported", reason: "OK" },
-      };
+      return makeCriticResponse("supported", "OK");
     });
 
     const results = await extractAnswers("", [
@@ -403,15 +442,13 @@ describe("Levenshtein verification (EXTR-03)", () => {
     expect(results[0].answer).not.toBeNull();
   });
 
-  it("adds Zod issue when char offsets are out of bounds", async () => {
+  it("exhausts tiers when char offsets are out of bounds (simulated via schema error)", async () => {
     const { extractAnswers } = await import("./extract");
 
+    // When the real AI SDK runs superRefine with out-of-bounds offsets,
+    // the Zod issue causes a schema error -> generateText throws
     mockGenerateText.mockImplementation(async () => {
-      return makeSuccessResponse({
-        evidence_quote: "out of bounds",
-        evidence_start_char: -1,
-        evidence_end_char: 999,
-      });
+      throw new Error("Evidence char offsets out of bounds");
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
@@ -419,7 +456,6 @@ describe("Levenshtein verification (EXTR-03)", () => {
     ]);
 
     expect(results).toHaveLength(1);
-    // Out of bounds should trigger superRefine failure -> exhaust tiers -> insufficient_evidence
     expect(results[0].answer).toBe("insufficient_evidence");
     expect(results[0].confidence).toBe("low");
   });
@@ -447,10 +483,7 @@ describe("critic pass (EXTR-05)", () => {
           evidence_end_char: 50,
         });
       }
-      return {
-        ...makeSuccessResponse(),
-        output: { verdict: "supported", reason: "Quote matches" },
-      };
+      return makeCriticResponse("supported", "Quote matches");
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
@@ -479,10 +512,7 @@ describe("critic pass (EXTR-05)", () => {
           evidence_end_char: 50,
         });
       }
-      return {
-        ...makeSuccessResponse(),
-        output: { verdict: "unsupported", reason: "Quote does not support claim" },
-      };
+      return makeCriticResponse("unsupported", "Quote does not support claim");
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
@@ -511,10 +541,7 @@ describe("critic pass (EXTR-05)", () => {
           evidence_end_char: 50,
         });
       }
-      return {
-        ...makeSuccessResponse(),
-        output: { verdict: "partial", reason: "Partially supported" },
-      };
+      return makeCriticResponse("partial", "Partially supported");
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
@@ -605,22 +632,7 @@ describe("critic token aggregation (D-20)", () => {
         });
       }
       // Critic call
-      return {
-        output: { verdict: "supported", reason: "OK" },
-        usage: { inputTokens: 200, outputTokens: 30 },
-        text: "",
-        finishReason: "stop",
-        response: { id: "test", timestamp: new Date(), modelId: "test" },
-        reasoning: undefined,
-        sources: [],
-        files: [],
-        toolCalls: [],
-        toolResults: [],
-        request: { body: "" },
-        warnings: [],
-        providerMetadata: undefined,
-        steps: [],
-      };
+      return makeCriticResponse("supported", "OK", 200, 30);
     });
 
     const results = await extractAnswers(KNOWN_BODY_TEXT, [
