@@ -4,6 +4,7 @@ export type AIOperationType =
   | 'translateQuery'
   | 'translatePaperContent'
   | 'generateScreeningResponses'
+  | 'extractAnswer'
 
 export interface EnhanceSearchQueryInput {
   query: string
@@ -55,6 +56,12 @@ export interface GenerateScreeningResponsesInput {
 export interface GenerateScreeningResponsesOutput {
   responses: Record<string, boolean | null>
   confidence: number
+}
+
+export interface ExtractionPromptInput {
+  bodyText: string
+  question: string
+  expectedType?: string
 }
 
 export interface AIProviderConfig {

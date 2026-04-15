@@ -1,4 +1,4 @@
-import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
+import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, ExtractionPromptInput } from './types'
 import { getLanguageName } from './languages'
 
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
@@ -222,4 +222,41 @@ INSTRUCTIONS:
 
 Provide your screening decisions:`,
   }
+}
+
+export function buildExtractionPrompts(input: ExtractionPromptInput, retryCount: number) {
+  return {
+    system: `You are an academic data extraction specialist. Your task is to extract precise, evidence-backed answers from research papers.
+
+OUTPUT FORMAT: You MUST respond with a JSON object containing exactly these 7 fields in this order:
+1. reasoning - Step-by-step reasoning referencing specific text from the paper. Explain WHY this answer is correct.
+2. answer - The extracted answer to the question. Use exact text from the paper when possible.
+3. confidence - One of: "high" (explicit statement in text), "medium" (inferred from context), "low" (uncertain or partial evidence).
+4. evidence_quote - A VERBATIM quote from the source text that supports your answer. This must be an exact substring of the provided text — do not paraphrase, rearrange, or fabricate.
+5. evidence_source_id - The section or paragraph identifier where you found the evidence (e.g. "Introduction", "Methods", "Results paragraph 3").
+6. evidence_start_char - The character offset where the evidence quote starts in the full source text.
+7. evidence_end_char - The character offset where the evidence quote ends in the full source text.
+
+CRITICAL RULES:
+- The evidence_quote MUST be a verbatim substring of the source text. Do NOT paraphrase, combine, or fabricate quotes.
+- evidence_start_char and evidence_end_char MUST be the actual character offsets where evidence_quote appears in the source text.
+- If you cannot find sufficient evidence to answer the question, set confidence to "low" and explain in reasoning why the evidence is insufficient.
+- Always produce reasoning BEFORE the answer — think step-by-step first, then conclude.
+- Do NOT invent information. If the paper does not contain the answer, say so explicitly.`,
+
+    prompt: `Extract the answer to the following question from this research paper.
+
+QUESTION: ${input.question}
+${input.expectedType ? `EXPECTED ANSWER TYPE: ${input.expectedType}` : ''}
+
+FULL PAPER TEXT:
+---
+${input.bodyText}
+---
+
+Extract the answer with supporting evidence. Remember:
+- The evidence_quote must be a VERBATIM substring from the paper text above
+- Calculate evidence_start_char and evidence_end_char as character offsets in the paper text
+- Provide reasoning before your answer${retryCount > 0 ? '\n\nIMPORTANT: Previous extraction attempt failed validation. Ensure your evidence_quote is an exact verbatim substring of the paper text and that character offsets are accurate.' : ''}`,
+  };
 }
