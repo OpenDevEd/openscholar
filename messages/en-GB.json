@@ -1523,6 +1523,8 @@
       "sidebarLabel": "Extraction",
       "dialogTitle": "Extraction Jobs",
       "statusPending": "Pending",
+      "statusParsing": "Parsing",
+      "statusExtracting": "Extracting",
       "statusProcessing": "Processing",
       "statusCompleted": "Completed",
       "statusCancelled": "Cancelled",
