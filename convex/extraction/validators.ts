@@ -29,6 +29,18 @@ export const extractionPaperStatusValidator = v.union(
 );
 
 /**
+ * Parsing source tag indicating which tier produced the body text.
+ * Surfaced in UI for transparency (PARSE-07).
+ */
+export const parsingSourceValidator = v.union(
+  v.literal("pmc"),
+  v.literal("arxiv"),
+  v.literal("unpdf"),
+  v.literal("gemini"),
+  v.literal("abstract_only")
+);
+
+/**
  * Extraction question shape.
  * Includes `expectedType` for guiding LLM output format
  * (e.g. "number", "date", "boolean") -- extraction-specific,

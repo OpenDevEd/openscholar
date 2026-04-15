@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
+import { parsingSourceValidator } from "./extraction/validators";
 
 export default defineSchema({
   // Rate limiting (convex-helpers)
@@ -448,6 +449,8 @@ export default defineSchema({
       v.literal("cancelled")
     ),
     workpoolId: v.optional(v.string()),
+    bodyText: v.optional(v.string()),
+    parsingSource: v.optional(parsingSourceValidator),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
