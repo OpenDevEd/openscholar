@@ -305,7 +305,7 @@ Plans:
   5. Returned results match `{answer, confidence: "high"|"medium"|"low", evidence: {quote, source_id, start, end}, reasoning, model_used, critic_verdict, parsing_source}` shape, enforced by the Convex result validator
 **Plans**: 2 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
 - [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 92: Deterministic Citation Grounding
@@ -422,7 +422,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
-| 91. Extraction Cascade Core | v6.0 | 0/2 | Not started | - |
+| 91. Extraction Cascade Core | v6.0 | 1/2 | In Progress|  |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
