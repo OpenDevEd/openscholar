@@ -321,8 +321,6 @@ Plans:
 Plans:
 - [x] 92-01-PLAN.md -- Levenshtein superRefine, critic pass, insufficient_evidence state, persistence wiring, tests
 - [x] 92-02-PLAN.md -- EvidenceQuote, InsufficientEvidenceCard, ConfidenceBadge, CriticVerdictBadge components, i18n keys
-
-
 ### Phase 93: Workflow Cancel, Retry, and Progress
 **Goal**: Make a running extraction job fully controllable: persist each paper's `workpoolId` for targeted cancel (no `cancelAll` blast radius), classify errors as retryable vs permanent so workpool retry fires only on transient failures, early-return cancelled/failed jobs to save LLM spend, and emit real-time progress through Convex reactive queries.
 **Depends on**: Phase 92
@@ -350,9 +348,8 @@ Plans:
   5. Every external `fetch` (OpenRouter, PMC, arXiv, OA PDF hosts) has `AbortSignal.timeout` and a Zustand persist migration ladder collapsed to version 1 — verified by a grep test and a store migration test
 **Plans**: 2 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
-
+- [ ] 94-01-PLAN.md — Error boundaries, Clerk visibility retry, mutation toast routing, useQuery lint test
+- [ ] 94-02-PLAN.md — UUID prompt injection fence, AbortSignal.timeout audit, Zustand persist migration collapse
 ### Phase 95: Structured Observability & SLO Metrics
 **Goal**: Give future-us grep-friendly incident triage without a paid observability vendor — every extraction stage emits one structured `console.info` JSON line with ULID `traceId`, failures log with `{errorMessage, errorCategory, retryable}`, the UI shows per-job metrics, and two SLO metrics (recall-on-include, citation-validity-rate) are persisted per run.
 **Depends on**: Phase 94
