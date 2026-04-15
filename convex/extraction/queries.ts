@@ -157,6 +157,7 @@ export const getJobInternal = internalQuery({
       failedPapers: v.number(),
       questions: v.array(extractionQuestionValidator),
       workflowId: v.optional(v.string()),
+      traceId: v.optional(v.string()),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -174,6 +175,7 @@ export const getJobInternal = internalQuery({
       failedPapers: job.failedPapers,
       questions: job.questions,
       workflowId: job.workflowId,
+      traceId: job.traceId,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };

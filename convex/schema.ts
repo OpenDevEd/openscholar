@@ -431,6 +431,9 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
+    traceId: v.optional(v.string()),
+    citationValidityRate: v.optional(v.number()),
+    recallOnInclude: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])

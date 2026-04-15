@@ -2,6 +2,7 @@ import { mutation, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
+import { ulid } from "ulid";
 import {
   extractionJobStatusValidator,
   extractionPaperStatusValidator,
@@ -88,6 +89,7 @@ export const createExtractionJob = mutation({
 
     // 5. Create extraction job record
     const now = Date.now();
+    const traceId = ulid();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       status: "pending",
@@ -95,6 +97,7 @@ export const createExtractionJob = mutation({
       processedPapers: 0,
       failedPapers: 0,
       questions: args.questions,
+      traceId,
       createdAt: now,
       updatedAt: now,
     });

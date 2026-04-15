@@ -149,6 +149,9 @@ importers:
       tailwind-merge:
         specifier: ^3.4.1
         version: 3.5.0
+      ulid:
+        specifier: ^3.0.2
+        version: 3.0.2
       unpdf:
         specifier: ^1.6.0
         version: 1.6.0(@napi-rs/canvas@0.1.97)
@@ -6039,6 +6042,10 @@ packages:
 
   uhyphen@0.2.0:
     resolution: {integrity: sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==}
+
+  ulid@3.0.2:
+    resolution: {integrity: sha512-yu26mwteFYzBAot7KVMqFGCVpsF6g8wXfJzQUHvu1no3+rRRSFcSV2nKeYvNPLD2J4b08jYBDhHUjeH0ygIl9w==}
+    hasBin: true
 
   unbash@2.2.0:
     resolution: {integrity: sha512-X2wH19RAPZE3+ldGicOkoj/SIA83OIxcJ6Cuaw23hf8Xc6fQpvZXY0SftE2JgS0QhYLUG4uwodSI3R53keyh7w==}
@@ -12427,6 +12434,8 @@ snapshots:
   typescript@5.9.3: {}
 
   uhyphen@0.2.0: {}
+
+  ulid@3.0.2: {}
 
   unbash@2.2.0: {}
 
