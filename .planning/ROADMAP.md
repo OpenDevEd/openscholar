@@ -379,8 +379,9 @@ Plans:
   5. A `getQualityTrend` query returns 7-day rolling `{supported, unsupported, partial}` counts and flagged `unsupported` samples land in a human-review queue table that doubles as the golden-set growth pipeline
 **Plans**: 2 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [ ] 96-01-PLAN.md — Golden set data, eval test runner with Factuality + citation scorers, CI workflow
+- [ ] 96-02-PLAN.md — qualityChecks schema, hourly sampling cron, quality trend query, review queue
+
 
 ### Phase 97: Extraction UI Polish
 **Goal**: Ship the user-facing extraction experience on top of the stabilized backend — clean job creation flow, live progress with per-paper badges and cancel, results cards with clickable verbatim quote highlight, CSV/JSON/XLSX export reusing the library download helper, 6-locale i18n seeded upfront, and brand-aligned Clean/Friendly/Approachable design (OKLCH, Outfit, Framer Motion, WCAG AAA).
