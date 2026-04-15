@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
-stopped_at: Phase 92 context gathered
-last_updated: "2026-04-15T03:52:43.563Z"
-last_activity: 2026-04-15
+stopped_at: Phase 92 UI-SPEC approved
+last_updated: "2026-04-15T04:35:28.490Z"
+last_activity: 2026-04-15 -- Phase 92 execution started
 progress:
   total_phases: 10
   completed_phases: 4
-  total_plans: 11
+  total_plans: 13
   completed_plans: 11
-  percent: 100
+  percent: 85
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 91 — extraction-cascade-core
+**Current focus:** Phase 92 — deterministic-citation-grounding
 
 ## Current Position
 
-Phase: 92
-Plan: Not started
-Status: Executing Phase 91
-Last activity: 2026-04-15
+Phase: 92 (deterministic-citation-grounding) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 92
+Last activity: 2026-04-15 -- Phase 92 execution started
 
 Progress: [          ] 0%
 
@@ -111,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Phase 92 context gathered
-Resume file: .planning/phases/92-deterministic-citation-grounding/92-CONTEXT.md
+Stopped at: Phase 92 UI-SPEC approved
+Resume file: .planning/phases/92-deterministic-citation-grounding/92-UI-SPEC.md
