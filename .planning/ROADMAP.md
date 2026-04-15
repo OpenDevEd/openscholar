@@ -287,7 +287,11 @@ Plans:
   4. `convex.json` pins Node.js runtime to version 22 so `unpdf` runs without polyfills, verified in the committed config file
   5. A PDF with more than 200 pages is rejected before parsing and every tier has a matching `AbortSignal.timeout` (20s fetch / 30s XML / 60s unpdf / 120s Gemini) — a timeout test for each tier passes
   6. Each paper row records `parsing_source` as one of `pmc`/`arxiv`/`unpdf`/`gemini`/`abstract_only` and the result card renders it verbatim
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 90-01-PLAN.md — Schema fields, validators, convex.json, dependency installation, storeParsedText mutation
+- [ ] 90-02-PLAN.md — Core parse.ts waterfall module (5 tiers) and workpool action wiring
+- [ ] 90-03-PLAN.md — Unit tests for all parsing tiers, timeout ceilings, and page cap
 
 ### Phase 91: Extraction Cascade Core
 **Goal**: Given parsed source text, send the whole paper (no chunking, no RAG, no vector DB) through the three-tier OpenRouter cascade — Gemini 2.5 Flash Lite pre-screen → Gemini 3 Flash default → Claude Haiku 4.5 escalation — using a flat 7-field Zod schema with `propertyOrdering` forcing `reasoning` before `answer`, parallelized per-question with concurrency cap 5, and returning the documented result shape to the UI.
@@ -396,7 +400,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
-| 90. Free-First Parsing Waterfall | v6.0 | 0/TBD | Not started | - |
+| 90. Free-First Parsing Waterfall | v6.0 | 0/3 | Planned | - |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
