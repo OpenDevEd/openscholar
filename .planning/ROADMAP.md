@@ -320,7 +320,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [x] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 93: Workflow Cancel, Retry, and Progress
 **Goal**: Make a running extraction job fully controllable: persist each paper's `workpoolId` for targeted cancel (no `cancelAll` blast radius), classify errors as retryable vs permanent so workpool retry fires only on transient failures, early-return cancelled/failed jobs to save LLM spend, and emit real-time progress through Convex reactive queries.
@@ -333,7 +333,7 @@ Plans:
   4. Reactive Convex subscriptions stream `{processed, failed, remaining}` counters to the UI in under a second on paper completion — verified in the live progress E2E
 **Plans**: 2 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
 - [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 94: Crash Prevention Sweep
@@ -422,7 +422,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
-| 91. Extraction Cascade Core | v6.0 | 2/2 | Complete   | 2026-04-15 |
+| 91. Extraction Cascade Core | v6.0 | 2/2 | Complete    | 2026-04-15 |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
