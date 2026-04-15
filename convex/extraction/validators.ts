@@ -64,3 +64,37 @@ export const extractionPaperInputValidator = v.object({
   publicationYear: v.optional(v.number()),
   doi: v.optional(v.string()),
 });
+
+/**
+ * Extraction confidence level for an answer (EXTR-09).
+ * - high: explicit statement found in text
+ * - medium: inferred from context
+ * - low: uncertain or partial evidence
+ */
+export const extractionConfidenceValidator = v.union(
+  v.literal("high"),
+  v.literal("medium"),
+  v.literal("low")
+);
+
+/**
+ * Extraction result value shape (EXTR-09, D-03).
+ *
+ * Shared contract between the saveResult mutation args and the
+ * extraction cascade output. All fields except `answer` are optional
+ * because failed questions have `answer: null` with only `errorMessage`
+ * populated (D-15).
+ */
+export const extractionResultValueValidator = v.object({
+  answer: v.union(v.string(), v.null()),
+  confidence: v.optional(extractionConfidenceValidator),
+  evidenceQuote: v.optional(v.string()),
+  evidenceSourceId: v.optional(v.string()),
+  evidenceStartChar: v.optional(v.number()),
+  evidenceEndChar: v.optional(v.number()),
+  reasoning: v.optional(v.string()),
+  modelUsed: v.optional(v.string()),
+  tokensIn: v.optional(v.number()),
+  tokensOut: v.optional(v.number()),
+  errorMessage: v.optional(v.string()),
+});

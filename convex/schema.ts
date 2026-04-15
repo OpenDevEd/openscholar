@@ -472,6 +472,24 @@ export default defineSchema({
     jobId: v.id("extractionJobs"),
     paperId: v.id("extractionPapers"),
     questionId: v.string(),
+    // Value fields (Phase 91 -- EXTR-09)
+    answer: v.union(v.string(), v.null()),
+    confidence: v.optional(v.union(
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    )),
+    evidenceQuote: v.optional(v.string()),
+    evidenceSourceId: v.optional(v.string()),
+    evidenceStartChar: v.optional(v.number()),
+    evidenceEndChar: v.optional(v.number()),
+    reasoning: v.optional(v.string()),
+    modelUsed: v.optional(v.string()),
+    criticVerdict: v.optional(v.string()),
+    parsingSource: v.optional(parsingSourceValidator),
+    tokensIn: v.optional(v.number()),
+    tokensOut: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_paper_question", ["paperId", "questionId"])
