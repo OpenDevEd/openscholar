@@ -1,301 +1,210 @@
-# Project Research Summary: v5.0 Extraction Insights Overhaul
+# Project Research Summary — v7.0 Extraction Workbench
 
-**Project:** OpenAlex Count
-**Milestone:** v5.0 Extraction Insights UI Overhaul
-**Domain:** Academic literature extraction platform — data visualization refactoring
-**Researched:** 2026-03-10
-**Overall Confidence:** HIGH
-
----
+**Project:** openalex-count (OpenScholar)
+**Domain:** Next.js 15 + Convex literature-screening SaaS — results workbench + cross-source paper selector + Zotero revival + TierSelector wiring + per-tier-ready paper cap
+**Researched:** 2026-04-15
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The v5.0 Extraction Insights Overhaul adds 6 visualization features (bar scaling, summary cards, confidence displays, semantic grouping, progress bars, stacked bars) to an existing extraction insights page with **zero backend changes** and **minimal new dependencies** (Recharts ^2.14.0 only). The technical architecture is straightforward: 4 new components, 3 modified components, no new queries.
+v7.0 is not greenfield — it **wires up three orphans from v6.0** (the empty `ExtractionDialog.papers` path, the discarded `TierSelector` value, and the intact-but-disconnected `convex/zotero/**` backend) and **layers a selection-basket + multi-view workbench on top of existing extraction tables**. The mature prior art is Elicit (1,000-paper benchmark), Covidence (2025 click-to-PDF pattern), and Rayyan (August 2025 extraction form builder). All three converge on one canonical pattern: **tab-per-source dialog + persistent selection basket + sticky "X / limit" counter**, with inline cap communication (never mid-flow paywalls) and column-customisable data tables.
 
-However, success depends critically on **proactive defense against edge cases and process discipline**, not on technical complexity. The primary risks are not feature incompleteness but real-world data patterns (all-zero distributions, abstract-only papers, semantic grouping false positives) and operational hazards (6-locale i18n synchronization, 884-test suite snapshot brittleness). Research reveals that shipping visualization features without addressing these upfront creates 2–4 week maintenance debt.
+The recommended stack is deliberately minimal: **one new runtime dependency** (`@tanstack/react-table@^8.21.3`) plus re-adding the shadcn `<Table />` primitive. Everything else reuses what is already in the codebase — Zustand (existing `createSidebarStore` factory), `motion/react` v12 for the drawer (already installed), the existing Zotero OAuth 1.0a backend (verified against Zotero's 2025-09-24 docs — they have not migrated to OAuth 2.0), and the existing `resolveEffectivePlan` helper for tier lookups. The shadcn `data-table` block is **explicitly rejected** because it's monolithic and fights a four-view workbench that needs one `useReactTable(...)` instance shared across views.
 
-**Recommended approach:** Phase 1 is defensive (i18n keys first, test refactoring, edge case tests); Phases 2–4 are sequential UI builds; Phase 5 is semantic grouping with acknowledged MVP limitations; Phase 6 is optional schema optimization. Total estimated effort: 12 days (1 engineer, test-first methodology).
-
----
+Primary risks are all **integration hazards**, not novel engineering. The `MAX_EXTRACTION_PAPERS_PER_JOB` bump from 200 → 1000 cascades into 15 call sites (some with `MAX * 10` multipliers that will blow query-size limits at the new scale); OpenAlex IDs come in three non-normalised formats creating dedupe race conditions; card view at 1,000 items will crash Mobile Safari without virtualization; dev-DB Zotero connections are stale and must be purged before revival; and `tier` wiring requires threading through 5 edit sites. The TierSelector fix itself is **~5 edits, no migration** — the smallest feature in the milestone.
 
 ## Key Findings
 
-### Recommended Stack
+### Recommended Stack (net new runtime deps: 1)
 
-**Recharts ^2.14.0** is the only new production dependency. The charting library is the official backend for shadcn/ui charts, provides native support for all 6 feature requirements (horizontal bars, stacking, responsive scaling, animations), and has excellent backward compatibility (1.4K+ GitHub stars, weekly releases, zero known security vulnerabilities as of Feb 2025).
+- **`@tanstack/react-table@^8.21.3`** (NEW, released 2026-04-09): headless engine for sort/filter/column-visibility/pagination/selection. Peer-deps verified compatible with `react@^19.2.4`. Reject shadcn `data-table` block (monolithic), AG Grid (500 KB + enterprise skin), react-data-grid (4-year beta), TanStack v9 (alpha).
+- **shadcn `<Table />` primitive** (RE-ADDED via `npx shadcn@latest add table`): previously deleted in v6.0 scorched-earth.
+- **Zustand** (EXISTING, v5.0.5): new `createSelectionBasketStore` factory matching the existing `createSidebarStore` conventions — `persist`, `version`, `_hasHydrated`, `partialize`.
+- **sessionStorage** (not localStorage): basket lives for the tab session only. Prevents stale-basket credit burn; matches "workflow state, not user data" semantics.
+- **`motion/react` v12** (EXISTING, v12.23.12): drag/spring/`AnimatePresence` built in — no need for `@use-gesture/react`.
+- **Zotero OAuth 1.0a** (EXISTING, intact): 1,124 LoC at `convex/zotero/actions.ts` is orphaned but correct. Reject `zotero-api-client` (API-key auth only).
+- **`@sickrin/openalex-sdk@^1.0.0`** (EXISTING): used by new `resolveByDoi` / `resolveManualIds` Convex actions.
+- **`EXTRACTION_LIMITS_BY_TIER: Record<SubscriptionPlan, number>`** (EXTENSION of `convex/lib/queryBounds.ts`): per-tier-ready shape, same value (1,000) for all tiers in v7.0. Reject `@vercel/flags`, Unleash, GrowthBook.
+- **`@tanstack/react-virtual@^3.13.23`** (DEFERRED for table view, REQUIRED for card view — see cross-cutting tension below).
 
-Everything else reuses the existing stack: shadcn/ui Progress for mini progress bars, Framer Motion (already ^12.23.12) for animations, Tailwind CSS (already ^4) for styling, native HTML `<details>` for semantic grouping expandables.
+### Feature Table Stakes
 
-**Core technologies for v5.0:**
-- **Recharts ^2.14.0** — Horizontal bar charts, stacking, responsive rendering — Official shadcn/ui charting library; proven ecosystem
-- **shadcn/ui Progress & Tooltip** — Progress bars, confidence callouts — Already in stack, zero additional cost
-- **Framer Motion ^12.23.12** — Card entrance animations, bar transitions — Already in stack; reused for polish
-- **Tailwind CSS ^4 + Lucide React** — Styling, status dots, icons — Already in stack, no upgrades needed
+**Must have (P1, ship in v7.0):**
+- **Results Workbench:** Paper × Question table (TanStack Table), column visibility, per-cell confidence dot + tooltip, filter bar (status / confidence / year / venue / answer-value), client-side full-text search, pagination with counts, card view, evidence quote on demand, export subset (filter-aware).
+- **Cross-Source Picker:** Tabs for Library · Collections · Search · Manual IDs · Zotero in one unified page, persistent Zustand basket surviving tab switches, sticky "N / 1,000" counter, dedupe by normalised OpenAlex ID, select-all on current tab, visual indicator when paper already in basket.
+- **1,000-Paper Limit UX:** Always-visible "X / 1,000" counter + progress bar, 80% yellow warning, 100% red hard reject, disabled checkboxes at cap, "Remove N papers to continue" message, batch-paste truncation with dropped-count toast, server-side hard reject at mutation time.
+- **Per-Tier Display:** Inline tier badge near counter, subtle upgrade link when approaching limit, always show the cap.
+- **Evidence Display:** Verbatim quote inline, **parsing-source badge** (closes v6.0 PARSE-07), "insufficient evidence" distinct visual state, copy-quote button, external DOI/OpenAlex link.
+- **v6.0 Gap Closers:** Wire `ExtractionDialog.papers` from basket (UI-01), send `tier` to `createCascadeTiers(tier)` (EXTR-01), render `parsingSource` on all result views (PARSE-07), fix `EvidenceQuote`/`JobMetricsPanel` bare `useQuery` (CRASH-02).
+- **Zotero Revival:** Settings "Connect Zotero" card, OAuth callback routing, Zotero tab in selector, DOI → OpenAlex resolution per-item spinner, items without DOI shown disabled.
 
-**Bundling impact:** Recharts adds ~65 KB (gzipped) but is lazy-loaded only when insights tab is accessed. Total incremental payload justified for pro-tier visualization feature.
+**Should have (P2 differentiators, v7.0 if time permits):**
+- **Split view** — table + resizable detail drawer. **No reviewed competitor has this.**
+- **Bulk re-run** — select N papers → re-extract mutation. Credit-gated.
+- **"Insufficient evidence" filter chip.**
+- **Save basket as collection** — reuses v2.1 CRUD.
 
-### Expected Features
+**Defer (v7.1+):** `evidenceContextBefore/After` schema addition (needs forward-only migration), comparative tier display, save-and-resume drafted jobs, full PDF viewer.
 
-All 6 features are in scope for v5.0 per milestone definition. Features are interdependent but can be phased strategically:
-
-**Must have (table stakes for credible UI):**
-1. **Bar scaling relative to max value** — Users expect bars to fill container proportionally; 2–4% invisible bars break scanning
-2. **Summary metric cards** — Users scan numeric summaries first; color accents reduce cognitive load and aid quick assessment
-3. **Confidence display (contextual callout)** — Extraction quality is ambiguous; users need transparent signal of trustworthiness
-4. **Question/item lists with status + mini progress** — Users track completion; status dots + progress bars reduce clicks and improve scannability
-
-**Should have (enables accurate visualization):**
-5. **Stacked horizontal bars for distributions** — Shows part-to-whole relationships (answers per question) required for categorical comparisons
-6. **Semantic answer grouping with expandable variants** — Duplicate answers currently appear as separate rows; blocks accurate aggregation and visualization
-
-**Complexity breakdown:**
-- LOW (display-only): Bar scaling, summary cards, confidence display
-- MEDIUM (aggregation): Progress bars, stacked bars
-- HIGH (algorithm): Semantic grouping with synonym detection
+**Rejected anti-features:**
+- Highlighted-citation as a top-level 4th view (OpenScholar discards PDFs; 3 of 5 parsing sources aren't PDFs) — demote to drawer.
+- Inline cell editing of AI answers (breaks v6.0 "evidence = verbatim slice" invariant).
+- Multi-step wizard selector (breaks persistent basket).
+- Infinite scroll on results table (breaks pagination counter + back button).
+- Silent truncation at 1,000 cap.
+- Modal paywall mid-flow.
 
 ### Architecture Approach
 
-All 6 features integrate entirely through UI refactoring. The existing Convex queries (`getJobInsights`, `getQuestionInsights`, `getQuestionDisagreements`) already return all data needed for new visualizations. No schema changes, no query modifications, zero breaking changes.
+Six load-bearing decisions on top of existing infrastructure: ephemeral Zustand basket (sessionStorage), Sheet drawer + dedicated `/extraction/new` page, single `<AddToExtractionButton>` at each command center, lazy DOI→OpenAlex resolution inside Zotero tab, static `EXTRACTION_LIMITS_BY_TIER` record in `queryBounds.ts`, and a 5-edit TierSelector wiring. The basket is **snapshot-based** (not reference-based) — stores own copies of `{openalexId, title, doi}` so it survives source deletion in another tab.
 
-**New components required (4):**
-1. `StackedHorizontalBar.tsx` — Renders 4-segment bar (grounded/best_effort/insufficient/error)
-2. `ConfidenceDisplay.tsx` — Shows raw vs effective confidence with context-aware tooltip
-3. `QuestionListItem.tsx` — Question row with status dot + progress bar
-4. `AnswerClusterGroup.tsx` — Expandable answer variant grouping with local state
+**Major components:**
+1. **`useExtractionBasketStore`** — Zustand + `sessionStorage` + `_hasHydrated`, dedupes on normalised ID.
+2. **`<ExtractionBasketDrawer>`** — shadcn `Sheet`, shows count + per-source breakdown + "Review & start extraction" CTA.
+3. **`<AddToExtractionButton>` + `useAddToBasket` hook** — mounted at library/search/bookmarks command centers.
+4. **`/extraction/new` page** — `SelectorTabs` (Library / Collections / Search / Manual / Zotero), ends in existing `ExtractionDialog` with `papers={basketArray}` finally populated.
+5. **`<ExtractionWorkbench>` shell + 4 views** — table/card/split/highlight sharing one `useReactTable(...)` instance.
+6. **`resolveByDoi` / `resolveManualIds` Convex actions** — 10 s `AbortSignal.timeout`, returns per-input `{input, resolved}`.
+7. **`getExtractionLimitForUser` + `getExtractionLimit` query** — reads user's effective plan.
+8. **5-edit TierSelector wiring** — optional `tier` schema field (no migration), `tier` arg on `createExtractionJob`, workpool reads tier from row, `createCascadeTiers(tier)` filters the cascade array, client sends `tier` in `createJob()`.
+9. **`<ZoteroIntegrationCard>` + `<ZoteroTab>`** — reconnects the 1,433 LoC orphaned backend.
 
-**Modified components (3):**
-1. `InsightsOverview.tsx` — Extract summary cards to array; replace question list with QuestionListItem
-2. `InsightsQuestionPanel.tsx` — Replace Bar components with Recharts; add ConfidenceDisplay; add StackedHorizontalBar; wrap answers in AnswerClusterGroup
-3. `lib/extraction/insights.ts` — Add optional `maxCount` fields to aggregation return types
+## Cross-Cutting Decisions (confirmed across multiple research files)
 
-**Data flow:** Unchanged. All 6 features consume data from existing queries; no new backend calls needed.
+| Decision | STACK | FEATURES | ARCHITECTURE | PITFALLS |
+|---|---|---|---|---|
+| **TanStack Table v8.21.3 + raw shadcn `<Table />` primitives (reject shadcn data-table block)** | Adopt, peer-deps OK | Drop-in for paper × question matrix | Shared `useReactTable(...)` across 4 views | Filter re-render storm if `columns` not hoisted |
+| **Zustand `createSelectionBasketStore` factory mirroring `createSidebarStore`** | Factory pattern | Persistent selection across tab switches | Ephemeral, sessionStorage-backed | Navigation loss if not persisted |
+| **sessionStorage (not localStorage) for basket** | Tab-scoped | Session-long workflow | 1h soft expiry | Prevents stale-basket credit burn |
+| **1,000-paper cap (Elicit benchmark)** | Record keyed by plan | Elicit direct benchmark | Static record in `queryBounds.ts` | 15 call-site cascade from 200 |
+| **`EXTRACTION_LIMITS_BY_TIER` shape per-tier-ready, same value now** | Record<SubscriptionPlan, number> | Same v7.0, per-tier v7.1+ | `getExtractionLimitForUser` routes through it | Never hardcode literal `1000` — lint enforce |
+| **Zotero stays on OAuth 1.0a; 1,124 LoC backend intact** | Verified vs 2025-09-24 docs | Category 2 Zotero tab consumes | Settings card + tab only new; backend untouched | Stale dev DB must be purged first |
+| **`resolveByDoi` / `resolveManualIds` new Convex actions** | — | Needed for Zotero + manual tabs | New `convex/openalex/actions.ts` | Lazy resolution only on check |
+| **Snapshot-based basket** | — | Basket unaffected by source mutation | Stores own copies | Multi-tab sessions don't invalidate |
+| **Dedicated `/extraction/new` page + Sheet drawer** | — | Tabs + persistent basket, not wizard | Drawer for peek, page for assemble | — |
 
-### Critical Pitfalls
+## Conflicts / Tensions Between Research Files (resolved)
 
-**Pitfall 1: Bar Scaling Edge Cases** (HIGH severity, MEDIUM probability)
-- **Problem:** Relative-to-max scaling breaks on all-zero distributions (max=0 → NaN), extreme dominance (98% same answer → other bars invisible)
-- **Prevention:** Define fallback behavior explicitly before coding; test edge cases on aggregation functions first
+| Tension | **Resolution** |
+|---|---|
+| **Does 1,000 rows need virtualization?** | **Table view does NOT virtualize. Card view MUST.** Phase 103 ships card view with `@tanstack/react-virtual@^3.13.23` — lazy bundle. |
+| **localStorage vs sessionStorage vs URL for basket** | **sessionStorage wins.** Clear only on successful job creation. |
+| **Where does column visibility live?** | **Split state:** global UX prefs (column visibility, view mode) → Zustand+localStorage via factory; view-specific (selected paper, active filter, search) → URL via nuqs. |
+| **Highlighted-citation view: top-level view or drawer?** | **Demote from 4th view to drawer.** 4 views = table / card / split / highlight where "highlight" = in-context text reveal (not PDF). |
+| **Ship `evidenceContextBefore/After` schema addition in v7.0?** | **Defer to v7.1.** Phase 103 drawer = verbatim quote + parsing-source badge only. |
+| **5 vs 10 phases** | **7 phases** — aggregates ARCHITECTURE 0-9 by surface-area and risk. |
+| **Basket entry shape key name** | **Use `sourceMetadata`.** |
 
-**Pitfall 2: Semantic Grouping False Positives vs False Negatives** (HIGH severity, LOW probability if MVP approach accepted)
-- **Problem:** Normalization misses some duplicates and over-merges others
-- **Prevention:** MVP ships with acknowledged limitations (expandable variants); multi-stage fuzzy matching deferred to v5.1
+## Top 8 Critical Pitfalls
 
-**Pitfall 3: Confidence Display Reframing** (HIGH severity, MEDIUM probability)
-- **Problem:** Confidence scores conflate model uncertainty with source availability (abstract-only papers → always 70% ceiling)
-- **Prevention:** Context-aware display: IF no PDF AND insufficient → "No content available"; IF no PDF AND best_effort → "Abstract only"
+1. **200 → 1,000 bump cascades to 15 call sites** (CRITICAL, Phase 98) — `getExtractionResults` uses `MAX * 10` multipliers that will blow Convex's 8 MB result-size cap at 1k papers × 7 questions. **Prevention:** benchmark 1k-paper job end-to-end BEFORE bumping. Split `MAX_EXTRACTION_PAPERS_PER_JOB` (user cap) from `MAX_EXTRACTION_RESULTS_QUERY` (internal bound).
 
-**Pitfall 4: i18n Coverage Gaps** (HIGH severity, HIGH probability if process doesn't change)
-- **Problem:** Adding 15+ new UI strings without synchronizing across 6 locales; missing keys shipped to UI as key names
-- **Prevention:** PROCESS FLIP: Add all translation keys to JSON files FIRST (6 locales), THEN write components; enforce with Zod validation
+2. **Card view scroll perf at 1,000 cards** (CRITICAL, Phase 103) — naively mapped = 500+ MB heap, Mobile Safari crash. **Prevention:** card view MUST use `@tanstack/react-virtual` + `React.memo` + lazy evidence quote.
 
-**Pitfall 5: Test Regression on 884-Test Suite** (MEDIUM severity, HIGH probability)
-- **Problem:** Refactoring insights components breaks snapshot tests; hundreds of snapshots to regenerate
-- **Prevention:** BEFORE Phase 1, refactor InsightsOverview.test.ts from snapshots to structural tests
+3. **Dedupe race on mixed-format OpenAlex IDs** (CRITICAL, Phase 99) — `W123` vs `https://openalex.org/W123` vs `openalex:W123`. **Prevention:** `normalizeOpenAlexId(id)` utility; dedupe basket by normalised key.
 
----
+4. **TanStack Table column-filter re-render storm** (CRITICAL, Phase 103) — 1k rows + debounced text filter → every keystroke recomputes if `columnFilters` identity changes. **Prevention:** hoist `columns` definition outside component, `React.memo` row cells, React 19 `useDeferredValue`, never recompute `useReactTable` options inline. **Never add filter args to the primary reactive `getExtractionResults` query.**
 
-## Implications for Roadmap
+5. **Basket state lost on navigation** (CRITICAL, Phase 99) — default Zustand is in-memory. **Prevention:** `persist` middleware + `sessionStorage` adapter. Clear only on successful job creation.
 
-Based on research dependencies and pitfall prevention, suggested phase structure:
+6. **Stale `zoteroConnections` + `ENCRYPTION_KEY` drift in dev DB** (CRITICAL, Phase 104) — pre-revival dev DB has orphan rows encrypted with rotated keys. **Prevention:** ship `purgeStaleZoteroState` internal action (dev-guarded). Verify env vars via `npx convex env list` (NOT `.env.local`).
 
-### Phase 1: Foundation & i18n + Test Refactoring (2–3 days)
-**Rationale:** Edge case handling, i18n synchronization, and test brittleness must be addressed upfront. Delaying these creates exponential debt downstream.
+7. **Silent cap overflow across sources** (CRITICAL, Phases 99 + 102) — per-source counters showing `800/1000` and `300/1000` while basket aggregate is 1,100 → rejection at submit. **Prevention:** single source of truth is the basket store; every picker reads `useBasketStore(s => s.count)` and displays global `X / 1000`.
 
-**Deliverables:**
-- Add all new i18n translation keys to 6 locale JSON files
-- Refactor `InsightsOverview.test.ts` from snapshots to structural tests
-- Add edge-case test suite to `tests/extraction-insights.test.ts` (bar scaling, confidence contexts, normalization)
+8. **Zotero items with no OpenAlex-resolvable ID** (SIGNIFICANT, Phase 104) — books, grey literature, dissertations have no DOI. **Prevention:** lazy `resolveByDoi` on checkbox tick with inline spinner. Items with no DOI get disabled checkbox + tooltip.
 
-**Addresses:**
-- Pitfall 4 (i18n gaps): translations always in sync
-- Pitfall 5 (test regression): structural tests prevent snapshot brittleness
-- Pitfall 3 (confidence reframing): edge case tests guide UI design
-- Pitfall 1 (bar scaling): documented expected behavior
+## Proposed 7-Phase Structure (roadmapper input)
 
----
+### Phase 98: Pre-flight & Hard-Limit Foundation
+- **Delivers:** `EXTRACTION_LIMITS_BY_TIER` record, `getExtractionLimitForUser` helper, benchmark of 1k-paper job, split `MAX_EXTRACTION_PAPERS_PER_JOB` from `MAX_EXTRACTION_RESULTS_QUERY`, env var verification, re-install `components/ui/table.tsx`.
+- **Avoids:** PITFALLS 1 (call-site cascade), 6 (env drift).
+- **Research-flag:** MEDIUM.
 
-### Phase 2: Summary Cards & Confidence Display (2–3 days)
-**Rationale:** Display-only features with no backend changes; uses i18n keys from Phase 1.
+### Phase 99: Basket Core (parallel with 100 & 101)
+- **Delivers:** `lib/store/extraction-basket-store.ts`, `lib/hooks/use-add-to-basket.ts`, `<ExtractionBasketDrawer>`, `normalizeOpenAlexId` utility.
+- **Avoids:** PITFALLS 3 (dedupe race), 5 (navigation loss), 7 (silent cap overflow).
+- **Research-flag:** LOW.
 
-**Deliverables:**
-- Implement summary cards with reordering and color accents
-- Implement confidence callout with context awareness (abstract-only, no-PDF, grounded)
-- Color/styling from design system
-- Manual QA with abstract-only and no-PDF jobs
+### Phase 100: Backend Wiring & TierSelector Fix (parallel with 99 & 101)
+- **Delivers:** `convex/openalex/actions.ts` with `resolveByDoi` + `resolveManualIds`, `convex/lib/extractionLimit.ts`, optional `tier` field on `extractionJobs`, `tier` arg on `createExtractionJob`, workpool reads `tier` from row, `createCascadeTiers(tier)`, `getExtractionLimit` reactive query.
+- **Closes:** v6.0 EXTR-01 (TierSelector orphan).
+- **Research-flag:** LOW.
 
-**Implements:**
-- Feature 2 (summary cards)
-- Feature 3 (confidence display)
+### Phase 101: Workbench Primitives (parallel with 99 & 100)
+- **Delivers:** Shared `DataTable` wrapper, filter toolbar primitive, view switcher primitive, column visibility persistence via `createSidebarStore` factory.
+- **Avoids:** PITFALLS 4 (filter re-render storm).
+- **Research-flag:** MEDIUM — TanStack v8 memoization spike.
 
----
+### Phase 102: Entry Points & Sidebar Badge
+- **Delivers:** `<AddToExtractionButton>`, mounts at library/search/bookmarks command centers, collection-flow variant, sidebar nav badge, i18n keys seeded in all 6 locales up front.
+- **Research-flag:** LOW.
 
-### Phase 3: Bar Scaling & Stacked Bars (3–4 days)
-**Rationale:** Chart libraries and scaling logic; uses Recharts.
+### Phase 103: Workbench Views + Selector Page (two sub-plans, parallel)
+- **Sub-plan A — Workbench Views:** `<ExtractionWorkbench>` shell, 4 views (table/card/split/highlight), card view virtualized with `@tanstack/react-virtual`, `parsingSource` badge on all views.
+- **Sub-plan B — Selector Page:** `app/extraction/new/page.tsx`, `SelectorTabs` (Library / Collections / Search / Manual, Zotero deferred to 104), `ExtractionDialog` populated from basket, sticky "X / 1,000" counter.
+- **Closes:** v6.0 UI-01, PARSE-07, CRASH-02.
+- **Avoids:** PITFALLS 2 (card scroll perf), 4 (filter storm).
+- **Research-flag:** HIGH for sub-plan A (card virtualization).
 
-**Deliverables:**
-- Implement relative-to-max scaling with explicit fallbacks (zero values, dominance, small samples)
-- Implement stacked horizontal bar for citation status
-- Inline labels for mobile; legend for desktop
-- Accessibility: aria-label on bars, color legend for colorblind users
-- Component: `StackedHorizontalBar.tsx`
+### Phase 104: Zotero Revival
+- **Delivers:** `purgeStaleZoteroState` dev-guarded action, `<ZoteroIntegrationCard>`, `<ZoteroTab>`, DOI → OpenAlex resolution, OAuth callback route alignment, `fetchWithBackoff` helper, Zotero i18n keys.
+- **Avoids:** PITFALLS 6 (stale dev DB), 8 (items without DOI).
+- **Research-flag:** MEDIUM — re-verify Zotero 2025 rate-limit docs.
 
-**Implements:**
-- Feature 1 (bar scaling)
-- Feature 5 (stacked bars)
+### Phase 105: Polish, Integration, E2E
+- **Delivers:** E2E Playwright flow, mobile responsive drawer, reduced-motion support, i18n audit, ESLint rule forbidding literal `1000` in `components/extraction/**`, closing CRASH-02 in `EvidenceQuote` + `JobMetricsPanel`.
+- **Closes:** all remaining v6.0 gaps.
+- **Research-flag:** LOW.
 
-**Uses:**
-- Recharts ^2.14.0
+### Phase ordering rationale
 
----
+- **Phase 98 first:** bumping the constant without benchmarking first is the single highest-risk change.
+- **Phases 99/100/101 parallelise:** disjoint files (Zustand store / convex actions / UI primitives).
+- **Entry points (102) after basket (99) but before selector page (103).**
+- **Views + selector (103) parallelise as sub-plans.**
+- **Zotero (104) last before polish:** quarantined, riskiest debugging.
+- **Polish (105) separate.**
+- **Critical path:** `98 → 99 → 100 → 102 → 103 → 104 → 105`. Workbench primitives (101) run independently.
 
-### Phase 4: Question List & Progress Bars (2 days)
-**Rationale:** Simple metric aggregation; unblocks next phase.
+## Open Questions (for requirements-definition or phase-research)
 
-**Deliverables:**
-- Question list with status dots + mini progress bars
-- Progress bar rounding rules: explicit code (0/0 → 0%, not NaN)
-- aria-valuenow + aria-label for accessibility
-- Component: `QuestionListItem.tsx`
-
-**Implements:**
-- Feature 4 (question list + progress)
-
----
-
-### Phase 5: Semantic Grouping & Answer Variants (4–5 days) — *Contingent on Phase 1–4 success*
-**Rationale:** Most complex feature; MVP approach defers perfect deduplication. Can defer to v5.1 if needed.
-
-**Deliverables:**
-- **Phase 5a (MVP):** Basic synonym merging with expandable variants
-  - Display: "GPT-4 (likely 5 variants)" → click to expand
-  - Expandable state local to component (useState per cluster)
-  - No fuzzy matching (acceptable MVP limitation documented in release notes)
-  - Component: `AnswerClusterGroup.tsx`
-- **Phase 5b (Deferred, if user feedback warrants):** Multi-stage funnel for fuzzy matching
-  - Requires labeled training data (100–300 paper-answer pairs) to set thresholds
-
-**Implements:**
-- Feature 6 (semantic grouping)
-
----
-
-### Phase 6: Schema Optimization & extractionJobStats (1–2 days) — *Parallel with Phase 5*
-**Rationale:** Optional backend enhancement; can run in parallel with semantic grouping.
-
-**Deliverables:**
-- Add optional `pdfContentUsedCount` to extractionJobStats (derived, not required)
-- Add optional `topAnswersPreview` (computed from existing fields)
-- NO required new fields → no backfill nightmare
-- Lazy computation for first access to old jobs (acceptable latency trade-off)
-- Batch backfill cron runs nightly
-
----
-
-### Phase 7: Internationalization Polish (1 day) — *After Phases 1–6*
-**Rationale:** Final step; all UI strings already in translation files from Phase 1.
-
-**Deliverables:**
-- CI validation: all 6 locales have all extraction keys
-- Manual QA with `NEXT_LOCALE=fr` for each locale
-
----
-
-### Phase Ordering Rationale
-
-1. **Phase 1 first (Foundation)** — i18n, tests, edge cases must be defended upfront. One engineer can do this in 2–3 days; skipping it costs 2–4 weeks of maintenance.
-
-2. **Phases 2–4 sequential (UI Builds)** — Display-only features with increasing complexity.
-
-3. **Phase 5 contingent (Semantic Grouping)** — Can defer to v5.1 if earlier phases encounter blockers. MVP approach with acknowledged limitations is acceptable.
-
-4. **Phase 6 parallel (Schema)** — Low-risk database work; doesn't block UI phases.
-
-5. **Phase 7 last (i18n Polish)** — Keys already added in Phase 1; this is just verification.
-
----
-
-## Research Flags
-
-### Phases Needing Deeper Research During Planning
-
-- **Phase 1 (i18n validation):** Verify Convex constraints on i18n schema. Confirm next-intl version supports Zod validation. Minimal research; mostly setup.
-- **Phase 5b (Fuzzy Matching Upgrade):** If user feedback suggests false negatives are unacceptable, needs NLP research on Jaccard + LSH vs. semantic embeddings. **Not in scope for v5.0; defer to v5.1.**
-
-### Phases with Standard Patterns (Skip Research)
-
-- **Phase 2 (Summary Cards & Confidence):** Standard design patterns; well-documented. No research needed.
-- **Phase 3 (Bar Scaling & Recharts):** Chart libraries well-studied; Recharts documentation comprehensive. No research needed.
-- **Phase 4 (Progress Bars):** Standard UI component. No research needed.
-- **Phase 6 (Schema Changes):** Convex incremental patterns established; lazy backfill is proven pattern. No research needed.
-
----
+1. **Phase 98 benchmark outcome determines Phase 100 scope.** If 1k-paper payload > 5 MB, Phase 100 must include pagination migration of `getExtractionResults`.
+2. **Card view virtualization approach** — `@tanstack/react-virtual` vs `react-window`? Decide in Phase 103 research pass.
+3. **"Select all matching filter" at 10k × 1k cap** — confirm-dialog vs inline truncation toast? Phase 103 selection-semantics spike.
+4. **Zotero callback URL strategy** — two apps (dev + prod) or one app with multiple registered callbacks?
+5. **Evidence drawer richness for v7.0** — verbatim quote only or also surrounding 2-3 sentences via schema addition? Recommendation: MVP only.
+6. **Save basket as collection** — v7.0 or v7.1?
+7. **Bulk re-run credit-gated mutation** — v7.0 or v7.1? Requires OCC research on partial re-runs.
+8. **Column visibility default state per view** — which columns hidden by default in table vs card vs split?
+9. **Mobile behaviour of the drawer** — full-screen Sheet vs bottom-sheet?
+10. **i18n key namespace naming** — `extraction.workbench.*` vs flat `extraction.*`?
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| **Stack** | HIGH | Recharts verified as official shadcn/ui backend; zero conflicts |
-| **Features** | HIGH | All 6 features well-defined with dependency graph |
-| **Architecture** | HIGH | Zero backend changes; all data available in existing queries |
-| **Pitfalls** | HIGH | Direct codebase analysis (718 lines insights.ts, 884-test suite observed). Edge cases documented. |
-| **Roadmap Phasing** | HIGH | Dependencies clear; risk mitigation strategies proven |
+| Stack | **HIGH** | TanStack Table v8.21.3 peer-deps verified; Zotero OAuth 1.0a confirmed current; Motion v12 drag/spring verified. |
+| Features | **MEDIUM-HIGH** | Elicit 1,000-paper cap primary source; Covidence/Rayyan 2025 patterns primary; anti-feature calls from NN/G, PatternFly, Smashing. |
+| Architecture | **HIGH** | Entirely grounded in repo analysis with exact line numbers and LoC counts. 5-edit TierSelector fix spelled out with exact code. |
+| Pitfalls | **HIGH** for repo-grounded hazards; **MEDIUM** for generic React/library patterns. |
 
-**Overall confidence:** HIGH
-**Key assumption:** Phase 1 is committed to before other phases (non-negotiable for risk mitigation).
-
----
-
-## Gaps to Address
-
-### Before Phase 1 Starts
-
-1. **Verify i18n Key Validation:** Confirm next-intl supports type-safe key matching with Zod. If not, create wrapper utility.
-
-2. **Confirm Tailwind Color Extensions:** Verify existing components.json supports custom colors (likely yes).
-
-3. **Convex Optional Fields:** Confirm Convex allows optional fields in schema without breaking existing queries. Test lazy computation pattern.
-
-### During Phase 5 (If Fuzzy Matching Needed)
-
-1. **Labeled Training Data:** If MVP false negative rate is unacceptable, collect 100–300 paper-answer pairs labeled as "should merge" / "should not merge."
-
-2. **Similarity Algorithm Comparison:** Evaluate Jaccard + LSH vs. semantic embeddings.
-
-### Post-v5.0 Monitoring
-
-1. **User Feedback on Semantic Grouping:** Track issues reported about duplicate/false merges.
-
-2. **Query Latency on Old Jobs:** Monitor performance after lazy backfill. If spikes are noticeable (>500ms), plan batch backfill upgrade.
-
----
+**Overall confidence:** **HIGH.** Riskiest integration hazards are repo-verified; riskiest library decisions are peer-dep verified; riskiest external dependencies are documentation-current.
 
 ## Sources
 
-### Stack Research
-- [shadcn/ui Charts Library](https://ui.shadcn.com/charts)
-- [Recharts Documentation](https://recharts.org/)
-- [Recharts Stacked Bar Charts](https://recharts.github.io/en-US/examples/StackedBarChart/)
-- [Top 5 React Chart Libraries 2026 (Syncfusion)](https://www.syncfusion.com/blogs/post/top-5-react-chart-libraries)
+**Primary (HIGH confidence):**
+- `@tanstack/react-table@8.21.3` peer-deps verified vs `react@^19.2.4`. <https://tanstack.com/table/v8/docs>
+- Zotero Web API v3 Basics, last modified 2025-09-24. <https://www.zotero.org/support/dev/web_api/v3/basics>
+- Elicit 1,000-paper systematic review cap. <https://support.elicit.com/en/articles/7927169>
+- Covidence 2025 click-to-PDF extraction. <https://changes.covidence.org/>
+- Rayyan August 2025 data extraction form builder. <https://blog.rayyan.ai/2025/08/11/data-extraction-in-rayyan/>
+- Direct repository analysis — file paths, LoC counts, line numbers, orphan state grounded in live `convex/**`, `components/**`, `app/**`, `.planning/**` inspection.
 
-### Feature Research
-- [Data Visualization Best Practices - Tilburg Science Hub](https://www.tilburgsciencehub.com/topics/visualization/data-visualization/graphs-charts/theory-best-practices/)
-- [A Complete Guide to Bar Charts | Atlassian](https://www.atlassian.com/data/charts/bar-chart-complete-guide)
-- [Stacked Bar Charts: A Detailed Breakdown | Atlassian](https://www.atlassian.com/data/charts/stacked-bar-chart-complete-guide)
+**Secondary (MEDIUM confidence):**
+- openstatus/data-table reference. <https://github.com/openstatusHQ/data-table-filters>
+- sadmann7/tablecn. <https://github.com/sadmann7/shadcn-table>
+- PatternFly Bulk Selection Pattern. <https://www.patternfly.org/patterns/bulk-selection/>
+- NN/G Bulk Actions Design Guidelines. <https://www.nngroup.com/videos/bulk-actions-design-guidelines/>
 
-### Pitfall Research
-- [Data Visualization Pitfalls](https://www.techment.com/blogs/data-visualization-best-practices-enterprise/)
-- [NLP Duplicate Detection: Setting Similarity Thresholds](https://www.tesserblu.com/post/reducing-false-positives-in-literature-screening-using-nlp)
-- [Chart Scaling Best Practices (Zero Baseline)](https://clauswilke.com/dataviz/proportional-ink.html)
-- [i18n Retrofitting Cost: 3–5x More Expensive Than Upfront](https://www.locize.com/blog/what-is-i18n/)
-- [Regression Testing with UI Refactoring](https://katalon.com/resources-center/blog/regression-test-strategy)
-- [Database Refactoring: Expand-and-Contract Pattern](https://medium.com/@jasminfluri/expand-and-contract-method-for-database-changes-414d236f236f)
-
-### Architecture Research
-- Direct codebase analysis: 718 lines `lib/extraction/insights.ts`, 884-test suite structure
-- [Zustand State Management: Pitfalls and Patterns](https://tkdodo.eu/blog/zustand-and-react-context)
-
----
-
-*Research completed: 2026-03-10*
-*Prepared for: v5.0 Roadmap Creation*
-*Ready for roadmap planning: YES*
+**Rejected alternatives:**
+- TanStack Table v9 alpha, AG Grid Community (500 KB), react-data-grid (4-year beta), zotero-api-client v0.48.0 (no OAuth), feature-flag libraries (overkill), shadcn `data-table` block (monolithic), wizard selector pattern.
