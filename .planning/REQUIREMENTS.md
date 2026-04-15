@@ -127,47 +127,62 @@ Explicitly excluded from v7.0. Documented to prevent scope creep.
 
 Which phases cover which requirements. Updated during roadmap creation.
 
+**Coverage:** 42/42 requirements mapped to exactly one phase (100%). No orphans, no duplicates.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIM-01 | TBD | Pending |
-| LIM-02 | TBD | Pending |
-| LIM-03 | TBD | Pending |
-| LIM-04 | TBD | Pending |
-| LIM-05 | TBD | Pending |
-| LIM-06 | TBD | Pending |
-| LIM-07 | TBD | Pending |
-| SEL-01 | TBD | Pending |
-| SEL-02 | TBD | Pending |
-| SEL-03 | TBD | Pending |
-| SEL-04 | TBD | Pending |
-| SEL-05 | TBD | Pending |
-| SEL-06 | TBD | Pending |
-| SEL-07 | TBD | Pending |
-| SEL-08 | TBD | Pending |
-| SEL-09 | TBD | Pending |
-| SEL-10 | TBD | Pending |
-| SEL-11 | TBD | Pending |
-| SEL-12 | TBD | Pending |
-| WB-01 | TBD | Pending |
-| WB-02 | TBD | Pending |
-| WB-03 | TBD | Pending |
-| WB-04 | TBD | Pending |
-| WB-05 | TBD | Pending |
-| WB-06 | TBD | Pending |
-| WB-07 | TBD | Pending |
-| WB-08 | TBD | Pending |
-| WB-09 | TBD | Pending |
-| WB-10 | TBD | Pending |
-| ZOT-01 | TBD | Pending |
-| ZOT-02 | TBD | Pending |
-| ZOT-03 | TBD | Pending |
-| ZOT-04 | TBD | Pending |
-| ZOT-05 | TBD | Pending |
-| ZOT-06 | TBD | Pending |
-| TIER-01 | TBD | Pending |
-| TIER-02 | TBD | Pending |
-| TIER-03 | TBD | Pending |
-| GAP-01 | TBD | Pending |
-| GAP-02 | TBD | Pending |
-| GAP-03 | TBD | Pending |
-| GAP-04 | TBD | Pending |
+| LIM-01 | Phase 98 | Pending |
+| LIM-02 | Phase 98 | Pending |
+| LIM-03 | Phase 98 | Pending |
+| LIM-04 | Phase 102 | Pending |
+| LIM-05 | Phase 102 | Pending |
+| LIM-06 | Phase 102 | Pending |
+| LIM-07 | Phase 100 | Pending |
+| SEL-01 | Phase 103 | Pending |
+| SEL-02 | Phase 103 | Pending |
+| SEL-03 | Phase 103 | Pending |
+| SEL-04 | Phase 103 | Pending |
+| SEL-05 | Phase 100 | Pending |
+| SEL-06 | Phase 104 | Pending |
+| SEL-07 | Phase 99 | Pending |
+| SEL-08 | Phase 99 | Pending |
+| SEL-09 | Phase 99 | Pending |
+| SEL-10 | Phase 99 | Pending |
+| SEL-11 | Phase 102 | Pending |
+| SEL-12 | Phase 102 | Pending |
+| WB-01 | Phase 101 | Pending |
+| WB-02 | Phase 101 | Pending |
+| WB-03 | Phase 101 | Pending |
+| WB-04 | Phase 103 | Pending |
+| WB-05 | Phase 103 | Pending |
+| WB-06 | Phase 103 | Pending |
+| WB-07 | Phase 103 | Pending |
+| WB-08 | Phase 103 | Pending |
+| WB-09 | Phase 103 | Pending |
+| WB-10 | Phase 101 | Pending |
+| ZOT-01 | Phase 104 | Pending |
+| ZOT-02 | Phase 104 | Pending |
+| ZOT-03 | Phase 100 | Pending |
+| ZOT-04 | Phase 104 | Pending |
+| ZOT-05 | Phase 104 | Pending |
+| ZOT-06 | Phase 104 | Pending |
+| TIER-01 | Phase 100 | Pending |
+| TIER-02 | Phase 100 | Pending |
+| TIER-03 | Phase 100 | Pending |
+| GAP-01 | Phase 103 | Pending |
+| GAP-02 | Phase 103 | Pending |
+| GAP-03 | Phase 105 | Pending |
+| GAP-04 | Phase 98 | Pending |
+
+### Phase → Requirements (inverted view)
+
+| Phase | Name | REQ-IDs | Count |
+|-------|------|---------|-------|
+| 98 | Pre-flight & Hard-Limit Foundation | LIM-01, LIM-02, LIM-03, GAP-04 | 4 |
+| 99 | Selection Basket Core | SEL-07, SEL-08, SEL-09, SEL-10 | 4 |
+| 100 | Backend Wiring + TierSelector Fix | SEL-05, LIM-07, ZOT-03, TIER-01, TIER-02, TIER-03 | 6 |
+| 101 | Workbench Primitives | WB-01, WB-02, WB-03, WB-10 | 4 |
+| 102 | Entry Points & Counter UX | LIM-04, LIM-05, LIM-06, SEL-11, SEL-12 | 5 |
+| 103 | Workbench Views + Selector Page | SEL-01, SEL-02, SEL-03, SEL-04, WB-04, WB-05, WB-06, WB-07, WB-08, WB-09, GAP-01, GAP-02 | 12 |
+| 104 | Zotero Revival | SEL-06, ZOT-01, ZOT-02, ZOT-04, ZOT-05, ZOT-06 | 6 |
+| 105 | Polish, Integration, E2E | GAP-03 | 1 |

@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Extraction Workbench
 status: planning
-stopped_at: Defining requirements
-last_updated: "2026-04-15T13:15:00.000Z"
+stopped_at: Roadmap created — awaiting plan-phase 98
+last_updated: "2026-04-15T14:00:00.000Z"
 last_activity: 2026-04-15
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** v7.0 Extraction Workbench — defining requirements
+**Current focus:** v7.0 Extraction Workbench — Phase 98 (Pre-flight & Hard-Limit Foundation)
 
 ## Current Position
 
 Milestone: v7.0 Extraction Workbench
-Phase: Not started (defining requirements)
+Phase: 98 of 105 (Pre-flight & Hard-Limit Foundation) — next to plan
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-15 — Milestone v7.0 started
+Status: Ready to plan (roadmap created)
+Last activity: 2026-04-15 — v7.0 roadmap created, 42 requirements mapped across 8 phases (98-105)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -60,13 +60,22 @@ Progress: [░░░░░░░░░░] 0%
 | v4.1 | 4 | 5 | 2026-03-09 |
 | v5.0 | 5 | 14 | 2026-03-10 |
 | v6.0 | 10 | 29 | 2026-04-15 |
-| v7.0 | planning | — | in progress |
+| v7.0 | 8 planned (98-105) | TBD | in progress |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
+
+Recent v7.0 decisions affecting current work:
+
+- **Phase 98**: bump `MAX_EXTRACTION_PAPERS_PER_JOB` 200→1000 must benchmark first; split internal `MAX_EXTRACTION_RESULTS_QUERY` from user cap (PITFALL 1).
+- **Phase 99**: sessionStorage (not localStorage) for basket — clear only on successful job creation.
+- **Phase 100**: TierSelector fix is ~5 edits, NO migration — new rows only.
+- **Phase 101**: `@tanstack/react-table@^8.21.3` is the ONLY net-new runtime dep for this milestone. Re-add shadcn `<Table />` primitive; reject shadcn `data-table` block (monolithic — fights 4-view architecture).
+- **Phase 103**: highlighted-citation demoted from 4th view to drawer pattern (not all parsing sources are PDFs); card view MUST virtualize via `@tanstack/react-virtual@^3.13.23`; table view does NOT virtualize.
+- **Phase 104**: Zotero stays on OAuth 1.0a (verified 2025-09-24); `zotero-api-client` rejected (API-key only).
 
 ### Pending Todos
 
@@ -77,31 +86,27 @@ None.
 2026-04-14 — v6.0 roadmap created with 10 phases (88-97) mapping all 63 v6.0 requirements.
 2026-04-15 — v6.0 milestone archived. 53/63 requirements satisfied, 3 unsatisfied, 4 partial. Known gaps documented.
 2026-04-15 — v7.0 Extraction Workbench opened. Recovers pre-v6.0 results UI (table/card/split/highlighted-citation views), adds unified cross-source paper selector (library + collections + search + manual + Zotero with selection-basket), enforces 1000-paper per-job hard limit (per-tier-ready), revives orphaned Zotero OAuth, and closes v6.0 UI-01 + TierSelector orphan.
+2026-04-15 — v7.0 roadmap created with 8 phases (98-105) mapping all 42 v7.0 requirements (LIM×7, SEL×12, WB×10, ZOT×6, TIER×3, GAP×4). Critical path: `98 → 99 → 100 → 102 → 103 → 104 → 105`, with Phase 101 parallelizable against 99/100.
 
 ### Blockers/Concerns
 
-None.
+- **Phase 98 benchmark outcome gates Phase 100 scope.** If the 1000-paper × 7-question `getExtractionResults` payload exceeds 5 MB, Phase 100 must also include pagination migration of `getExtractionResults` before the 200→1000 bump lands in production.
 
-### Quick Tasks Completed
+## Deferred Items
 
-| # | Description | Date | Commit | Status | Directory |
-|---|-------------|------|--------|--------|-----------|
-| 2 | Add eKitabu to Built by footer | 2026-03-02 | abd98e1 | | [2-add-ekitabu-to-built-by-footer](./quick/2-add-ekitabu-to-built-by-footer/) |
-| 3 | Remove GROBID implementation | 2026-03-04 | d20c59e | | [3-get-rid-of-the-grobid-implementation-ent](./quick/3-get-rid-of-the-grobid-implementation-ent/) |
-| 4 | Fix billing e2e auth to use clerk testing token | 2026-03-05 | 6792c9d | | [4-fix-billing-e2e-auth-to-use-clerk-testin](./quick/4-fix-billing-e2e-auth-to-use-clerk-testin/) |
-| 5 | Denormalized counters backfill (library + collections) | 2026-03-06 | b6f2446 | | [5-denormalized-counters-backfill-libraryit](./quick/5-denormalized-counters-backfill-libraryit/) |
-| 6 | Audit schema vs validators (no mismatches found) | 2026-03-06 | -- | | [6-check-if-theres-any-such-issues](./quick/6-check-if-theres-any-such-issues/) |
-| 7 | Redesign screening modal UI/UX | 2026-03-09 | eb1ccb1 | | [7-redesign-screening-modal-ui-ux](./quick/7-redesign-screening-modal-ui-ux/) |
-| 8 | Improve create-collection inline flow | 2026-03-09 | c27344b | | [8-improve-create-new-collection-inline-flo](./quick/8-improve-create-new-collection-inline-flo/) |
-| 9 | Polish create-collection inline flow | 2026-03-09 | 79fce1e | | [9-polish-screening-dialog-visual-design](./quick/9-polish-screening-dialog-visual-design/) |
-| 10 | Extract screening progress into standalone dialog | 2026-03-09 | 12d954f | | [10-extract-screening-progress-into-standalo](./quick/10-extract-screening-progress-into-standalo/) |
-| 11 | Move screening button to sidebar footer with progress ring | 2026-03-09 | 6a8dc0b | | [11-move-screening-button-to-sidebar-footer-](./quick/11-move-screening-button-to-sidebar-footer-/) |
-| 12 | Enhance screening jobs modal UI/UX | 2026-03-09 | 90e8dc7 | Verified | [12-enhance-screening-jobs-modal-ui-ux-with-](./quick/12-enhance-screening-jobs-modal-ui-ux-with-/) |
-| 13 | Disable Review Queue and Report Builder feature flags | 2026-03-10 | 6588d1b | Verified | [13-disable-review-queue-and-report-builder](./quick/13-disable-review-queue-and-report-builder/) |
-| 14 | Fix convex dev typecheck failures from v6.0 milestone (parse.ts, mutations.ts, mutations.test.ts) | 2026-04-15 | bdde32d | Verified | [20260415-fix-convex-v6-typecheck](./quick/20260415-fix-convex-v6-typecheck/) |
+Items carried from v6.0 into v7.0 or later milestones:
+
+| Category | Item | Status | Deferred At |
+|----------|------|--------|-------------|
+| v6.0 gap | EVAL-05 `getQualityTrend` UI consumer | Deferred to v7.1 | 2026-04-15 |
+| v6.0 gap | EVAL-06 `getReviewQueue` UI page | Deferred to v7.1 | 2026-04-15 |
+| v6.0 gap | EXTR-07 `provider.order` in OpenRouter cascade | Unassigned | 2026-04-15 |
+| v6.0 gap | WORK-06 `enqueueAllPapers` test invocation | Unassigned | 2026-04-15 |
+| v7.0 future | WB-F01 Bulk re-run | Deferred to v7.1 | 2026-04-15 |
+| v7.0 future | WB-F03 `evidenceContextBefore/After` schema | Deferred to v7.1 | 2026-04-15 |
 
 ## Session Continuity
 
-Last activity: 2026-04-15 — v7.0 Extraction Workbench milestone opened
-Stopped at: Defining requirements
-Next step: Research decision → REQUIREMENTS.md → ROADMAP.md → `/gsd-plan-phase 98`
+Last session: 2026-04-15 — v7.0 roadmap created
+Stopped at: Roadmap draft written; 8 phases mapped to 42 requirements with 100% coverage
+Next step: `/gsd-plan-phase 98`
