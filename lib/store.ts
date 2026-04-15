@@ -14,7 +14,7 @@ import type {
   BookmarkSortBy,
   BookmarkData,
 } from './types';
-import { MIN_YEAR } from './constants';
+
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {
@@ -166,125 +166,21 @@ export const useRatingsStore = create<RatingsState>()(
     }),
     {
       name: 'paper-ratings-store',
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return { ratings: {} };
+        return persistedState;
+      },
     }
   )
 )
 
-/** Shape of persisted state flowing through search history migrations. */
-interface SearchHistoryPersistedState {
-  searchHistory?: Array<Record<string, unknown>>;
-}
-
-// `unknown` is correct for Zustand persist `migrate` — shape varies by version.
+// `unknown` is correct for Zustand persist `migrate` -- shape varies by version.
 export function migrateSearchHistoryState(persistedState: unknown, version: number): unknown {
-  const state = persistedState as SearchHistoryPersistedState;
-
-  // Migration for version 0 -> 1: Add isYearRangeEnabled based on existing yearRange
-  if (version === 0) {
-    const currentYear = new Date().getFullYear();
-    const defaultYearRange = [MIN_YEAR, currentYear];
-
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
-        // If the item has a custom year range (not the default), enable the toggle
-        const yearRange = item.yearRange;
-        if (yearRange && Array.isArray(yearRange)) {
-          const [fromYear, toYear] = yearRange;
-          const isCustomRange = fromYear !== defaultYearRange[0] || toYear !== defaultYearRange[1];
-
-          return {
-            ...item,
-            isYearRangeEnabled: isCustomRange
-          };
-        }
-
-        // If no yearRange or it's the default, keep toggle disabled
-        return {
-          ...item,
-          isYearRangeEnabled: false
-        };
-      });
-    }
+  if (version < 1) {
+    return { searchHistory: [] };
   }
-
-  // Migration for version 1 -> 2: Add queryHistory field
-  if (version <= 1) {
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
-        return {
-          ...item,
-          queryHistory: item.queryHistory || [{
-            query: item.query || '',
-            timestamp: item.createdAt || new Date().toISOString()
-          }]
-        };
-      });
-    }
-  }
-
-  // Migration for version 2 -> 3: Add questionHistory field
-  if (version <= 2) {
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
-        return {
-          ...item,
-          questionHistory: item.questionHistory || []
-        };
-      });
-    }
-  }
-
-  // Migration for version 3 -> 4: Add screeningQuestions field
-  if (version <= 3) {
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
-        return {
-          ...item,
-          screeningQuestions: item.screeningQuestions || []
-        };
-      });
-    }
-  }
-
-  // Migration for version 4 -> 5: Add screeningResponses field
-  if (version <= 4) {
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
-        return {
-          ...item,
-          screeningResponses: item.screeningResponses || {}
-        };
-      });
-    }
-  }
-
-  // Migration for version 5 -> 6: Add language field
-  if (version <= 5) {
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => {
-        return {
-          ...item,
-          language: item.language || undefined // Default to undefined for backward compatibility
-        };
-      });
-    }
-  }
-
-  // Migration for version 6 -> 7: Normalize screening question shape
-  if (version <= 6) {
-    if (state.searchHistory) {
-      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => ({
-        ...item,
-        screeningQuestions: ((item.screeningQuestions || []) as Array<Record<string, unknown>>).map(
-          (question: Record<string, unknown>) => ({
-            question: typeof question?.question === "string" ? question.question : "",
-          })
-        ),
-      }));
-    }
-  }
-
-  return state;
+  return persistedState;
 }
 
 export const useSearchHistoryStore = create<SearchHistoryState>()(
@@ -569,7 +465,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
-      version: 7, // Increment when migrations are needed
+      version: 1,
       migrate: migrateSearchHistoryState,
     }
   )
@@ -636,7 +532,24 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: 'ui-store',
-      partialize: (state) => ({ 
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return {
+          isDialogOpen: false,
+          loadingResultIndex: null,
+          isFocusModeOpen: false,
+          focusModeIndex: 0,
+          viewMode: 'list-detail',
+          historyViewMode: 'list-detail',
+          historySortBy: 'recent',
+          bookmarkViewMode: 'list-detail',
+          bookmarkSortBy: 'recent',
+          expandedScreeningDetails: {},
+          screeningPanelOpenBySearchId: {},
+        };
+        return persistedState;
+      },
+      partialize: (state) => ({
         viewMode: state.viewMode,
         historyViewMode: state.historyViewMode,
         historySortBy: state.historySortBy,
@@ -682,6 +595,17 @@ export const useFocusModeSettingsStore = create<FocusModeSettingsState>()(
     }),
     {
       name: 'focus-mode-settings-store',
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return {
+          fontSize: 'base',
+          maxContentWidth: 'medium',
+          lineHeight: 'normal',
+          showMetadata: true,
+          compactMode: false,
+        };
+        return persistedState;
+      },
     }
   )
 )
@@ -813,36 +737,18 @@ export const useAIConfigStore = create<AIConfigState>()(
     }),
     {
       name: 'ai-config-storage',
-      version: 5,
+      version: 1,
       migrate: (persistedState: unknown, version: number) => {
-        const state = persistedState as { provider?: string; model?: string; apiKeyMode?: string; providerApiKeys?: Record<string, string>; dollarsUsed?: unknown; budget?: unknown };
-        if (version === 0) {
+        if (version < 1) {
           return {
-            ...state,
-            model: state.provider === 'openai' ? 'o4-mini-2025-04-16' : state.provider === 'google' ? 'gemini-2.5-flash' : undefined,
-          };
-        }
-        if (version === 1 || version === 2) {
-          return {
-            ...state,
+            provider: 'openrouter',
+            model: 'openrouter/free',
+            apiKey: '',
             apiKeyMode: 'smart',
+            providerApiKeys: {},
           };
         }
-        if (version === 3) {
-          // Remove budget tracking fields
-          const { dollarsUsed, budget, ...rest } = state;
-          return {
-            ...rest,
-            apiKeyMode: 'smart',
-          };
-        }
-        if (version === 4) {
-          return {
-            ...state,
-            apiKeyMode: 'smart',
-          };
-        }
-        return state;
+        return persistedState;
       },
     }
   )
@@ -1041,6 +947,15 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
     }),
     {
       name: "results-translation-settings-store",
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return {
+          autoTranslateResults: false,
+          targetLanguageOverride: null,
+          manualRunRequestId: 0,
+        };
+        return persistedState;
+      },
       partialize: (state) => ({
         autoTranslateResults: state.autoTranslateResults,
         targetLanguageOverride: state.targetLanguageOverride,
@@ -1082,6 +997,11 @@ export const useSidebarStore = create<SidebarState>()(
     }),
     {
       name: 'openalex-sidebar',
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return { isCollapsed: true };
+        return persistedState;
+      },
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ isCollapsed: state.isCollapsed }),
       onRehydrateStorage: () => (state) => {
@@ -1121,6 +1041,11 @@ export const useFilterSidebarStore = create<FilterSidebarState>()(
     }),
     {
       name: 'openalex-filter-sidebar',
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return { isCollapsed: false };
+        return persistedState;
+      },
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ isCollapsed: state.isCollapsed }),
       onRehydrateStorage: () => (state) => {
@@ -1154,6 +1079,11 @@ export function createSidebarStore(persistKey: string) {
       }),
       {
         name: persistKey,
+        version: 1,
+        migrate: (persistedState: unknown, version: number) => {
+          if (version < 1) return { isCollapsed: false };
+          return persistedState;
+        },
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({ isCollapsed: state.isCollapsed }),
         onRehydrateStorage: () => (state) => {
@@ -1201,6 +1131,11 @@ export const useTransientScreeningStore = create<{
     }),
     {
       name: 'transient-screening-store',
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version < 1) return { testIndexPerQuestion: {} };
+        return persistedState;
+      },
       partialize: (state) => ({ testIndexPerQuestion: state.testIndexPerQuestion }),
     }
   )
