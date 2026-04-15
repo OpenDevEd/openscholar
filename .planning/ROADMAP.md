@@ -332,10 +332,11 @@ Plans:
   2. Network/5xx/429/timeout errors are thrown so workpool retry fires, while 404/400/validation errors return `{success: false}` and are not retried — verified by a classification test
   3. Any workflow-facing action early-returns when `job.status === "cancelled" | "failed"` with zero LLM tokens consumed — verified by a test that asserts the LLM mock is never called for a cancelled job
   4. Reactive Convex subscriptions stream `{processed, failed, remaining}` counters to the UI in under a second on paper completion — verified in the live progress E2E
-**Plans**: 2 plans
+**Plans**: 3 plans
 Plans:
-- [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [ ] 93-01-PLAN.md — Error classification module (retryable vs permanent) and unit tests
+- [ ] 93-02-PLAN.md — Schema cancelledPapers field, cancelExtractionJob mutation, handleExtractionComplete split, progress query update, cancel tests
+- [ ] 93-03-PLAN.md — Error classification integration into workpoolActions, early-return guard verification tests
 
 ### Phase 94: Crash Prevention Sweep
 **Goal**: Eliminate every crash surface that can drop a user out of the app — route-segment error boundaries, defensive `useQuery` null/undefined handling, Clerk visibility-change retry, mutation rejection routed to toasts, UUID-delimited prompt injection fence, universal `AbortSignal.timeout` on external fetches, and a Zustand persist migration reset.
