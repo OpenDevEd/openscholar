@@ -404,6 +404,78 @@ export default defineSchema({
     .index("by_job_openalexId", ["jobId", "openalexId"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // EXTRACTION - v6.0 MVP extraction pipeline tables
+  // ═══════════════════════════════════════════════════════════════
+  extractionJobs: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+      v.literal("failed")
+    ),
+    totalPapers: v.number(),
+    processedPapers: v.number(),
+    failedPapers: v.number(),
+    questions: v.array(
+      v.object({
+        key: v.string(),
+        question: v.string(),
+        expectedType: v.optional(v.string()),
+      })
+    ),
+    workflowId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_workflow", ["workflowId"]),
+
+  extractionPapers: defineTable({
+    jobId: v.id("extractionJobs"),
+    openalexId: v.string(),
+    title: v.string(),
+    doi: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("parsing"),
+      v.literal("extracting"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled")
+    ),
+    workpoolId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+  })
+    .index("by_job", ["jobId"])
+    .index("by_job_status", ["jobId", "status"]),
+
+  extractionQuestions: defineTable({
+    jobId: v.id("extractionJobs"),
+    key: v.string(),
+    question: v.string(),
+    expectedType: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_job", ["jobId"]),
+
+  extractionResults: defineTable({
+    jobId: v.id("extractionJobs"),
+    paperId: v.id("extractionPapers"),
+    questionId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_paper_question", ["paperId", "questionId"])
+    .index("by_job", ["jobId"])
+    .index("by_paper", ["paperId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library (rated papers)
   // ═══════════════════════════════════════════════════════════════
   libraryItems: defineTable({
