@@ -234,7 +234,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 
 - [x] **Phase 88: Scorched-Earth Teardown** - Delete all legacy extraction code, tables, UI, and RAG component so nothing dangles after (completed 2026-04-14)
 - [x] **Phase 89: Core Schema & Workflow Skeleton** - Stand up the new slim schema, durable workflow, and batched enqueue so downstream phases have rails to build on (completed 2026-04-15)
-- [ ] **Phase 90: Free-First Parsing Waterfall** - Resolve full-text via OpenAlex metadata, Europe PMC, arXiv HTML, unpdf, and Gemini-as-PDF-parser with abort-signal ceilings and a 200-page cap
+- [x] **Phase 90: Free-First Parsing Waterfall** - Resolve full-text via OpenAlex metadata, Europe PMC, arXiv HTML, unpdf, and Gemini-as-PDF-parser with abort-signal ceilings and a 200-page cap (completed 2026-04-15)
 - [ ] **Phase 91: Extraction Cascade Core** - Send whole-paper text to the three-tier OpenRouter cascade with flat 7-field Zod schema, Gemini caching, and per-question parallelism
 - [ ] **Phase 92: Deterministic Citation Grounding** - Enforce substring-match quoting, critic pass, insufficient_evidence state, and UI-rendered verbatim quotes
 - [ ] **Phase 93: Workflow Cancel, Retry, and Progress** - Targeted cancel, retryable/permanent error taxonomy, early-return on cancelled jobs, and reactive progress updates
@@ -291,7 +291,7 @@ Plans:
 Plans:
 - [x] 90-01-PLAN.md — Schema fields, validators, convex.json, dependency installation, storeParsedText mutation
 - [x] 90-02-PLAN.md — Core parse.ts waterfall module (5 tiers) and workpool action wiring
-- [ ] 90-03-PLAN.md — Unit tests for all parsing tiers, timeout ceilings, and page cap
+- [x] 90-03-PLAN.md — Unit tests for all parsing tiers, timeout ceilings, and page cap
 
 ### Phase 91: Extraction Cascade Core
 **Goal**: Given parsed source text, send the whole paper (no chunking, no RAG, no vector DB) through the three-tier OpenRouter cascade — Gemini 2.5 Flash Lite pre-screen → Gemini 3 Flash default → Claude Haiku 4.5 escalation — using a flat 7-field Zod schema with `propertyOrdering` forcing `reasoning` before `answer`, parallelized per-question with concurrency cap 5, and returning the documented result shape to the UI.
@@ -400,7 +400,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
-| 90. Free-First Parsing Waterfall | v6.0 | 2/3 | In Progress|  |
+| 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete   | 2026-04-15 |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
