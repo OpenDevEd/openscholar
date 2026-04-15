@@ -316,4 +316,4 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | IIFE pattern for grouping computation in JSX | synonymMap built once, shared by answer and disagreement transforms | ✓ Good — avoids double computation |
 
 ---
-*Last updated: 2026-04-15 — Phase 90 (Free-First Parsing Waterfall) complete. Five-tier parsing waterfall (PMC JATS, arXiv HTML, unpdf, Gemini-as-PDF-parser, abstract-only) with abort-signal ceilings and 200-page cap. Schema extended with bodyText/parsingSource fields, workpool action wired, 17 unit tests passing.*
+*Last updated: 2026-04-15 — Phase 95 (Structured Observability & SLO Metrics) complete. Structured logging module with traceId propagation across all extraction stages (parse, extract, critic, save). Per-job metrics query with auth-guarded access. SLO metric persistence (citationValidityRate computed at finalization). JobMetricsPanel UI component with i18n across 6 locales.*
