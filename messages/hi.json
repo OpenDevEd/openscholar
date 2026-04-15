@@ -1451,5 +1451,17 @@
     "minutesAgo": "{count} मिनट पहले",
     "hoursAgo": "{count} घंटे पहले",
     "daysAgo": "{count} दिन पहले"
+  },
+  "extraction": {
+    "insufficientEvidence": "अपर्याप्त प्रमाण",
+    "evidenceUnavailable": "प्रमाण उपलब्ध नहीं",
+    "confidenceHigh": "उच्च विश्वास",
+    "confidenceMedium": "मध्यम विश्वास",
+    "confidenceLow": "कम विश्वास",
+    "criticVerified": "सत्यापित",
+    "criticUnverified": "असत्यापित",
+    "criticPartial": "आंशिक रूप से सत्यापित",
+    "criticTimeout": "समीक्षा लंबित",
+    "viewInSource": "स्रोत में देखें"
   }
 }

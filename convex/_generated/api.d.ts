@@ -21,6 +21,13 @@ import type * as credits_lib_invoiceGrantPolicy from "../credits/lib/invoiceGran
 import type * as credits_lib_retryPolicy from "../credits/lib/retryPolicy.js";
 import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
+import type * as extraction_extract from "../extraction/extract.js";
+import type * as extraction_mutations from "../extraction/mutations.js";
+import type * as extraction_parse from "../extraction/parse.js";
+import type * as extraction_queries from "../extraction/queries.js";
+import type * as extraction_validators from "../extraction/validators.js";
+import type * as extraction_workflow from "../extraction/workflow.js";
+import type * as extraction_workpoolActions from "../extraction/workpoolActions.js";
 import type * as featureFlags_guard from "../featureFlags/guard.js";
 import type * as featureFlags_internal from "../featureFlags/internal.js";
 import type * as featureFlags_queries from "../featureFlags/queries.js";
@@ -115,6 +122,13 @@ declare const fullApi: ApiFromModules<{
   "credits/lib/retryPolicy": typeof credits_lib_retryPolicy;
   "credits/queries": typeof credits_queries;
   crons: typeof crons;
+  "extraction/extract": typeof extraction_extract;
+  "extraction/mutations": typeof extraction_mutations;
+  "extraction/parse": typeof extraction_parse;
+  "extraction/queries": typeof extraction_queries;
+  "extraction/validators": typeof extraction_validators;
+  "extraction/workflow": typeof extraction_workflow;
+  "extraction/workpoolActions": typeof extraction_workpoolActions;
   "featureFlags/guard": typeof featureFlags_guard;
   "featureFlags/internal": typeof featureFlags_internal;
   "featureFlags/queries": typeof featureFlags_queries;

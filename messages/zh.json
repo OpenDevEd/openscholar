@@ -1451,5 +1451,17 @@
     "minutesAgo": "{count}分钟前",
     "hoursAgo": "{count}小时前",
     "daysAgo": "{count}天前"
+  },
+  "extraction": {
+    "insufficientEvidence": "证据不足",
+    "evidenceUnavailable": "证据不可用",
+    "confidenceHigh": "高信任度",
+    "confidenceMedium": "中信任度",
+    "confidenceLow": "低信任度",
+    "criticVerified": "已验证",
+    "criticUnverified": "未验证",
+    "criticPartial": "部分验证",
+    "criticTimeout": "待审核",
+    "viewInSource": "在原文中查看"
   }
 }

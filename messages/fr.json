@@ -1451,5 +1451,17 @@
     "minutesAgo": "il y a {count}min",
     "hoursAgo": "il y a {count}h",
     "daysAgo": "il y a {count}j"
+  },
+  "extraction": {
+    "insufficientEvidence": "Preuves insuffisantes",
+    "evidenceUnavailable": "Preuve non disponible",
+    "confidenceHigh": "Confiance \u00e9lev\u00e9e",
+    "confidenceMedium": "Confiance moyenne",
+    "confidenceLow": "Confiance faible",
+    "criticVerified": "V\u00e9rifi\u00e9",
+    "criticUnverified": "Non v\u00e9rifi\u00e9",
+    "criticPartial": "Partiellement v\u00e9rifi\u00e9",
+    "criticTimeout": "Examen en attente",
+    "viewInSource": "Voir dans la source"
   }
 }

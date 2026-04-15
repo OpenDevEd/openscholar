@@ -1453,5 +1453,17 @@
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
     "daysAgo": "{count}d ago"
+  },
+  "extraction": {
+    "insufficientEvidence": "Insufficient evidence",
+    "evidenceUnavailable": "Evidence unavailable",
+    "confidenceHigh": "High confidence",
+    "confidenceMedium": "Medium confidence",
+    "confidenceLow": "Low confidence",
+    "criticVerified": "Verified",
+    "criticUnverified": "Unverified",
+    "criticPartial": "Partially verified",
+    "criticTimeout": "Review pending",
+    "viewInSource": "View in source"
   }
 }
