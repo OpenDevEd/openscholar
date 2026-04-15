@@ -241,7 +241,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 - [ ] **Phase 94: Crash Prevention Sweep** - Segment error boundaries, useQuery null handling, Clerk visibility retry, mutation rejection routing, prompt-injection delimiters, fetch timeouts, and Zustand persist reset
 - [x] **Phase 95: Structured Observability & SLO Metrics** - ULID traceId propagation, structured JSON logging, per-job UI metrics, and recall/citation-validity SLO persistence (completed 2026-04-15)
 - [ ] **Phase 96: Eval Loop & Quality Sampling** - 20-case golden set, vitest-evals gating, hourly production sampling cron, and human-review queue
-- [ ] **Phase 97: Extraction UI Polish** - Job creation flow, live progress with cancel, verbatim quote rendering, export reuse, 6-locale seed, and brand-aligned design
+- [x] **Phase 97: Extraction UI Polish** - Job creation flow, live progress with cancel, verbatim quote rendering, export reuse, 6-locale seed, and brand-aligned design (completed 2026-04-15)
 
 ## Phase Details
 
@@ -399,7 +399,7 @@ Plans:
 - [x] 97-02-PLAN.md — Job creation dialog with QuestionBuilder, TierSelector, cost preview, submit flow
 - [x] 97-03-PLAN.md — StatusBadge, PaperResultCard, results route page, error boundaries
 - [x] 97-04-PLAN.md — Sidebar integration (footer button, nav item), job history dialog, /extraction list page
-- [ ] 97-05-PLAN.md — Automated checks and human visual/functional verification checkpoint
+- [x] 97-05-PLAN.md — Automated checks and human visual/functional verification checkpoint
 **UI hint**: yes
 
 ## Progress
@@ -433,4 +433,4 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 4/4 | Complete    | 2026-04-15 |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
-| 97. Extraction UI Polish | v6.0 | 4/5 | In Progress|  |
+| 97. Extraction UI Polish | v6.0 | 5/5 | Complete   | 2026-04-15 |
