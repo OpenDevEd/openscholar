@@ -13,7 +13,7 @@
 | `convex/schema.ts` | config (schema) | N/A | `convex/schema.ts` (self) | exact |
 | `convex/extraction/validators.ts` | config (validators) | N/A | `convex/extraction/validators.ts` (self) | exact |
 | `convex.json` | config (runtime) | N/A | none (new file type) | no-analog |
-| `convex/extraction/parse.test.ts` | test | N/A | `convex/extraction/mutations.test.ts` | role-match |
+| `tests/extraction/parse.test.ts` | test | N/A | `convex/extraction/mutations.test.ts` | role-match |
 
 ## Pattern Assignments
 

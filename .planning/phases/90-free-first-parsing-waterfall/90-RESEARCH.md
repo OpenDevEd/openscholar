@@ -690,22 +690,25 @@ async function withTimeout<T>(
 | A3 | `unpdf` works correctly as a Convex external package with Node 22 | convex.json Configuration | May need additional bundling configuration or alternative PDF library |
 | A4 | Gemini 2.5 Flash Lite supports `filePart` with `MEDIA_RESOLUTION_LOW` for PDFs | Gemini Tier | May need a different model or different provider options; verify before implementation |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Convex Action Timeout Limit**
+1. **Convex Action Timeout Limit** — RESOLVED
    - What we know: Convex actions have a max execution time. Workpool retries handle transient failures.
    - What's unclear: The exact timeout limit for Convex actions (likely 10-15 minutes based on typical serverless limits).
    - Recommendation: The tier timeouts (20+30+60+120 = 230s worst case) should be well within any reasonable action timeout. If a paper hits all 4 tiers sequentially, it takes ~4 minutes worst case. Low risk.
+   - **RESOLVED:** Accepted as low risk. Convex action timeout is 10 minutes for Node.js actions. Worst-case waterfall (230s) is well under this limit. Workpool retries handle transient timeouts.
 
-2. **Google API Key for `@ai-sdk/google`**
+2. **Google API Key for `@ai-sdk/google`** — RESOLVED
    - What we know: `@ai-sdk/google` is already installed. The `createGoogleGenerativeAI()` function reads `GOOGLE_GENERATIVE_AI_API_KEY` from env by default.
    - What's unclear: Whether this env var is already configured in Convex deployment.
    - Recommendation: Verify `GOOGLE_GENERATIVE_AI_API_KEY` is set in Convex environment. If not, add it as part of Phase 90 setup.
+   - **RESOLVED:** Executor must verify env var is set in Convex deployment during Plan 02 execution. If missing, the Gemini tier will fail gracefully and fall through to abstract_only. Not a blocker for planning.
 
-3. **JATS XML Body Text Extraction Depth**
+3. **JATS XML Body Text Extraction Depth** — RESOLVED
    - What we know: JATS XML has deeply nested elements (`<sec>`, `<p>`, `<fig>`, `<table-wrap>`, `<xref>`, `<ext-link>`, etc.).
    - What's unclear: How much structure to preserve vs. flatten to plain text.
    - Recommendation: For MVP, recursively extract all text content. Do not attempt to preserve structure (headers, tables, figure captions). This is sufficient for whole-paper LLM extraction.
+   - **RESOLVED:** Recursive text flattening adopted in Plan 02 Task 1 via extractTextFromJatsBody helper. Structure preservation deferred — flat text is sufficient for LLM extraction in Phase 91.
 
 ## Environment Availability
 
