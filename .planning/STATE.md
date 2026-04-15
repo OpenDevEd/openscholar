@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Extraction Workbench
-status: verifying
-stopped_at: Phase 99 context gathered
-last_updated: "2026-04-15T16:20:56.373Z"
-last_activity: 2026-04-15
+status: executing
+stopped_at: Phase 99 UI-SPEC approved
+last_updated: "2026-04-15T16:55:06.554Z"
+last_activity: 2026-04-15 -- Phase 99 execution started
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 2
+  total_plans: 4
   completed_plans: 2
-  percent: 100
+  percent: 50
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 98 — pre-flight-hard-limit-foundation
+**Current focus:** Phase 99 — selection-basket-core
 
 ## Current Position
 
 Milestone: v7.0 Extraction Workbench
-Phase: 98 (pre-flight-hard-limit-foundation) — COMPLETE
-Plan: 2 of 2
-Status: Phase 98 complete — all plans executed and verified
-Last activity: 2026-04-15
+Phase: 99 (selection-basket-core) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 99
+Last activity: 2026-04-15 -- Phase 99 execution started
 
 Progress: [█░░░░░░░░░] 12.5%
 
@@ -114,6 +114,6 @@ Items carried from v6.0 into v7.0 or later milestones:
 
 ## Session Continuity
 
-Last session: 2026-04-15T16:20:56.371Z
-Stopped at: Phase 99 context gathered
+Last session: 2026-04-15T16:30:13.685Z
+Stopped at: Phase 99 UI-SPEC approved
 Next step: `/gsd-discuss-phase 99`

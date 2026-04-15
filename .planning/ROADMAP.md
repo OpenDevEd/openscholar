@@ -178,7 +178,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
   - [x] 98-02-PLAN.md — Call-site rewiring + payload benchmark (LIM-01, GAP-04)
 - [ ] **Phase 99: Selection Basket Core** — Zustand store + `normalizeOpenAlexId` + `<ExtractionBasketDrawer>` + `useAddToBasket` hook
   Plans:
-  - [ ] 99-01-PLAN.md — Normalize utility + basket store + useAddToBasket hook (SEL-07, SEL-08, SEL-09, SEL-10)
+  - [x] 99-01-PLAN.md — Normalize utility + basket store + useAddToBasket hook (SEL-07, SEL-08, SEL-09, SEL-10)
   - [ ] 99-02-PLAN.md — Drawer UI components + i18n keys (SEL-09, SEL-10)
 - [ ] **Phase 100: Backend Wiring + TierSelector Fix** — `convex/openalex/actions.ts` (resolveByDoi, resolveManualIds), extractionLimit helpers, 5-edit TierSelector wiring, server-side hard-reject
 - [ ] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`)
@@ -363,7 +363,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88-97 | v6.0 | 29/29 | Complete | 2026-04-15 |
 | 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
-| 99. Selection Basket Core | v7.0 | 0/2 | Planned | - |
+| 99. Selection Basket Core | v7.0 | 1/2 | In Progress|  |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 0/TBD | Not started | - |
 | 101. Workbench Primitives | v7.0 | 0/TBD | Not started | - |
 | 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
