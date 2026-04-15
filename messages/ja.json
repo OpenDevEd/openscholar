@@ -1092,7 +1092,9 @@
   "rating": {
     "noRating": "評価なし",
     "nStars": "{count} つ星",
-    "nStar": "{count} つ星"
+    "nStar": "{count} つ星",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "pagination": {
     "perPage": "1ページあたり {count} 件",
@@ -1228,7 +1230,9 @@
     "showOriginal": "原文を表示",
     "showTranslation": "翻訳を表示",
     "originalShort": "原文",
-    "translationShort": "訳"
+    "translationShort": "訳",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "cookieConsent": {
     "bannerTitle": "プライバシーを尊重します",
@@ -1450,7 +1454,8 @@
     "justNow": "たった今",
     "minutesAgo": "{count}分前",
     "hoursAgo": "{count}時間前",
-    "daysAgo": "{count}日前"
+    "daysAgo": "{count}日前",
+    "revokeKeyError": "Failed to revoke API key"
   },
   "extraction": {
     "insufficientEvidence": "不十分な証拠",

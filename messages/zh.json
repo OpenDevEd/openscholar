@@ -1092,7 +1092,9 @@
   "rating": {
     "noRating": "无评分",
     "nStars": "{count} 星",
-    "nStar": "{count} 星"
+    "nStar": "{count} 星",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "pagination": {
     "perPage": "每页 {count} 条",
@@ -1228,7 +1230,9 @@
     "showOriginal": "显示原文",
     "showTranslation": "显示翻译",
     "originalShort": "原文",
-    "translationShort": "译"
+    "translationShort": "译",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "cookieConsent": {
     "bannerTitle": "我们重视您的隐私",
@@ -1450,7 +1454,8 @@
     "justNow": "刚刚",
     "minutesAgo": "{count}分钟前",
     "hoursAgo": "{count}小时前",
-    "daysAgo": "{count}天前"
+    "daysAgo": "{count}天前",
+    "revokeKeyError": "Failed to revoke API key"
   },
   "extraction": {
     "insufficientEvidence": "证据不足",

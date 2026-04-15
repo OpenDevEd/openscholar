@@ -1092,7 +1092,9 @@
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
     "nStars": "{count} स्टार",
-    "nStar": "{count} स्टार"
+    "nStar": "{count} स्टार",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "pagination": {
     "perPage": "{count} प्रति पेज",
@@ -1228,7 +1230,9 @@
     "showOriginal": "मूल दिखाएं",
     "showTranslation": "अनुवाद दिखाएं",
     "originalShort": "मूल",
-    "translationShort": "अनुवाद"
+    "translationShort": "अनुवाद",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "cookieConsent": {
     "bannerTitle": "हम आपकी गोपनीयता को महत्व देते हैं",
@@ -1450,7 +1454,8 @@
     "justNow": "अभी",
     "minutesAgo": "{count} मिनट पहले",
     "hoursAgo": "{count} घंटे पहले",
-    "daysAgo": "{count} दिन पहले"
+    "daysAgo": "{count} दिन पहले",
+    "revokeKeyError": "Failed to revoke API key"
   },
   "extraction": {
     "insufficientEvidence": "अपर्याप्त प्रमाण",

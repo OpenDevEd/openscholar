@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import posthog from "posthog-js";
+import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useState, useCallback } from "react";
@@ -54,6 +55,9 @@ export default function ConnectionsPage() {
       setRevoking(walletKeyId);
       try {
         await revokeKey({ walletKeyId });
+      } catch (error) {
+        console.error("[Connections] Failed to revoke key:", error);
+        toast.error(t("revokeKeyError"));
       } finally {
         setRevoking(null);
         setConfirmRevoke(null);

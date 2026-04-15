@@ -1092,7 +1092,9 @@
   "rating": {
     "noRating": "No Rating",
     "nStars": "{count} Stars",
-    "nStar": "{count} Star"
+    "nStar": "{count} Star",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "pagination": {
     "perPage": "{count} per page",
@@ -1228,7 +1230,9 @@
     "showOriginal": "Show Original",
     "showTranslation": "Show Translation",
     "originalShort": "Orig",
-    "translationShort": "Trans"
+    "translationShort": "Trans",
+    "saveToLibraryError": "Failed to save to library",
+    "removeFromLibraryError": "Failed to remove from library"
   },
   "cookieConsent": {
     "bannerTitle": "We value your privacy",
@@ -1450,7 +1454,8 @@
     "justNow": "just now",
     "minutesAgo": "{count}m ago",
     "hoursAgo": "{count}h ago",
-    "daysAgo": "{count}d ago"
+    "daysAgo": "{count}d ago",
+    "revokeKeyError": "Failed to revoke API key"
   },
   "extraction": {
     "insufficientEvidence": "Insufficient evidence",

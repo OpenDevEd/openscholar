@@ -36,6 +36,7 @@ import {
 import { useRatingsStore } from "@/lib/store";
 import { useEffectiveRating } from "@/components/results-contexts";
 import posthog from "posthog-js";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -77,10 +78,12 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
           paperData: JSON.stringify(paperResult),
         }).catch((error) => {
           console.error("[Library] Failed to save to library:", error);
+          toast.error(t("saveToLibraryError"));
         });
       } else if (newRating === null) {
         removeFromLibrary({ openalexId: paperId }).catch((error) => {
           console.error("[Library] Failed to remove from library:", error);
+          toast.error(t("removeFromLibraryError"));
         });
       }
     }

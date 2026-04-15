@@ -216,6 +216,25 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
     setSyncAttempt((attempt) => attempt + 1);
   }, [clearRetryTimer, isAuthenticated]);
 
+  // Retry auth sync when user returns to a stale tab (CRASH-03, per D-09)
+  useEffect(() => {
+    let lastRetryTimestamp = Date.now(); // Initialize to now to skip first fire (Pitfall 3)
+    const COOLDOWN_MS = 5000; // 5-second cooldown per D-10
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastRetryTimestamp < COOLDOWN_MS) return;
+      lastRetryTimestamp = now;
+      retryUserSync();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [retryUserSync]);
+
   const contextValue = useMemo<AuthReadinessContextValue>(
     () => ({
       phase,

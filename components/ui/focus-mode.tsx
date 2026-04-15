@@ -18,6 +18,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
+import { toast } from "sonner";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { trimPaperData } from "@/lib/library/trim-paper-data";
@@ -233,11 +234,13 @@ export function FocusMode({
             paperData: JSON.stringify(paper),
           }).catch((error) => {
             console.error("[Library] Failed to save to library:", error);
+            toast.error(tFocus("saveToLibraryError"));
           });
         }
       } else if (phase === "authenticated" && newRating === null) {
         removeFromLibraryMutation({ openalexId: paperId }).catch((error) => {
           console.error("[Library] Failed to remove from library:", error);
+          toast.error(tFocus("removeFromLibraryError"));
         });
       }
     },
