@@ -419,6 +419,7 @@ export default defineSchema({
     totalPapers: v.number(),
     processedPapers: v.number(),
     failedPapers: v.number(),
+    cancelledPapers: v.optional(v.number()),
     questions: v.array(
       v.object({
         key: v.string(),

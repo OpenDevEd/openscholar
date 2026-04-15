@@ -26,6 +26,7 @@ export const getExtractionProgress = query({
       totalPapers: v.number(),
       processedPapers: v.number(),
       failedPapers: v.number(),
+      cancelledPapers: v.number(),
       percentComplete: v.number(),
     })
   ),
@@ -38,7 +39,8 @@ export const getExtractionProgress = query({
 
     const TERMINAL_STATUSES = ["completed", "cancelled", "failed"];
     const isTerminal = TERMINAL_STATUSES.includes(job.status);
-    const handled = job.processedPapers + job.failedPapers;
+    const handled =
+      job.processedPapers + job.failedPapers + (job.cancelledPapers ?? 0);
 
     const rawPercent =
       job.totalPapers === 0
@@ -55,6 +57,7 @@ export const getExtractionProgress = query({
       totalPapers: job.totalPapers,
       processedPapers: job.processedPapers,
       failedPapers: job.failedPapers,
+      cancelledPapers: job.cancelledPapers ?? 0,
       percentComplete,
     };
   },
