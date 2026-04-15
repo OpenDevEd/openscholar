@@ -460,3 +460,210 @@ export const getReviewQueue = query({
     return items;
   },
 });
+
+// ===================================================================
+// RESULTS PAGE + EXPORT QUERIES (D-16, D-20)
+// ===================================================================
+
+/**
+ * Get per-paper extraction results with nested question answers (D-16).
+ *
+ * Returns the job summary and all papers with their extraction results
+ * for the results page. Each paper includes a flat array of answers
+ * (one per question).
+ *
+ * Auth + ownership: getCurrentUser -> job.userId check -> null if unauthorized.
+ * Bounded: papers capped at MAX_EXTRACTION_PAPERS_PER_JOB,
+ *          results per paper capped at 100 (bounded by question count).
+ */
+export const getExtractionResults = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      job: v.object({
+        _id: v.id("extractionJobs"),
+        status: extractionJobStatusValidator,
+        questions: v.array(extractionQuestionValidator),
+        totalPapers: v.number(),
+      }),
+      papers: v.array(
+        v.object({
+          _id: v.id("extractionPapers"),
+          title: v.string(),
+          openalexId: v.string(),
+          doi: v.optional(v.string()),
+          status: extractionPaperStatusValidator,
+          parsingSource: v.optional(parsingSourceValidator),
+          results: v.array(
+            v.object({
+              questionId: v.string(),
+              answer: v.union(v.string(), v.null()),
+              confidence: v.optional(
+                v.union(
+                  v.literal("high"),
+                  v.literal("medium"),
+                  v.literal("low")
+                )
+              ),
+              evidenceStartChar: v.optional(v.number()),
+              evidenceEndChar: v.optional(v.number()),
+              reasoning: v.optional(v.string()),
+              modelUsed: v.optional(v.string()),
+              criticVerdict: v.optional(v.string()),
+            })
+          ),
+        })
+      ),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) return null;
+
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_EXTRACTION_PAPERS_PER_JOB);
+
+    const papersWithResults = [];
+    for (const paper of papers) {
+      const results = await ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+        .take(100); // bounded by question count per paper
+
+      papersWithResults.push({
+        _id: paper._id,
+        title: paper.title,
+        openalexId: paper.openalexId,
+        doi: paper.doi,
+        status: paper.status,
+        parsingSource: paper.parsingSource,
+        results: results.map((r) => ({
+          questionId: r.questionId,
+          answer: r.answer,
+          confidence: r.confidence,
+          evidenceStartChar: r.evidenceStartChar,
+          evidenceEndChar: r.evidenceEndChar,
+          reasoning: r.reasoning,
+          modelUsed: r.modelUsed,
+          criticVerdict: r.criticVerdict,
+        })),
+      });
+    }
+
+    return {
+      job: {
+        _id: job._id,
+        status: job.status,
+        questions: job.questions,
+        totalPapers: job.totalPapers,
+      },
+      papers: papersWithResults,
+    };
+  },
+});
+
+/**
+ * Get flat denormalized extraction results for export (D-20).
+ *
+ * Returns one row per paper-question pair, suitable for direct
+ * serialization into CSV/JSON/XLSX by lib/extraction/export.ts.
+ * Includes question text resolved from the job's questions array.
+ *
+ * Auth + ownership: getCurrentUser -> job.userId check -> null if unauthorized.
+ * Bounded: papers capped at MAX_EXTRACTION_PAPERS_PER_JOB,
+ *          results per paper capped at 100.
+ */
+export const getExtractionResultsForExport = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      job: v.object({
+        _id: v.id("extractionJobs"),
+        status: extractionJobStatusValidator,
+        questions: v.array(extractionQuestionValidator),
+        totalPapers: v.number(),
+        createdAt: v.number(),
+        completedAt: v.optional(v.number()),
+      }),
+      results: v.array(
+        v.object({
+          paperTitle: v.string(),
+          openalexId: v.string(),
+          doi: v.optional(v.string()),
+          parsingSource: v.optional(v.string()),
+          questionKey: v.string(),
+          question: v.string(),
+          answer: v.union(v.string(), v.null()),
+          confidence: v.optional(v.string()),
+          criticVerdict: v.optional(v.string()),
+          evidenceStartChar: v.optional(v.number()),
+          evidenceEndChar: v.optional(v.number()),
+          reasoning: v.optional(v.string()),
+          modelUsed: v.optional(v.string()),
+        })
+      ),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) return null;
+
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_EXTRACTION_PAPERS_PER_JOB);
+
+    // Build a question key->question text lookup from job.questions
+    const questionLookup = new Map(
+      job.questions.map((q) => [q.key, q.question])
+    );
+
+    const flatResults = [];
+    for (const paper of papers) {
+      const results = await ctx.db
+        .query("extractionResults")
+        .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
+        .take(100);
+
+      for (const r of results) {
+        flatResults.push({
+          paperTitle: paper.title,
+          openalexId: paper.openalexId,
+          doi: paper.doi,
+          parsingSource: paper.parsingSource,
+          questionKey: r.questionId,
+          question: questionLookup.get(r.questionId) ?? r.questionId,
+          answer: r.answer,
+          confidence: r.confidence,
+          criticVerdict: r.criticVerdict,
+          evidenceStartChar: r.evidenceStartChar,
+          evidenceEndChar: r.evidenceEndChar,
+          reasoning: r.reasoning,
+          modelUsed: r.modelUsed,
+        });
+      }
+    }
+
+    return {
+      job: {
+        _id: job._id,
+        status: job.status,
+        questions: job.questions,
+        totalPapers: job.totalPapers,
+        createdAt: job.createdAt,
+        completedAt: job.completedAt,
+      },
+      results: flatResults,
+    };
+  },
+});
