@@ -334,8 +334,8 @@ Plans:
   4. Reactive Convex subscriptions stream `{processed, failed, remaining}` counters to the UI in under a second on paper completion — verified in the live progress E2E
 **Plans**: 3 plans
 Plans:
-- [ ] 93-01-PLAN.md — Error classification module (retryable vs permanent) and unit tests
-- [ ] 93-02-PLAN.md — Schema cancelledPapers field, cancelExtractionJob mutation, handleExtractionComplete split, progress query update, cancel tests
+- [x] 93-01-PLAN.md — Error classification module (retryable vs permanent) and unit tests
+- [x] 93-02-PLAN.md — Schema cancelledPapers field, cancelExtractionJob mutation, handleExtractionComplete split, progress query update, cancel tests
 - [ ] 93-03-PLAN.md — Error classification integration into workpoolActions, early-return guard verification tests
 
 ### Phase 94: Crash Prevention Sweep
@@ -426,7 +426,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 91. Extraction Cascade Core | v6.0 | 2/2 | Complete    | 2026-04-15 |
 | 92. Deterministic Citation Grounding | v6.0 | 2/2 | Complete    | 2026-04-15 |
-| 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
+| 93. Workflow Cancel, Retry, and Progress | v6.0 | 2/3 | In Progress|  |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 0/TBD | Not started | - |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
