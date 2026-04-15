@@ -4,8 +4,10 @@ import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import {
   extractionJobStatusValidator,
+  extractionPaperStatusValidator,
   extractionQuestionValidator,
   extractionPaperInputValidator,
+  parsingSourceValidator,
 } from "./validators";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -230,6 +232,61 @@ export const updateJobStatus = internalMutation({
       status: args.status,
       updatedAt: Date.now(),
     });
+    return null;
+  },
+});
+
+/**
+ * Store parsed body text and source tag on a paper row.
+ *
+ * Called by the workpool action after parseFullText() completes.
+ * Updates paper status from "parsing" to "extracting" (Phase 91 picks up from here).
+ */
+export const storeParsedText = internalMutation({
+  args: {
+    paperId: v.id("extractionPapers"),
+    bodyText: v.string(),
+    parsingSource: parsingSourceValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) return null;
+
+    await ctx.db.patch(args.paperId, {
+      bodyText: args.bodyText,
+      parsingSource: args.parsingSource,
+      status: "extracting",
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Update an extraction paper's status from background context.
+ */
+export const updatePaperStatus = internalMutation({
+  args: {
+    paperId: v.id("extractionPapers"),
+    status: extractionPaperStatusValidator,
+    errorMessage: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) return null;
+
+    const patch: Record<string, unknown> = {
+      status: args.status,
+      updatedAt: Date.now(),
+    };
+    if (args.errorMessage !== undefined) {
+      patch.errorMessage = args.errorMessage;
+    }
+
+    await ctx.db.patch(args.paperId, patch);
     return null;
   },
 });
