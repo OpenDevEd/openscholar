@@ -1,6 +1,7 @@
 # Phase 98: Pre-flight & Hard-Limit Foundation - Context
 
 **Gathered:** 2026-04-15
+**Updated:** 2026-04-15
 **Status:** Ready for planning
 
 <domain>
@@ -20,7 +21,7 @@ Requirements: LIM-01 (bump + split constants), LIM-02 (per-tier-ready shape), LI
 - **D-02:** Add a separate `MAX_EXTRACTION_RESULTS_QUERY` constant for internal `.take()` bounds (set to a value that keeps serialized responses under Convex's 8 MB cap). This decouples the user-facing per-job limit from the internal query-safety bound.
 
 ### Benchmark Methodology
-- **D-03:** Benchmark by seeding the dev Convex deployment with synthetic data (1000 `extractionResults` rows × 7 questions each, with realistic answer/evidence field sizes) and measuring the serialized byte size of the `getExtractionResults` query response. Pass criterion: total payload ≤ 5 MB. If it exceeds 5 MB, Phase 98 must ship a minimal server-side pagination migration of `getExtractionResults` before the 200→1000 bump is committed.
+- **D-03:** Benchmark by seeding the dev Convex deployment with synthetic data (1000 `extractionResults` rows x 7 questions each, with realistic answer/evidence field sizes) and measuring the serialized byte size of the `getExtractionResults` query response. Pass criterion: total payload <= 5 MB. If it exceeds 5 MB, Phase 98 must ship a minimal server-side pagination migration of `getExtractionResults` before the 200->1000 bump is committed.
 - **D-04:** Record the benchmark result (pass/fail, exact byte size, row count, question count) in a test file or benchmark log committed to the repo so the outcome is auditable and gates subsequent phases.
 
 ### Query Split Strategy
@@ -48,15 +49,15 @@ Requirements: LIM-01 (bump + split constants), LIM-02 (per-tier-ready shape), LI
 - `convex/extraction/mutations.ts` — `createExtractionJob` mutation that validates paper count
 
 ### Subscription & Entitlements
-- `lib/billing/entitlements.ts` — `resolveEffectivePlan` function used to determine user's current plan
+- `lib/billing/entitlements.ts` — `resolveEffectivePlan` function used to determine user's current plan; `SubscriptionPlan` = `"free" | "go" | "pro" | "enterprise"`
 - `convex/subscriptions/queries.ts` — Existing `getPlanTier` usage pattern with `resolveEffectivePlan`
 
 ### Error Handling
-- `convex/lib/errors.ts` — `createError(code, message)` factory for typed `ConvexError` throwing
+- `convex/lib/errors.ts` — `createError(code, message)` factory for typed `ConvexError` throwing; existing codes: `EXTRACTION_JOB_ALREADY_ACTIVE`, `EXTRACTION_JOB_NOT_FOUND`, `EXTRACTION_JOB_NOT_CANCELLABLE`, `EXTRACTION_PLAN_REQUIRED`
 - `lib/toast/error-resolver.ts` — Client-side error-to-toast routing (for `EXTRACTION_LIMIT_EXCEEDED` in Phase 100)
 
 ### Research
-- `.planning/research/PITFALLS.md` §4.1 — Critical analysis of 15 call sites affected by the 200→1000 bump
+- `.planning/research/PITFALLS.md` S4.1 — Critical analysis of 15 call sites affected by the 200->1000 bump
 - `.planning/research/ARCHITECTURE.md` — Proposed constant architecture with `EXTRACTION_LIMITS_BY_TIER`
 - `.planning/research/FEATURES.md` — Per-tier limit shape specification
 - `.planning/research/SUMMARY.md` — Phase-by-phase delivery order and pitfall summary
@@ -80,10 +81,13 @@ Requirements: LIM-01 (bump + split constants), LIM-02 (per-tier-ready shape), LI
 - Convex queries follow the `query({ args, returns, handler })` pattern with explicit return validators
 - Error codes are members of the `ErrorCode` discriminated union in `convex/lib/errors.ts`
 - Tests live in `convex/extraction/*.test.ts` using Vitest with Convex test helpers (`createMockQueryCtx`, `createMockMutationCtx`)
+- No per-tier/per-plan branching exists in extraction domain today — this phase introduces the first
 
 ### Integration Points
 - `getExtractionResults` query — consumed by `app/extraction/[jobId]/extraction-results-client.tsx`
 - `getExtractionResultsForExport` query — consumed by `lib/extraction/export.ts`
+- `getExtractionJobMetrics` — uses `MAX_EXTRACTION_PAPERS_PER_JOB * 10` (2000) for results `.take()` — must switch to `MAX_EXTRACTION_RESULTS_QUERY`
+- `getPendingPapers` — internal query, uses `.take(MAX_EXTRACTION_PAPERS_PER_JOB)` — must switch to `MAX_EXTRACTION_RESULTS_QUERY`
 - All 15 call sites importing `MAX_EXTRACTION_PAPERS_PER_JOB` must be audited during the split
 
 </code_context>
@@ -94,6 +98,7 @@ Requirements: LIM-01 (bump + split constants), LIM-02 (per-tier-ready shape), LI
 - The `MAX * 10` multiplier in `finalizeJobIfDone` is a known hazard — research confirmed it's load-bearing but should be replaced with a direct count query or aggregate index rather than scaled with the new 1000 limit.
 - The benchmark MUST run before the constant bump is committed — this is a gate, not a nice-to-have.
 - `SubscriptionPlan` type must match the existing plan enum used by `resolveEffectivePlan` (currently `free/go/pro/enterprise`).
+- `createExtractionJob` currently throws `VALIDATION_ERROR` for over-limit; Phase 100 will introduce the dedicated `EXTRACTION_LIMIT_EXCEEDED` code with per-tier messaging.
 
 </specifics>
 
@@ -108,3 +113,4 @@ None — discussion stayed within phase scope.
 
 *Phase: 98-pre-flight-hard-limit-foundation*
 *Context gathered: 2026-04-15*
+*Context updated: 2026-04-15 (auto-mode refresh with codebase verification)*
