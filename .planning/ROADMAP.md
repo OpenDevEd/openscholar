@@ -236,7 +236,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 - [x] **Phase 89: Core Schema & Workflow Skeleton** - Stand up the new slim schema, durable workflow, and batched enqueue so downstream phases have rails to build on (completed 2026-04-15)
 - [x] **Phase 90: Free-First Parsing Waterfall** - Resolve full-text via OpenAlex metadata, Europe PMC, arXiv HTML, unpdf, and Gemini-as-PDF-parser with abort-signal ceilings and a 200-page cap (completed 2026-04-15)
 - [x] **Phase 91: Extraction Cascade Core** - Send whole-paper text to the three-tier OpenRouter cascade with flat 7-field Zod schema, Gemini caching, and per-question parallelism (completed 2026-04-15)
-- [ ] **Phase 92: Deterministic Citation Grounding** - Enforce substring-match quoting, critic pass, insufficient_evidence state, and UI-rendered verbatim quotes
+- [x] **Phase 92: Deterministic Citation Grounding** - Enforce substring-match quoting, critic pass, insufficient_evidence state, and UI-rendered verbatim quotes (completed 2026-04-15)
 - [ ] **Phase 93: Workflow Cancel, Retry, and Progress** - Targeted cancel, retryable/permanent error taxonomy, early-return on cancelled jobs, and reactive progress updates
 - [ ] **Phase 94: Crash Prevention Sweep** - Segment error boundaries, useQuery null handling, Clerk visibility retry, mutation rejection routing, prompt-injection delimiters, fetch timeouts, and Zustand persist reset
 - [ ] **Phase 95: Structured Observability & SLO Metrics** - ULID traceId propagation, structured JSON logging, per-job UI metrics, and recall/citation-validity SLO persistence
@@ -317,10 +317,10 @@ Plans:
   2. A critic-pass prompt runs at `T=0` with the same cheap model and any `unsupported` verdict flips the result to `insufficient_evidence` — verified by a mocked-critic test
   3. The extraction result UI renders `source.text.slice(evidence_start_char, evidence_end_char)` and never the model's `evidence_quote` field — verified by a component test asserting the rendered string
   4. `insufficient_evidence` is a first-class answer state with confidence capped and a UI reason line rendered on the result card
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 92-01-PLAN.md -- Levenshtein superRefine, critic pass, insufficient_evidence state, persistence wiring, tests
-- [ ] 92-02-PLAN.md -- EvidenceQuote, InsufficientEvidenceCard, ConfidenceBadge, CriticVerdictBadge components, i18n keys
+- [x] 92-02-PLAN.md -- EvidenceQuote, InsufficientEvidenceCard, ConfidenceBadge, CriticVerdictBadge components, i18n keys
 
 
 ### Phase 93: Workflow Cancel, Retry, and Progress
@@ -424,7 +424,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 91. Extraction Cascade Core | v6.0 | 2/2 | Complete    | 2026-04-15 |
-| 92. Deterministic Citation Grounding | v6.0 | 1/2 | In Progress|  |
+| 92. Deterministic Citation Grounding | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 0/TBD | Not started | - |
