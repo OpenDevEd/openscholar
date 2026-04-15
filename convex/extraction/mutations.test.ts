@@ -114,6 +114,7 @@ describe("extraction mutations", () => {
           jobId: job._id,
           paperId: paper._id,
           questionId: "q1",
+          answer: "test answer",
           createdAt: Date.now(),
         });
       });
@@ -132,6 +133,7 @@ describe("extraction mutations", () => {
             jobId: job._id,
             paperId: paper._id,
             questionId: "q1",
+            answer: "test answer",
             createdAt: Date.now(),
           });
         }
@@ -150,6 +152,86 @@ describe("extraction mutations", () => {
       expect(results).toHaveLength(1);
     });
 
+    it("saves result with all value fields (EXTR-09)", async () => {
+      const t = convexTest(schema);
+      const user = await seedUser(t);
+      const job = await seedExtractionJob(t, user._id);
+      const paper = await seedExtractionPaper(t, job._id, "W001");
+
+      await t.run(async (ctx) => {
+        await ctx.db.insert("extractionResults", {
+          jobId: job._id,
+          paperId: paper._id,
+          questionId: "q1",
+          answer: "The study found significant results",
+          confidence: "high",
+          evidenceQuote: "significant results were observed",
+          evidenceSourceId: "section-3",
+          evidenceStartChar: 1500,
+          evidenceEndChar: 1540,
+          reasoning: "Direct statement in results section",
+          modelUsed: "google/gemini-2.5-flash-lite",
+          parsingSource: "pmc",
+          tokensIn: 5000,
+          tokensOut: 200,
+          createdAt: Date.now(),
+        });
+      });
+
+      const results = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper_question", (q) =>
+            q.eq("paperId", paper._id).eq("questionId", "q1")
+          )
+          .collect();
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0].answer).toBe("The study found significant results");
+      expect(results[0].confidence).toBe("high");
+      expect(results[0].evidenceQuote).toBe("significant results were observed");
+      expect(results[0].evidenceStartChar).toBe(1500);
+      expect(results[0].evidenceEndChar).toBe(1540);
+      expect(results[0].reasoning).toBe("Direct statement in results section");
+      expect(results[0].modelUsed).toBe("google/gemini-2.5-flash-lite");
+      expect(results[0].parsingSource).toBe("pmc");
+      expect(results[0].tokensIn).toBe(5000);
+      expect(results[0].tokensOut).toBe(200);
+    });
+
+    it("saves failed question result with null answer and errorMessage", async () => {
+      const t = convexTest(schema);
+      const user = await seedUser(t);
+      const job = await seedExtractionJob(t, user._id);
+      const paper = await seedExtractionPaper(t, job._id, "W002");
+
+      await t.run(async (ctx) => {
+        await ctx.db.insert("extractionResults", {
+          jobId: job._id,
+          paperId: paper._id,
+          questionId: "q1",
+          answer: null,
+          errorMessage: "All cascade tiers failed",
+          createdAt: Date.now(),
+        });
+      });
+
+      const results = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper_question", (q) =>
+            q.eq("paperId", paper._id).eq("questionId", "q1")
+          )
+          .collect();
+      });
+
+      expect(results).toHaveLength(1);
+      expect(results[0].answer).toBeNull();
+      expect(results[0].errorMessage).toBe("All cascade tiers failed");
+      expect(results[0].confidence).toBeUndefined();
+    });
+
     it("different questionIds produce separate rows", async () => {
       const t = convexTest(schema);
       const user = await seedUser(t);
@@ -162,6 +244,7 @@ describe("extraction mutations", () => {
           jobId: job._id,
           paperId: paper._id,
           questionId: "q1",
+          answer: "answer for q1",
           createdAt: Date.now(),
         });
       });
@@ -172,6 +255,7 @@ describe("extraction mutations", () => {
           jobId: job._id,
           paperId: paper._id,
           questionId: "q2",
+          answer: "answer for q2",
           createdAt: Date.now(),
         });
       });

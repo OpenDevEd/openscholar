@@ -7,6 +7,7 @@ import {
   extractionPaperStatusValidator,
   extractionQuestionValidator,
   extractionPaperInputValidator,
+  extractionConfidenceValidator,
   parsingSourceValidator,
 } from "./validators";
 import { requireAuth } from "../lib/auth";
@@ -302,6 +303,19 @@ export const saveResult = internalMutation({
     jobId: v.id("extractionJobs"),
     paperId: v.id("extractionPapers"),
     questionId: v.string(),
+    // Value fields from extraction cascade (EXTR-09, D-02)
+    answer: v.union(v.string(), v.null()),
+    confidence: v.optional(extractionConfidenceValidator),
+    evidenceQuote: v.optional(v.string()),
+    evidenceSourceId: v.optional(v.string()),
+    evidenceStartChar: v.optional(v.number()),
+    evidenceEndChar: v.optional(v.number()),
+    reasoning: v.optional(v.string()),
+    modelUsed: v.optional(v.string()),
+    parsingSource: v.optional(parsingSourceValidator),
+    tokensIn: v.optional(v.number()),
+    tokensOut: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -319,6 +333,18 @@ export const saveResult = internalMutation({
       jobId: args.jobId,
       paperId: args.paperId,
       questionId: args.questionId,
+      answer: args.answer,
+      confidence: args.confidence,
+      evidenceQuote: args.evidenceQuote,
+      evidenceSourceId: args.evidenceSourceId,
+      evidenceStartChar: args.evidenceStartChar,
+      evidenceEndChar: args.evidenceEndChar,
+      reasoning: args.reasoning,
+      modelUsed: args.modelUsed,
+      parsingSource: args.parsingSource,
+      tokensIn: args.tokensIn,
+      tokensOut: args.tokensOut,
+      errorMessage: args.errorMessage,
       createdAt: Date.now(),
     });
 
