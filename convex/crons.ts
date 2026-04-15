@@ -53,4 +53,12 @@ crons.interval(
   internal.lib.envValidation.checkRequiredEnvVars
 );
 
+// Hourly quality sampling: pick 1 production answer, re-run critic (EVAL-04)
+crons.interval(
+  "quality sampling",
+  { hours: 1 },
+  internal.extraction.qualitySampling.sampleAndCheck,
+  {},
+);
+
 export default crons;

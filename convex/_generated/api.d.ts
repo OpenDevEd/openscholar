@@ -21,9 +21,13 @@ import type * as credits_lib_invoiceGrantPolicy from "../credits/lib/invoiceGran
 import type * as credits_lib_retryPolicy from "../credits/lib/retryPolicy.js";
 import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
+import type * as extraction_errors from "../extraction/errors.js";
 import type * as extraction_extract from "../extraction/extract.js";
+import type * as extraction_logging from "../extraction/logging.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
 import type * as extraction_parse from "../extraction/parse.js";
+import type * as extraction_qualitySampling from "../extraction/qualitySampling.js";
+import type * as extraction_qualitySamplingHelpers from "../extraction/qualitySamplingHelpers.js";
 import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_validators from "../extraction/validators.js";
 import type * as extraction_workflow from "../extraction/workflow.js";
@@ -122,9 +126,13 @@ declare const fullApi: ApiFromModules<{
   "credits/lib/retryPolicy": typeof credits_lib_retryPolicy;
   "credits/queries": typeof credits_queries;
   crons: typeof crons;
+  "extraction/errors": typeof extraction_errors;
   "extraction/extract": typeof extraction_extract;
+  "extraction/logging": typeof extraction_logging;
   "extraction/mutations": typeof extraction_mutations;
   "extraction/parse": typeof extraction_parse;
+  "extraction/qualitySampling": typeof extraction_qualitySampling;
+  "extraction/qualitySamplingHelpers": typeof extraction_qualitySamplingHelpers;
   "extraction/queries": typeof extraction_queries;
   "extraction/validators": typeof extraction_validators;
   "extraction/workflow": typeof extraction_workflow;
@@ -1182,6 +1190,104 @@ export declare const components: {
     };
   };
   screeningWorkpool: {
+    config: {
+      update: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          maxParallelism?: number;
+        },
+        any
+      >;
+    };
+    lib: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          id: string;
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      cancelAll: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          before?: number;
+          limit?: number;
+          logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+        },
+        any
+      >;
+      enqueue: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
+          };
+          fnArgs: any;
+          fnHandle: string;
+          fnName: string;
+          fnType: "action" | "mutation" | "query";
+          onComplete?: { context?: any; fnHandle: string };
+          retryBehavior?: {
+            base: number;
+            initialBackoffMs: number;
+            maxAttempts: number;
+          };
+          runAt: number;
+        },
+        string
+      >;
+      enqueueBatch: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: {
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
+          };
+          items: Array<{
+            fnArgs: any;
+            fnHandle: string;
+            fnName: string;
+            fnType: "action" | "mutation" | "query";
+            onComplete?: { context?: any; fnHandle: string };
+            retryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            runAt: number;
+          }>;
+        },
+        Array<string>
+      >;
+      status: FunctionReference<
+        "query",
+        "internal",
+        { id: string },
+        | { previousAttempts: number; state: "pending" }
+        | { previousAttempts: number; state: "running" }
+        | { state: "finished" }
+      >;
+      statusBatch: FunctionReference<
+        "query",
+        "internal",
+        { ids: Array<string> },
+        Array<
+          | { previousAttempts: number; state: "pending" }
+          | { previousAttempts: number; state: "running" }
+          | { state: "finished" }
+        >
+      >;
+    };
+  };
+  extractionWorkpool: {
     config: {
       update: FunctionReference<
         "mutation",
