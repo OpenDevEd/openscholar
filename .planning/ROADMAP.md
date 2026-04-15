@@ -172,10 +172,10 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
 **Critical path:** `98 → 99 → 100 → 102 → 103 → 104 → 105`.
 **Parallelizable:** Phase 101 runs independently against 99 and 100; they converge at 103.
 
-- [ ] **Phase 98: Pre-flight & Hard-Limit Foundation** — Bump `MAX_EXTRACTION_PAPERS_PER_JOB` 200→1000, split internal bound, benchmark 1k-paper payload, seed per-tier-ready limit shape
+- [x] **Phase 98: Pre-flight & Hard-Limit Foundation** — Bump `MAX_EXTRACTION_PAPERS_PER_JOB` 200→1000, split internal bound, benchmark 1k-paper payload, seed per-tier-ready limit shape (completed 2026-04-15)
   Plans:
   - [x] 98-01-PLAN.md — Constants + helper + reactive query (LIM-01, LIM-02, LIM-03)
-  - [ ] 98-02-PLAN.md — Call-site rewiring + payload benchmark (LIM-01, GAP-04)
+  - [x] 98-02-PLAN.md — Call-site rewiring + payload benchmark (LIM-01, GAP-04)
 - [ ] **Phase 99: Selection Basket Core** — Zustand store + `normalizeOpenAlexId` + `<ExtractionBasketDrawer>` + `useAddToBasket` hook
 - [ ] **Phase 100: Backend Wiring + TierSelector Fix** — `convex/openalex/actions.ts` (resolveByDoi, resolveManualIds), extractionLimit helpers, 5-edit TierSelector wiring, server-side hard-reject
 - [ ] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`)
@@ -356,7 +356,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88-97 | v6.0 | 29/29 | Complete | 2026-04-15 |
-| 98. Pre-flight & Hard-Limit Foundation | v7.0 | 1/2 | In Progress|  |
+| 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
 | 99. Selection Basket Core | v7.0 | 0/TBD | Not started | - |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 0/TBD | Not started | - |
 | 101. Workbench Primitives | v7.0 | 0/TBD | Not started | - |

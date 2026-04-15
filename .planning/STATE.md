@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Extraction Workbench
-status: executing
-stopped_at: Completed 98-01-PLAN.md
-last_updated: "2026-04-15T16:06:08.788Z"
+status: verifying
+stopped_at: Completed 98-02-PLAN.md
+last_updated: "2026-04-15T16:14:42.049Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 50
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 Milestone: v7.0 Extraction Workbench
 Phase: 98 (pre-flight-hard-limit-foundation) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-15
 
 Progress: [░░░░░░░░░░] 0%
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | v6.0 | 10 | 29 | 2026-04-15 |
 | v7.0 | 8 planned (98-105) | TBD | in progress |
 | Phase 98 P01 | 129 | 2 tasks | 3 files |
+| Phase 98 P02 | 342 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent v7.0 decisions affecting current work:
 - **Phase 104**: Zotero stays on OAuth 1.0a (verified 2025-09-24); `zotero-api-client` rejected (API-key only).
 - [Phase 98]: Per-tier limit map (EXTRACTION_LIMITS_BY_TIER) as single source of truth; MAX_EXTRACTION_PAPERS_PER_JOB derived via Math.max
 - [Phase 98]: MAX_EXTRACTION_RESULTS_QUERY (10000) decoupled from user-facing paper limit for internal .take() bounds
+- [Phase 98]: Batch seeding in benchmark: 50 papers per txn for papers, 10 papers per txn for results -- avoids convex-test transaction limits
+- [Phase 98]: Worst-case benchmark (500-char answers) at 10.31 MB documents upper bound; asserts against 16 MiB Convex hard cap, not 5 MB target
+- [Phase 98]: GAP-04 benchmark PASS: typical 1000-paper payload is 3.97 MB (under 5 MB target) -- D-06 pagination fallback NOT needed
 
 ### Pending Todos
 
@@ -110,6 +114,6 @@ Items carried from v6.0 into v7.0 or later milestones:
 
 ## Session Continuity
 
-Last session: 2026-04-15T16:06:08.786Z
-Stopped at: Completed 98-01-PLAN.md
+Last session: 2026-04-15T16:14:42.046Z
+Stopped at: Completed 98-02-PLAN.md
 Next step: `/gsd-plan-phase 98`
