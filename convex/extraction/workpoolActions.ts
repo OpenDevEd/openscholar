@@ -17,6 +17,7 @@ import { v } from "convex/values";
 import { parseFullText } from "./parse";
 import { extractAnswers } from "./extract";
 import { classifyExtractionError } from "./errors";
+import { emitStageLog, emitStageError, computeCostUsd } from "./logging";
 import type { ExtractionResult } from "./extract";
 import { withUserCreditsBatch } from "../ai/helpers";
 import type { Usage } from "../../lib/ai/core/types";
@@ -39,6 +40,7 @@ export const processExtractionPaper = internalAction({
   args: {
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
+    traceId: v.string(),
   },
   returns: v.object({
     success: v.boolean(),
@@ -50,17 +52,13 @@ export const processExtractionPaper = internalAction({
       { jobId: args.jobId }
     );
     if (!job) {
-      console.warn(
-        `[ExtractionPipeline] Job ${args.jobId} not found, skipping`
-      );
+      console.warn(JSON.stringify({ event: "job_not_found", jobId: String(args.jobId), traceId: args.traceId }));
       return { success: false };
     }
 
     const terminalStatuses = ["completed", "cancelled", "failed"];
     if (terminalStatuses.includes(job.status)) {
-      console.log(
-        `[ExtractionPipeline] Job ${args.jobId} is ${job.status}, skipping paper ${args.paperId}`
-      );
+      console.info(JSON.stringify({ event: "job_terminal_skip", jobId: String(args.jobId), status: job.status, traceId: args.traceId }));
       return { success: false };
     }
 
@@ -70,9 +68,7 @@ export const processExtractionPaper = internalAction({
       { paperId: args.paperId }
     );
     if (!paper) {
-      console.warn(
-        `[ExtractionPipeline] Paper ${args.paperId} not found, skipping`
-      );
+      console.warn(JSON.stringify({ event: "paper_not_found", paperId: String(args.paperId), traceId: args.traceId }));
       return { success: false };
     }
 
@@ -80,6 +76,8 @@ export const processExtractionPaper = internalAction({
       // Idempotency: skip PARSING if bodyText already populated (workpool retry)
       // But still proceed to extraction below
       if (!paper.bodyText) {
+        const parseStartMs = Date.now();
+
         // 3. Mark paper as parsing
         await ctx.runMutation(
           internal.extraction.mutations.updatePaperStatus,
@@ -99,13 +97,32 @@ export const processExtractionPaper = internalAction({
           }
         );
 
-        console.log(
-          `[ExtractionPipeline] Paper ${args.paperId} parsed via ${result.parsingSource} (${result.bodyText.length} chars)`
-        );
+        const parseLatencyMs = Date.now() - parseStartMs;
+        emitStageLog({
+          traceId: args.traceId,
+          jobId: args.jobId,
+          paperId: args.paperId,
+          stage: "parse",
+          model: "",
+          tokensIn: 0,
+          tokensOut: 0,
+          costUsd: 0,
+          latencyMs: parseLatencyMs,
+          status: "success",
+        });
       } else {
-        console.log(
-          `[ExtractionPipeline] Paper ${args.paperId} already parsed, skipping to extraction`
-        );
+        emitStageLog({
+          traceId: args.traceId,
+          jobId: args.jobId,
+          paperId: args.paperId,
+          stage: "parse",
+          model: "",
+          tokensIn: 0,
+          tokensOut: 0,
+          costUsd: 0,
+          latencyMs: 0,
+          status: "skip",
+        });
       }
       // Continue to extraction (Phase 91) regardless...
 
@@ -119,9 +136,21 @@ export const processExtractionPaper = internalAction({
         { paperId: args.paperId }
       );
       if (!parsedPaper || !parsedPaper.bodyText) {
-        console.error(
-          `[ExtractionPipeline] Paper ${args.paperId} has no bodyText after parsing`
-        );
+        emitStageError({
+          traceId: args.traceId,
+          jobId: args.jobId,
+          paperId: args.paperId,
+          stage: "parse",
+          model: "",
+          tokensIn: 0,
+          tokensOut: 0,
+          costUsd: 0,
+          latencyMs: 0,
+          status: "failure",
+          errorMessage: "No bodyText after parsing",
+          errorCategory: "empty_body",
+          retryable: false,
+        });
         return { success: false };
       }
 
@@ -131,9 +160,7 @@ export const processExtractionPaper = internalAction({
         { jobId: args.jobId }
       );
       if (!jobForQuestions || jobForQuestions.questions.length === 0) {
-        console.warn(
-          `[ExtractionPipeline] Job ${args.jobId} has no questions, skipping extraction`
-        );
+        console.warn(JSON.stringify({ event: "no_questions", jobId: String(args.jobId), traceId: args.traceId }));
         return { success: true };
       }
 
@@ -144,6 +171,7 @@ export const processExtractionPaper = internalAction({
         expectedType: q.expectedType,
       }));
 
+      const extractStartMs = Date.now();
       let extractionResults: ExtractionResult[];
       try {
         extractionResults = await withUserCreditsBatch(
@@ -155,6 +183,9 @@ export const processExtractionPaper = internalAction({
               parsedPaper.bodyText!,
               questions,
               parsedPaper.parsingSource,
+              args.traceId,
+              args.jobId,
+              args.paperId,
             );
 
             // Aggregate token usage across all questions for credit billing
@@ -176,9 +207,7 @@ export const processExtractionPaper = internalAction({
                 "AI_INSUFFICIENT_CREDITS"));
 
         if (isInsufficientCredits) {
-          console.warn(
-            `[ExtractionPipeline] Credits exhausted for job ${args.jobId}`
-          );
+          console.warn(JSON.stringify({ event: "credits_exhausted", jobId: String(args.jobId), traceId: args.traceId }));
           await ctx.runMutation(
             internal.extraction.mutations.updateJobStatus,
             { jobId: args.jobId, status: "failed" }
@@ -187,8 +216,10 @@ export const processExtractionPaper = internalAction({
 
         throw error;
       }
+      const extractLatencyMs = Date.now() - extractStartMs;
 
       // 9. Save results via saveResult mutation (D-02)
+      const saveStartMs = Date.now();
       for (const result of extractionResults) {
         await ctx.runMutation(
           internal.extraction.mutations.saveResult,
@@ -212,32 +243,77 @@ export const processExtractionPaper = internalAction({
           }
         );
       }
+      const saveLatencyMs = Date.now() - saveStartMs;
+      emitStageLog({
+        traceId: args.traceId,
+        jobId: args.jobId,
+        paperId: args.paperId,
+        stage: "save",
+        model: "",
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        latencyMs: saveLatencyMs,
+        status: "success",
+      });
 
       // 10. Determine paper success (D-15)
       const anySucceeded = extractionResults.some((r) => r.answer !== null);
       if (!anySucceeded) {
-        console.error(
-          `[ExtractionPipeline] All questions failed for paper ${args.paperId}`
-        );
+        emitStageError({
+          traceId: args.traceId,
+          jobId: args.jobId,
+          paperId: args.paperId,
+          stage: "extract",
+          model: "",
+          tokensIn: extractionResults.reduce((s, r) => s + (r.tokensIn ?? 0), 0),
+          tokensOut: extractionResults.reduce((s, r) => s + (r.tokensOut ?? 0), 0),
+          costUsd: extractionResults.reduce((s, r) => s + computeCostUsd(r.modelUsed ?? "", r.tokensIn ?? 0, r.tokensOut ?? 0), 0),
+          latencyMs: extractLatencyMs,
+          status: "failure",
+          errorMessage: "All questions failed",
+          errorCategory: "validation",
+          retryable: false,
+        });
         // Paper failed -- but we still return success:false to let onComplete handle status
         return { success: false };
       }
 
-      console.log(
-        `[ExtractionPipeline] Paper ${args.paperId} extracted: ${extractionResults.filter((r) => r.answer !== null).length}/${extractionResults.length} questions answered`
-      );
+      const totalTokensIn = extractionResults.reduce((s, r) => s + (r.tokensIn ?? 0), 0);
+      const totalTokensOut = extractionResults.reduce((s, r) => s + (r.tokensOut ?? 0), 0);
+      const totalCostUsd = extractionResults.reduce((s, r) => s + computeCostUsd(r.modelUsed ?? "", r.tokensIn ?? 0, r.tokensOut ?? 0), 0);
+      emitStageLog({
+        traceId: args.traceId,
+        jobId: args.jobId,
+        paperId: args.paperId,
+        stage: "extract",
+        model: extractionResults[0]?.modelUsed ?? "",
+        tokensIn: totalTokensIn,
+        tokensOut: totalTokensOut,
+        costUsd: totalCostUsd,
+        latencyMs: extractLatencyMs,
+        status: "success",
+      });
 
       return { success: true };
     } catch (error) {
       const classified = classifyExtractionError(error);
 
-      console.error(
-        `[ExtractionPipeline] Paper ${args.paperId} error: ${JSON.stringify({
-          category: classified.category,
-          retryable: classified.retryable,
-          message: classified.message.slice(0, 200),
-        })}`
-      );
+      emitStageError({
+        traceId: args.traceId,
+        jobId: args.jobId,
+        paperId: args.paperId,
+        stage: "extract",
+        model: "",
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        latencyMs: 0,
+        status: "failure",
+        errorMessage: classified.message.slice(0, 500),
+        errorCategory: classified.category,
+        retryable: classified.retryable,
+      });
 
       if (classified.retryable) {
         // Rethrow so workpool retries (up to maxAttempts: 3)

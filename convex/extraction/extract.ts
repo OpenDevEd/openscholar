@@ -29,6 +29,8 @@ import { z } from "zod";
 import type { LanguageModel } from "ai";
 import { distance } from "fastest-levenshtein";
 import { buildExtractionPrompts, buildCriticPrompt } from "../../lib/ai/core/prompts";
+import { emitStageLog, emitStageError, computeCostUsd } from "./logging";
+import type { Id } from "../_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -217,7 +219,10 @@ function createCascadeTiers(): CascadeTier[] {
 async function extractSingleAnswer(
   bodyText: string,
   question: QuestionInput,
-  signal: AbortSignal
+  signal: AbortSignal,
+  traceId?: string,
+  jobId?: Id<"extractionJobs">,
+  paperId?: Id<"extractionPapers">
 ): Promise<ExtractionResult> {
   const tiers = createCascadeTiers();
   const schema = buildExtractionSchema(bodyText);
@@ -258,6 +263,7 @@ async function extractSingleAnswer(
           sourceSlice,
         });
 
+        const criticStartMs = Date.now();
         try {
           const criticSignal = AbortSignal.timeout(30_000);
           const { output: criticOutput, usage: criticUsage } = await generateText({
@@ -268,6 +274,24 @@ async function extractSingleAnswer(
             prompt: criticPrompts.prompt,
             abortSignal: criticSignal,
           });
+
+          const criticLatencyMs = Date.now() - criticStartMs;
+          const criticTokensIn = criticUsage.inputTokens ?? 0;
+          const criticTokensOut = criticUsage.outputTokens ?? 0;
+          if (traceId && jobId && paperId) {
+            emitStageLog({
+              traceId,
+              jobId,
+              paperId,
+              stage: "critic",
+              model: tier.name,
+              tokensIn: criticTokensIn,
+              tokensOut: criticTokensOut,
+              costUsd: computeCostUsd(tier.name, criticTokensIn, criticTokensOut),
+              latencyMs: criticLatencyMs,
+              status: "success",
+            });
+          }
 
           // Aggregate tokens (D-20)
           const totalTokensIn = (usage.inputTokens ?? 0) + (criticUsage.inputTokens ?? 0);
@@ -320,6 +344,23 @@ async function extractSingleAnswer(
           };
         } catch {
           // Critic timeout/failure: lenient -- keep the answer (D-09)
+          if (traceId && jobId && paperId) {
+            emitStageError({
+              traceId,
+              jobId,
+              paperId,
+              stage: "critic",
+              model: tier.name,
+              tokensIn: 0,
+              tokensOut: 0,
+              costUsd: 0,
+              latencyMs: Date.now() - criticStartMs,
+              status: "failure",
+              errorMessage: "Critic timeout or failure",
+              errorCategory: "timeout",
+              retryable: false,
+            });
+          }
           return {
             questionId: question.key,
             answer: output.answer,
@@ -422,7 +463,10 @@ async function withConcurrencyLimit<T>(
 export async function extractAnswers(
   bodyText: string,
   questions: QuestionInput[],
-  _parsingSource?: string
+  _parsingSource?: string,
+  traceId?: string,
+  jobId?: Id<"extractionJobs">,
+  paperId?: Id<"extractionPapers">
 ): Promise<ExtractionResult[]> {
   const CONCURRENCY_CAP = 5;
   const PER_QUESTION_TIMEOUT_MS = 60_000;
@@ -430,7 +474,7 @@ export async function extractAnswers(
   const tasks = questions.map(
     (question) => () => {
       const signal = AbortSignal.timeout(PER_QUESTION_TIMEOUT_MS);
-      return extractSingleAnswer(bodyText, question, signal);
+      return extractSingleAnswer(bodyText, question, signal, traceId, jobId, paperId);
     }
   );
 
