@@ -16,6 +16,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { parseFullText } from "./parse";
 import { extractAnswers } from "./extract";
+import { classifyExtractionError } from "./errors";
 import type { ExtractionResult } from "./extract";
 import { withUserCreditsBatch } from "../ai/helpers";
 import type { Usage } from "../../lib/ai/core/types";
@@ -228,10 +229,32 @@ export const processExtractionPaper = internalAction({
 
       return { success: true };
     } catch (error) {
+      const classified = classifyExtractionError(error);
+
       console.error(
-        `[ExtractionPipeline] Pipeline failed for paper ${args.paperId}: ${error instanceof Error ? error.message : String(error)}`
+        `[ExtractionPipeline] Paper ${args.paperId} error: ${JSON.stringify({
+          category: classified.category,
+          retryable: classified.retryable,
+          message: classified.message.slice(0, 200),
+        })}`
       );
-      throw error;
+
+      if (classified.retryable) {
+        // Rethrow so workpool retries (up to maxAttempts: 3)
+        throw error;
+      }
+
+      // Permanent error -- save details and return failure (no retry)
+      await ctx.runMutation(
+        internal.extraction.mutations.updatePaperStatus,
+        {
+          paperId: args.paperId,
+          status: "failed" as const,
+          errorMessage: `[${classified.category}] ${classified.message}`.slice(0, 500),
+        }
+      );
+
+      return { success: false };
     }
   },
 });
