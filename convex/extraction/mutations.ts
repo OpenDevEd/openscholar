@@ -13,7 +13,8 @@ import {
 } from "./validators";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { MAX_EXTRACTION_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { MAX_EXTRACTION_PAPERS_PER_JOB, MAX_EXTRACTION_RESULTS_QUERY } from "../lib/queryBounds";
+import { getExtractionLimitForUser } from "../lib/extractionLimit";
 import { workflow } from "../workflow";
 import { extractionPool } from "../workpool";
 import type { WorkId } from "@convex-dev/workpool";
@@ -42,10 +43,11 @@ export const createExtractionJob = mutation({
     if (args.papers.length === 0) {
       throw createError("VALIDATION_ERROR", "At least one paper is required");
     }
-    if (args.papers.length > MAX_EXTRACTION_PAPERS_PER_JOB) {
+    const userLimit = await getExtractionLimitForUser(ctx, user._id);
+    if (args.papers.length > userLimit) {
       throw createError(
         "VALIDATION_ERROR",
-        `Maximum ${MAX_EXTRACTION_PAPERS_PER_JOB} papers per job`
+        `Maximum ${userLimit} papers per job`,
       );
     }
 
@@ -489,7 +491,7 @@ export const finalizeJobIfDone = internalMutation({
       const results = await ctx.db
         .query("extractionResults")
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .take(MAX_EXTRACTION_PAPERS_PER_JOB * 10);
+        .take(MAX_EXTRACTION_RESULTS_QUERY);
 
       const withVerdict = results.filter((r) => r.criticVerdict != null);
       const supported = withVerdict.filter(

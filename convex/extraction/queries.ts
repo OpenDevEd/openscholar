@@ -7,7 +7,7 @@ import {
   parsingSourceValidator,
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
-import { MAX_EXTRACTION_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { MAX_EXTRACTION_PAPERS_PER_JOB, MAX_EXTRACTION_RESULTS_QUERY } from "../lib/queryBounds";
 import { computeCostUsd } from "./logging";
 import { getExtractionLimitForUser } from "../lib/extractionLimit";
 import { resolveEffectivePlan } from "../../lib/billing/entitlements";
@@ -120,7 +120,7 @@ export const getExtractionJobMetrics = query({
     const results = await ctx.db
       .query("extractionResults")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_EXTRACTION_PAPERS_PER_JOB * 10);
+      .take(MAX_EXTRACTION_RESULTS_QUERY);
 
     const estimatedCostUsd = results.reduce(
       (sum, r) =>
