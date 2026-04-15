@@ -47,12 +47,12 @@ Exceptions: 44px minimum touch target for remove buttons on mobile (WCAG AAA)
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
-| Body | 14px (`text-sm`) | 400 (regular) | 1.43 (20px) |
+| Body | 14px (`text-sm`) | 500 (medium) | 1.43 (20px) |
 | Label | 12px (`text-xs`) | 500 (medium) | 1.33 (16px) |
 | Heading | 16px (`text-base`) | 600 (semibold) | 1.5 (24px) |
 | Display | 20px (`text-lg`) | 600 (semibold) | 1.4 (28px) |
 
-Source: Existing codebase convention. Sheet title uses `font-semibold` (600). Sheet description uses `text-sm` (14px). Badge uses `text-xs` (12px) with `font-medium` (500). These map directly to the roles above.
+Two-weight system: 500 (medium) for body and label, 600 (semibold) for headings and display. Size difference (12px vs 14px) provides hierarchy between body and label — weight difference is redundant at those sizes.
 
 ---
 
@@ -82,7 +82,7 @@ Source badges use `var(--secondary)` with `var(--secondary-foreground)` -- NOT a
 | Component | File | shadcn Base | Notes |
 |-----------|------|-------------|-------|
 | `ExtractionBasketDrawer` | `components/extraction/extraction-basket-drawer.tsx` | Sheet (side="right") | Sticky header + scrollable body + sticky footer |
-| `BasketTriggerButton` | `components/extraction/basket-trigger-button.tsx` | Button (variant="outline", size="icon") | FlaskConical icon + count badge overlay; opens the drawer |
+| `BasketTriggerButton` | `components/extraction/basket-trigger-button.tsx` | Button (variant="outline", size="icon") | FlaskConical icon + count badge overlay; opens the drawer. Wrapped in `Tooltip` with label "Open extraction basket". `aria-label="Open extraction basket, {count} papers"`. |
 | `BasketPaperRow` | `components/extraction/basket-paper-row.tsx` | None (custom div) | Title + DOI + source badge + remove button |
 | `BasketSourceSection` | `components/extraction/basket-source-section.tsx` | None (custom div) | Collapsible per-source group header with count |
 | `BasketEmptyState` | `components/extraction/basket-empty-state.tsx` | None (custom div) | Empty illustration + copy + guidance |
@@ -105,6 +105,13 @@ Source badges use `var(--secondary)` with `var(--secondary-foreground)` -- NOT a
 | `useExtractionBasketStore` | `lib/store/extraction-basket.ts` | Zustand persist + sessionStorage; Map-backed; O(1) `has()` |
 | `useAddToBasket` | `lib/hooks/use-add-to-basket.ts` | Wraps normalize + store.add; returns `{ addToBasket, removeFromBasket, isInBasket, basketCount }` |
 | `normalizeOpenAlexId` | `lib/openalex/normalize.ts` | Pure function: `W123` / URL / `openalex:W123` to canonical `W\d+` or null |
+
+---
+
+## Visual Hierarchy & Focal Points
+
+- **Primary focal point:** Full-width "Review & start extraction" CTA in the sticky footer — the only accent-colored element below the fold, designed as the visual terminus of the drawer.
+- **Secondary focal point:** Paper count numeral in `text-primary` in the drawer header — draws the eye on open, communicates basket state at a glance.
 
 ---
 
@@ -153,7 +160,7 @@ Source badges use `var(--secondary)` with `var(--secondary-foreground)` -- NOT a
 +------------------------------------------+
 ```
 
-- Title: `text-sm font-normal text-foreground truncate` -- max-width constrained by drawer width
+- Title: `text-sm font-medium text-foreground truncate` -- max-width constrained by drawer width
 - DOI: `text-xs text-muted-foreground truncate` -- show if non-null, hide row if null
 - Source badge: `Badge variant="secondary"` with capitalized source label ("Library", "Search", "Manual", "Collection", "Zotero")
 - Remove button: `Button variant="ghost" size="icon-xs"` with `X` (Lucide) icon, `text-muted-foreground hover:text-destructive` transition
@@ -226,7 +233,7 @@ All copy must have i18n keys seeded in all 6 locale files. Key namespace: `extra
 | WCAG AAA contrast (7:1) | All text on `var(--background)` exceeds 7:1. Orange primary on white exceeds 4.5:1 for large text (CTA button at 14px semibold qualifies). Verified via OKLCH perceptual uniformity. |
 | Focus indicators | `focus-visible:ring-ring/50 focus-visible:ring-[3px]` on all interactive elements (inherited from shadcn button/sheet defaults) |
 | Reduced motion | Sheet respects `prefers-reduced-motion: reduce` via Tailwind `motion-reduce:` utility. Collapse/expand animations disabled. Row removal is instant (no fade). |
-| Screen reader | Sheet has `role="dialog"`, `aria-labelledby` (SheetTitle), `aria-describedby` (SheetDescription). Each BasketPaperRow remove button has `aria-label="Remove {title} from basket"`. Source sections use `aria-expanded` on collapse toggle. |
+| Screen reader | Sheet has `role="dialog"`, `aria-labelledby` (SheetTitle), `aria-describedby` (SheetDescription). BasketTriggerButton has `aria-label="Open extraction basket, {count} papers"` + Tooltip "Open extraction basket". Each BasketPaperRow remove button has `aria-label="Remove {title} from basket"`. Source sections use `aria-expanded` on collapse toggle. |
 | Touch targets | Remove button minimum 24x24px (icon-xs = 24px). On mobile (`<= 640px`), drawer renders full-width (`w-full` override on SheetContent). |
 | Keyboard | Tab order: header close button, source sections (collapsible), paper rows (remove buttons), footer CTA. Escape closes drawer. |
 
