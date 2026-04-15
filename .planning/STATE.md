@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
 stopped_at: Phase 91 context gathered
-last_updated: "2026-04-15T02:36:37.142Z"
-last_activity: 2026-04-15
+last_updated: "2026-04-15T03:11:01.691Z"
+last_activity: 2026-04-15 -- Phase 91 execution started
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 9
+  total_plans: 11
   completed_plans: 9
-  percent: 100
+  percent: 82
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 90 — free-first-parsing-waterfall
+**Current focus:** Phase 91 — extraction-cascade-core
 
 ## Current Position
 
-Phase: 91
-Plan: Not started
-Status: Executing Phase 90
-Last activity: 2026-04-15
+Phase: 91 (extraction-cascade-core) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 91
+Last activity: 2026-04-15 -- Phase 91 execution started
 
 Progress: [          ] 0%
 
