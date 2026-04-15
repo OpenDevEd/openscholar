@@ -471,14 +471,14 @@ const averageLatencyMs =
 | A2 | `console.info` is supported in Convex runtime and appears in Convex dashboard logs | Architecture Patterns / Pattern 1 | If only `console.log` is supported, change to `console.log` with a `level: "info"` field in the JSON payload |
 | A3 | Reading up to 2000 `extractionResults` rows in a single query (200 papers * 10 questions) stays within Convex transaction read limits | Pitfalls / Pitfall 2 | If exceeded, must paginate or pre-aggregate cost during result save |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does `ulid()` work in Convex's V8 (edge) runtime?**
+1. **Does `ulid()` work in Convex's V8 (edge) runtime?** (RESOLVED -- Plan 01 Task 2 generates ULID in mutation; convex-test validates edge-runtime compatibility. If it fails, fallback to Node.js action per A1.)
    - What we know: `ulid` v3 uses `crypto.getRandomValues()` which is part of the Web Crypto API, generally available in V8 isolates and edge runtimes.
    - What's unclear: Convex's specific V8 runtime may not expose the full Web Crypto API.
    - Recommendation: Write a `convex-test` unit test that calls `ulid()` in the edge-runtime environment. If it fails, generate the ULID in the `"use node"` action layer instead and pass it back to the mutation via `ctx.runMutation`.
 
-2. **Should metrics and SLO be one query or two?**
+2. **Should metrics and SLO be one query or two?** (RESOLVED -- Plan 03 Task 1 implements a single `getExtractionJobMetrics` query returning all 6 fields per Claude's discretion.)
    - What we know: D-12 and D-21 define separate concerns (operational metrics vs quality metrics), but CONTEXT.md discretion says "a single query returning all metrics is cleaner."
    - What's unclear: Whether the UI will consume them together or separately.
    - Recommendation: Single query returning all fields. The data sources overlap (both read from the same job row and results table). One query means one reactive subscription for the UI.
