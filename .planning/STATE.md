@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: planning
-stopped_at: Phase 88 context gathered
-last_updated: "2026-04-14T23:57:55.627Z"
+stopped_at: Phase 89 context gathered
+last_updated: "2026-04-15T00:03:46.886Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 10
@@ -111,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Phase 88 context gathered
-Resume file: .planning/phases/88-scorched-earth-teardown/88-CONTEXT.md
+Stopped at: Phase 89 context gathered
+Resume file: .planning/phases/89-core-schema-workflow-skeleton/89-CONTEXT.md
