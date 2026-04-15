@@ -9,6 +9,9 @@ import {
 import { getCurrentUser } from "../lib/auth";
 import { MAX_EXTRACTION_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { computeCostUsd } from "./logging";
+import { getExtractionLimitForUser } from "../lib/extractionLimit";
+import { resolveEffectivePlan } from "../../lib/billing/entitlements";
+import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
 
 /**
  * Get real-time progress of an extraction job.
@@ -665,5 +668,41 @@ export const getExtractionResultsForExport = query({
       },
       results: flatResults,
     };
+  },
+});
+
+// ===================================================================
+// USER LIMIT QUERY (LIM-03)
+// ===================================================================
+
+/**
+ * Reactive query exposing the authenticated user's per-job extraction limit.
+ *
+ * Returns { limit, plan } where limit is the maximum papers per extraction job
+ * for the user's current subscription plan, and plan is the resolved plan name.
+ * Unauthenticated users receive { limit: 0, plan: "free" }.
+ *
+ * Phase 102 consumes this for the "X / 1000" counter display.
+ */
+export const getExtractionLimit = query({
+  args: {},
+  returns: v.object({ limit: v.number(), plan: v.string() }),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return { limit: 0, plan: "free" as const };
+
+    const limit = await getExtractionLimitForUser(ctx, user._id);
+
+    // Re-derive plan for client display. The subscription lookup is cheap
+    // (cardinality ~1-5 rows) and already cached in the reactive query.
+    const subscriptions = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+    const subscription = selectCanonicalSubscription(subscriptions);
+    const plan = resolveEffectivePlan(subscription);
+
+    return { limit, plan };
   },
 });
