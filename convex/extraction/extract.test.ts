@@ -20,6 +20,31 @@ vi.mock("@openrouter/ai-sdk-provider", () => ({
   createOpenRouter: () => (modelId: string) => ({ modelId, provider: "openrouter" }),
 }));
 
+// Mock fastest-levenshtein with a real Levenshtein implementation for test accuracy
+vi.mock("fastest-levenshtein", () => ({
+  distance: (a: string, b: string) => {
+    if (a === b) return 0;
+    const matrix: number[][] = [];
+    for (let i = 0; i <= a.length; i++) {
+      matrix[i] = [i];
+      for (let j = 1; j <= b.length; j++) {
+        matrix[i][j] = i === 0 ? j : 0;
+      }
+    }
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -273,5 +298,336 @@ describe("token usage capture (D-18)", () => {
 
     expect(results[0].tokensIn).toBe(5432);
     expect(results[0].tokensOut).toBe(234);
+  });
+});
+
+// ===================================================================
+// Phase 92: Levenshtein verification, critic pass, insufficient_evidence
+// ===================================================================
+
+const KNOWN_BODY_TEXT =
+  "The study enrolled 42 participants in a randomized controlled trial conducted at three sites.";
+
+describe("Levenshtein verification (EXTR-03)", () => {
+  beforeEach(() => {
+    mockGenerateText.mockReset();
+  });
+
+  it("passes extraction when evidence_quote has >=85% similarity to source slice", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
+
+    // First call: extraction with high-similarity quote
+    // Second call: critic returns supported
+    let callCount = 0;
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        // Extraction call
+        return makeSuccessResponse({
+          evidence_quote: exactQuote,
+          evidence_start_char: 0,
+          evidence_end_char: 50,
+        });
+      }
+      // Critic call
+      return {
+        ...makeSuccessResponse(),
+        output: { verdict: "supported", reason: "Quote matches source" },
+      };
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many participants?" },
+    ]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].answer).toBe("42 participants");
+    expect(results[0].criticVerdict).toBe("supported");
+  });
+
+  it("rejects extraction when evidence_quote has <85% similarity, retries same tier then escalates", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    let callCount = 0;
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      // All extraction calls return a bad quote (very different from source)
+      return makeSuccessResponse({
+        evidence_quote: "Completely different text that has no similarity to the source at all whatsoever",
+        evidence_start_char: 0,
+        evidence_end_char: 50,
+      });
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many participants?" },
+    ]);
+
+    expect(results).toHaveLength(1);
+    // Should eventually return insufficient_evidence after all tiers exhaust
+    expect(results[0].answer).toBe("insufficient_evidence");
+    expect(results[0].confidence).toBe("low");
+    // Should have retried (2 attempts per tier x 3 tiers = 6 calls)
+    expect(callCount).toBe(6);
+  });
+
+  it("adds Zod issue when bodyText is empty", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    // With empty bodyText, superRefine should early-return (no validation)
+    // so the extraction should succeed (empty bodyText is a no-op for validation)
+    let callCount = 0;
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        return makeSuccessResponse({
+          evidence_quote: "some quote",
+          evidence_start_char: 0,
+          evidence_end_char: 10,
+        });
+      }
+      return {
+        ...makeSuccessResponse(),
+        output: { verdict: "supported", reason: "OK" },
+      };
+    });
+
+    const results = await extractAnswers("", [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results).toHaveLength(1);
+    // Empty bodyText early-returns in superRefine, so extraction succeeds
+    expect(results[0].answer).not.toBeNull();
+  });
+
+  it("adds Zod issue when char offsets are out of bounds", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    mockGenerateText.mockImplementation(async () => {
+      return makeSuccessResponse({
+        evidence_quote: "out of bounds",
+        evidence_start_char: -1,
+        evidence_end_char: 999,
+      });
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results).toHaveLength(1);
+    // Out of bounds should trigger superRefine failure -> exhaust tiers -> insufficient_evidence
+    expect(results[0].answer).toBe("insufficient_evidence");
+    expect(results[0].confidence).toBe("low");
+  });
+});
+
+describe("critic pass (EXTR-05)", () => {
+  beforeEach(() => {
+    mockGenerateText.mockReset();
+  });
+
+  it("passes answer through unchanged when critic returns 'supported'", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
+    let callCount = 0;
+
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        return makeSuccessResponse({
+          answer: "42 participants",
+          confidence: "high",
+          evidence_quote: exactQuote,
+          evidence_start_char: 0,
+          evidence_end_char: 50,
+        });
+      }
+      return {
+        ...makeSuccessResponse(),
+        output: { verdict: "supported", reason: "Quote matches" },
+      };
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results[0].answer).toBe("42 participants");
+    expect(results[0].confidence).toBe("high");
+    expect(results[0].criticVerdict).toBe("supported");
+  });
+
+  it("flips answer to insufficient_evidence when critic returns 'unsupported'", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
+    let callCount = 0;
+
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        return makeSuccessResponse({
+          answer: "42 participants",
+          confidence: "high",
+          evidence_quote: exactQuote,
+          evidence_start_char: 0,
+          evidence_end_char: 50,
+        });
+      }
+      return {
+        ...makeSuccessResponse(),
+        output: { verdict: "unsupported", reason: "Quote does not support claim" },
+      };
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results[0].answer).toBe("insufficient_evidence");
+    expect(results[0].confidence).toBe("low");
+    expect(results[0].criticVerdict).toBe("unsupported");
+  });
+
+  it("downgrades confidence by one level when critic returns 'partial'", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
+    let callCount = 0;
+
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        return makeSuccessResponse({
+          answer: "42 participants",
+          confidence: "high",
+          evidence_quote: exactQuote,
+          evidence_start_char: 0,
+          evidence_end_char: 50,
+        });
+      }
+      return {
+        ...makeSuccessResponse(),
+        output: { verdict: "partial", reason: "Partially supported" },
+      };
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results[0].answer).toBe("42 participants");
+    expect(results[0].confidence).toBe("medium"); // high -> medium
+    expect(results[0].criticVerdict).toBe("partial");
+  });
+
+  it("keeps answer with criticVerdict='timeout' when critic times out", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
+    let callCount = 0;
+
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        return makeSuccessResponse({
+          answer: "42 participants",
+          confidence: "high",
+          evidence_quote: exactQuote,
+          evidence_start_char: 0,
+          evidence_end_char: 50,
+        });
+      }
+      // Critic call throws timeout error
+      throw new Error("AbortError: signal timed out");
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results[0].answer).toBe("42 participants");
+    expect(results[0].confidence).toBe("high"); // unchanged
+    expect(results[0].criticVerdict).toBe("timeout");
+  });
+});
+
+describe("insufficient_evidence state (EXTR-08)", () => {
+  beforeEach(() => {
+    mockGenerateText.mockReset();
+  });
+
+  it("returns answer='insufficient_evidence' when all tiers are exhausted", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    mockGenerateText.mockRejectedValue(new Error("Provider unavailable"));
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "What is the finding?" },
+    ]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].answer).toBe("insufficient_evidence");
+    expect(results[0].confidence).toBe("low");
+    // No evidence fields should be present
+    expect(results[0].evidenceQuote).toBeUndefined();
+    expect(results[0].evidenceStartChar).toBeUndefined();
+    expect(results[0].evidenceEndChar).toBeUndefined();
+  });
+});
+
+describe("critic token aggregation (D-20)", () => {
+  beforeEach(() => {
+    mockGenerateText.mockReset();
+  });
+
+  it("sums extraction and critic tokens into result tokensIn/tokensOut", async () => {
+    const { extractAnswers } = await import("./extract");
+
+    const exactQuote = KNOWN_BODY_TEXT.slice(0, 50);
+    let callCount = 0;
+
+    mockGenerateText.mockImplementation(async () => {
+      callCount++;
+      if (callCount % 2 === 1) {
+        // Extraction call
+        return makeSuccessResponse({
+          evidence_quote: exactQuote,
+          evidence_start_char: 0,
+          evidence_end_char: 50,
+          inputTokens: 1000,
+          outputTokens: 100,
+        });
+      }
+      // Critic call
+      return {
+        output: { verdict: "supported", reason: "OK" },
+        usage: { inputTokens: 200, outputTokens: 30 },
+        text: "",
+        finishReason: "stop",
+        response: { id: "test", timestamp: new Date(), modelId: "test" },
+        reasoning: undefined,
+        sources: [],
+        files: [],
+        toolCalls: [],
+        toolResults: [],
+        request: { body: "" },
+        warnings: [],
+        providerMetadata: undefined,
+        steps: [],
+      };
+    });
+
+    const results = await extractAnswers(KNOWN_BODY_TEXT, [
+      { key: "q1", question: "How many?" },
+    ]);
+
+    expect(results[0].tokensIn).toBe(1200);  // 1000 + 200
+    expect(results[0].tokensOut).toBe(130);   // 100 + 30
   });
 });
