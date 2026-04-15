@@ -126,7 +126,9 @@ export const syncFromOpenRouter = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const response = await fetch(OPENROUTER_MODELS_URL);
+    const response = await fetch(OPENROUTER_MODELS_URL, {
+      signal: AbortSignal.timeout(30_000),
+    });
     if (!response.ok) {
       console.error(`[syncFromOpenRouter] OpenRouter API returned ${response.status}`);
       return 0;

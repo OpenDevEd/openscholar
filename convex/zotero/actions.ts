@@ -216,6 +216,7 @@ async function fetchCollectionPage(
   });
   const response = await fetch(url.toString(), {
     headers: buildZoteroHeaders(apiKey),
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!response.ok) {
@@ -355,6 +356,7 @@ async function fetchCollectionByKey(
     buildZoteroUrl(`${prefix}/collections/${collectionKey}`).toString(),
     {
       headers: buildZoteroHeaders(apiKey),
+      signal: AbortSignal.timeout(30_000),
     }
   );
 
@@ -403,6 +405,7 @@ async function fetchAllTopItemsForCollection(
     });
     const response = await fetch(url.toString(), {
       headers: buildZoteroHeaders(apiKey),
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!response.ok) {
@@ -484,6 +487,7 @@ export const startOAuth = action({
         Authorization: generateOAuthHeader(oauthParams),
         "Content-Type": "application/x-www-form-urlencoded",
       },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {
@@ -577,6 +581,7 @@ export const completeOAuth = internalAction({
         Authorization: generateOAuthHeader(oauthParams),
         "Content-Type": "application/x-www-form-urlencoded",
       },
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {
@@ -718,6 +723,7 @@ export const fetchGroups = action({
       buildZoteroUrl(`/users/${connection.zoteroUserId}/groups`).toString(),
       {
         headers: buildZoteroHeaders(apiKey),
+        signal: AbortSignal.timeout(30_000),
       }
     );
 
@@ -892,6 +898,7 @@ export const fetchItems = action({
       console.log("[fetchItems] Fetching from URL:", url.toString());
       const response: Response = await fetch(url.toString(), {
         headers: buildZoteroHeaders(apiKey),
+        signal: AbortSignal.timeout(30_000),
       });
 
       console.log("[fetchItems] Response status:", response.status);
@@ -933,6 +940,7 @@ export const fetchItems = action({
           });
           const childrenResponse = await fetch(childrenUrl.toString(), {
             headers: buildZoteroHeaders(apiKey),
+            signal: AbortSignal.timeout(30_000),
           });
           if (childrenResponse.ok) {
             const children: ZoteroItemResponse[] = await childrenResponse.json();
@@ -1023,6 +1031,7 @@ export const getAttachments = internalAction({
       }).toString(),
       {
         headers: buildZoteroHeaders(apiKey),
+        signal: AbortSignal.timeout(30_000),
       }
     );
 
@@ -1092,6 +1101,7 @@ export const downloadFile = internalAction({
     try {
       const response = await fetch(downloadUrl, {
         headers: buildZoteroHeaders(apiKey),
+        signal: AbortSignal.timeout(60_000),
       });
 
       if (!response.ok) {

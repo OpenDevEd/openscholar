@@ -45,6 +45,7 @@ export const backfillPaperData = internalAction({
 
         const response = await fetch(
           `${OPENALEX_API_BASE}/${workId}?mailto=openscholar@sickrin.com`,
+          { signal: AbortSignal.timeout(30_000) },
         );
 
         if (!response.ok) {
