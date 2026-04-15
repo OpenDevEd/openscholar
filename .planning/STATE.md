@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
-stopped_at: Phase 97 context gathered
-last_updated: "2026-04-15T09:54:24.314Z"
-last_activity: 2026-04-15 -- Phase 96 execution started
+stopped_at: Phase 97 UI-SPEC approved
+last_updated: "2026-04-15T10:39:17.210Z"
+last_activity: 2026-04-15 -- Phase 97 execution started
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 24
+  total_plans: 29
   completed_plans: 24
-  percent: 100
+  percent: 83
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 96 — eval-loop-quality-sampling
+**Current focus:** Phase 97 — extraction-ui-polish
 
 ## Current Position
 
-Phase: 96 (eval-loop-quality-sampling) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 96
-Last activity: 2026-04-15 -- Phase 96 execution started
+Phase: 97 (extraction-ui-polish) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 97
+Last activity: 2026-04-15 -- Phase 97 execution started
 
 Progress: [          ] 0%
 
@@ -111,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Phase 97 context gathered
-Resume file: .planning/phases/97-extraction-ui-polish/97-CONTEXT.md
+Stopped at: Phase 97 UI-SPEC approved
+Resume file: .planning/phases/97-extraction-ui-polish/97-UI-SPEC.md
