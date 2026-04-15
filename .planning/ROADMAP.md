@@ -360,9 +360,9 @@ Plans:
   3. Failures log via `console.error` with the same JSON shape plus `{errorMessage, errorCategory, retryable}` — verified by a failure-path test
   4. The UI shows per-job papers-processed, average latency, estimated cost, and error counts fed by a typed Convex query (not `v.any()`)
   5. Each run persists `recall-on-include` and `citation-validity-rate` SLO metrics queryable via a typed Convex query
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 Plans:
-- [ ] 95-01-PLAN.md — Schema extension + ULID traceId + logging module with TDD
+- [x] 95-01-PLAN.md — Schema extension + ULID traceId + logging module with TDD
 - [ ] 95-02-PLAN.md — traceId propagation + structured log replacement + timing instrumentation
 - [ ] 95-03-PLAN.md — Per-job metrics query + SLO persistence in finalizer
 - [ ] 95-04-PLAN.md — JobMetricsPanel UI component + i18n seed
@@ -427,6 +427,6 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 92. Deterministic Citation Grounding | v6.0 | 2/2 | Complete    | 2026-04-15 |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
-| 95. Structured Observability & SLO Metrics | v6.0 | 0/TBD | Not started | - |
+| 95. Structured Observability & SLO Metrics | v6.0 | 1/4 | In Progress|  |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
 | 97. Extraction UI Polish | v6.0 | 0/TBD | Not started | - |
