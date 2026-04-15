@@ -1555,6 +1555,25 @@
       "json": "Download JSON",
       "xlsx": "Download Excel",
       "incompleteWarning": "Job not complete -- export may be partial"
+    },
+    "basket": {
+      "title": "Extraction basket",
+      "description": "{count, plural, one {paper} other {papers}}",
+      "cta": "Review & start extraction",
+      "emptyHeading": "No papers selected",
+      "emptyBody": "Add papers from your library, search results, or paste OpenAlex IDs to start an extraction job.",
+      "removeTooltip": "Remove from basket",
+      "removeAriaLabel": "Remove {title} from basket",
+      "triggerTooltip": "Open extraction basket",
+      "triggerAriaLabel": "Open extraction basket, {count} papers",
+      "alreadyInBasket": "Already in your extraction basket",
+      "sourceLabel": {
+        "library": "Library",
+        "collection": "Collection",
+        "search": "Search",
+        "manual": "Manual",
+        "zotero": "Zotero"
+      }
     }
   }
 }
