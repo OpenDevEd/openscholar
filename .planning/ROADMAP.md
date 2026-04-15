@@ -400,7 +400,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
-| 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete   | 2026-04-15 |
+| 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
