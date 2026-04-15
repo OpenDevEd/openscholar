@@ -303,7 +303,10 @@ Plans:
   3. OpenRouter calls pin `temperature: 0`, set `provider.order` with `allow_fallbacks`, and rely on Gemini automatic caching — verified by inspecting the built request payload in tests
   4. 10 questions on one paper run via `Promise.allSettled` with concurrency cap 5 and per-question `AbortSignal.timeout(60000)`, and a failure in one question does not abort the other nine — verified by a test
   5. Returned results match `{answer, confidence: "high"|"medium"|"low", evidence: {quote, source_id, start, end}, reasoning, model_used, critic_verdict, parsing_source}` shape, enforced by the Convex result validator
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 92: Deterministic Citation Grounding
 **Goal**: Prevent hallucinated quotes and false-positive answers by rejecting any extraction whose `evidence_quote` fails 85% Levenshtein similarity against the source span, running a critic pass that must return `supported`, emitting `insufficient_evidence` as a first-class answer, and rendering only the verbatim `source.text.slice(start, end)` in the UI.
@@ -314,7 +317,10 @@ Plans:
   2. A critic-pass prompt runs at `T=0` with the same cheap model and any `unsupported` verdict flips the result to `insufficient_evidence` — verified by a mocked-critic test
   3. The extraction result UI renders `source.text.slice(evidence_start_char, evidence_end_char)` and never the model's `evidence_quote` field — verified by a component test asserting the rendered string
   4. `insufficient_evidence` is a first-class answer state with confidence capped and a UI reason line rendered on the result card
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 93: Workflow Cancel, Retry, and Progress
 **Goal**: Make a running extraction job fully controllable: persist each paper's `workpoolId` for targeted cancel (no `cancelAll` blast radius), classify errors as retryable vs permanent so workpool retry fires only on transient failures, early-return cancelled/failed jobs to save LLM spend, and emit real-time progress through Convex reactive queries.
@@ -325,7 +331,10 @@ Plans:
   2. Network/5xx/429/timeout errors are thrown so workpool retry fires, while 404/400/validation errors return `{success: false}` and are not retried — verified by a classification test
   3. Any workflow-facing action early-returns when `job.status === "cancelled" | "failed"` with zero LLM tokens consumed — verified by a test that asserts the LLM mock is never called for a cancelled job
   4. Reactive Convex subscriptions stream `{processed, failed, remaining}` counters to the UI in under a second on paper completion — verified in the live progress E2E
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 94: Crash Prevention Sweep
 **Goal**: Eliminate every crash surface that can drop a user out of the app — route-segment error boundaries, defensive `useQuery` null/undefined handling, Clerk visibility-change retry, mutation rejection routed to toasts, UUID-delimited prompt injection fence, universal `AbortSignal.timeout` on external fetches, and a Zustand persist migration reset.
@@ -337,7 +346,10 @@ Plans:
   3. Every user-facing `useMutation` call-site catches rejections and routes them to a toast, so an uncaught rejection cannot bubble to the error boundary — verified by an integration test
   4. PDF body text is wrapped in per-request UUID delimiters and the system prompt instructs the model to trust only delimiter-wrapped content — verified by a prompt snapshot test
   5. Every external `fetch` (OpenRouter, PMC, arXiv, OA PDF hosts) has `AbortSignal.timeout` and a Zustand persist migration ladder collapsed to version 1 — verified by a grep test and a store migration test
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 95: Structured Observability & SLO Metrics
 **Goal**: Give future-us grep-friendly incident triage without a paid observability vendor — every extraction stage emits one structured `console.info` JSON line with ULID `traceId`, failures log with `{errorMessage, errorCategory, retryable}`, the UI shows per-job metrics, and two SLO metrics (recall-on-include, citation-validity-rate) are persisted per run.
@@ -349,7 +361,10 @@ Plans:
   3. Failures log via `console.error` with the same JSON shape plus `{errorMessage, errorCategory, retryable}` — verified by a failure-path test
   4. The UI shows per-job papers-processed, average latency, estimated cost, and error counts fed by a typed Convex query (not `v.any()`)
   5. Each run persists `recall-on-include` and `citation-validity-rate` SLO metrics queryable via a typed Convex query
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 96: Eval Loop & Quality Sampling
 **Goal**: Prevent model regressions and surface production quality drift by maintaining a 20-case hand-labeled golden set, running `vitest-evals` + `autoevals` with CI gating at 95% recall / 98% citation validity, and sampling one production answer per hour into a human-review queue that doubles as the golden-set growth pipeline.
@@ -361,7 +376,10 @@ Plans:
   3. CI blocks merges when recall-on-include drops below 95% or citation-validity-rate drops below 98% on the golden set — verified by a deliberately-failing canary branch
   4. An hourly Convex cron samples 1 production answer, runs the critic, and writes `{answerId, verdict, judgeModel, timestamp}` to a `qualityChecks` table
   5. A `getQualityTrend` query returns 7-day rolling `{supported, unsupported, partial}` counts and flagged `unsupported` samples land in a human-review queue table that doubles as the golden-set growth pipeline
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 97: Extraction UI Polish
 **Goal**: Ship the user-facing extraction experience on top of the stabilized backend — clean job creation flow, live progress with per-paper badges and cancel, results cards with clickable verbatim quote highlight, CSV/JSON/XLSX export reusing the library download helper, 6-locale i18n seeded upfront, and brand-aligned Clean/Friendly/Approachable design (OKLCH, Outfit, Framer Motion, WCAG AAA).
@@ -373,7 +391,10 @@ Plans:
   3. User sees results on a per-paper card with the clickable verbatim quote highlighted at the source character range — verified by a component test
   4. User exports results as CSV, JSON, or XLSX via the existing library download helper with no new export infrastructure — verified by a reuse test
   5. All extraction UI strings land in all six locale files (en, fr, es, de, ar, zh) BEFORE component development and pages use OKLCH color tokens, Outfit variable font, spring-based Framer Motion, and WCAG AAA contrast
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 **UI hint**: yes
 
 ## Progress
@@ -401,7 +422,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
-| 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
+| 91. Extraction Cascade Core | v6.0 | 0/2 | Not started | - |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
