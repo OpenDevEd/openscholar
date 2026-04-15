@@ -340,3 +340,123 @@ export const getPendingPapers = internalQuery({
     }));
   },
 });
+
+// ===================================================================
+// QUALITY SAMPLING QUERIES (EVAL-05, EVAL-06)
+// ===================================================================
+
+/**
+ * 7-day rolling quality trend from production sampling (EVAL-05).
+ *
+ * Returns aggregate counts of supported/unsupported/partial verdicts
+ * and a passRate (supported / total). Returns null for unauthenticated requests.
+ */
+export const getQualityTrend = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      supported: v.number(),
+      unsupported: v.number(),
+      partial: v.number(),
+      total: v.number(),
+      passRate: v.number(),
+    })
+  ),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const checks = await ctx.db
+      .query("qualityChecks")
+      .withIndex("by_timestamp", (q) => q.gte("timestamp", sevenDaysAgo))
+      .take(1000);
+
+    let supported = 0;
+    let unsupported = 0;
+    let partial = 0;
+
+    for (const check of checks) {
+      if (check.verdict === "supported") supported++;
+      else if (check.verdict === "unsupported") unsupported++;
+      else partial++;
+    }
+
+    const total = checks.length;
+    const passRate = total > 0 ? supported / total : 0;
+
+    return { supported, unsupported, partial, total, passRate };
+  },
+});
+
+/**
+ * Pending human-review queue for quality-flagged extraction answers (EVAL-06).
+ *
+ * Returns quality checks with reviewStatus=pending, joined with answer
+ * and paper data for review context. Bounded to 100 items.
+ * Returns null for unauthenticated requests.
+ */
+export const getReviewQueue = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.array(
+      v.object({
+        qualityCheckId: v.id("qualityChecks"),
+        answerId: v.id("extractionResults"),
+        verdict: v.string(),
+        judgeModel: v.string(),
+        timestamp: v.number(),
+        answer: v.union(v.string(), v.null()),
+        question: v.union(v.string(), v.null()),
+        evidenceQuote: v.union(v.string(), v.null()),
+        paperTitle: v.union(v.string(), v.null()),
+      })
+    )
+  ),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    // Get pending review items, most recent first
+    const pendingChecks = await ctx.db
+      .query("qualityChecks")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .take(100);
+
+    const pending = pendingChecks.filter((c) => c.reviewStatus === "pending");
+
+    const items = [];
+    for (const check of pending) {
+      // Join with extraction result
+      const result = await ctx.db.get(check.answerId);
+      // Join with paper for title
+      const paper = result ? await ctx.db.get(result.paperId) : null;
+      // Get question text from job
+      let questionText: string | null = null;
+      if (result) {
+        const job = await ctx.db.get(result.jobId);
+        if (job) {
+          const q = job.questions.find((q) => q.key === result.questionId);
+          questionText = q?.question ?? null;
+        }
+      }
+
+      items.push({
+        qualityCheckId: check._id,
+        answerId: check.answerId,
+        verdict: check.verdict,
+        judgeModel: check.judgeModel,
+        timestamp: check.timestamp,
+        answer: result?.answer ?? null,
+        question: questionText,
+        evidenceQuote: result?.evidenceQuote ?? null,
+        paperTitle: paper?.title ?? null,
+      });
+    }
+
+    return items;
+  },
+});

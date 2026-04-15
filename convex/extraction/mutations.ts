@@ -588,3 +588,34 @@ export const handleExtractionComplete = extractionPool.defineOnComplete({
     );
   },
 });
+
+// ===================================================================
+// QUALITY CHECK MUTATIONS (EVAL-06)
+// ===================================================================
+
+/**
+ * Update the review status of a quality check (EVAL-06, D-22).
+ *
+ * Auth-gated. Allows marking items as "reviewed" (dismissed) or "promoted" (added to golden set).
+ * Only accepts "reviewed" and "promoted" -- cannot reset to "pending".
+ */
+export const updateReviewStatus = mutation({
+  args: {
+    qualityCheckId: v.id("qualityChecks"),
+    reviewStatus: v.union(v.literal("reviewed"), v.literal("promoted")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAuth(ctx);
+
+    const check = await ctx.db.get(args.qualityCheckId);
+    if (!check) {
+      throw createError("NOT_FOUND", "Quality check not found");
+    }
+
+    await ctx.db.patch(args.qualityCheckId, {
+      reviewStatus: args.reviewStatus,
+    });
+    return null;
+  },
+});
