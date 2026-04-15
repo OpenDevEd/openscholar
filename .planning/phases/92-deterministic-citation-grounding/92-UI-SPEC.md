@@ -25,6 +25,12 @@ created: 2026-04-15
 
 ---
 
+## Focal Point
+
+Primary focal point: the EvidenceQuote block (left border accent + highlighted background) anchors the result card. Secondary: ConfidenceBadge + CriticVerdictBadge cluster signals trust at a glance.
+
+---
+
 ## Spacing Scale
 
 Declared values (must be multiples of 4):
@@ -48,10 +54,10 @@ Exceptions: none
 | Role | Size | Weight | Line Height | Usage in Phase 92 |
 |------|------|--------|-------------|--------------------|
 | Body | 14px (`text-sm`) | 400 (normal) | 1.43 (20px) | Evidence quote text, reasoning text |
-| Label | 12px (`text-xs`) | 500 (medium) | 1.33 (16px) | Badge text, "Source" label, critic verdict label |
+| Label | 12px (`text-xs`) | 600 (semibold) | 1.33 (16px) | Badge text, "Source" label, critic verdict label |
 | Heading | 16px (`text-base`) | 600 (semibold) | 1.5 (24px) | Card title (paper title / question text) |
 
-Source: Existing patterns in `components/ui/card.tsx` (CardTitle uses `font-semibold`), `components/ui/badge.tsx` (`text-xs font-medium`), `components/ui/dialog.tsx` (`text-sm` for descriptions).
+Source: Existing patterns in `components/ui/card.tsx` (CardTitle uses `font-semibold`), `components/ui/badge.tsx` (`text-xs` base). Badge labels use `font-semibold` (600) per this contract, overriding shadcn's default `font-medium` -- the 12px size provides sufficient hierarchy differentiation from 14px body text through size alone.
 
 ---
 
@@ -129,7 +135,7 @@ interface EvidenceQuoteProps {
 - Card header: question text in `text-base font-semibold` (16px, 600).
 - Body: reasoning text in `text-sm text-muted-foreground` (14px, 400).
 - Icon: Lucide `Info` at 16px, `text-muted-foreground`, positioned inline before the "Insufficient evidence" label.
-- Badge: "Insufficient evidence" using `Badge variant="secondary"` with `text-xs`.
+- Badge: "Insufficient evidence" using `Badge variant="secondary"` with `text-xs font-semibold`.
 - Confidence badge: always shows "Low" in the low-confidence color treatment.
 
 **States:**
@@ -146,7 +152,7 @@ interface EvidenceQuoteProps {
 
 **Visual Treatment:**
 - Extends existing `Badge` component. Does NOT create a new variant in badge.tsx -- uses `className` overrides.
-- Size: `text-xs` (12px), `font-medium` (500).
+- Size: `text-xs` (12px), `font-semibold` (600).
 - Rounded: `rounded-full` (matches existing badge default).
 - Colors: per semantic color table above.
 
@@ -164,7 +170,7 @@ interface EvidenceQuoteProps {
 
 **Visual Treatment:**
 - Small inline badge, positioned after the confidence badge with 8px gap.
-- Size: `text-xs` (12px), `font-medium` (500).
+- Size: `text-xs` (12px), `font-semibold` (600).
 - Uses `ai-surface` utility class for `supported` verdict.
 
 **Mapping:**
