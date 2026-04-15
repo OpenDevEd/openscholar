@@ -5,7 +5,9 @@ import {
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
+  buildCriticPrompt,
 } from "../lib/ai/core/prompts";
+import type { CriticPromptInput } from "../lib/ai/core/types";
 
 describe("buildEnhanceQueryPrompts", () => {
   it("returns system and prompt with expected markers for base case", () => {
@@ -146,5 +148,35 @@ describe("buildScreeningResponsesPrompts", () => {
       questions: ["Q?"],
     });
     expect(result.prompt).toContain("No abstract available");
+  });
+});
+
+describe("buildCriticPrompt (EXTR-05)", () => {
+  it("returns system and prompt with citation verification context", () => {
+    const input: CriticPromptInput = {
+      question: "How many participants?",
+      answer: "42 participants",
+      evidenceQuote: "The study enrolled 42 participants",
+      sourceSlice: "The study enrolled 42 participants in a randomized trial",
+    };
+    const result = buildCriticPrompt(input);
+    expect(result).toHaveProperty("system");
+    expect(result).toHaveProperty("prompt");
+    expect(result.system).toContain("citation verification");
+    expect(result.prompt).toContain("42 participants");
+    expect(result.prompt).toContain("The study enrolled 42 participants");
+  });
+
+  it("CriticPromptInput has all required string fields", () => {
+    const input: CriticPromptInput = {
+      question: "q",
+      answer: "a",
+      evidenceQuote: "eq",
+      sourceSlice: "ss",
+    };
+    expect(typeof input.question).toBe("string");
+    expect(typeof input.answer).toBe("string");
+    expect(typeof input.evidenceQuote).toBe("string");
+    expect(typeof input.sourceSlice).toBe("string");
   });
 });
