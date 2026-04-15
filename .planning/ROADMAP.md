@@ -396,8 +396,8 @@ Plans:
 **Plans**: 5 plans
 Plans:
 - [x] 97-01-PLAN.md — i18n seeding (6 locales), two new Convex queries, extraction export module
-- [ ] 97-02-PLAN.md — Job creation dialog with QuestionBuilder, TierSelector, cost preview, submit flow
-- [ ] 97-03-PLAN.md — StatusBadge, PaperResultCard, results route page, error boundaries
+- [x] 97-02-PLAN.md — Job creation dialog with QuestionBuilder, TierSelector, cost preview, submit flow
+- [x] 97-03-PLAN.md — StatusBadge, PaperResultCard, results route page, error boundaries
 - [ ] 97-04-PLAN.md — Sidebar integration (footer button, nav item), job history dialog, /extraction list page
 - [ ] 97-05-PLAN.md — Automated checks and human visual/functional verification checkpoint
 **UI hint**: yes
@@ -433,4 +433,4 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 4/4 | Complete    | 2026-04-15 |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
-| 97. Extraction UI Polish | v6.0 | 1/5 | In Progress|  |
+| 97. Extraction UI Polish | v6.0 | 3/5 | In Progress|  |
