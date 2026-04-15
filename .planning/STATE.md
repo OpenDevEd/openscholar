@@ -4,8 +4,8 @@ milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
 stopped_at: Phase 90 context gathered
-last_updated: "2026-04-15T01:58:49.901Z"
-last_activity: 2026-04-15 -- Phase 90 planning complete
+last_updated: "2026-04-15T02:00:13.129Z"
+last_activity: 2026-04-15 -- Phase 90 execution started
 progress:
   total_phases: 10
   completed_phases: 2
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 89 — core-schema-workflow-skeleton
+**Current focus:** Phase 90 — free-first-parsing-waterfall
 
 ## Current Position
 
-Phase: 89 (core-schema-workflow-skeleton) — EXECUTING
-Plan: 1 of 2
-Status: Ready to execute
-Last activity: 2026-04-15 -- Phase 90 planning complete
+Phase: 90 (free-first-parsing-waterfall) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 90
+Last activity: 2026-04-15 -- Phase 90 execution started
 
 Progress: [          ] 0%
 

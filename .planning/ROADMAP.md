@@ -289,7 +289,7 @@ Plans:
   6. Each paper row records `parsing_source` as one of `pmc`/`arxiv`/`unpdf`/`gemini`/`abstract_only` and the result card renders it verbatim
 **Plans**: 3 plans
 Plans:
-- [ ] 90-01-PLAN.md — Schema fields, validators, convex.json, dependency installation, storeParsedText mutation
+- [x] 90-01-PLAN.md — Schema fields, validators, convex.json, dependency installation, storeParsedText mutation
 - [ ] 90-02-PLAN.md — Core parse.ts waterfall module (5 tiers) and workpool action wiring
 - [ ] 90-03-PLAN.md — Unit tests for all parsing tiers, timeout ceilings, and page cap
 
@@ -400,7 +400,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
-| 90. Free-First Parsing Waterfall | v6.0 | 0/3 | Planned | - |
+| 90. Free-First Parsing Waterfall | v6.0 | 1/3 | In Progress|  |
 | 91. Extraction Cascade Core | v6.0 | 0/TBD | Not started | - |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
