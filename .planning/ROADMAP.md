@@ -317,10 +317,11 @@ Plans:
   2. A critic-pass prompt runs at `T=0` with the same cheap model and any `unsupported` verdict flips the result to `insufficient_evidence` — verified by a mocked-critic test
   3. The extraction result UI renders `source.text.slice(evidence_start_char, evidence_end_char)` and never the model's `evidence_quote` field — verified by a component test asserting the rendered string
   4. `insufficient_evidence` is a first-class answer state with confidence capped and a UI reason line rendered on the result card
-**Plans**: 2 plans
+**Plans:** 2 plans
 Plans:
-- [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [x] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [ ] 92-01-PLAN.md -- Levenshtein superRefine, critic pass, insufficient_evidence state, persistence wiring, tests
+- [ ] 92-02-PLAN.md -- EvidenceQuote, InsufficientEvidenceCard, ConfidenceBadge, CriticVerdictBadge components, i18n keys
+
 
 ### Phase 93: Workflow Cancel, Retry, and Progress
 **Goal**: Make a running extraction job fully controllable: persist each paper's `workpoolId` for targeted cancel (no `cancelAll` blast radius), classify errors as retryable vs permanent so workpool retry fires only on transient failures, early-return cancelled/failed jobs to save LLM spend, and emit real-time progress through Convex reactive queries.
@@ -423,7 +424,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 91. Extraction Cascade Core | v6.0 | 2/2 | Complete    | 2026-04-15 |
-| 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
+| 92. Deterministic Citation Grounding | v6.0 | 0/2 | Planned | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 0/TBD | Not started | - |
