@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
-stopped_at: Phase 94 context gathered
-last_updated: "2026-04-15T06:28:23.141Z"
-last_activity: 2026-04-15
+stopped_at: Phase 95 context gathered
+last_updated: "2026-04-15T07:15:45.508Z"
+last_activity: 2026-04-15 -- Phase 94 execution started
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 16
-  completed_plans: 16
+  completed_phases: 7
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 93 — Workflow Cancel, Retry, and Progress
+**Current focus:** Phase 94 — crash-prevention-sweep
 
 ## Current Position
 
-Phase: 94
-Plan: Not started
-Status: Executing Phase 93
-Last activity: 2026-04-15
+Phase: 94 (crash-prevention-sweep) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 94
+Last activity: 2026-04-15 -- Phase 94 execution started
 
 Progress: [          ] 0%
 
@@ -111,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Phase 94 context gathered
-Resume file: .planning/phases/94-crash-prevention-sweep/94-CONTEXT.md
+Stopped at: Phase 95 context gathered
+Resume file: .planning/phases/95-structured-observability-slo-metrics/95-CONTEXT.md
