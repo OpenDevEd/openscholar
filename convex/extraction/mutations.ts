@@ -15,6 +15,8 @@ import { createError } from "../lib/errors";
 import { MAX_EXTRACTION_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { workflow } from "../workflow";
 import { extractionPool } from "../workpool";
+import type { WorkId } from "@convex-dev/workpool";
+import type { WorkflowId } from "@convex-dev/workflow";
 
 const TERMINAL_STATUSES = ["completed", "cancelled", "failed"] as const;
 
@@ -136,6 +138,100 @@ export const createExtractionJob = mutation({
 
     // 9. Return job ID
     return { jobId };
+  },
+});
+
+/**
+ * Cancel a running extraction job.
+ *
+ * Per D-01: Uses targeted per-paper cancel via extractionPool.cancel(ctx, workpoolId)
+ * instead of cancelAll to avoid cross-user blast radius.
+ *
+ * Steps:
+ * 1. Auth + ownership check (D-03)
+ * 2. Terminal-status idempotent guard (D-03)
+ * 3. Set job status to cancelled FIRST (D-05) -- triggers early-return guards
+ * 4. Cancel parent workflow (D-02)
+ * 5. Iterate papers, cancel each workpool item, mark as cancelled (D-01)
+ * 6. Update cancelledPapers counter (D-13)
+ */
+export const cancelExtractionJob = mutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // 1. Auth check (D-03)
+    const user = await requireAuth(ctx);
+
+    // 2. Load job + ownership check (D-03)
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) {
+      throw createError("EXTRACTION_JOB_NOT_FOUND", "Extraction job not found");
+    }
+
+    // 3. Terminal status idempotent guard (D-03)
+    if (
+      TERMINAL_STATUSES.includes(
+        job.status as (typeof TERMINAL_STATUSES)[number]
+      )
+    ) {
+      return null;
+    }
+
+    // 4. Set job status to cancelled FIRST (D-05)
+    // This triggers early-return guards in in-flight workflow steps and workpool actions
+    await ctx.db.patch(args.jobId, {
+      status: "cancelled",
+      updatedAt: Date.now(),
+    });
+
+    // 5. Cancel workflow (D-02)
+    if (job.workflowId) {
+      try {
+        await workflow.cancel(ctx, job.workflowId as WorkflowId);
+      } catch (e) {
+        console.warn(`[cancelExtractionJob] Failed to cancel workflow: ${e}`);
+      }
+    }
+
+    // 6. Cancel each non-terminal paper's workpool item (D-01)
+    // Use by_job index (not by_job_status) to get ALL papers regardless of status
+    const papers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_EXTRACTION_PAPERS_PER_JOB);
+
+    let cancelledCount = 0;
+    for (const paper of papers) {
+      // Skip papers already in terminal states
+      if (["completed", "failed", "cancelled"].includes(paper.status)) continue;
+
+      // Cancel workpool item if workpoolId exists (papers not yet enqueued won't have one)
+      if (paper.workpoolId) {
+        try {
+          await extractionPool.cancel(ctx, paper.workpoolId as WorkId);
+        } catch (e) {
+          // Workpool item may already be finished -- safe to ignore
+          console.warn(
+            `[cancelExtractionJob] Failed to cancel workpool item for paper ${paper._id}: ${e}`
+          );
+        }
+      }
+
+      // Mark paper as cancelled
+      await ctx.db.patch(paper._id, {
+        status: "cancelled",
+        updatedAt: Date.now(),
+      });
+      cancelledCount++;
+    }
+
+    // 7. Update cancelledPapers counter (D-13)
+    await ctx.db.patch(args.jobId, {
+      cancelledPapers: (job.cancelledPapers ?? 0) + cancelledCount,
+      updatedAt: Date.now(),
+    });
+
+    return null;
   },
 });
 
@@ -376,8 +472,10 @@ export const finalizeJobIfDone = internalMutation({
       return null;
     }
 
-    // Check if all papers are processed
-    if (job.processedPapers + job.failedPapers >= job.totalPapers) {
+    // Check if all papers are processed (includes cancelled papers)
+    const handled =
+      job.processedPapers + job.failedPapers + (job.cancelledPapers ?? 0);
+    if (handled >= job.totalPapers) {
       const now = Date.now();
       await ctx.db.patch(args.jobId, {
         status: "completed",
@@ -429,16 +527,26 @@ export const handleExtractionComplete = extractionPool.defineOnComplete({
         processedPapers: (job.processedPapers ?? 0) + 1,
         updatedAt: Date.now(),
       });
+    } else if (result.kind === "canceled") {
+      // Cancelled by cancelExtractionJob -- count as cancelled, not failed
+      // SPELLING: workpool uses American "canceled" (1 L), schema uses British "cancelled" (2 Ls)
+      await ctx.db.patch(context.paperId, {
+        status: "cancelled",
+        updatedAt: Date.now(),
+      });
+
+      // Increment cancelledPapers (not failedPapers)
+      await ctx.db.patch(context.jobId, {
+        cancelledPapers: (job.cancelledPapers ?? 0) + 1,
+        updatedAt: Date.now(),
+      });
     } else {
-      // Error or cancelled
+      // Failed -- mark paper failed with error details
       await ctx.db.patch(context.paperId, {
         status: "failed",
         completedAt: Date.now(),
         updatedAt: Date.now(),
-        errorMessage:
-          result.kind === "error"
-            ? String(result.error).slice(0, 500)
-            : "Cancelled",
+        errorMessage: String(result.error).slice(0, 500),
       });
 
       // Increment failedPapers
