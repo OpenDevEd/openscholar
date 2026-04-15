@@ -612,17 +612,19 @@ export function StatusBadge({ status, className }: { status: PaperStatus; classN
 | A3 | PostHog event name `extraction_job_created` follows project naming convention | Code Examples | Low -- naming is Claude's discretion per CONTEXT.md |
 | A4 | Credit cost estimation for extraction can reuse the screening credit constant pattern | Architecture Patterns | Medium -- extraction may have different per-paper costs than screening. The `ESTIMATED_CREDITS_PER_PAPER` constant may need an extraction-specific counterpart |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Credit Cost Estimation for Extraction**
+1. **Credit Cost Estimation for Extraction** -- RESOLVED
    - What we know: Screening uses `ESTIMATED_CREDITS_PER_PAPER` constant from `convex/lib/constants.ts`. Extraction has different per-paper costs (parsing + LLM extraction + critic pass).
    - What's unclear: Whether an `ESTIMATED_CREDITS_PER_EXTRACTION_PAPER` constant exists or needs to be created, and what the per-paper cost factor should be.
    - Recommendation: Check `convex/lib/constants.ts` during planning. If no extraction-specific constant exists, create one. The cost preview is an estimate, so an approximate value is acceptable for MVP.
+   - **RESOLVED:** Confirmed no extraction-specific constant exists in `convex/lib/constants.ts`. Plan 02 (job creation dialog) creates `ESTIMATED_CREDITS_PER_EXTRACTION_PAPER` in `convex/lib/constants.ts` with a conservative estimate. The cost preview uses this constant multiplied by paper count, matching the screening pattern.
 
-2. **Question `expectedType` Usage in Job Creation**
+2. **Question `expectedType` Usage in Job Creation** -- RESOLVED
    - What we know: The `extractionQuestionValidator` includes `expectedType: v.optional(v.string())` for guiding LLM output format (e.g., "number", "date", "boolean").
    - What's unclear: Whether the job creation UI should expose `expectedType` selection to users or default to unset.
    - Recommendation: For MVP, omit `expectedType` from the UI (keep it optional/unset). The LLM handles free-text questions well. Can add type hints in a future iteration.
+   - **RESOLVED:** Per CONTEXT.md D-02 (inline question builder with text inputs), `expectedType` is omitted from the job creation UI. Questions are free-text only. The field remains optional/unset in submitted data. The LLM handles type inference from question phrasing.
 
 ## Project Constraints (from CLAUDE.md)
 
