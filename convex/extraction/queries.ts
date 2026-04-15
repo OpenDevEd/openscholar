@@ -2,7 +2,9 @@ import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import {
   extractionJobStatusValidator,
+  extractionPaperStatusValidator,
   extractionQuestionValidator,
+  parsingSourceValidator,
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
 import { MAX_EXTRACTION_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -141,6 +143,44 @@ export const getJobInternal = internalQuery({
       workflowId: job.workflowId,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
+    };
+  },
+});
+
+/**
+ * Load a single extraction paper by ID from background context (no auth).
+ *
+ * Used by the workpool action to check paper state before processing
+ * (idempotency guard, DOI/openalexId access for parseFullText).
+ */
+export const getPaperInternal = internalQuery({
+  args: { paperId: v.id("extractionPapers") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("extractionPapers"),
+      jobId: v.id("extractionJobs"),
+      openalexId: v.string(),
+      title: v.string(),
+      doi: v.optional(v.string()),
+      status: extractionPaperStatusValidator,
+      bodyText: v.optional(v.string()),
+      parsingSource: v.optional(parsingSourceValidator),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) return null;
+
+    return {
+      _id: paper._id,
+      jobId: paper.jobId,
+      openalexId: paper.openalexId,
+      title: paper.title,
+      doi: paper.doi,
+      status: paper.status,
+      bodyText: paper.bodyText,
+      parsingSource: paper.parsingSource,
     };
   },
 });
