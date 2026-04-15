@@ -422,7 +422,8 @@
   },
   "sidebar": {
     "expandSidebar": "साइडबार विस्तृत करें (Ctrl+B)",
-    "collapseSidebar": "साइडबार संक्षिप्त करें (Ctrl+B)"
+    "collapseSidebar": "साइडबार संक्षिप्त करें (Ctrl+B)",
+    "extraction": "Extraction"
   },
   "downloads": {
     "downloadAll": "सब डाउनलोड करें",

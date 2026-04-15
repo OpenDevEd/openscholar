@@ -422,7 +422,8 @@
   },
   "sidebar": {
     "expandSidebar": "展开侧边栏 (Ctrl+B)",
-    "collapseSidebar": "折叠侧边栏 (Ctrl+B)"
+    "collapseSidebar": "折叠侧边栏 (Ctrl+B)",
+    "extraction": "Extraction"
   },
   "downloads": {
     "downloadAll": "下载全部",

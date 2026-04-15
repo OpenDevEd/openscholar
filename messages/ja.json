@@ -422,7 +422,8 @@
   },
   "sidebar": {
     "expandSidebar": "サイドバーを展開（Ctrl+B）",
-    "collapseSidebar": "サイドバーを折りたたむ（Ctrl+B）"
+    "collapseSidebar": "サイドバーを折りたたむ（Ctrl+B）",
+    "extraction": "Extraction"
   },
   "downloads": {
     "downloadAll": "すべてダウンロード",

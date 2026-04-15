@@ -45,10 +45,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
+  FlaskConical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
+import { ExtractionJobsDialog } from "@/components/extraction/extraction-jobs-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -364,6 +366,99 @@ function ScreeningFooterButton({
   );
 }
 
+function ExtractionFooterButton({
+  onClick,
+  isCollapsed,
+  progressPercent,
+  label,
+}: {
+  onClick: () => void;
+  isCollapsed: boolean;
+  progressPercent: number | null;
+  label: string;
+}) {
+  const circumference = 2 * Math.PI * 10;
+
+  const icon = (
+    <span className="relative inline-flex items-center justify-center">
+      <FlaskConical className="h-[1.1rem] w-[1.1rem]" />
+      {progressPercent !== null && (
+        <svg
+          viewBox="0 0 24 24"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-[2] origin-center"
+          fill="none"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            opacity="0.1"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="oklch(0.70 0.17 54)"
+            strokeWidth="1.5"
+            strokeDasharray={circumference}
+            strokeDashoffset={
+              circumference - (circumference * progressPercent) / 100
+            }
+            strokeLinecap="round"
+            transform="rotate(-90 12 12)"
+            className="transition-[stroke-dashoffset] duration-500 ease-out"
+          />
+        </svg>
+      )}
+    </span>
+  );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClick}
+            className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent/80"
+            aria-label="Extraction jobs"
+          >
+            {icon}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="flex items-center gap-2">
+          {label}
+          {progressPercent !== null && (
+            <span className="text-xs text-muted-foreground">
+              {Math.round(progressPercent)}%
+            </span>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent/80"
+      aria-label="Extraction jobs"
+    >
+      {icon}
+      {progressPercent !== null && (
+        <span className="ml-1 text-xs tabular-nums text-muted-foreground">
+          {Math.round(progressPercent)}%
+        </span>
+      )}
+    </Button>
+  );
+}
+
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const tc = useTranslations("common");
   const ts = useTranslations("sidebar");
@@ -371,6 +466,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { phase } = useAuthReadiness();
   const goToSignIn = useSignInRedirect();
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
+  const [isExtractionJobsOpen, setIsExtractionJobsOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
@@ -393,6 +489,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     activeJob
       ? activeJob.totalPapers > 0
         ? (activeJob.processedPapers / activeJob.totalPapers) * 100
+        : 0
+      : null;
+
+  // Extraction job progress for footer button
+  const { data: extractionJobs } = useProtectedQuery(
+    api.extraction.queries.listUserExtractionJobs,
+    { limit: 1 },
+  );
+  const activeExtractionJob = extractionJobs?.find(
+    (j) => j.status === "pending" || j.status === "processing",
+  );
+  const extractionProgressPercent =
+    activeExtractionJob
+      ? activeExtractionJob.totalPapers > 0
+        ? (activeExtractionJob.processedPapers / activeExtractionJob.totalPapers) * 100
         : 0
       : null;
 
@@ -429,6 +540,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     if (pathname.includes("/bookmarks")) return "bookmarks";
     if (pathname.includes("/library")) return "library";
     if (pathname.includes("/history")) return "history";
+    if (pathname.includes("/extraction")) return "extraction";
     if (pathname.includes("/ai-enhancement")) return "ai-enhancement";
     return null;
   };
@@ -510,6 +622,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
             index={3}
+          />
+
+          <NavItem
+            href="/extraction"
+            icon={FlaskConical}
+            label={ts("extraction")}
+            isActive={currentPageValue === "extraction"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={4}
           />
         </motion.div>
       </div>
@@ -738,6 +860,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 progressPercent={progressPercent}
                 label={tc("screening")}
               />
+              <ExtractionFooterButton
+                onClick={() => phase === "authenticated" ? setIsExtractionJobsOpen(true) : goToSignIn()}
+                isCollapsed={false}
+                progressPercent={extractionProgressPercent}
+                label={ts("extraction")}
+              />
               <ThemeToggle />
               <LanguageSwitcher isCollapsed={false} />
             </div>
@@ -751,6 +879,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               progressPercent={progressPercent}
               label={tc("screening")}
             />
+            <ExtractionFooterButton
+              onClick={() => phase === "authenticated" ? setIsExtractionJobsOpen(true) : goToSignIn()}
+              isCollapsed={true}
+              progressPercent={extractionProgressPercent}
+              label={ts("extraction")}
+            />
             <ThemeToggle />
             <LanguageSwitcher isCollapsed={true} />
             <AuthButton isCollapsed={true} />
@@ -761,6 +895,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <ScreeningJobsDialog
         open={isScreeningJobsOpen}
         onOpenChange={setIsScreeningJobsOpen}
+      />
+
+      <ExtractionJobsDialog
+        open={isExtractionJobsOpen}
+        onOpenChange={setIsExtractionJobsOpen}
       />
     </div>
   );
