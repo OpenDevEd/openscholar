@@ -1,0 +1,38 @@
+name: Evals
+
+on:
+  pull_request:
+    paths:
+      - 'convex/extraction/**'
+      - 'lib/extraction/**'
+      - 'tests/evals/**'
+      - 'lib/ai/core/prompts.ts'
+
+jobs:
+  eval-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUN_EVALS: "1"
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # autoevals Factuality scorer uses OpenAI-compatible API.
+      # Route through OpenRouter's OpenAI-compatible endpoint.
+      OPENAI_BASE_URL: "https://openrouter.ai/api/v1"
+      OPENAI_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # Placeholder env vars required by transitive imports
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      NEXT_PUBLIC_CONVEX_URL: https://example.convex.cloud
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run eval suite
+        run: pnpm vitest run tests/evals/ --reporter=verbose
