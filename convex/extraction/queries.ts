@@ -8,6 +8,7 @@ import {
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
 import { MAX_EXTRACTION_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { computeCostUsd } from "./logging";
 
 /**
  * Get real-time progress of an extraction job.
@@ -59,6 +60,93 @@ export const getExtractionProgress = query({
       failedPapers: job.failedPapers,
       cancelledPapers: job.cancelledPapers ?? 0,
       percentComplete,
+    };
+  },
+});
+
+/**
+ * Get per-job operational and SLO metrics for the UI (OBS-04, OBS-05).
+ *
+ * Returns aggregated metrics computed from extractionPapers and
+ * extractionResults tables, plus persisted SLO metrics from the job row.
+ *
+ * Auth follows getExtractionProgress pattern (D-17):
+ * getCurrentUser -> job ownership check -> null if unauthorized.
+ */
+export const getExtractionJobMetrics = query({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      papersProcessed: v.number(),
+      averageLatencyMs: v.union(v.number(), v.null()),
+      estimatedCostUsd: v.number(),
+      errorCount: v.number(),
+      citationValidityRate: v.union(v.number(), v.null()),
+      recallOnInclude: v.union(v.number(), v.null()),
+    })
+  ),
+  handler: async (ctx, args) => {
+    // Auth + ownership guard (D-17)
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.userId !== user._id) return null;
+
+    // Compute averageLatencyMs from completed papers (D-14)
+    const completedPapers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job_status", (q) =>
+        q.eq("jobId", args.jobId).eq("status", "completed")
+      )
+      .take(MAX_EXTRACTION_PAPERS_PER_JOB);
+
+    const latencies = completedPapers
+      .filter((p) => p.completedAt != null && p.createdAt != null)
+      .map((p) => p.completedAt! - p.createdAt);
+
+    const averageLatencyMs =
+      latencies.length > 0
+        ? Math.round(
+            latencies.reduce((sum, l) => sum + l, 0) / latencies.length
+          )
+        : null;
+
+    // Compute estimatedCostUsd from results (D-15)
+    const results = await ctx.db
+      .query("extractionResults")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .take(MAX_EXTRACTION_PAPERS_PER_JOB * 10);
+
+    const estimatedCostUsd = results.reduce(
+      (sum, r) =>
+        sum +
+        computeCostUsd(
+          r.modelUsed ?? "",
+          r.tokensIn ?? 0,
+          r.tokensOut ?? 0
+        ),
+      0
+    );
+
+    // errorCount from failed papers (D-16)
+    const failedPapers = await ctx.db
+      .query("extractionPapers")
+      .withIndex("by_job_status", (q) =>
+        q.eq("jobId", args.jobId).eq("status", "failed")
+      )
+      .take(MAX_EXTRACTION_PAPERS_PER_JOB);
+    const errorCount = failedPapers.length;
+
+    // SLO metrics from job row (D-21)
+    return {
+      papersProcessed: job.processedPapers,
+      averageLatencyMs,
+      estimatedCostUsd,
+      errorCount,
+      citationValidityRate: job.citationValidityRate ?? null,
+      recallOnInclude: job.recallOnInclude ?? null,
     };
   },
 });
