@@ -58,11 +58,11 @@ Exceptions: none
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px | 400 (regular) | 1.5 |
-| Label | 12px | 500 (medium) | 1.4 |
+| Label | 12px | 400 (regular) | 1.4 |
 | Heading | 16px | 600 (semibold) | 1.2 |
 | Metric Value | 20px | 600 (semibold) | 1.2 |
 
-**Rationale:** Metric values at 20px semibold provide visual weight for the four key numbers. Labels at 12px medium sit below each value as descriptors. Body at 14px is the project standard for detail text. Heading at 16px semibold is used for the panel title "Job Metrics".
+**Rationale:** Metric values at 20px semibold provide visual weight for the four key numbers. Labels at 12px regular sit below each value as descriptors -- the smaller size alone provides sufficient visual distinction from 14px body text without requiring a separate weight. Body at 14px is the project standard for detail text. Heading at 16px semibold is used for the panel title "Job Metrics". Two weights only: 400 (regular) for body and labels, 600 (semibold) for headings and metric values.
 
 Source: Project convention (Outfit variable font from `globals.css`)
 
