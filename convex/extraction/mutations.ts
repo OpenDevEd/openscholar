@@ -483,10 +483,29 @@ export const finalizeJobIfDone = internalMutation({
       job.processedPapers + job.failedPapers + (job.cancelledPapers ?? 0);
     if (handled >= job.totalPapers) {
       const now = Date.now();
+
+      // Compute citationValidityRate (D-19, OBS-05)
+      // Count results with supported vs total non-null criticVerdict
+      const results = await ctx.db
+        .query("extractionResults")
+        .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+        .take(MAX_EXTRACTION_PAPERS_PER_JOB * 10);
+
+      const withVerdict = results.filter((r) => r.criticVerdict != null);
+      const supported = withVerdict.filter(
+        (r) => r.criticVerdict === "supported"
+      );
+      const citationValidityRate =
+        withVerdict.length > 0
+          ? supported.length / withVerdict.length
+          : null;
+
       await ctx.db.patch(args.jobId, {
         status: "completed",
         completedAt: now,
         updatedAt: now,
+        citationValidityRate,
+        recallOnInclude: null, // Phase 96 populates this via eval loop (D-20)
       });
     }
 
