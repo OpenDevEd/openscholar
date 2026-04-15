@@ -237,7 +237,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 - [x] **Phase 90: Free-First Parsing Waterfall** - Resolve full-text via OpenAlex metadata, Europe PMC, arXiv HTML, unpdf, and Gemini-as-PDF-parser with abort-signal ceilings and a 200-page cap (completed 2026-04-15)
 - [x] **Phase 91: Extraction Cascade Core** - Send whole-paper text to the three-tier OpenRouter cascade with flat 7-field Zod schema, Gemini caching, and per-question parallelism (completed 2026-04-15)
 - [x] **Phase 92: Deterministic Citation Grounding** - Enforce substring-match quoting, critic pass, insufficient_evidence state, and UI-rendered verbatim quotes (completed 2026-04-15)
-- [ ] **Phase 93: Workflow Cancel, Retry, and Progress** - Targeted cancel, retryable/permanent error taxonomy, early-return on cancelled jobs, and reactive progress updates
+- [x] **Phase 93: Workflow Cancel, Retry, and Progress** - Targeted cancel, retryable/permanent error taxonomy, early-return on cancelled jobs, and reactive progress updates (completed 2026-04-15)
 - [ ] **Phase 94: Crash Prevention Sweep** - Segment error boundaries, useQuery null handling, Clerk visibility retry, mutation rejection routing, prompt-injection delimiters, fetch timeouts, and Zustand persist reset
 - [ ] **Phase 95: Structured Observability & SLO Metrics** - ULID traceId propagation, structured JSON logging, per-job UI metrics, and recall/citation-validity SLO persistence
 - [ ] **Phase 96: Eval Loop & Quality Sampling** - 20-case golden set, vitest-evals gating, hourly production sampling cron, and human-review queue
@@ -336,7 +336,7 @@ Plans:
 Plans:
 - [x] 93-01-PLAN.md — Error classification module (retryable vs permanent) and unit tests
 - [x] 93-02-PLAN.md — Schema cancelledPapers field, cancelExtractionJob mutation, handleExtractionComplete split, progress query update, cancel tests
-- [ ] 93-03-PLAN.md — Error classification integration into workpoolActions, early-return guard verification tests
+- [x] 93-03-PLAN.md — Error classification integration into workpoolActions, early-return guard verification tests
 
 ### Phase 94: Crash Prevention Sweep
 **Goal**: Eliminate every crash surface that can drop a user out of the app — route-segment error boundaries, defensive `useQuery` null/undefined handling, Clerk visibility-change retry, mutation rejection routed to toasts, UUID-delimited prompt injection fence, universal `AbortSignal.timeout` on external fetches, and a Zustand persist migration reset.
@@ -426,7 +426,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 91. Extraction Cascade Core | v6.0 | 2/2 | Complete    | 2026-04-15 |
 | 92. Deterministic Citation Grounding | v6.0 | 2/2 | Complete    | 2026-04-15 |
-| 93. Workflow Cancel, Retry, and Progress | v6.0 | 2/3 | In Progress|  |
+| 93. Workflow Cancel, Retry, and Progress | v6.0 | 3/3 | Complete   | 2026-04-15 |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 0/TBD | Not started | - |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
