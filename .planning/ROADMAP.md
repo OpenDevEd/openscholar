@@ -239,7 +239,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 - [x] **Phase 92: Deterministic Citation Grounding** - Enforce substring-match quoting, critic pass, insufficient_evidence state, and UI-rendered verbatim quotes (completed 2026-04-15)
 - [x] **Phase 93: Workflow Cancel, Retry, and Progress** - Targeted cancel, retryable/permanent error taxonomy, early-return on cancelled jobs, and reactive progress updates (completed 2026-04-15)
 - [ ] **Phase 94: Crash Prevention Sweep** - Segment error boundaries, useQuery null handling, Clerk visibility retry, mutation rejection routing, prompt-injection delimiters, fetch timeouts, and Zustand persist reset
-- [ ] **Phase 95: Structured Observability & SLO Metrics** - ULID traceId propagation, structured JSON logging, per-job UI metrics, and recall/citation-validity SLO persistence
+- [x] **Phase 95: Structured Observability & SLO Metrics** - ULID traceId propagation, structured JSON logging, per-job UI metrics, and recall/citation-validity SLO persistence (completed 2026-04-15)
 - [ ] **Phase 96: Eval Loop & Quality Sampling** - 20-case golden set, vitest-evals gating, hourly production sampling cron, and human-review queue
 - [ ] **Phase 97: Extraction UI Polish** - Job creation flow, live progress with cancel, verbatim quote rendering, export reuse, 6-locale seed, and brand-aligned design
 
@@ -360,12 +360,12 @@ Plans:
   3. Failures log via `console.error` with the same JSON shape plus `{errorMessage, errorCategory, retryable}` — verified by a failure-path test
   4. The UI shows per-job papers-processed, average latency, estimated cost, and error counts fed by a typed Convex query (not `v.any()`)
   5. Each run persists `recall-on-include` and `citation-validity-rate` SLO metrics queryable via a typed Convex query
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 Plans:
 - [x] 95-01-PLAN.md — Schema extension + ULID traceId + logging module with TDD
 - [x] 95-02-PLAN.md — traceId propagation + structured log replacement + timing instrumentation
 - [x] 95-03-PLAN.md — Per-job metrics query + SLO persistence in finalizer
-- [ ] 95-04-PLAN.md — JobMetricsPanel UI component + i18n seed
+- [x] 95-04-PLAN.md — JobMetricsPanel UI component + i18n seed
 
 ### Phase 96: Eval Loop & Quality Sampling
 **Goal**: Prevent model regressions and surface production quality drift by maintaining a 20-case hand-labeled golden set, running `vitest-evals` + `autoevals` with CI gating at 95% recall / 98% citation validity, and sampling one production answer per hour into a human-review queue that doubles as the golden-set growth pipeline.
@@ -427,6 +427,6 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 92. Deterministic Citation Grounding | v6.0 | 2/2 | Complete    | 2026-04-15 |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 3/3 | Complete    | 2026-04-15 |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
-| 95. Structured Observability & SLO Metrics | v6.0 | 3/4 | In Progress|  |
+| 95. Structured Observability & SLO Metrics | v6.0 | 4/4 | Complete   | 2026-04-15 |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
 | 97. Extraction UI Polish | v6.0 | 0/TBD | Not started | - |
