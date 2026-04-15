@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
 stopped_at: Phase 90 context gathered
-last_updated: "2026-04-15T01:08:46.161Z"
-last_activity: 2026-04-15 -- Phase 89 execution started
+last_updated: "2026-04-15T01:58:49.901Z"
+last_activity: 2026-04-15 -- Phase 90 planning complete
 progress:
   total_phases: 10
   completed_phases: 2
-  total_plans: 6
+  total_plans: 9
   completed_plans: 6
-  percent: 100
+  percent: 67
 ---
 
 # Project State
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 Phase: 89 (core-schema-workflow-skeleton) — EXECUTING
 Plan: 1 of 2
-Status: Executing Phase 89
-Last activity: 2026-04-15 -- Phase 89 execution started
+Status: Ready to execute
+Last activity: 2026-04-15 -- Phase 90 planning complete
 
 Progress: [          ] 0%
 
