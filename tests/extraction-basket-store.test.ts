@@ -149,7 +149,10 @@ describe("basketStorage", () => {
       state: { papers: [["W42", entry]] },
       version: 1,
     });
-    const result = basketStorage.getItem("test-key");
+    // Our basketStorage.getItem is synchronous (not async)
+    const result = basketStorage.getItem("test-key") as Awaited<
+      ReturnType<typeof basketStorage.getItem>
+    >;
     expect(result?.state.papers).toBeInstanceOf(Map);
     expect(result?.state.papers.get("W42")?.openAlexId).toBe("W42");
   });
