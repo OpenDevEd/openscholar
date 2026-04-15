@@ -141,30 +141,20 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ Answer semantic grouping merging case/whitespace/synonym variants with expandable drill-down — v5.0
 - ✓ Recharts lazy-loaded via next/dynamic only when insights tab accessed — v5.0
 
+- ✓ Scorched-earth teardown of legacy extraction code (~15,800 LoC), 11 tables, RAG component, i18n keys — v6.0
+- ✓ New slim extraction schema (4 tables), durable workflow with batched enqueue, extractionPool workpool — v6.0
+- ✓ Free-first parsing waterfall: PMC JATS → arXiv HTML → unpdf → Gemini-as-PDF-parser → abstract-only with abort-signal ceilings and 200-page cap — v6.0
+- ✓ Three-tier OpenRouter cascade (Flash Lite → Flash → Haiku) with flat 7-field Zod schema, propertyOrdering, concurrency cap 5 — v6.0
+- ✓ Deterministic citation grounding: Levenshtein 85% superRefine, critic pass, insufficient_evidence first-class state, UI renders verbatim slice() — v6.0
+- ✓ Targeted cancel via per-paper workpoolId, retryable/permanent error taxonomy, early-return guard, reactive progress subscriptions — v6.0
+- ✓ Route-segment error boundaries, Clerk visibility-change retry, mutation-to-toast routing — v6.0
+- ✓ ULID traceId propagation across all 4 extraction stages, structured JSON logging, per-job metrics query, SLO persistence — v6.0
+- ✓ Golden set eval framework, hourly production quality sampling cron, human-review queue backend — v6.0
+- ✓ Extraction UI: job creation dialog, live progress with cancel, results cards with verbatim quotes, export, JobMetricsPanel with SLO bars — v6.0
+
 ### Active
 
-## Current Milestone: v6.0 Extraction MVP Rebuild
-
-**Goal:** Hot-swap the extraction pipeline with a clean, MVP-grade implementation — cheap OpenRouter models, free upstream full-text sources, deterministic citation grounding, and zero crash surfaces. Delete all legacy extraction code, tables, and data.
-
-**Target features:**
-- Scorched-earth teardown of all legacy extraction code and data (~9.6K LoC, 9 tables, RAG component, 8 debug modules)
-- Free-first parsing waterfall: OpenAlex metadata → Europe PMC `fullTextXML` → arXiv HTML → `unpdf` → Gemini-as-PDF-parser → abstract-only fallback
-- Cheap cascade via OpenRouter + AI SDK 6: Gemini 2.5 Flash Lite pre-screen → Gemini 3 Flash default → Claude Haiku 4.5 escalation; `response-healing` plugin, provider-order fallback
-- Whole-paper extraction in 1M context (no chunking, no RAG, no vector DB)
-- Deterministic citation grounding: flat 7-field Zod schema, `propertyOrdering` (reasoning-before-answer), `superRefine` + `fastest-levenshtein` 85% verification, UI always renders `chunk.text.slice()`
-- Critic-pass hallucination gate reused for online quality sampling
-- New durable workflow/workpool with per-job workpoolId tracking, targeted cancel, retryable/permanent error taxonomy, idempotent result save
-- Crash-prevention sweep: segment error boundaries, `useQuery` null/undefined audit, Clerk visibility-change retry, `AbortSignal.timeout` on all LLM calls, prompt-injection delimiters, PDF page cap
-- MVP eval loop: `vitest-evals` + `autoevals`, 20-case hand-labeled golden set, hourly Convex cron production sampling with auto-flag → human-review queue
-- Structured JSON logging + two metrics only: recall-on-include + citation-validity-rate
-
-**Key constraints:**
-- Legacy is DEAD. Destructive rebuild. No backward compat, no data migration — wipe tables and delete code.
-- Convex backend only; Vercel hosts frontend only.
-- Small user base — skip hot/cold split, sharded counters, circuit breaker, dead-letter table, Langfuse, Docling/MinerU/olmOCR, Contextual Retrieval, idempotency holds.
-- Models: Gemini 3 Flash / 2.5 Flash Lite / 3.1 Flash Lite / Haiku 4.5 via OpenRouter. Grok 4.1 Fast excluded (92.89% JSON validity is a dealbreaker for strict schemas).
-- Target cost: <$50/month total for MVP volume.
+(No active milestone — planning next milestone)
 
 ### Out of Scope
 
@@ -191,19 +181,12 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 through v5.0 (15 milestones, 87 phases, 179 plans). Latest: v5.0 (83 files, +12,465/-149).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Recharts (lazy-loaded), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import).
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `extractionRunDiffs`, `auditLogs`, `extractionJobStats`, `screeningJobs`, `screeningResults`.
-Test suite: 90+ Vitest test files (1072+ tests passing) covering unit tests across 7 domains + Stripe webhook handler, concurrent credit OCC, cascade deletion, debug gate, XSS safety, env validation, ExcelJS round-trip, subscription cron, job stats, screening export, translation key coverage, extraction insights components, bar scaling, confidence context, question status, and answer grouping tests. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean). Zero `any` type annotations in entire codebase (production + test code), verified by `scripts/verify-no-any.sh`.
-CI pipeline: 3 billing jobs (billing-live, billing-live-extended, billing-nightly).
-Library: Convex-backed with dual-path query (search index + regular indexes), junction table collections, CSV/JSON export via ExcelJS (dynamic import), two-column sidebar layout with collapsible filter panel, bounded count query.
-Shared UI: SidebarLayout (desktop two-column + mobile tabs), FilterSidebar (collapse/badge/clear chrome), FilterSection (reusable filter group) — used by both search and library pages.
-Extraction Insights: Color-coded summary cards with threshold-based accents, contextual ConfidenceBadge with tooltip, Recharts stacked horizontal bars (lazy-loaded via next/dynamic), question status dots and progress bars, answer semantic grouping with synonym merging and expandable drill-down.
-Security: AES-256-GCM encryption for API keys and Zotero keys via centralized `decryptApiKey` with structured audit logging, persistent `auditLogs` table with `writeAuditLog` internalMutation, XSS-safe `HighlightedText` component (no dangerouslySetInnerHTML), env var validation cron, assertPlanPriceConfig fail-fast, rate limiting on all exposed endpoints, debug functions registered as internalQuery/internalMutation (platform-enforced unreachability).
-Extraction: 18 shared typed validators, typed query return validators (zero v.any()), typed searchFilters schema, credit-guard pattern, incremental `extractionJobStats` aggregation with lazy backfill, `ExtractionResultWithReview` type derived from validator threaded through all downstream consumers.
-Type safety: Complete type safety across entire codebase — zero `: any`, `as any`, `any[]`, `<any>`, `Record<string, any>`, `v.any()` in user-authored code. Typed mock factories (DeepPartial<T>) for Convex context, Ids, documents, and Stripe events. GenericValidator replaces all Validator<any> instances.
-Performance: Batch review loading (no N+1), bounded .collect() calls with .take(N) guards and shared MAX constants from queryBounds.ts, O(1) library count via denormalized counter, subscription cron batching with 45s circuit-breaker, `by_expiry` and `by_status_updatedAt` composite indexes, dynamic ExcelJS import (~500KB bundle savings), Recharts lazy-loaded via next/dynamic (~65KB gzipped deferred), ~40 queries annotated with cardinality comments.
-Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation cron, GDPR-compliant user cascade delete covering extraction jobs and Zotero connections.
+Shipped v1.0 through v6.0 (16 milestones, 97 phases, 208 plans). Latest: v6.0 (342 files, +57,552/-27,902).
+Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Recharts (lazy-loaded), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import), `@convex-dev/workflow` (durable extraction workflow), `@openrouter/ai-sdk-provider` (LLM cascade), `fastest-levenshtein` (citation grounding), `fast-xml-parser` (PMC JATS), `linkedom` (arXiv HTML), `unpdf` (PDF parsing), `ulid` (trace IDs).
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `auditLogs`, `screeningJobs`, `screeningResults`, `extractionJobs`, `extractionPapers`, `extractionQuestions`, `extractionResults`, `qualityChecks`.
+Extraction pipeline: Free-first parsing waterfall (PMC → arXiv → unpdf → Gemini → abstract-only), three-tier OpenRouter cascade (Flash Lite → Flash → Haiku), deterministic citation grounding (Levenshtein 85% + critic pass), durable workflow with targeted cancel and reactive progress, structured JSON logging with ULID traceId, SLO metrics (recall-on-include, citation-validity-rate).
+Test suite: Vitest tests covering unit tests across 7+ domains + extraction pipeline, parsing waterfall, error classification, citation grounding, eval framework. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean).
+Known v6.0 gaps: Job creation flow unreachable (ExtractionDialog papers prop unconnected), quality trend/review queue backends have no UI consumers, `provider.order` missing from cascade config.
 
 ## Constraints
 
@@ -314,6 +297,16 @@ Maintenance: Hourly cron for expired OAuth token cleanup, 24h env var validation
 | Synonym grouping: case/whitespace/basic only | MVP complexity; fuzzy/NLP deferred to v5.1+ | ✓ Good — covers common duplicates without over-engineering |
 | GroupedAnswerRow local useState | Expansion state not lifted to parent | ✓ Good — simple, no cross-component coupling |
 | IIFE pattern for grouping computation in JSX | synonymMap built once, shared by answer and disagreement transforms | ✓ Good — avoids double computation |
+| Scorched-earth teardown before rebuild | Delete all legacy code first, build new on clean slate | ✓ Good — zero dangling references, clean namespace |
+| OpenRouter via AI SDK 6 as only LLM surface | Single provider abstraction, response-healing plugin | ✓ Good — simplified billing and fallback |
+| Gemini Flash / Haiku cascade, no Grok | Grok 4.1 Fast 92.89% JSON validity is a dealbreaker | ✓ Good — strict Zod schemas need reliable JSON |
+| Whole-paper extraction (no chunking/RAG) | 1M-context Flash models make chunking unnecessary at MVP | ✓ Good — simpler architecture, no vector DB |
+| Levenshtein 85% + critic pass for citation grounding | Deterministic hallucination defense without embeddings | ✓ Good — rejects fabricated quotes at boundary |
+| Free-first parsing waterfall | PMC/arXiv free before paid Gemini/PDF path | ✓ Good — minimizes cost for open-access papers |
+| ULID traceId propagated across all stages | Grep-friendly incident triage without paid observability | ✓ Good — single ID links parse→extract→critic→save |
+| Per-paper workpoolId for targeted cancel | No cancelAll blast radius across users | ✓ Good — fine-grained cancellation |
+| Retryable vs permanent error taxonomy | Network/5xx/429 retried, 404/400/validation not | ✓ Good — no wasted retries on permanent failures |
+| vitest-evals + autoevals for MVP eval loop | No Langfuse/Braintrust overhead for pre-customer stage | ✓ Good — lightweight, CI-gated |
 
 ---
-*Last updated: 2026-04-15 — Phase 95 (Structured Observability & SLO Metrics) complete. Structured logging module with traceId propagation across all extraction stages (parse, extract, critic, save). Per-job metrics query with auth-guarded access. SLO metric persistence (citationValidityRate computed at finalization). JobMetricsPanel UI component with i18n across 6 locales.*
+*Last updated: 2026-04-15 after v6.0 milestone — Extraction MVP Rebuild shipped. 10 phases, 29 plans, 342 files changed. New extraction pipeline with parsing waterfall, OpenRouter cascade, deterministic citation grounding, durable workflow, structured observability, and eval framework.*

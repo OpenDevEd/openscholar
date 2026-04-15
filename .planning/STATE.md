@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
-status: executing
+status: completed
 stopped_at: Phase 97 complete
-last_updated: "2026-04-15T12:30:00.000Z"
-last_activity: 2026-04-15 -- Phase 97 execution complete
+last_updated: "2026-04-15T11:38:16.803Z"
+last_activity: 2026-04-15
 progress:
   total_phases: 10
   completed_phases: 10
@@ -18,17 +18,15 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-14)
+See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 97 — extraction-ui-polish (complete)
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 97 (extraction-ui-polish) — COMPLETE
-Plan: 5 of 5
-Status: Phase 97 complete
-Last activity: 2026-04-15 -- Phase 97 execution complete
+Milestone: v6.0 Extraction MVP Rebuild — SHIPPED 2026-04-15
+Status: Milestone complete, archived to .planning/milestones/
 
 Progress: [██████████] 100%
 
@@ -36,8 +34,8 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 197 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, v5.0: 14, cleanup: 2, quick: 15)
-- Total milestones shipped: 15
+- Total plans completed: 226 (v1.0: 7, v1.1: 6, v1.2: 11, v2.0: 17, v2.1: 15, v2.2: 7, v2.3: 14, v2.4: 7, v2.5: 15, v3.0: 11, v3.1: 20, v3.2: 4, v4.0: 9, v4.1: 5, v5.0: 14, v6.0: 29, cleanup: 2, quick: 15)
+- Total milestones shipped: 16
 
 **By Milestone:**
 
@@ -58,26 +56,13 @@ Progress: [██████████] 100%
 | v4.0 | 4 | 9 | 2026-03-09 |
 | v4.1 | 4 | 5 | 2026-03-09 |
 | v5.0 | 5 | 14 | 2026-03-10 |
+| v6.0 | 10 | 29 | 2026-04-15 |
 
 ## Accumulated Context
 
 ### Decisions
 
 See PROJECT.md Key Decisions table for full log.
-
-**v6.0-specific direction (locked):**
-
-- Legacy extraction code and data are DEAD — wipe tables, delete files, no migration, no backward compat
-- OpenRouter via Vercel AI SDK 6 is the only LLM surface
-- Gemini 3 Flash / 2.5 Flash Lite / Haiku 4.5 — NO Grok 4.1 Fast (92.89% JSON validity dealbreaker)
-- No chunking, no RAG, no vector DB — 1M-context whole-paper extraction
-- Deterministic quoting via `fastest-levenshtein` 85% threshold is the hallucination defense
-- Europe PMC + arXiv HTML + Gemini-as-PDF-parser replaces Docling/MinerU/olmOCR (free tier, MVP-appropriate)
-- `vitest-evals` + `autoevals` + 20-case golden set is the MVP eval loop — no Langfuse, no Braintrust
-- Target cost <$50/month total for MVP volume
-- Phase 88 MUST be first (teardown) — all subsequent phases depend on a clean slate
-- Parsing (Phase 90) must land before extraction (Phase 91) — extraction reads parsed text
-- UI polish (Phase 97) is last — built against stable backend
 
 ### Pending Todos
 
@@ -86,6 +71,7 @@ None.
 ### Roadmap Evolution
 
 2026-04-14 — v6.0 roadmap created with 10 phases (88-97) mapping all 63 v6.0 requirements.
+2026-04-15 — v6.0 milestone archived. 53/63 requirements satisfied, 3 unsatisfied, 4 partial. Known gaps documented.
 
 ### Blockers/Concerns
 
@@ -110,6 +96,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-04-15 — Phase 97 execution complete (5/5 plans, all extraction UI surfaces built)
-Stopped at: Phase 97 complete
-Resume file: .planning/phases/97-extraction-ui-polish/97-05-SUMMARY.md
+Last activity: 2026-04-15 — v6.0 milestone archived
+Stopped at: Milestone complete
+Next step: `/gsd-new-milestone` to start next milestone

@@ -742,6 +742,61 @@
 
 ---
 
+## Milestone: v6.0 — Extraction MVP Rebuild
+
+**Shipped:** 2026-04-15
+**Phases:** 10 | **Plans:** 29 | **Commits:** 212
+
+### What Was Built
+- Scorched-earth teardown of all legacy extraction code (~15,800 LoC), 11 tables, RAG component, and i18n keys across 6 locales
+- New slim extraction schema (4 tables) with durable `@convex-dev/workflow`, batched enqueue, idempotent save, and `extractionPool` workpool
+- Free-first parsing waterfall: PMC JATS → arXiv HTML → unpdf → Gemini-as-PDF-parser → abstract-only with abort-signal ceilings and 200-page cap
+- Three-tier OpenRouter cascade (Gemini 2.5 Flash Lite → Gemini 3 Flash → Claude Haiku 4.5) with flat 7-field Zod schema and per-question parallelism
+- Deterministic citation grounding: Levenshtein 85% superRefine, critic pass, `insufficient_evidence` first-class state, UI renders verbatim `slice()` only
+- Targeted cancel via per-paper workpoolId, retryable/permanent error taxonomy, early-return guard, reactive progress subscriptions
+- Route-segment error boundaries, Clerk visibility-change retry, mutation-to-toast routing
+- ULID traceId propagation across all 4 extraction stages, structured JSON logging, per-job metrics query, SLO metric persistence
+- Golden set eval framework with `vitest-evals` + `autoevals`, hourly production quality sampling cron, human-review queue backend
+- Extraction UI: job creation dialog, live progress with cancel, results cards with verbatim quotes, CSV/JSON/XLSX export, JobMetricsPanel with SLO bars
+
+### What Worked
+- Scorched-earth teardown as Phase 1 gave a clean namespace — no dangling references, no dead code confusion
+- Free-first parsing waterfall saved LLM costs by resolving most open-access papers via PMC/arXiv before hitting paid Gemini path
+- Reusing proven workflow+workpool patterns from screening (v4.0) dramatically reduced extraction orchestration design time
+- Structured JSON logging with ULID traceId from day one — no retrofitting observability after the fact
+- Error classification module (retryable vs permanent) cleanly separated retry logic from business logic
+
+### What Was Inefficient
+- ExtractionDialog `papers` prop never connected — job creation flow is dead in the UI (caught by audit, not during development)
+- Quality trend and review queue backends built but never wired to UI consumers — write-only data
+- `provider.order` omitted from OpenRouter cascade config despite being in the success criteria
+- Phases 94 and 96 show as "Not started" in ROADMAP progress table despite having SUMMARY files — tracking gap
+- 3 unsatisfied + 4 partial requirements at audit — higher gap rate than previous milestones
+
+### Patterns Established
+- Scorched-earth teardown as prerequisite for rebuild milestones — delete everything first, build on clean slate
+- Parsing waterfall pattern: try free sources in cost order, fall back to paid, always have an abstract-only baseline
+- OpenRouter cascade with `response-healing` plugin and `@openrouter/ai-sdk-provider` as standard LLM surface
+- Levenshtein superRefine + critic pass as deterministic citation grounding — no embeddings needed for hallucination defense
+- Per-paper workpoolId for targeted cancel without cross-user blast radius
+- ULID traceId propagated through all pipeline stages for grep-friendly incident triage
+- `vitest-evals` + `autoevals` as lightweight eval loop suitable for pre-customer MVP stage
+
+### Key Lessons
+1. Always wire UI consumers in the same phase that builds the backend query — write-only data is invisible tech debt (EVAL-05, EVAL-06)
+2. Dialog prop connections must be verified in integration — ExtractionDialog papers prop was structurally correct but never called with data (UI-01)
+3. Milestone audit at 53/63 (84%) is the lowest pass rate yet — larger milestones (10 phases) accumulate more integration gaps than smaller ones
+4. Teardown phases should be maximally aggressive — deleting 15,800 LoC in Phase 88 made every subsequent phase simpler
+5. OpenRouter's `response-healing` plugin handles most JSON format issues, but `provider.order` must be explicitly set for reliable fallback
+6. ROADMAP progress table tracking must be updated atomically with SUMMARY files — stale "Not started" entries on completed phases erode trust
+
+### Cost Observations
+- Model mix: budget profile (sonnet/haiku-dominant)
+- Sessions: multiple sessions across 2 days
+- Notable: Largest milestone yet — 10 phases, 29 plans, 342 files changed, +57K/-28K lines
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -763,6 +818,7 @@
 | v4.0 | 42 | 4 | 9 | ~3min | Bulk screening feature build, workflow+workpool reuse, TDD scoring engine |
 | v4.1 | 21 | 4 | 5 | ~2min | Screening export, pattern reuse, backward-compat schema evolution |
 | v5.0 | 65 | 5 | 14 | ~4.5min | Extraction insights overhaul, Recharts lazy-loading, TDD pure utilities, semantic grouping |
+| v6.0 | 212 | 10 | 29 | ~7min | Extraction MVP rebuild — scorched-earth teardown, parsing waterfall, OpenRouter cascade, citation grounding, durable workflow, observability, eval framework, extraction UI |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -803,3 +859,7 @@
 35. Seeding i18n keys before UI development prevents missing-key placeholders and enables parallel component development (v5.0)
 36. Structural tests over snapshots enable confident UI iteration — component refactors don't trigger test failures (v5.0)
 37. Lazy-loading chart libraries via next/dynamic with ssr=false is the standard pattern for bundle optimization (v5.0)
+38. Scorched-earth teardown before rebuild eliminates dangling references — delete everything first, build on clean slate (v6.0)
+39. Wire UI consumers in the same phase as backend queries — write-only data is invisible tech debt that audit catches too late (v6.0)
+40. Larger milestones (10+ phases) accumulate more integration gaps — consider integration checkpoints mid-milestone (v6.0)
+41. Free-first parsing waterfalls (PMC → arXiv → paid) minimize LLM cost for open-access-heavy corpora (v6.0)
