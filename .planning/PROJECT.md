@@ -8,6 +8,20 @@ OpenAlex Count is an academic literature search and extraction tool built with N
 
 Reliable, well-tested academic search and AI extraction — every major code path has tests, and every new feature is built test-first.
 
+## Current Milestone: v7.0 Extraction Workbench
+
+**Goal:** Restore the pre-v6.0 results workbench (table/card/split views with highlighted citations), build a unified cross-source paper selector (library + collections + search results + manual IDs + Zotero) that stages selections across multiple origins into one job, and enforce a 1000-paper per-job hard limit that's displayed at every selection point and structured for future per-tier enforcement.
+
+**Target features:**
+
+- **Results workbench** — Four complementary views (table, card, split, highlighted-citation) on `/extraction/[jobId]` with shared toolbar (view switcher, status/confidence filters, search, column picker, pagination), backed by the existing v6.0 `extractionResults` table
+- **Universal cross-source paper selector** — Multi-source picker with a selection basket ("cart" pattern) that stages papers from library, collections, search results, manual OpenAlex IDs, and Zotero into a single job, deduped by OpenAlex ID
+- **Zotero OAuth revival** — Re-activate the orphaned `convex/zotero/**` OAuth flow (~1433 LOC) via a settings connection card + a Zotero source tab in the picker
+- **Hard paper limit (200 → 1000)** — Bump `MAX_EXTRACTION_PAPERS_PER_JOB`, live "X / 1000" counters in dialog and every source picker, backend hard reject with toast-routed error, constant shape made per-tier-ready (no tier logic yet)
+- **TierSelector wiring** — Send the v6.0 `TierSelector` UI value to `createExtractionJob` (currently orphaned, cascade always runs all 3 tiers)
+
+**Explicitly out of scope:** insights dashboards (summary cards, stacked bar charts, confidence rings), report templates / report builder, human-review queue, quality-trend dashboard — deferred to future milestones.
+
 ## Requirements
 
 ### Validated
@@ -154,7 +168,7 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-(No active milestone — planning next milestone)
+- v7.0 Extraction Workbench — defining requirements (goal + features in `## Current Milestone`)
 
 ### Out of Scope
 
@@ -308,5 +322,22 @@ Known v6.0 gaps: Job creation flow unreachable (ExtractionDialog papers prop unc
 | Retryable vs permanent error taxonomy | Network/5xx/429 retried, 404/400/validation not | ✓ Good — no wasted retries on permanent failures |
 | vitest-evals + autoevals for MVP eval loop | No Langfuse/Braintrust overhead for pre-customer stage | ✓ Good — lightweight, CI-gated |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-04-15 after v6.0 milestone — Extraction MVP Rebuild shipped. 10 phases, 29 plans, 342 files changed. New extraction pipeline with parsing waterfall, OpenRouter cascade, deterministic citation grounding, durable workflow, structured observability, and eval framework.*
+*Last updated: 2026-04-15 — v7.0 Extraction Workbench milestone opened. Recovers pre-v6.0 results workbench (table/card/split/highlighted-citation views), builds unified cross-source paper selector (library + collections + search + manual + Zotero) with selection-basket pattern, enforces 1000-paper per-job hard limit with per-tier-ready shape, revives orphaned Zotero OAuth, and wires the v6.0 TierSelector orphan to the backend.*

@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.0
-milestone_name: Extraction MVP Rebuild
-status: completed
-stopped_at: Phase 97 complete
-last_updated: "2026-04-15T11:38:16.803Z"
+milestone: v7.0
+milestone_name: Extraction Workbench
+status: planning
+stopped_at: Defining requirements
+last_updated: "2026-04-15T13:15:00.000Z"
 last_activity: 2026-04-15
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,14 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Planning next milestone
+**Current focus:** v7.0 Extraction Workbench — defining requirements
 
 ## Current Position
 
-Milestone: v6.0 Extraction MVP Rebuild — SHIPPED 2026-04-15
-Status: Milestone complete, archived to .planning/milestones/
+Milestone: v7.0 Extraction Workbench
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-15 — Milestone v7.0 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -57,6 +60,7 @@ Progress: [██████████] 100%
 | v4.1 | 4 | 5 | 2026-03-09 |
 | v5.0 | 5 | 14 | 2026-03-10 |
 | v6.0 | 10 | 29 | 2026-04-15 |
+| v7.0 | planning | — | in progress |
 
 ## Accumulated Context
 
@@ -72,6 +76,7 @@ None.
 
 2026-04-14 — v6.0 roadmap created with 10 phases (88-97) mapping all 63 v6.0 requirements.
 2026-04-15 — v6.0 milestone archived. 53/63 requirements satisfied, 3 unsatisfied, 4 partial. Known gaps documented.
+2026-04-15 — v7.0 Extraction Workbench opened. Recovers pre-v6.0 results UI (table/card/split/highlighted-citation views), adds unified cross-source paper selector (library + collections + search + manual + Zotero with selection-basket), enforces 1000-paper per-job hard limit (per-tier-ready), revives orphaned Zotero OAuth, and closes v6.0 UI-01 + TierSelector orphan.
 
 ### Blockers/Concerns
 
@@ -97,6 +102,6 @@ None.
 
 ## Session Continuity
 
-Last activity: 2026-04-15 — convex dev unblocked (quick #14)
-Stopped at: Milestone complete
-Next step: `/gsd-new-milestone` to start next milestone
+Last activity: 2026-04-15 — v7.0 Extraction Workbench milestone opened
+Stopped at: Defining requirements
+Next step: Research decision → REQUIREMENTS.md → ROADMAP.md → `/gsd-plan-phase 98`
