@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Extraction Workbench
 status: executing
-stopped_at: Phase 98 context gathered
-last_updated: "2026-04-15T15:55:02.810Z"
-last_activity: 2026-04-15 -- Phase 98 execution started
+stopped_at: Completed 98-01-PLAN.md
+last_updated: "2026-04-15T16:06:08.788Z"
+last_activity: 2026-04-15
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 
 Milestone: v7.0 Extraction Workbench
 Phase: 98 (pre-flight-hard-limit-foundation) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 98
-Last activity: 2026-04-15 -- Phase 98 execution started
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-15
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | v5.0 | 5 | 14 | 2026-03-10 |
 | v6.0 | 10 | 29 | 2026-04-15 |
 | v7.0 | 8 planned (98-105) | TBD | in progress |
+| Phase 98 P01 | 129 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,8 @@ Recent v7.0 decisions affecting current work:
 - **Phase 101**: `@tanstack/react-table@^8.21.3` is the ONLY net-new runtime dep for this milestone. Re-add shadcn `<Table />` primitive; reject shadcn `data-table` block (monolithic — fights 4-view architecture).
 - **Phase 103**: highlighted-citation demoted from 4th view to drawer pattern (not all parsing sources are PDFs); card view MUST virtualize via `@tanstack/react-virtual@^3.13.23`; table view does NOT virtualize.
 - **Phase 104**: Zotero stays on OAuth 1.0a (verified 2025-09-24); `zotero-api-client` rejected (API-key only).
+- [Phase 98]: Per-tier limit map (EXTRACTION_LIMITS_BY_TIER) as single source of truth; MAX_EXTRACTION_PAPERS_PER_JOB derived via Math.max
+- [Phase 98]: MAX_EXTRACTION_RESULTS_QUERY (10000) decoupled from user-facing paper limit for internal .take() bounds
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Items carried from v6.0 into v7.0 or later milestones:
 
 ## Session Continuity
 
-Last session: 2026-04-15T15:55:02.808Z
-Stopped at: Phase 98 context gathered
+Last session: 2026-04-15T16:06:08.786Z
+Stopped at: Completed 98-01-PLAN.md
 Next step: `/gsd-plan-phase 98`

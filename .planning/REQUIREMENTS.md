@@ -13,9 +13,9 @@ Restore the pre-v6.0 results workbench (table/card/split views with highlighted 
 
 ### Hard Paper Limit
 
-- [ ] **LIM-01**: The system enforces a 1000-paper per-job hard limit via `MAX_EXTRACTION_PAPERS_PER_JOB` in `convex/lib/queryBounds.ts` (bumped from 200), with an independent `MAX_EXTRACTION_RESULTS_QUERY` for internal `.take()` bounds that preserves Convex's 8 MB result-size cap
-- [ ] **LIM-02**: The per-job limit is stored in a per-tier-ready shape `EXTRACTION_LIMITS_BY_TIER: Record<SubscriptionPlan, number>` so adjusting free/pro/enterprise requires editing only one constant (no code changes in callers); all tiers resolve to 1000 in this milestone
-- [ ] **LIM-03**: A new `getExtractionLimitForUser(ctx)` Convex helper reads the user's effective plan via existing `resolveEffectivePlan` and returns their per-job limit; a reactive `getExtractionLimit` query exposes it to the client
+- [x] **LIM-01**: The system enforces a 1000-paper per-job hard limit via `MAX_EXTRACTION_PAPERS_PER_JOB` in `convex/lib/queryBounds.ts` (bumped from 200), with an independent `MAX_EXTRACTION_RESULTS_QUERY` for internal `.take()` bounds that preserves Convex's 8 MB result-size cap
+- [x] **LIM-02**: The per-job limit is stored in a per-tier-ready shape `EXTRACTION_LIMITS_BY_TIER: Record<SubscriptionPlan, number>` so adjusting free/pro/enterprise requires editing only one constant (no code changes in callers); all tiers resolve to 1000 in this milestone
+- [x] **LIM-03**: A new `getExtractionLimitForUser(ctx)` Convex helper reads the user's effective plan via existing `resolveEffectivePlan` and returns their per-job limit; a reactive `getExtractionLimit` query exposes it to the client
 - [ ] **LIM-04**: User sees an always-visible "X / 1000 papers" counter with a progress bar that turns yellow at 80% of the limit and red at 100%, rendered in the basket drawer and on the `/extraction/new` selector page
 - [ ] **LIM-05**: When the selection basket reaches the cap, all remaining "add" checkboxes in every source tab are disabled with an explanatory tooltip ("Basket full — remove N papers to continue")
 - [ ] **LIM-06**: When a user bulk-pastes more OpenAlex IDs than the remaining capacity allows, the excess is silently dropped with a toast stating how many papers were dropped
@@ -131,9 +131,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LIM-01 | Phase 98 | Pending |
-| LIM-02 | Phase 98 | Pending |
-| LIM-03 | Phase 98 | Pending |
+| LIM-01 | Phase 98 | Complete |
+| LIM-02 | Phase 98 | Complete |
+| LIM-03 | Phase 98 | Complete |
 | LIM-04 | Phase 102 | Pending |
 | LIM-05 | Phase 102 | Pending |
 | LIM-06 | Phase 102 | Pending |
