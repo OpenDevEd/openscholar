@@ -168,7 +168,7 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-- v7.0 Extraction Workbench — defining requirements (goal + features in `## Current Milestone`)
+- v7.0 Extraction Workbench — Phase 99 complete, Phase 100 next (goal + features in `## Current Milestone`)
 
 ### Out of Scope
 
