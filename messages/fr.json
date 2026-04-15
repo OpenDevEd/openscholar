@@ -1467,6 +1467,28 @@
     "criticUnverified": "Non vérifié",
     "criticPartial": "Partiellement vérifié",
     "criticTimeout": "Examen en attente",
-    "viewInSource": "Voir dans la source"
+    "viewInSource": "Voir dans la source",
+    "jobMetrics": {
+      "title": "Metriques du job",
+      "papersProcessed": "Articles traites",
+      "avgLatency": "Latence moy.",
+      "estimatedCost": "Cout estime",
+      "errors": "Erreurs",
+      "citationValidity": "Validite des citations",
+      "recallOnInclude": "Rappel sur inclusion",
+      "nullValue": "--",
+      "nullLatency": "Aucun article termine",
+      "nullCost": "Aucun article termine",
+      "nullCitationValidity": "Calcule apres la fin du job",
+      "nullRecallOnInclude": "Necessite une evaluation contre le jeu de reference",
+      "sloMet": "Objectif SLO atteint",
+      "sloAtRisk": "Sous l'objectif -- verifier la qualite",
+      "sloViolated": "SLO viole -- investigation necessaire",
+      "papersTooltip": "{processed} termines, {failed} echoues, {remaining} restants",
+      "latencyTooltip": "Temps moyen par article pour tous les articles termines",
+      "costTooltip": "Estime a partir de l'utilisation des tokens aux tarifs OpenRouter actuels",
+      "errorsTooltip": "{count} articles echoues lors de l'extraction",
+      "pending": "En attente"
+    }
   }
 }

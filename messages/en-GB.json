@@ -1469,6 +1469,28 @@
     "criticUnverified": "Unverified",
     "criticPartial": "Partially verified",
     "criticTimeout": "Review pending",
-    "viewInSource": "View in source"
+    "viewInSource": "View in source",
+    "jobMetrics": {
+      "title": "Job Metrics",
+      "papersProcessed": "Papers processed",
+      "avgLatency": "Avg latency",
+      "estimatedCost": "Estimated cost",
+      "errors": "Errors",
+      "citationValidity": "Citation validity",
+      "recallOnInclude": "Recall on include",
+      "nullValue": "--",
+      "nullLatency": "No papers completed yet",
+      "nullCost": "No papers completed yet",
+      "nullCitationValidity": "Computed after job completion",
+      "nullRecallOnInclude": "Requires evaluation against golden set",
+      "sloMet": "SLO target met",
+      "sloAtRisk": "Below target -- review extraction quality",
+      "sloViolated": "SLO violated -- investigation needed",
+      "papersTooltip": "{processed} completed, {failed} failed, {remaining} remaining",
+      "latencyTooltip": "Average time per paper across all completed papers",
+      "costTooltip": "Estimated from token usage at current OpenRouter rates",
+      "errorsTooltip": "{count} papers failed during extraction",
+      "pending": "Pending"
+    }
   }
 }
