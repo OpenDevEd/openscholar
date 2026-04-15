@@ -78,6 +78,18 @@ export const extractionConfidenceValidator = v.union(
 );
 
 /**
+ * Quality check review status (EVAL-06).
+ * - pending: flagged unsupported, awaiting developer review
+ * - reviewed: dismissed after review
+ * - promoted: added to golden set
+ */
+export const reviewStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("reviewed"),
+  v.literal("promoted")
+);
+
+/**
  * Extraction result value shape (EXTR-09, D-03).
  *
  * Shared contract between the saveResult mutation args and the

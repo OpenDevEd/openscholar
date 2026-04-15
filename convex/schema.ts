@@ -501,6 +501,19 @@ export default defineSchema({
     .index("by_paper", ["paperId"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // QUALITY CHECKS - Hourly production quality sampling (EVAL-04)
+  // ═══════════════════════════════════════════════════════════════
+  qualityChecks: defineTable({
+    answerId: v.id("extractionResults"),
+    verdict: v.string(),
+    judgeModel: v.string(),
+    timestamp: v.number(),
+    reviewStatus: v.string(), // "pending" | "reviewed" | "promoted"
+  })
+    .index("by_answerId", ["answerId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library (rated papers)
   // ═══════════════════════════════════════════════════════════════
   libraryItems: defineTable({
