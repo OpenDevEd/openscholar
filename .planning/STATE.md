@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
-stopped_at: Phase 91 context gathered
-last_updated: "2026-04-15T03:47:24.393Z"
+stopped_at: Phase 92 context gathered
+last_updated: "2026-04-15T03:52:43.563Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 10
@@ -111,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Phase 91 context gathered
-Resume file: .planning/phases/91-extraction-cascade-core/91-CONTEXT.md
+Stopped at: Phase 92 context gathered
+Resume file: .planning/phases/92-deterministic-citation-grounding/92-CONTEXT.md
