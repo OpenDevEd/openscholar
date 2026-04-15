@@ -235,7 +235,7 @@ Full details: `.planning/milestones/v5.0-ROADMAP.md`
 - [x] **Phase 88: Scorched-Earth Teardown** - Delete all legacy extraction code, tables, UI, and RAG component so nothing dangles after (completed 2026-04-14)
 - [x] **Phase 89: Core Schema & Workflow Skeleton** - Stand up the new slim schema, durable workflow, and batched enqueue so downstream phases have rails to build on (completed 2026-04-15)
 - [x] **Phase 90: Free-First Parsing Waterfall** - Resolve full-text via OpenAlex metadata, Europe PMC, arXiv HTML, unpdf, and Gemini-as-PDF-parser with abort-signal ceilings and a 200-page cap (completed 2026-04-15)
-- [ ] **Phase 91: Extraction Cascade Core** - Send whole-paper text to the three-tier OpenRouter cascade with flat 7-field Zod schema, Gemini caching, and per-question parallelism
+- [x] **Phase 91: Extraction Cascade Core** - Send whole-paper text to the three-tier OpenRouter cascade with flat 7-field Zod schema, Gemini caching, and per-question parallelism (completed 2026-04-15)
 - [ ] **Phase 92: Deterministic Citation Grounding** - Enforce substring-match quoting, critic pass, insufficient_evidence state, and UI-rendered verbatim quotes
 - [ ] **Phase 93: Workflow Cancel, Retry, and Progress** - Targeted cancel, retryable/permanent error taxonomy, early-return on cancelled jobs, and reactive progress updates
 - [ ] **Phase 94: Crash Prevention Sweep** - Segment error boundaries, useQuery null handling, Clerk visibility retry, mutation rejection routing, prompt-injection delimiters, fetch timeouts, and Zustand persist reset
@@ -306,7 +306,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [x] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 92: Deterministic Citation Grounding
 **Goal**: Prevent hallucinated quotes and false-positive answers by rejecting any extraction whose `evidence_quote` fails 85% Levenshtein similarity against the source span, running a critic pass that must return `supported`, emitting `insufficient_evidence` as a first-class answer, and rendering only the verbatim `source.text.slice(start, end)` in the UI.
@@ -319,7 +319,7 @@ Plans:
   4. `insufficient_evidence` is a first-class answer state with confidence capped and a UI reason line rendered on the result card
 **Plans**: 2 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
+- [x] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
 - [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
 
 ### Phase 93: Workflow Cancel, Retry, and Progress
@@ -422,7 +422,7 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 88. Scorched-Earth Teardown | v6.0 | 4/4 | Complete    | 2026-04-14 |
 | 89. Core Schema & Workflow Skeleton | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 90. Free-First Parsing Waterfall | v6.0 | 3/3 | Complete    | 2026-04-15 |
-| 91. Extraction Cascade Core | v6.0 | 1/2 | In Progress|  |
+| 91. Extraction Cascade Core | v6.0 | 2/2 | Complete   | 2026-04-15 |
 | 92. Deterministic Citation Grounding | v6.0 | 0/TBD | Not started | - |
 | 93. Workflow Cancel, Retry, and Progress | v6.0 | 0/TBD | Not started | - |
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
