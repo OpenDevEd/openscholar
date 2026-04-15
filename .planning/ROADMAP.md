@@ -393,10 +393,13 @@ Plans:
   3. User sees results on a per-paper card with the clickable verbatim quote highlighted at the source character range — verified by a component test
   4. User exports results as CSV, JSON, or XLSX via the existing library download helper with no new export infrastructure — verified by a reuse test
   5. All extraction UI strings land in all six locale files (en, fr, es, de, ar, zh) BEFORE component development and pages use OKLCH color tokens, Outfit variable font, spring-based Framer Motion, and WCAG AAA contrast
-**Plans**: 2 plans
+**Plans**: 5 plans
 Plans:
-- [ ] 91-01-PLAN.md — Schema extension, validators, saveResult mutation, prompt builder
-- [ ] 91-02-PLAN.md — Extraction cascade module, workpool wiring, credit billing, tests
+- [ ] 97-01-PLAN.md — i18n seeding (6 locales), two new Convex queries, extraction export module
+- [ ] 97-02-PLAN.md — Job creation dialog with QuestionBuilder, TierSelector, cost preview, submit flow
+- [ ] 97-03-PLAN.md — StatusBadge, PaperResultCard, results route page, error boundaries
+- [ ] 97-04-PLAN.md — Sidebar integration (footer button, nav item), job history dialog, /extraction list page
+- [ ] 97-05-PLAN.md — Automated checks and human visual/functional verification checkpoint
 **UI hint**: yes
 
 ## Progress
@@ -430,4 +433,4 @@ Phases execute in numeric order: 88 → 89 → 90 → 91 → 92 → 93 → 94 �
 | 94. Crash Prevention Sweep | v6.0 | 0/TBD | Not started | - |
 | 95. Structured Observability & SLO Metrics | v6.0 | 4/4 | Complete    | 2026-04-15 |
 | 96. Eval Loop & Quality Sampling | v6.0 | 0/TBD | Not started | - |
-| 97. Extraction UI Polish | v6.0 | 0/TBD | Not started | - |
+| 97. Extraction UI Polish | v6.0 | 0/5 | Planned | - |
