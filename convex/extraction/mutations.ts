@@ -316,6 +316,7 @@ export const saveResult = internalMutation({
     tokensIn: v.optional(v.number()),
     tokensOut: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
+    criticVerdict: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -345,6 +346,7 @@ export const saveResult = internalMutation({
       tokensIn: args.tokensIn,
       tokensOut: args.tokensOut,
       errorMessage: args.errorMessage,
+      criticVerdict: args.criticVerdict,
       createdAt: Date.now(),
     });
 

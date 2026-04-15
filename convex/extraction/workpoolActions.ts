@@ -207,6 +207,7 @@ export const processExtractionPaper = internalAction({
             tokensIn: result.tokensIn,
             tokensOut: result.tokensOut,
             errorMessage: result.errorMessage,
+            criticVerdict: result.criticVerdict,
           }
         );
       }

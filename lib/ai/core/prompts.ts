@@ -1,4 +1,4 @@
-import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, ExtractionPromptInput } from './types'
+import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, ExtractionPromptInput, CriticPromptInput } from './types'
 import { getLanguageName } from './languages'
 
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
@@ -258,5 +258,31 @@ Extract the answer with supporting evidence. Remember:
 - The evidence_quote must be a VERBATIM substring from the paper text above
 - Calculate evidence_start_char and evidence_end_char as character offsets in the paper text
 - Provide reasoning before your answer${retryCount > 0 ? '\n\nIMPORTANT: Previous extraction attempt failed validation. Ensure your evidence_quote is an exact verbatim substring of the paper text and that character offsets are accurate.' : ''}`,
+  };
+}
+
+export function buildCriticPrompt(input: CriticPromptInput) {
+  return {
+    system: `You are a citation verification specialist for academic research extraction.
+
+Your task is to verify whether an extracted evidence quote is accurate and supports the given answer.
+
+You must evaluate TWO criteria:
+1. VERBATIM ACCURACY: Does the evidence quote appear as a near-exact substring in the source text? Minor whitespace or formatting differences are acceptable, but the content must be substantively identical.
+2. EVIDENTIAL SUPPORT: Does the evidence quote actually support and substantiate the given answer to the research question?
+
+Respond with a structured verdict.`,
+    prompt: `Verify this extraction result:
+
+RESEARCH QUESTION: ${input.question}
+
+EXTRACTED ANSWER: ${input.answer}
+
+EVIDENCE QUOTE (from LLM): "${input.evidenceQuote}"
+
+SOURCE TEXT SLICE (verbatim from paper at the reported character offsets):
+"${input.sourceSlice}"
+
+Does the evidence quote appear verbatim in the source text, and does it support this answer?`,
   };
 }

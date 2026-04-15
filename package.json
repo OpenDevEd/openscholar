@@ -46,6 +46,7 @@
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.5.12",
+    "fastest-levenshtein": "^1.0.16",
     "glob": "^13.0.6",
     "jsonrepair": "^3.13.2",
     "linkedom": "^0.18.12",

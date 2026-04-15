@@ -64,6 +64,13 @@ export interface ExtractionPromptInput {
   expectedType?: string
 }
 
+export interface CriticPromptInput {
+  question: string;
+  answer: string;
+  evidenceQuote: string;
+  sourceSlice: string;
+}
+
 export interface AIProviderConfig {
   provider: 'openai' | 'anthropic' | 'google' | 'openrouter'
   model: string

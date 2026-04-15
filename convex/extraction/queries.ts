@@ -101,6 +101,36 @@ export const listUserExtractionJobs = query({
   },
 });
 
+/**
+ * Get a paper's body text for verbatim evidence rendering (D-14).
+ *
+ * Returns the raw body text so the UI can render
+ * `bodyText.slice(evidenceStartChar, evidenceEndChar)` — the LLM's
+ * `evidenceQuote` field is never shown to users.
+ *
+ * User isolation: loads paper -> loads its job -> verifies job.userId
+ * matches the authenticated user (T-92-01).
+ */
+export const getPaperBodyText = query({
+  args: { paperId: v.id("extractionPapers") },
+  returns: v.union(
+    v.null(),
+    v.object({ bodyText: v.union(v.string(), v.null()) })
+  ),
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const paper = await ctx.db.get(args.paperId);
+    if (!paper) return null;
+
+    const job = await ctx.db.get(paper.jobId);
+    if (!job || job.userId !== user._id) return null;
+
+    return { bodyText: paper.bodyText ?? null };
+  },
+});
+
 // ===================================================================
 // INTERNAL QUERIES (for workflow/workpool background context)
 // ===================================================================
