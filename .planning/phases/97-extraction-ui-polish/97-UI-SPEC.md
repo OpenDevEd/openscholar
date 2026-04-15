@@ -102,6 +102,12 @@ The orange primary accent (`--primary`) is reserved for exactly these elements:
 
 Each badge uses the same pattern as `ConfidenceBadge`: semi-transparent background at `0.15` opacity, border at `0.3` opacity, foreground text at full chroma. Dark mode variants increase lightness by `+0.15` on background and `+0.1` on foreground.
 
+### Focal Point Narrative
+
+**Job creation dialog:** The focal point is the "Start Extraction" CTA button (filled orange primary, bottom-right of dialog footer). All other dialog elements use muted secondary/outline variants to create a clear visual funnel toward the primary action. The question list draws secondary attention through repeated vertical rhythm, but the eye terminates at the submit button.
+
+**Results page:** The focal point is the `JobMetricsPanel` 2x2 grid at page top, anchored by Display-size (20px semibold) metric values in orange primary for the processed papers count and neutral foreground for latency/cost. Below the metrics panel, individual `PaperResultCard` components use Heading-size (16px semibold) paper titles as secondary focal points, with `ConfidenceBadge` color accents providing tertiary visual anchors within each card.
+
 ---
 
 ## Copywriting Contract
@@ -127,7 +133,7 @@ All copy is i18n-keyed under the `extraction` namespace. English (en-US) values 
 | Insufficient balance | `extraction.jobCreation.insufficientBalance` | "Not enough credits for this job" |
 | **Primary CTA** | `extraction.jobCreation.submit` | **"Start Extraction"** |
 | Submitting state | `extraction.jobCreation.submitting` | "Starting..." |
-| Cancel button | `extraction.jobCreation.cancel` | "Cancel" |
+| Dismiss button | `extraction.jobCreation.dismiss` | "Discard Draft" |
 | Success toast | `extraction.jobCreation.success` | "Extraction job started" |
 | Error toast | `extraction.jobCreation.error` | "Failed to start extraction. Please try again." |
 | Active job warning | `extraction.jobCreation.activeJobWarning` | "An extraction job is already running" |
