@@ -16,3 +16,10 @@ export const MAX_SCREENING_PAPERS_PER_JOB = 200;
 
 /** Maximum screening jobs listed per user. */
 export const MAX_SCREENING_JOBS_PER_USER = 500;
+
+/** Maximum papers in a single extraction job.
+ * Matches screening limit -- balances throughput with cost predictability. */
+export const MAX_EXTRACTION_PAPERS_PER_JOB = 200;
+
+/** Maximum extraction jobs listed per user. */
+export const MAX_EXTRACTION_JOBS_PER_USER = 500;
