@@ -165,7 +165,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
 
 </details>
 
-### 🚧 v7.0 Extraction Workbench (In Progress)
+### v7.0 Extraction Workbench (In Progress)
 
 **Milestone Goal:** Restore the pre-v6.0 results workbench (4 views), build a unified cross-source paper selector with persistent basket, enforce a 1000-paper per-job hard limit (per-tier-ready), revive the orphaned Zotero OAuth flow, wire the orphaned TierSelector, and close the v6.0 integration gaps.
 
@@ -173,6 +173,9 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
 **Parallelizable:** Phase 101 runs independently against 99 and 100; they converge at 103.
 
 - [ ] **Phase 98: Pre-flight & Hard-Limit Foundation** — Bump `MAX_EXTRACTION_PAPERS_PER_JOB` 200→1000, split internal bound, benchmark 1k-paper payload, seed per-tier-ready limit shape
+  Plans:
+  - [ ] 98-01-PLAN.md — Constants + helper + reactive query (LIM-01, LIM-02, LIM-03)
+  - [ ] 98-02-PLAN.md — Call-site rewiring + payload benchmark (LIM-01, GAP-04)
 - [ ] **Phase 99: Selection Basket Core** — Zustand store + `normalizeOpenAlexId` + `<ExtractionBasketDrawer>` + `useAddToBasket` hook
 - [ ] **Phase 100: Backend Wiring + TierSelector Fix** — `convex/openalex/actions.ts` (resolveByDoi, resolveManualIds), extractionLimit helpers, 5-edit TierSelector wiring, server-side hard-reject
 - [ ] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`)
@@ -191,8 +194,10 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
   1. `convex/lib/queryBounds.ts` exports `MAX_EXTRACTION_PAPERS_PER_JOB = 1000` (separate from `MAX_EXTRACTION_RESULTS_QUERY`) with every call-site cascade repaired — LIM-01
   2. `EXTRACTION_LIMITS_BY_TIER: Record<SubscriptionPlan, number>` exists with `free/go/pro/enterprise` all resolving to 1000, so v7.1 per-tier tuning requires editing one file only — LIM-02
   3. `getExtractionLimitForUser(ctx)` helper and `getExtractionLimit` reactive query return the caller's per-job limit by routing through `resolveEffectivePlan` — LIM-03
-  4. A recorded benchmark run (1000 papers × 7 questions) confirms the `getExtractionResults` payload is ≤ 5 MB, or the query is migrated to paginated mode before any other v7.0 phase ships — GAP-04
-**Plans**: TBD
+  4. A recorded benchmark run (1000 papers x 7 questions) confirms the `getExtractionResults` payload is <= 5 MB, or the query is migrated to paginated mode before any other v7.0 phase ships — GAP-04
+**Plans**: 2 plans
+  - 98-01-PLAN.md — Constants + helper + reactive query (Wave 1)
+  - 98-02-PLAN.md — Call-site rewiring + payload benchmark (Wave 2)
 
 **Research flag**: MEDIUM — benchmark outcome determines whether Phase 100 must also include pagination migration of `getExtractionResults`.
 **Pitfalls mitigated**: PITFALL 1 (200→1000 cascade at 15 call sites with `MAX * 10` multipliers), PITFALL 6 (env-var drift — verify via `npx convex env list`).
@@ -277,7 +282,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
   7. User switches to the Split view and sees a paginated paper list on the left with the selected paper's full answer detail rendered on the right — WB-06
   8. User clicks any citation in any view and a highlighted evidence drawer opens rendering the verbatim `source.text.slice(evidence_start_char, evidence_end_char)` with a parsing-source badge — never the LLM's `evidence_quote` field — WB-07
   9. User exports the currently-filtered result subset as CSV, JSON, or XLSX and the export payload matches the filter state (reusing existing v6.0 export helpers) — WB-08
-  10. User paginates the table, card, and split views with "X–Y of Z papers" counts that reset correctly when filters change — WB-09
+  10. User paginates the table, card, and split views with "X-Y of Z papers" counts that reset correctly when filters change — WB-09
   11. Every paper row/card in every view renders a `parsingSource` badge (`pmc` / `arxiv` / `unpdf` / `gemini` / `abstract_only`), including inside the evidence drawer — GAP-01 (closes v6.0 PARSE-07)
   12. `EvidenceQuote` and `JobMetricsPanel` components use `useProtectedQuery` (not bare `useQuery`) and do not flash during Clerk auth transitions — GAP-02 (closes v6.0 CRASH-02)
 **Plans**: TBD — 2 sub-plans (A: Workbench Views, B: Selector Page) executable in parallel after primitives land
@@ -319,7 +324,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
 **Success Criteria** (what must be TRUE):
   1. An ESLint rule forbids literal `1000` or `200` in `components/extraction/**` and `app/extraction/**`, failing CI if any call site bypasses `EXTRACTION_LIMITS_BY_TIER` or `getExtractionLimit` — GAP-03
   2. A Playwright E2E flow covers: connect Zotero → stage papers from 4 source tabs (Library + Collections + Search + Zotero) → see "X / 1000" counter update live → create extraction job → view results in table / card / split / drawer views → export filtered subset
-  3. The basket drawer renders full-width on mobile (Sheet as baseline) with 44px touch targets, and all workbench views degrade gracefully at ≤ 640 px viewport
+  3. The basket drawer renders full-width on mobile (Sheet as baseline) with 44px touch targets, and all workbench views degrade gracefully at <= 640 px viewport
   4. The workbench respects `prefers-reduced-motion: reduce` — spring animations on view transitions are disabled without breaking layout
   5. i18n audit confirms every new v7.0 string has entries in all 6 locale files; French diacritic check passes
 **Plans**: TBD
@@ -351,7 +356,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 79-82 | v4.1 | 5/5 | Complete | 2026-03-09 |
 | 83-87 | v5.0 | 14/14 | Complete | 2026-03-10 |
 | 88-97 | v6.0 | 29/29 | Complete | 2026-04-15 |
-| 98. Pre-flight & Hard-Limit Foundation | v7.0 | 0/TBD | Not started | - |
+| 98. Pre-flight & Hard-Limit Foundation | v7.0 | 0/2 | Not started | - |
 | 99. Selection Basket Core | v7.0 | 0/TBD | Not started | - |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 0/TBD | Not started | - |
 | 101. Workbench Primitives | v7.0 | 0/TBD | Not started | - |
