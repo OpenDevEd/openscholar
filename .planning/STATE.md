@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Extraction MVP Rebuild
 status: executing
-stopped_at: Phase 95 UI-SPEC approved
-last_updated: "2026-04-15T08:54:02.722Z"
+stopped_at: Phase 96 context gathered
+last_updated: "2026-04-15T09:01:14.184Z"
 last_activity: 2026-04-15
 progress:
   total_phases: 10
@@ -111,5 +111,5 @@ None.
 ## Session Continuity
 
 Last activity: 2026-04-14 — v6.0 roadmap created (10 phases, 63 requirements mapped)
-Stopped at: Phase 95 UI-SPEC approved
-Resume file: .planning/phases/95-structured-observability-slo-metrics/95-UI-SPEC.md
+Stopped at: Phase 96 context gathered
+Resume file: .planning/phases/96-eval-loop-quality-sampling/96-CONTEXT.md
