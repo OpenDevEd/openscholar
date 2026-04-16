@@ -168,7 +168,7 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ### Active
 
-- v7.0 Extraction Workbench — Phase 99 complete, Phase 100 next (goal + features in `## Current Milestone`)
+- v7.0 Extraction Workbench — Phase 100 complete, Phase 101 next (goal + features in `## Current Milestone`)
 
 ### Out of Scope
 
@@ -340,4 +340,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-15 — v7.0 Extraction Workbench milestone opened. Recovers pre-v6.0 results workbench (table/card/split/highlighted-citation views), builds unified cross-source paper selector (library + collections + search + manual + Zotero) with selection-basket pattern, enforces 1000-paper per-job hard limit with per-tier-ready shape, revives orphaned Zotero OAuth, and wires the v6.0 TierSelector orphan to the backend.*
+*Last updated: 2026-04-16 — Phase 100 (Backend Wiring + TierSelector Fix) complete. TierSelector threaded through extraction pipeline, EXTRACTION_LIMIT_EXCEEDED error system wired, OpenAlex resolve actions shipped.*
