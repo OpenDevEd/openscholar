@@ -65,15 +65,16 @@ Exceptions: none. The 44px touch target minimum does not apply in this phase (no
 | Role | Size | Weight | Line Height | Usage in this phase |
 |------|------|--------|-------------|---------------------|
 | Body | 14px (`text-sm`) | 400 (regular) | 1.43 (20px) | Table cell text, filter dropdown option text, column visibility checkbox labels |
-| Label | 14px (`text-sm`) | 500 (medium) | 1.43 (20px) | FilterSection title (existing: `text-sm font-medium`), toolbar section labels, table header text (existing: `font-medium`) |
-| Caption | 12px (`text-xs`) | 600 (semibold) | 1.33 (16px) | Badge text inside table cells (`StatusBadge`/`ConfidenceBadge` use `text-xs font-semibold`) |
+| Label | 14px (`text-sm`) | 600 (semibold) | 1.43 (20px) | FilterSection title, toolbar section labels, table header text, badge text inside table cells (`StatusBadge`/`ConfidenceBadge`) |
 | Heading | 16px (`text-base`) | 600 (semibold) | 1.5 (24px) | WorkbenchShell header (job title above toolbar) -- rendered by Phase 103 but the shell reserves this slot |
 
-**Weights used:** 400 (regular) and 500/600 (medium/semibold). The medium weight (500) is used exclusively for labels (FilterSection title, table headers). The semibold weight (600) is used exclusively for badges. This matches the existing convention where `font-medium` means 500 and `font-semibold` means 600.
+**Weights used:** 400 (regular) and 600 (semibold). Two-weight system: regular for body text, semibold for all emphasis roles (labels, table headers, badges, headings). All instances of `font-medium` (weight 500) in this phase are replaced with `font-semibold` (weight 600) to maintain a clean two-weight hierarchy.
 
 **Font:** Outfit variable weight (already loaded via `next/font/google` in `app/layout.tsx`).
 
-**Source:** Existing `TableHead` uses `text-foreground font-medium`. Existing `TableCell` and `TableCaption` use `text-sm`. Existing badges use `text-xs font-semibold`.
+**Source:** Existing badges use `text-xs font-semibold`. Existing `TableHead` uses `font-medium` -- this phase upgrades table headers to `font-semibold` for two-weight consistency. Existing `TableCell` and `TableCaption` use `text-sm` at regular weight.
+
+**Migration note:** The shadcn `TableHead` primitive defaults to `font-medium`. Implementors must override with `font-semibold` in the `WorkbenchDataTable` header cells to match this contract. The `FilterSection` title text similarly changes from `font-medium` to `font-semibold` within toolbar usage (the shared component itself is not modified -- the override is applied at the toolbar composition level via className).
 
 ---
 
@@ -208,7 +209,7 @@ This phase ships primitives only (no routes, no data fetching, no user-facing pa
 | Year input placeholder | `workbench.yearPlaceholder` | `e.g. 2020-2024` |
 | Venue input placeholder | `workbench.venuePlaceholder` | `Filter by venue...` |
 | Answer input placeholder | `workbench.answerPlaceholder` | `Filter answers...` |
-| Empty table body (no rows after filter) | `workbench.noResults` | `No papers match the current filters.` |
+| Empty table body (no rows after filter) | `workbench.noResults` | `No papers match the current filters. Try adjusting or clearing filters.` |
 | Empty table body (no data loaded) | `workbench.noData` | `No extraction results to display.` |
 
 **No primary CTA** in this phase. The primary CTA ("Review & start extraction") belongs to the basket drawer (Phase 99/102).
