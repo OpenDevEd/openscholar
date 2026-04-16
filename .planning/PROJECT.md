@@ -340,4 +340,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 101 (Workbench Primitives) complete. Zustand view state store, TanStack Table v8 column definitions factory, DataTable renderer bridging TanStack to shadcn, workbench shell/toolbar/view-switcher/column-toggle components, 17 unit tests, i18n across 6 locales.*
+*Last updated: 2026-04-16 — Phase 104 (Zotero Revival) complete. ZoteroConnectionCard on /settings/connections with OAuth connect/disconnect, ZoteroTab + ZoteroItemRow in selector page with collection picker, paginated items, lazy DOI resolution, env validation for Zotero secrets, dev-guarded purge action, i18n across 6 locales.*
