@@ -868,27 +868,23 @@ All code examples appear under **Architecture Patterns** above:
 
 **Confirmation needed from user before execution:** A1 (Convex internal-action invocation mechanism — determines whether we add a public wrapper or use deploy-key HTTP client).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Convex internal-action HTTP invocation from Playwright test runner**
-   - What we know: D-09 specifies `runAction` pattern; `ConvexHttpClient` exists; deploy keys can grant internal access
-   - What's unclear: Whether the E2E test's `ConvexHttpClient` can directly call `internal.*` refs with a deploy key, or whether we need to wrap in a public (still dev-guarded) `action`
-   - Recommendation: Start with public-wrapper pattern (always works, extra guard layer is benign), drop the wrapper if direct deploy-key invocation proves clean. Flag as A1 in Assumptions Log.
+1. **Convex internal-action HTTP invocation from Playwright test runner** — **RESOLVED: use CLI shell-out pattern.**
+   - Resolution: Plan 03 Task 3 uses `execFileAsync("npx", ["convex", "run", ...])` — the same pattern proven at `e2e/billing/fixtures.ts:115-148`. This pattern (a) works with any Convex function ref (internal or public), (b) inherits the developer's `.env.local` Convex deployment URL automatically, (c) returns a proper non-zero exit code on failure that Playwright surfaces. No public wrapper is needed; `internal.extraction.testing.seedCompletedJob` can be invoked directly via CLI. The `ConvexHttpClient` direction is abandoned for this phase — plans must NOT import `ConvexHttpClient`/`api`/`internal` for the seed invocation.
+   - Action for planner: Remove all `ConvexHttpClient` references from Plan 03 Task 3 interfaces. Use `execFileAsync` only.
 
-2. **Seed cleanup strategy**
-   - What we know: Seed action adds rows to `extractionJobs` + children; no cleanup in current D-09 scope
-   - What's unclear: Will accumulated E2E rows interfere with other tests or blow up dev DB size?
-   - Recommendation: Use a stable suffix like `title: "E2E seed <runId>"` so a companion `cleanupSeededJobs` internalAction can purge by prefix. Add to plan, not research; implementation-time detail.
+2. **Seed cleanup strategy** — **RESOLVED: deferred to implementation-time detail.**
+   - Resolution: Seed rows are tagged with `title: "E2E seed <runId>"` where `<runId>` is the Playwright run identifier (Date.now() suffix is acceptable). A companion `cleanupSeededJobs` internalAction can purge by prefix in a future phase; Phase 105 does NOT implement cleanup. Dev DB accumulation is acceptable for the single workbench E2E spec (≤ N rows per CI run, manageable manually).
+   - Action for planner: Plan 03 Task 2 `seedCompletedJob` signature includes a `title` arg defaulting to `"E2E seed <timestamp>"`. No cleanup action in this phase.
 
-3. **Mobile E2E coverage**
-   - What we know: D-13 through D-17 specify mobile behavior; current `playwright.config.ts` has no mobile viewport project
-   - What's unclear: Does the E2E spec need a mobile-viewport project config, or is desktop viewport + `useIsMobile()` stub coverage enough?
-   - Recommendation: Desktop-only E2E verification + manual UAT. Adding mobile project = new config, new worker, more CI time. Out of scope for Phase 105's "LOW research" flag — defer to v7.1 if needed.
+3. **Mobile E2E coverage** — **RESOLVED: desktop-only E2E + manual UAT.**
+   - Resolution: Phase 105 E2E spec runs on the default desktop viewport. Mobile-responsive behavior (D-13 through D-17, 44px targets, view-switcher guard) is verified via (a) component-level className grep assertions in the task `<automated>` blocks, (b) manual UAT on a physical device (logged in VALIDATION.md Manual-Only Verifications). Adding a mobile Playwright project is explicitly out of scope; defer to v7.1 if needed.
+   - Action for planner: Plan 03 Task 3 does NOT add a mobile viewport project to `playwright.config.ts`.
 
-4. **`"lint": "next lint"` in D-01 vs Next.js 16 removal**
-   - What we know: D-01 says `"lint": "next lint"`, but Next.js 16 removed `next lint`
-   - What's unclear: Nothing — the adjustment is mechanical
-   - Recommendation: Planner uses `"lint": "eslint ."` and surfaces this in their PLAN as a minor deviation from CONTEXT.md with rationale (Next.js 16 removal cited).
+4. **`"lint": "next lint"` in D-01 vs Next.js 16 removal** — **RESOLVED: use `"lint": "eslint ."` directly.**
+   - Resolution: Next.js 16 removed `next lint`. Plan 01 Task 1 must add `"lint": "eslint ."` to `package.json` scripts. This is a mechanical deviation from CONTEXT.md D-01, explicitly justified by the Next.js 16 migration guide.
+   - Action for planner: Plan 01 references this deviation in its rationale.
 
 ## Sources
 
