@@ -41,13 +41,18 @@ function isColumnFilterActive(
 
 interface WorkbenchToolbarProps {
   table: TanStackTable<WorkbenchPaper>;
+  jobId?: string;
+  jobStatus?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function WorkbenchToolbar({ table }: WorkbenchToolbarProps) {
+export function WorkbenchToolbar({ table, jobId, jobStatus }: WorkbenchToolbarProps) {
+  // jobId and jobStatus used by export dropdown (Task 2 wires them)
+  void jobId;
+  void jobStatus;
   const t = useTranslations("extraction");
   const { activeView, setActiveView } = useExtractionResultsViewStore();
   const columnFilters = table.getState().columnFilters;
