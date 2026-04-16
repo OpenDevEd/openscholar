@@ -12,6 +12,17 @@ vi.stubGlobal("sessionStorage", {
   },
 });
 
+// Mock Convex provider module to prevent ConvexReactClient instantiation at import time
+vi.mock("@/components/providers/convex-provider", () => ({
+  useAuthReadiness: () => ({ phase: "authenticated", canRunProtectedQueries: true }),
+}));
+
+// Mock convex/react to prevent client initialization
+vi.mock("convex/react", () => ({
+  useQuery: () => undefined,
+  usePaginatedQuery: () => ({ results: [], status: "Exhausted", isLoading: false, loadMore: () => {} }),
+}));
+
 import {
   useExtractionBasketStore,
   type BasketEntry,
