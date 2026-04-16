@@ -38,6 +38,7 @@
     "@openrouter/ai-sdk-provider": "^6.0.0-alpha.1",
     "@sickrin/openalex-sdk": "^1.0.0",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.23",
     "ai": "^6.0.62",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
