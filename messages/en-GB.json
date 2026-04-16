@@ -1556,7 +1556,8 @@
       "csv": "Download CSV",
       "json": "Download JSON",
       "xlsx": "Download Excel",
-      "incompleteWarning": "Job not complete -- export may be partial"
+      "incompleteWarning": "Job not complete -- export may be partial",
+      "exportFailed": "Export failed. Try again or contact support if the issue persists."
     },
     "basket": {
       "title": "Extraction basket",
@@ -1586,8 +1587,8 @@
       "add": "Add to extraction basket",
       "remove": "Remove from basket",
       "inBasket": "Already in basket",
-      "basketFull": "Basket full \u2014 remove papers to continue",
-      "dropped": "Added {added} papers; {dropped} dropped \u2014 basket limit reached"
+      "basketFull": "Basket full — remove papers to continue",
+      "dropped": "Added {added} papers; {dropped} dropped — basket limit reached"
     },
     "workbench": {
       "viewTable": "Table",
@@ -1604,7 +1605,55 @@
       "venuePlaceholder": "Filter by venue...",
       "answerPlaceholder": "Filter answers...",
       "noResults": "No papers match the current filters. Try adjusting or clearing filters.",
-      "noData": "No extraction results to display."
+      "noData": "No extraction results to display.",
+      "searchPlaceholder": "Search papers, authors, answers...",
+      "searchClear": "Clear search",
+      "paginationShowing": "Showing {start}-{end} of {total} papers",
+      "paginationPrevious": "Previous",
+      "paginationNext": "Next",
+      "splitEmptyHeading": "Select a paper to view details",
+      "splitEmptyBody": "Click a paper in the list on the left to see its full extraction results here.",
+      "splitMobileToast": "Split view is available on larger screens. Switched to table view.",
+      "evidenceDrawerTitle": "Evidence Detail",
+      "evidenceDrawerQuestion": "Question",
+      "evidenceDrawerSource": "Parsing source",
+      "evidenceDrawerModel": "Model used",
+      "evidenceDrawerVerdict": "Critic verdict",
+      "exportButton": "Export Results",
+      "exportFilteredNote": "Exporting {count} filtered papers"
+    },
+    "selector": {
+      "title": "New Extraction",
+      "description": "Select papers from your library, collections, search results, or paste OpenAlex IDs.",
+      "tabs": {
+        "library": "Library",
+        "collections": "Collections",
+        "search": "Search Results",
+        "manual": "Manual IDs",
+        "zotero": "Zotero"
+      },
+      "zoteroComingSoon": "Zotero integration is coming soon. Connect your Zotero library in Settings.",
+      "libraryEmpty": {
+        "heading": "No papers in your library",
+        "body": "Search for papers and save them to your library first."
+      },
+      "collectionsEmpty": {
+        "heading": "No collections yet",
+        "body": "Create a collection in your library to organize papers for extraction."
+      },
+      "extractCollection": "Add entire collection",
+      "searchEmpty": {
+        "heading": "No recent searches",
+        "body": "Run a search first, then come back to add results to your extraction basket."
+      },
+      "manualHeading": "Paste OpenAlex IDs",
+      "manualBody": "Enter one OpenAlex ID per line (e.g., W2741809807).",
+      "manualResolve": "Resolve & Add",
+      "manualResolving": "Resolving...",
+      "manualResolveError": "Some IDs could not be resolved. Check the format and try again.",
+      "reviewBasket": "Review Basket",
+      "startExtraction": "Start Extraction",
+      "startExtractionEmpty": "Add papers to your basket first"
     }
   }
 }

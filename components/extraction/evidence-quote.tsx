@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -21,9 +21,10 @@ export function EvidenceQuote({
   className,
 }: EvidenceQuoteProps) {
   const t = useTranslations("extraction");
-  const paperData = useQuery(api.extraction.queries.getPaperBodyText, {
-    paperId,
-  });
+  const { data: paperData } = useProtectedQuery(
+    api.extraction.queries.getPaperBodyText,
+    { paperId },
+  );
 
   // Empty range -- parent should not render this component
   if (startChar === endChar || startChar === undefined || endChar === undefined) {

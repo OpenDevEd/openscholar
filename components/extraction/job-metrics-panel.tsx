@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useTranslations } from "next-intl";
@@ -33,9 +33,9 @@ interface JobMetricsPanelProps {
 
 export function JobMetricsPanel({ jobId, totalPapers }: JobMetricsPanelProps) {
   const t = useTranslations("extraction.jobMetrics");
-  const metrics = useQuery(
+  const { data: metrics } = useProtectedQuery(
     api.extraction.queries.getExtractionJobMetrics,
-    { jobId }
+    { jobId },
   );
 
   // Loading state: skeleton

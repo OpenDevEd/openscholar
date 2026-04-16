@@ -14,10 +14,12 @@ export type ActiveView = "table" | "card" | "split";
 interface ExtractionResultsViewState {
   columnVisibility: Record<string, boolean>;
   activeView: ActiveView;
+  pageSize: number;
   _hasHydrated: boolean;
   setColumnVisibility: (visibility: Record<string, boolean>) => void;
   toggleColumn: (columnId: string) => void;
   setActiveView: (view: ActiveView) => void;
+  setPageSize: (size: number) => void;
   setHasHydrated: (hydrated: boolean) => void;
 }
 
@@ -33,11 +35,16 @@ interface ExtractionResultsViewState {
 export function migrateViewState(
   persistedState: unknown,
   version: number,
-): { columnVisibility: Record<string, boolean>; activeView: ActiveView } {
-  if (version < 1) return { columnVisibility: {}, activeView: "table" };
+): { columnVisibility: Record<string, boolean>; activeView: ActiveView; pageSize: number } {
+  if (version < 1) return { columnVisibility: {}, activeView: "table", pageSize: 25 };
+  if (version < 2) {
+    const prev = persistedState as { columnVisibility: Record<string, boolean>; activeView: ActiveView };
+    return { ...prev, pageSize: 25 };
+  }
   return persistedState as {
     columnVisibility: Record<string, boolean>;
     activeView: ActiveView;
+    pageSize: number;
   };
 }
 
@@ -56,6 +63,7 @@ export const useExtractionResultsViewStore =
       (set) => ({
         columnVisibility: {},
         activeView: "table" as ActiveView,
+        pageSize: 25,
         _hasHydrated: false,
 
         setColumnVisibility: (visibility: Record<string, boolean>) =>
@@ -71,16 +79,19 @@ export const useExtractionResultsViewStore =
 
         setActiveView: (view: ActiveView) => set({ activeView: view }),
 
+        setPageSize: (size: number) => set({ pageSize: size }),
+
         setHasHydrated: (hydrated: boolean) =>
           set({ _hasHydrated: hydrated }),
       }),
       {
         name: "extraction-results-view",
-        version: 1,
+        version: 2,
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
           columnVisibility: state.columnVisibility,
           activeView: state.activeView,
+          pageSize: state.pageSize,
         }),
         migrate: migrateViewState,
         onRehydrateStorage: () => (state) => {
