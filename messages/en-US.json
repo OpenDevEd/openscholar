@@ -1574,6 +1574,23 @@
         "manual": "Manual",
         "zotero": "Zotero"
       }
+    },
+    "workbench": {
+      "viewTable": "Table",
+      "viewCard": "Cards",
+      "viewSplit": "Split",
+      "columns": "Columns",
+      "toggleAll": "Toggle all",
+      "filterStatus": "Status",
+      "filterConfidence": "Confidence",
+      "filterYear": "Year",
+      "filterVenue": "Venue",
+      "filterAnswer": "Answer",
+      "yearPlaceholder": "e.g. 2020-2024",
+      "venuePlaceholder": "Filter by venue...",
+      "answerPlaceholder": "Filter answers...",
+      "noResults": "No papers match the current filters. Try adjusting or clearing filters.",
+      "noData": "No extraction results to display."
     }
   }
 }
