@@ -62,6 +62,9 @@ export const processExtractionPaper = internalAction({
       return { success: false };
     }
 
+    // Read tier from job row (D-04/D-05: null-coalesce to "auto" for pre-Phase-100 rows)
+    const tier = job.tier ?? "auto";
+
     // 2. Load paper -- idempotency guard
     const paper = await ctx.runQuery(
       internal.extraction.queries.getPaperInternal,
@@ -186,6 +189,7 @@ export const processExtractionPaper = internalAction({
               args.traceId,
               args.jobId,
               args.paperId,
+              tier,
             );
 
             // Aggregate token usage across all questions for credit billing

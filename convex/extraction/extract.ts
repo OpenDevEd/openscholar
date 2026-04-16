@@ -179,37 +179,50 @@ function makeInsufficientEvidence(
 // Cascade tier definitions (D-04, D-05, D-08)
 // ---------------------------------------------------------------------------
 
+type ModelTier = "auto" | "cheap" | "accurate";
+
 interface CascadeTier {
   model: LanguageModel;
   name: string;
 }
 
-function createCascadeTiers(): CascadeTier[] {
+function createCascadeTiers(tier?: ModelTier): CascadeTier[] {
   const openrouter = createOpenRouter();
 
-  return [
+  const allTiers: CascadeTier[] = [
     {
-      name: "google/gemini-2.5-flash-lite",
+      name: "google/gemini-2.5-flash-lite",       // Index 0: cheapest
       model: openrouter("google/gemini-2.5-flash-lite", {
         plugins: [{ id: "response-healing" }],
         provider: { allowFallbacks: true },
       }),
     },
     {
-      name: "google/gemini-3-flash-preview",
+      name: "google/gemini-3-flash-preview",       // Index 1: middle
       model: openrouter("google/gemini-3-flash-preview", {
         plugins: [{ id: "response-healing" }],
         provider: { allowFallbacks: true },
       }),
     },
     {
-      name: "anthropic/claude-haiku-4.5",
+      name: "anthropic/claude-haiku-4.5",          // Index 2: most capable
       model: openrouter("anthropic/claude-haiku-4.5", {
         plugins: [{ id: "response-healing" }],
         provider: { allowFallbacks: true },
       }),
     },
   ];
+
+  switch (tier) {
+    case "cheap":
+      return [allTiers[0]];                        // Cheapest model only
+    case "accurate":
+      return [allTiers[allTiers.length - 1]];      // Most capable model only
+    case "auto":
+    case undefined:
+    default:
+      return allTiers;                             // Full 3-tier cascade
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -222,9 +235,10 @@ async function extractSingleAnswer(
   signal: AbortSignal,
   traceId?: string,
   jobId?: Id<"extractionJobs">,
-  paperId?: Id<"extractionPapers">
+  paperId?: Id<"extractionPapers">,
+  tier?: ModelTier
 ): Promise<ExtractionResult> {
-  const tiers = createCascadeTiers();
+  const tiers = createCascadeTiers(tier);
   const schema = buildExtractionSchema(bodyText);
 
   for (let i = 0; i < tiers.length; i++) {
@@ -466,7 +480,8 @@ export async function extractAnswers(
   _parsingSource?: string,
   traceId?: string,
   jobId?: Id<"extractionJobs">,
-  paperId?: Id<"extractionPapers">
+  paperId?: Id<"extractionPapers">,
+  tier?: ModelTier
 ): Promise<ExtractionResult[]> {
   const CONCURRENCY_CAP = 5;
   const PER_QUESTION_TIMEOUT_MS = 60_000;
@@ -474,7 +489,7 @@ export async function extractAnswers(
   const tasks = questions.map(
     (question) => () => {
       const signal = AbortSignal.timeout(PER_QUESTION_TIMEOUT_MS);
-      return extractSingleAnswer(bodyText, question, signal, traceId, jobId, paperId);
+      return extractSingleAnswer(bodyText, question, signal, traceId, jobId, paperId, tier);
     }
   );
 

@@ -249,6 +249,7 @@ export const getJobInternal = internalQuery({
       questions: v.array(extractionQuestionValidator),
       workflowId: v.optional(v.string()),
       traceId: v.optional(v.string()),
+      tier: v.optional(v.union(v.literal("auto"), v.literal("cheap"), v.literal("accurate"))),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -267,6 +268,7 @@ export const getJobInternal = internalQuery({
       questions: job.questions,
       workflowId: job.workflowId,
       traceId: job.traceId,
+      tier: job.tier,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };

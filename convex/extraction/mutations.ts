@@ -33,6 +33,7 @@ export const createExtractionJob = mutation({
   args: {
     papers: v.array(extractionPaperInputValidator),
     questions: v.array(extractionQuestionValidator),
+    tier: v.optional(v.union(v.literal("auto"), v.literal("cheap"), v.literal("accurate"))),
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args) => {
@@ -102,6 +103,7 @@ export const createExtractionJob = mutation({
       traceId,
       createdAt: now,
       updatedAt: now,
+      tier: args.tier ?? "auto",
     });
 
     // 6. Insert paper rows
