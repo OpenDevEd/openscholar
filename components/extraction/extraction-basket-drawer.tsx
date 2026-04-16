@@ -18,6 +18,7 @@ import { useExtractionBasketStore } from "@/lib/store/extraction-basket";
 import type { BasketEntry, BasketSource } from "@/lib/store/extraction-basket";
 import { BasketSourceSection } from "./basket-source-section";
 import { BasketEmptyState } from "./basket-empty-state";
+import { ExtractionCounter } from "./extraction-counter";
 
 interface ExtractionBasketDrawerProps {
   isOpen: boolean;
@@ -65,10 +66,10 @@ export function ExtractionBasketDrawer({
       <SheetContent side="right" className="flex flex-col p-0">
         <SheetHeader className="border-b p-4">
           <SheetTitle>{t("title")}</SheetTitle>
-          <SheetDescription>
-            <span className="font-semibold text-primary">{count}</span>{" "}
+          <SheetDescription className="sr-only">
             {t("description", { count })}
           </SheetDescription>
+          <ExtractionCounter className="pt-1" />
         </SheetHeader>
 
         <ScrollArea className="flex-1">

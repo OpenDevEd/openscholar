@@ -55,6 +55,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
+import { useExtractionBasketStore } from "@/lib/store/extraction-basket";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -475,6 +476,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
+  const basketCount = useExtractionBasketStore((s) => s.papers.size);
   const effectiveSearchId = useEffectiveSearchId();
 
   // Screening job progress for footer button
@@ -630,6 +632,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             label={ts("extraction")}
             isActive={currentPageValue === "extraction"}
             isCollapsed={isCollapsed && !isMobile}
+            badge={basketCount > 0 ? basketCount : undefined}
             onClick={handleNavClick}
             index={4}
           />
