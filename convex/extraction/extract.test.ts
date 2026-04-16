@@ -643,3 +643,104 @@ describe("critic token aggregation (D-20)", () => {
     expect(results[0].tokensOut).toBe(130);   // 100 + 30
   });
 });
+
+// ===================================================================
+// Phase 100: Tier-based cascade filtering (TIER-03)
+// ===================================================================
+
+describe("tier-based cascade filtering (TIER-03)", () => {
+  beforeEach(() => {
+    mockGenerateText.mockReset();
+  });
+
+  it("'cheap' tier uses only the cheapest model (TIER-03)", async () => {
+    const { extractAnswers } = await import("./extract");
+    const modelsUsed: string[] = [];
+
+    mockGenerateText.mockImplementation(async (opts: Record<string, unknown>) => {
+      const model = opts.model as { modelId?: string };
+      if (model?.modelId) modelsUsed.push(model.modelId);
+
+      // Detect critic call by checking system prompt content
+      const system = String(opts.system ?? "");
+      if (system.includes("Verify") || system.includes("verify")) {
+        return makeCriticResponse("supported", "OK");
+      }
+      return makeSuccessResponse();
+    });
+
+    await extractAnswers(
+      "The study enrolled 42 participants.",
+      [{ key: "q1", question: "How many participants?" }],
+      undefined, undefined, undefined, undefined,
+      "cheap"
+    );
+
+    expect(modelsUsed.length).toBeGreaterThan(0);
+    expect(modelsUsed.every((m) => m === "google/gemini-2.5-flash-lite")).toBe(true);
+  });
+
+  it("'accurate' tier uses only the most capable model (TIER-03)", async () => {
+    const { extractAnswers } = await import("./extract");
+    const modelsUsed: string[] = [];
+
+    mockGenerateText.mockImplementation(async (opts: Record<string, unknown>) => {
+      const model = opts.model as { modelId?: string };
+      if (model?.modelId) modelsUsed.push(model.modelId);
+
+      const system = String(opts.system ?? "");
+      if (system.includes("Verify") || system.includes("verify")) {
+        return makeCriticResponse("supported", "OK");
+      }
+      return makeSuccessResponse();
+    });
+
+    await extractAnswers(
+      "The study enrolled 42 participants.",
+      [{ key: "q1", question: "How many participants?" }],
+      undefined, undefined, undefined, undefined,
+      "accurate"
+    );
+
+    expect(modelsUsed.length).toBeGreaterThan(0);
+    expect(modelsUsed.every((m) => m === "anthropic/claude-haiku-4.5")).toBe(true);
+  });
+
+  it("'auto' tier uses all 3 models in cascade on repeated failures (TIER-03)", async () => {
+    const { extractAnswers } = await import("./extract");
+    const modelsUsed: string[] = [];
+    let callCount = 0;
+
+    mockGenerateText.mockImplementation(async (opts: Record<string, unknown>) => {
+      callCount++;
+      const model = opts.model as { modelId?: string };
+      if (model?.modelId) modelsUsed.push(model.modelId);
+
+      // Fail first 4 calls (2 attempts x tier 1 + 2 attempts x tier 2)
+      // to force escalation through all 3 tiers
+      if (callCount <= 4) {
+        throw new Error("Schema validation failed");
+      }
+
+      // Tier 3 extraction succeeds (call 5)
+      const system = String(opts.system ?? "");
+      if (system.includes("Verify") || system.includes("verify")) {
+        return makeCriticResponse("supported", "OK");
+      }
+      return makeSuccessResponse();
+    });
+
+    await extractAnswers(
+      "The study enrolled 42 participants.",
+      [{ key: "q1", question: "How many participants?" }],
+      undefined, undefined, undefined, undefined,
+      "auto"
+    );
+
+    // Should have used all 3 model names in the cascade
+    const uniqueModels = [...new Set(modelsUsed)];
+    expect(uniqueModels).toContain("google/gemini-2.5-flash-lite");
+    expect(uniqueModels).toContain("google/gemini-3-flash-preview");
+    expect(uniqueModels).toContain("anthropic/claude-haiku-4.5");
+  });
+});
