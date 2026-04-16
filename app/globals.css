@@ -453,3 +453,14 @@
     transform: scale(1.05);
   }
 }
+
+/* Reduced-motion fallback for non-Motion animations (Tailwind transition-*, tw-animate-css keyframes).
+   D-19: complements the global MotionConfig via components/providers/reduced-motion-provider.tsx. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
+import { ReducedMotionProvider } from "@/components/providers/reduced-motion-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
@@ -80,34 +81,36 @@ export default async function RootLayout({
     <html lang={locale} suppressHydrationWarning className={cn(outfit.variable, geistMono.variable, "antialiased")}>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ThemeProvider>
-            <ConvexClientProvider preloadedFlags={preloadedFlags}>
-              <ConfigProvider>
-                <NuqsAdapter>
-                  <QuerySyncProvider>
-                    <TooltipProvider>
-                      <div className="flex min-h-screen">
-                        {/* Sidebar */}
-                        <AppSidebar />
+          <ReducedMotionProvider>
+            <ThemeProvider>
+              <ConvexClientProvider preloadedFlags={preloadedFlags}>
+                <ConfigProvider>
+                  <NuqsAdapter>
+                    <QuerySyncProvider>
+                      <TooltipProvider>
+                        <div className="flex min-h-screen">
+                          {/* Sidebar */}
+                          <AppSidebar />
 
-                        {/* Main Content Area */}
-                        <div className="flex-1 flex flex-col min-w-0 min-h-0">
-                          {/* Mobile Navbar */}
-                          <MobileNavbar />
+                          {/* Main Content Area */}
+                          <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                            {/* Mobile Navbar */}
+                            <MobileNavbar />
 
-                          <AuthRouteGate>{children}</AuthRouteGate>
+                            <AuthRouteGate>{children}</AuthRouteGate>
+                          </div>
                         </div>
-                      </div>
-                      <Toaster />
-                      <ConfirmationHost />
-                      <CookieConsentBanner />
-                      <ConsentAwareGoogleAnalytics />
-                    </TooltipProvider>
-                  </QuerySyncProvider>
-                </NuqsAdapter>
-              </ConfigProvider>
-            </ConvexClientProvider>
-          </ThemeProvider>
+                        <Toaster />
+                        <ConfirmationHost />
+                        <CookieConsentBanner />
+                        <ConsentAwareGoogleAnalytics />
+                      </TooltipProvider>
+                    </QuerySyncProvider>
+                  </NuqsAdapter>
+                </ConfigProvider>
+              </ConvexClientProvider>
+            </ThemeProvider>
+          </ReducedMotionProvider>
         </NextIntlClientProvider>
       </body>
     </html>
