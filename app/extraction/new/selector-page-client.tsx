@@ -23,6 +23,7 @@ import { LibraryTab } from "./library-tab";
 import { CollectionsTab } from "./collections-tab";
 import { SearchResultsTab } from "./search-results-tab";
 import { ManualIdsTab } from "./manual-ids-tab";
+import { ZoteroTab } from "./zotero-tab";
 import { ShoppingBag, Play, Beaker } from "lucide-react";
 
 export function SelectorPageClient() {
@@ -70,7 +71,7 @@ export function SelectorPageClient() {
             </TabsTrigger>
             <TabsTrigger value="search">{t("tabs.search")}</TabsTrigger>
             <TabsTrigger value="manual">{t("tabs.manual")}</TabsTrigger>
-            <TabsTrigger value="zotero" disabled className="opacity-50">
+            <TabsTrigger value="zotero">
               {t("tabs.zotero")}
             </TabsTrigger>
           </TabsList>
@@ -88,11 +89,7 @@ export function SelectorPageClient() {
               <ManualIdsTab />
             </TabsContent>
             <TabsContent value="zotero">
-              <div className="flex min-h-[30vh] items-center justify-center">
-                <p className="text-center text-sm text-muted-foreground max-w-sm">
-                  {t("zoteroComingSoon")}
-                </p>
-              </div>
+              <ZoteroTab />
             </TabsContent>
           </div>
         </Tabs>
