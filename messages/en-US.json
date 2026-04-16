@@ -1584,8 +1584,8 @@
       "add": "Add to extraction basket",
       "remove": "Remove from basket",
       "inBasket": "Already in basket",
-      "basketFull": "Basket full \u2014 remove papers to continue",
-      "dropped": "Added {added} papers; {dropped} dropped \u2014 basket limit reached"
+      "basketFull": "Basket full — remove papers to continue",
+      "dropped": "Added {added} papers; {dropped} dropped — basket limit reached"
     },
     "workbench": {
       "viewTable": "Table",
@@ -1603,6 +1603,50 @@
       "answerPlaceholder": "Filter answers...",
       "noResults": "No papers match the current filters. Try adjusting or clearing filters.",
       "noData": "No extraction results to display."
+    },
+    "selector": {
+      "title": "New Extraction",
+      "description": "Select papers from your library, collections, search results, or paste OpenAlex IDs.",
+      "tabs": {
+        "library": "Library",
+        "collections": "Collections",
+        "search": "Search Results",
+        "manual": "Manual IDs",
+        "zotero": "Zotero"
+      },
+      "zoteroComingSoon": "Zotero integration is coming soon. Connect your Zotero library in Settings.",
+      "libraryEmpty": {
+        "heading": "No papers in your library",
+        "body": "Search for papers and save them to your library first."
+      },
+      "collectionsEmpty": {
+        "heading": "No collections yet",
+        "body": "Create a collection in your library to organize papers for extraction."
+      },
+      "extractCollection": "Add entire collection",
+      "searchEmpty": {
+        "heading": "No recent searches",
+        "body": "Run a search first, then come back to add results to your extraction basket."
+      },
+      "manualHeading": "Paste OpenAlex IDs",
+      "manualBody": "Enter one OpenAlex ID per line (e.g., W2741809807).",
+      "manualResolve": "Resolve & Add",
+      "manualResolving": "Resolving...",
+      "manualResolveError": "Some IDs could not be resolved. Check the format and try again.",
+      "manualResolveSuccess": "Resolved {added} papers",
+      "reviewBasket": "Review Basket",
+      "startExtraction": "Start Extraction",
+      "startExtractionEmpty": "Add papers to your basket first",
+      "selectAll": "Select all",
+      "addSelected": "Add selected to basket",
+      "addedWithDropped": "Added {added} papers; {dropped} dropped — basket limit reached",
+      "addedSuccess": "Added {added} papers to basket",
+      "alreadyInBasket": "In basket",
+      "addingCollection": "Adding collection...",
+      "searchPicker": {
+        "label": "Select a search",
+        "placeholder": "Choose a recent search..."
+      }
     }
   }
 }

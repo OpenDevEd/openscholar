@@ -1578,14 +1578,14 @@
     "counter": {
       "label": "{count} / {limit} articles",
       "limitReached": "Limite du panier atteinte",
-      "limitWarning": "Limite du panier bient\u00f4t atteinte"
+      "limitWarning": "Limite du panier bientôt atteinte"
     },
     "addButton": {
       "add": "Ajouter au panier d'extraction",
       "remove": "Retirer du panier",
-      "inBasket": "D\u00e9j\u00e0 dans le panier",
-      "basketFull": "Panier plein \u2014 retirez des articles pour continuer",
-      "dropped": "{added} articles ajout\u00e9s ; {dropped} retir\u00e9s \u2014 limite du panier atteinte"
+      "inBasket": "Déjà dans le panier",
+      "basketFull": "Panier plein — retirez des articles pour continuer",
+      "dropped": "{added} articles ajoutés ; {dropped} retirés — limite du panier atteinte"
     },
     "workbench": {
       "viewTable": "Tableau",
@@ -1603,6 +1603,50 @@
       "answerPlaceholder": "Filtrer les reponses...",
       "noResults": "Aucun article ne correspond aux filtres actuels. Essayez d'ajuster ou de supprimer les filtres.",
       "noData": "Aucun resultat d'extraction a afficher."
+    },
+    "selector": {
+      "title": "New Extraction",
+      "description": "Select papers from your library, collections, search results, or paste OpenAlex IDs.",
+      "tabs": {
+        "library": "Library",
+        "collections": "Collections",
+        "search": "Search Results",
+        "manual": "Manual IDs",
+        "zotero": "Zotero"
+      },
+      "zoteroComingSoon": "Zotero integration is coming soon. Connect your Zotero library in Settings.",
+      "libraryEmpty": {
+        "heading": "No papers in your library",
+        "body": "Search for papers and save them to your library first."
+      },
+      "collectionsEmpty": {
+        "heading": "No collections yet",
+        "body": "Create a collection in your library to organize papers for extraction."
+      },
+      "extractCollection": "Add entire collection",
+      "searchEmpty": {
+        "heading": "No recent searches",
+        "body": "Run a search first, then come back to add results to your extraction basket."
+      },
+      "manualHeading": "Paste OpenAlex IDs",
+      "manualBody": "Enter one OpenAlex ID per line (e.g., W2741809807).",
+      "manualResolve": "Resolve & Add",
+      "manualResolving": "Resolving...",
+      "manualResolveError": "Some IDs could not be resolved. Check the format and try again.",
+      "manualResolveSuccess": "Resolved {added} papers",
+      "reviewBasket": "Review Basket",
+      "startExtraction": "Start Extraction",
+      "startExtractionEmpty": "Add papers to your basket first",
+      "selectAll": "Select all",
+      "addSelected": "Add selected to basket",
+      "addedWithDropped": "Added {added} papers; {dropped} dropped — basket limit reached",
+      "addedSuccess": "Added {added} papers to basket",
+      "alreadyInBasket": "In basket",
+      "addingCollection": "Adding collection...",
+      "searchPicker": {
+        "label": "Select a search",
+        "placeholder": "Choose a recent search..."
+      }
     }
   }
 }
