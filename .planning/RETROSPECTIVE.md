@@ -797,6 +797,77 @@
 
 ---
 
+## Milestone: v7.0 — Extraction Workbench
+
+**Shipped:** 2026-04-16
+**Phases:** 8 | **Plans:** 23 | **Commits:** 204
+
+### What Was Built
+- Hard paper limit (200→1000) with per-tier-ready `EXTRACTION_LIMITS_BY_TIER` map, benchmarked at 3.97 MB typical / 10.31 MB worst-case (Phase 98)
+- sessionStorage-backed Zustand basket with `normalizeOpenAlexId` dedupe across 3 ID formats (Phase 99)
+- Convex actions `resolveManualIds` + `resolveByDoi`, `tier` field threading through workpool → `createCascadeTiers`, typed `EXTRACTION_LIMIT_EXCEEDED` error (Phase 100)
+- TanStack React Table + shadcn `<Table />` primitive, shared `useReactTable` across views, Zustand column visibility (Phase 101)
+- "X / 1000" counter, cap-disabled checkboxes, bulk-paste overflow toast, sidebar Extraction badge, `<AddToExtractionButton>` mounts (Phase 102)
+- 4-view workbench (table + virtualized card + split + evidence drawer), React 19 `useDeferredValue` search, `/extraction/new` selector with 4 tabs, `parsingSource` badge, `useProtectedQuery` migration (Phase 103)
+- Zotero OAuth 1.0a revival (~1433 LoC reconnected), per-item DOI resolution state machine, env-validation cron, dev-guarded purge action (Phase 104)
+- ESLint 9 flat config with GAP-03 no-restricted-syntax, global reduced-motion + CSS fallback, mobile responsive, 6-locale parity test, Playwright E2E spec, test:ci chain (Phase 105)
+- v6.0 gap closures: UI-01 (job creation reachable), EXTR-01 (TierSelector wired), PARSE-07 (badge rendered), CRASH-02 (useProtectedQuery)
+
+### What Worked
+- Benchmark gate in Phase 98 (prove <5 MB before production bump) unblocked all downstream phases with data, not speculation
+- Three disjoint phases (99 Zustand basket / 100 Convex actions / 101 UI primitives) parallelized cleanly after Phase 98
+- `normalizeOpenAlexId` utility encapsulated 3-format dedupe in one place — no format sprawl across sources
+- Re-adding shadcn `<Table />` primitive (not the `data-table` block) gave 4 views shared state via one `useReactTable` instance
+- Scoping `@tanstack/react-virtual` to card view only (not table) avoided bundle bloat for the dominant view
+- `test:ci` chain extension (lint prepended before test+build+e2e) caught GAP-03 lint violations before 5-min build step
+
+### What Was Inefficient
+- Phase 98 never produced VERIFICATION.md — code exists and consumed downstream, but audit trail is incomplete
+- `void openEvidence;` suppression in workbench-shell.tsx:132 should have been caught in phase 103 code review — WB-07 chain ended up one-hop-short
+- `BasketTriggerButton` shipped as standalone export but never mounted globally — orphan component violates CLAUDE.md rule
+- `extraction-dialog.tsx` post-submit wiring missed during integration (no `router.push`, no `basket.clear()`) — regression in SEL-01..SEL-06 flows
+- Nyquist wave 0 never closed on 6 of 8 phases — VALIDATION.md `nyquist_compliant: false` accumulated without remediation
+- 1161 pre-existing ESLint errors from phases 100-104 surfaced by Phase 105 lint activation — should have been incremental, not end-of-milestone
+- Zombie `<ExtractionDialog>` mount in `/extraction` list page survived with no `papers` prop — needs either wiring or deletion
+- GAP-03 scope leak: `?? 1000` fallback in `lib/hooks/use-add-to-basket.ts:97` outside ESLint rule scope
+
+### Patterns Established
+- **Per-tier-ready constant map**: `EXTRACTION_LIMITS_BY_TIER: Record<Plan, number>` as single source of truth, `MAX = Math.max(...values)` derived; v7.1 tier tuning = edit one constant, zero call-site churn
+- **Split internal vs user-facing bounds**: `MAX_EXTRACTION_RESULTS_QUERY` (10000) decoupled from `MAX_EXTRACTION_PAPERS_PER_JOB` (1000) prevents Convex 8 MB surprise
+- **sessionStorage Zustand basket** with explicit clear-on-success semantics: survives navigation, resets on submit, tab-scoped
+- **Normalized ID utility at source boundaries**: one util handles 3 formats, deduped at add-time not query-time
+- **Server-side hard-reject with typed error + i18n toast routing**: `EXTRACTION_LIMIT_EXCEEDED` via `lib/toast/error-resolver.ts` gives UX parity with client cap
+- **4-view workbench with shared TanStack instance**: hoist `useReactTable` in WorkbenchShell, views consume via context; column visibility persists in Zustand across jobs
+- **Scoped virtualization**: card view virtualizes (`@tanstack/react-virtual`), table does not (1000 rows OK)
+- **Drawer pattern for cross-view evidence**: one `EvidenceDrawer` mount serves all 3 views, keyed by `resultId` — rejects 4th-view approach (not all sources are PDFs)
+- **OAuth 1.0a verification before migration**: check provider docs before assuming OAuth 2.0 migration (Zotero hasn't)
+- **ESLint 9 flat config with progressively specific globs**: two config objects (base + scoped rule), not nested overrides
+- **`test:ci` fail-fast chain**: lint → test → build → e2e:auth → e2e:workbench (lint prepended to catch errors before 5-min build)
+- **Dev-guarded internal Convex actions**: `purgeStaleZoteroState` + seed actions gated by `process.env.NODE_ENV === 'development'` for destructive ops
+
+### Key Lessons
+1. Phase 98 benchmark gate (prove <5 MB before 200→1000 bump) was invaluable — data unblocked all downstream phases without speculative pagination migration
+2. Re-adding shadcn primitive (not the block) is the right choice when multiple views need shared state — the block assumes monolithic use
+3. Scoping virtualization to card view only, not table view, keeps bundle cost proportional to actual render cost
+4. `void someCallback;` as a lint-suppression pattern is a code smell — the callback either belongs or it doesn't; discards signal incomplete integration
+5. `normalizeOpenAlexId` at ID boundaries (add-time, not query-time) eliminates an entire class of dedupe bugs across sources
+6. Orphan component exports (`BasketTriggerButton` built but never mounted) violate CLAUDE.md — integration tests should catch unmounted exports
+7. sessionStorage over localStorage for basket: clears on tab close AND on successful job submit, which matches user mental model of "this is a one-time selection"
+8. OAuth 1.0a survives in 2025 — don't assume OAuth 2.0 migration without checking provider docs (Zotero September 2025 still on 1.0a)
+9. VERIFICATION.md gap (Phase 98) is a recurring process risk when phases run fast — enforce VERIFICATION.md as gate even for "obvious" changes
+10. `test:ci` should start with fastest failure mode (lint) to avoid 5-min build overhead on broken code
+11. ESLint rule scope definitions must explicitly enumerate all directories — `lib/hooks/**` slipped past `components/extraction/**` + `app/extraction/**` scope
+12. Post-submit navigation + state-clear must be part of integration plan, not assumed; UI-01 regression repeats v6.0 UI-01 pattern
+13. Nyquist wave 0 compliance cannot accumulate — enforce at phase close, not milestone audit
+14. Pre-existing ESLint errors from earlier phases surfacing at milestone end (1161 from phases 100-104) is a lint-gating regression — catch incrementally, not retroactively
+
+### Cost Observations
+- Model mix: budget profile
+- Sessions: multiple sessions across 1.5 days
+- Notable: 23 plans in 204 commits — higher commit-per-plan ratio than v6.0 due to `auto-advance` chain and doc evolution commits
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -819,6 +890,7 @@
 | v4.1 | 21 | 4 | 5 | ~2min | Screening export, pattern reuse, backward-compat schema evolution |
 | v5.0 | 65 | 5 | 14 | ~4.5min | Extraction insights overhaul, Recharts lazy-loading, TDD pure utilities, semantic grouping |
 | v6.0 | 212 | 10 | 29 | ~7min | Extraction MVP rebuild — scorched-earth teardown, parsing waterfall, OpenRouter cascade, citation grounding, durable workflow, observability, eval framework, extraction UI |
+| v7.0 | 204 | 8 | 23 | ~9min | Extraction workbench — 4-view workbench, cross-source selector, 1000-paper cap, Zotero revival, TierSelector wiring, v6.0 gap closures |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -863,3 +935,16 @@
 39. Wire UI consumers in the same phase as backend queries — write-only data is invisible tech debt that audit catches too late (v6.0)
 40. Larger milestones (10+ phases) accumulate more integration gaps — consider integration checkpoints mid-milestone (v6.0)
 41. Free-first parsing waterfalls (PMC → arXiv → paid) minimize LLM cost for open-access-heavy corpora (v6.0)
+42. Benchmark-gated cap bumps (prove payload size before raising user-visible limit) unblock downstream phases with data, not speculation (v7.0)
+43. Re-add shadcn primitive (not the monolithic block) when multiple views need shared state — one `useReactTable` instance hoisted into shell (v7.0)
+44. Scope virtualization to where it's needed (card view: 1000 cards crash; table view: 1000 rows fine) — don't pay bundle cost for unused virtualization (v7.0)
+45. `void someCallback;` is a code smell for incomplete integration, not a valid suppression — if the callback belongs, wire it; if not, remove it (v7.0)
+46. Orphan component exports (built but never mounted) violate no-dead-code rule — integration tests should catch unmounted public exports (v7.0)
+47. ID normalization at source boundaries (add-time) eliminates dedupe bugs across multi-format APIs — one util, 3 formats, consistent dedupe (v7.0)
+48. sessionStorage over localStorage when data represents a one-time staging action that should clear on submit AND tab close (v7.0)
+49. Don't assume OAuth 2.0 migration without checking provider docs — Zotero still on 1.0a in September 2025 (v7.0)
+50. `test:ci` should start with fastest failure mode (lint) to avoid wasting 5-min build time on broken code (v7.0)
+51. ESLint rule scope definitions must enumerate ALL directories that can violate — off-scope fallbacks (`lib/hooks/**`) defeat defense-in-depth (v7.0)
+52. Nyquist wave 0 compliance cannot accumulate across phases — enforce at phase close, not milestone audit (v7.0)
+53. Pre-existing lint errors from earlier phases surfacing at milestone end is a regression — lint must gate incrementally, not retroactively (v7.0)
+54. Post-submit navigation + state-clear are part of integration plan, not assumed — UI-01 post-submit regression repeats v6.0 pattern (v6.0 + v7.0)

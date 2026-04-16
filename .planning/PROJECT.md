@@ -8,19 +8,56 @@ OpenAlex Count is an academic literature search and extraction tool built with N
 
 Reliable, well-tested academic search and AI extraction — every major code path has tests, and every new feature is built test-first.
 
-## Current Milestone: v7.0 Extraction Workbench
+## Current State
 
-**Goal:** Restore the pre-v6.0 results workbench (table/card/split views with highlighted citations), build a unified cross-source paper selector (library + collections + search results + manual IDs + Zotero) that stages selections across multiple origins into one job, and enforce a 1000-paper per-job hard limit that's displayed at every selection point and structured for future per-tier enforcement.
+**Shipped:** v7.0 Extraction Workbench (2026-04-16) — 8 phases, 23 plans, 339 files changed (+47,430/-3,260 LOC), 204 commits. 35/42 requirements satisfied (83%); known gaps documented in `milestones/v7.0-MILESTONE-AUDIT.md`.
+
+**What this means for the product today:**
+
+- Extraction jobs can be created from 4+ sources (library, collections, search results, manual OpenAlex IDs, Zotero) via a unified `/extraction/new` selector page with a persistent sessionStorage-backed basket, "X / 1000 papers" counter, and cap-disabled UI
+- 1000-paper hard limit enforced with per-tier-ready `EXTRACTION_LIMITS_BY_TIER` map (all tiers currently 1000); server-side hard-reject via typed `EXTRACTION_LIMIT_EXCEEDED` error; `MAX_EXTRACTION_RESULTS_QUERY=10000` decoupled from user cap
+- TierSelector (auto/cheap/accurate) finally wired from UI → schema → workpool → `createCascadeTiers(tier)` filtering (closes v6.0 EXTR-01)
+- Zotero OAuth 1.0a reconnected: settings connect card + `<ZoteroTab>` with lazy DOI resolution + env-validation cron
+- 4-view workbench (table/card/split + evidence drawer) on `/extraction/[jobId]` — TanStack Table + shadcn `<Table />`, card view virtualized via `@tanstack/react-virtual`, React 19 `useDeferredValue` search debounce, `parsingSource` badge everywhere
+- `EvidenceQuote` + `JobMetricsPanel` migrated to `useProtectedQuery` (closes v6.0 CRASH-02)
+- ESLint 9 flat config forbids literal `1000`/`200` in extraction code (GAP-03); `test:ci` chain: lint → test → build → e2e:auth → e2e:workbench
+
+**Known gaps deferred to v7.1:**
+
+- **WB-07 (unsatisfied)**: Evidence drawer click-to-open wiring broken — `void openEvidence;` in `workbench-shell.tsx:132` discards callback; single-hop fix
+- **SEL-09 (partial)**: `BasketTriggerButton` orphan — not mounted in global app shell; drawer reachable only from `/extraction/new` footer
+- **UI-01 regression**: `extraction-dialog.tsx` post-submit wiring missing (no `router.push` + no `basket.clear()`); user stays on selector with stale basket after mutation
+- **UI-02 zombie**: `<ExtractionDialog>` mounted in `/extraction` list page with no papers prop — silent no-op
+- **GAP-03 scope hole**: `lib/hooks/use-add-to-basket.ts:97` `?? 1000` fallback outside ESLint rule scope
+- Phase 98 never produced VERIFICATION.md; Nyquist wave 0 never closed on 6 of 8 phases
+
+## Next Milestone Goals
+
+**v7.1 scope candidates:**
+
+1. **Close v7.0 audit gaps** — WB-07 evidence drawer wiring, SEL-09 global mount, UI-01/UI-02 post-submit navigation + zombie dialog removal, GAP-03 scope extension, Phase 98 retroactive verification
+2. **Tier-specific limits** (LIM-F01): Differentiate `EXTRACTION_LIMITS_BY_TIER` (free=100, pro=1000, enterprise=unlimited) with upgrade CTAs near counter (LIM-F02)
+3. **Workbench extensions** (WB-F01/F02/F03/F04/F05): Bulk re-run selected papers, "Insufficient evidence" filter chip, rich evidence drawer with surrounding sentences, save basket as collection, keyboard shortcuts
+4. **Quality & review UIs** (QUAL-F01/F02): v6.0 backend exists — human-review queue UI consumer + 7-day rolling quality-trend dashboard
+5. **Mobile bottom-sheet drawer variant** (MOB-F01)
+6. **Tech debt sweep**: 1161 pre-existing ESLint errors (phases 100-104), pre-existing test failures DEF-105-01 + DEF-105-02, duplicate `getExtractionLimit` subscriptions (IN-02)
+
+<details>
+<summary>Previous v7.0 milestone description (archived at close)</summary>
+
+**v7.0 Goal:** Restore the pre-v6.0 results workbench (table/card/split views with highlighted citations), build a unified cross-source paper selector (library + collections + search results + manual IDs + Zotero) that stages selections across multiple origins into one job, and enforce a 1000-paper per-job hard limit that's displayed at every selection point and structured for future per-tier enforcement.
 
 **Target features:**
 
-- **Results workbench** — Four complementary views (table, card, split, highlighted-citation) on `/extraction/[jobId]` with shared toolbar (view switcher, status/confidence filters, search, column picker, pagination), backed by the existing v6.0 `extractionResults` table
-- **Universal cross-source paper selector** — Multi-source picker with a selection basket ("cart" pattern) that stages papers from library, collections, search results, manual OpenAlex IDs, and Zotero into a single job, deduped by OpenAlex ID
-- **Zotero OAuth revival** — Re-activate the orphaned `convex/zotero/**` OAuth flow (~1433 LOC) via a settings connection card + a Zotero source tab in the picker
-- **Hard paper limit (200 → 1000)** — Bump `MAX_EXTRACTION_PAPERS_PER_JOB`, live "X / 1000" counters in dialog and every source picker, backend hard reject with toast-routed error, constant shape made per-tier-ready (no tier logic yet)
-- **TierSelector wiring** — Send the v6.0 `TierSelector` UI value to `createExtractionJob` (currently orphaned, cascade always runs all 3 tiers)
+- Results workbench — Four complementary views (table, card, split, highlighted-citation drawer) on `/extraction/[jobId]` with shared toolbar
+- Universal cross-source paper selector with persistent basket
+- Zotero OAuth revival (~1433 LOC)
+- Hard paper limit (200 → 1000), per-tier-ready constant shape
+- TierSelector wiring to backend cascade
 
-**Explicitly out of scope:** insights dashboards (summary cards, stacked bar charts, confidence rings), report templates / report builder, human-review queue, quality-trend dashboard — deferred to future milestones.
+**Explicitly out of scope:** insights dashboards, report templates, human-review queue UI, quality-trend dashboard UI.
+
+</details>
 
 ## Requirements
 
@@ -165,11 +202,55 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ ULID traceId propagation across all 4 extraction stages, structured JSON logging, per-job metrics query, SLO persistence — v6.0
 - ✓ Golden set eval framework, hourly production quality sampling cron, human-review queue backend — v6.0
 - ✓ Extraction UI: job creation dialog, live progress with cancel, results cards with verbatim quotes, export, JobMetricsPanel with SLO bars — v6.0
-- ✓ GAP-03: ESLint rule forbids literal `1000`/`200` in `components/extraction/**` and `app/extraction/**`, protected by Vitest structural test, wired into `test:ci` — Validated in Phase 105 (Polish, Integration, E2E)
+- ✓ GAP-03: ESLint rule forbids literal `1000`/`200` in `components/extraction/**` and `app/extraction/**`, protected by Vitest structural test, wired into `test:ci` — v7.0 (partial — scope hole at `lib/hooks/use-add-to-basket.ts:97`)
+
+- ✓ LIM-01: `MAX_EXTRACTION_PAPERS_PER_JOB=1000` via `Math.max(EXTRACTION_LIMITS_BY_TIER)` with `MAX_EXTRACTION_RESULTS_QUERY=10000` split separately — v7.0
+- ✓ LIM-02: `EXTRACTION_LIMITS_BY_TIER: Record<SubscriptionPlan, number>` per-tier-ready shape, all tiers at 1000 — v7.0
+- ✓ LIM-03: `getExtractionLimitForUser(ctx)` helper + reactive `getExtractionLimit` query routed through `resolveEffectivePlan` — v7.0
+- ✓ LIM-04: "X / 1000 papers" counter with yellow 80% / red 100% progress bar in basket drawer + `/extraction/new` — v7.0
+- ✓ LIM-05: At-cap add-checkbox disabling with explanatory tooltip — v7.0
+- ✓ LIM-06: Bulk-paste overflow silently dropped with count toast — v7.0
+- ✓ LIM-07: Backend `createExtractionJob` hard-rejects over-limit via typed `EXTRACTION_LIMIT_EXCEEDED` routed to localized toast — v7.0
+- ✓ SEL-01: `/extraction/new` selector page with 4 tabs (Library, Collections, Search, Manual IDs) + sticky counter — v7.0
+- ✓ SEL-02: Bulk-select papers from Library tab → basket — v7.0
+- ✓ SEL-03: One-click "Extract entire collection" stages all items — v7.0
+- ✓ SEL-04: Bulk-select papers from Search Results tab → basket — v7.0
+- ✓ SEL-05: Manual-ID paste via `resolveManualIds` action (pipe-delimited batch filter) — v7.0
+- ✓ SEL-06: Zotero tab stages items alongside other sources — v7.0
+- ✓ SEL-07: Basket persists across in-app navigation via sessionStorage Zustand; cleared only on successful job creation — v7.0
+- ✓ SEL-08: `normalizeOpenAlexId` utility dedupes 3 formats (`W123`, URL, `openalex:` prefix) — v7.0
+- ✓ SEL-10: Remove-from-basket + "already in basket" indicator across source tabs — v7.0
+- ✓ SEL-11: `<AddToExtractionButton>` mounted in library + 3 search card variants — v7.0
+- ✓ SEL-12: Sidebar "Extraction" nav badge with live basket count — v7.0
+- ✓ WB-01: Table view powered by `@tanstack/react-table@^8.21.3` + re-added shadcn `<Table />` — v7.0
+- ✓ WB-02: Column visibility persists via Zustand `extraction-results-view` store — v7.0
+- ✓ WB-03: Shared toolbar drives sort/filter via TanStack state — v7.0
+- ✓ WB-04: Full-text search via React 19 `useDeferredValue` debounce — v7.0
+- ✓ WB-05: Card view virtualized via `@tanstack/react-virtual@^3.13.23` — v7.0
+- ✓ WB-06: Split view with paginated list + detail pane — v7.0
+- ✓ WB-08: CSV/JSON/XLSX export of filtered subset via existing v6.0 helpers — v7.0
+- ✓ WB-09: Pagination with "X–Y of Z papers" counts, resets on filter change — v7.0
+- ✓ WB-10: v2.2 `FilterSection` primitive reused as outer chrome — v7.0
+- ✓ ZOT-01: "Connect Zotero" settings card initiates existing `startOAuth` flow (OAuth 1.0a preserved) — v7.0
+- ✓ ZOT-02: `<ZoteroTab>` browses collections + items; per-item state machine — v7.0
+- ✓ ZOT-03: Lazy DOI resolution via `resolveByDoi` action with 8s abort-signal timeout — v7.0
+- ✓ ZOT-04: Items without DOI show disabled checkbox + explanatory tooltip — v7.0
+- ✓ ZOT-05: Env-validation cron verifies Zotero + ENCRYPTION_KEY on every run — v7.0
+- ✓ ZOT-06: Dev-guarded `purgeStaleZoteroState` internal action — v7.0
+- ✓ TIER-01: `tier` field persisted as optional on `extractionJobs` (new rows only) — v7.0
+- ✓ TIER-02: Workpool reads tier + calls `createCascadeTiers(tier)` filtering — v7.0
+- ✓ TIER-03: Unit test inspects constructed cascade filtering — v7.0
+- ✓ GAP-01: `parsingSource` badge on every result card + evidence drawer — v7.0 (closes v6.0 PARSE-07)
+- ✓ GAP-02: `EvidenceQuote` + `JobMetricsPanel` migrated to `useProtectedQuery` — v7.0 (closes v6.0 CRASH-02)
+- ✓ GAP-04: 1000-paper payload benchmark: typical 3.97 MB, worst-case 10.31 MB (under 16 MiB Convex cap) — v7.0
 
 ### Active
 
-- v7.0 Extraction Workbench — all 8 phases complete (98-105), ready for milestone close (goal + features in `## Current Milestone`)
+- v7.0 post-close gaps carried to v7.1 (see `## Current State` known gaps): WB-07 evidence drawer wiring, SEL-09 BasketTriggerButton global mount, UI-01/UI-02 post-submit navigation + zombie dialog, GAP-03 scope extension, Phase 98 retroactive verification, Nyquist wave 0 closure for 6 phases
+- Tier-specific paper limits (LIM-F01/F02) — deferred from v7.0
+- Workbench extensions (WB-F01–WB-F05) — deferred from v7.0
+- Quality & review UIs (QUAL-F01/F02) — v6.0 backend exists
+- Mobile bottom-sheet drawer variant (MOB-F01) — deferred from v7.0
 
 ### Out of Scope
 
@@ -196,12 +277,13 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 
 ## Context
 
-Shipped v1.0 through v6.0 (16 milestones, 97 phases, 208 plans). Latest: v6.0 (342 files, +57,552/-27,902).
-Tech stack: Next.js, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar stores), Framer Motion (animations), Recharts (lazy-loaded), Playwright, Vitest, convex-helpers (rate limiting), ExcelJS (dynamic import), `@convex-dev/workflow` (durable extraction workflow), `@openrouter/ai-sdk-provider` (LLM cascade), `fastest-levenshtein` (citation grounding), `fast-xml-parser` (PMC JATS), `linkedom` (arXiv HTML), `unpdf` (PDF parsing), `ulid` (trace IDs).
-Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `auditLogs`, `screeningJobs`, `screeningResults`, `extractionJobs`, `extractionPapers`, `extractionQuestions`, `extractionResults`, `qualityChecks`.
-Extraction pipeline: Free-first parsing waterfall (PMC → arXiv → unpdf → Gemini → abstract-only), three-tier OpenRouter cascade (Flash Lite → Flash → Haiku), deterministic citation grounding (Levenshtein 85% + critic pass), durable workflow with targeted cancel and reactive progress, structured JSON logging with ULID traceId, SLO metrics (recall-on-include, citation-validity-rate).
-Test suite: Vitest tests covering unit tests across 7+ domains + extraction pipeline, parsing waterfall, error classification, citation grounding, eval framework. Playwright billing E2E suite (6 spec files, 11 tests). Zero TypeScript compile errors (`tsc --noEmit` clean).
-Known v6.0 gaps: Job creation flow unreachable (ExtractionDialog papers prop unconnected), quality trend/review queue backends have no UI consumers, `provider.order` missing from cascade config.
+Shipped v1.0 through v7.0 (17 milestones, 105 phases, 231 plans). Latest: v7.0 (339 files, +47,430/-3,260 over 1.5 days, 204 commits). v6.0 gap closures shipped: UI-01 (job creation reachable from `/extraction/new`), PARSE-07 (`parsingSource` badge), CRASH-02 (`useProtectedQuery` in `EvidenceQuote` + `JobMetricsPanel`), EXTR-01 (TierSelector threading).
+Tech stack: Next.js 16, Convex, Stripe SDK v20.3.0, `@convex-dev/stripe`, next-intl (6 locales), nuqs (URL state), Zustand (sidebar + basket + workbench stores), Framer Motion (animations with reduced-motion support), Recharts (lazy-loaded), Playwright, Vitest, ESLint 9 flat config, convex-helpers (rate limiting), ExcelJS (dynamic import), `@convex-dev/workflow` (durable extraction workflow), `@openrouter/ai-sdk-provider` (LLM cascade), `@tanstack/react-table@^8.21.3` (workbench table), `@tanstack/react-virtual@^3.13.23` (card view virtualization), `fastest-levenshtein` (citation grounding), `fast-xml-parser` (PMC JATS), `linkedom` (arXiv HTML), `unpdf` (PDF parsing), `ulid` (trace IDs).
+Key tables: `subscriptions`, `credits`, `creditTransactions`, `billingCustomers`, `stripeEventLogs`, `libraryItems`, `collections`, `libraryItemCollections`, `rateLimits`, `zoteroConnections`, `zoteroOAuthTokens`, `auditLogs`, `screeningJobs`, `screeningResults`, `extractionJobs` (now with optional `tier` field), `extractionPapers`, `extractionQuestions`, `extractionResults`, `qualityChecks`.
+Extraction pipeline: Free-first parsing waterfall (PMC → arXiv → unpdf → Gemini → abstract-only), three-tier OpenRouter cascade (Flash Lite → Flash → Haiku) with `auto`/`cheap`/`accurate` tier filtering via `createCascadeTiers(tier)`, deterministic citation grounding (Levenshtein 85% + critic pass), durable workflow with targeted cancel and reactive progress, structured JSON logging with ULID traceId, SLO metrics (recall-on-include, citation-validity-rate).
+Extraction workbench: `/extraction/new` selector page (4 tabs + Zotero) with sessionStorage-backed Zustand basket (`normalizeOpenAlexId` dedupe), 1000-paper cap enforced at UI (cap-disabled checkboxes) + backend (`EXTRACTION_LIMIT_EXCEEDED` typed error). `/extraction/[jobId]` 4-view workbench: table (TanStack + shadcn), card (virtualized), split, + evidence drawer, `parsingSource` badge everywhere. React 19 `useDeferredValue` for search debounce.
+Test suite: Vitest tests across 7+ domains + extraction pipeline + benchmark (1000 papers × 7 questions). Playwright billing E2E suite (6 spec files, 11 tests) + v7.0 workbench E2E spec covering stage → seed → views → evidence → reduced-motion → exports. `test:ci` chain: lint → test → build → e2e:auth → e2e:workbench.
+Known v7.0 gaps (deferred to v7.1): WB-07 evidence drawer click chain, SEL-09 global trigger mount, UI-01 post-submit navigation regression, UI-02 zombie dialog, GAP-03 scope hole, Phase 98 retroactive verification, Nyquist wave 0 for 6 phases. Pre-existing tech debt: 1161 ESLint errors from phases 100-104, DEF-105-01 (extract.test.ts regex), DEF-105-02 (zotero purge.test.ts).
 
 ## Constraints
 
@@ -323,6 +405,24 @@ Known v6.0 gaps: Job creation flow unreachable (ExtractionDialog papers prop unc
 | Retryable vs permanent error taxonomy | Network/5xx/429 retried, 404/400/validation not | ✓ Good — no wasted retries on permanent failures |
 | vitest-evals + autoevals for MVP eval loop | No Langfuse/Braintrust overhead for pre-customer stage | ✓ Good — lightweight, CI-gated |
 
+| Per-tier limit map single source of truth | `MAX_EXTRACTION_PAPERS_PER_JOB = Math.max(EXTRACTION_LIMITS_BY_TIER)` | ✓ Good — v7.1 edits one constant, no call-site churn |
+| Split `MAX_EXTRACTION_RESULTS_QUERY` from user cap | Internal `.take()` bounds need 10× headroom for questions | ✓ Good — avoids Convex 8 MB result-size surprise |
+| Benchmark gate before 200→1000 bump | Prove typical payload <5 MB before production drift | ✓ Good — 3.97 MB typical, 10.31 MB worst under 16 MiB cap |
+| sessionStorage for basket (not localStorage) | Clear only on successful job creation; tab-scoped by design | ✓ Good — survives navigation, resets on submit |
+| `normalizeOpenAlexId` handles 3 ID formats | Dedupe across `W123` / URL / `openalex:` prefix | ✓ Good — sources with different ID conventions unified |
+| TanStack React Table + shadcn primitive (not block) | Block is monolithic; 4 views need one `useReactTable` instance shared | ✓ Good — single source of table state across views |
+| `@tanstack/react-virtual` for card view only | 1000 rows don't justify table virtualization; 1000 cards crash Mobile Safari | ✓ Good — scoped bundle cost to card view only |
+| Highlighted-citation as drawer, not 4th view | Not all parsing sources are PDFs — top-level placement misleading | ✓ Good — drawer reuses evidence across all 3 views |
+| React 19 `useDeferredValue` for search debounce | Filter re-render storm at 1000 rows freezes UI without it | ✓ Good — no external debounce lib needed |
+| Zotero stays on OAuth 1.0a | Zotero has NOT migrated to OAuth 2.0 (verified 2025-09-24 docs) | ✓ Good — reject `zotero-api-client` (API-key only) |
+| `tier` field optional, new rows only | No migration of existing v6.0 jobs; null-coalesce to `auto` | ✓ Good — 5-edit fix, zero migration surface |
+| Typed `EXTRACTION_LIMIT_EXCEEDED` error | Routed via `lib/toast/error-resolver.ts` to localized toast | ✓ Good — server-side hard-reject with UX parity |
+| ESLint 9 flat config with 2 config objects | Progressively more-specific globs, not nested overrides | ✓ Good — predictable rule precedence |
+| `eslint .` direct invocation | Next.js 16 removed `next lint` command | ✓ Good — forward-compatible |
+| `test:ci` prepends lint | Fail fast before 5-min build step | ✓ Good — minutes saved on broken lints |
+| Dev-guarded `purgeStaleZoteroState` internal action | Clean pre-v7.0 orphan rows encrypted with rotated `ENCRYPTION_KEY` | ✓ Good — unblocks fresh OAuth flow testing |
+| Global reduced-motion provider + CSS fallback | Framer `MotionConfig` + media-query clamp defense-in-depth | ✓ Good — respects OS setting even in unmounted components |
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
@@ -341,4 +441,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 105 (Polish, Integration, E2E) complete. ESLint 9 flat config with GAP-03 no-restricted-syntax rule for extraction literals, global reduced-motion provider + CSS media-query fallback, mobile responsive polish (44px touch targets, basket drawer full-width, view-switcher mobile guard), 6-locale i18n key parity test with French diacritic sampling, dev-guarded Convex seed action pair (Node/V8 runtime split), Playwright E2E spec covering stage→seed→views→evidence→reduced-motion→exports, test:ci wired (lint → test → build → e2e:auth → e2e:workbench). v7.0 Extraction Workbench milestone fully complete (all 8 phases 98-105); 3 items persisted in 105-HUMAN-UAT.md await manual testing.*
+*Last updated: 2026-04-16 after v7.0 milestone. v7.0 Extraction Workbench shipped (8 phases, 23 plans, 204 commits, 339 files ±50K LOC). 35/42 requirements satisfied; 1 unsatisfied (WB-07 evidence drawer click chain) + 6 partial (SEL-09 trigger mount, LIM-01/02/03 + GAP-04 Phase 98 VERIFICATION.md missing, GAP-03 scope hole) deferred to v7.1. Closes v6.0 gaps UI-01, EXTR-01, PARSE-07, CRASH-02. Next: `/gsd-new-milestone` for v7.1 gap-closure + tier-specific limits + workbench extensions.*

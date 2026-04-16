@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Extraction Workbench
-status: executing
-stopped_at: Phase 105 context re-confirmed (auto --no-transition); CONTEXT.md already complete from prior auto run; 105-03 plan pending execution
-last_updated: "2026-04-16T22:22:56.136Z"
+status: shipped
+stopped_at: v7.0 milestone shipped; ready for v7.1 planning via /gsd-new-milestone
+last_updated: "2026-04-16T23:59:00.000Z"
 last_activity: 2026-04-16
 progress:
   total_phases: 8
@@ -18,20 +18,20 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-15)
+See: .planning/PROJECT.md (updated 2026-04-16 after v7.0 milestone)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 105 — polish-integration-e2e
+**Current focus:** Planning next milestone (v7.1 candidates: close v7.0 audit gaps, tier-specific limits, workbench extensions, quality/review UIs)
 
 ## Current Position
 
-Milestone: v7.0 Extraction Workbench
-Phase: 105
-Plan: Not started
-Status: Executing Phase 105
+Milestone: v7.0 Extraction Workbench — SHIPPED 2026-04-16
+Phase: — (milestone closed)
+Plan: —
+Status: Ready for next milestone
 Last activity: 2026-04-16
 
-Progress: [█░░░░░░░░░] 12.5%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -71,22 +71,7 @@ Progress: [█░░░░░░░░░] 12.5%
 
 See PROJECT.md Key Decisions table for full log.
 
-Recent v7.0 decisions affecting current work:
-
-- **Phase 98**: bump `MAX_EXTRACTION_PAPERS_PER_JOB` 200→1000 must benchmark first; split internal `MAX_EXTRACTION_RESULTS_QUERY` from user cap (PITFALL 1).
-- **Phase 99**: sessionStorage (not localStorage) for basket — clear only on successful job creation.
-- **Phase 100**: TierSelector fix is ~5 edits, NO migration — new rows only.
-- **Phase 101**: `@tanstack/react-table@^8.21.3` is the ONLY net-new runtime dep for this milestone. Re-add shadcn `<Table />` primitive; reject shadcn `data-table` block (monolithic — fights 4-view architecture).
-- **Phase 103**: highlighted-citation demoted from 4th view to drawer pattern (not all parsing sources are PDFs); card view MUST virtualize via `@tanstack/react-virtual@^3.13.23`; table view does NOT virtualize.
-- **Phase 104**: Zotero stays on OAuth 1.0a (verified 2025-09-24); `zotero-api-client` rejected (API-key only).
-- [Phase 98]: Per-tier limit map (EXTRACTION_LIMITS_BY_TIER) as single source of truth; MAX_EXTRACTION_PAPERS_PER_JOB derived via Math.max
-- [Phase 98]: MAX_EXTRACTION_RESULTS_QUERY (10000) decoupled from user-facing paper limit for internal .take() bounds
-- [Phase 98]: Batch seeding in benchmark: 50 papers per txn for papers, 10 papers per txn for results -- avoids convex-test transaction limits
-- [Phase 98]: Worst-case benchmark (500-char answers) at 10.31 MB documents upper bound; asserts against 16 MiB Convex hard cap, not 5 MB target
-- [Phase 98]: GAP-04 benchmark PASS: typical 1000-paper payload is 3.97 MB (under 5 MB target) -- D-06 pagination fallback NOT needed
-- [Phase 105]: D-01 next lint → eslint . (Next.js 16 removed next lint command)
-- [Phase 105]: ESLint 9 flat config: two separate config objects with progressively more-specific globs, not nested overrides
-- [Phase 105]: test:ci prepends lint (lint && test && build && e2e:auth) to fail fast before the 5-min build step
+v7.0 decisions compacted into PROJECT.md after milestone close. Fresh decisions will accumulate here during v7.1.
 
 ### Pending Todos
 
@@ -98,27 +83,41 @@ None.
 2026-04-15 — v6.0 milestone archived. 53/63 requirements satisfied, 3 unsatisfied, 4 partial. Known gaps documented.
 2026-04-15 — v7.0 Extraction Workbench opened. Recovers pre-v6.0 results UI (table/card/split/highlighted-citation views), adds unified cross-source paper selector (library + collections + search + manual + Zotero with selection-basket), enforces 1000-paper per-job hard limit (per-tier-ready), revives orphaned Zotero OAuth, and closes v6.0 UI-01 + TierSelector orphan.
 2026-04-15 — v7.0 roadmap created with 8 phases (98-105) mapping all 42 v7.0 requirements (LIM×7, SEL×12, WB×10, ZOT×6, TIER×3, GAP×4). Critical path: `98 → 99 → 100 → 102 → 103 → 104 → 105`, with Phase 101 parallelizable against 99/100.
+2026-04-16 — v7.0 milestone shipped. 35/42 requirements satisfied (83%), 1 unsatisfied (WB-07), 6 partial (SEL-09, LIM-01/02/03, GAP-03, GAP-04). Closes v6.0 UI-01, EXTR-01, PARSE-07, CRASH-02.
 
 ### Blockers/Concerns
 
-- ~~**Phase 98 benchmark outcome gates Phase 100 scope.**~~ RESOLVED: benchmark PASSED at 3.97 MB (under 5 MB target). No pagination migration needed for Phase 100.
-- Pre-existing GAP-03 violations in extraction-counter.tsx:28 and job-metrics-panel.tsx:73 cause test:ci to fail at lint step. Must be fixed in Plan 02/03 or follow-up commit for CI to pass phase-wide.
+None — v7.0 shipped. v7.1 candidates: close v7.0 audit gaps (WB-07, SEL-09, UI-01/UI-02, GAP-03 scope), tier-specific limits, workbench extensions, quality/review UIs.
 
 ## Deferred Items
 
-Items carried from v6.0 into v7.0 or later milestones:
+Items acknowledged and deferred at v7.0 milestone close on 2026-04-16:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| v6.0 gap | EVAL-05 `getQualityTrend` UI consumer | Deferred to v7.1 | 2026-04-15 |
-| v6.0 gap | EVAL-06 `getReviewQueue` UI page | Deferred to v7.1 | 2026-04-15 |
-| v6.0 gap | EXTR-07 `provider.order` in OpenRouter cascade | Unassigned | 2026-04-15 |
-| v6.0 gap | WORK-06 `enqueueAllPapers` test invocation | Unassigned | 2026-04-15 |
+| v7.0 gap (unsat) | WB-07 evidence drawer click chain — `void openEvidence;` in workbench-shell.tsx:132, no onClick in EvidenceQuote/CardView/SplitView | Deferred to v7.1 | 2026-04-16 |
+| v7.0 gap (partial) | SEL-09 BasketTriggerButton — component exists but not mounted in global app shell | Deferred to v7.1 | 2026-04-16 |
+| v7.0 gap (partial) | LIM-01/LIM-02/LIM-03/GAP-04 — Phase 98 VERIFICATION.md missing | Deferred to v7.1 (retrofit) | 2026-04-16 |
+| v7.0 gap (partial) | GAP-03 ESLint scope hole — lib/hooks/use-add-to-basket.ts:97 `?? 1000` fallback | Deferred to v7.1 | 2026-04-16 |
+| v7.0 integration | UI-01 extraction-dialog post-submit wiring — no `router.push('/extraction/' + newJobId)`, no `basket.clear()` | Deferred to v7.1 | 2026-04-16 |
+| v7.0 integration | UI-02 zombie ExtractionDialog in /extraction list page (no papers prop, silent no-op) | Deferred to v7.1 | 2026-04-16 |
+| v7.0 integration | IN-02 duplicate getExtractionLimit subscriptions across 3 components (perf, non-blocking) | Deferred to v7.1 | 2026-04-16 |
+| v7.0 tech debt | Nyquist wave 0 closure for phases 98, 99, 100, 101, 102, 104 | Deferred to v7.1 | 2026-04-16 |
+| v7.0 tech debt | 1161 pre-existing ESLint errors from phases 100-104 | Deferred to v7.1 | 2026-04-16 |
+| v7.0 tech debt | DEF-105-01 convex/extraction/extract.test.ts regex flag error | Deferred to v7.1 | 2026-04-16 |
+| v7.0 tech debt | DEF-105-02 convex/zotero/purge.test.ts failure | Deferred to v7.1 | 2026-04-16 |
+| v7.0 tech debt | 3 items in 105-HUMAN-UAT.md require manual browser testing | Awaiting UAT | 2026-04-16 |
 | v7.0 future | WB-F01 Bulk re-run | Deferred to v7.1 | 2026-04-15 |
 | v7.0 future | WB-F03 `evidenceContextBefore/After` schema | Deferred to v7.1 | 2026-04-15 |
+| v7.0 future | QUAL-F01 Human-review queue UI (v6.0 backend exists) | Deferred to v7.1 | 2026-04-16 |
+| v7.0 future | QUAL-F02 Quality-trend dashboard UI (v6.0 backend exists) | Deferred to v7.1 | 2026-04-16 |
+| v7.0 future | LIM-F01 Tier-specific limits via EXTRACTION_LIMITS_BY_TIER tuning | Deferred to v7.1 | 2026-04-16 |
+| v7.0 future | MOB-F01 Mobile bottom-sheet drawer variant | Deferred to v7.1 | 2026-04-16 |
+| v6.0 carried | EXTR-07 `provider.order` in OpenRouter cascade | Unassigned | 2026-04-15 |
+| v6.0 carried | WORK-06 `enqueueAllPapers` test invocation | Unassigned | 2026-04-15 |
 
 ## Session Continuity
 
-Last session: 2026-04-16T21:05:47.194Z
-Stopped at: Phase 105 context re-confirmed (auto --no-transition); CONTEXT.md already complete from prior auto run; 105-03 plan pending execution
-Next step: `/gsd-discuss-phase 99`
+Last session: 2026-04-16T23:59:00Z
+Stopped at: v7.0 milestone shipped and archived; 8 phases (98-105) complete; 23 plans executed
+Next step: `/gsd-new-milestone` (v7.1)

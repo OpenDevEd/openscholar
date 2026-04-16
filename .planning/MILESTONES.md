@@ -1,5 +1,49 @@
 # Milestones
 
+## v7.0 Extraction Workbench (Shipped: 2026-04-16)
+
+**Phases completed:** 8 phases, 23 plans
+**Git range:** `3313d06..8248ce9` (204 commits)
+**Files changed:** 339 files, +47,430/-3,260 lines
+**Timeline:** 1.5 days (2026-04-15 → 2026-04-16)
+
+**Key accomplishments:**
+
+- Hard paper limit (Phase 98): bumped `MAX_EXTRACTION_PAPERS_PER_JOB` 200→1000 via `Math.max(EXTRACTION_LIMITS_BY_TIER)`, split internal `MAX_EXTRACTION_RESULTS_QUERY=10000` for `.take()` bounds, shipped `getExtractionLimitForUser(ctx)` helper + reactive `getExtractionLimit` query routed through `resolveEffectivePlan`, benchmark confirmed typical 3.97 MB / worst-case 10.31 MB under Convex 16 MiB cap
+- Selection basket (Phase 99): Zustand + sessionStorage cross-source paper basket, `normalizeOpenAlexId` dedupes `W123`/URL/`openalex:` formats, `useAddToBasket` cap-aware batch hook, shadcn Sheet drawer with Accordion per-source groups, i18n keys seeded across 6 locales
+- Backend wiring + TierSelector (Phase 100): `resolveManualIds` + `resolveByDoi` Convex actions with abort-signal timeout, optional `tier` field threaded through `createExtractionJob` → workpool → `createCascadeTiers(tier)`, typed `EXTRACTION_LIMIT_EXCEEDED` error with localized toast, closes v6.0 EXTR-01
+- Workbench primitives (Phase 101): `@tanstack/react-table@^8.21.3` + re-added shadcn `<Table />` primitive, single `useReactTable` instance shared across views, column visibility persists via Zustand `extraction-results-view`, `FilterSection` primitive reused from v2.2
+- Entry points + counter UX (Phase 102): always-visible "X / 1000" counter with yellow/red thresholds, cap-disabled checkboxes with tooltip, bulk-paste overflow toast, `<AddToExtractionButton>` in library + 3 search card variants, sidebar Extraction nav badge with live count
+- 4-view workbench + selector page (Phase 103): `/extraction/new` with 4 tabs (Library/Collections/Search/Manual) + sticky counter, table (paginated) + card (virtualized via `@tanstack/react-virtual@^3.13.23`) + split + evidence drawer views, React 19 `useDeferredValue` search debounce, `parsingSource` badge, `useProtectedQuery` migration, closes v6.0 UI-01 + PARSE-07 + CRASH-02
+- Zotero revival (Phase 104): reconnected orphaned `convex/zotero/**` (~1433 LoC) via settings card + `<ZoteroTab>`, OAuth 1.0a preserved (Zotero hasn't migrated), lazy DOI resolution with per-item state machine, DOI-less items show disabled checkbox + tooltip, env-validation cron + dev-guarded `purgeStaleZoteroState`
+- Polish & E2E (Phase 105): ESLint 9 flat config with `no-restricted-syntax` rule forbidding literal `1000`/`200` in extraction code (GAP-03), global reduced-motion provider + CSS media-query fallback, mobile responsive polish (44px touch targets, basket drawer full-width, view-switcher mobile guard), 6-locale i18n parity test with French diacritic sampling, Playwright E2E spec covering stage→seed→views→evidence→reduced-motion→exports, `test:ci` chain: lint → test → build → e2e:auth → e2e:workbench
+
+**Audit:** 35/42 requirements satisfied (83%), 1 unsatisfied (WB-07), 6 partial (SEL-09, LIM-01/02/03, GAP-03, GAP-04)
+
+**Known Gaps (deferred to v7.1):**
+
+- **WB-07 (unsatisfied)**: Evidence drawer click-to-open not wired. Drawer + callback exist but chain broken — `void openEvidence;` in `workbench-shell.tsx:132` discards callback; CardView/SplitView/PaperResultCard/EvidenceQuote have no onClick handler. Single-hop fix.
+- **SEL-09 (partial)**: `BasketTriggerButton` component exists but is NOT mounted in global app shell; drawer reachable only from `/extraction/new` footer.
+- **LIM-01/02/03 + GAP-04 (partial)**: Phase 98 never produced VERIFICATION.md; code confirmed via downstream consumption + SUMMARY.md only.
+- **GAP-03 (partial)**: ESLint rule scope excludes `lib/hooks/use-add-to-basket.ts:97` (`?? 1000` fallback — defense-in-depth hole).
+- **Integration UI-01**: `extraction-dialog.tsx` post-submit wiring missing (no `router.push('/extraction/' + newJobId)`, no `basket.clear()` after mutation success); user stays on selector with stale basket.
+- **Integration UI-02**: Zombie `<ExtractionDialog>` mount in `app/extraction/extraction-list-client.tsx:34` with no papers prop — silent no-op on Create button.
+- **Nyquist wave 0** never closed on phases 98, 99, 100, 101, 102, 104; only phase 103 fully compliant.
+
+**Tech debt carried forward:**
+
+- 1161 pre-existing ESLint errors from phases 100-104 (outside Phase 105 scope)
+- Pre-existing test failures: `convex/extraction/extract.test.ts` (regex flag, DEF-105-01), `convex/zotero/purge.test.ts` (DEF-105-02)
+- E2E spec Playwright selectors flagged WR-01/02/03/04 — may need iteration on first live run
+- Phase 98 VERIFICATION.md retrofit needed to close audit trail
+- `workbench-shell.tsx:132 void openEvidence;` dead-code suppression violates CLAUDE.md no-dead-code rule
+- Duplicate `getExtractionLimit` subscriptions in 3 components (IN-02) — non-blocking perf
+- 3 human verification items persisted in `105-HUMAN-UAT.md` await manual testing
+
+Known deferred items at close: 7 (6 audit gaps + 1 integration UX regression chain) — see `.planning/milestones/v7.0-MILESTONE-AUDIT.md`
+
+---
+
 ## v6.0 Extraction MVP Rebuild (Shipped: 2026-04-15)
 
 **Phases completed:** 10 phases, 29 plans, 52 tasks
