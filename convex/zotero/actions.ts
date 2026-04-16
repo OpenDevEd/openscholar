@@ -1138,7 +1138,7 @@ export const purgeStaleZoteroState = internalAction({
     connectionsDeleted: v.number(),
     tokensDeleted: v.number(),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{ connectionsDeleted: number; tokensDeleted: number }> => {
     // Pre-purge audit
     await ctx.runMutation(internal.lib.audit.writeAuditLog, {
       action: "ZOTERO_PURGE_START",
@@ -1146,7 +1146,7 @@ export const purgeStaleZoteroState = internalAction({
     });
 
     // Delete via internal mutation (actions have no ctx.db)
-    const result = await ctx.runMutation(
+    const result: { connectionsDeleted: number; tokensDeleted: number } = await ctx.runMutation(
       internal.zotero.mutations.purgeAllZoteroData,
     );
 
