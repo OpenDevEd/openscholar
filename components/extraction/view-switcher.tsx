@@ -8,6 +8,7 @@ import {
   type CompactIconToggleOption,
 } from "@/components/view-mode-toggle";
 import type { ActiveView } from "@/lib/store/extraction-results-view";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ViewSwitcherProps {
   value: ActiveView;
@@ -16,6 +17,7 @@ interface ViewSwitcherProps {
 
 export function ViewSwitcher({ value, onChange }: ViewSwitcherProps) {
   const t = useTranslations("extraction");
+  const isMobile = useIsMobile();
 
   const viewOptions: CompactIconToggleOption<ActiveView>[] = [
     {
@@ -23,16 +25,20 @@ export function ViewSwitcher({ value, onChange }: ViewSwitcherProps) {
       icon: <Table2 className="h-4 w-4" />,
       label: t("workbench.viewTable"),
     },
-    {
-      value: "card",
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: t("workbench.viewCard"),
-    },
-    {
-      value: "split",
-      icon: <Columns className="h-4 w-4" />,
-      label: t("workbench.viewSplit"),
-    },
+    ...(!isMobile
+      ? ([
+          {
+            value: "card" as const,
+            icon: <LayoutGrid className="h-4 w-4" />,
+            label: t("workbench.viewCard"),
+          },
+          {
+            value: "split" as const,
+            icon: <Columns className="h-4 w-4" />,
+            label: t("workbench.viewSplit"),
+          },
+        ] satisfies CompactIconToggleOption<ActiveView>[])
+      : []),
   ];
 
   return (

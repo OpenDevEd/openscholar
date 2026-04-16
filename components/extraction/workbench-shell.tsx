@@ -99,11 +99,11 @@ function WorkbenchShellInner({
   const isMobile = useIsMobile();
   const t = useTranslations("extraction.workbench");
 
-  // D-06: split view falls back to table on mobile
+  // D-06 + Phase 105 D-14: split AND card fall back to table on mobile.
   useEffect(() => {
-    if (isMobile && activeView === "split") {
+    if (isMobile && activeView !== "table") {
       setActiveView("table");
-      toast.info(t("splitMobileToast"));
+      toast.info(t("mobileViewFallbackToast"));
     }
   }, [isMobile, activeView, setActiveView, t]);
 
