@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: Extraction Workbench
 status: executing
-stopped_at: Phase 105 context confirmed (auto re-run)
-last_updated: "2026-04-16T18:52:46.105Z"
-last_activity: 2026-04-16 -- Phase 105 execution started
+stopped_at: Completed 105-01-PLAN.md (ESLint bootstrap + GAP-03 rule)
+last_updated: "2026-04-16T19:20:34.523Z"
+last_activity: 2026-04-16
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 23
-  completed_plans: 20
-  percent: 87
+  completed_plans: 22
+  percent: 96
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-15)
 
 Milestone: v7.0 Extraction Workbench
 Phase: 105 (polish-integration-e2e) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 105
-Last activity: 2026-04-16 -- Phase 105 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-16
 
 Progress: [█░░░░░░░░░] 12.5%
 
@@ -63,6 +63,7 @@ Progress: [█░░░░░░░░░] 12.5%
 | v7.0 | 8 planned (98-105) | TBD | in progress |
 | Phase 98 P01 | 129 | 2 tasks | 3 files |
 | Phase 98 P02 | 342 | 2 tasks | 3 files |
+| Phase 105 P01 | 7m47s | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Recent v7.0 decisions affecting current work:
 - [Phase 98]: Batch seeding in benchmark: 50 papers per txn for papers, 10 papers per txn for results -- avoids convex-test transaction limits
 - [Phase 98]: Worst-case benchmark (500-char answers) at 10.31 MB documents upper bound; asserts against 16 MiB Convex hard cap, not 5 MB target
 - [Phase 98]: GAP-04 benchmark PASS: typical 1000-paper payload is 3.97 MB (under 5 MB target) -- D-06 pagination fallback NOT needed
+- [Phase 105]: D-01 next lint → eslint . (Next.js 16 removed next lint command)
+- [Phase 105]: ESLint 9 flat config: two separate config objects with progressively more-specific globs, not nested overrides
+- [Phase 105]: test:ci prepends lint (lint && test && build && e2e:auth) to fail fast before the 5-min build step
 
 ### Pending Todos
 
@@ -98,6 +102,7 @@ None.
 ### Blockers/Concerns
 
 - ~~**Phase 98 benchmark outcome gates Phase 100 scope.**~~ RESOLVED: benchmark PASSED at 3.97 MB (under 5 MB target). No pagination migration needed for Phase 100.
+- Pre-existing GAP-03 violations in extraction-counter.tsx:28 and job-metrics-panel.tsx:73 cause test:ci to fail at lint step. Must be fixed in Plan 02/03 or follow-up commit for CI to pass phase-wide.
 
 ## Deferred Items
 
@@ -114,6 +119,6 @@ Items carried from v6.0 into v7.0 or later milestones:
 
 ## Session Continuity
 
-Last session: 2026-04-16T18:52:46.102Z
-Stopped at: Phase 105 context confirmed (auto re-run)
+Last session: 2026-04-16T19:20:24.206Z
+Stopped at: Completed 105-01-PLAN.md (ESLint bootstrap + GAP-03 rule)
 Next step: `/gsd-discuss-phase 99`

@@ -68,7 +68,7 @@ Restore the pre-v6.0 results workbench (table/card/split views with highlighted 
 
 - [ ] **GAP-01**: The `parsingSource` badge (`pmc` / `arxiv` / `unpdf` / `gemini` / `abstract_only`) is rendered on every result card and in the evidence drawer across all 4 workbench views — closes v6.0 PARSE-07 partial
 - [ ] **GAP-02**: `EvidenceQuote` and `JobMetricsPanel` components use `useProtectedQuery` instead of bare `useQuery` to prevent flash during Clerk auth transitions — closes v6.0 CRASH-02 partial
-- [ ] **GAP-03**: An ESLint rule forbids literal `1000` or `200` in `components/extraction/**` and `app/extraction/**` to prevent per-tier-limit drift across the codebase
+- [x] **GAP-03**: An ESLint rule forbids literal `1000` or `200` in `components/extraction/**` and `app/extraction/**` to prevent per-tier-limit drift across the codebase
 - [x] **GAP-04**: Phase-98 pre-flight benchmark confirms that the `getExtractionResults` reactive query payload remains under 5 MB at 1000 papers × 7 questions with the new `MAX_EXTRACTION_RESULTS_QUERY` bound, or (if it does not) the query is migrated to paginated mode before the 200→1000 bump lands in production
 
 ## Future Requirements
@@ -171,7 +171,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TIER-03 | Phase 100 | Pending |
 | GAP-01 | Phase 103 | Pending |
 | GAP-02 | Phase 103 | Pending |
-| GAP-03 | Phase 105 | Pending |
+| GAP-03 | Phase 105 | Complete |
 | GAP-04 | Phase 98 | Complete |
 
 ### Phase → Requirements (inverted view)
