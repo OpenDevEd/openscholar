@@ -368,7 +368,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 88-97 | v6.0 | 29/29 | Complete | 2026-04-15 |
 | 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
-| 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete   | 2026-04-16 |
+| 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 101. Workbench Primitives | v7.0 | 0/TBD | Not started | - |
 | 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
