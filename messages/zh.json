@@ -1627,7 +1627,6 @@
       "paginationNext": "Next",
       "splitEmptyHeading": "Select a paper to view details",
       "splitEmptyBody": "Click a paper in the list on the left to see its full extraction results here.",
-      "splitMobileToast": "Split view is available on larger screens. Switched to table view.",
       "mobileViewFallbackToast": "已切换到移动版表格视图",
       "evidenceDrawerTitle": "Evidence Detail",
       "evidenceDrawerQuestion": "Question",
