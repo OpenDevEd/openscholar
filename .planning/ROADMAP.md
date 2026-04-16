@@ -188,7 +188,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
 - [x] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`) (completed 2026-04-16)
 - [x] **Phase 102: Entry Points & Counter UX** — `<AddToExtractionButton>` mounts, sidebar nav badge, "X / 1000" counter with cap-disabled checkboxes and bulk-paste drop toast (completed 2026-04-16)
 - [x] **Phase 103: Workbench Views + Selector Page** — 4 views (table/card/split/highlight) + evidence drawer + `parsingSource` badge + `/extraction/new` + SelectorTabs (Library/Collections/Search/Manual) + ExtractionDialog wiring (completed 2026-04-16)
-- [ ] **Phase 104: Zotero Revival** — Settings card + `<ZoteroTab>` + lazy DOI resolution + env verification + `purgeStaleZoteroState`
+- [x] **Phase 104: Zotero Revival** — Settings card + `<ZoteroTab>` + lazy DOI resolution + env verification + `purgeStaleZoteroState` (completed 2026-04-16)
 - [ ] **Phase 105: Polish, Integration, E2E** — E2E Playwright, mobile responsive, reduced-motion, i18n audit, ESLint rule forbidding literal `1000`/`200` in extraction code
 
 ## Phase Details
@@ -337,7 +337,7 @@ Plans:
 Plans:
   - [x] 104-01-PLAN.md — Env validation + purge action + i18n keys (ZOT-05, ZOT-06)
   - [x] 104-02-PLAN.md — ZoteroConnectionCard + settings page wiring (ZOT-01)
-  - [ ] 104-03-PLAN.md — ZoteroTab + ZoteroItemRow + selector page wiring (SEL-06, ZOT-02, ZOT-04)
+  - [x] 104-03-PLAN.md — ZoteroTab + ZoteroItemRow + selector page wiring (SEL-06, ZOT-02, ZOT-04)
 
 **Research flag**: MEDIUM — re-verify Zotero 2025 rate-limit docs before implementing the `fetchWithBackoff` helper (respect `Backoff:` header + `429 Retry-After:` + `limit=100` pagination cursor).
 **Pitfalls mitigated**: PITFALL 6 (stale `zoteroConnections` + `ENCRYPTION_KEY` drift in dev DB — purge before revival, verify env vars via `npx convex env list` NOT `.env.local`), PITFALL 8 (Zotero items with no OpenAlex-resolvable ID — books, grey literature, dissertations).
@@ -393,5 +393,5 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 101. Workbench Primitives | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 102. Entry Points & Counter UX | v7.0 | 2/2 | Complete    | 2026-04-16 |
 | 103. Workbench Views + Selector Page | v7.0 | 5/5 | Complete   | 2026-04-16 |
-| 104. Zotero Revival | v7.0 | 2/3 | In Progress|  |
+| 104. Zotero Revival | v7.0 | 3/3 | Complete   | 2026-04-16 |
 | 105. Polish, Integration, E2E | v7.0 | 0/TBD | Not started | - |
