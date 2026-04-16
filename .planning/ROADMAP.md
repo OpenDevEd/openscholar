@@ -253,7 +253,11 @@ Plans:
   2. `useReactTable(...)` instance created in the workbench shell is shared across views, and column visibility toggles persist across job navigations via a Zustand store keyed `extraction-results-view` (using the existing `createSidebarStore` factory pattern) — WB-02
   3. Sort and filter toolbar primitives exist and drive the table's `sorting`/`columnFilters` state (status, confidence, year, venue, answer value) without recomputing `useReactTable` options inline — WB-03
   4. The v2.2 `FilterSection` primitive from library/search pages is reused (not re-implemented) as the outer chrome for all workbench filter toggles — WB-10
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+  - [ ] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
+  - [ ] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
+  - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: MEDIUM — TanStack v8 memoization spike + React 19 `useDeferredValue` spike needed before Phase 103 lands. Hoist `columns` definition outside component; `React.memo` row cells; never recompute `useReactTable` options inline.
 **Anti-features to NOT ship**: shadcn `data-table` block (monolithic — fights 4-view architecture); TanStack Table v9 alpha; AG Grid Community (500 KB bundle); react-data-grid (4-year beta).
@@ -271,7 +275,11 @@ Plans:
   3. User bulk-pastes more OpenAlex IDs than the remaining basket capacity allows, and the excess is silently dropped with a toast stating exactly how many papers were dropped (e.g., "Added 400 papers; 200 dropped — basket capacity reached") — LIM-06
   4. User clicks an `<AddToExtractionButton>` mounted in the library, search results, and bookmarks command centers and the selected paper(s) are added to the basket without the page navigating — SEL-11
   5. The sidebar nav "Extraction" item displays a badge with the live basket count (driven reactively by the Zustand store) — SEL-12
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+  - [ ] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
+  - [ ] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
+  - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: LOW — i18n keys must be seeded in all 6 locales up front.
 **Pitfalls mitigated**: PITFALL 7 (silent cap overflow across sources — every picker reads `useBasketStore(s => s.count)` and displays global `X / 1000`).
@@ -320,7 +328,11 @@ Plans:
   4. Zotero items without a resolvable DOI (books, grey literature, dissertations) show a disabled checkbox with a tooltip explaining the limitation, rather than silently failing or offering a broken "add" action — ZOT-04
   5. The existing env-validation cron verifies `ZOTERO_CLIENT_KEY`, `ZOTERO_CLIENT_SECRET`, and `ENCRYPTION_KEY` on every run and fails loudly in the Convex dashboard if any are missing — ZOT-05
   6. A dev-guarded `purgeStaleZoteroState` internal action deletes all rows from `zoteroConnections` and `zoteroOAuthTokens` in the dev database, cleaning up pre-v7.0 orphan state encrypted with rotated keys — ZOT-06
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+  - [ ] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
+  - [ ] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
+  - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: MEDIUM — re-verify Zotero 2025 rate-limit docs before implementing the `fetchWithBackoff` helper (respect `Backoff:` header + `429 Retry-After:` + `limit=100` pagination cursor).
 **Pitfalls mitigated**: PITFALL 6 (stale `zoteroConnections` + `ENCRYPTION_KEY` drift in dev DB — purge before revival, verify env vars via `npx convex env list` NOT `.env.local`), PITFALL 8 (Zotero items with no OpenAlex-resolvable ID — books, grey literature, dissertations).
@@ -337,7 +349,11 @@ Plans:
   3. The basket drawer renders full-width on mobile (Sheet as baseline) with 44px touch targets, and all workbench views degrade gracefully at <= 640 px viewport
   4. The workbench respects `prefers-reduced-motion: reduce` — spring animations on view transitions are disabled without breaking layout
   5. i18n audit confirms every new v7.0 string has entries in all 6 locale files; French diacritic check passes
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+  - [ ] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
+  - [ ] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
+  - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: LOW.
 **Closes v6.0 gap**: any residual CRASH-02 surface not caught in Phase 103.
@@ -369,7 +385,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
-| 101. Workbench Primitives | v7.0 | 0/TBD | Not started | - |
+| 101. Workbench Primitives | v7.0 | 0/3 | Planned | - |
 | 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
 | 104. Zotero Revival | v7.0 | 0/TBD | Not started | - |
