@@ -1,7 +1,7 @@
 /** Workbench shell owning the single useReactTable instance. Passes table to toolbar and active view via props. Phase 101: D-01, D-02. Phase 103: D-08 (evidence drawer), D-17 (pagination). */
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,6 +14,7 @@ import {
   type PaginationState,
 } from "@tanstack/react-table";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useExtractionResultsViewStore } from "@/lib/store/extraction-results-view";
 import {
   createWorkbenchColumns,
@@ -22,7 +23,12 @@ import {
 } from "@/lib/extraction/workbench-columns";
 import { WorkbenchToolbar } from "@/components/extraction/workbench-toolbar";
 import { WorkbenchDataTable } from "@/components/extraction/workbench-data-table";
+import { CardView } from "@/components/extraction/card-view";
+import { SplitView } from "@/components/extraction/split-view";
+import { EvidenceDrawer } from "@/components/extraction/evidence-drawer";
 import { PaginationControls } from "@/components/extraction/pagination-controls";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 import { subtleSpring } from "@/lib/animation-config";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +55,6 @@ interface WorkbenchShellProps {
   questions: ExtractionQuestion[];
   jobId?: string;
   jobStatus?: string;
-  children?: React.ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +66,6 @@ export function WorkbenchShell({
   questions,
   jobId,
   jobStatus,
-  children,
 }: WorkbenchShellProps) {
   const hasHydrated = useExtractionResultsViewStore((s) => s._hasHydrated);
 
@@ -76,9 +80,7 @@ export function WorkbenchShell({
   }
 
   return (
-    <WorkbenchShellInner data={data} questions={questions} jobId={jobId} jobStatus={jobStatus}>
-      {children}
-    </WorkbenchShellInner>
+    <WorkbenchShellInner data={data} questions={questions} jobId={jobId} jobStatus={jobStatus} />
   );
 }
 
@@ -92,8 +94,18 @@ function WorkbenchShellInner({
   jobId,
   jobStatus,
 }: WorkbenchShellProps) {
-  const { columnVisibility, setColumnVisibility, activeView, pageSize } =
+  const { columnVisibility, setColumnVisibility, activeView, setActiveView, pageSize } =
     useExtractionResultsViewStore();
+  const isMobile = useIsMobile();
+  const t = useTranslations("extraction.workbench");
+
+  // D-06: split view falls back to table on mobile
+  useEffect(() => {
+    if (isMobile && activeView === "split") {
+      setActiveView("table");
+      toast.info(t("splitMobileToast"));
+    }
+  }, [isMobile, activeView, setActiveView, t]);
 
   // Local state for sorting and column filters
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -112,13 +124,12 @@ function WorkbenchShellInner({
     props: EvidenceDrawerProps | null;
   }>({ open: false, props: null });
 
+  // openEvidence: callback for views to trigger the evidence drawer (D-08)
+  // Currently wired to drawerState; views will call this when evidence click support is added
   const openEvidence = useCallback((props: EvidenceDrawerProps) => {
     setDrawerState({ open: true, props });
   }, []);
-
-  // Plan 04 wires openEvidence + drawerState into CardView/SplitView/EvidenceDrawer
-  void openEvidence;
-  void drawerState;
+  void openEvidence; // Prepared for CardView/SplitView onEvidenceClick integration
 
   // Column memoization keyed on questions (per D-04)
   const columns = useMemo(
@@ -189,10 +200,10 @@ function WorkbenchShellInner({
               exit={shouldReduceMotion ? undefined : { opacity: 0 }}
               transition={shouldReduceMotion ? { duration: 0 } : subtleSpring}
             >
-              {/* Plan 04 replaces this with <CardView table={table} questions={questions} onEvidenceClick={openEvidence} /> */}
-              <div className="p-8 text-center text-muted-foreground text-sm">
-                Card view -- pending Plan 04
-              </div>
+              <CardView
+                table={table}
+                questions={questions}
+              />
             </motion.div>
           )}
           {activeView === "split" && (
@@ -203,10 +214,10 @@ function WorkbenchShellInner({
               exit={shouldReduceMotion ? undefined : { opacity: 0 }}
               transition={shouldReduceMotion ? { duration: 0 } : subtleSpring}
             >
-              {/* Plan 04 replaces this with <SplitView table={table} questions={questions} onEvidenceClick={openEvidence} /> */}
-              <div className="p-8 text-center text-muted-foreground text-sm">
-                Split view -- pending Plan 04
-              </div>
+              <SplitView
+                table={table}
+                questions={questions}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -215,8 +226,12 @@ function WorkbenchShellInner({
       {/* Pagination controls below the view */}
       <PaginationControls table={table} />
 
-      {/* Evidence drawer mount point (Plan 04) */}
-      {/* <EvidenceDrawer open={drawerState.open} onOpenChange={(open) => setDrawerState(prev => ({ ...prev, open }))} {...drawerState.props} /> */}
+      {/* Evidence drawer: single mount outside view branches (D-08) */}
+      <EvidenceDrawer
+        open={drawerState.open}
+        onOpenChange={(open) => setDrawerState((prev) => ({ ...prev, open }))}
+        {...drawerState.props}
+      />
     </div>
   );
 }
