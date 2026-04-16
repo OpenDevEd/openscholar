@@ -38,6 +38,7 @@ import {
   DOIBadge,
   ScreeningResponses,
 } from "./shared";
+import { AddToExtractionButton } from "@/components/extraction/add-to-extraction-button";
 import posthog from "posthog-js";
 import { useTranslations, useFormatter } from "next-intl";
 
@@ -335,6 +336,14 @@ export function PaperCardListDetail({
             <div className="flex items-center justify-between">
               <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
               <div className="flex items-center gap-2">
+                <AddToExtractionButton
+                  paper={{
+                    rawId: result.id,
+                    title: result.title ?? "",
+                    doi: result.doi ?? null,
+                  }}
+                  source="search"
+                />
                 <DownloadMenu
                   variant="icon"
                   onDownloadJSON={() => onDownloadItem(result, "json")}
@@ -407,6 +416,14 @@ export function PaperCardListDetail({
             </div>
 
             <div className="flex items-center gap-2">
+              <AddToExtractionButton
+                paper={{
+                  rawId: result.id,
+                  title: result.title ?? "",
+                  doi: result.doi ?? null,
+                }}
+                source="search"
+              />
               <OpenAccessBadge
                 isOA={result.open_access?.is_oa}
                 oaUrl={result.open_access?.oa_url}

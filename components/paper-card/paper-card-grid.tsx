@@ -22,6 +22,7 @@ import {
   DownloadMenuCompact,
   TranslationToggle,
 } from "./shared";
+import { AddToExtractionButton } from "@/components/extraction/add-to-extraction-button";
 
 export function PaperCardGrid({
   result,
@@ -95,6 +96,14 @@ export function PaperCardGrid({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
+              <AddToExtractionButton
+                paper={{
+                  rawId: result.id,
+                  title: result.title ?? "",
+                  doi: result.doi ?? null,
+                }}
+                source="search"
+              />
               <TranslationToggle
                 isTranslating={isTranslating}
                 translatedContent={translatedContent}

@@ -22,6 +22,7 @@ import {
   TranslationToggle,
   ScreeningResponses,
 } from "./shared";
+import { AddToExtractionButton } from "@/components/extraction/add-to-extraction-button";
 export function PaperCardListSimple({
   result,
   resultIndex,
@@ -147,6 +148,14 @@ export function PaperCardListSimple({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
+              <AddToExtractionButton
+                paper={{
+                  rawId: result.id,
+                  title: result.title ?? "",
+                  doi: result.doi ?? null,
+                }}
+                source="search"
+              />
               <TranslationToggle
                 isTranslating={isTranslating}
                 translatedContent={translatedContent}

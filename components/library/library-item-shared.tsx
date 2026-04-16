@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AddToExtractionButton } from "@/components/extraction/add-to-extraction-button";
 
 type LibraryItem = Doc<"libraryItems">;
 
@@ -32,6 +33,14 @@ export function LibraryItemActions({
 
   return (
     <div className="flex items-center gap-1 rounded-lg bg-background/90 shadow-sm backdrop-blur-sm">
+      <AddToExtractionButton
+        paper={{
+          rawId: item.openalexId,
+          title: item.title,
+          doi: item.doi ?? null,
+        }}
+        source="library"
+      />
       {doiUrl && (
         <a
           href={doiUrl}
