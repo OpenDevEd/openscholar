@@ -89,7 +89,7 @@ export function ZoteroItemRow({
           <TooltipTrigger asChild>
             <button
               onClick={() => onRetry(item.key, item.doi!)}
-              className="rounded p-1 -m-1 focus:outline-none focus:ring-2 focus:ring-ring"
+              className="rounded p-1 -m-1 focus:outline-none focus:ring-2 focus:ring-ring min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label={t("retryResolve")}
             >
               <X className="h-4 w-4 text-destructive cursor-pointer" />
@@ -119,7 +119,7 @@ export function ZoteroItemRow({
         )}
       >
         {/* Checkbox / indicator column — 24px fixed width (UI spec) */}
-        <div className="flex-shrink-0 w-6 flex items-center justify-center">
+        <div className="flex-shrink-0 w-6 flex items-center justify-center min-h-[44px] min-w-[44px]">
           {renderCheckboxArea()}
         </div>
 

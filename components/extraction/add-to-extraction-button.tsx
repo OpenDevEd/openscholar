@@ -89,7 +89,7 @@ export function AddToExtractionButton({
         <Button
           variant="ghost"
           size="icon-sm"
-          className={cn(inBasket && "text-primary")}
+          className={cn("min-h-[44px] min-w-[44px]", inBasket && "text-primary")}
           disabled={isAtCap && !inBasket}
           onClick={handleToggle}
           aria-label={inBasket ? t("inBasket") : t("add")}

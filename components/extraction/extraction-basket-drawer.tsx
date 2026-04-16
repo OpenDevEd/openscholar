@@ -63,7 +63,7 @@ export function ExtractionBasketDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="flex flex-col p-0">
+      <SheetContent side="right" className="flex flex-col p-0 w-full sm:max-w-md">
         <SheetHeader className="border-b p-4">
           <SheetTitle>{t("title")}</SheetTitle>
           <SheetDescription className="sr-only">
@@ -95,7 +95,7 @@ export function ExtractionBasketDrawer({
 
         <SheetFooter className="border-t p-4">
           <Button
-            className="w-full"
+            className="w-full min-h-[44px]"
             disabled={count === 0}
             onClick={handleCTA}
           >

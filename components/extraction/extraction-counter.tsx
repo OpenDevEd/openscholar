@@ -29,7 +29,7 @@ export function ExtractionCounter({ className }: { className?: string }) {
   const ratio = limit > 0 ? count / limit : 0;
 
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("space-y-1.5 min-h-[44px] flex flex-col justify-center", className)}>
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">{t("label", { count, limit })}</span>
         {ratio >= 1 && (

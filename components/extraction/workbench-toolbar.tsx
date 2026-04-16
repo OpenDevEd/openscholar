@@ -147,7 +147,7 @@ export function WorkbenchToolbar({ table, jobId, jobStatus }: WorkbenchToolbarPr
   );
 
   return (
-    <div className="bg-card/80 backdrop-blur-sm border-b border-border/40 px-4 py-3 flex items-center gap-4 flex-wrap">
+    <div className="bg-card/80 backdrop-blur-sm border-b border-border/40 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-3 sm:gap-4">
       {/* View switcher */}
       <ViewSwitcher value={activeView} onChange={setActiveView} />
 
@@ -167,7 +167,7 @@ export function WorkbenchToolbar({ table, jobId, jobStatus }: WorkbenchToolbarPr
           <button
             type="button"
             onClick={() => setSearchInput("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label={t("workbench.searchClear")}
           >
             <X className="h-3.5 w-3.5 text-muted-foreground" />
@@ -293,7 +293,7 @@ export function WorkbenchToolbar({ table, jobId, jobStatus }: WorkbenchToolbarPr
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              {t("workbench.exportButton")}
+              <span className="hidden sm:inline">{t("workbench.exportButton")}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

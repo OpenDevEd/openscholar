@@ -64,14 +64,14 @@ export function SelectorPageClient() {
 
         {/* Tabs */}
         <Tabs defaultValue="library">
-          <TabsList>
-            <TabsTrigger value="library">{t("tabs.library")}</TabsTrigger>
-            <TabsTrigger value="collections">
+          <TabsList className="overflow-x-auto">
+            <TabsTrigger value="library" className="min-h-[44px]">{t("tabs.library")}</TabsTrigger>
+            <TabsTrigger value="collections" className="min-h-[44px]">
               {t("tabs.collections")}
             </TabsTrigger>
-            <TabsTrigger value="search">{t("tabs.search")}</TabsTrigger>
-            <TabsTrigger value="manual">{t("tabs.manual")}</TabsTrigger>
-            <TabsTrigger value="zotero">
+            <TabsTrigger value="search" className="min-h-[44px]">{t("tabs.search")}</TabsTrigger>
+            <TabsTrigger value="manual" className="min-h-[44px]">{t("tabs.manual")}</TabsTrigger>
+            <TabsTrigger value="zotero" className="min-h-[44px]">
               {t("tabs.zotero")}
             </TabsTrigger>
           </TabsList>
