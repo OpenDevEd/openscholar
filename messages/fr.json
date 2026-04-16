@@ -1575,6 +1575,18 @@
         "zotero": "Zotero"
       }
     },
+    "counter": {
+      "label": "{count} / {limit} articles",
+      "limitReached": "Limite du panier atteinte",
+      "limitWarning": "Limite du panier bient\u00f4t atteinte"
+    },
+    "addButton": {
+      "add": "Ajouter au panier d'extraction",
+      "remove": "Retirer du panier",
+      "inBasket": "D\u00e9j\u00e0 dans le panier",
+      "basketFull": "Panier plein \u2014 retirez des articles pour continuer",
+      "dropped": "{added} articles ajout\u00e9s ; {dropped} retir\u00e9s \u2014 limite du panier atteinte"
+    },
     "workbench": {
       "viewTable": "Tableau",
       "viewCard": "Cartes",

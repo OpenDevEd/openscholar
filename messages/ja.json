@@ -1575,6 +1575,18 @@
         "zotero": "Zotero"
       }
     },
+    "counter": {
+      "label": "{count} / {limit} papers",
+      "limitReached": "Basket limit reached",
+      "limitWarning": "Approaching basket limit"
+    },
+    "addButton": {
+      "add": "Add to extraction basket",
+      "remove": "Remove from basket",
+      "inBasket": "Already in basket",
+      "basketFull": "Basket full \u2014 remove papers to continue",
+      "dropped": "Added {added} papers; {dropped} dropped \u2014 basket limit reached"
+    },
     "workbench": {
       "viewTable": "Table",
       "viewCard": "Card",
