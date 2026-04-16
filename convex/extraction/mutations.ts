@@ -47,8 +47,8 @@ export const createExtractionJob = mutation({
     const userLimit = await getExtractionLimitForUser(ctx, user._id);
     if (args.papers.length > userLimit) {
       throw createError(
-        "VALIDATION_ERROR",
-        `Maximum ${userLimit} papers per job`,
+        "EXTRACTION_LIMIT_EXCEEDED",
+        `Maximum ${userLimit} papers per job. You submitted ${args.papers.length}.`,
       );
     }
 

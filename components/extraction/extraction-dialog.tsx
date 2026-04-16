@@ -17,8 +17,8 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, AlertCircle, Coins } from "lucide-react";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/toast";
 import { showStyledToast } from "@/components/ui/sonner";
+import { resolveToastError, getToastMessageKeyForErrorCode } from "@/lib/toast/error-resolver";
 import { api } from "@/convex/_generated/api";
 import { QuestionBuilder } from "./question-builder";
 import { TierSelector, type ModelTier } from "./tier-selector";
@@ -49,6 +49,7 @@ export function ExtractionDialog({
   papers,
 }: ExtractionDialogProps) {
   const t = useTranslations("extraction");
+  const tToast = useTranslations("toast");
 
   // -------------------------------------------------------------------------
   // Form state
@@ -122,7 +123,7 @@ export function ExtractionDialog({
         key: `q_${i}`,
         question: q,
       }));
-      await createJob({ papers, questions: keyedQuestions });
+      await createJob({ papers, questions: keyedQuestions, tier });
       toast.success(t("jobCreation.success"), { duration: 3000 });
       onOpenChange(false);
       posthog.capture("extraction_job_created", {
@@ -131,20 +132,9 @@ export function ExtractionDialog({
         tier,
       });
     } catch (error: unknown) {
-      const msg = getErrorMessage(error, t("jobCreation.error"));
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "data" in error &&
-        typeof (error as { data?: unknown }).data === "string" &&
-        ((error as { data: string }).data).includes(
-          "EXTRACTION_JOB_ALREADY_ACTIVE"
-        )
-      ) {
-        showStyledToast("error", t("jobCreation.activeJobWarning"));
-      } else {
-        showStyledToast("error", msg);
-      }
+      const resolved = resolveToastError(error, t("jobCreation.error"));
+      const messageKey = getToastMessageKeyForErrorCode(resolved.code);
+      showStyledToast("error", messageKey ? tToast(messageKey) : resolved.message);
     } finally {
       setIsSubmitting(false);
     }
