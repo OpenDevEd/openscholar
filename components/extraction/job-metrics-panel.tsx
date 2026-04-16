@@ -25,6 +25,7 @@ import {
   DollarSign,
   AlertTriangle,
 } from "lucide-react";
+import { MS_PER_SECOND } from "@/lib/time-units";
 
 interface JobMetricsPanelProps {
   jobId: Id<"extractionJobs">;
@@ -70,7 +71,7 @@ export function JobMetricsPanel({ jobId, totalPapers }: JobMetricsPanelProps) {
 
   // Format helpers
   const formatLatency = (ms: number | null): string =>
-    ms !== null ? `${(ms / 1000).toFixed(1)}s` : t("nullValue");
+    ms !== null ? `${(ms / MS_PER_SECOND).toFixed(1)}s` : t("nullValue");
 
   const formatCost = (usd: number): string =>
     usd > 0 ? `$${usd.toFixed(4)}` : t("nullValue");

@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Progress } from "@/components/ui/progress";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { MAX_EXTRACTION_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
 
 /**
  * Self-contained extraction basket counter with a 3-state progress bar.
@@ -25,7 +26,7 @@ export function ExtractionCounter({ className }: { className?: string }) {
     api.extraction.queries.getExtractionLimit,
     {},
   );
-  const limit = limitData.data?.limit ?? 1000;
+  const limit = limitData.data?.limit ?? MAX_EXTRACTION_PAPERS_PER_JOB;
   const ratio = limit > 0 ? count / limit : 0;
 
   return (
