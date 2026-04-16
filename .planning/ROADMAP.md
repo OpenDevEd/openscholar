@@ -385,7 +385,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 101. Workbench Primitives | v7.0 | 3/3 | Complete    | 2026-04-16 |
-| 102. Entry Points & Counter UX | v7.0 | 2/2 | Complete   | 2026-04-16 |
+| 102. Entry Points & Counter UX | v7.0 | 2/2 | Complete    | 2026-04-16 |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
 | 104. Zotero Revival | v7.0 | 0/TBD | Not started | - |
 | 105. Polish, Integration, E2E | v7.0 | 0/TBD | Not started | - |
