@@ -1461,7 +1461,23 @@
     "minutesAgo": "il y a {count}min",
     "hoursAgo": "il y a {count}h",
     "daysAgo": "il y a {count}j",
-    "revokeKeyError": "Echec de la revocation de la cle API"
+    "revokeKeyError": "Echec de la revocation de la cle API",
+    "zotero": {
+      "title": "Zotero",
+      "disconnectedDescription": "Connect your Zotero account to import papers for extraction.",
+      "connectButton": "Connect Zotero",
+      "connectedAs": "Connected as {username}",
+      "userId": "Zotero ID: {zoteroUserId}",
+      "connectedAt": "Connected {time}",
+      "disconnectButton": "Disconnect",
+      "disconnectConfirm": "Confirm Disconnect",
+      "oauthSuccess": "Zotero connected successfully.",
+      "oauthError": "Zotero connection failed: {error}",
+      "disconnectSuccess": "Zotero disconnected.",
+      "disconnectError": "Failed to disconnect Zotero. Try again.",
+      "loadingStatus": "Checking Zotero connection...",
+      "connecting": "Connecting..."
+    }
   },
   "extraction": {
     "insufficientEvidence": "Preuves insuffisantes",
@@ -1663,6 +1679,28 @@
         "label": "Select a search",
         "placeholder": "Choose a recent search..."
       }
+    },
+    "zoteroTab": {
+      "notConnectedHeading": "Zotero not connected",
+      "notConnectedBody": "Connect your Zotero account in Settings to browse and add papers.",
+      "goToSettings": "Connect Zotero in Settings",
+      "collectionLabel": "Collection",
+      "allItems": "All Items",
+      "loadingCollections": "Loading collections...",
+      "loadingItems": "Loading items...",
+      "noItemsHeading": "No items found",
+      "noItemsBody": "This collection has no items, or your Zotero library is empty.",
+      "loadMore": "Load more",
+      "showing": "Showing {count} of {total} items",
+      "resolving": "Resolving DOI...",
+      "resolved": "Added to basket",
+      "resolveFailed": "Could not find in OpenAlex. Click to retry.",
+      "noDoi": "No DOI available — cannot add to extraction",
+      "hasPdf": "PDF",
+      "alreadyInBasket": "In basket",
+      "loadCollectionsError": "Failed to load Zotero collections.",
+      "loadItemsError": "Failed to load Zotero items.",
+      "retryResolve": "Retry"
     }
   }
 }
