@@ -165,10 +165,11 @@ Reliable, well-tested academic search and AI extraction — every major code pat
 - ✓ ULID traceId propagation across all 4 extraction stages, structured JSON logging, per-job metrics query, SLO persistence — v6.0
 - ✓ Golden set eval framework, hourly production quality sampling cron, human-review queue backend — v6.0
 - ✓ Extraction UI: job creation dialog, live progress with cancel, results cards with verbatim quotes, export, JobMetricsPanel with SLO bars — v6.0
+- ✓ GAP-03: ESLint rule forbids literal `1000`/`200` in `components/extraction/**` and `app/extraction/**`, protected by Vitest structural test, wired into `test:ci` — Validated in Phase 105 (Polish, Integration, E2E)
 
 ### Active
 
-- v7.0 Extraction Workbench — Phase 102 complete, Phase 103 next (goal + features in `## Current Milestone`)
+- v7.0 Extraction Workbench — all 8 phases complete (98-105), ready for milestone close (goal + features in `## Current Milestone`)
 
 ### Out of Scope
 
@@ -340,4 +341,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 104 (Zotero Revival) complete. ZoteroConnectionCard on /settings/connections with OAuth connect/disconnect, ZoteroTab + ZoteroItemRow in selector page with collection picker, paginated items, lazy DOI resolution, env validation for Zotero secrets, dev-guarded purge action, i18n across 6 locales.*
+*Last updated: 2026-04-16 — Phase 105 (Polish, Integration, E2E) complete. ESLint 9 flat config with GAP-03 no-restricted-syntax rule for extraction literals, global reduced-motion provider + CSS media-query fallback, mobile responsive polish (44px touch targets, basket drawer full-width, view-switcher mobile guard), 6-locale i18n key parity test with French diacritic sampling, dev-guarded Convex seed action pair (Node/V8 runtime split), Playwright E2E spec covering stage→seed→views→evidence→reduced-motion→exports, test:ci wired (lint → test → build → e2e:auth → e2e:workbench). v7.0 Extraction Workbench milestone fully complete (all 8 phases 98-105); 3 items persisted in 105-HUMAN-UAT.md await manual testing.*
