@@ -275,11 +275,10 @@ Plans:
   3. User bulk-pastes more OpenAlex IDs than the remaining basket capacity allows, and the excess is silently dropped with a toast stating exactly how many papers were dropped (e.g., "Added 400 papers; 200 dropped — basket capacity reached") — LIM-06
   4. User clicks an `<AddToExtractionButton>` mounted in the library, search results, and bookmarks command centers and the selected paper(s) are added to the basket without the page navigating — SEL-11
   5. The sidebar nav "Extraction" item displays a badge with the live basket count (driven reactively by the Zustand store) — SEL-12
-**Plans**: 3 plans
+**Plans**: 2 plans
 Plans:
-  - [x] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
-  - [x] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
-  - [x] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
+  - [ ] 102-01-PLAN.md — i18n keys + cap-aware hook + ExtractionCounter component (LIM-04, LIM-06)
+  - [ ] 102-02-PLAN.md — AddToExtractionButton + sidebar badge + mount points (LIM-05, SEL-11, SEL-12)
 
 **Research flag**: LOW — i18n keys must be seeded in all 6 locales up front.
 **Pitfalls mitigated**: PITFALL 7 (silent cap overflow across sources — every picker reads `useBasketStore(s => s.count)` and displays global `X / 1000`).
@@ -386,7 +385,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 101. Workbench Primitives | v7.0 | 3/3 | Complete    | 2026-04-16 |
-| 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
+| 102. Entry Points & Counter UX | v7.0 | 0/2 | Not started | - |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
 | 104. Zotero Revival | v7.0 | 0/TBD | Not started | - |
 | 105. Polish, Integration, E2E | v7.0 | 0/TBD | Not started | - |
