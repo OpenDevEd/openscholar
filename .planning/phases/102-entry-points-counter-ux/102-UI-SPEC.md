@@ -48,9 +48,13 @@ Exceptions: Sidebar badge overlay uses `-top-1.5 -right-1.5` (6px negative offse
 | Role | Size | Weight | Line Height | Usage in this phase |
 |------|------|--------|-------------|---------------------|
 | Body | 14px (`text-sm`) | 400 (regular) | 1.5 (`leading-normal`) | Counter label "{count} / {limit} papers", tooltip content |
-| Label | 12px (`text-xs`) | 500 (medium, `font-medium`) | 1.5 | Limit warning/reached text, sidebar badge number, collapsed badge "9+" |
-| Heading | 16px (`text-base`) | 600 (semibold, `font-semibold`) | 1.4 | Not used in this phase (no headings introduced) |
-| Caption | 10px (`text-[10px]`) | 700 (bold, `font-bold`) | 1.0 | Collapsed sidebar badge number (existing pattern at `app-sidebar.tsx:144`) |
+| Label | 12px (`text-xs`) | 500 (medium, `font-medium`) | 1.5 | Limit warning/reached text, sidebar expanded badge number, collapsed badge "9+" |
+
+Declared weights: **400** (regular) and **500** (medium). This phase introduces and controls only these two weights.
+
+Inherited weights (not introduced by this phase -- excluded from declared scale):
+- `font-bold` (700) on the collapsed sidebar badge pill (`app-sidebar.tsx:144`) is an existing immutable pattern. This phase wires a `badge` prop to the existing `NavItem` renderer; it does not create or modify the badge styling.
+- `font-semibold` (600) is not used anywhere in this phase. No headings are introduced.
 
 Source: Existing patterns in `app-sidebar.tsx` (badge), `components/ui/tooltip.tsx` (tooltip content `text-xs`), `components/ui/button.tsx` (button labels `text-sm`)
 
@@ -127,6 +131,8 @@ Source: CONTEXT.md D-04, D-05, D-06, RESEARCH.md Pattern 3
 | Tooltip | Any collapsed state | Badge count included in tooltip label |
 
 Animation on count change: Use existing `motion.span` with `initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}` from the existing badge pattern at `app-sidebar.tsx:167-175`. No new animation presets needed. The `subtleSpring` from `lib/animation-config.ts` (`stiffness: 350, damping: 30, mass: 0.8`) is used for the expand/collapse transition, matching existing sidebar behavior.
+
+Note: The collapsed badge's `font-bold` (weight 700) and expanded badge's `font-medium` (weight 500) are pre-existing styles in the `NavItem` renderer. This phase passes a `badge` prop value but does not modify badge rendering code.
 
 Source: CONTEXT.md D-10, D-11, `app-sidebar.tsx` lines 140-185
 
