@@ -517,7 +517,9 @@
     "creditsTopupBundleInvalid": "该积分包无效，请刷新后重试。",
     "creditsProductMisconfigured": "积分购买暂时不可用。",
     "openPricing": "打开定价",
-    "aiCreditsDisabled": "积分模式当前已禁用。"
+    "aiCreditsDisabled": "积分模式当前已禁用。",
+    "extractionLimitExceeded": "每个任务最多可提取{limit}篇论文。请移除{excess}篇以继续。",
+    "extractionJobAlreadyActive": "提取任务正在运行中。请等待完成。"
   },
   "viewMode": {
     "simpleList": "简单列表",
@@ -1555,21 +1557,21 @@
       "incompleteWarning": "Job not complete -- export may be partial"
     },
     "basket": {
-      "title": "\u63d0\u53d6\u7bee",
-      "description": "{count}\u7bc7\u8bba\u6587",
-      "cta": "\u5ba1\u67e5\u5e76\u5f00\u59cb\u63d0\u53d6",
-      "emptyHeading": "\u672a\u9009\u62e9\u8bba\u6587",
-      "emptyBody": "\u4ece\u60a8\u7684\u6587\u5e93\u3001\u641c\u7d22\u7ed3\u679c\u4e2d\u6dfb\u52a0\u8bba\u6587\uff0c\u6216\u7c98\u8d34OpenAlex ID\u4ee5\u5f00\u59cb\u63d0\u53d6\u4efb\u52a1\u3002",
-      "removeTooltip": "\u4ece\u7bee\u4e2d\u79fb\u9664",
-      "removeAriaLabel": "\u4ece\u7bee\u4e2d\u79fb\u9664{title}",
-      "triggerTooltip": "\u6253\u5f00\u63d0\u53d6\u7bee",
-      "triggerAriaLabel": "\u6253\u5f00\u63d0\u53d6\u7bee\uff0c{count}\u7bc7\u8bba\u6587",
-      "alreadyInBasket": "\u5df2\u5728\u63d0\u53d6\u7bee\u4e2d",
+      "title": "提取篮",
+      "description": "{count}篇论文",
+      "cta": "审查并开始提取",
+      "emptyHeading": "未选择论文",
+      "emptyBody": "从您的文库、搜索结果中添加论文，或粘贴OpenAlex ID以开始提取任务。",
+      "removeTooltip": "从篮中移除",
+      "removeAriaLabel": "从篮中移除{title}",
+      "triggerTooltip": "打开提取篮",
+      "triggerAriaLabel": "打开提取篮，{count}篇论文",
+      "alreadyInBasket": "已在提取篮中",
       "sourceLabel": {
-        "library": "\u6587\u5e93",
-        "collection": "\u5408\u96c6",
-        "search": "\u641c\u7d22",
-        "manual": "\u624b\u52a8",
+        "library": "文库",
+        "collection": "合集",
+        "search": "搜索",
+        "manual": "手动",
         "zotero": "Zotero"
       }
     }

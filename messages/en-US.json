@@ -517,7 +517,9 @@
     "creditsTopupBundleInvalid": "That credit bundle is invalid. Please refresh and retry.",
     "creditsProductMisconfigured": "Credit checkout is temporarily unavailable.",
     "openPricing": "Open Pricing",
-    "aiCreditsDisabled": "Credits mode is currently disabled."
+    "aiCreditsDisabled": "Credits mode is currently disabled.",
+    "extractionLimitExceeded": "You can extract up to {limit} papers per job. Remove {excess} papers to continue.",
+    "extractionJobAlreadyActive": "An extraction job is already running. Please wait for it to finish."
   },
   "viewMode": {
     "simpleList": "Simple List",

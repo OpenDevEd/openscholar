@@ -34,7 +34,9 @@ export type ToastErrorMessageKey =
   | "billingCancelRequiresPortal"
   | "billingNoActiveSubscription"
   | "creditsTopupBundleInvalid"
-  | "creditsProductMisconfigured";
+  | "creditsProductMisconfigured"
+  | "extractionLimitExceeded"
+  | "extractionJobAlreadyActive";
 
 export type ResolvedToastError = {
   code?: string;
@@ -100,6 +102,8 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   BILLING_PERIOD_END_UNAVAILABLE: "billingSubscriptionDataInvalid",
   CREDITS_TOPUP_BUNDLE_INVALID: "creditsTopupBundleInvalid",
   CREDITS_PRODUCT_NOT_CONFIGURED: "creditsProductMisconfigured",
+  EXTRACTION_LIMIT_EXCEEDED: "extractionLimitExceeded",
+  EXTRACTION_JOB_ALREADY_ACTIVE: "extractionJobAlreadyActive",
 };
 
 const INSUFFICIENT_CREDITS_CODES = new Set<string>([

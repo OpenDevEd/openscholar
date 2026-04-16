@@ -517,7 +517,9 @@
     "creditsTopupBundleInvalid": "Ce pack de crédits est invalide. Actualisez puis réessayez.",
     "creditsProductMisconfigured": "L'achat de crédits est temporairement indisponible.",
     "openPricing": "Voir les tarifs",
-    "aiCreditsDisabled": "Le mode crédits est actuellement désactivé."
+    "aiCreditsDisabled": "Le mode crédits est actuellement désactivé.",
+    "extractionLimitExceeded": "Vous pouvez extraire jusqu’à {limit} articles par tâche. Retirez {excess} articles pour continuer.",
+    "extractionJobAlreadyActive": "Une tâche d’extraction est déjà en cours. Veuillez patienter."
   },
   "viewMode": {
     "simpleList": "Liste simple",
@@ -1558,15 +1560,15 @@
       "title": "Panier d'extraction",
       "description": "{count, plural, one {article} other {articles}}",
       "cta": "Examiner et lancer l'extraction",
-      "emptyHeading": "Aucun article s\u00e9lectionn\u00e9",
-      "emptyBody": "Ajoutez des articles depuis votre biblioth\u00e8que, vos r\u00e9sultats de recherche, ou collez des identifiants OpenAlex pour lancer un travail d'extraction.",
+      "emptyHeading": "Aucun article sélectionné",
+      "emptyBody": "Ajoutez des articles depuis votre bibliothèque, vos résultats de recherche, ou collez des identifiants OpenAlex pour lancer un travail d'extraction.",
       "removeTooltip": "Retirer du panier",
       "removeAriaLabel": "Retirer {title} du panier",
       "triggerTooltip": "Ouvrir le panier d'extraction",
       "triggerAriaLabel": "Ouvrir le panier d'extraction, {count} articles",
-      "alreadyInBasket": "D\u00e9j\u00e0 dans votre panier d'extraction",
+      "alreadyInBasket": "Déjà dans votre panier d'extraction",
       "sourceLabel": {
-        "library": "Biblioth\u00e8que",
+        "library": "Bibliothèque",
         "collection": "Collection",
         "search": "Recherche",
         "manual": "Manuel",

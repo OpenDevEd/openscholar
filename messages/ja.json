@@ -517,7 +517,9 @@
     "creditsTopupBundleInvalid": "このクレジットバンドルは無効です。更新して再試行してください。",
     "creditsProductMisconfigured": "クレジット購入は現在利用できません。",
     "openPricing": "料金ページを開く",
-    "aiCreditsDisabled": "クレジットモードは現在無効です。"
+    "aiCreditsDisabled": "クレジットモードは現在無効です。",
+    "extractionLimitExceeded": "1ジョブあたり最大{limit}件の論文を抽出できます。{excess}件を削除してください。",
+    "extractionJobAlreadyActive": "抽出ジョブが実行中です。完了をお待ちください。"
   },
   "viewMode": {
     "simpleList": "シンプルリスト",
@@ -1555,21 +1557,21 @@
       "incompleteWarning": "Job not complete -- export may be partial"
     },
     "basket": {
-      "title": "\u62bd\u51fa\u30d0\u30b9\u30b1\u30c3\u30c8",
-      "description": "{count}\u4ef6\u306e\u8ad6\u6587",
-      "cta": "\u78ba\u8a8d\u3057\u3066\u62bd\u51fa\u3092\u958b\u59cb",
-      "emptyHeading": "\u8ad6\u6587\u304c\u9078\u629e\u3055\u308c\u3066\u3044\u307e\u305b\u3093",
-      "emptyBody": "\u30e9\u30a4\u30d6\u30e9\u30ea\u3001\u691c\u7d22\u7d50\u679c\u304b\u3089\u8ad6\u6587\u3092\u8ffd\u52a0\u3059\u308b\u304b\u3001OpenAlex ID\u3092\u8cbc\u308a\u4ed8\u3051\u3066\u62bd\u51fa\u30b8\u30e7\u30d6\u3092\u958b\u59cb\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-      "removeTooltip": "\u30d0\u30b9\u30b1\u30c3\u30c8\u304b\u3089\u524a\u9664",
-      "removeAriaLabel": "\u30d0\u30b9\u30b1\u30c3\u30c8\u304b\u3089{title}\u3092\u524a\u9664",
-      "triggerTooltip": "\u62bd\u51fa\u30d0\u30b9\u30b1\u30c3\u30c8\u3092\u958b\u304f",
-      "triggerAriaLabel": "\u62bd\u51fa\u30d0\u30b9\u30b1\u30c3\u30c8\u3092\u958b\u304f\u3001{count}\u4ef6\u306e\u8ad6\u6587",
-      "alreadyInBasket": "\u65e2\u306b\u62bd\u51fa\u30d0\u30b9\u30b1\u30c3\u30c8\u306b\u3042\u308a\u307e\u3059",
+      "title": "抽出バスケット",
+      "description": "{count}件の論文",
+      "cta": "確認して抽出を開始",
+      "emptyHeading": "論文が選択されていません",
+      "emptyBody": "ライブラリ、検索結果から論文を追加するか、OpenAlex IDを貼り付けて抽出ジョブを開始してください。",
+      "removeTooltip": "バスケットから削除",
+      "removeAriaLabel": "バスケットから{title}を削除",
+      "triggerTooltip": "抽出バスケットを開く",
+      "triggerAriaLabel": "抽出バスケットを開く、{count}件の論文",
+      "alreadyInBasket": "既に抽出バスケットにあります",
       "sourceLabel": {
-        "library": "\u30e9\u30a4\u30d6\u30e9\u30ea",
-        "collection": "\u30b3\u30ec\u30af\u30b7\u30e7\u30f3",
-        "search": "\u691c\u7d22",
-        "manual": "\u624b\u52d5",
+        "library": "ライブラリ",
+        "collection": "コレクション",
+        "search": "検索",
+        "manual": "手動",
         "zotero": "Zotero"
       }
     }
