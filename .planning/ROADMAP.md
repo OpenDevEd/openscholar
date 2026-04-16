@@ -189,7 +189,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
 - [x] **Phase 102: Entry Points & Counter UX** — `<AddToExtractionButton>` mounts, sidebar nav badge, "X / 1000" counter with cap-disabled checkboxes and bulk-paste drop toast (completed 2026-04-16)
 - [x] **Phase 103: Workbench Views + Selector Page** — 4 views (table/card/split/highlight) + evidence drawer + `parsingSource` badge + `/extraction/new` + SelectorTabs (Library/Collections/Search/Manual) + ExtractionDialog wiring (completed 2026-04-16)
 - [x] **Phase 104: Zotero Revival** — Settings card + `<ZoteroTab>` + lazy DOI resolution + env verification + `purgeStaleZoteroState` (completed 2026-04-16)
-- [ ] **Phase 105: Polish, Integration, E2E** — E2E Playwright, mobile responsive, reduced-motion, i18n audit, ESLint rule forbidding literal `1000`/`200` in extraction code
+- [x] **Phase 105: Polish, Integration, E2E** — E2E Playwright, mobile responsive, reduced-motion, i18n audit, ESLint rule forbidding literal `1000`/`200` in extraction code (completed 2026-04-16)
 
 ## Phase Details
 
@@ -394,4 +394,4 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 102. Entry Points & Counter UX | v7.0 | 2/2 | Complete    | 2026-04-16 |
 | 103. Workbench Views + Selector Page | v7.0 | 5/5 | Complete   | 2026-04-16 |
 | 104. Zotero Revival | v7.0 | 3/3 | Complete    | 2026-04-16 |
-| 105. Polish, Integration, E2E | v7.0 | 2/3 | In Progress|  |
+| 105. Polish, Integration, E2E | v7.0 | 3/3 | Complete   | 2026-04-16 |
