@@ -1574,6 +1574,23 @@
         "manual": "手動",
         "zotero": "Zotero"
       }
+    },
+    "workbench": {
+      "viewTable": "Table",
+      "viewCard": "Card",
+      "viewSplit": "Split",
+      "columns": "Columns",
+      "toggleAll": "Toggle all",
+      "filterStatus": "Status",
+      "filterConfidence": "Confidence",
+      "filterYear": "Year",
+      "filterVenue": "Venue",
+      "filterAnswer": "Answer",
+      "yearPlaceholder": "2020-2024",
+      "venuePlaceholder": "Venue...",
+      "answerPlaceholder": "Answer...",
+      "noResults": "No papers match the current filters.",
+      "noData": "No extraction results."
     }
   }
 }

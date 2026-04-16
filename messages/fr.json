@@ -1574,6 +1574,23 @@
         "manual": "Manuel",
         "zotero": "Zotero"
       }
+    },
+    "workbench": {
+      "viewTable": "Tableau",
+      "viewCard": "Cartes",
+      "viewSplit": "Divise",
+      "columns": "Colonnes",
+      "toggleAll": "Tout basculer",
+      "filterStatus": "Statut",
+      "filterConfidence": "Confiance",
+      "filterYear": "Annee",
+      "filterVenue": "Revue",
+      "filterAnswer": "Reponse",
+      "yearPlaceholder": "ex. 2020-2024",
+      "venuePlaceholder": "Filtrer par revue...",
+      "answerPlaceholder": "Filtrer les reponses...",
+      "noResults": "Aucun article ne correspond aux filtres actuels. Essayez d'ajuster ou de supprimer les filtres.",
+      "noData": "Aucun resultat d'extraction a afficher."
     }
   }
 }
