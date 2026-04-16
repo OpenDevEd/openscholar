@@ -280,7 +280,7 @@ Additional semantic colors used in this phase:
 - Item list: `divide-y` separator pattern matching LibraryTab
 - Item row height: ~72px (title + metadata + badges)
 - Item row padding: `py-3 px-0` (matching LibraryTab row pattern)
-- Badges layout: flex-wrap row below authors line, `gap-1.5`
+- Badges layout: flex-wrap row below authors line, `gap-1` (4px)
 - Load more button: `Button variant="outline" size="sm"`, centered below list
 - Empty state: centered vertically within `min-h-[30vh]`, icon + heading + body + link
 
