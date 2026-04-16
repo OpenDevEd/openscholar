@@ -185,7 +185,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
   - [x] 100-01-PLAN.md — TierSelector threading: schema + mutation + workpool + cascade + tests (TIER-01, TIER-02, TIER-03)
   - [x] 100-02-PLAN.md — Error system + ExtractionDialog wiring + i18n keys (LIM-07)
   - [x] 100-03-PLAN.md — OpenAlex actions: resolveManualIds + resolveByDoi (SEL-05, ZOT-03)
-- [ ] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`)
+- [x] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`) (completed 2026-04-16)
 - [ ] **Phase 102: Entry Points & Counter UX** — `<AddToExtractionButton>` mounts, sidebar nav badge, "X / 1000" counter with cap-disabled checkboxes and bulk-paste drop toast
 - [ ] **Phase 103: Workbench Views + Selector Page** — 4 views (table/card/split/highlight) + evidence drawer + `parsingSource` badge + `/extraction/new` + SelectorTabs (Library/Collections/Search/Manual) + ExtractionDialog wiring
 - [ ] **Phase 104: Zotero Revival** — Settings card + `<ZoteroTab>` + lazy DOI resolution + env verification + `purgeStaleZoteroState`
@@ -257,7 +257,7 @@ Plans:
 Plans:
   - [x] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
   - [x] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
-  - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
+  - [x] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: MEDIUM — TanStack v8 memoization spike + React 19 `useDeferredValue` spike needed before Phase 103 lands. Hoist `columns` definition outside component; `React.memo` row cells; never recompute `useReactTable` options inline.
 **Anti-features to NOT ship**: shadcn `data-table` block (monolithic — fights 4-view architecture); TanStack Table v9 alpha; AG Grid Community (500 KB bundle); react-data-grid (4-year beta).
@@ -330,8 +330,8 @@ Plans:
   6. A dev-guarded `purgeStaleZoteroState` internal action deletes all rows from `zoteroConnections` and `zoteroOAuthTokens` in the dev database, cleaning up pre-v7.0 orphan state encrypted with rotated keys — ZOT-06
 **Plans**: 3 plans
 Plans:
-  - [ ] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
-  - [ ] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
+  - [x] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
+  - [x] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
   - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: MEDIUM — re-verify Zotero 2025 rate-limit docs before implementing the `fetchWithBackoff` helper (respect `Backoff:` header + `429 Retry-After:` + `limit=100` pagination cursor).
@@ -385,7 +385,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
-| 101. Workbench Primitives | v7.0 | 2/3 | In Progress|  |
+| 101. Workbench Primitives | v7.0 | 3/3 | Complete   | 2026-04-16 |
 | 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
 | 104. Zotero Revival | v7.0 | 0/TBD | Not started | - |
