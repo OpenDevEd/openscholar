@@ -187,7 +187,7 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
   - [x] 100-03-PLAN.md — OpenAlex actions: resolveManualIds + resolveByDoi (SEL-05, ZOT-03)
 - [x] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`) (completed 2026-04-16)
 - [x] **Phase 102: Entry Points & Counter UX** — `<AddToExtractionButton>` mounts, sidebar nav badge, "X / 1000" counter with cap-disabled checkboxes and bulk-paste drop toast (completed 2026-04-16)
-- [ ] **Phase 103: Workbench Views + Selector Page** — 4 views (table/card/split/highlight) + evidence drawer + `parsingSource` badge + `/extraction/new` + SelectorTabs (Library/Collections/Search/Manual) + ExtractionDialog wiring
+- [x] **Phase 103: Workbench Views + Selector Page** — 4 views (table/card/split/highlight) + evidence drawer + `parsingSource` badge + `/extraction/new` + SelectorTabs (Library/Collections/Search/Manual) + ExtractionDialog wiring (completed 2026-04-16)
 - [ ] **Phase 104: Zotero Revival** — Settings card + `<ZoteroTab>` + lazy DOI resolution + env verification + `purgeStaleZoteroState`
 - [ ] **Phase 105: Polish, Integration, E2E** — E2E Playwright, mobile responsive, reduced-motion, i18n audit, ESLint rule forbidding literal `1000`/`200` in extraction code
 
@@ -308,7 +308,7 @@ Plans:
   - [x] 103-02-PLAN.md — Selector page with 4 tabs + ExtractionDialog wiring (SEL-01, SEL-02, SEL-03, SEL-04)
   - [x] 103-03-PLAN.md — WorkbenchShell pagination + search + export toolbar (WB-04, WB-09)
   - [x] 103-04-PLAN.md — CardView + SplitView + EvidenceDrawer components (WB-05, WB-06, WB-07, GAP-01)
-  - [ ] 103-05-PLAN.md — Integration wiring + results page refactor (WB-05, WB-06, WB-07, WB-08, WB-09, GAP-01)
+  - [x] 103-05-PLAN.md — Integration wiring + results page refactor (WB-05, WB-06, WB-07, WB-08, WB-09, GAP-01)
 
 **Research flag**: HIGH — sub-plan A is the least-documented intersection in the milestone: card virtualization + sticky header + split-view scroll preservation. Phase 103 research pass must confirm `@tanstack/react-virtual` vs `react-window` before implementation.
 **Closes v6.0 gaps**: UI-01 (ExtractionDialog `papers` prop wired from basket), PARSE-07 (`parsingSource` badge rendered), CRASH-02 (bare `useQuery` fixed in `EvidenceQuote` + `JobMetricsPanel`).
@@ -392,6 +392,6 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 101. Workbench Primitives | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 102. Entry Points & Counter UX | v7.0 | 2/2 | Complete    | 2026-04-16 |
-| 103. Workbench Views + Selector Page | v7.0 | 4/5 | In Progress|  |
+| 103. Workbench Views + Selector Page | v7.0 | 5/5 | Complete   | 2026-04-16 |
 | 104. Zotero Revival | v7.0 | 0/TBD | Not started | - |
 | 105. Polish, Integration, E2E | v7.0 | 0/TBD | Not started | - |
