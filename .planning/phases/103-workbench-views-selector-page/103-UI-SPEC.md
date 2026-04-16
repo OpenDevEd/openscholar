@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: new-york
 created: 2026-04-16
+revised: 2026-04-16
 ---
 
 # Phase 103 -- UI Design Contract
@@ -25,6 +26,15 @@ created: 2026-04-16
 
 ---
 
+## Focal Points
+
+| Screen | Focal Point |
+|--------|-------------|
+| Workbench Results (`/extraction/[jobId]`) | Active View Area -- the table/card/split panel occupying the viewport center below the toolbar |
+| Selector Page (`/extraction/new`) | "Start Extraction" CTA button in the sticky footer |
+
+---
+
 ## Spacing Scale
 
 Declared values (must be multiples of 4):
@@ -39,8 +49,9 @@ Declared values (must be multiples of 4):
 | 2xl | 48px (`gap-12`) | Major vertical breaks (header to content) |
 | 3xl | 64px (`gap-16`) | Not used in this phase |
 
-Exceptions:
-- Evidence drawer content padding: 20px (`px-5 py-4`) -- non-standard for comfortable reading width within the narrow Sheet
+> **Note:** Evidence drawer content uses 20px padding (`px-5 py-4`) as a deliberate exception to the 8-point scale. This non-standard value provides comfortable reading width within the narrow Sheet (~400px) where 16px feels cramped and 24px wastes too much horizontal space. This is the only off-scale value in Phase 103.
+
+Additional exceptions:
 - Split view divider: 1px border (`border-r`) with no additional gap -- the panels use their own internal padding
 - Touch targets on pagination Previous/Next: minimum 44px height (`h-11`) for mobile accessibility
 
@@ -50,16 +61,18 @@ Exceptions:
 
 | Role | Size | Weight | Line Height | Usage in Phase 103 |
 |------|------|--------|-------------|---------------------|
-| Body | 14px (`text-sm`) | 400 (normal) | 1.43 (`leading-[1.43]`) | Evidence quote text, answer text, tab content rows, split view paper titles |
+| Body | 14px (`text-sm`) | 400 (normal) | 1.43 (`leading-[1.43]`) | Evidence quote text, answer text, tab content rows, split view paper titles, search input placeholder |
 | Label | 12px (`text-xs`) | 600 (`font-semibold`) | 1.33 | Badges (status, confidence, parsingSource, critic verdict), filter labels, pagination counts, tab triggers |
 | Heading | 16px (`text-base`) | 600 (`font-semibold`) | 1.25 | Card titles (PaperResultCard CardTitle), drawer section headings, question text in evidence drawer |
 | Display | 20px (`text-xl`) | 600 (`font-semibold`) | 1.2 | Page headings ("Extraction Results", "New Extraction"), selector page title |
 
+Weights used: **400 (normal)** and **600 (semibold)** only. No other weights are permitted in Phase 103.
+
 Additional typography rules:
 - Manual IDs textarea: `font-mono` (system monospace), 14px, weight 400, line-height 1.5 -- monospace for ID legibility when pasting one-per-line
-- Pagination text "Showing X--Y of Z papers": 14px, weight 500 (`font-medium`), `text-muted-foreground`
+- Pagination text "Showing X--Y of Z papers": 14px, weight 600 (`font-semibold`), `text-muted-foreground` -- semibold communicates interactive label context
 - Search input placeholder: 14px, weight 400, `text-muted-foreground`
-- Tab trigger text: 14px, weight 500 (`font-medium`)
+- Tab trigger text: 14px, weight 600 (`font-semibold`) -- tab triggers are interactive labels and use semibold consistently with other label elements
 
 ---
 
@@ -112,7 +125,7 @@ Additional semantic colors already established and reused in this phase:
 | Evidence drawer source label | `extraction.workbench.evidenceDrawerSource` | "Parsing source" |
 | Evidence drawer model label | `extraction.workbench.evidenceDrawerModel` | "Model used" |
 | Evidence drawer verdict label | `extraction.workbench.evidenceDrawerVerdict` | "Critic verdict" |
-| Export button label | `extraction.workbench.exportButton` | "Export" |
+| Export button label | `extraction.workbench.exportButton` | "Export Results" |
 | Export filtered note | `extraction.workbench.exportFilteredNote` | "Exporting {count} filtered papers" |
 
 ### Selector Page
@@ -147,7 +160,7 @@ Additional semantic colors already established and reused in this phase:
 
 | Element | Copy (i18n key) | Text |
 |---------|-----------------|------|
-| Results page error | `extraction.results.errorState` | "Something went wrong loading results. Refresh the page or return to your extraction jobs." (existing) |
+| Results page error | `extraction.results.errorState` | "Results could not be loaded. Refresh the page or return to your extraction jobs." |
 | Evidence unavailable | `extraction.evidenceUnavailable` | "Evidence unavailable" (existing) |
 | Export failure toast | `extraction.export.exportFailed` | "Export failed. Try again or contact support if the issue persists." |
 
@@ -217,9 +230,10 @@ This phase has NO destructive actions. Paper removal from the basket is handled 
 +---------------------------------------------------------------+
 | WorkbenchToolbar                                               |
 | [ViewSwitcher] | [Status v] [Conf v] [Year___] [Venue___] |  |
-|                | [Search papers, authors, answers...] [Export] |
+|                | [Search papers, authors, answers...]          |
+|                |                          [Export Results]      |
 +---------------------------------------------------------------+
-| Active View Area (animated transitions)                        |
+| Active View Area (animated transitions)          <- FOCAL PT  |
 |                                                                |
 |   TABLE: Full DataTable with shadcn Table rows                 |
 |   CARD: Virtualized single-column PaperResultCards             |
@@ -318,7 +332,7 @@ This phase has NO destructive actions. Paper removal from the basket is handled 
 ```
 
 - Width: default Sheet width (~400px / `sm:max-w-lg`)
-- Padding: `px-5 py-4` for reading comfort
+- Padding: `px-5 py-4` (20px horizontal, 16px vertical -- see spacing scale note for 20px rationale)
 - Section spacing: `space-y-6` (24px between sections)
 - Labels: 12px, `font-semibold`, `text-muted-foreground`, `uppercase tracking-wider`
 - Values: 14px, `text-foreground`
@@ -345,7 +359,7 @@ This phase has NO destructive actions. Paper removal from the basket is handled 
 |   ZOTERO: Disabled placeholder                                 |
 |                                                                |
 +---------------------------------------------------------------+
-| Sticky footer                                                  |
+| Sticky footer                                          FOCAL PT|
 | [ExtractionCounter bar]                                        |
 | [Review Basket (ghost)]          [Start Extraction (primary)]  |
 +---------------------------------------------------------------+
@@ -387,7 +401,7 @@ This phase has NO destructive actions. Paper removal from the basket is handled 
 
 ### Export Filtered Subset
 
-1. User clicks Export dropdown in toolbar
+1. User clicks "Export Results" dropdown in toolbar
 2. If filters are active: dropdown shows "{count} filtered papers" note
 3. User selects format (CSV / JSON / XLSX)
 4. Handler reads `table.getFilteredRowModel().rows` to extract paper IDs
