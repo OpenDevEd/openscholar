@@ -585,7 +585,10 @@ export const getExtractionResults = query({
  *          results per paper capped at 100.
  */
 export const getExtractionResultsForExport = query({
-  args: { jobId: v.id("extractionJobs") },
+  args: {
+    jobId: v.id("extractionJobs"),
+    paperIds: v.optional(v.array(v.id("extractionPapers"))),
+  },
   returns: v.union(
     v.null(),
     v.object({
@@ -623,10 +626,16 @@ export const getExtractionResultsForExport = query({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.userId !== user._id) return null;
 
-    const papers = await ctx.db
+    let papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(MAX_EXTRACTION_PAPERS_PER_JOB);
+
+    // Filter to requested subset if paperIds provided (D-19: filtered export)
+    if (args.paperIds) {
+      const idSet = new Set(args.paperIds.map(String));
+      papers = papers.filter((p) => idSet.has(String(p._id)));
+    }
 
     // Build a question key->question text lookup from job.questions
     const questionLookup = new Map(
