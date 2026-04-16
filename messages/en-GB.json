@@ -1651,9 +1651,20 @@
       "manualResolve": "Resolve & Add",
       "manualResolving": "Resolving...",
       "manualResolveError": "Some IDs could not be resolved. Check the format and try again.",
+      "manualResolveSuccess": "Resolved {added} papers",
       "reviewBasket": "Review Basket",
       "startExtraction": "Start Extraction",
-      "startExtractionEmpty": "Add papers to your basket first"
+      "startExtractionEmpty": "Add papers to your basket first",
+      "selectAll": "Select all",
+      "addSelected": "Add selected to basket",
+      "addedWithDropped": "Added {added} papers; {dropped} dropped — basket limit reached",
+      "addedSuccess": "Added {added} papers to basket",
+      "alreadyInBasket": "In basket",
+      "addingCollection": "Adding collection...",
+      "searchPicker": {
+        "label": "Select a search",
+        "placeholder": "Choose a recent search..."
+      }
     }
   }
 }
