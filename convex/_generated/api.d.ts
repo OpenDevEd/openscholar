@@ -65,6 +65,7 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
+import type * as openalex_actions from "../openalex/actions.js";
 import type * as screening_mutations from "../screening/mutations.js";
 import type * as screening_queries from "../screening/queries.js";
 import type * as screening_scoring from "../screening/scoring.js";
@@ -170,6 +171,7 @@ declare const fullApi: ApiFromModules<{
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
   "models/sync": typeof models_sync;
+  "openalex/actions": typeof openalex_actions;
   "screening/mutations": typeof screening_mutations;
   "screening/queries": typeof screening_queries;
   "screening/scoring": typeof screening_scoring;
