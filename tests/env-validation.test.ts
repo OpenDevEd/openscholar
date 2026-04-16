@@ -7,6 +7,8 @@ const REQUIRED_ENV_VARS = [
   "STRIPE_PRO_PRICE_ID",
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_JWT_ISSUER_DOMAIN",
+  "ZOTERO_CLIENT_KEY",
+  "ZOTERO_CLIENT_SECRET",
 ];
 
 describe("validateRequiredEnvVars", () => {
@@ -39,6 +41,8 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.ZOTERO_CLIENT_KEY = "zk_test";
+    process.env.ZOTERO_CLIENT_SECRET = "zs_test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -54,6 +58,8 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.ZOTERO_CLIENT_KEY = "zk_test";
+    process.env.ZOTERO_CLIENT_SECRET = "zs_test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -69,6 +75,8 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.ZOTERO_CLIENT_KEY = "zk_test";
+    process.env.ZOTERO_CLIENT_SECRET = "zs_test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -84,6 +92,8 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_GO_PRICE_ID = "price_go";
     process.env.STRIPE_PRO_PRICE_ID = "price_pro";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.ZOTERO_CLIENT_KEY = "zk_test";
+    process.env.ZOTERO_CLIENT_SECRET = "zs_test";
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -93,5 +103,41 @@ describe("validateRequiredEnvVars", () => {
     expect(result.missing).toContain("ENCRYPTION_KEY");
     expect(result.missing).toContain("STRIPE_WEBHOOK_SECRET");
     expect(result.missing).toHaveLength(3);
+  });
+
+  it("detects missing ZOTERO_CLIENT_KEY", async () => {
+    delete process.env.ZOTERO_CLIENT_KEY;
+    // Set all other required env vars to non-empty values
+    process.env.STRIPE_SECRET_KEY = "sk_test_123";
+    process.env.ENCRYPTION_KEY = "test-key";
+    process.env.STRIPE_GO_PRICE_ID = "price_go";
+    process.env.STRIPE_PRO_PRICE_ID = "price_pro";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+    process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.ZOTERO_CLIENT_SECRET = "zs_test";
+
+    const { validateRequiredEnvVars } = await import(
+      "../convex/lib/envValidation"
+    );
+    const result = validateRequiredEnvVars();
+    expect(result.missing).toContain("ZOTERO_CLIENT_KEY");
+  });
+
+  it("detects missing ZOTERO_CLIENT_SECRET", async () => {
+    delete process.env.ZOTERO_CLIENT_SECRET;
+    // Set all other required env vars to non-empty values
+    process.env.STRIPE_SECRET_KEY = "sk_test_123";
+    process.env.ENCRYPTION_KEY = "test-key";
+    process.env.STRIPE_GO_PRICE_ID = "price_go";
+    process.env.STRIPE_PRO_PRICE_ID = "price_pro";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
+    process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
+    process.env.ZOTERO_CLIENT_KEY = "zk_test";
+
+    const { validateRequiredEnvVars } = await import(
+      "../convex/lib/envValidation"
+    );
+    const result = validateRequiredEnvVars();
+    expect(result.missing).toContain("ZOTERO_CLIENT_SECRET");
   });
 });

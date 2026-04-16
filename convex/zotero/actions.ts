@@ -1123,3 +1123,42 @@ export const downloadFile = internalAction({
     }
   },
 });
+
+/**
+ * Purge all stale Zotero state (connections + OAuth tokens).
+ * Dev-only cleanup for pre-v7.0 databases where ENCRYPTION_KEY may have been rotated,
+ * leaving orphan encrypted tokens that cannot be decrypted.
+ *
+ * Platform-enforced internal action -- not callable from clients.
+ * Only accessible via Convex dashboard "Run Function" in dev environments.
+ */
+export const purgeStaleZoteroState = internalAction({
+  args: {},
+  returns: v.object({
+    connectionsDeleted: v.number(),
+    tokensDeleted: v.number(),
+  }),
+  handler: async (ctx) => {
+    // Pre-purge audit
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "ZOTERO_PURGE_START",
+      metadata: {},
+    });
+
+    // Delete via internal mutation (actions have no ctx.db)
+    const result = await ctx.runMutation(
+      internal.zotero.mutations.purgeAllZoteroData,
+    );
+
+    // Post-purge audit with counts
+    await ctx.runMutation(internal.lib.audit.writeAuditLog, {
+      action: "ZOTERO_PURGE_COMPLETE",
+      metadata: {
+        connectionsDeleted: String(result.connectionsDeleted),
+        tokensDeleted: String(result.tokensDeleted),
+      },
+    });
+
+    return result;
+  },
+});

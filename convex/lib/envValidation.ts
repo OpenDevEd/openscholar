@@ -11,6 +11,8 @@ export const REQUIRED_ENV_VARS = [
   "STRIPE_PRO_PRICE_ID",
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_JWT_ISSUER_DOMAIN",
+  "ZOTERO_CLIENT_KEY",
+  "ZOTERO_CLIENT_SECRET",
 ] as const;
 
 export function validateRequiredEnvVars(): { missing: string[] } {

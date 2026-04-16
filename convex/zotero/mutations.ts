@@ -179,3 +179,32 @@ export const cleanupExpiredOAuthTokens = internalMutation({
     return null;
   },
 });
+
+/**
+ * Purge ALL Zotero state from both tables.
+ * Dev-only cleanup for stale pre-v7.0 OAuth state where ENCRYPTION_KEY may have rotated.
+ * Called exclusively via purgeStaleZoteroState internalAction (never directly from clients).
+ */
+export const purgeAllZoteroData = internalMutation({
+  args: {},
+  returns: v.object({
+    connectionsDeleted: v.number(),
+    tokensDeleted: v.number(),
+  }),
+  handler: async (ctx) => {
+    const connections = await ctx.db.query("zoteroConnections").collect();
+    for (const conn of connections) {
+      await ctx.db.delete("zoteroConnections", conn._id);
+    }
+
+    const tokens = await ctx.db.query("zoteroOAuthTokens").collect();
+    for (const token of tokens) {
+      await ctx.db.delete("zoteroOAuthTokens", token._id);
+    }
+
+    return {
+      connectionsDeleted: connections.length,
+      tokensDeleted: tokens.length,
+    };
+  },
+});
