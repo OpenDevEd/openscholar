@@ -279,7 +279,7 @@ Plans:
 Plans:
   - [x] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
   - [x] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
-  - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
+  - [x] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: LOW — i18n keys must be seeded in all 6 locales up front.
 **Pitfalls mitigated**: PITFALL 7 (silent cap overflow across sources — every picker reads `useBasketStore(s => s.count)` and displays global `X / 1000`).
@@ -351,8 +351,8 @@ Plans:
   5. i18n audit confirms every new v7.0 string has entries in all 6 locale files; French diacritic check passes
 **Plans**: 3 plans
 Plans:
-  - [ ] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
-  - [ ] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
+  - [x] 101-01-PLAN.md — Zustand store + column definitions factory (WB-02, WB-03)
+  - [x] 101-02-PLAN.md — TanStack Table install + DataTable renderer + i18n keys (WB-01, WB-10)
   - [ ] 101-03-PLAN.md — WorkbenchShell + toolbar + view switcher + column visibility toggle (WB-01, WB-02, WB-03, WB-10)
 
 **Research flag**: LOW.
@@ -385,7 +385,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
 | 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete    | 2026-04-16 |
-| 101. Workbench Primitives | v7.0 | 3/3 | Complete   | 2026-04-16 |
+| 101. Workbench Primitives | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
 | 104. Zotero Revival | v7.0 | 0/TBD | Not started | - |
