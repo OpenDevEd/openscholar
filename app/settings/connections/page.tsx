@@ -5,13 +5,15 @@ import posthog from "posthog-js";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plug, Trash2, Clock, Globe, ShieldCheck, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useTranslations, useFormatter } from "next-intl";
+import { Separator } from "@/components/ui/separator";
+import { ZoteroConnectionCard } from "@/components/settings/zotero-connection-card";
 
 export default function ConnectionsPage() {
   const { phase, canRunProtectedQueries } = useAuthReadiness();
@@ -27,6 +29,27 @@ export default function ConnectionsPage() {
   const t = useTranslations("connectionsPage");
   const tc = useTranslations("common");
   const format = useFormatter();
+
+  // Handle Zotero OAuth callback query params (D-03)
+  // The HTTP callback redirects to /?zotero_connected=true or /?zotero_error=...
+  // We handle the params here for when the user navigates to /settings/connections after OAuth.
+  // The reactive getConnectionStatus query on ZoteroConnectionCard reflects the true state.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("zotero_connected");
+    const error = params.get("zotero_error");
+
+    if (connected === "true") {
+      toast.success(t("zotero.oauthSuccess"));
+    } else if (error) {
+      toast.error(t("zotero.oauthError", { error: decodeURIComponent(error) }));
+    }
+
+    if (connected !== null || error !== null) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const formatRelativeTime = (timestamp: number): string => {
     const now = Date.now();
@@ -97,6 +120,10 @@ export default function ConnectionsPage() {
 
       {/* Content */}
       <div className="p-6 space-y-6 max-w-2xl">
+        {/* Zotero connection section — D-01 */}
+        <ZoteroConnectionCard />
+        <Separator className="my-2" />
+
         {/* Loading */}
         {!keys && (
           <div className="py-12 text-center text-sm text-muted-foreground">
