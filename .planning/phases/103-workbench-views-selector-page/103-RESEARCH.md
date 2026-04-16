@@ -653,19 +653,19 @@ const memberships = useProtectedQuery(
 | A3 | `useDeferredValue` + `useDebouncedValue` layered debounce prevents filter storms at 1000 rows | Architecture Patterns: Pattern 5 | LOW -- both mechanisms are well-documented for this use case. Fallback: increase debounce to 500ms. |
 | A4 | PaperResultCard average height of ~280px is a reasonable `estimateSize` | Architecture Patterns: Pattern 1 | LOW -- if wrong, virtualizer self-corrects after `measureElement` renders. Worst case: brief layout shift on first render. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **SEL-03: Collection items query strategy**
+1. **SEL-03: Collection items query strategy** — RESOLVED: Plan 02 Task 2 (CollectionsTab) uses `browseLibrary` with `collectionId` filter. If payload exceeds limits, executor creates a dedicated lightweight query.
    - What we know: `browseLibrary` accepts `collectionId` filter and returns paginated library items. `libraryItemCollections` junction table has `by_collection` index.
    - What's unclear: Whether `browseLibrary` with `collectionId` and `numItems: 1000` is sufficient for "Extract entire collection" or if a lighter-weight query returning only `{openalexId, title, doi}` would be better for basket population.
    - Recommendation: Start with `browseLibrary` + `collectionId` filter. If it works within Convex's response size limits, no new query needed. Create a dedicated `getCollectionItemsForBasket` only if the full `libraryItems` shape exceeds reasonable payload size.
 
-2. **WB-04: Search results tab data source**
+2. **WB-04: Search results tab data source** — RESOLVED: Plan 02 Task 2 (SearchResultsTab) instructs executor to discover data pathway from `results-list.tsx` and `app/results/[searchId]` during implementation.
    - What we know: The CONTEXT.md references `searchHistory` and `convex/search/queries.ts:getSearchResults`, but no `getSearchResults` export exists in the convex directory (grep returned no matches in the expected location).
    - What's unclear: How the Search Results tab accesses saved search results. The existing `app/results/[searchId]` page likely uses a different data pathway.
    - Recommendation: Investigate the search results data flow from the results page during implementation. The selector tab may need to read from the same source as `results-list.tsx` or the search history mechanism.
 
-3. **Zustand store migration for pageSize**
+3. **Zustand store migration for pageSize** — RESOLVED: Plan 01 Task 1 bumps store to version 2 with `migrateViewState` v2 case adding `pageSize: 25`.
    - What we know: `extraction-results-view` store (version 1) has `columnVisibility` and `activeView`. D-17 adds `pageSize`.
    - What's unclear: Whether adding `pageSize` requires a version bump + migration function.
    - Recommendation: Add `pageSize` with a default value in the store definition and bump the version to 2. The existing `migrateViewState` function already handles version < 1 returning defaults. Add a version < 2 case that spreads existing state and adds `pageSize: 25`.

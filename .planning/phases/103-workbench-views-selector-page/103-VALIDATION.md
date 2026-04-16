@@ -1,9 +1,9 @@
 ---
 phase: 103
 slug: workbench-views-selector-page
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: populated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-16
 ---
 
@@ -38,11 +38,19 @@ created: 2026-04-16
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | TBD | ⬜ pending |
+| 103-01-01 | 01 | 1 | GAP-01, GAP-02, WB-09 | — | useProtectedQuery replaces bare useQuery | unit + tsc | `npx vitest run tests/crash-prevention/usequery-guard.test.ts tests/extraction-i18n-coverage.test.ts --reporter=verbose` | ✅ | ⬜ pending |
+| 103-01-02 | 01 | 1 | WB-08 | — | Export query validates ownership | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-02-01 | 02 | 1 | SEL-01 | — | N/A | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-02-02 | 02 | 1 | SEL-02, SEL-03, SEL-04 | — | useProtectedQuery for all data access | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-03-01 | 03 | 2 | WB-09 | — | N/A | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-03-02 | 03 | 2 | WB-04 | — | N/A | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-04-01 | 04 | 2 | WB-05 | — | N/A | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-04-02 | 04 | 2 | WB-06, WB-07, GAP-01 | — | Evidence uses verbatim slice, never LLM quote | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-05-01 | 05 | 3 | WB-05, WB-06, WB-07, GAP-01 | — | N/A | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-05-02 | 05 | 3 | WB-08, WB-09 | — | N/A | tsc | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| 103-05-03 | 05 | 3 | WB-05, WB-06, WB-07 | — | N/A | checkpoint | human-verify | — | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
-
-*Task mapping will be populated after PLAN.md files are created.*
 
 ---
 
@@ -65,11 +73,11 @@ created: 2026-04-16
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-04-16
