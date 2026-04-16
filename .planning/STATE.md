@@ -4,14 +4,14 @@ milestone: v7.0
 milestone_name: Extraction Workbench
 status: executing
 stopped_at: Phase 100 context gathered
-last_updated: "2026-04-16T08:42:46.600Z"
-last_activity: 2026-04-16 -- Phase 100 planning complete
+last_updated: "2026-04-16T08:51:32.385Z"
+last_activity: 2026-04-16 -- Phase 100 execution started
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 7
-  completed_plans: 4
-  percent: 57
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-15)
 
 **Core value:** Reliable, well-tested academic search and AI extraction
-**Current focus:** Phase 99 — selection-basket-core
+**Current focus:** Phase 100 — backend-wiring-tierselector-fix
 
 ## Current Position
 
 Milestone: v7.0 Extraction Workbench
-Phase: 100
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-16 -- Phase 100 planning complete
+Phase: 100 (backend-wiring-tierselector-fix) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 100
+Last activity: 2026-04-16 -- Phase 100 execution started
 
 Progress: [█░░░░░░░░░] 12.5%
 

@@ -180,11 +180,11 @@ Full details: `.planning/milestones/v6.0-ROADMAP.md`
   Plans:
   - [x] 99-01-PLAN.md — Normalize utility + basket store + useAddToBasket hook (SEL-07, SEL-08, SEL-09, SEL-10)
   - [x] 99-02-PLAN.md — Drawer UI components + i18n keys (SEL-09, SEL-10)
-- [ ] **Phase 100: Backend Wiring + TierSelector Fix** — `convex/openalex/actions.ts` (resolveByDoi, resolveManualIds), extractionLimit helpers, 5-edit TierSelector wiring, server-side hard-reject
+- [x] **Phase 100: Backend Wiring + TierSelector Fix** — `convex/openalex/actions.ts` (resolveByDoi, resolveManualIds), extractionLimit helpers, 5-edit TierSelector wiring, server-side hard-reject (completed 2026-04-16)
   Plans:
-  - [ ] 100-01-PLAN.md — TierSelector threading: schema + mutation + workpool + cascade + tests (TIER-01, TIER-02, TIER-03)
-  - [ ] 100-02-PLAN.md — Error system + ExtractionDialog wiring + i18n keys (LIM-07)
-  - [ ] 100-03-PLAN.md — OpenAlex actions: resolveManualIds + resolveByDoi (SEL-05, ZOT-03)
+  - [x] 100-01-PLAN.md — TierSelector threading: schema + mutation + workpool + cascade + tests (TIER-01, TIER-02, TIER-03)
+  - [x] 100-02-PLAN.md — Error system + ExtractionDialog wiring + i18n keys (LIM-07)
+  - [x] 100-03-PLAN.md — OpenAlex actions: resolveManualIds + resolveByDoi (SEL-05, ZOT-03)
 - [ ] **Phase 101: Workbench Primitives** — `DataTable` wrapper, shared toolbar, filter toolbar, view switcher (TanStack Table v8.21.3 + re-added shadcn `<Table />`)
 - [ ] **Phase 102: Entry Points & Counter UX** — `<AddToExtractionButton>` mounts, sidebar nav badge, "X / 1000" counter with cap-disabled checkboxes and bulk-paste drop toast
 - [ ] **Phase 103: Workbench Views + Selector Page** — 4 views (table/card/split/highlight) + evidence drawer + `parsingSource` badge + `/extraction/new` + SelectorTabs (Library/Collections/Search/Manual) + ExtractionDialog wiring
@@ -368,7 +368,7 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 88-97 | v6.0 | 29/29 | Complete | 2026-04-15 |
 | 98. Pre-flight & Hard-Limit Foundation | v7.0 | 2/2 | Complete   | 2026-04-15 |
 | 99. Selection Basket Core | v7.0 | 2/2 | Complete    | 2026-04-15 |
-| 100. Backend Wiring + TierSelector Fix | v7.0 | 0/3 | Not started | - |
+| 100. Backend Wiring + TierSelector Fix | v7.0 | 3/3 | Complete   | 2026-04-16 |
 | 101. Workbench Primitives | v7.0 | 0/TBD | Not started | - |
 | 102. Entry Points & Counter UX | v7.0 | 0/TBD | Not started | - |
 | 103. Workbench Views + Selector Page | v7.0 | 0/TBD | Not started | - |
