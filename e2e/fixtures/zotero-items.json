@@ -1,0 +1,79 @@
+[
+  {
+    "key": "ITEM1111",
+    "version": 42,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ITEM1111",
+      "itemType": "journalArticle",
+      "title": "Meta-Analysis of Adaptive Learning Systems in K-12 Settings",
+      "DOI": "10.1234/zotero-seed.001",
+      "date": "2024",
+      "creators": [{ "creatorType": "author", "firstName": "A.", "lastName": "Zhang" }]
+    }
+  },
+  {
+    "key": "ITEM2222",
+    "version": 43,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ITEM2222",
+      "itemType": "journalArticle",
+      "title": "Critical Review — Large Language Models in Tutoring Applications",
+      "DOI": "10.5678/zotero-seed.002",
+      "date": "2025",
+      "creators": [{ "creatorType": "author", "firstName": "B.", "lastName": "Patel" }]
+    }
+  },
+  {
+    "key": "ITEM3333",
+    "version": 44,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ITEM3333",
+      "itemType": "journalArticle",
+      "title": "Conference Proceedings on Educational Technology — 2023 Edition",
+      "DOI": "",
+      "date": "2023",
+      "creators": [{ "creatorType": "author", "firstName": "C.", "lastName": "Müller" }]
+    }
+  },
+  {
+    "key": "ITEM4444",
+    "version": 45,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ITEM4444",
+      "itemType": "journalArticle",
+      "title": "Workshop Notes on NLP for Education",
+      "date": "2024",
+      "creators": [{ "creatorType": "author", "firstName": "D.", "lastName": "Smith" }]
+    }
+  },
+  {
+    "key": "ITEM5555",
+    "version": 46,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ITEM5555",
+      "itemType": "journalArticle",
+      "title": "Long-Term Study of Intelligent Tutoring Systems Effectiveness",
+      "DOI": "10.9012/zotero-seed.005",
+      "date": "2026",
+      "creators": [{ "creatorType": "author", "firstName": "E.", "lastName": "Ito" }]
+    }
+  },
+  {
+    "key": "ITEM6666",
+    "version": 47,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ITEM6666",
+      "itemType": "journalArticle",
+      "title": "Gaps in Educational Data Mining — A Scoping Review",
+      "DOI": "10.3456/zotero-seed.006",
+      "date": "2024",
+      "creators": [{ "creatorType": "author", "firstName": "F.", "lastName": "Chen" }]
+    }
+  }
+]

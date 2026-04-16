@@ -1,0 +1,32 @@
+[
+  {
+    "key": "ABCD1234",
+    "version": 12,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "ABCD1234",
+      "name": "Systematic Review — AI in Education",
+      "parentCollection": false
+    }
+  },
+  {
+    "key": "EFGH5678",
+    "version": 18,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "EFGH5678",
+      "name": "Methods Papers",
+      "parentCollection": false
+    }
+  },
+  {
+    "key": "IJKL9012",
+    "version": 22,
+    "library": { "type": "user", "id": 123456 },
+    "data": {
+      "key": "IJKL9012",
+      "name": "To Read — 2026",
+      "parentCollection": "ABCD1234"
+    }
+  }
+]

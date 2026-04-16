@@ -1,25 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { clerk } from "@clerk/testing/playwright";
-
-function getTestUserEmail() {
-  const emailAddress = process.env.E2E_CLERK_USER_EMAIL;
-  if (!emailAddress) {
-    throw new Error(
-      "Missing E2E_CLERK_USER_EMAIL for auth E2E tests.",
-    );
-  }
-  return emailAddress;
-}
-
-async function signIn(page: Page) {
-  const emailAddress = getTestUserEmail();
-  await page.goto("/");
-  await clerk.loaded({ page });
-  await clerk.signIn({
-    page,
-    emailAddress,
-  });
-}
+import { signIn } from "./helpers/sign-in";
 
 test.describe("clerk auth flows", () => {
   test("anonymous user is redirected from protected route to /sign-in", async ({

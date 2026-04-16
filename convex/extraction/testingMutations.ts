@@ -33,7 +33,7 @@ export const insertSeededJob = internalMutation({
     title: v.string(),
   },
   returns: v.id("extractionJobs"),
-  handler: async (ctx, { paperCount, questionCount, title: _title }): Promise<Id<"extractionJobs">> => {
+  handler: async (ctx, { paperCount, questionCount }): Promise<Id<"extractionJobs">> => {
     // Defense in depth: even though the action layer guards, a misconfigured
     // deployment that calls this mutation directly (e.g. via a future internal
     // function) still enforces the dev gate.
