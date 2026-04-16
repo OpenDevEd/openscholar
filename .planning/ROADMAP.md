@@ -335,8 +335,8 @@ Plans:
   6. A dev-guarded `purgeStaleZoteroState` internal action deletes all rows from `zoteroConnections` and `zoteroOAuthTokens` in the dev database, cleaning up pre-v7.0 orphan state encrypted with rotated keys — ZOT-06
 **Plans**: 3 plans
 Plans:
-  - [ ] 104-01-PLAN.md — Env validation + purge action + i18n keys (ZOT-05, ZOT-06)
-  - [ ] 104-02-PLAN.md — ZoteroConnectionCard + settings page wiring (ZOT-01)
+  - [x] 104-01-PLAN.md — Env validation + purge action + i18n keys (ZOT-05, ZOT-06)
+  - [x] 104-02-PLAN.md — ZoteroConnectionCard + settings page wiring (ZOT-01)
   - [ ] 104-03-PLAN.md — ZoteroTab + ZoteroItemRow + selector page wiring (SEL-06, ZOT-02, ZOT-04)
 
 **Research flag**: MEDIUM — re-verify Zotero 2025 rate-limit docs before implementing the `fetchWithBackoff` helper (respect `Backoff:` header + `429 Retry-After:` + `limit=100` pagination cursor).
@@ -393,5 +393,5 @@ Phases 99, 100, and 101 are disjoint (Zustand store / Convex actions / UI primit
 | 101. Workbench Primitives | v7.0 | 3/3 | Complete    | 2026-04-16 |
 | 102. Entry Points & Counter UX | v7.0 | 2/2 | Complete    | 2026-04-16 |
 | 103. Workbench Views + Selector Page | v7.0 | 5/5 | Complete   | 2026-04-16 |
-| 104. Zotero Revival | v7.0 | 0/3 | Not started | - |
+| 104. Zotero Revival | v7.0 | 2/3 | In Progress|  |
 | 105. Polish, Integration, E2E | v7.0 | 0/TBD | Not started | - |
