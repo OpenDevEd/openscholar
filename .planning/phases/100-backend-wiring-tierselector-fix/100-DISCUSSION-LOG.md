@@ -3,9 +3,9 @@
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
-**Date:** 2026-04-15
+**Date:** 2026-04-16
 **Phase:** 100-backend-wiring-tierselector-fix
-**Areas discussed:** Tier field schema design, Cascade filtering logic, OpenAlex action boundaries, Error routing pattern
+**Areas discussed:** Tier field schema design, Cascade filtering logic, OpenAlex action boundaries, Error routing pattern, OpenAlex batch strategy, Tier field nullability semantics, Error data payload shape, Action timeout & retry
 **Mode:** --auto (all decisions auto-selected with recommended defaults)
 
 ---
@@ -62,10 +62,62 @@
 
 ---
 
+## OpenAlex Batch Strategy
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Batch of 50 IDs per request | Pipe-delimited filter syntax, stays under URL length limits | ✓ |
+| Batch of 25 IDs per request | More conservative, more round-trips | |
+| Single ID per request | Simplest but slowest, 1000 requests for max batch | |
+
+**User's choice:** [auto] Batch of 50 IDs per request with pipe-delimited filter (recommended default)
+**Notes:** Keeps URLs well under ~4000 char limit. Failed batches collected in unresolvable array — action does not throw on partial failures.
+
+---
+
+## Tier Field Nullability Semantics
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Null-coalesce to "auto" at read time | No migration, existing behavior preserved, workpool reads `job.tier ?? "auto"` | ✓ |
+| Write default on insert | Backfill existing rows via migration | |
+| Required field with migration | Breaking change, requires two-deploy migration | |
+
+**User's choice:** [auto] Null-coalesce to "auto" at read time in workpool action (recommended default)
+**Notes:** Schema field stays `v.optional(...)` permanently. Write-path always sets `tier` explicitly from Phase 100 onward.
+
+---
+
+## Error Data Payload Shape
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Include limit, attempted, and excess | Toast shows user-specific limit from getExtractionLimitForUser | ✓ |
+| Include only message string | Simpler but no dynamic data for i18n interpolation | |
+| Include limit only | Missing context about how many the user tried to submit | |
+
+**User's choice:** [auto] Include limit, attempted, and excess in error data object (recommended default)
+**Notes:** The `limit` value comes from `getExtractionLimitForUser(ctx)`, not hardcoded. Enables toast: "You can extract up to {limit} papers per job. Remove {excess} papers to continue."
+
+---
+
+## Action Timeout & Retry
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| 8-second AbortController, no retry | Leaves 2s buffer for Convex overhead, meets ZOT-03 10s requirement | ✓ |
+| 5-second timeout with 1 retry | Faster fail but retry adds latency budget | |
+| No explicit timeout (Convex default) | Relies on Convex 30s action timeout, may exceed ZOT-03 | |
+
+**User's choice:** [auto] AbortController with 8-second timeout on fetch, no retry (recommended default)
+**Notes:** `resolveByDoi` returns `null` on timeout — UI shows failure state. `resolveManualIds` uses per-batch 8s timeouts within the 30s Convex action budget.
+
+---
+
 ## Claude's Discretion
 
 - Internal naming for OpenAlex action helpers
-- Batch size for OpenAlex API calls in resolveManualIds
+- Batch size for OpenAlex API calls in resolveManualIds (decided: 50 per batch)
 - Exact i18n wording for EXTRACTION_LIMIT_EXCEEDED across 6 locales
 - Test file organization
 - Whether to add directory index file for convex/openalex/
