@@ -46,10 +46,10 @@ describe("BucketGate", () => {
     expect(screen.getByTestId("bucket-rollout-notice")).toBeTruthy();
   });
 
-  it("the registry default matches the dark-launch posture", async () => {
+  it("the registry default is enabled for free+", async () => {
     const { FLAG_REGISTRY } = await import("../lib/feature-flags/registry");
     expect(FLAG_REGISTRY["extraction.bucket_v2"]).toBeDefined();
-    expect(FLAG_REGISTRY["extraction.bucket_v2"].enabled).toBe(false);
-    expect(FLAG_REGISTRY["extraction.bucket_v2"].minimumTier).toBeGreaterThan(0);
+    expect(FLAG_REGISTRY["extraction.bucket_v2"].enabled).toBe(true);
+    expect(FLAG_REGISTRY["extraction.bucket_v2"].minimumTier).toBe(0);
   });
 });
