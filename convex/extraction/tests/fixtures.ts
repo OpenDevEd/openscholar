@@ -5,6 +5,11 @@ import type { Id } from "../../_generated/dataModel";
 import { workflow } from "../../workflow";
 import { writeJobSources } from "../jobSources";
 import { assertNonProd } from "../../lib/assertNonProd";
+import {
+  historyEntryInputValidator,
+  jobStatusValidator,
+  questionInputValidator,
+} from "../validators";
 
 /**
  * Consolidated fixture helpers for dev/CI-only extraction tests.
@@ -22,40 +27,6 @@ const DEFAULT_QUESTIONS: QuestionInput[] = [
   { key: "q1", question: "What methodology was used?", type: "string" },
 ];
 
-const questionInputValidator = v.object({
-  key: v.string(),
-  question: v.string(),
-  type: v.union(
-    v.literal("string"),
-    v.literal("boolean"),
-    v.literal("number"),
-    v.literal("array"),
-  ),
-  description: v.optional(v.string()),
-});
-
-const historyEntryValidator = v.object({
-  historyId: v.string(),
-  searchFilters: v.object({
-    query: v.string(),
-    yearRange: v.optional(v.array(v.number())),
-    sortBy: v.optional(v.string()),
-    selectedRegions: v.optional(v.array(v.string())),
-    selectedCountryFocus: v.optional(v.array(v.string())),
-    reviewFilter: v.optional(v.boolean()),
-  }),
-});
-
-const jobStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("downloading_pdfs"),
-  v.literal("indexing"),
-  v.literal("extracting"),
-  v.literal("completed"),
-  v.literal("failed"),
-  v.literal("cancelled"),
-);
-
 /**
  * Create a test extraction job. Supersedes the old `createTestJob` /
  * `createTestJobForFix` / `createAndRunTestJob` / `test_automation_internal.createTestJob`
@@ -67,7 +38,7 @@ export const createTestJob = internalMutation({
     userId: v.optional(v.id("users")),
     name: v.optional(v.string()),
     status: v.optional(jobStatusValidator),
-    historyEntries: v.optional(v.array(historyEntryValidator)),
+    historyEntries: v.optional(v.array(historyEntryInputValidator)),
     questions: v.optional(v.array(questionInputValidator)),
     start: v.optional(v.boolean()),
   },

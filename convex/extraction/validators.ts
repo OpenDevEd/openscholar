@@ -165,6 +165,17 @@ export const sourceTypeValidator = v.union(
   v.literal("mixed")
 );
 
+/**
+ * Per-paper source classifier. Unlike the job-level `sourceTypeValidator`,
+ * a paper always resolves to exactly one origin — "mixed" is a job-level
+ * aggregation and is never valid on a paper row.
+ */
+export const paperSourceTypeValidator = v.union(
+  v.literal("history"),
+  v.literal("zotero"),
+  v.literal("manual")
+);
+
 // ---- Nested object validators ----
 
 export const citationValidator = v.object({
@@ -275,6 +286,33 @@ export const manualItemInputValidator = v.object({
   storageId: v.optional(v.id("_storage")),
 });
 
+/** User-authored question input for startExtraction / templates. */
+export const questionInputValidator = v.object({
+  key: v.string(),
+  question: v.string(),
+  type: questionTypeValidator,
+  description: v.optional(v.string()),
+});
+
+/**
+ * Full extractionWorkflowTemplates document shape — reused by
+ * queries/mutations returning saved templates.
+ */
+export const workflowTemplateValidator = v.object({
+  _id: v.id("extractionWorkflowTemplates"),
+  _creationTime: v.number(),
+  userId: v.id("users"),
+  name: v.string(),
+  description: v.optional(v.string()),
+  sourceType: sourceTypeValidator,
+  sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
+  sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
+  sourceManualItems: v.optional(v.array(manualItemInputValidator)),
+  questions: v.array(questionInputValidator),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+});
+
 export const extractionQuestionValidator = v.object({
   _id: v.id("extractionQuestions"),
   _creationTime: v.number(),
@@ -303,9 +341,7 @@ export const extractionPaperValidator = v.object({
   pdfUrl: v.optional(v.string()),
   storageId: v.optional(v.id("_storage")),
   pdfDownloadError: v.optional(v.string()),
-  sourceType: v.optional(
-    v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"))
-  ),
+  sourceType: v.optional(paperSourceTypeValidator),
   sourceId: v.optional(v.string()),
   ragEntryId: v.optional(v.string()),
   isIndexed: v.optional(v.boolean()),

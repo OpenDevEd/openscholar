@@ -36,6 +36,10 @@ import {
   assertExtractionInputLimits,
   historyEntryInputValidator,
   manualItemInputValidator,
+  paperSourceTypeValidator,
+  questionInputValidator,
+  questionTypeValidator,
+  sourceTypeValidator,
   zoteroSelectionInputValidator,
 } from "./validators";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../lib/queryBounds";
@@ -115,28 +119,11 @@ function toInsightEntry(
 export const startExtraction = mutation({
   args: {
     name: v.string(),
-    sourceType: v.union(
-      v.literal("history"),
-      v.literal("zotero"),
-      v.literal("manual"),
-      v.literal("mixed")
-    ),
+    sourceType: sourceTypeValidator,
     sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
     sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
     sourceManualItems: v.optional(v.array(manualItemInputValidator)),
-    questions: v.array(
-      v.object({
-        key: v.string(),
-        question: v.string(),
-        type: v.union(
-          v.literal("string"),
-          v.literal("boolean"),
-          v.literal("number"),
-          v.literal("array")
-        ),
-        description: v.optional(v.string()),
-      })
-    ),
+    questions: v.array(questionInputValidator),
   },
   returns: v.object({ jobId: v.id("extractionJobs") }),
   handler: async (ctx, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
@@ -643,28 +630,11 @@ export const saveWorkflowTemplate = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    sourceType: v.union(
-      v.literal("history"),
-      v.literal("zotero"),
-      v.literal("manual"),
-      v.literal("mixed")
-    ),
+    sourceType: sourceTypeValidator,
     sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
     sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
     sourceManualItems: v.optional(v.array(manualItemInputValidator)),
-    questions: v.array(
-      v.object({
-        key: v.string(),
-        question: v.string(),
-        type: v.union(
-          v.literal("string"),
-          v.literal("boolean"),
-          v.literal("number"),
-          v.literal("array")
-        ),
-        description: v.optional(v.string()),
-      })
-    ),
+    questions: v.array(questionInputValidator),
   },
   returns: v.object({ templateId: v.id("extractionWorkflowTemplates") }),
   handler: async (ctx, args) => {
@@ -1287,9 +1257,7 @@ export const createPaperRecords = internalMutation({
         pdfUrl: v.optional(v.string()),
         storageId: v.optional(v.id("_storage")),
         isOpenAccess: v.optional(v.boolean()),
-        sourceType: v.optional(
-          v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"))
-        ),
+        sourceType: v.optional(paperSourceTypeValidator),
         sourceId: v.optional(v.string()),
       })
     ),
@@ -1710,12 +1678,7 @@ export const createJobDirect = internalMutation({
   args: {
     userId: v.id("users"),
     name: v.string(),
-    sourceType: v.union(
-      v.literal("history"),
-      v.literal("zotero"),
-      v.literal("manual"),
-      v.literal("mixed")
-    ),
+    sourceType: sourceTypeValidator,
     sourceHistoryEntries: v.optional(v.array(historyEntryInputValidator)),
     sourceZoteroSelection: v.optional(zoteroSelectionInputValidator),
     sourceManualItems: v.optional(v.array(manualItemInputValidator)),
@@ -1747,7 +1710,7 @@ export const createQuestionDirect = internalMutation({
     jobId: v.id("extractionJobs"),
     key: v.string(),
     question: v.string(),
-    type: v.union(v.literal("string"), v.literal("boolean"), v.literal("number"), v.literal("array")),
+    type: questionTypeValidator,
     description: v.optional(v.string()),
     order: v.number(),
   },
@@ -1787,19 +1750,7 @@ export const enqueuePaperProcessing = internalMutation({
     title: v.string(),
     abstract: v.optional(v.string()),
     doi: v.optional(v.string()),
-    questions: v.array(
-      v.object({
-        key: v.string(),
-        question: v.string(),
-        type: v.union(
-          v.literal("string"),
-          v.literal("boolean"),
-          v.literal("number"),
-          v.literal("array")
-        ),
-        description: v.optional(v.string()),
-      })
-    ),
+    questions: v.array(questionInputValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -1865,19 +1816,7 @@ export const handleDownloadAndIndexComplete = pdfProcessingPool.defineOnComplete
   context: v.object({
     paperId: v.id("extractionPapers"),
     jobId: v.id("extractionJobs"),
-    questions: v.array(
-      v.object({
-        key: v.string(),
-        question: v.string(),
-        type: v.union(
-          v.literal("string"),
-          v.literal("boolean"),
-          v.literal("number"),
-          v.literal("array")
-        ),
-        description: v.optional(v.string()),
-      })
-    ),
+    questions: v.array(questionInputValidator),
   }),
   handler: async (ctx, { context, result }) => {
     const { paperId, jobId, questions } = context;

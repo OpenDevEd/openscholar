@@ -47,6 +47,7 @@ import {
   paperStatusValidator,
   searchFiltersValidator,
   paginatedPaperWithResultsValidator,
+  workflowTemplateValidator,
 } from "./validators";
 import { statusResultValidator } from "../lib/query_states";
 import { readJobSources } from "./jobSources";
@@ -1258,34 +1259,7 @@ export const getSavedViews = query({
 
 export const getWorkflowTemplates = query({
   args: {},
-  returns: v.array(v.object({
-    _id: v.id("extractionWorkflowTemplates"),
-    _creationTime: v.number(),
-    userId: v.id("users"),
-    name: v.string(),
-    description: v.optional(v.string()),
-    sourceType: v.union(v.literal("history"), v.literal("zotero"), v.literal("manual"), v.literal("mixed")),
-    sourceHistoryEntries: v.optional(v.array(v.object({ historyId: v.string(), searchFilters: searchFiltersValidator }))),
-    sourceZoteroSelection: v.optional(v.object({
-      libraryType: v.union(v.literal("user"), v.literal("group")),
-      groupId: v.optional(v.string()),
-      zoteroUserId: v.optional(v.string()),
-      collectionKey: v.optional(v.string()),
-      includeDescendants: v.optional(v.boolean()),
-      items: v.array(v.object({ itemKey: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()) }))
-    })),
-    sourceManualItems: v.optional(v.array(v.object({
-      id: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.optional(v.array(v.string())), year: v.optional(v.number()), doi: v.optional(v.string()), pdfUrl: v.optional(v.string()), storageId: v.optional(v.id("_storage"))
-    }))),
-    questions: v.array(v.object({
-      key: v.string(),
-      question: v.string(),
-      type: v.union(v.literal("string"), v.literal("boolean"), v.literal("number"), v.literal("array")),
-      description: v.optional(v.string()),
-    })),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })),
+  returns: v.array(workflowTemplateValidator),
   handler: async (ctx) => {
 
     const user = await getCurrentUser(ctx);
