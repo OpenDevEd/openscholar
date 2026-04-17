@@ -150,29 +150,3 @@ Return strict JSON:
 
   return prompt;
 }
-
-/**
- * Detect if question is factual or interpretive
- */
-export function detectQuestionType(question: string): "factual" | "interpretive" {
-  const factualPatterns = [
-    /\b(\d+|what|how many|how much|when|where|who|which)\b/i,
-    /\b(sample size|n=|number of|count|percentage|rate|ratio|p-value)\b/i,
-    /\b(date|year|month|day|time|duration|period)\b/i,
-    /\b(measure|measurement|value|amount|quantity|size)\b/i,
-  ];
-
-  const interpretivePatterns = [
-    /\b(why|explain|describe|discuss|analyze|evaluate|interpret)\b/i,
-    /\b(method|approach|strategy|technique|design|framework)\b/i,
-    /\b(conclusion|finding|result|implication|significance|meaning)\b/i,
-    /\b(compare|contrast|difference|similarity|relationship)\b/i,
-  ];
-
-  const factualScore = factualPatterns.filter((p) => p.test(question)).length;
-  const interpretiveScore = interpretivePatterns.filter((p) =>
-    p.test(question)
-  ).length;
-
-  return factualScore >= interpretiveScore ? "factual" : "interpretive";
-}

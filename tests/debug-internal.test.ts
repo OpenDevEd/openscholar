@@ -6,7 +6,6 @@ describe("debug function internal registration", () => {
   const DEBUG_FILES = [
     "convex/extraction/debug.ts",
     "convex/extraction/debug_errors.ts",
-    "convex/extraction/debug_papers.ts",
     "convex/extraction/debug_paper_results.ts",
     "convex/extraction/debug_job_content.ts",
     "convex/extraction/debug_job_citations.ts",
