@@ -20,7 +20,10 @@ import {
 } from "@/lib/toast/error-resolver";
 import { SelectableList } from "./bucket/selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
-import { fromZoteroItem } from "@/lib/bucket/bucketItem";
+import {
+  fromZoteroItem,
+  zoteroBucketKeyFor,
+} from "@/lib/bucket/bucketItem";
 import { bucketAdded } from "@/lib/toast/bucket";
 
 type ZoteroGroup = {
@@ -164,19 +167,14 @@ export function ZoteroSelector() {
   const removeItems = (items: ZoteroItem[]) => {
     bucketRemoveMany(toBucketItems(items).map((b) => b.bucketKey));
   };
-  const isItemSelected = (item: ZoteroItem) => {
-    const bucketItem = fromZoteroItem(
-      {
-        itemKey: item.key,
+  const isItemSelected = (item: ZoteroItem) =>
+    bucketKeys.has(
+      zoteroBucketKeyFor({
         title: item.title,
-        authors: item.authors,
         year: item.year,
         doi: item.doi,
-      },
-      zoteroContext,
+      }),
     );
-    return bucketKeys.has(bucketItem.bucketKey);
-  };
   const collectionOptions = useMemo<CascaderOption[]>(() => {
     const source = requiresGroupSelection
       ? []

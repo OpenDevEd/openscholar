@@ -175,6 +175,23 @@ export type ZoteroContext = {
   collectionKey?: string;
 };
 
+/**
+ * Pure bucketKey computation for a Zotero row. `fromZoteroItem`
+ * rebuilds the full BucketItem (sourceMeta, addedAt, status, etc.) —
+ * useful for staging, wasteful for the `isSelected` hot path that's
+ * called once per visible row per render. Keep this in sync with
+ * `fromZoteroItem` below.
+ */
+export function zoteroBucketKeyFor(
+  item: Pick<ZoteroItemInput, "doi" | "title" | "year">,
+): string {
+  return buildDedupeKey({
+    doi: item.doi,
+    title: item.title,
+    year: item.year,
+  });
+}
+
 export function fromZoteroItem(
   item: ZoteroItemInput,
   context: ZoteroContext,

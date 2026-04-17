@@ -7,6 +7,7 @@ import {
   fromZoteroItem,
   fromUpload,
   fromSavedSearchQuery,
+  zoteroBucketKeyFor,
 } from "@/lib/bucket/bucketItem";
 
 function libraryDoc(overrides: {
@@ -148,6 +149,20 @@ describe("lib/bucket/bucketItem normalizers", () => {
     });
     expect(item.status).toBe("ready");
     expect(item.storageId).toBe(storageId);
+  });
+
+  test("zoteroBucketKeyFor returns the same key as fromZoteroItem(...).bucketKey", () => {
+    const input = { title: "Z Paper", authors: [], doi: "10.1/zot", year: 2023 };
+    const full = fromZoteroItem({ itemKey: "Z1", ...input }, {
+      libraryType: "user",
+    });
+    const keyOnly = zoteroBucketKeyFor(input);
+    expect(keyOnly).toBe(full.bucketKey);
+  });
+
+  test("zoteroBucketKeyFor derives title+year key when DOI is absent", () => {
+    const key = zoteroBucketKeyFor({ title: "Untitled", year: 2024 });
+    expect(key).toBe("title:untitled#2024");
   });
 
   test("fromSavedSearchQuery stamps paperCount from entry.count", () => {
